@@ -216,3 +216,15 @@ def test_health_open_without_token(server):
         assert get(server, "/health")["status"] == "ok"
     finally:
         api._state["token"] = None
+
+
+def test_cli_survives_legacy_console_encoding(tmp_path):
+    """Консоль Windows в cp1251: --explain печатает «×» и кириллицу — не падать."""
+    import subprocess, sys
+    env = dict(os.environ, PYTHONIOENCODING="cp1251", PYTHONUTF8="0")
+    db = str(tmp_path / "c.db")
+    run = lambda *a: subprocess.run([sys.executable, "-m", "padam", "--db", db, *a],
+                                    capture_output=True, env=env, timeout=120)
+    assert run("remember", "Отвечать по-русски", "--kind", "preference").returncode == 0
+    r = run("recall", "язык ответа", "--explain")
+    assert r.returncode == 0, r.stderr.decode("utf-8", "replace")[-300:]

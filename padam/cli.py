@@ -209,7 +209,19 @@ def cmd_l3_verify(m: Memory, a) -> int:
     return 0 if v["ok"] else 1
 
 
+def _safe_stdout() -> None:
+    """Консоль Windows по умолчанию в cp1251/cp866: знак «×» из --explain и
+    кириллица в выводе роняли команду UnicodeEncodeError (найдено 08.10.2026
+    при установке с нуля). Пишем в UTF-8, а чего консоль не знает — заменяем."""
+    for s in (sys.stdout, sys.stderr):
+        try:
+            s.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
+
 def main(argv=None) -> int:
+    _safe_stdout()
     p = argparse.ArgumentParser(prog="padam", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--user", default="default")

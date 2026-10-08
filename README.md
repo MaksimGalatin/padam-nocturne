@@ -80,7 +80,7 @@ All three were verified end-to-end with `l3-verify` against Arweave and the chai
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 105 passed (8 Oct 2026)
+python -m pytest tests/ -q        # 106 passed (8 Oct 2026)
 ```
 L3 tests never touch the network: Arweave and Solana are replaced by fakes. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.
 
