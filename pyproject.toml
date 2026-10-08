@@ -1,0 +1,29 @@
+[project]
+name = "padam-nocturne"
+version = "0.2.0"
+description = "Persistent memory for AI agents with sleep-style consolidation (NOCTURNE) and a verifiable eternal layer on Arweave + Solana"
+readme = "README.md"
+license = { text = "AGPL-3.0-only" }
+authors = [{ name = "Maksim Galatin", email = "contact@codeofdigitaleternity.com" }]
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24", "requests>=2.28", "cryptography>=42"]
+
+[project.optional-dependencies]
+l3 = ["solders>=0.20"]
+test = ["pytest>=7"]
+
+[project.urls]
+Homepage = "https://aifa.works"
+
+[project.scripts]
+padam = "padam.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["padam"]
+
+[tool.setuptools.package-data]
+padam = ["turbo_upload.mjs"]

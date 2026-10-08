@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "padam": {
+      "command": "python",
+      "args": ["-m", "padam.mcp_server"],
+      "env": {
+        "PADAM_DB": "REPLACE_WITH_HOME/.padam/memory.db",
+        "PADAM_USER": "default",
+        "OLLAMA_URL": "http://localhost:11434"
+      }
+    }
+  }
+}

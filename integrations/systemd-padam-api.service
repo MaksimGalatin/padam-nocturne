@@ -1,0 +1,17 @@
+# Фоновая служба REST API. Установка:
+#   sudo cp systemd-padam-api.service /etc/systemd/system/padam-api.service
+#   sudo systemctl enable --now padam-api
+[Unit]
+Description=PADAM memory REST API
+After=network.target
+
+[Service]
+Type=simple
+User=REPLACE_WITH_USER
+Environment=PADAM_DB=/home/REPLACE_WITH_USER/.padam/memory.db
+Environment=OLLAMA_URL=http://localhost:11434
+ExecStart=/usr/bin/python3 -m padam.api --host 127.0.0.1 --port 8077
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

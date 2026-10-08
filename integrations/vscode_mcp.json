@@ -1,0 +1,12 @@
+{
+  "servers": {
+    "padam": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["-m", "padam.mcp_server"],
+      "env": {
+        "PADAM_DB": "REPLACE_WITH_HOME/.padam/memory.db"
+      }
+    }
+  }
+}

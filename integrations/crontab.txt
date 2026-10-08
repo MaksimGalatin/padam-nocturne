@@ -1,0 +1,4 @@
+# Цикл консолидации раз в сутки в 4 утра.
+# Установка:  crontab -e   и вставить строку ниже
+
+0 4 * * * cd /path/to/padam && /usr/bin/python3 -m padam sleep >> ~/.padam/nocturne.log 2>&1
