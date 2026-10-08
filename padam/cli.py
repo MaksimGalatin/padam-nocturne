@@ -173,12 +173,55 @@ def cmd_l3(m: Memory, a) -> int:
     if not a.dry_run and not (wallet and keypair):
         print("нужны --arweave-wallet и --solana-keypair (или PADAM_ARWEAVE_WALLET / PADAM_SOLANA_KEYPAIR)")
         return 2
+    from . import keyvault
+    if keyvault.is_enabled(m):
+        try:
+            keyvault.unlock(m, _пароль("Пароль ключей записей: ") if a.ask_passphrase else None)
+        except keyvault.KeyVaultError as e:
+            print(e); return 2
     save_dir = str(m.store.path) + ".l3"
     rep = anchor.run_l3(
         m, dry_run=a.dry_run, network=a.network, save_dir=save_dir,
         uploader=(lambda data, tags: anchor.turbo_upload(data, wallet, tags, a.turbo_sdk)) if wallet else None,
         anchorer=(lambda memo: anchor.solana_memo(memo, keypair, a.network)) if keypair else None)
     print(json.dumps(rep, ensure_ascii=False, indent=2))
+    return 0
+
+
+def _пароль(подсказка: str, повтор: bool = False) -> str:
+    import getpass
+    п = getpass.getpass(подсказка)
+    if повтор and getpass.getpass("Ещё раз: ") != п:
+        raise SystemExit("пароли не совпали")
+    return п
+
+
+def cmd_protect_keys(m: Memory, a) -> int:
+    """Защитить ключи записей паролем: включить хранилище и завернуть открытые ключи."""
+    from . import keyvault
+    import os
+    уже = keyvault.is_enabled(m)
+    п = os.environ.get(keyvault.ENV) or _пароль("Пароль для ключей записей: ", повтор=not уже)
+    try:
+        итог = keyvault.protect_existing(m, п)
+    except keyvault.WrongPassphrase as e:
+        print(e); return 1
+    print(json.dumps(итог, ensure_ascii=False))
+    print(f"{DIM}Пароль не хранится нигде. Без него ключи записей не открыть — "
+          f"ни вам, ни нам. Запишите его там, где храните важное.{RESET}")
+    return 0
+
+
+def cmd_rekey(m: Memory, a) -> int:
+    """Сменить пароль ключей записей."""
+    from . import keyvault
+    if not keyvault.is_enabled(m):
+        print("Защита паролем не включена — сначала protect-keys."); return 1
+    try:
+        n = keyvault.rekey(m, _пароль("Текущий пароль: "), _пароль("Новый пароль: ", повтор=True))
+    except keyvault.WrongPassphrase as e:
+        print(e); return 1
+    print(json.dumps({"перезавёрнуто": n}, ensure_ascii=False))
     return 0
 
 
@@ -299,7 +342,15 @@ def main(argv=None) -> int:
     s.add_argument("--solana-keypair", default=None)
     s.add_argument("--turbo-sdk", default=None, help="каталог node_modules с @ardrive/turbo-sdk")
     s.add_argument("--dry-run", action="store_true")
+    s.add_argument("--ask-passphrase", action="store_true",
+                   help="спросить пароль ключей записей в консоли (иначе PADAM_KEY_PASSPHRASE)")
     s.set_defaults(fn=cmd_l3)
+
+    s = sub.add_parser("protect-keys", help="защитить ключи записей паролем (и завернуть уже созданные)")
+    s.set_defaults(fn=cmd_protect_keys)
+
+    s = sub.add_parser("rekey", help="сменить пароль ключей записей")
+    s.set_defaults(fn=cmd_rekey)
 
     s = sub.add_parser("l3-verify", help="проверить закрепление по Arweave и Solana")
     s.add_argument("--anchor", default=None)

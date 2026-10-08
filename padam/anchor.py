@@ -42,6 +42,7 @@ from typing import Callable, Optional
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+from . import keyvault
 from .memory import Memory
 from .store import now_iso
 
@@ -157,9 +158,11 @@ def ensure_keys(memory: Memory) -> int:
            WHERE m.user_id = ? AND m.status = 'active' AND m.content IS NOT NULL
              AND k.memory_id IS NULL""", (memory.user_id,))
     for r in rows:
+        # с включённой защитой (keyvault) ключ ложится в базу завёрнутым паролем, иначе — hex, как прежде
         memory.store.execute(
             """INSERT INTO anchor_key (memory_id, key_ref, shard_count, threshold, created_at)
-               VALUES (?, ?, 1, 1, ?)""", (r["id"], secrets.token_bytes(32).hex(), now_iso()))
+               VALUES (?, ?, 1, 1, ?)""",
+            (r["id"], keyvault.store_form(memory, r["id"], secrets.token_bytes(32)), now_iso()))
     return len(rows)
 
 
@@ -174,7 +177,7 @@ def key_for(memory: Memory, memory_id: str) -> Optional[bytes]:
     r = memory.store.one("SELECT key_ref FROM anchor_key WHERE memory_id = ?", (memory_id,))
     if not r or r["key_ref"] == DESTROYED:
         return None
-    return bytes.fromhex(r["key_ref"])
+    return keyvault.read_form(memory, memory_id, r["key_ref"])
 
 
 # ---------------------------------------------------------------- пакет

@@ -57,6 +57,16 @@ python -m padam l3 --network devnet       # or --network mainnet (explicit only)
 python -m padam l3-verify                 # independent check: Arweave + chain
 ```
 
+**Protect the per-record keys with a passphrase** (recommended before the first anchoring):
+
+```bash
+python -m padam protect-keys              # asks for a passphrase twice, wraps every existing key
+export PADAM_KEY_PASSPHRASE=...           # or: python -m padam l3 --ask-passphrase
+python -m padam rekey                     # change the passphrase
+```
+
+Each key is stored as `w1:` + AES-256-GCM(KEK, key) with the record id as associated data; KEK = scrypt(passphrase, salt, n=2^15, r=8, p=1). A wrong passphrase is rejected by a check record before anything is touched; a wrapped key cannot be moved to another record. After wrapping, the WAL is truncated and the file is VACUUMed: on 400 keys without it 66 plaintext keys remained in free pages (measured 08.10.2026, `tests/test_keyvault.py`).
+
 What happens:
 1. Every active record gets **its own AES-256-GCM key**; content is encrypted with it.
 2. New ciphertexts and **forget receipts** (records whose key was destroyed) form one bundle — ciphertext only, no plaintext, no keys, owner as a hash.
@@ -92,7 +102,7 @@ L3 tests never touch the network: Arweave and Solana are replaced by fakes. The 
 - The rule-based classifier without a model makes mistakes; the NOCTURNE report shows it (diversity metric).
 - Ceiling, decay and floor values are chosen by reasoning, not fitted on data — tune them on your own stream, measuring before and after.
 - Public benchmark (LongMemEval) is not published yet; do not compare our internal numbers with other systems.
-- Per-record keys for L3 live in the local SQLite file (`anchor_key`) unencrypted: whoever has the database file can read the Arweave ciphertexts. Keep the file on an encrypted disk; key wrapping with a passphrase is planned.
+- Per-record keys can be protected with a passphrase (`python -m padam protect-keys`, see below). Without it they live in the local SQLite file in clear, and whoever has the database file can read the Arweave ciphertexts. The passphrase is not stored anywhere: lose it and the keys cannot be opened — by you or by us.
 
 ---
 
@@ -111,6 +121,8 @@ L3 tests never touch the network: Arweave and Solana are replaced by fakes. The 
 1. **Четыре ограничителя** против «памяти одних катастроф». На искусственном наборе: без них 90,7 % вероятности у катастроф — около 181 из 200, с ними 50 из 200 (перемерено 08.10.2026, тест `test_nocturne.py -k nightmare`).
 2. **Два времени у записи** — показа и подтверждения. Забывание считается от подтверждения, поэтому часто показываемая ложь не остаётся «вечно молодой».
 3. **Ничего не удаляется, но забыть можно по-настоящему**: `forget` затирает содержание и уничтожает собственный ключ записи — её шифротекст в Arweave становится шумом, остальная память цела.
+
+**Ключи записей можно защитить паролем**: `python -m padam protect-keys` заворачивает все ключи (AES-256-GCM, ключ из пароля через scrypt, id записи — как связанные данные), после чего файл базы чистится от старых открытых копий (VACUUM). Пароль нигде не хранится: потеряли — ключи не открыть ни вам, ни нам. Сменить пароль — `python -m padam rekey`; для `l3` пароль берётся из `PADAM_KEY_PASSPHRASE` или `--ask-passphrase`.
 
 **L3 работает в основной сети Solana с 8 октября 2026** — три закрепления в таблице выше, все три проверены по Arweave и цепи — 3 из 3 `ok: true`, стоимость 0,000015 SOL.
 

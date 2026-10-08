@@ -214,6 +214,7 @@ def nocturne_cycle(buffer, batch_size=256):
 ## 9. L3 — the immutable anchor (implemented in v0.2: `padam/anchor.py`)
 
 1. Every active record gets its own AES-256-GCM key (`anchor_key`); content is encrypted with it. Record bytes = `nonce(12) ‖ ciphertext`.
+   Key storage: unprotected — hex; protected (`protect-keys`) — `w1:` + AES-256-GCM(KEK, key, aad = `padam-key|<record id>`), KEK = scrypt(passphrase, salt from `key_vault`, n=2^15, r=8, p=1). A wrong passphrase is rejected by the check record `key_vault.check_hex`; after wrapping — `wal_checkpoint(TRUNCATE)` and `VACUUM`, so old plaintext copies do not survive in free pages.
 2. New ciphertexts and **forget receipts** (records whose key was destroyed) form one bundle: ciphertext only, no plaintext, no keys, owner as a SHA-256 hash.
 3. Merkle tree — the same scheme as the CODE Eternal memory anchor (`memory-anchor.ts`), cross-checked leaf by leaf:
    ```
