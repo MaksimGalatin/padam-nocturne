@@ -1,5 +1,7 @@
 # PADAM · NOCTURNE — memory for AI agents that sleeps, forgets honestly, and can be verified forever
 
+[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue)
+
 **PADAM** is a local-first persistent memory for AI assistants and agents.
 **NOCTURNE** is its consolidation cycle — a "sleep" that turns a raw stream of episodes into lasting memory, without letting rare dramatic events take over.
 **L3** anchors memory to **Arweave** (encrypted bundles) and **Solana** (Merkle root in a Memo), so anyone can verify it was never rewritten — and any single record can still be forgotten for good.
