@@ -6,7 +6,7 @@
 **NOCTURNE** is its consolidation cycle — a "sleep" that turns a raw stream of episodes into lasting memory, without letting rare dramatic events take over.
 **L3** anchors memory to **Arweave** (encrypted bundles) and **Solana** (Merkle root in a Memo), so anyone can verify it was never rewritten — and any single record can still be forgotten for good.
 
-Part of [CODE Eternal](https://aifa.works). Specification: [`docs/NOCTURNE_SPEC.md`](docs/NOCTURNE_SPEC.md). Русская версия — ниже.
+Part of [CODE Eternal](https://aifa.works). Specification: [English](docs/NOCTURNE_SPEC.en.md) · [Русский](docs/NOCTURNE_SPEC.md). Русская версия — ниже.
 
 ---
 
