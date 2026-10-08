@@ -101,7 +101,9 @@ def test_run_l3_marks_records_and_bundle_has_no_plaintext(mem):
     up, anc = _fake(calls)
     rep = anchor.run_l3(mem, uploader=up, anchorer=anc)
     assert rep["status"] == "anchored" and rep["records"] == 2 and rep["forgets"] == 0
-    assert "4417" not in calls["payload"].decode() and "синий" not in calls["payload"].decode()
+    # кириллица в пакете (ensure_ascii=False) появиться может только при утечке открытого текста; короткое
+    # «4417» проверять нельзя — 08.10.2026 оно случайно нашлось во времени «08:39:14.441727» и уронило CI
+    assert "сейфа" not in calls["payload"].decode() and "синий" not in calls["payload"].decode()
     assert calls["memo"].startswith(anchor.MEMO_PREFIX + " root=" + rep["root"])
     assert all(r["anchor_tx"] == rep["solana_sig"] for r in mem.store.query(
         "SELECT anchor_tx FROM memory WHERE status='active'"))
