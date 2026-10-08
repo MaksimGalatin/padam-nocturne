@@ -203,6 +203,10 @@ def build_bundle(memory: Memory) -> Optional[Bundle]:
            WHERE m.user_id = ? AND k.destroyed_at IS NOT NULL
              AND NOT EXISTS (SELECT 1 FROM l3_leaf l
                              WHERE l.memory_id = k.memory_id AND l.kind = 'forget')
+             -- квитанция нужна только тому, что уже лежит в цепи: забывать
+             -- неотправленное в Arweave нечего, а лишний лист — лишний шум
+             AND EXISTS (SELECT 1 FROM l3_leaf l
+                         WHERE l.memory_id = k.memory_id AND l.kind = 'record')
            ORDER BY k.destroyed_at, k.memory_id""", (memory.user_id,))
     if not recs and not forgets:
         return None

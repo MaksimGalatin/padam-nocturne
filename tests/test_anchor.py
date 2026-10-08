@@ -161,3 +161,24 @@ def test_paid_size_refused(mem, monkeypatch):
 def test_mainnet_needs_explicit_name():
     with pytest.raises(ValueError):
         anchor.solana_memo("x", "нет_файла.json", network="main")
+
+
+def test_no_receipt_for_never_anchored(mem):
+    mem.remember("запись, которую забыли до отправки")
+    mid = mem.store.one("SELECT id FROM memory")["id"]
+    anchor.ensure_keys(mem)
+    assert mem.revoke(mid)
+    assert anchor.key_for(mem, mid) is None
+    # в цепи этой записи нет — ни записи, ни квитанции отправлять нечего
+    assert anchor.run_l3(mem, dry_run=True)["status"] == "nothing_new"
+
+
+def test_superseded_after_anchor_not_resent(mem):
+    calls = {}
+    up, anc = _fake(calls)
+    mem.remember("тариф Spark стоит 15 долларов")
+    anchor.run_l3(mem, uploader=up, anchorer=anc)
+    mem.remember("тариф Spark теперь стоит 20 долларов")
+    rep = anchor.run_l3(mem, uploader=up, anchorer=anc)
+    # уходит только новая версия; старая уже закреплена и остаётся в истории
+    assert rep["status"] == "anchored" and rep["records"] == 1 and rep["forgets"] == 0

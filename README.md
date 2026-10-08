@@ -80,7 +80,7 @@ All three were verified end-to-end with `l3-verify` against Arweave and the chai
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 103 passed (8 Oct 2026)
+python -m pytest tests/ -q        # 105 passed (8 Oct 2026)
 ```
 L3 tests never touch the network: Arweave and Solana are replaced by fakes. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.
 
@@ -92,6 +92,7 @@ L3 tests never touch the network: Arweave and Solana are replaced by fakes. The 
 - The rule-based classifier without a model makes mistakes; the NOCTURNE report shows it (diversity metric).
 - Ceiling, decay and floor values are chosen by reasoning, not fitted on data — tune them on your own stream, measuring before and after.
 - Public benchmark (LongMemEval) is not published yet; do not compare our internal numbers with other systems.
+- Per-record keys for L3 live in the local SQLite file (`anchor_key`) unencrypted: whoever has the database file can read the Arweave ciphertexts. Keep the file on an encrypted disk; key wrapping with a passphrase is planned.
 
 ---
 
