@@ -14,7 +14,7 @@ Agent memory today mostly *accumulates*. After a month it holds thousands of rec
 
 ### Three ideas that make it different
 
-1. **Four limiters against "a memory made only of disasters."** Prioritised replay over-samples rare sharp episodes, so memory drifts towards catastrophes. NOCTURNE caps the sharp share, blunts what was already replayed, keeps a floor for routine and corrects for rarity. On a synthetic buffer (1,000 ordinary + 612 catastrophic episodes) a 200-episode batch would contain ~181 catastrophes without limiters and 50 with them. *Synthetic test, see the spec; your stream needs its own tuning.*
+1. **Four limiters against "a memory made only of disasters."** Prioritised replay over-samples rare sharp episodes, so memory drifts towards catastrophes. NOCTURNE caps the sharp share, blunts what was already replayed, keeps a floor for routine and corrects for rarity. On a synthetic buffer (1,000 ordinary + 612 catastrophic episodes) plain prioritised sampling gives catastrophes 90.7 % of the probability mass — about **181 of a 200-episode batch**; with the limiters it is **50 of 200** (share 0.25). Re-measured from scratch on 8 Oct 2026; reproduce with `python -m pytest tests/test_nocturne.py -k nightmare -q`. *Synthetic test — tune the limits on your own stream.*
 2. **Two clocks per record.** `last_seen_at` changes when a record is shown, `last_confirmed_at` only when it is confirmed — and decay is computed from the second. A confidently wrong fact that keeps being retrieved does **not** stay "forever young".
 3. **Nothing is deleted, yet forgetting is real.** A contradiction creates a new version; the old one leaves search results but stays in history. `forget` wipes the content **and destroys the record's own key**, so its ciphertext on Arweave becomes noise forever while the rest of memory stays intact.
 
@@ -30,6 +30,8 @@ python -m padam recall "which language to answer in" --explain
 python -m padam log "today we debugged the billing"; python -m padam sleep
 python -m padam stats
 ```
+
+Record kinds: `preference` and `identity` never fade; `decision` and `correction` — half-life 365 days; `fact` — 180; `state` — 14; `event` — 2. Omit `--kind` and PADAM guesses it.
 
 Search works out of the box (words + BM25 + identifiers). Install [Ollama](https://ollama.com) (`ollama pull nomic-embed-text`) and PADAM switches to neural embeddings automatically.
 
@@ -64,11 +66,11 @@ What happens:
 
 | What | Solana transaction | Arweave bundle |
 |---|---|---|
-| 5 records anchored | [`2fG2w72f…`](https://solscan.io/tx/2fG2w72f66kneDXENmhHHWscAf7bvdbwShqCfUSH3z15DFwdSLiKQPcQLYKuriF8sDkwwxLmztJXLjZpb11PDWCz) | `zEkOfdCA3vTS6fjGtXl-DvrLH-XERn4Oi28Kbvm7kn4` |
-| 1 forget receipt (key destroyed) | [`4B6bcXiF…`](https://solscan.io/tx/4B6bcXiF2qsEoRtLgB8goeiCHgPoS8VMrjyu3Dz6Xxkz8j81uKb2hzegi5SESGLV7h7knGrWhP3LqH8e5XFQQAoA) | `Moc3etRd3ju8B-wAFj-2jKTbIdyM_HLu--DO_k5l6lw` |
-| 1 more record, verified end-to-end (`ok: true`) | [`1rEBCpNF…`](https://solscan.io/tx/1rEBCpNFh18GqpZeFvDap6mMTgH2ttPDUWZBnWLyQX4WuWLiTZtaKbRLU2AQG6jUThP29CnGHaLYpF4n67mw31D) | `-VlLmjRX2t9uXszzeCvf2E7jx4jPkPxKM9XUdOPPBig` |
+| 5 records anchored | [`2fG2w72f…`](https://solscan.io/tx/2fG2w72f66kneDXENmhHHWscAf7bvdbwShqCfUSH3z15DFwdSLiKQPcQLYKuriF8sDkwwxLmztJXLjZpb11PDWCz) | [`zEkOfdCA3v…`](https://arweave.net/zEkOfdCA3vTS6fjGtXl-DvrLH-XERn4Oi28Kbvm7kn4) |
+| 1 forget receipt (key destroyed) | [`4B6bcXiF…`](https://solscan.io/tx/4B6bcXiF2qsEoRtLgB8goeiCHgPoS8VMrjyu3Dz6Xxkz8j81uKb2hzegi5SESGLV7h7knGrWhP3LqH8e5XFQQAoA) | [`Moc3etRd3j…`](https://arweave.net/Moc3etRd3ju8B-wAFj-2jKTbIdyM_HLu--DO_k5l6lw) |
+| 1 more record | [`1rEBCpNF…`](https://solscan.io/tx/1rEBCpNFh18GqpZeFvDap6mMTgH2ttPDUWZBnWLyQX4WuWLiTZtaKbRLU2AQG6jUThP29CnGHaLYpF4n67mw31D) | [`-VlLmjRX2t…`](https://arweave.net/-VlLmjRX2t9uXszzeCvf2E7jx4jPkPxKM9XUdOPPBig) |
 
-Cost of all three anchors: 0.000015 SOL on Solana, 0 on Arweave (Turbo free tier).
+All three were verified end-to-end with `l3-verify` against Arweave and the chain: **3 of 3 `ok: true`**. Cost of all three: 0.000015 SOL on Solana, 0 on Arweave (Turbo free tier).
 
 ---
 
@@ -103,10 +105,10 @@ L3 tests never touch the network: Arweave and Solana are replaced by fakes. The 
 **PADAM** — постоянная память для ИИ-ассистентов и агентов, хранится у владельца. **NOCTURNE** — её «сон»: ночью он разбирает поток эпизодов, закрепляет важное, сводит повторы в общее и даёт остальному угаснуть, не позволяя редким острым событиям захватить память. **L3** закрепляет память в **Arweave** (зашифрованные пакеты) и **Solana** (корень дерева Меркла в заметке Memo): любой может проверить, что её не переписали, и при этом любую одну запись можно забыть навсегда.
 
 **Три отличия:**
-1. **Четыре ограничителя** против «памяти одних катастроф». На искусственном наборе: без них ~181 катастрофа из 200, с ними 50.
+1. **Четыре ограничителя** против «памяти одних катастроф». На искусственном наборе: без них 90,7 % вероятности у катастроф — около 181 из 200, с ними 50 из 200 (перемерено 08.10.2026, тест `test_nocturne.py -k nightmare`).
 2. **Два времени у записи** — показа и подтверждения. Забывание считается от подтверждения, поэтому часто показываемая ложь не остаётся «вечно молодой».
 3. **Ничего не удаляется, но забыть можно по-настоящему**: `forget` затирает содержание и уничтожает собственный ключ записи — её шифротекст в Arweave становится шумом, остальная память цела.
 
-**L3 работает в основной сети Solana с 8 октября 2026** — три закрепления в таблице выше, полная независимая проверка `ok: true`, стоимость 0,000015 SOL.
+**L3 работает в основной сети Solana с 8 октября 2026** — три закрепления в таблице выше, все три проверены по Arweave и цепи — 3 из 3 `ok: true`, стоимость 0,000015 SOL.
 
 **Лицензия:** AGPL-3.0; коммерческая лицензия — contact@codeofdigitaleternity.com.
