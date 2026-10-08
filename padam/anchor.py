@@ -273,6 +273,10 @@ def _rpc(url: str, method: str, params: list):
 
 def solana_memo(memo: str, keypair_path: str, network: str = "devnet") -> tuple[str, int]:
     """Отправить заметку Memo, дождаться подтверждения. Возвращает (подпись, слот)."""
+    # имя сети проверяется ДО импорта solders: защита от случайного mainnet не должна зависеть
+    # от того, установлен ли extra [l3] (08.10.2026: в установке без [l3] тест падал на импорте)
+    if network not in RPC:
+        raise ValueError(f"сеть {network!r}: допустимо devnet или mainnet")
     from solders.hash import Hash
     from solders.instruction import AccountMeta, Instruction
     from solders.keypair import Keypair
@@ -280,8 +284,6 @@ def solana_memo(memo: str, keypair_path: str, network: str = "devnet") -> tuple[
     from solders.pubkey import Pubkey
     from solders.transaction import Transaction
 
-    if network not in RPC:
-        raise ValueError(f"сеть {network!r}: допустимо devnet или mainnet")
     url = RPC[network]
     kp = Keypair.from_bytes(bytes(json.loads(Path(keypair_path).read_text())))
     ix = Instruction(Pubkey.from_string(MEMO_PROGRAM), memo.encode("utf-8"),
