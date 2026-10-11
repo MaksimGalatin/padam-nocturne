@@ -1,6 +1,6 @@
 # PADAM · NOCTURNE — memory for AI agents that sleeps, forgets honestly, and can be verified forever
 
-[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin/padam-nocturne?variant=verified)](https://m8ven.ai/mcp/maksimgalatin/padam-nocturne?s=readme) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue)
+[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue)
 
 **PADAM** is a local-first persistent memory for AI assistants and agents.
 **NOCTURNE** is its consolidation cycle — a "sleep" that turns a raw stream of episodes into lasting memory, without letting rare dramatic events take over.
