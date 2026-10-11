@@ -56,6 +56,18 @@ def test_every_tool_has_schema_and_description():
         assert t["inputSchema"]["type"] == "object"
 
 
+def test_every_tool_has_m8ven_annotations():
+    r = mcp_server.handle({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
+    hints = ("readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint")
+    for t in r["result"]["tools"]:
+        assert "annotations" in t, f"{t['name']} lacks annotations object"
+        for h in hints:
+            assert h in t["annotations"] and isinstance(t["annotations"][h], bool), \
+                f"{t['name']} missing boolean annotation {h}"
+            assert h in t and isinstance(t[h], bool), \
+                f"{t['name']} missing top-level hint {h}"
+
+
 def test_unknown_method_returns_error():
     r = mcp_server.handle({"jsonrpc": "2.0", "id": 9, "method": "nope"})
     assert r["error"]["code"] == -32601

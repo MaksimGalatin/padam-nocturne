@@ -59,6 +59,16 @@ TOOLS = [
             "recover what is already known about the user, the project, or "
             "prior decisions. Returns records ranked by relevance, "
             "importance, confidence and freshness."),
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -83,6 +93,16 @@ TOOLS = [
             "record already exists, PADAM resolves the relation itself — "
             "duplicate, refinement or contradiction — and keeps the previous "
             "version in history. Nothing is ever deleted."),
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+        "openWorldHint": False,
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": False,
+            "openWorldHint": False,
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -92,11 +112,11 @@ TOOLS = [
                          "enum": ["preference", "identity", "decision",
                                   "correction", "fact", "state", "event"],
                          "description": (
-                             "Type governs how fast it fades: preference and "
-                             "identity never fade, decision and correction "
-                             "over a year, fact over half a year, state over "
-                             "two weeks, event over two days. Omit to detect "
-                             "automatically.")},
+                              "Type governs how fast it fades: preference and "
+                              "identity never fade, decision and correction "
+                              "over a year, fact over half a year, state over "
+                              "two weeks, event over two days. Omit to detect "
+                              "automatically.")},
                 "importance": {"type": "number", "default": 0.5,
                                "minimum": 0.0, "maximum": 1.0},
                 "scope": {"type": "string", "default": "global"},
@@ -112,6 +132,16 @@ TOOLS = [
             "raises its confidence. Retrieval alone does NOT confirm a record "
             "— a wrong memory that gets retrieved often would otherwise stay "
             "forever fresh."),
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
         "inputSchema": {
             "type": "object",
             "properties": {"id": {"type": "string"}},
@@ -124,6 +154,16 @@ TOOLS = [
             "Mark a retrieved record as no longer true. Lowers confidence "
             "without refreshing the record. After enough refutations the "
             "record is archived but stays in history."),
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+        "openWorldHint": False,
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": False,
+            "openWorldHint": False,
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -139,6 +179,16 @@ TOOLS = [
             "Show the full version history of a record: every earlier "
             "version it replaced, in order. Use this to answer 'what did we "
             "think before' and 'when did this change'."),
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
         "inputSchema": {
             "type": "object",
             "properties": {"id": {"type": "string"}},
@@ -150,6 +200,16 @@ TOOLS = [
         "description": (
             "Current state of memory: counts by status and type, which "
             "embedding backend is active, where the database lives."),
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
         "inputSchema": {"type": "object", "properties": {}},
     },
     {
@@ -158,6 +218,16 @@ TOOLS = [
             "Run a consolidation cycle: move episodes from the buffer into "
             "semantic memory with safeguards against over-weighting rare "
             "dramatic episodes. Normally scheduled, not called by hand."),
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -172,6 +242,16 @@ TOOLS = [
             "Export the entire memory as JSON. Always available, no window, "
             "no conditions. The export is self-contained and can be loaded "
             "back or read by hand."),
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
