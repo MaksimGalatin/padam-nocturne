@@ -34,6 +34,7 @@ import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import __version__
+from .i18n import t
 from .memory import Memory
 from .nocturne import Nocturne
 from .store import Store
@@ -167,22 +168,25 @@ def main(argv=None) -> int:
     p.add_argument("--token", default=os.environ.get("PADAM_API_TOKEN"))
     a = p.parse_args(argv)
 
-    if a.host not in ("127.0.0.1", "localhost", "::1") and not a.token:
-        print("Отказ: при выходе за пределы localhost нужен --token.",
-              file=sys.stderr)
-        print("Память не должна оказаться открытой в сеть по недосмотру.",
-              file=sys.stderr)
+    local = a.host in ("127.0.0.1", "localhost", "::1") or a.host.startswith("127.")
+    if not local and not a.token:
+        print(t("Отказ: при выходе за пределы localhost нужен --token.",
+                "Refused: --token is required beyond localhost."), file=sys.stderr)
+        print(t("Память не должна оказаться открытой в сеть по недосмотру.",
+                "Memory must not end up open to the network by accident."), file=sys.stderr)
         return 2
 
     _state["token"] = a.token
     srv = ThreadingHTTPServer((a.host, a.port), Handler)
-    scope = "локально" if a.host.startswith("127.") else "ВНЕШНИЙ ДОСТУП"
-    print(f"PADAM API на http://{a.host}:{a.port}  ({scope}, "
-          f"токен {'включён' if a.token else 'не требуется'})")
+    # 12.10.2026: раньше «локально» считалось только для 127.*, и localhost / ::1 печатались как «ВНЕШНИЙ ДОСТУП».
+    scope = t("локально", "local only") if local else t("ВНЕШНИЙ ДОСТУП", "EXTERNAL ACCESS")
+    token = (t("включён", "required") if a.token else t("не требуется", "not required"))
+    print(t(f"PADAM API на http://{a.host}:{a.port}  ({scope}, токен {token})",
+            f"PADAM API at http://{a.host}:{a.port}  ({scope}, token {token})"))
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
-        print("\nОстановлен.")
+        print(t("\nОстановлен.", "\nStopped."))
     return 0
 
 

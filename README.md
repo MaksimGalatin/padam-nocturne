@@ -33,6 +33,8 @@ python -m padam log "today we debugged the billing"; python -m padam sleep
 python -m padam stats
 ```
 
+The CLI answers in English or Russian, following the system language; force one with `PADAM_LANG=en` or `PADAM_LANG=ru`. MCP answers are always in English — they are read by the model.
+
 Record kinds: `preference` and `identity` never fade; `decision` and `correction` — half-life 365 days; `fact` — 180; `state` — 14; `event` — 2. Omit `--kind` and PADAM guesses it.
 
 Search works out of the box (words + BM25 + identifiers). Install [Ollama](https://ollama.com) (`ollama pull nomic-embed-text`) and PADAM switches to neural embeddings automatically.
@@ -92,7 +94,7 @@ All three were verified end-to-end with `l3-verify` against Arweave and the chai
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 125 passed (12 Oct 2026; CI: Ubuntu and Windows, Python 3.10–3.13)
+python -m pytest tests/ -q        # 129 passed (12 Oct 2026; CI: Ubuntu and Windows, Python 3.10–3.13)
 ```
 L3 tests never touch the network: Arweave and Solana are replaced by fakes. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.
 
