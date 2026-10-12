@@ -36,7 +36,15 @@ from .memory import Memory
 from .nocturne import Nocturne
 from .store import Store
 
-PROTOCOL_VERSION = "2024-11-05"
+# Версии протокола MCP, которые сервер понимает (новая — первой). Клиент просит свою версию; если она здесь есть,
+# сервер отвечает ею же, иначе — самой новой из своих (MCP, lifecycle / version negotiation). Подсказки инструментов
+# (annotations) появились в 2025-03-26, названия (title) — в 2025-06-18; обе версии сервер поддерживает.
+SUPPORTED_PROTOCOL_VERSIONS = ("2025-06-18", "2025-03-26", "2024-11-05")
+PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS[0]
+
+INSTRUCTIONS = ("Persistent memory for this user. Call padam_search at the start of a task; save lasting "
+                "preferences, decisions and facts with padam_write; padam_confirm a record that proved right, "
+                "padam_refute one that did not. Nothing is ever deleted.")
 
 _memory: Memory | None = None
 
@@ -263,6 +271,31 @@ TOOLS = [
 ]
 
 
+# Человеческие названия инструментов (поле title, MCP 2025-06-18) — клиенты показывают их в интерфейсе.
+_TITLES = {
+    "padam_search": "Search memory",
+    "padam_write": "Remember",
+    "padam_confirm": "Confirm a record",
+    "padam_refute": "Refute a record",
+    "padam_timeline": "Version history of a record",
+    "padam_stats": "Memory statistics",
+    "padam_sleep": "Run NOCTURNE consolidation",
+    "padam_export": "Export memory as JSON",
+}
+for _t in TOOLS:
+    _t.setdefault("title", _TITLES[_t["name"]])
+_TOOLS_BY_NAME = {t["name"]: t for t in TOOLS}
+
+# Заметки цикла сна приходят из ядра по-русски (их же печатает русский CLI); наружу через MCP — по-английски.
+_SLEEP_NOTES_EN = {"буфер пуст": "episode buffer is empty", "нечего выбрать": "nothing to sample"}
+
+
+def missing_arguments(name: str, args: dict) -> list[str]:
+    """Обязательные поля из inputSchema, которых нет или которые пусты."""
+    required = _TOOLS_BY_NAME[name]["inputSchema"].get("required", [])
+    return [k for k in required if args.get(k) is None or args.get(k) == ""]
+
+
 # --- выполнение инструментов ------------------------------------------
 
 def call_tool(name: str, args: dict) -> str:
@@ -327,6 +360,8 @@ def call_tool(name: str, args: dict) -> str:
         report = Nocturne(m, batch_size=args.get("batch", 256),
                           dry_run=args.get("dry_run", False)).run()
         report.pop("checks", None)
+        if "note" in report:
+            report["note"] = _SLEEP_NOTES_EN.get(report["note"], report["note"])
         return json.dumps(report, ensure_ascii=False, indent=2)
 
     if name == "padam_export":
@@ -352,10 +387,12 @@ def handle(req: dict) -> dict | None:
                 "error": {"code": code, "message": message}}
 
     if method == "initialize":
+        asked = (req.get("params") or {}).get("protocolVersion")
         return ok({
-            "protocolVersion": PROTOCOL_VERSION,
-            "capabilities": {"tools": {}},
-            "serverInfo": {"name": "padam", "version": __version__},
+            "protocolVersion": asked if asked in SUPPORTED_PROTOCOL_VERSIONS else PROTOCOL_VERSION,
+            "capabilities": {"tools": {"listChanged": False}},
+            "serverInfo": {"name": "padam", "title": "PADAM · NOCTURNE memory", "version": __version__},
+            "instructions": INSTRUCTIONS,
         })
 
     if method in ("notifications/initialized", "initialized"):
@@ -368,6 +405,17 @@ def handle(req: dict) -> dict | None:
         params = req.get("params") or {}
         name = params.get("name")
         args = params.get("arguments") or {}
+        # Неизвестный инструмент и не-объект в arguments — ошибка протокола (MCP: -32602 Invalid params).
+        if name not in _TOOLS_BY_NAME:
+            return err(-32602, f"unknown tool: {name}")
+        if not isinstance(args, dict):
+            return err(-32602, "arguments must be an object")
+        # Пропущенное обязательное поле — ошибка выполнения с понятным текстом (раньше: «PADAM error: 'content'»).
+        missing = missing_arguments(name, args)
+        if missing:
+            return ok({"content": [{"type": "text", "text":
+                                    f"PADAM error: missing required argument(s): {', '.join(missing)}"}],
+                       "isError": True})
         try:
             text = call_tool(name, args)
             return ok({"content": [{"type": "text", "text": text}],
@@ -386,6 +434,11 @@ def handle(req: dict) -> dict | None:
 
 
 def main() -> int:
+    # MCP stdio — всегда UTF-8. Без этого на Windows (Python 3.10–3.13) поток в трубе получает cp1251/cp1252:
+    # кириллица в памяти портится или сервер падает с UnicodeEncodeError на первом же ответе.
+    for _поток in (sys.stdin, sys.stdout):
+        if hasattr(_поток, "reconfigure"):
+            _поток.reconfigure(encoding="utf-8")
     for line in sys.stdin:
         line = line.strip()
         if not line:
@@ -393,6 +446,10 @@ def main() -> int:
         try:
             req = json.loads(line)
         except json.JSONDecodeError:
+            # JSON-RPC 2.0: на неразбираемый запрос — ошибка разбора с id = null, а не молчание.
+            sys.stdout.write(json.dumps({"jsonrpc": "2.0", "id": None,
+                                         "error": {"code": -32700, "message": "parse error"}}) + "\n")
+            sys.stdout.flush()
             continue
         try:
             resp = handle(req)
