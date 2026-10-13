@@ -17,6 +17,7 @@ Homepage = "https://aifa.works"
 
 [project.scripts]
 padam = "padam.cli:main"
+padam-mcp = "padam.mcp_server:main"
 
 [build-system]
 requires = ["setuptools>=68"]

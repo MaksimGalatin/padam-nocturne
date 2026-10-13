@@ -113,6 +113,34 @@ def rank_entity(query: str, rows: list, limit: int) -> list[str]:
     return [rid for _, rid in scored[:limit]]
 
 
+# --- компактная выдача ------------------------------------------------
+
+COMPACT_HEAD = 700      # реплика человека / начало записи — целиком до этого предела
+COMPACT_TAIL = 150      # ответ ассистента в записи-раунде — только начало
+
+
+def compact_text(text: str, head: int = COMPACT_HEAD, tail: int = COMPACT_TAIL) -> str:
+    """Короткий вид записи для выдачи «много записей сразу».
+
+    Вопрос «сколько всего…» требует фактов из многих разговоров, а длинные
+    записи-раунды («user: … assistant: …») съедают место: в тот же объём
+    влезает втрое меньше записей. Факт обычно сидит в реплике человека,
+    поэтому она остаётся целиком (до head), а ответ ассистента — начало.
+    Замер 13.10.2026, LongMemEval-S, 15 вопросов-подсчётов, одна и та же
+    модель-ответчик: 10 полных записей — 3 из 15, 30 сжатых — 8 из 15.
+    Сама запись в базе не меняется — это только вид выдачи.
+    """
+    text = text or ""
+    marker = "\nassistant:"
+    if marker in text:
+        person, assistant = text.split(marker, 1)
+        out = person[:head] + ("…" if len(person) > head else "")
+        if assistant.strip():
+            out += marker + assistant[:tail] + ("…" if len(assistant) > tail else "")
+        return out
+    return text[:head] + ("…" if len(text) > head else "")
+
+
 # --- объединение ------------------------------------------------------
 
 DEFAULT_WEIGHTS = {

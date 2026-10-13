@@ -8,6 +8,8 @@
 
 Part of [CODE Eternal](https://aifa.works). Specification: [English](docs/NOCTURNE_SPEC.en.md) · [Русский](docs/NOCTURNE_SPEC.md). Русская версия — ниже.
 
+<!-- mcp-name: io.github.MaksimGalatin/padam-nocturne -->
+
 ---
 
 ## Why it exists
@@ -46,6 +48,8 @@ claude mcp add padam -- python -m padam.mcp_server
 Ready configs for Claude Desktop, Cursor, VS Code, systemd and cron are in [`integrations/`](integrations/). A REST API is available with `python -m padam api` (binds to 127.0.0.1; refuses to start publicly without a token).
 
 The MCP server negotiates protocol 2025-06-18 (also 2025-03-26 and 2024-11-05), always speaks UTF-8 over stdio — including Windows consoles in cp1251/cp1252 — and declares all four hints (read-only, destructive, idempotent, open-world) on each of its 8 tools. Checked end-to-end with the official MCP Python SDK client on 12 Oct 2026.
+
+For questions that aggregate across many conversations ("how many…", "how much in total…"), call `padam_search` with `limit` 25–30 and `compact: true`: each record keeps the person's words and only the start of the assistant's reply, so more of the scattered facts fit in the same space. The stored records are not changed; `compact` is off by default.
 
 ---
 

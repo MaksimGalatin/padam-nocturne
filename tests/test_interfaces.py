@@ -147,6 +147,27 @@ def test_write_then_search(wired):
     assert "Манте" in found["content"][0]["text"]
 
 
+def test_search_compact_shortens_long_rounds(wired):
+    """compact=true: реплика человека остаётся, длинный ответ ассистента
+    сокращается; без compact запись отдаётся целиком (поведение по умолчанию
+    не меняется)."""
+    раунд = ("[2026/10/13] user: Я купил три модели самолётов для сборки\n"
+             "assistant: " + "Отличный выбор, вот подробности о масштабах. " * 60)
+    call("padam_write", {"content": раунд, "kind": "event"})
+    полный = call("padam_search", {"query": "модели самолётов"})["content"][0]["text"]
+    сжатый = call("padam_search", {"query": "модели самолётов",
+                                   "compact": True})["content"][0]["text"]
+    assert "Я купил три модели самолётов" in сжатый
+    assert len(сжатый) < len(полный) - 1500
+    assert "Отличный выбор" in сжатый            # начало ответа сохранено
+
+
+def test_compact_text_keeps_short_records_intact():
+    from padam.retrieval import compact_text
+    assert compact_text("короткая запись") == "короткая запись"
+    assert compact_text("x" * 800).endswith("…") and len(compact_text("x" * 800)) == 701
+
+
 def test_search_empty_is_not_an_error(wired):
     res = call("padam_search", {"query": "чего тут точно нет"})
     assert res["isError"] is False

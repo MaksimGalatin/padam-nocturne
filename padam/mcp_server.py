@@ -31,7 +31,7 @@ import os
 import sys
 import traceback
 
-from . import __version__
+from . import __version__, retrieval
 from .memory import Memory
 from .nocturne import Nocturne
 from .store import Store
@@ -66,7 +66,11 @@ TOOLS = [
             "Search persistent memory. Use this at the start of a task to "
             "recover what is already known about the user, the project, or "
             "prior decisions. Returns records ranked by relevance, "
-            "importance, confidence and freshness."),
+            "importance, confidence and freshness. For questions that "
+            "aggregate across many conversations (\"how many\", \"how much "
+            "in total\", \"all the times\"), ask for limit 25-30 with "
+            "compact=true: more records in the same space finds more of "
+            "the scattered facts."),
         "readOnlyHint": True,
         "destructiveHint": False,
         "idempotentHint": True,
@@ -89,6 +93,10 @@ TOOLS = [
                 "scope": {"type": "string", "default": "global",
                           "description": "Memory scope, e.g. 'project:code'"},
                 "limit": {"type": "integer", "default": 5},
+                "compact": {"type": "boolean", "default": False,
+                            "description": "Shorten each record (the person's "
+                                           "words kept, the assistant's reply "
+                                           "trimmed) so more records fit"},
             },
             "required": ["query"],
         },
@@ -314,8 +322,10 @@ def call_tool(name: str, args: dict) -> str:
             if r.confidence < 0.7:
                 flags.append(f"low confidence {r.confidence:.2f}")
             suffix = f"  [{'; '.join(flags)}]" if flags else ""
+            text = (retrieval.compact_text(r.content) if args.get("compact")
+                    else r.content)
             lines.append(
-                f"- {r.content}\n"
+                f"- {text}\n"
                 f"  id={r.id}  kind={r.kind}  score={r.score:.4f}{suffix}")
         return ("Found in memory (use padam_confirm if a record proved "
                 "correct, padam_refute if it did not):\n" + "\n".join(lines))

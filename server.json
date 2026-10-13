@@ -1,0 +1,23 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.MaksimGalatin/padam-nocturne",
+  "title": "PADAM · NOCTURNE memory",
+  "description": "Local-first memory for AI agents: sleep-style consolidation, honest forgetting, verifiable on Arweave + Solana",
+  "version": "0.2.0",
+  "repository": {
+    "url": "https://github.com/MaksimGalatin/padam-nocturne",
+    "source": "github"
+  },
+  "websiteUrl": "https://aifa.works",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "padam-nocturne",
+      "version": "0.2.0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
