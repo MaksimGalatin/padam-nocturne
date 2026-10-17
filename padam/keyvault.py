@@ -72,7 +72,7 @@ def _aad(memory_id: str) -> bytes:
 
 
 def ensure_schema(memory) -> None:
-    memory.store.conn.executescript(VAULT_SCHEMA)
+    memory.store.script(VAULT_SCHEMA)
 
 
 def _vault_row(memory):
@@ -184,13 +184,14 @@ def protect_existing(memory, passphrase: str) -> dict:
     rows = memory.store.query(
         "SELECT memory_id, key_ref FROM anchor_key WHERE key_ref != 'destroyed' AND key_ref NOT LIKE 'w1:%'")
     conn = memory.store.conn
-    with conn:
-        for r in rows:
-            conn.execute("UPDATE anchor_key SET key_ref = ? WHERE memory_id = ?",
-                         (wrap(memory, r["memory_id"], bytes.fromhex(r["key_ref"])), r["memory_id"]))
-    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-    conn.execute("VACUUM")
-    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    with memory.store._lock:  # 16.10.2026: то же соединение делят потоки REST-сервера
+        with conn:
+            for r in rows:
+                conn.execute("UPDATE anchor_key SET key_ref = ? WHERE memory_id = ?",
+                             (wrap(memory, r["memory_id"], bytes.fromhex(r["key_ref"])), r["memory_id"]))
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        conn.execute("VACUUM")
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     return {"включена_сейчас": enabled_now, "завёрнуто": len(rows), "открытых_осталось": plain_count(memory)}
 
 
@@ -212,11 +213,12 @@ def rekey(memory, old_passphrase: str, new_passphrase: str) -> int:
     nonce = secrets.token_bytes(12)
     check = nonce + AESGCM(new_kek).encrypt(nonce, _CHECK_PLAIN, _CHECK_AAD)
     conn = memory.store.conn
-    with conn:
-        conn.executemany("UPDATE anchor_key SET key_ref = ? WHERE memory_id = ?", новые)
-        conn.execute("UPDATE key_vault SET salt_hex = ?, kdf = ?, check_hex = ? WHERE id = 1",
-                     (salt.hex(), f"scrypt:{SCRYPT_N}:{SCRYPT_R}:{SCRYPT_P}", check.hex()))
-    memory._kek = new_kek
-    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-    conn.execute("VACUUM")
+    with memory.store._lock:  # 16.10.2026: то же соединение делят потоки REST-сервера
+        with conn:
+            conn.executemany("UPDATE anchor_key SET key_ref = ? WHERE memory_id = ?", новые)
+            conn.execute("UPDATE key_vault SET salt_hex = ?, kdf = ?, check_hex = ? WHERE id = 1",
+                         (salt.hex(), f"scrypt:{SCRYPT_N}:{SCRYPT_R}:{SCRYPT_P}", check.hex()))
+        memory._kek = new_kek
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        conn.execute("VACUUM")
     return len(keys)

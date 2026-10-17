@@ -28,8 +28,10 @@
 from __future__ import annotations
 
 import argparse
+import hmac
 import json
 import os
+import re
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -39,7 +41,8 @@ from .memory import Memory
 from .nocturne import Nocturne
 from .store import Store
 
-_state: dict = {"memory": None, "token": None}
+_state: dict = {"memory": None, "token": None, "local": True}
+MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
 
 
 def mem() -> Memory:
@@ -70,24 +73,54 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length") or 0)
         if not length:
             return {}
+        # 16.10.2026: размер тела не ограничивался — один запрос мог занять всю память процесса.
+        if length > MAX_BODY:
+            raise ValueError("payload too large")
         raw = self.rfile.read(length)
         try:
-            return json.loads(raw)
+            data = json.loads(raw)
         except json.JSONDecodeError:
             raise ValueError("body is not valid JSON")
+        # Массив, число или null вместо объекта роняли маршруты на data.get(...) с ошибкой 500.
+        if not isinstance(data, dict):
+            raise ValueError("body must be a JSON object")
+        return data
 
     def _authorized(self) -> bool:
         token = _state["token"]
         if not token:
             return True
         header = self.headers.get("Authorization", "")
-        return header == f"Bearer {token}"
+        # Сравнение за постоянное время: обычное == выдаёт длину совпавшего начала по времени ответа.
+        return hmac.compare_digest(header.encode("utf-8"), f"Bearer {token}".encode("utf-8"))
+
+    def _trusted(self) -> bool:
+        """Запрос пришёл не из чужой веб-страницы в браузере владельца.
+
+        16.10.2026. Локальный сервер без токена доступен любой странице, открытой в браузере на
+        этом же компьютере: (1) DNS rebinding — чужой домен начинает указывать на 127.0.0.1 и
+        читает /export; (2) подделка запроса — fetch(..., {mode: "no-cors"}) с телом text/plain
+        вызывает /forget. Защита: заголовок Host только локальный, Origin — только локальный или
+        отсутствует (так ходят curl и CLI), POST — только application/json (браузер не пошлёт его
+        чужому адресу без предварительного запроса, на который мы не отвечаем разрешением).
+        """
+        if _state.get("local"):
+            host = (self.headers.get("Host") or "").strip().lower()
+            имя = host.rsplit(":", 1)[0] if not host.startswith("[") else host.split("]")[0] + "]"
+            if имя not in ("127.0.0.1", "localhost", "[::1]") and not имя.startswith("127."):
+                return False
+        origin = (self.headers.get("Origin") or "").strip().lower()
+        if origin and not re.match(r"^https?://(127\.\d+\.\d+\.\d+|localhost|\[::1\])(:\d+)?$", origin):
+            return False
+        return True
 
     # -- маршруты ------------------------------------------------------
 
     def do_GET(self):
         if self.path == "/health":
             return self._send(200, {"status": "ok", "version": __version__})
+        if not self._trusted():
+            return self._send(403, {"error": "forbidden origin or host"})
         if not self._authorized():
             return self._send(401, {"error": "unauthorized"})
         try:
@@ -106,10 +139,18 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(500, {"error": str(e)})
 
     def do_POST(self):
+        if not self._trusted():
+            return self._send(403, {"error": "forbidden origin or host"})
+        ctype = (self.headers.get("Content-Type") or "").lower()
+        if int(self.headers.get("Content-Length") or 0) and "application/json" not in ctype:
+            return self._send(415, {"error": "Content-Type must be application/json"})
         if not self._authorized():
             return self._send(401, {"error": "unauthorized"})
         try:
-            data = self._body()
+            try:
+                data = self._body()
+            except ValueError as e:
+                return self._send(413 if "too large" in str(e) else 400, {"error": str(e)})
             m = mem()
 
             if self.path == "/search":
@@ -177,6 +218,7 @@ def main(argv=None) -> int:
         return 2
 
     _state["token"] = a.token
+    _state["local"] = local
     srv = ThreadingHTTPServer((a.host, a.port), Handler)
     # 12.10.2026: раньше «локально» считалось только для 127.*, и localhost / ::1 печатались как «ВНЕШНИЙ ДОСТУП».
     scope = t("локально", "local only") if local else t("ВНЕШНИЙ ДОСТУП", "EXTERNAL ACCESS")

@@ -85,7 +85,7 @@ DESTROYED = "destroyed"
 
 
 def ensure_schema(memory: Memory) -> None:
-    memory.store.conn.executescript(L3_SCHEMA)
+    memory.store.script(L3_SCHEMA)
 
 
 # ---------------------------------------------------------------- Меркл
@@ -348,19 +348,22 @@ def run_l3(memory: Memory, uploader: Optional[Uploader] = None,
     if save_dir:                       # своя копия пакета у владельца — проверка без шлюза
         Path(save_dir).mkdir(parents=True, exist_ok=True)
         (Path(save_dir) / f"{aid}.json").write_bytes(b.payload)
-    memory.store.execute(
+    # 16.10.2026: одной транзакцией — якорь, все листья и пометки записей. Раньше каждый шаг
+    # был отдельным коммитом, и сбой посередине оставлял якорь без части листьев.
+    ops: list[tuple[str, tuple]] = [(
         """INSERT INTO l3_anchor (id, user_id, created_at, root_hex, leaf_count, bundle_sha256,
            bundle_bytes, arweave_tx, solana_sig, solana_slot, network, memo)
            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
         (aid, memory.user_id, now_iso(), b.root.hex(), len(b.leaves),
-         hashlib.sha256(b.payload).hexdigest(), len(b.payload), ar_tx, sig, slot, network, memo))
+         hashlib.sha256(b.payload).hexdigest(), len(b.payload), ar_tx, sig, slot, network, memo))]
     for pos, ((kind, mid), lf) in enumerate(zip(b.entries, b.leaves)):
-        memory.store.execute(
+        ops.append((
             "INSERT INTO l3_leaf (anchor_id, position, kind, memory_id, leaf_hex) VALUES (?,?,?,?,?)",
-            (aid, pos, kind, mid, lf.hex()))
+            (aid, pos, kind, mid, lf.hex())))
         if kind == "record":
-            memory.store.execute(
-                "UPDATE memory SET anchor_tx = ?, anchor_slot = ? WHERE id = ?", (sig, slot, mid))
+            ops.append((
+                "UPDATE memory SET anchor_tx = ?, anchor_slot = ? WHERE id = ?", (sig, slot, mid)))
+    memory.store.atomic(ops)
     report.update(anchor_id=aid, arweave_tx=ar_tx, solana_sig=sig, solana_slot=slot, memo=memo)
     return report
 

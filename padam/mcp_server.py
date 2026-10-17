@@ -461,6 +461,13 @@ def main() -> int:
                                          "error": {"code": -32700, "message": "parse error"}}) + "\n")
             sys.stdout.flush()
             continue
+        # 16.10.2026: валидный JSON, но не объект ([], null, 5, "x") — handle падал на req.get,
+        # а обработчик ошибки снова звал req.get и ронял весь процесс MCP-сервера.
+        if not isinstance(req, dict):
+            sys.stdout.write(json.dumps({"jsonrpc": "2.0", "id": None,
+                                         "error": {"code": -32600, "message": "invalid request"}}) + "\n")
+            sys.stdout.flush()
+            continue
         try:
             resp = handle(req)
         except Exception:

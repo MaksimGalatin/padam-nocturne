@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import sqlite3
+import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -170,6 +171,10 @@ class Store:
         self.path = Path(path) if path else config.DB_PATH
         if str(self.path) != ":memory:":
             self.path.parent.mkdir(parents=True, exist_ok=True)
+        # 16.10.2026: одно соединение делят потоки REST-сервера (ThreadingHTTPServer). Без
+        # блокировки два запроса одновременно портили транзакцию («cannot commit — no
+        # transaction is active»). Все обращения к соединению идут под этим замком.
+        self._lock = threading.RLock()
         self.conn = sqlite3.connect(str(self.path), check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         self.conn.executescript(SCHEMA)
@@ -214,12 +219,36 @@ class Store:
         self.conn.close()
 
     def execute(self, sql: str, params: tuple = ()):
-        cur = self.conn.execute(sql, params)
-        self.conn.commit()
-        return cur
+        with self._lock:
+            cur = self.conn.execute(sql, params)
+            self.conn.commit()
+            return cur
 
     def query(self, sql: str, params: tuple = ()) -> list[sqlite3.Row]:
-        return self.conn.execute(sql, params).fetchall()
+        with self._lock:
+            return self.conn.execute(sql, params).fetchall()
 
     def one(self, sql: str, params: tuple = ()) -> sqlite3.Row | None:
-        return self.conn.execute(sql, params).fetchone()
+        with self._lock:
+            return self.conn.execute(sql, params).fetchone()
+
+    def script(self, sql: str) -> None:
+        """Схема модуля (executescript) — под тем же замком, что и остальные обращения."""
+        with self._lock:
+            self.conn.executescript(sql)
+            self.conn.commit()
+
+    def atomic(self, ops: list[tuple[str, tuple]]) -> None:
+        """Несколько записей одной транзакцией: либо все, либо ни одной.
+
+        16.10.2026: якорь L3 писал строку якоря, листья и пометки записей отдельными
+        коммитами — сбой посередине оставлял якорь без части листьев.
+        """
+        with self._lock:
+            try:
+                for sql, params in ops:
+                    self.conn.execute(sql, params)
+                self.conn.commit()
+            except Exception:
+                self.conn.rollback()
+                raise
