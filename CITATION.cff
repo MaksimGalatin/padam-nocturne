@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use PADAM NOCTURNE, please cite it as below."
+title: "PADAM NOCTURNE: persistent memory for AI agents with sleep-style consolidation and a verifiable eternal layer on Arweave + Solana"
+type: software
+authors:
+  - family-names: Galatin
+    given-names: Maksim
+    orcid: "https://orcid.org/0009-0002-0187-8547"
+    email: contact@codeofdigitaleternity.com
+    affiliation: "CODE Eternal / AIfa Works"
+repository-code: "https://github.com/MaksimGalatin/padam-nocturne"
+url: "https://aifa.works/nocturne"
+license: AGPL-3.0-only
+version: "0.2.0"
+date-released: "2026-10-18"
+keywords:
+  - AI agents
+  - long-term memory
+  - memory consolidation
+  - Model Context Protocol
+  - Arweave
+  - Solana
