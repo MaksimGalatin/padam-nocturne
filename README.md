@@ -45,7 +45,11 @@ Search works out of the box (words + BM25 + identifiers). Install [Ollama](https
 ```bash
 claude mcp add padam -- python -m padam.mcp_server
 ```
-Ready configs for Claude Desktop, Cursor, VS Code, systemd and cron are in [`integrations/`](integrations/). A REST API is available with `python -m padam api` (binds to 127.0.0.1; refuses to start publicly without a token).
+Ready configs for Claude Desktop, Cursor, VS Code, systemd and cron are in [`integrations/`](integrations/).
+
+**Plugged PADAM into your agent?** Tell us what worked and what didn't — open an issue with the "Integration report" template
+or start a thread in Discussions. Found a weakness in the encryption or the forgetting? Please report it privately:
+see [SECURITY.md](SECURITY.md). How to contribute: [CONTRIBUTING.md](CONTRIBUTING.md). A REST API is available with `python -m padam api` (binds to 127.0.0.1; refuses to start publicly without a token).
 
 The MCP server negotiates protocol 2025-06-18 (also 2025-03-26 and 2024-11-05), always speaks UTF-8 over stdio — including Windows consoles in cp1251/cp1252 — and declares all four hints (read-only, destructive, idempotent, open-world) on each of its 8 tools. Checked end-to-end with the official MCP Python SDK client on 12 Oct 2026.
 
