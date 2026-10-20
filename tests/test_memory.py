@@ -350,3 +350,43 @@ def test_empty_vector_from_ollama_falls_back(monkeypatch):
 
     v = embeddings.embed("непустой текст")
     assert v.shape[0] == config.EMBED_DIM
+
+
+def test_ollama_embed_uses_truncating_endpoint(monkeypatch):
+    u"""20.10.2026: длинный текст не должен ронять эмбеддинг.
+
+    Прежний `/api/embeddings` на тексте длиннее окна модели получал 500, и при запасном методе запись молча
+    ложилась в базу с вектором из другого пространства (замер на LongMemEval: 539 из 1 000 разговоров).
+    Запрос обязан идти в `/api/embed` с обрезкой и окном EMBED_CTX.
+    """
+    import numpy as _np
+    import requests as _requests
+
+    пришло = {}
+
+    class Ответ:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"embeddings": [[1.0] + [0.0] * (config.EMBED_DIM - 1)]}
+
+    def пост(url, json=None, timeout=None):
+        пришло["url"], пришло["json"] = url, json
+        return Ответ()
+
+    monkeypatch.setattr(_requests, "post", пост)
+    v = embeddings._ollama_embed("слово " * 20000)
+    assert пришло["url"].endswith("/api/embed")
+    assert пришло["json"]["truncate"] is True
+    assert пришло["json"]["options"]["num_ctx"] == config.EMBED_CTX
+    assert v.shape[0] == config.EMBED_DIM and abs(float(_np.linalg.norm(v)) - 1.0) < 1e-6
+
+
+def test_long_text_embeds_with_live_ollama():
+    u"""Живая проверка на настоящей Ollama: текст втрое длиннее окна получает вектор нужной длины."""
+    import pytest
+    if not embeddings._check_ollama():
+        pytest.skip("Ollama не запущена")
+    v = embeddings._ollama_embed("word " * 30000)
+    assert v.shape[0] == config.EMBED_DIM

@@ -14,6 +14,8 @@ OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 EMBED_MODEL = os.environ.get("PADAM_EMBED_MODEL", "nomic-embed-text")
 CLASSIFY_MODEL = os.environ.get("PADAM_CLASSIFY_MODEL", "llama3.2:1b")
 EMBED_DIM = int(os.environ.get("PADAM_EMBED_DIM", "768"))
+# окно модели эмбеддингов в токенах; длиннее — обрезается (nomic-embed-text держит 8192)
+EMBED_CTX = int(os.environ.get("PADAM_EMBED_CTX", "8192"))
 
 # Если Ollama недоступна, используется встроенный детерминированный
 # метод. Он слабее по качеству, но полностью рабочий и не требует

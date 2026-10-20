@@ -153,13 +153,20 @@ def _builtin_embed(text: str, dim: int = config.EMBED_DIM) -> np.ndarray:
 
 def _ollama_embed(text: str) -> np.ndarray:
     import requests
+    # 🔴 20.10.2026: прежний вызов `/api/embeddings` на тексте длиннее окна модели получает от Ollama 500
+    # «the input length exceeds the context length», а не обрезку. Замер на открытом наборе LongMemEval:
+    # 539 из 1 000 случайных разговоров не получали вектора, и при включённом запасном методе ложились в базу
+    # со встроенным вектором из несовместимого пространства — поиск их потом не находил. Теперь `/api/embed`
+    # с явной обрезкой по окну модели и окном EMBED_CTX: длинная запись получает вектор своего начала.
     r = requests.post(
-        f"{config.OLLAMA_URL}/api/embeddings",
-        json={"model": config.EMBED_MODEL, "prompt": text},
-        timeout=60,
+        f"{config.OLLAMA_URL}/api/embed",
+        json={"model": config.EMBED_MODEL, "input": text, "truncate": True,
+              "options": {"num_ctx": config.EMBED_CTX}},
+        timeout=120,
     )
     r.raise_for_status()
-    v = np.asarray(r.json()["embedding"], dtype=np.float32)
+    данные = r.json()
+    v = np.asarray((данные.get("embeddings") or [[]])[0], dtype=np.float32)
     # Ollama на пустой строке возвращает пустой список, и такой вектор
     # уходил наружу как есть — размерности (0,) вместо EMBED_DIM.
     # Молчаливо ломались все, кто ждёт вектор фиксированной длины.
