@@ -61,7 +61,7 @@ NOCTURNE делает ту ночную работу, которую делае�
 ## Как это устроено
 
 ```mermaid
-flowchart LR
+flowchart TB
     A[Агент / MCP-клиент / CLI / REST] -->|запись · поиск · подтверждение · опровержение| P[(PADAM<br/>SQLite)]
     A -->|эпизоды| B[Буфер эпизодов]
     B -->|python -m padam sleep| N[NOCTURNE<br/>закрепление]

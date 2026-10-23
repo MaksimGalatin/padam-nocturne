@@ -63,7 +63,7 @@ NOCTURNE does the night work a brain does: keep what matters, generalise what re
 ## How it works
 
 ```mermaid
-flowchart LR
+flowchart TB
     A[Agent / MCP client / CLI / REST] -->|write · search · confirm · refute| P[(PADAM<br/>SQLite)]
     A -->|log episodes| B[Episode buffer]
     B -->|python -m padam sleep| N[NOCTURNE<br/>consolidation]
