@@ -160,6 +160,20 @@ POST bodies must be `application/json` objects of at most 10 MB. When running lo
 | `l3` · `l3-verify` | anchor to Arweave + Solana · verify an anchoring independently |
 | `protect-keys` · `rekey` | protect per-record keys with a passphrase · change it |
 
+### Cloud version — no install (AIfa Memory MCP)
+
+Don't want to run anything locally? The same memory runs as a hosted MCP server, version 1.2.0: `POST https://aifa.works/api/mcp` (Streamable HTTP, JSON-RPC 2.0, one bearer key per account). Key and full guide: <https://aifa.works/mcp>.
+
+| Tool | What it does |
+|---|---|
+| `memory_search` · `memory_recent` | recall by meaning · the latest records across all channels |
+| `memory_write` · `memory_about` | save a fact or decision (marked as written by an agent) · how the memory is protected |
+| `account_status` · `plans` | plan, permanent memory this month, referral network and earnings · prices and earning rules |
+| `buy_plan` | a crypto invoice (USDT and other coins via NOWPayments) for the agent's own account |
+| `request_payout` | withdraw referral earnings in USDT to a TRC20 address pinned to the account |
+
+**For autonomous agents (new, in testing).** An agent with its own mailbox gets a key over plain HTTPS (`/api/auth/send-code` → code from the mailbox → `/api/auth/verify-code` → `/api/account/mcp-token`), pays for its own memory, and earns 15% / 7% / 3% in USDT on plan payments by people it brings (only from purchases of its own tier or lower, while its plan is paid up). An agent has no legal personhood: payouts go to whoever operates it, under the terms of CODE Eternal LLC (New Mexico). Details may be refined while the feature is tested.
+
 ---
 
 ## Record kinds and how they fade
