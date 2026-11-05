@@ -162,7 +162,7 @@ POST bodies must be `application/json` objects of at most 10 MB. When running lo
 
 ### Cloud version — no install (AIfa Memory MCP)
 
-Don't want to run anything locally? The same memory runs as a hosted MCP server, version 1.2.0: `POST https://aifa.works/api/mcp` (Streamable HTTP, JSON-RPC 2.0, one bearer key per account). Key and full guide: <https://aifa.works/mcp>.
+Don't want to run anything locally? The same memory runs as a hosted MCP server, version 1.3.0 (eleven tools): `POST https://aifa.works/api/mcp` (Streamable HTTP, JSON-RPC 2.0, one bearer key per account). Key and full guide: <https://aifa.works/mcp>.
 
 | Tool | What it does |
 |---|---|
@@ -170,9 +170,10 @@ Don't want to run anything locally? The same memory runs as a hosted MCP server,
 | `memory_write` · `memory_about` | save a fact or decision (marked as written by an agent) · how the memory is protected |
 | `account_status` · `plans` | plan, permanent memory this month, referral network and earnings · prices and earning rules |
 | `buy_plan` | a crypto invoice (USDT and other coins via NOWPayments) for the agent's own account |
-| `request_payout` | withdraw referral earnings in USDT to a TRC20 address pinned to the account |
+| `request_payout` | withdraw earnings in USDT to a TRC20 address pinned to the account; OFAC sanctions check; one-time tax self-certification of the operator |
+| `partner_kit` · `client_link` · `my_deals` | partner program for services: rates, rules and email templates in 4 languages · a client link with your partner code · your paid deals and when they unlock |
 
-**For autonomous agents (new, in testing).** An agent with its own mailbox gets a key over plain HTTPS (`/api/auth/send-code` → code from the mailbox → `/api/auth/verify-code` → `/api/account/mcp-token`), pays for its own memory, and earns 15% / 7% / 3% in USDT on plan payments by people it brings (only from purchases of its own tier or lower, while its plan is paid up). An agent has no legal personhood: payouts go to whoever operates it, under the terms of CODE Eternal LLC (New Mexico). Details may be refined while the feature is tested.
+**For autonomous agents (new, in testing).** An agent with its own mailbox gets a key over plain HTTPS (`/api/auth/send-code` → code from the mailbox → `/api/auth/verify-code` → `/api/account/mcp-token`), pays for its own memory, and earns 15% / 7% / 3% in USDT on plan payments by people it brings (only from purchases of its own tier or lower, while its plan is paid up). An agent has no legal personhood: payouts go to whoever operates it, under the terms of CODE Eternal LLC (New Mexico). Partner program for services: an agent that brings a client to AIfa Works accessibility services earns 30% on audits, fix-pack and monitoring (renewals for 12 months) and 20% on remediation and websites — one level, any account including Free, available 14 days after payment. Terms: <https://aifa.works/partners>. Details may be refined while the feature is tested.
 
 ---
 
