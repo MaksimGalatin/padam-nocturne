@@ -122,6 +122,33 @@ CREATE TABLE IF NOT EXISTS nocturne_run (
     records_superseded  INTEGER
 );
 
+-- «вывод сделан из записи»: по этим связям забвение доходит до выводов (forget --with-derived)
+CREATE TABLE IF NOT EXISTS memory_link (
+    src         TEXT NOT NULL,          -- запись-источник
+    dst         TEXT NOT NULL,          -- вывод из неё
+    created_at  TEXT NOT NULL,
+    PRIMARY KEY (src, dst)
+);
+CREATE INDEX IF NOT EXISTS memory_link_dst ON memory_link (dst);
+
+-- синонимы терминов: проект переименовали — поиск по новому имени находит и старые записи
+CREATE TABLE IF NOT EXISTS term_alias (
+    user_id     TEXT NOT NULL,
+    term        TEXT NOT NULL,
+    alias       TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    PRIMARY KEY (user_id, term, alias)
+);
+
+-- память о самой памяти: сколько поисков и сколько из них ничего не нашли, по дням, без текста запросов
+CREATE TABLE IF NOT EXISTS search_stats (
+    user_id     TEXT NOT NULL,
+    day         TEXT NOT NULL,
+    searches    INTEGER NOT NULL DEFAULT 0,
+    empty       INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, day)
+);
+
 -- ключи для L3: уничтожение ключа = необратимое удаление содержания
 CREATE TABLE IF NOT EXISTS anchor_key (
     memory_id    TEXT PRIMARY KEY,
@@ -216,7 +243,7 @@ class Store:
         Только ДОБАВЛЯЕТ. Ничего не удаляет и не переписывает (раздел 19).
         """
         НУЖНЫЕ = {"memory": {"embedding_model": "TEXT", "факт_ключ": "TEXT",
-                             "origin": "TEXT", "quarantine_reason": "TEXT"}}
+                             "origin": "TEXT", "quarantine_reason": "TEXT", "owner_sig": "TEXT"}}
         for таблица, колонки in НУЖНЫЕ.items():
             try:
                 есть = {r["name"] for r in

@@ -79,7 +79,7 @@ def rank_semantic(query_vec: np.ndarray, rows: list, limit: int) -> list[str]:
 
 
 def rank_lexical(store, user_id: str, scope: str, query: str,
-                 limit: int) -> list[str]:
+                 limit: int, statuses: tuple[str, ...] = ("active",)) -> list[str]:
     """BM25 через FTS5. Промышленный лексический поиск, встроен в SQLite."""
     terms = [t for t in re.findall(r"\w+", query.lower()) if len(t) > 1]
     if not terms:
@@ -88,12 +88,12 @@ def rank_lexical(store, user_id: str, scope: str, query: str,
     match = " OR ".join(f'"{t}"*' for t in terms)
     try:
         rows = store.query(
-            """SELECT m.id FROM memory_fts f
+            f"""SELECT m.id FROM memory_fts f
                JOIN memory m ON m.rowid = f.rowid
                WHERE memory_fts MATCH ? AND m.user_id = ? AND m.scope = ?
-                 AND m.status = 'active'
+                 AND m.status IN ({",".join("?" * len(statuses))})
                ORDER BY bm25(memory_fts) LIMIT ?""",
-            (match, user_id, scope, limit))
+            (match, user_id, scope, *statuses, limit))
         return [r["id"] for r in rows]
     except Exception:
         return []
@@ -152,13 +152,14 @@ DEFAULT_WEIGHTS = {
 
 def hybrid_rank(store, user_id: str, scope: str, query: str,
                 rows: list, pool: int = 50,
-                weights: dict[str, float] | None = None
+                weights: dict[str, float] | None = None,
+                statuses: tuple[str, ...] = ("active",)
                 ) -> tuple[dict[str, float], dict[str, list[str]]]:
     """Возвращает (баллы RRF, вклад каждой стратегии) — второе для --explain."""
     qvec = embeddings.embed(query)
     rankings = {
         "semantic": rank_semantic(qvec, rows, pool),
-        "lexical": rank_lexical(store, user_id, scope, query, pool),
+        "lexical": rank_lexical(store, user_id, scope, query, pool, statuses),
         "entity": rank_entity(query, rows, pool),
     }
     rankings = {k: v for k, v in rankings.items() if v}

@@ -216,7 +216,9 @@ def build_bundle(memory: Memory) -> Optional[Bundle]:
     items, leaves, entries = [], [], []
     for r in recs:
         blob = encrypt(r["content"], key_for(memory, r["id"]))
-        items.append({"id": r["id"], "created_at": r["created_at"],
+        # Публичный пакет хранит только день записи: время до микросекунды рассказывало миру,
+        # в какие часы человек говорит с памятью. Листья от даты не зависят.
+        items.append({"id": r["id"], "created_at": (r["created_at"] or "")[:10],
                       "data": base64.b64encode(blob).decode()})
         leaves.append(leaf_record(blob))
         entries.append(("record", r["id"]))

@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import math
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 
 import numpy as np
 
-from . import classify, config, embeddings, retrieval, safety
+from . import classify, config, embeddings, integrity, retrieval, safety
 from .store import Store, new_id, now_iso, pack, parse_ts, unpack
 
 
@@ -27,6 +28,10 @@ class Record:
     expired: bool = False
     origin: str | None = None
     created_at: str | None = None
+    status: str = "active"
+    scope: str = "global"
+    signed: bool | None = None       # для личности и предпочтений: подписана ли владельцем
+    conflict: bool = False           # другая действующая запись о том же говорит иное
 
     def explain(self) -> str:
         d = decay(self.kind, self.last_confirmed_at)
@@ -35,6 +40,20 @@ class Record:
         return (f"rrf={self.similarity:.3f} × imp={self.importance:.2f} "
                 f"× conf={self.confidence:.2f} × decay={d:.2f} "
                 f"= {self.score:.4f}   [{found_by}]{stale}")
+
+
+def parse_as_of(value: str | datetime) -> datetime:
+    """Момент для поиска «на дату»: дата без времени — конец дня по UTC, время без зоны — UTC."""
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    текст = str(value).strip()
+    if len(текст) == 10:
+        return datetime.fromisoformat(текст).replace(hour=23, minute=59, second=59, microsecond=999999,
+                                                     tzinfo=timezone.utc)
+    if текст.endswith(("Z", "z")):
+        текст = текст[:-1] + "+00:00"   # Python 3.10 не понимает «Z»
+    момент = datetime.fromisoformat(текст)
+    return момент if момент.tzinfo else момент.replace(tzinfo=timezone.utc)
 
 
 def content_hash(text: str) -> bytes:
@@ -97,8 +116,23 @@ class Memory:
     # -- L1: журнал эпизодов -------------------------------------------
 
     def log(self, content: str, role: str = "user",
-            scope: str = "global", priority: float = 1.0) -> str:
+            scope: str = "global", priority: float = 1.0) -> str | None:
+        """Эпизод в журнал L1. Мусор в журнал не идёт (сито кратковременного внимания, L0):
+
+        строка без единой буквы и цифры (пустая, одни знаки) не пишется — возвращается None;
+        точный повтор предыдущего эпизода той же роли за последние 60 секунд не дублируется —
+        возвращается id уже записанного. Всё остальное пишется как есть.
+        """
         content = safety.clean(content)
+        if not re.search(r"\w", content or "") or not re.search(r"[^\W_]", content or ""):
+            return None
+        прошлый = self.store.one(
+            """SELECT id, content, role, created_at FROM episode
+               WHERE user_id = ? AND scope = ? ORDER BY created_at DESC, rowid DESC LIMIT 1""",
+            (self.user_id, scope))
+        if (прошлый and прошлый["content"] == content and прошлый["role"] == role
+                and (datetime.now(timezone.utc) - parse_ts(прошлый["created_at"])).total_seconds() < 60):
+            return прошлый["id"]
         session_id = self.current_session(content)
         eid = new_id()
         self.store.execute(
@@ -115,7 +149,8 @@ class Memory:
     def remember(self, content: str, kind: str | None = None,
                  importance: float = 0.5, scope: str = "global",
                  source_episode_id: str | None = None,
-                 origin: str = "user", guarded: bool = False) -> tuple[str, str]:
+                 origin: str = "user", guarded: bool = False,
+                 derived_from: list[str] | None = None) -> tuple[str, str]:
         """Возвращает (исход, id записи).
 
         Исходы: created | duplicate | merged | superseded | coexists | quarantined
@@ -124,7 +159,21 @@ class Memory:
         верить на слово, прежде всего MCP: агент мог прочитать команду на чужой странице, а его
         пометку о происхождении проверить нечем. Тогда похожее на команду и замена защищённой
         записи не применяются, а ждут решения владельца (`padam review`).
+
+        derived_from — id записей, из которых сделан этот вывод. По этим связям забвение
+        источника доходит и до выводов (`forget --with-derived`).
         """
+        исход, mid = self._remember(content, kind, importance, scope, source_episode_id, origin, guarded)
+        # При повторе mid — это уже существующая запись, возможно владельца. Связать её «выводом» из
+        # чужой записи значило бы дать агенту способ стереть её каскадом при забвении источника.
+        if derived_from and исход != "duplicate":
+            self._связать(derived_from, mid)
+        if исход in ("created", "merged", "superseded", "coexists") and not (guarded and not config.MCP_TRUST_WRITES):
+            self._подписать(mid)
+        return исход, mid
+
+    def _remember(self, content: str, kind: str | None, importance: float, scope: str,
+                  source_episode_id: str | None, origin: str, guarded: bool) -> tuple[str, str]:
         content = safety.clean(content)
         if origin not in config.ORIGINS:
             origin = "agent" if guarded else "user"
@@ -221,6 +270,185 @@ class Memory:
             (new_mid, now_iso(), old_id))
         return ("merged" if verdict == "refinement" else "superseded"), new_mid
 
+    # -- связи выводов и подпись владельца ------------------------------
+
+    def _связать(self, источники: list[str], вывод: str) -> int:
+        """Связи «вывод сделан из записи». Только записи этого же человека; не больше 20 за раз."""
+        добавлено = 0
+        for src in list(dict.fromkeys(источники))[:20]:
+            if src == вывод or not self.store.one(
+                    "SELECT 1 FROM memory WHERE id = ? AND user_id = ?", (src, self.user_id)):
+                continue
+            self.store.execute("INSERT OR IGNORE INTO memory_link (src, dst, created_at) VALUES (?,?,?)",
+                               (src, вывод, now_iso()))
+            добавлено += 1
+        return добавлено
+
+    def derived(self, memory_id: str) -> list[str]:
+        """Все выводы из записи, по цепочке: вывод из вывода тоже считается."""
+        найдено, очередь = [], [memory_id]
+        while очередь:
+            src = очередь.pop()
+            for r in self.store.query(
+                    """SELECT l.dst FROM memory_link l JOIN memory m ON m.id = l.dst
+                       WHERE l.src = ? AND m.user_id = ?""", (src, self.user_id)):
+                if r["dst"] not in найдено and r["dst"] != memory_id:
+                    найдено.append(r["dst"])
+                    очередь.append(r["dst"])
+        return найдено
+
+    def _ключ_подписи(self) -> bytes:
+        ключ, создан = integrity.owner_key(self.store)
+        if создан:
+            # Доверие при первом использовании: всё, что уже есть, внесено до появления подписи.
+            self._подписать_все(ключ)
+        return ключ
+
+    def _подписать_все(self, ключ: bytes) -> int:
+        rows = self.store.query(
+            f"""SELECT id, kind, content FROM memory WHERE user_id = ? AND status = 'active'
+                AND kind IN ({",".join("?" * len(config.PROTECTED_KINDS))})""",
+            (self.user_id, *config.PROTECTED_KINDS))
+        for r in rows:
+            self.store.execute("UPDATE memory SET owner_sig = ? WHERE id = ?",
+                               (integrity.sign(ключ, r["id"], r["kind"], r["content"]), r["id"]))
+        return len(rows)
+
+    def _подписать(self, memory_id: str) -> None:
+        row = self.store.one("SELECT id, kind, content FROM memory WHERE id = ?", (memory_id,))
+        if row and integrity.protected(row["kind"]):
+            ключ = self._ключ_подписи()
+            self.store.execute("UPDATE memory SET owner_sig = ? WHERE id = ?",
+                               (integrity.sign(ключ, row["id"], row["kind"], row["content"]), memory_id))
+
+    def unsigned_protected(self) -> list[dict]:
+        """Действующие записи о личности и предпочтениях без подписи владельца: внесены мимо PADAM."""
+        ключ = self._ключ_подписи()
+        rows = self.store.query(
+            f"""SELECT id, kind, content, owner_sig, created_at FROM memory WHERE user_id = ? AND status = 'active'
+                AND kind IN ({",".join("?" * len(config.PROTECTED_KINDS))})""",
+            (self.user_id, *config.PROTECTED_KINDS))
+        return [dict(r) for r in rows if not integrity.valid(ключ, r)]
+
+    def trust_protected(self) -> int:
+        """Владелец проверил записи о себе и подписывает их текущий вид (`padam trust-protected`)."""
+        return self._подписать_все(self._ключ_подписи())
+
+    # -- синонимы терминов ----------------------------------------------
+
+    def add_alias(self, term: str, alias: str) -> bool:
+        term, alias = term.strip().lower(), alias.strip().lower()
+        if not term or not alias or term == alias:
+            return False
+        self.store.execute("INSERT OR IGNORE INTO term_alias (user_id, term, alias, created_at) VALUES (?,?,?,?)",
+                           (self.user_id, term, alias, now_iso()))
+        return True
+
+    def remove_alias(self, term: str, alias: str) -> bool:
+        term, alias = term.strip().lower(), alias.strip().lower()
+        cur = self.store.execute(
+            """DELETE FROM term_alias WHERE user_id = ? AND
+               ((term = ? AND alias = ?) OR (term = ? AND alias = ?))""",
+            (self.user_id, term, alias, alias, term))
+        return cur.rowcount > 0
+
+    def aliases(self) -> list[tuple[str, str]]:
+        return [(r["term"], r["alias"]) for r in self.store.query(
+            "SELECT term, alias FROM term_alias WHERE user_id = ? ORDER BY term, alias", (self.user_id,))]
+
+    def _расширить(self, query: str) -> str:
+        """Запрос плюс синонимы терминов, которые в нём есть (в обе стороны)."""
+        q = query.lower()
+        добавить = []
+        for term, alias in self.aliases():
+            for есть, дать in ((term, alias), (alias, term)):
+                if re.search(r"(?<!\w)" + re.escape(есть) + r"(?!\w)", q) and дать not in q and дать not in добавить:
+                    добавить.append(дать)
+        return query if not добавить else query + " " + " ".join(добавить)
+
+    # -- противоречия ----------------------------------------------------
+
+    def conflicts(self) -> list[dict]:
+        """Действующие записи, которые спорят: тот же объект и свойство, разные значения.
+
+        В норме такая пара не возникает (новая версия заменяет старую), но её приносят импорт,
+        принятие записи с проверки и ручные правки базы. Сон их находит и называет; какая верна,
+        решает человек или следующее подтверждение.
+        """
+        группы = self.store.query(
+            """SELECT scope, факт_ключ, COUNT(*) AS n FROM memory
+               WHERE user_id = ? AND status = 'active' AND факт_ключ IS NOT NULL
+               GROUP BY scope, факт_ключ HAVING n > 1""", (self.user_id,))
+        итог = []
+        for г in группы:
+            записи = self.store.query(
+                """SELECT id, content, origin, confidence, created_at FROM memory
+                   WHERE user_id = ? AND status = 'active' AND scope = ? AND факт_ключ = ?
+                   ORDER BY created_at""", (self.user_id, г["scope"], г["факт_ключ"]))
+            итог.append({"scope": г["scope"], "key": г["факт_ключ"], "records": [dict(r) for r in записи]})
+        return итог
+
+    # -- учёт поиска (память о самой памяти) ---------------------------
+
+    def _учесть_поиск(self, пусто: bool) -> None:
+        день = datetime.now(timezone.utc).date().isoformat()
+        self.store.execute(
+            """INSERT INTO search_stats (user_id, day, searches, empty) VALUES (?, ?, 1, ?)
+               ON CONFLICT(user_id, day) DO UPDATE SET searches = searches + 1, empty = empty + excluded.empty""",
+            (self.user_id, день, 1 if пусто else 0))
+
+    def self_report(self, days: int = 30) -> dict:
+        """Как работает сама память: поиски без результата, что чаще опровергают, споры, подписи."""
+        с = (datetime.now(timezone.utc).date() - timedelta(days=days)).isoformat()
+        row = self.store.one(
+            "SELECT COALESCE(SUM(searches),0) AS s, COALESCE(SUM(empty),0) AS e FROM search_stats WHERE user_id = ? AND day >= ?",
+            (self.user_id, с))
+        опровергают = {r["kind"]: r["n"] for r in self.store.query(
+            """SELECT kind, SUM(refuted_count) AS n FROM memory WHERE user_id = ? AND refuted_count > 0
+               GROUP BY kind ORDER BY n DESC""", (self.user_id,))}
+        return {"days": days, "searches": row["s"], "searches_with_nothing_found": row["e"],
+                "empty_share": round(row["e"] / row["s"], 3) if row["s"] else 0.0,
+                "refutations_by_kind": опровергают, "conflicts": len(self.conflicts()),
+                "unsigned_protected": len(self.unsigned_protected())}
+
+    def pending_episodes(self) -> int:
+        row = self.store.one("SELECT COUNT(*) FROM episode WHERE user_id = ? AND processed = 0", (self.user_id,))
+        return row[0] if row else 0
+
+    # -- кнопка паники ---------------------------------------------------
+
+    def panic(self, wipe_local: bool = False) -> dict:
+        """Экстренное забвение. Необратимо.
+
+        Всегда: уничтожаются ключи всех записей — всё, что ушло в Arweave, становится шумом
+        навсегда. С wipe_local: ещё и локальная память — каждая запись затирается, журнал эпизодов
+        очищается, файл базы уплотняется (secure_delete уже включён), ключ подписи стирается.
+        """
+        ts = now_iso()
+        ключей = self.store.one(
+            """SELECT COUNT(*) FROM anchor_key k JOIN memory m ON m.id = k.memory_id
+               WHERE m.user_id = ? AND k.destroyed_at IS NULL""", (self.user_id,))[0]
+        ops: list[tuple[str, tuple]] = [(
+            """UPDATE anchor_key SET key_ref = 'destroyed', destroyed_at = ?
+               WHERE destroyed_at IS NULL AND memory_id IN (SELECT id FROM memory WHERE user_id = ?)""",
+            (ts, self.user_id))]
+        записей = эпизодов = 0
+        if wipe_local:
+            записей = self.store.one("SELECT COUNT(*) FROM memory WHERE user_id = ? AND content IS NOT NULL",
+                                     (self.user_id,))[0]
+            эпизодов = self.store.one("SELECT COUNT(*) FROM episode WHERE user_id = ?", (self.user_id,))[0]
+            ops += [("""UPDATE memory SET status = 'revoked', content = NULL, embedding = NULL,
+                        факт_ключ = NULL, owner_sig = NULL WHERE user_id = ?""", (self.user_id,)),
+                    ("DELETE FROM episode WHERE user_id = ?", (self.user_id,)),
+                    ("DELETE FROM term_alias WHERE user_id = ?", (self.user_id,))]
+        self.store.atomic(ops)
+        if wipe_local:
+            self.store.purge()
+            путь = integrity.key_path(self.store)
+            if путь is not None and путь.exists():
+                путь.unlink()
+        return {"keys_destroyed": ключей, "records_wiped": записей, "episodes_wiped": эпизодов}
+
     def _есть_активная(self, kind: str) -> bool:
         # Без учёта scope: человек один, и «первая запись о личности» в новом scope не должна
         # открывать агенту дорогу к новой личности.
@@ -276,6 +504,7 @@ class Memory:
                            WHERE id = ? AND user_id = ? AND status = 'active'""",
                         (memory_id, ts, row["supersedes"], self.user_id)))
         self.store.atomic(ops)
+        self._подписать(memory_id)       # принял владелец — значит запись его
         return True
 
     def reject(self, memory_id: str) -> bool:
@@ -393,25 +622,90 @@ class Memory:
 
     def recall(self, query: str, scope: str = "global",
                kind: str | None = None, limit: int = 10,
-               session_id: str | None = None) -> list[Record]:
+               session_id: str | None = None,
+               as_of: str | datetime | None = None) -> list[Record]:
+        """Поиск в одной области памяти. Подробности — в `_recall`.
+
+        Запрос дополняется синонимами терминов (`add_alias`); каждая найденная запись получает
+        пометки: подписана ли владельцем (для личности и предпочтений) и спорит ли с другой.
+        """
+        найдено = self._recall(self._расширить(query), scope, kind, limit, session_id, as_of)
+        if as_of is None:
+            self._учесть_поиск(not найдено)
+        self._пометить(найдено)
+        return найдено
+
+    def recall_many(self, query: str, scopes: list[str], kind: str | None = None,
+                    limit: int = 10, as_of: str | datetime | None = None) -> list[Record]:
+        """Поиск сразу в нескольких областях — явный мост между ролями («работа» и «дом»).
+
+        Без него области не смешиваются: каждая ищется отдельно, итог сводится по баллу,
+        у каждой записи видна её область.
+        """
+        запрос = self._расширить(query)
+        всё: list[Record] = []
+        for s in list(dict.fromkeys(scopes))[:10]:
+            всё += self._recall(запрос, s, kind, limit, None, as_of)
+        всё.sort(key=lambda x: x.score, reverse=True)
+        if as_of is None:
+            self._учесть_поиск(not всё)
+        self._пометить(всё[:limit])
+        return всё[:limit]
+
+    def _пометить(self, записи: list[Record]) -> None:
+        if not записи:
+            return
+        строки = {r["id"]: r for r in self.store.query(
+            f"""SELECT id, kind, content, owner_sig, факт_ключ, scope FROM memory
+                WHERE id IN ({",".join("?" * len(записи))})""", tuple(з.id for з in записи))}
+        спорные = {(r["scope"], r["факт_ключ"]) for r in self.store.query(
+            """SELECT scope, факт_ключ FROM memory WHERE user_id = ? AND status = 'active'
+               AND факт_ключ IS NOT NULL GROUP BY scope, факт_ключ HAVING COUNT(*) > 1""", (self.user_id,))}
+        ключ = self._ключ_подписи() if any(integrity.protected(з.kind) for з in записи) else None
+        for з in записи:
+            r = строки.get(з.id)
+            if r is None:
+                continue
+            з.scope = r["scope"]
+            if ключ is not None and integrity.protected(з.kind) and з.status == "active":
+                з.signed = integrity.valid(ключ, r)
+            з.conflict = з.status == "active" and (r["scope"], r["факт_ключ"]) in спорные
+
+    def _recall(self, query: str, scope: str = "global",
+                kind: str | None = None, limit: int = 10,
+                session_id: str | None = None,
+                as_of: str | datetime | None = None) -> list[Record]:
         """Гибридный поиск: вектор + BM25 + точные идентификаторы, RRF.
 
         Итог: rrf × важность × уверенность × затухание × свежесть сессии.
         Затухание считается от last_confirmed_at — от момента, когда запись
         в последний раз подтверждалась верной, а не когда её извлекали.
+
+        as_of — «что было верно на эту дату»: вместо действующих записей берутся те, что
+        действовали в тот момент, включая заменённые позже. Дата без времени — конец дня по UTC.
+        Записи на проверке, отклонённые, отозванные и архивные в такой поиск не входят.
         """
-        sql = """SELECT id, kind, content, embedding, importance, confidence,
-                        last_confirmed_at, expires_at, session_id, origin, created_at
+        момент = parse_as_of(as_of) if as_of is not None else None
+        statuses = ("active", "superseded") if момент else ("active",)
+        sql = f"""SELECT id, kind, content, embedding, importance, confidence,
+                        last_confirmed_at, expires_at, session_id, origin, created_at,
+                        status, valid_from, valid_to
                  FROM memory
-                 WHERE user_id = ? AND scope = ? AND status = 'active'"""
-        params: list = [self.user_id, scope]
+                 WHERE user_id = ? AND scope = ? AND status IN ({",".join("?" * len(statuses))})"""
+        params: list = [self.user_id, scope, *statuses]
         if kind:
             sql += " AND kind = ?"
             params.append(kind)
 
         raw = self.store.query(sql, tuple(params))
+        if момент:
+            # Сравнение по разобранному времени, а не по строкам: у строк ISO разная точность.
+            raw = [r for r in raw
+                   if parse_ts(r["valid_from"] or r["created_at"]) <= момент
+                   and (r["valid_to"] is None or parse_ts(r["valid_to"]) > момент)]
         if not raw:
             return []
+        статусы = {r["id"]: r["status"] for r in raw}
 
         rows = [{"id": r["id"], "kind": r["kind"], "content": r["content"],
                  "_vec": unpack(r["embedding"]), "importance": r["importance"],
@@ -422,7 +716,7 @@ class Memory:
                  "created_at": r["created_at"]} for r in raw]
 
         scores, rankings = retrieval.hybrid_rank(
-            self.store, self.user_id, scope, query, rows)
+            self.store, self.user_id, scope, query, rows, statuses=statuses)
         if not scores:
             return []
 
@@ -452,7 +746,8 @@ class Memory:
             rec = Record(rid, r["kind"], r["content"], r["importance"],
                          r["confidence"], confirmed, rrf,
                          strategies=found_by, expired=expired,
-                         origin=r["origin"], created_at=r["created_at"])
+                         origin=r["origin"], created_at=r["created_at"],
+                         status=статусы.get(rid, "active"))
             rec.score = (rrf * rec.importance * rec.confidence
                          * decay(rec.kind, confirmed) * boost
                          * (config.EXPIRED_PENALTY if expired else 1.0))
@@ -460,6 +755,8 @@ class Memory:
 
         out.sort(key=lambda x: x.score, reverse=True)
         top = out[:limit]
+        if момент:
+            return top           # взгляд в прошлое не считается обращением к записи
 
         # извлечение обновляет только last_seen_at: сам факт того, что
         # запись показали, не делает её верной
@@ -534,23 +831,34 @@ class Memory:
                     (self.user_id, row["content_hash"]))]
         return list(видел.values())
 
-    def revoke(self, memory_id: str, cascade: bool = True) -> bool:
+    def revoke(self, memory_id: str, cascade: bool = True, with_derived: bool = False) -> bool:
         """Физическое затирание содержания. Хеш и якорь остаются.
 
         По умолчанию вместе с записью затираются её прежние и новые версии, точные копии и
         исходные эпизоды. Иначе «забытое» продолжало бы лежать открытым текстом в истории версий
         и в буфере, а структурный ключ хранил бы, о чём шла речь.
+
+        with_derived — ещё и все выводы, сделанные из этой записи (связи derived_from), со всеми
+        их версиями: иначе забытое восстанавливается из выводов.
         """
         записи = self._связанные(memory_id)
         if not cascade:
             записи = [з for з in записи if з["id"] == memory_id]
+        if with_derived and записи:
+            есть = {з["id"] for з in записи}
+            for вывод in self.derived(memory_id):
+                for з in self._связанные(вывод):
+                    if з["id"] not in есть:
+                        есть.add(з["id"])
+                        записи.append(з)
         if not записи:
             return False
         ts = now_iso()
         ops: list[tuple[str, tuple]] = []
         for з in записи:
+            # Подпись тоже затирается: по ней с ключом можно проверить догадку «текст был таким».
             ops.append(("""UPDATE memory SET status = 'revoked', content = NULL,
-                           embedding = NULL, факт_ключ = NULL WHERE id = ?""", (з["id"],)))
+                           embedding = NULL, факт_ключ = NULL, owner_sig = NULL WHERE id = ?""", (з["id"],)))
             # Повторное «забудь» — обычное дело: цепочка могла быть затёрта раньше.
             # Затирается сам ключ, а не только ставится отметка: шифротекст этой
             # записи в Arweave без ключа — шум навсегда. Отметка времени уходит
@@ -570,6 +878,35 @@ class Memory:
         return True
 
     # -- история версий -------------------------------------------------
+
+    VIEWS = {"active": ("active",), "review": ("quarantined",),
+             "history": ("superseded", "archived", "rejected", "revoked")}
+
+    def list_records(self, view: str = "active", text: str | None = None,
+                     limit: int = 100, offset: int = 0, as_of: str | None = None) -> dict:
+        """Записи для просмотра владельцем: действующие, на проверке или история, новые сверху.
+
+        as_of — все записи, что действовали в тот момент, включая заменённые позже.
+        """
+        момент = parse_as_of(as_of) if as_of else None
+        statuses = ("active", "superseded") if момент else self.VIEWS.get(view, self.VIEWS["active"])
+        sql = (f"FROM memory WHERE user_id = ? AND status IN ({','.join('?' * len(statuses))})")
+        params: list = [self.user_id, *statuses]
+        if text:
+            sql += " AND content LIKE ? ESCAPE '\\'"
+            params.append("%" + text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%")
+        поля = ("SELECT id, kind, scope, content, status, origin, confidence, importance, created_at, "
+                "valid_from, valid_to, quarantine_reason, supersedes ")
+        предел, сдвиг = max(1, min(int(limit), 500)), max(0, int(offset))
+        if момент:
+            rows = [r for r in self.store.query(поля + sql + " ORDER BY created_at DESC, rowid DESC", tuple(params))
+                    if parse_ts(r["valid_from"] or r["created_at"]) <= момент
+                    and (r["valid_to"] is None or parse_ts(r["valid_to"]) > момент)]
+            return {"view": "as_of", "total": len(rows), "records": [dict(r) for r in rows[сдвиг:сдвиг + предел]]}
+        всего = self.store.one("SELECT COUNT(*) " + sql, tuple(params))[0]
+        rows = self.store.query(поля + sql + " ORDER BY created_at DESC, rowid DESC LIMIT ? OFFSET ?",
+                                tuple(params) + (предел, сдвиг))
+        return {"view": view, "total": всего, "records": [dict(r) for r in rows]}
 
     def timeline(self, memory_id: str) -> list[dict]:
         """Цепочка версий: от текущей вглубь, к самой первой."""
@@ -617,6 +954,7 @@ class Memory:
         for r in self.store.query(sql, tuple(params)):
             d = dict(r)
             d.pop("embedding", None)          # бинарь в выгрузке бесполезен
+            d.pop("owner_sig", None)          # подпись имеет смысл только с ключом этой машины
             h = d.pop("content_hash", None)
             d["content_hash"] = h.hex() if h else None
             records.append(d)
@@ -630,15 +968,23 @@ class Memory:
             "SELECT * FROM nocturne_run WHERE user_id = ? ORDER BY started_at",
             (self.user_id,))]
 
+        # Связи «вывод из записи» — только между записями, вошедшими в выгрузку.
+        ids = {r["id"] for r in records}
+        links = [dict(r) for r in self.store.query(
+            """SELECT l.src, l.dst, l.created_at FROM memory_link l JOIN memory m ON m.id = l.dst
+               WHERE m.user_id = ? ORDER BY l.created_at""", (self.user_id,))
+                 if r["src"] in ids and r["dst"] in ids]
+
         return {
             "format": "padam-export/1",
             "exported_at": now_iso(),
             "user_id": self.user_id,
             "counts": {"memory": len(records), "memory_total": всего,
-                       "sessions": len(sessions), "nocturne_runs": len(runs)},
+                       "sessions": len(sessions), "nocturne_runs": len(runs), "links": len(links)},
             "memory": records,
             "sessions": sessions,
             "nocturne_runs": runs,
+            "links": links,
         }
 
     def import_(self, payload: dict, overwrite: bool = False) -> int:
@@ -692,6 +1038,11 @@ class Memory:
                  # Без ключа восстановленная запись не находилась бы как спорящая (см. `_по_ключу`).
                  classify.разобрать_факт(rec["content"])[0] if rec.get("content") else None))
             added += 1
+        # Связи восстанавливаются только между записями этого человека (проверяет _связать).
+        for link in payload.get("links") or []:
+            if isinstance(link, dict) and isinstance(link.get("src"), str) and isinstance(link.get("dst"), str):
+                if self.store.one("SELECT 1 FROM memory WHERE id = ? AND user_id = ?", (link["dst"], self.user_id)):
+                    self._связать([link["src"]], link["dst"])
         return added
 
     # -- статистика -----------------------------------------------------
@@ -732,4 +1083,5 @@ class Memory:
                    AND (embedding IS NULL OR embedding_model IS NULL OR embedding_model != ?)""",
                 (self.user_id, embeddings.метка_модели())),
             "by_kind": by_kind,
+            "self": self.self_report(),
         }

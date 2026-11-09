@@ -227,6 +227,28 @@ def cmd_review(m: Memory, a) -> int:
     return 0
 
 
+def cmd_viewer(m: Memory, a) -> int:
+    """Память в браузере: временная шкала, «забыть», решения по записям агента, память на дату."""
+    from . import api
+    srv, ссылка = api.make_viewer_server(m, port=a.port)
+    # flush: при запуске из другой программы вывод идёт в трубу и без него ссылка не видна до остановки.
+    print(t("Память в браузере (только этот компьютер). Ссылка действует, пока команда работает:",
+            "Memory in the browser (this computer only). The link works while this command runs:"), flush=True)
+    print(f"  {ссылка}", flush=True)
+    print(t("Ссылку никому не пересылайте: в ней ключ к вашей памяти. Остановить — Ctrl+C.",
+            "Do not share the link: it carries the key to your memory. Stop with Ctrl+C."), flush=True)
+    if not a.no_open:
+        import webbrowser
+        webbrowser.open(ссылка)
+    try:
+        srv.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        srv.server_close()
+    return 0
+
+
 def cmd_approve(m: Memory, a) -> int:
     if m.approve(a.id):
         print(t(f"{GREEN}Принято.{RESET} Запись действует.", f"{GREEN}Approved.{RESET} The record is active."))
@@ -258,7 +280,18 @@ def cmd_reindex(m: Memory, a) -> int:
 
 
 def cmd_forget(m: Memory, a) -> int:
-    if m.revoke(a.id):
+    выводы = m.derived(a.id)
+    if выводы and not a.with_derived:
+        print(t(f"{DIM}Из этой записи сделано выводов: {len(выводы)}. Они остаются; чтобы стереть и их — "
+                f"padam forget {a.id} --with-derived{RESET}",
+                f"{DIM}{len(выводы)} conclusion(s) were drawn from this record. They stay; to wipe them too — "
+                f"padam forget {a.id} --with-derived{RESET}"))
+        for вывод in выводы:
+            строка = m.store.one("SELECT content FROM memory WHERE id = ?", (вывод,))
+            print(f"  {DIM}{вывод}  {((строка['content'] or '—') if строка else '—')[:80]}{RESET}")
+    if m.revoke(a.id, with_derived=a.with_derived):
+        if a.with_derived and выводы:
+            print(t(f"Вместе с выводами: {len(выводы)}.", f"Together with {len(выводы)} conclusion(s)."))
         print(t(f"{GREEN}Отозвано.{RESET} Затёрты запись, её версии, копии и исходные эпизоды; хеш и якорь сохранены.",
                 f"{GREEN}Revoked.{RESET} The record, its versions, copies and source episodes are wiped; hash and anchor kept."))
         print(f"{DIM}" + t("Если запись была заякорена, ключ уничтожен — данные в цепи нечитаемы навсегда.",
@@ -292,6 +325,84 @@ def cmd_l3(m: Memory, a) -> int:
         uploader=(lambda data, tags: anchor.turbo_upload(data, wallet, tags, a.turbo_sdk)) if wallet else None,
         anchorer=(lambda memo: anchor.solana_memo(memo, keypair, a.network)) if keypair else None)
     print(json.dumps(rep, ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_alias(m: Memory, a) -> int:
+    """Синонимы терминов: проект переименовали — поиск по новому имени находит и старые записи."""
+    if a.action == "add" and a.term and a.alias:
+        ok = m.add_alias(a.term, a.alias)
+        print(t("Добавлено." if ok else "Не добавлено: пустое слово или то же самое.",
+                "Added." if ok else "Not added: empty or the same word."))
+        return 0 if ok else 1
+    if a.action == "remove" and a.term and a.alias:
+        ok = m.remove_alias(a.term, a.alias)
+        print(t("Удалено." if ok else "Такой пары нет.", "Removed." if ok else "No such pair."))
+        return 0 if ok else 1
+    пары = m.aliases()
+    if not пары:
+        print(t("Синонимов нет.", "No aliases."))
+    for term, alias in пары:
+        print(f"{term}  ↔  {alias}")
+    return 0
+
+
+def cmd_trust_protected(m: Memory, a) -> int:
+    """Показать записи о личности и предпочтениях без подписи; с --yes подписать текущий вид."""
+    без = m.unsigned_protected()
+    for з in без:
+        print(f"{GREEN}{з['id']}{RESET}  [{з['kind']}]  {з['content']}")
+    if not без:
+        print(t("Все записи о вас подписаны.", "Every record about you is signed."))
+        return 0
+    if not a.yes:
+        print(t(f"\nБез подписи: {len(без)}. Их внесли мимо PADAM. Проверьте; верные подпишет "
+                "padam trust-protected --yes, неверные сотрёт padam forget <id>.",
+                f"\nUnsigned: {len(без)}. They were written around PADAM. Check them; "
+                "padam trust-protected --yes signs the right ones, padam forget <id> wipes a wrong one."))
+        return 1
+    print(t(f"Подписано: {m.trust_protected()}.", f"Signed: {m.trust_protected()}."))
+    return 0
+
+
+def cmd_legacy(m: Memory, a) -> int:
+    """Завещание: делит парольную фразу ключей на доли Шамира или собирает её из долей."""
+    from . import legacy
+    if a.action == "split":
+        фраза = os.environ.get("PADAM_KEY_PASSPHRASE") or _пароль(
+            t("Фраза, которую разделить: ", "Passphrase to split: "), повтор=True)
+        доли = legacy.split(фраза.encode("utf-8"), a.shares, a.threshold)
+        print(t(f"Доли ({a.threshold} из {a.shares} открывают фразу; меньше — не дают о ней ничего).",
+                f"Shares (any {a.threshold} of {a.shares} open the passphrase; fewer reveal nothing)."))
+        print(t("Раздайте их разным людям и не храните вместе. PADAM их не сохраняет.",
+                "Give them to different people and never keep them together. PADAM does not store them."))
+        for д in доли:
+            print(д)
+        return 0
+    доли = a.shares_in or [строка.strip() for строка in sys.stdin if строка.strip()]
+    try:
+        фраза = legacy.combine(доли).decode("utf-8")
+    except (ValueError, UnicodeDecodeError) as e:
+        print(t(f"Не собралось: {e}", f"Could not combine: {e}"), file=sys.stderr)
+        return 1
+    print(фраза)
+    return 0
+
+
+def cmd_panic(m: Memory, a) -> int:
+    """Экстренное забвение. Необратимо, поэтому требует набрать фразу целиком."""
+    ФРАЗА = "ERASE MY MEMORY"
+    print(t("ВНИМАНИЕ. Будут уничтожены ключи всех записей: всё, что ушло в Arweave, станет шумом навсегда.",
+            "WARNING. The keys of every record will be destroyed: whatever reached Arweave becomes noise forever."))
+    if a.wipe_local:
+        print(t("И локальная память: каждая запись и весь журнал будут затёрты.",
+                "And the local memory: every record and the whole episode log will be wiped."))
+    print(t(f"Это нельзя отменить. Чтобы продолжить, наберите: {ФРАЗА}",
+            f"This cannot be undone. To continue, type: {ФРАЗА}"))
+    if (a.confirm or input("> ").strip()) != ФРАЗА:
+        print(t("Отменено: фраза не совпала.", "Cancelled: the phrase did not match."))
+        return 1
+    print(json.dumps(m.panic(wipe_local=a.wipe_local), ensure_ascii=False))
     return 0
 
 
@@ -479,7 +590,35 @@ def main(argv=None) -> int:
 
     s = sub.add_parser("forget", help=t("отозвать запись", "revoke a record"))
     s.add_argument("id")
+    s.add_argument("--with-derived", action="store_true",
+                   help=t("стереть и выводы, сделанные из записи", "also wipe conclusions drawn from the record"))
     s.set_defaults(fn=cmd_forget)
+
+    s = sub.add_parser("alias", help=t("синонимы терминов для поиска", "term aliases for search"))
+    s.add_argument("action", choices=["add", "remove", "list"], nargs="?", default="list")
+    s.add_argument("term", nargs="?")
+    s.add_argument("alias", nargs="?")
+    s.set_defaults(fn=cmd_alias)
+
+    s = sub.add_parser("trust-protected", help=t("проверить подписи записей о вас", "check signatures of records about you"))
+    s.add_argument("--yes", action="store_true", help=t("подписать текущий вид", "sign them as they are"))
+    s.set_defaults(fn=cmd_trust_protected)
+
+    s = sub.add_parser("legacy", help=t("завещание: доли Шамира для фразы ключей",
+                                        "legacy: Shamir shares of the key passphrase"))
+    s.add_argument("action", choices=["split", "combine"])
+    s.add_argument("--shares", type=int, default=5)
+    s.add_argument("--threshold", type=int, default=3)
+    s.add_argument("shares_in", nargs="*", help=t("доли для combine (или по строке на stdin)",
+                                                  "shares for combine (or one per line on stdin)"))
+    s.set_defaults(fn=cmd_legacy)
+
+    s = sub.add_parser("panic", help=t("экстренное забвение: уничтожить ключи (необратимо)",
+                                       "emergency forgetting: destroy the keys (irreversible)"))
+    s.add_argument("--wipe-local", action="store_true",
+                   help=t("стереть и локальную память", "wipe the local memory too"))
+    s.add_argument("--confirm", default=None, help=t("фраза подтверждения без ввода", "confirmation phrase, non-interactive"))
+    s.set_defaults(fn=cmd_panic)
 
     s = sub.add_parser("review", help=t("записи агента, ждущие решения владельца", "agent writes waiting for the owner"))
     s.set_defaults(fn=cmd_review)
@@ -495,6 +634,12 @@ def main(argv=None) -> int:
     s = sub.add_parser("restore", help=t("вернуть запись из архива", "bring a record back from the archive"))
     s.add_argument("id")
     s.set_defaults(fn=cmd_restore)
+
+    s = sub.add_parser("viewer", help=t("память в браузере: шкала, «забыть», решения, память на дату",
+                                        "memory in the browser: timeline, forget, review, memory as of a date"))
+    s.add_argument("--port", type=int, default=8078)
+    s.add_argument("--no-open", action="store_true", help=t("не открывать браузер", "do not open a browser"))
+    s.set_defaults(fn=cmd_viewer)
 
     s = sub.add_parser("reindex", help=t("пересчитать векторы после смены модели",
                                          "recompute vectors after changing the embedding model"))

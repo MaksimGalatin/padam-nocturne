@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- MCP protocol 2026-07-28 next to the older revisions in the same process: `server/discover`, version and client capabilities in every request's `_meta`, `resultType` and `serverInfo` in every result, cacheable `tools/list` (`ttlMs`, `cacheScope`), `-32022` with the supported versions on a mismatch, no `ping` or `initialize` in the new revision. `initialize` still selects 2025-06-18, 2025-03-26 or 2024-11-05.
+- Memory as of a date: `padam_search` `as_of`, `/records?as_of=`, and in the browser. Records replaced later are included and marked; records under review, rejected, forgotten or archived never are.
+- `padam viewer`: memory in the browser on this computer only — timeline by day, filter by text and kind, Approve and Reject for held records, history, memory as of a date, Forget with a second confirmation. One-time token after `#`, strict Content-Security-Policy, stored text shown only as text.
+- Sleep moves old vectors to the current embedding model, up to `PADAM_SLEEP_REINDEX` (200) per run, and names active records that contradict each other.
+- `derived_from` on `padam_write` and `padam forget --with-derived`: forgetting a source can take the conclusions drawn from it. Links travel in the export.
+- Owner signature on identity and preference records; `padam trust-protected` lists the ones written around PADAM.
+- `padam alias`: search by a new name finds records under the old one.
+- `padam_search` `scopes`: several scopes at once, each record shows its scope.
+- `padam legacy split|combine`: Shamir shares of the key passphrase.
+- `padam panic` (`--wipe-local`): destroy every record key at once.
+- `PADAM_PROFILE` (`ops`, `creative`) and `PADAM_SHARP_SHARE` set the cap on sharp episodes.
+- `padam_stats` reports how memory itself works: searches that found nothing, refutations by kind, contradictions, unsigned records. MCP answers suggest `padam_sleep` when too many episodes wait.
+- `docs/padam-export-1.schema.json`: the export format as JSON Schema 2020-12; a test checks real exports against it.
+- REST: `/approve`, `/reject`, `/restore`, `/records`.
+
+### Changed
+- The episode log skips lines with no letter or digit and an identical line repeated within a minute.
+- L3 bundles store the day of each record, not the time.
+- The export no longer carries the owner signature.
+
 ## 0.2.2
 
 Fixes from an adversarial test of 0.2.1 (82 cases: secrets, commands, identity, review bypass, forgetting, malformed input).

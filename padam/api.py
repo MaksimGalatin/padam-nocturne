@@ -32,10 +32,12 @@ import hmac
 import json
 import os
 import re
+import secrets
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, urlsplit
 
-from . import __version__, config, safety
+from . import __version__, config, safety, viewer
 from .i18n import t
 from .memory import Memory
 from .nocturne import Nocturne
@@ -66,6 +68,23 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _send_page(self, страница: tuple[str, str]) -> None:
+        html, nonce = страница
+        body = html.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        # Текст памяти — чужие слова: страница выводит его только как текст, а CSP запрещает всё внешнее.
+        self.send_header("Content-Security-Policy",
+                         f"default-src 'none'; script-src 'nonce-{nonce}'; style-src 'nonce-{nonce}'; "
+                         "connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; "
+                         "frame-ancestors 'none'")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
 
@@ -121,9 +140,25 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"status": "ok", "version": __version__})
         if not self._trusted():
             return self._send(403, {"error": "forbidden origin or host"})
+        путь = urlsplit(self.path)
+        if путь.path == "/" and _state.get("ui"):
+            self.send_response(302)
+            self.send_header("Location", "/ui")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return None
+        if путь.path == "/ui" and _state.get("ui"):
+            # Сама страница данных не содержит: записи она берёт через API с токеном из ссылки.
+            return self._send_page(viewer.page())
         if not self._authorized():
             return self._send(401, {"error": "unauthorized"})
         try:
+            if путь.path == "/records":
+                q = parse_qs(путь.query)
+                return self._send(200, mem().list_records(
+                    view=q.get("view", ["active"])[0], text=q.get("q", [None])[0],
+                    limit=int(q.get("limit", ["100"])[0]), offset=int(q.get("offset", ["0"])[0]),
+                    as_of=q.get("as_of", [None])[0]))
             if self.path == "/stats":
                 return self._send(200, mem().stats())
             if self.path == "/export":
@@ -158,13 +193,14 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(400, {"error": "query is required"})
                 found = m.recall(data["query"], scope=data.get("scope", "global"),
                                  kind=data.get("kind"),
-                                 limit=max(1, min(int(data.get("limit", 5)), config.MAX_RECALL_LIMIT)))
+                                 limit=max(1, min(int(data.get("limit", 5)), config.MAX_RECALL_LIMIT)),
+                                 as_of=data.get("as_of") or None)
                 return self._send(200, {"results": [
                     {"id": r.id, "kind": r.kind, "content": r.content,
                      "score": round(r.score, 5),
                      "importance": r.importance, "confidence": r.confidence,
                      "origin": r.origin, "created_at": r.created_at,
-                     "expired": r.expired,
+                     "expired": r.expired, "status": r.status,
                      "suspicious": safety.looks_like_instruction(r.content),
                      "found_by": list(r.strategies)} for r in found]})
 
@@ -194,6 +230,14 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == "/forget":
                 return self._send(200, {"ok": m.revoke(data["id"])})
 
+            # Решения владельца по записям агента. У MCP этих действий нет; здесь они под токеном.
+            if self.path == "/approve":
+                return self._send(200, {"ok": m.approve(data["id"])})
+            if self.path == "/reject":
+                return self._send(200, {"ok": m.reject(data["id"])})
+            if self.path == "/restore":
+                return self._send(200, {"ok": m.restore(data["id"])})
+
             if self.path == "/sleep":
                 report = Nocturne(m, batch_size=int(data.get("batch", 256)),
                                   dry_run=bool(data.get("dry_run", False))).run()
@@ -209,6 +253,17 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, {"error": f"missing field: {e}"})
         except Exception as e:
             return self._send(500, {"error": str(e)})
+
+
+def make_viewer_server(memory: Memory | None = None, port: int = 8078) -> tuple[ThreadingHTTPServer, str]:
+    """Сервер просмотра памяти: только 127.0.0.1, токен создаётся на каждый запуск. Возвращает (сервер, ссылка)."""
+    _state["token"] = secrets.token_urlsafe(24)
+    _state["local"] = True
+    _state["ui"] = True
+    if memory is not None:
+        _state["memory"] = memory
+    srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    return srv, f"http://127.0.0.1:{srv.server_address[1]}/ui#t={_state['token']}"
 
 
 def main(argv=None) -> int:

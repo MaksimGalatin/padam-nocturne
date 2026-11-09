@@ -114,12 +114,12 @@ Installed with `pip install -e .`? Then simply `claude mcp add padam -- padam-mc
 
 ### MCP server (stdio)
 
-`padam-mcp` (the same program is also installed as `padam-nocturne`; `python -m padam.mcp_server` works too). The server negotiates protocol **2025-06-18** (also 2025-03-26 and 2024-11-05), always speaks UTF-8 over stdio — including Windows consoles in cp1251/cp1252 — and declares all four hints (read-only, destructive, idempotent, open-world) on each of its **8 tools**, and checks every call against the tool's schema. Malformed input (`null`, `[]`, a bare number) gets a JSON-RPC `-32600` error instead of crashing the process. Checked end-to-end with the official MCP Python SDK client on 12 Oct 2026.
+`padam-mcp` (the same program is also installed as `padam-nocturne`; `python -m padam.mcp_server` works too). The server speaks both eras of the protocol in one process: **2026-07-28** without a handshake (version and client capabilities in every request's `_meta`, `server/discover`, `resultType` in every result, cacheable `tools/list` with `ttlMs` and `cacheScope`, `-32022` with the supported versions on a mismatch) and the older **2025-06-18**, 2025-03-26 and 2024-11-05 through `initialize`. It always speaks UTF-8 over stdio — including Windows consoles in cp1251/cp1252 — and declares all four hints (read-only, destructive, idempotent, open-world) on each of its **8 tools**, and checks every call against the tool's schema. Malformed input (`null`, `[]`, a bare number) gets a JSON-RPC `-32600` error instead of crashing the process. Checked end-to-end with the official MCP Python SDK client on 12 Oct 2026.
 
 | Tool | What it does |
 |---|---|
-| `padam_search` | recall by meaning, words and identifiers; `compact: true` for questions across many conversations |
-| `padam_write` | store a record; if a close record exists, PADAM decides itself whether it is a duplicate, a refinement or a contradiction. Secrets are masked; some writes wait for the owner (see below) |
+| `padam_search` | recall by meaning, words and identifiers; `compact: true` for questions across many conversations; `as_of: "2026-10-01"` for memory as it was on that day (records replaced later are included and marked); `scopes: [...]` to search several scopes at once. Records about who you are that were written around PADAM, and records that contradict another active one, are flagged |
+| `padam_write` | store a record; if a close record exists, PADAM decides itself whether it is a duplicate, a refinement or a contradiction. Secrets are masked; some writes wait for the owner (see below). `derived_from: [ids]` links a conclusion to its sources, so forgetting a source can take its conclusions along |
 | `padam_confirm` | mark a retrieved record as still true — refreshes it and raises its confidence (retrieval alone never does) |
 | `padam_refute` | mark a record as no longer true — lowers its confidence without refreshing it; after enough refutations it is archived but stays in history. Identity and preference records are never archived through this tool |
 | `padam_timeline` | version history of a record |
@@ -152,8 +152,12 @@ These are heuristics and a boundary, not a guarantee: patterns can be evaded, so
 | POST | `/write` | store a record |
 | POST | `/confirm` · `/refute` | confirm or refute a record |
 | POST | `/forget` | revoke a record and destroy its key |
+| POST | `/approve` · `/reject` · `/restore` | decide on a held record · bring an archived one back |
+| GET | `/records?view=active\|review\|history&q=…&as_of=…` | records for browsing, newest first |
 | POST | `/sleep` | run NOCTURNE |
 | POST | `/import` | load an export back |
+
+**Memory in the browser.** `padam viewer` opens a page on this computer only: records on a timeline by day, a filter by text and by kind, the records waiting for your decision with **Approve** and **Reject**, the history, **memory as of a date**, and a **Forget** button with a second confirmation. The link it prints carries a one-time token after `#`, so it never reaches a server log; the page holds no data itself, shows stored text only as text, and its Content-Security-Policy forbids anything external, images included. Checked in a browser on 9 Nov 2026, light and dark, desktop and phone width.
 
 POST bodies must be `application/json` objects of at most 10 MB. When running locally the server accepts only local `Host` and `Origin` headers, so a web page you happen to open cannot read your `/export` through DNS rebinding.
 
@@ -165,7 +169,12 @@ POST bodies must be `application/json` objects of at most 10 MB. When running lo
 | `log` · `sleep` | add to the episode buffer · run the consolidation cycle |
 | `confirm` · `refute` | a record is still true · no longer true |
 | `timeline` | version history of a record |
-| `forget` | revoke a record with its versions, exact copies and source episodes, and destroy their keys |
+| `forget` | revoke a record with its versions, exact copies and source episodes, and destroy their keys; `--with-derived` also wipes the conclusions drawn from it (they are listed first) |
+| `viewer` | memory in the browser: timeline, forget, review, memory as of a date |
+| `alias add\|remove\|list` | term aliases: rename a project and search by the new name finds the old records |
+| `trust-protected` | list identity and preference records not signed by you (written around PADAM); `--yes` signs them |
+| `legacy split\|combine` | split the key passphrase into Shamir shares (any k of n open it, fewer reveal nothing) · put it back together |
+| `panic` | emergency forgetting: destroy every record key (what reached Arweave becomes noise); `--wipe-local` also wipes the local memory. Asks you to type the phrase in full |
 | `review` · `approve` · `reject` | writes held for the owner: list, accept, reject |
 | `restore` | bring an archived record back |
 | `reindex` | recompute vectors after changing the embedding model |
@@ -221,8 +230,10 @@ Works out of the box with no model: words + BM25 + identifiers (names, numbers, 
 4. **Bias correction** — importance weights undo the over-sampling of what was picked by priority.
 5. **Consolidation** — each sampled episode is summarised and stored; against a close existing record PADAM decides *duplicate*, *refinement*, *contradiction* or *coexist* (a contradiction creates a new version, the old one stays in `timeline`); the replayed episode's priority is lowered.
 6. **Decay by kind** — counted from the last confirmation.
+7. **Bridge between model generations** — after you change the embedding model, each sleep moves up to 200 old vectors to the new model (`PADAM_SLEEP_REINDEX`), so past memory does not silently drop out of search.
+8. **Contradictions are named, not fixed** — active records about the same thing with different values (they arrive through import, approval or manual edits) are listed in the report and flagged in search; the person decides.
 
-The cycle writes a report, including a diversity metric that shows when the classifier is unsure.
+The cycle writes a report, including a diversity metric that shows when the classifier is unsure. The cap on sharp episodes follows the agent's work: `PADAM_PROFILE=ops` remembers failures better, `creative` lets them fade.
 
 The full protocol, pseudocode and validation metrics are in the [specification](docs/NOCTURNE_SPEC.en.md).
 
@@ -266,6 +277,12 @@ All three were verified end-to-end with `l3-verify` against Arweave and the chai
 
 **Per-record keys.** Every record is encrypted with its own AES-256-GCM key. Destroying that one key is what "forget" means on an immutable store: the ciphertext stays on Arweave, but nobody can ever read it again.
 
+**Records about who you are carry your signature.** Identity and preference records stored through PADAM are signed with an owner key kept next to the database; one written into the file around PADAM — by another process or another tool with SQLite access — has no valid signature and is flagged in search and listed by `padam trust-protected`. This guards against writes around PADAM, not against someone who already reads your files: they would have the key too.
+
+**Inheritance and panic.** `padam legacy split` divides the key passphrase into Shamir shares, so your memory can open for the people you chose only when enough of them come together; a wrong or foreign share is reported, not silently accepted. `padam panic` destroys every record key at once; with `--wipe-local` it also wipes the local memory and the owner key.
+
+**Public bundles keep only the day.** An L3 bundle stores the date of each record, not the time: the exact minute would tell the world at what hours you talk to your memory.
+
 **Forgetting reaches the disk.** `forget` wipes the record, every version of it, its exact copies and the episodes it came from, then rebuilds the search index and truncates the WAL with `secure_delete` on. A test searches the raw database files for the forgotten words (`tests/test_safety.py`). The content hash stays as a receipt. The same words inside other, unrelated records or episodes are not touched: forget each of those too. The rolling topic vector of a session is not recomputed. Backups you made yourself are outside its reach.
 
 **Protect the keys with a passphrase** (recommended before the first anchoring):
@@ -301,6 +318,8 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 | `PADAM_SIM_THRESHOLD_OLLAMA` | `0.85` | similarity for treating records as duplicates (neural) |
 | `PADAM_SIM_THRESHOLD_BUILTIN` | `0.35` | the same for built-in search |
 | `PADAM_MCP_TRUST_WRITES` | `0` | `1` lets MCP writes through without the owner's review |
+| `PADAM_PROFILE` · `PADAM_SHARP_SHARE` | `default` · — | share of sharp episodes in a sleep batch: `ops` 0.40 (remember failures better), `creative` 0.10, default 0.25; or an exact number, kept within 0.05–0.5 |
+| `PADAM_SLEEP_REINDEX` | `200` | records moved to the current embedding model per sleep after the model changes (0 turns it off) |
 | `PADAM_KEEP_SECRETS` | `0` | `1` stores secret-looking values as they are |
 | `PADAM_API_TOKEN` | — | token for the REST API (required on a public address) |
 | `PADAM_KEY_PASSPHRASE` | — | passphrase for wrapped per-record keys |
@@ -312,7 +331,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 297 passed, 1 skipped (9 Nov 2026, Python 3.14.4, Windows)
+python -m pytest tests/ -q        # 339 passed, 1 skipped (9 Nov 2026, Python 3.14.4, Windows)
 ```
 
 CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L3 tests never touch the network: Arweave and Solana are replaced by fakes. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.

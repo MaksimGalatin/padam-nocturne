@@ -101,7 +101,32 @@ class Nocturne:
             (self.mem.user_id,))
         return row[0] if row else 0
 
+    def bridge(self) -> dict | None:
+        """Мост поколений: порция записей со старыми векторами пересчитывается новой моделью.
+
+        После смены модели эмбеддингов старые векторы несравнимы с новыми, и поиск по смыслу
+        перестаёт находить прошлую память. Раньше это лечилось только ручным `padam reindex`;
+        теперь каждый сон переводит SLEEP_REINDEX_BATCH записей, пока не переведёт все.
+        """
+        if self.dry_run or config.SLEEP_REINDEX_BATCH <= 0:
+            return None
+        итог = self.mem.reindex(limit=config.SLEEP_REINDEX_BATCH)
+        return итог if итог["reindexed"] or итог["left"] else None
+
     def run(self) -> dict:
+        мост = self.bridge()
+        report = self._run()
+        if мост:
+            report["bridge"] = мост
+        # Эпистемический аудит без модели: действующие записи об одном и том же с разными значениями.
+        # Сон их не правит — называет; решает человек или следующее подтверждение.
+        споры = self.mem.conflicts()
+        if споры:
+            report["conflicts"] = [{"key": с["key"], "scope": с["scope"],
+                                    "ids": [з["id"] for з in с["records"]]} for с in споры]
+        return report
+
+    def _run(self) -> dict:
         episodes = self.pending()
         if not episodes:
             return {"episodes_sampled": 0, "note": "буфер пуст"}
