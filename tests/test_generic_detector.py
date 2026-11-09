@@ -79,6 +79,23 @@ def test_short_prefix_and_hex_is_a_key_but_public_prefixes_stay_open():
         assert safety.redact(открытое)[1] == {}, открытое
 
 
+def test_joined_prefix_and_hex_is_a_key_but_hashes_and_addresses_stay_open():
+    # Аудит 09.11.2026: приставка слитно с hex, без разделителя. На 12 000 случайных строках проходили 420.
+    import random
+    rnd = random.Random(1109)
+    for _ in range(300):
+        приставка = "".join(rnd.choice("ABCDEFGHJKLMNQRSUVWXYZ") for _ in range(2))
+        ключ = приставка + "".join(rnd.choice("0123456789abcdef") for _ in range(32))
+        assert ключ not in safety.redact(f"ключ {ключ} конец")[0], ключ
+    for ключ in ("SK" + "3f9a1c7e5b2d8f4a6c0e9b7d3a1f5c8e", "key" + "3f9a1c7e5b2d8f4a6c0e9b7d3a1f5c8e",
+                 "HH1bd678f4f2d192" + "f92b72fcc73127c538"):          # похож на base58, но это ключ
+        assert safety.redact(ключ)[1] == {"prefixed_hex_key": 1}, ключ
+    for открытое in ("e30130ca02a73b3723278b88ef4d3facaa9b444e", "deadbeef0123456789abcdef0123456789abcdef",
+                     "ABCDEF0123456789ABCDEF0123456789ABCD", "commit fa3b9c1e5d7f2a4b6c8e0d1f3a5b7c9e merged",
+                     "адрес кошелька GcuDtN5emjHvm4bPS2uO3xWQ5qumMrdsdqt6WpTB1p8"):
+        assert safety.redact(открытое)[1] == {}, открытое
+
+
 def test_card_needs_grouping_or_a_word_about_cards():
     # Ряд цифр, проходящий Луна, без группировки и без слова «карта» — не карта: это номер поста, дела, заказа.
     assert safety.redact("номер 4111" + "111111111111 в отчёте")[1] == {}

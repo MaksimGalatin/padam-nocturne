@@ -2,7 +2,7 @@
 
 ### Память для ИИ-агентов, которая спит, честно забывает и проверяется навсегда
 
-[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%208%20tools-8A2BE2) ![release](https://img.shields.io/badge/release-v0.2.0-success)
+[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%208%20tools-8A2BE2) ![release](https://img.shields.io/badge/release-v0.3.0-success)
 
 **PADAM** — постоянная память для ИИ-ассистентов и агентов, которая хранится у владельца. Она живёт в одном файле SQLite на вашем компьютере и подключается к любому MCP-клиенту (Claude Code, Claude Desktop, Cursor, VS Code) или к вашему коду через командную строку и небольшой REST API.
 
@@ -99,10 +99,10 @@ python -m padam stats
 **Одна память для всех ваших инструментов (MCP):**
 
 ```bash
-claude mcp add padam -- uvx --from git+https://github.com/MaksimGalatin/padam-nocturne padam-nocturne
+claude mcp add padam -- uvx padam-nocturne
 ```
 
-Если стоит через `pip install -e .`, то просто `claude mcp add padam -- padam-mcp`. Готовые настройки для Claude Desktop, Cursor, VS Code, systemd и cron лежат в [`integrations/`](integrations/).
+Из PyPI: `pip install padam-nocturne`. Самый свежий код прямо с GitHub: `uvx --from git+https://github.com/MaksimGalatin/padam-nocturne padam-nocturne`. Если стоит через `pip install -e .`, то просто `claude mcp add padam -- padam-mcp`. Готовые настройки для Claude Desktop, Cursor, VS Code, systemd и cron лежат в [`integrations/`](integrations/).
 
 ---
 
@@ -306,7 +306,7 @@ CI прогоняет тесты на каждый push под Ubuntu и Windows
 - Значения предела, угасания и нижнего порога выбраны рассуждением, а не подобраны по данным — настраивайте их на своём потоке, замеряя до и после.
 - Публичный бенчмарк (LongMemEval) пока не опубликован; не сравнивайте наши внутренние числа с другими системами.
 - Без `protect-keys` ключи записей лежат в локальном файле SQLite открыто, и тот, у кого есть файл базы, прочитает шифротексты в Arweave.
-- Пакет ставится из этого репозитория; в PyPI и официальном реестре MCP он пока не опубликован (`server.json` для обоих подготовлен).
+- Пакет есть в PyPI начиная с 0.3.0; в официальном реестре MCP его пока нет (`server.json` подготовлен).
 
 ---
 

@@ -276,17 +276,25 @@ _BASIC = re.compile(r"(?i)\bbasic\s+[A-Za-z0-9+/]{16,}={0,2}")
 _PREFIXED_HEX = re.compile(r"(?<![A-Za-z0-9_\-])([A-Za-z]{2,4})[_\-](?:[0-9a-f]{32,}|[0-9A-F]{32,})(?![A-Za-z0-9_\-])")
 _PUBLIC_HEX_PREFIXES = {"sha", "md", "md5", "git", "rev", "ref", "tx", "txid", "id", "uid", "uuid", "run", "job",
                         "req", "pub", "pk", "hash", "blk", "obj", "doc", "img", "file"}
+# То же слитно, без разделителя («SK3f9a…», «key3f9a…») — аудит 09.11.2026: на 12 000 случайных строках такого вида
+# 420 проходили без маски (у hex проверка на случайность срабатывает не всегда). Чтобы не закрыть хеш, который сам
+# начинается с букв a–f, ключом считается заглавная приставка перед строчным hex или приставка с буквой вне a–f.
+_PREFIXED_HEX_JOINED = re.compile(r"(?<![A-Za-z0-9_\-])([A-Za-z]{2,4})([0-9a-f]{32,}|[0-9A-F]{32,})(?![A-Za-z0-9_\-])")
+_UPPER_THEN_HEX = re.compile(r"[A-Z]{2,4}(?=[0-9a-f]*$)")
 
 
-def _public_identifier(token: str, before: str) -> bool:
-    """Публичный идентификатор блокчейна или ссылки, а не секрет. Памяти он нужен открытым."""
+def _public_identifier(token: str, before: str, by_shape: bool = True) -> bool:
+    """Публичный идентификатор блокчейна или ссылки, а не секрет. Памяти он нужен открытым.
+
+    by_shape=False — без исключения «похоже на адрес Solana или Arweave»: у слитного ключа «две заглавные и строчный
+    hex» алфавит часто совпадает с base58, а настоящий адрес так не выглядит (заглавные в нём по всей строке)."""
     if before.endswith(("/", "#", "?", "=")) and re.search(r"(?:https?://|\b[\w\-]+\.[a-z]{2,}/)\S*$", before):
         return True                                # кусок адреса ссылки, и без схемы: open.spotify.com/track/…
     if _PUBLIC_PREFIX.match(token):
         return True
-    if _BASE58.match(token) and 32 <= len(token) <= 44:
+    if by_shape and _BASE58.match(token) and 32 <= len(token) <= 44:
         return True                                # адрес Solana: ключ кошелька длиннее (87–88)
-    if _ARWEAVE_ID.match(token):
+    if by_shape and _ARWEAVE_ID.match(token):
         return True                                # адрес и номер сделки Arweave: ровно 43 знака
     if re.search(r"""["'](?:n|e|x|y|kid|kty|alg|use|crv)["']\s*:\s*["']$""", before):
         return True                                # открытая часть ключа JWK: модуль, экспонента, точка
@@ -349,6 +357,20 @@ def mask_generic(text: str, bump) -> str:
         return bump("prefixed_hex_key")
 
     text = _PREFIXED_HEX.sub(prefixed_hex, text)
+
+    def joined_hex(m: re.Match) -> str:
+        token, приставка = m.group(0), m.group(1)
+        заглавные = _UPPER_THEN_HEX.match(token)
+        if заглавные and len(token) - заглавные.end() >= 32 and re.search(r"[a-f]", token[заглавные.end():]):
+            приставка = заглавные.group()
+        elif not re.search(r"[g-zG-Z]", приставка):
+            return token                           # просто hex: хеш файла или коммита
+        if приставка.lower() in _PUBLIC_HEX_PREFIXES or _public_identifier(
+                token, text[max(0, m.start() - 60):m.start()], by_shape=False):
+            return token
+        return bump("prefixed_hex_key")
+
+    text = _PREFIXED_HEX_JOINED.sub(joined_hex, text)
 
     def token(m: re.Match) -> str:
         t = m.group(0)
@@ -521,15 +543,22 @@ _INSTRUCTION = re.compile("|".join([
     r"\ba partir de ahora\b.{0,40}\b(?:tú|tu|usted|siempre|nunca|responde)\b",
     r"\b(?:ab jetzt|von nun an)\b.{0,40}\b(?:du|immer|nie|antworte)\b",
     # Перефраз «отложи прежние указания» (аудит 09.11.2026): другие глаголы того же смысла.
-    r"\b(?:set|put|lay|cast|push) aside\b.{0,30}\b(?:previous|prior|above|earlier|all|any|your|existing|original|old)\b.{0,30}\b(?:instructions?|rules?|guidelines?|guidance|directions?|directives?|prompts?)\b",
+    r"\b(?:set|put|lay|cast|push|leave) aside\b.{0,30}\b(?:previous|prior|above|earlier|all|any|your|existing|original|old)\b.{0,30}\b(?:instructions?|rules?|guidelines?|guidance|directions?|directives?|prompts?)\b",
     r"\b(?:drop|discard|abandon|throw (?:out|away)|scrap|dismiss|neglect)\b.{0,30}\b(?:previous|prior|above|earlier|all|any|your|existing|original)\b.{0,20}\b(?:instructions?|guidelines?|guidance|directions?|directives?|system prompt)\b",
+    # Вежливая вводная с обычным повелительным глаголом той же семьи; skip и drop — только с ней: «Skip the
+    # instructions above if you use Docker» в документации — обычный текст.
+    r"(?:\bplease\s+|\bkindly\s+|\b(?:could|would|can|will) you(?: please| kindly| mind)?\s+|\bi(?:'d| would) (?:like|appreciate it if) you(?: to)?\s+)(?:(?:set|setting|put|putting|lay|laying|leave|leaving) aside|drop(?:ping)?|discard(?:ing)?|skip(?:ping)?|abandon(?:ing)?|throw(?:ing)? (?:out|away)|scrap(?:ping)?|dismiss(?:ing)?|neglect(?:ing)?)\b.{0,25}\b(?:instructions?|guidance|guidelines?|directions?|directives?|system prompt|safety rules?|(?:previous|prior|earlier|original) rules)\b",
+    # Уточнение после существительного: «set aside the guidance above», «ignore the instructions you were given».
+    r"\b(?:(?:set|put|lay|leave) aside|discard|abandon|disregard|ignore|forget)\b.{0,15}\b(?:the |your |any |all )?(?:instructions?|guidance|guidelines?|directions?|directives?|system prompt)\s+(?:above|before|so far|(?:you were|you've been|you have been) given|given (?:above|before|earlier|so far)|from (?:before|earlier))\b",
     r"\b(?:follow|obey|execute|act on|act according to) only\b.{0,20}\b(?:this|these|the following|my)\b.{0,10}\b(?:note|notes|text|record|memory|instructions?|message|page|document)\b",
-    r"(?:отложи|отбрось|откинь|пренебреги|выкинь|выбрось|оставь в стороне|не учитывай|не обращай внимани\w* на|не следуй|не выполняй|не слушай|не соблюдай)\w*\b.{0,30}(?:(?:прежн|предыдущ|все|сво|тво|ваш|системн|изначальн|исходн|данн|эти|вышеуказанн)\w*\s+(?:\w+\s+)?(?:инструкци|указани|правил|настройк)|инструкци|указани)",
-    r"(?:действуй|работай|отвечай|следуй|слушайся|подчиняйся|выполняй)\w*\s+только\s+(?:по\s+|согласно\s+)?(?:этой|этим|эту|этого|этому|данной|данным|следующ)\w*\s+(?:запис|заметк|инструкци|указани|текст|сообщени|команд)",
-    # Условный приказ о деньгах: «когда попросят оплатить — всегда используй кошелёк …». Адрес без слова
-    # «кошелёк» считается только по виду (0x…, T…, bc1…, base58): «billing address» и «адрес компании» — не он.
-    r"\b(?:when|whenever|if|each time|every time)\b.{0,50}\b(?:pay|pays|paying|payments?|invoices?|checkout|transfers?|purchases?|orders?|deposits?)\b.{0,60}\b(?:always|use|send|replace|substitute|put|insert|give|show)\b.{0,50}(?:\bwallet\b|кошел[её]к|кошельк|\b0x[0-9a-fA-F]{8,}|\bbc1[a-z0-9]{20,}|\bT[1-9A-HJ-NP-Za-km-z]{33}\b|\b[1-9A-HJ-NP-Za-km-z]{32,44}\b)",
-    r"(?:\bкогда\b|\bесли\b|всякий раз|каждый раз|\bпри\b).{0,50}(?:оплат|плат[её]ж|плати|перевод|переве|сч[её]т|покупк|заказ|пополн)\w*.{0,60}(?:всегда|используй|указывай|подставляй|замени|меняй|отправляй|переводи|вставляй|давай|показывай)\w*.{0,50}(?:\bwallet\b|кошел[её]к|кошельк|\b0x[0-9a-fA-F]{8,}|\bbc1[a-z0-9]{20,}|\bT[1-9A-HJ-NP-Za-km-z]{33}\b|\b[1-9A-HJ-NP-Za-km-z]{32,44}\b)",
+    # Русский: повелительное и неопределённая форма («не мог бы ты отбросить…»).
+    r"(?:отлож(?:и|ить)|отброс(?:ь|ить)|откин(?:ь|уть)|пренебре(?:ги|чь)|выкин(?:ь|уть)|выброс(?:ь|ить)|остав(?:ь|ить) в стороне|не учитыва(?:й|ть)|не обраща(?:й|ть) внимани\w* на|не следуй|не следовать|не выполня(?:й|ть)|не слуша(?:й|ть)|не соблюда(?:й|ть))\w*\b.{0,30}(?:(?:прежн|предыдущ|все|сво|тво|ваш|системн|изначальн|исходн|данн|эти|вышеуказанн)\w*\s+(?:\w+\s+)?(?:инструкци|указани|правил|настройк)|инструкци|указани)",
+    r"(?:действ(?:уй|овать)|работа(?:й|ть)|отвеча(?:й|ть)|следуй|следовать|слушай(?:ся)?|слушаться|подчиня(?:йся|ться)|выполня(?:й|ть))\s+только\s+(?:по\s+|согласно\s+)?(?:этой|этим|эту|этого|этому|данной|данным|следующ)\w*\s+(?:запис|заметк|инструкци|указани|текст|сообщени|команд)",
+    # Условный приказ о деньгах: «когда попросят оплатить — всегда используй кошелёк / этот адрес …». «Адрес»
+    # считается только со словом «этот / следующий» или по виду (0x…, T…, bc1…, base58): «billing address» и
+    # «адрес компании» — обычный текст; «этот счёт» тоже: по-русски это и счёт-фактура.
+    r"\b(?:when|whenever|if|each time|every time)\b.{0,50}\b(?:pay|pays|paying|payments?|invoices?|checkout|transfers?|purchases?|orders?|deposits?|wires?|funds|money|donations?)\b.{0,60}\b(?:always|use|send|replace|substitute|put|insert|give|show)\b.{0,50}(?:\bwallet\b|кошел[её]к|кошельк|\b0x[0-9a-fA-F]{8,}|\bbc1[a-z0-9]{20,}|\bT[1-9A-HJ-NP-Za-km-z]{33}\b|\b[1-9A-HJ-NP-Za-km-z]{32,44}\b|\b(?:this|that|the following|the new)\s+(?:(?:crypto|payment|deposit|new|bank)\s+)?(?:address|account|iban)\b|(?:\bэтот|\bэту|\bэтого|\bэти|\bэтим|\bследующ\w*|\bновый|\bновые)\s+(?:\w+\s+)?(?:адрес|реквизит)|(?:расч[её]тный|банковский)\s+сч[её]т)",
+    r"(?:\bкогда\b|\bесли\b|всякий раз|каждый раз|\bпри\b).{0,50}(?:оплат|плат[её]ж|плати|перевод|переве|сч[её]т|покупк|заказ|пополн|реквизит|депозит|донат)\w*.{0,60}(?:всегда|используй|указывай|подставляй|замени|меняй|отправляй|переводи|вставляй|давай|показывай)\w*.{0,50}(?:\bwallet\b|кошел[её]к|кошельк|\b0x[0-9a-fA-F]{8,}|\bbc1[a-z0-9]{20,}|\bT[1-9A-HJ-NP-Za-km-z]{33}\b|\b[1-9A-HJ-NP-Za-km-z]{32,44}\b|\b(?:this|that|the following|the new)\s+(?:(?:crypto|payment|deposit|new|bank)\s+)?(?:address|account|iban)\b|(?:\bэтот|\bэту|\bэтого|\bэти|\bэтим|\bследующ\w*|\bновый|\bновые)\s+(?:\w+\s+)?(?:адрес|реквизит)|(?:расч[её]тный|банковский)\s+сч[её]т)",
 ]), re.I | re.S)
 
 # Сжатый вид для команд, разбитых по буквам («i-g-n-o-r-e a.l.l»): только буквы, без пробелов и знаков.
