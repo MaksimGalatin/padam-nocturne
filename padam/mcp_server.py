@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import traceback
 
@@ -284,6 +285,14 @@ def invalid_argument(name: str, args: dict) -> str | None:
     return None
 
 
+def _почти_те_же(a: str, b: str) -> bool:
+    """Записи говорят одно и то же: совпадает не меньше 90 % слов."""
+    слова_а, слова_б = set(re.findall(r"\w+", a.lower())), set(re.findall(r"\w+", b.lower()))
+    if not слова_а or not слова_б:
+        return False
+    return len(слова_а & слова_б) / len(слова_а | слова_б) >= 0.9
+
+
 # --- выполнение инструментов ------------------------------------------
 
 def call_tool(name: str, args: dict) -> str:
@@ -295,7 +304,14 @@ def call_tool(name: str, args: dict) -> str:
         if not found:
             return "Nothing found in memory for this query."
         lines = []
+        показано: list[str] = []
+        убрано = 0
         for r in found:
+            # Лучшая запись идёт первой; её близкие повторы только съедают контекст агента.
+            if any(_почти_те_же(r.content or "", х) for х in показано):
+                убрано += 1
+                continue
+            показано.append(r.content or "")
             flags = []
             if r.expired:
                 flags.append("EXPIRED")
@@ -312,8 +328,9 @@ def call_tool(name: str, args: dict) -> str:
                 f"- {text}\n"
                 f"  id={r.id}  kind={r.kind}  score={r.score:.4f}  confidence={r.confidence:.2f}"
                 f"  origin={r.origin or 'unknown'}  saved={(r.created_at or '')[:10]}{suffix}")
+        хвост = f"\n({убрано} near-identical record(s) omitted)" if убрано else ""
         return ("Found in memory (use padam_confirm if a record proved "
-                "correct, padam_refute if it did not).\n" + safety.fence("\n".join(lines)))
+                "correct, padam_refute if it did not).\n" + safety.fence("\n".join(lines)) + хвост)
 
     if name == "padam_write":
         _, masked = safety.redact(safety.strip_invisible(args["content"]))

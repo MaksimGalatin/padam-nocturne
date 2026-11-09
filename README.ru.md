@@ -292,7 +292,7 @@ python -m padam rekey                     # сменить пароль
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 232 passed, 1 skipped (09.11.2026, Python 3.14.4, Windows)
+python -m pytest tests/ -q        # 233 passed, 1 skipped (09.11.2026, Python 3.14.4, Windows)
 ```
 
 CI прогоняет тесты на каждый push под Ubuntu и Windows с Python 3.10–3.13. Тесты L3 не ходят в сеть: Arweave и Solana заменены подделками. Схема Меркла дополнительно сверена с закреплением CODE Eternal на TypeScript — листья и корень совпадают.

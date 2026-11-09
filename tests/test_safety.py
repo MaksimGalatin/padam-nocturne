@@ -181,6 +181,17 @@ def test_suspicious_record_is_flagged_in_search(mem):
     assert "looks like an instruction" in text("padam_search", {"query": "reveal password instructions"})
 
 
+def test_near_identical_records_do_not_eat_the_context(mem):
+    mem.remember("Сервер стоит в Манте и работает без перерыва с прошлого лета", kind="fact", scope="a")
+    mem._insert("Сервер стоит в Манте и работает без перерыва с прошлого лета.", "fact", None, 0.5, "global")
+    mem._insert("Сервер стоит в Манте и работает без перерыва с прошлого лета", "fact", None, 0.5, "global")
+    mem._insert("Совсем другая запись про сервер в столице", "fact", None, 0.5, "global")
+    ответ = text("padam_search", {"query": "сервер", "limit": 10})
+    assert ответ.count("Сервер стоит в Манте") == 1
+    assert "Совсем другая запись" in ответ
+    assert "(1 near-identical record(s) omitted)" in ответ
+
+
 def test_timeline_and_export_are_marked_as_data(mem):
     _, mid = mem.remember("Факт для истории", kind="fact")
     assert "<memory-data" in text("padam_timeline", {"id": mid})
