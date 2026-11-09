@@ -520,6 +520,16 @@ _INSTRUCTION = re.compile("|".join([
     r"\bd'ora in poi\b.{0,40}\b(?:tu|sempre|mai|rispondi)\b",
     r"\ba partir de ahora\b.{0,40}\b(?:tú|tu|usted|siempre|nunca|responde)\b",
     r"\b(?:ab jetzt|von nun an)\b.{0,40}\b(?:du|immer|nie|antworte)\b",
+    # Перефраз «отложи прежние указания» (аудит 09.11.2026): другие глаголы того же смысла.
+    r"\b(?:set|put|lay|cast|push) aside\b.{0,30}\b(?:previous|prior|above|earlier|all|any|your|existing|original|old)\b.{0,30}\b(?:instructions?|rules?|guidelines?|guidance|directions?|directives?|prompts?)\b",
+    r"\b(?:drop|discard|abandon|throw (?:out|away)|scrap|dismiss|neglect)\b.{0,30}\b(?:previous|prior|above|earlier|all|any|your|existing|original)\b.{0,20}\b(?:instructions?|guidelines?|guidance|directions?|directives?|system prompt)\b",
+    r"\b(?:follow|obey|execute|act on|act according to) only\b.{0,20}\b(?:this|these|the following|my)\b.{0,10}\b(?:note|notes|text|record|memory|instructions?|message|page|document)\b",
+    r"(?:отложи|отбрось|откинь|пренебреги|выкинь|выбрось|оставь в стороне|не учитывай|не обращай внимани\w* на|не следуй|не выполняй|не слушай|не соблюдай)\w*\b.{0,30}(?:(?:прежн|предыдущ|все|сво|тво|ваш|системн|изначальн|исходн|данн|эти|вышеуказанн)\w*\s+(?:\w+\s+)?(?:инструкци|указани|правил|настройк)|инструкци|указани)",
+    r"(?:действуй|работай|отвечай|следуй|слушайся|подчиняйся|выполняй)\w*\s+только\s+(?:по\s+|согласно\s+)?(?:этой|этим|эту|этого|этому|данной|данным|следующ)\w*\s+(?:запис|заметк|инструкци|указани|текст|сообщени|команд)",
+    # Условный приказ о деньгах: «когда попросят оплатить — всегда используй кошелёк …». Адрес без слова
+    # «кошелёк» считается только по виду (0x…, T…, bc1…, base58): «billing address» и «адрес компании» — не он.
+    r"\b(?:when|whenever|if|each time|every time)\b.{0,50}\b(?:pay|pays|paying|payments?|invoices?|checkout|transfers?|purchases?|orders?|deposits?)\b.{0,60}\b(?:always|use|send|replace|substitute|put|insert|give|show)\b.{0,50}(?:\bwallet\b|кошел[её]к|кошельк|\b0x[0-9a-fA-F]{8,}|\bbc1[a-z0-9]{20,}|\bT[1-9A-HJ-NP-Za-km-z]{33}\b|\b[1-9A-HJ-NP-Za-km-z]{32,44}\b)",
+    r"(?:\bкогда\b|\bесли\b|всякий раз|каждый раз|\bпри\b).{0,50}(?:оплат|плат[её]ж|плати|перевод|переве|сч[её]т|покупк|заказ|пополн)\w*.{0,60}(?:всегда|используй|указывай|подставляй|замени|меняй|отправляй|переводи|вставляй|давай|показывай)\w*.{0,50}(?:\bwallet\b|кошел[её]к|кошельк|\b0x[0-9a-fA-F]{8,}|\bbc1[a-z0-9]{20,}|\bT[1-9A-HJ-NP-Za-km-z]{33}\b|\b[1-9A-HJ-NP-Za-km-z]{32,44}\b)",
 ]), re.I | re.S)
 
 # Сжатый вид для команд, разбитых по буквам («i-g-n-o-r-e a.l.l»): только буквы, без пробелов и знаков.

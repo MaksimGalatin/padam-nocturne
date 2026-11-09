@@ -174,6 +174,9 @@ class Memory:
 
     def _remember(self, content: str, kind: str | None, importance: float, scope: str,
                   source_episode_id: str | None, origin: str, guarded: bool) -> tuple[str, str]:
+        # Команда проверяется и по исходному тексту: маскирование секретов закрывает длинные случайные строки,
+        # а base64 с командой внутри выглядит именно так — после маски раскодировать было бы нечего (аудит 09.11.2026).
+        исходный = content
         content = safety.clean(content)
         if origin not in config.ORIGINS:
             origin = "agent" if guarded else "user"
@@ -183,7 +186,7 @@ class Memory:
             kind = "fact"
         vec = embeddings.embed(content)
 
-        if guarded and safety.looks_like_instruction(content):
+        if guarded and (safety.looks_like_instruction(content) or safety.looks_like_instruction(исходный)):
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
                 origin=origin, status="quarantined", reason="looks like an instruction")
