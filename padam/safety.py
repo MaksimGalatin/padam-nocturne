@@ -18,9 +18,11 @@
 
 from __future__ import annotations
 
+import math
 import re
 import secrets as _secrets
 import unicodedata
+from collections import Counter
 
 from . import config
 
@@ -146,6 +148,7 @@ def redact(text: str) -> tuple[str, dict[str, int]]:
 
     text = _BYTE_ARRAY.sub(byte_array, text)
     text = _JWK_PRIVATE.sub(lambda m: m.group(1) + bump("jwk_private") + m.group(3), text)
+    text = mask_generic(text, bump)
     return _mask_seed_phrase(text, bump), counts
 
 
@@ -171,6 +174,155 @@ def _mask_seed_phrase(text: str, bump) -> str:
     сбросить()
     for начало, конец in reversed(куски):
         text = text[:начало] + bump("seed_phrase") + text[конец:]
+    return text
+
+
+# --- общий детектор: устройство строки, а не приставка (встречный аудит 09.11.2026) ---
+#
+# Образцы по приставке (sk-, ghp_, xai-…) ловят только известные службы, а у ключей почтовых и платёжных служб,
+# вебхуков, облачных хранилищ приставки разные или их нет. Поэтому три слоя по устройству строки: значение после
+# имени поля, длинная случайная строка и номер карты с проверкой Луна. Публичное — ссылки, адреса Solana и
+# Arweave, подписи транзакций, открытые части JWK — остаётся открытым: памяти оно нужно.
+# Пределы: чистый hex без имени поля не отличить от хеша файла; base58 длиной 32–44 считается адресом.
+
+# --- 1. значение после имени поля ---------------------------------------
+_KEYED = re.compile(
+    r"""(?ix)
+    (["']?)                                   # кавычка имени
+    ([a-z0-9_.\-]*?(?:token|secret|passw(?:or)?d|pwd|api[_\-]?key|apikey|access[_\-]?key|accountkey|
+                    private[_\-]?key|client[_\-]?secret|credential|auth|signature|sig|session[_\-]?id|
+                    cookie|dsn|sharedaccesskey|webhook[_\-]?secret|signing[_\-]?key)[a-z0-9_.\-]*)
+    \1\s*[:=]\s*                              # разделитель
+    (["']?)                                   # кавычка значения
+    ([^\s"';,&<>]{8,})
+    """)
+
+# --- 2. случайная строка ---------------------------------------------------
+_TOKEN = re.compile(r"(?<![A-Za-z0-9_\-+=])[A-Za-z0-9_\-+=]{20,}(?![A-Za-z0-9_\-+=])")
+_UUID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+_HEX = re.compile(r"^[0-9a-f]+$|^[0-9A-F]+$")
+_SEP = re.compile(r"[_\-+=]+")
+
+
+def _entropy(s: str) -> float:
+    n = len(s)
+    return -sum(c / n * math.log2(c / n) for c in Counter(s).values())
+
+
+def _cls(ch: str) -> int:
+    return 0 if ch.islower() else 1 if ch.isupper() else 2 if ch.isdigit() else 3
+
+
+def looks_random(s: str) -> bool:
+    """Строка похожа на ключ, а не на слово, имя файла или хеш."""
+    if len(s) < 16 or _UUID.match(s) or _HEX.match(s):
+        return False
+    has_l, has_u, has_d = any(c.islower() for c in s), any(c.isupper() for c in s), any(c.isdigit() for c in s)
+    if not has_d or (has_l + has_u + has_d) < 2:
+        return False
+    if (has_l + has_u + has_d) == 2 and len(s) < 24:
+        return False
+    switches = sum(1 for a, b in zip(s, s[1:]) if _cls(a) != _cls(b)) / (len(s) - 1)
+    return switches >= 0.3 and _entropy(s) >= 3.5
+
+
+_BASE58 = re.compile(r"^[1-9A-HJ-NP-Za-km-z]+$")
+_ARWEAVE_ID = re.compile(r"^[A-Za-z0-9_\-]{43}$")
+# Слова перед публичным идентификатором: адрес кошелька, подпись транзакции, якорь, id.
+_PUBLIC_CONTEXT = re.compile(
+    r"(?i)(?:\b(?:tx|txid|txn|signature|sig|address|addr|wallet|program|anchor|mint|id|hash|block|account"
+    r"|track|channel|playlist|album|video|scope|project|deployment|build|commit)"
+    r"|транзакци\w*|подпис\w*|якор\w*|адрес\w*|кошел\w*|программ\w*"
+    r"|трек\w*|канал\w*|альбом\w*|плейлист\w*|проект\w*|сборк\w*|коммит\w*)[\s:=`'\"*.\-—…()\[\]]{0,12}$")
+# Идентификаторы Vercel — проекта, команды, сборки — открыты в адресах панели и в выводе CLI; это не ключи.
+# Замер 09.11.2026 на трекере и файле навыков: 17 из 19 масок случайных строк были именно ими и id треков.
+_PUBLIC_PREFIX = re.compile(r"^(?:prj|team|dpl|icfg)_[A-Za-z0-9]{16,}$")
+_BASIC = re.compile(r"(?i)\bbasic\s+[A-Za-z0-9+/]{16,}={0,2}")
+
+
+def _public_identifier(token: str, before: str) -> bool:
+    """Публичный идентификатор блокчейна или ссылки, а не секрет. Памяти он нужен открытым."""
+    if before.endswith(("/", "#", "?", "=")) and re.search(r"(?:https?://|\b[\w\-]+\.[a-z]{2,}/)\S*$", before):
+        return True                                # кусок адреса ссылки, и без схемы: open.spotify.com/track/…
+    if _PUBLIC_PREFIX.match(token):
+        return True
+    if _BASE58.match(token) and 32 <= len(token) <= 44:
+        return True                                # адрес Solana: ключ кошелька длиннее (87–88)
+    if _ARWEAVE_ID.match(token):
+        return True                                # адрес и номер сделки Arweave: ровно 43 знака
+    if re.search(r"""["'](?:n|e|x|y|kid|kty|alg|use|crv)["']\s*:\s*["']$""", before):
+        return True                                # открытая часть ключа JWK: модуль, экспонента, точка
+    return bool(_PUBLIC_CONTEXT.search(before[-40:]))
+
+
+def _random_core(token: str) -> bool:
+    # Длинная случайная часть внутри куска: имя файла и slug режутся разделителями на короткие слова.
+    parts = [p for p in _SEP.split(token) if p]
+    longest = max(parts, key=len) if parts else ""
+    return len(longest) >= 16 and looks_random(longest)
+
+
+# --- 3. платёжные данные ---------------------------------------------------
+_CARD = re.compile(r"(?<![\d])(?:\d[ \-]?){12,18}\d(?![\d])")
+# Сплошной ряд цифр проходит Луна случайно в одном случае из десяти: номера дел AWS, 19-значные номера постов X.
+# Поэтому номер карты — это либо группы по 4 цифры через пробел или дефис с первой цифрой 2–6 (так пишут карты),
+# либо любой ряд, рядом с которым сказано «карта» или название платёжной системы.
+_CARD_GROUPED = re.compile(r"^[2-6]\d{3}(?:[ \-]\d{4}){2,3}(?:[ \-]\d{1,3})?$")
+_CARD_CONTEXT = re.compile(r"(?i)(?:card|карт\w*|visa|master\s?card|maestro|amex|american express|мир|unionpay|discover|jcb)"
+                           r"[\s:#№=\-—]{0,12}(?:\w+\s+){0,2}$")
+_CVV = re.compile(r"(?i)\b(cvv2?|cvc2?|csc|pin(?:[\s\-]?(?:код|code))?|пин(?:[\s\-]?код)?)(\s*(?:карты|card)?\s*[:=\-—]?\s*)(\d{3,6})\b")
+
+
+def _luhn(digits: str) -> bool:
+    total, alt = 0, False
+    for ch in reversed(digits):
+        d = int(ch)
+        if alt:
+            d = d * 2 - 9 if d * 2 > 9 else d * 2
+        total += d
+        alt = not alt
+    return total % 10 == 0
+
+
+def mask_generic(text: str, bump) -> str:
+    def keyed(m: re.Match) -> str:
+        value = m.group(4).rstrip(".)]}")
+        tail = m.group(4)[len(value):]
+        if value.startswith("[REDACTED:"):
+            return m.group(0)
+        weak_name = m.group(2).lower() in ("auth", "sig", "cookie")
+        randomish = looks_random(value) or (len(value) >= 12 and re.search(r"\d", value) and re.search(r"[A-Za-z]", value)
+                                            and not weak_name and _entropy(value) >= 3.0)
+        if not randomish:
+            return m.group(0)
+        начало = m.start(4) - m.start(0)
+        return m.group(0)[:начало] + bump("keyed_secret") + tail + m.group(0)[начало + len(m.group(4)):]
+
+    text = _KEYED.sub(keyed, text)
+
+    text = _BASIC.sub(lambda m: m.group(0).split()[0] + " " + bump("basic_auth"), text)
+
+    def token(m: re.Match) -> str:
+        t = m.group(0)
+        if "REDACTED" in t or not _random_core(t):
+            return t
+        if _public_identifier(t, text[max(0, m.start() - 60):m.start()]):
+            return t
+        return bump("random_token")
+
+    text = _TOKEN.sub(token, text)
+
+    def card(m: re.Match) -> str:
+        digits = re.sub(r"\D", "", m.group(0))
+        if not 13 <= len(digits) <= 19 or not _luhn(digits) or len(set(digits)) < 2:
+            return m.group(0)
+        # text здесь — строка до замены: sub ещё не вернул новую, позиции m относятся к ней.
+        if not (_CARD_GROUPED.match(m.group(0)) or _CARD_CONTEXT.search(text[max(0, m.start() - 40):m.start()])):
+            return m.group(0)
+        return bump("card_number")
+
+    text = _CARD.sub(card, text)
+    text = _CVV.sub(lambda m: m.group(1) + m.group(2) + bump("card_code"), text)
     return text
 
 

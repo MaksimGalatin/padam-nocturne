@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Security
+- Secrets are also recognised by their shape, not only by a known prefix: a value after a field name (JSON, `.env`, connection strings, `client_secret`, `AccountKey`, `x-api-key`…), a long random string (mixed character classes, entropy, frequent class changes; plain hex and UUIDs excluded), `Basic` credentials, and card numbers (Luhn plus either 4-digit grouping or a word about cards nearby) with CVV and PIN. Public identifiers stay open: links (also without a scheme), Solana and Arweave addresses, transaction signatures, open JWK parts, Vercel project, team and deployment ids, ids after words like track, channel, project or commit. Measured on 5.5 million characters of the project's own notes: the generic layer masked 26 strings before the false-positive fixes and 2 after, both 22-character track ids; on another 308 thousand characters, none.
+
 ### Added
 - MCP protocol 2026-07-28 next to the older revisions in the same process: `server/discover`, version and client capabilities in every request's `_meta`, `resultType` and `serverInfo` in every result, cacheable `tools/list` (`ttlMs`, `cacheScope`), `-32022` with the supported versions on a mismatch, no `ping` or `initialize` in the new revision. `initialize` still selects 2025-06-18, 2025-03-26 or 2024-11-05.
 - Memory as of a date: `padam_search` `as_of`, `/records?as_of=`, and in the browser. Records replaced later are included and marked; records under review, rejected, forgotten or archived never are.
