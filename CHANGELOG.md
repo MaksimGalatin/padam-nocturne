@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1 — 9 November 2026
+
+### Fixed
+- Links on the PyPI page: the README used 11 links relative to the repository (specification, Russian README, SECURITY.md, integrations, citation), which on pypi.org led nowhere. They now point to GitHub. No code changes.
+
 ## 0.3.0 — 9 November 2026
 
 The first release on PyPI (`pip install padam-nocturne`, `uvx padam-nocturne`).

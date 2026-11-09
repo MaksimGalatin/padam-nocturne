@@ -2,7 +2,7 @@
 
 ### Память для ИИ-агентов, которая спит, честно забывает и проверяется навсегда
 
-[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%208%20tools-8A2BE2) ![release](https://img.shields.io/badge/release-v0.3.0-success)
+[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%208%20tools-8A2BE2) ![release](https://img.shields.io/badge/release-v0.3.1-success)
 
 **PADAM** — постоянная память для ИИ-ассистентов и агентов, которая хранится у владельца. Она живёт в одном файле SQLite на вашем компьютере и подключается к любому MCP-клиенту (Claude Code, Claude Desktop, Cursor, VS Code) или к вашему коду через командную строку и небольшой REST API.
 
@@ -10,7 +10,7 @@
 
 **L3** — необязательный вечный слой. Он закрепляет память в **Arweave** (зашифрованные пакеты) и **Solana** (корень дерева Меркла в заметке Memo): любой может проверить, что память не переписали, и при этом любую одну запись можно забыть навсегда.
 
-Часть проекта [CODE Eternal](https://aifa.works) · Страница проекта: [aifa.works/nocturne](https://aifa.works/nocturne) · Спецификация: [English](docs/NOCTURNE_SPEC.en.md) · [Русский](docs/NOCTURNE_SPEC.md) · English README: [README.md](README.md)
+Часть проекта [CODE Eternal](https://aifa.works) · Страница проекта: [aifa.works/nocturne](https://aifa.works/nocturne) · Спецификация: [English](https://github.com/MaksimGalatin/padam-nocturne/blob/main/docs/NOCTURNE_SPEC.en.md) · [Русский](https://github.com/MaksimGalatin/padam-nocturne/blob/main/docs/NOCTURNE_SPEC.md) · English README: [README.md](https://github.com/MaksimGalatin/padam-nocturne/blob/main/README.md)
 
 ---
 
@@ -102,7 +102,7 @@ python -m padam stats
 claude mcp add padam -- uvx padam-nocturne
 ```
 
-Из PyPI: `pip install padam-nocturne`. Самый свежий код прямо с GitHub: `uvx --from git+https://github.com/MaksimGalatin/padam-nocturne padam-nocturne`. Если стоит через `pip install -e .`, то просто `claude mcp add padam -- padam-mcp`. Готовые настройки для Claude Desktop, Cursor, VS Code, systemd и cron лежат в [`integrations/`](integrations/).
+Из PyPI: `pip install padam-nocturne`. Самый свежий код прямо с GitHub: `uvx --from git+https://github.com/MaksimGalatin/padam-nocturne padam-nocturne`. Если стоит через `pip install -e .`, то просто `claude mcp add padam -- padam-mcp`. Готовые настройки для Claude Desktop, Cursor, VS Code, systemd и cron лежат в [`integrations/`](https://github.com/MaksimGalatin/padam-nocturne/tree/main/integrations/).
 
 ---
 
@@ -193,7 +193,7 @@ claude mcp add padam -- uvx padam-nocturne
 
 ## Цикл NOCTURNE
 
-`python -m padam sleep` (или инструмент `padam_sleep`, или ночное задание cron из [`integrations/crontab.txt`](integrations/crontab.txt)):
+`python -m padam sleep` (или инструмент `padam_sleep`, или ночное задание cron из [`integrations/crontab.txt`](https://github.com/MaksimGalatin/padam-nocturne/blob/main/integrations/crontab.txt)):
 
 1. **Приоритеты с нижним порогом** — каждый эпизод получает приоритет не ниже порога, чтобы рутина не голодала.
 2. **Предел для острого** — верхняя десятая часть по приоритету занимает не больше заданной доли пакета.
@@ -204,7 +204,7 @@ claude mcp add padam -- uvx padam-nocturne
 
 Цикл пишет отчёт, в том числе показатель разнообразия: он показывает, когда классификатор не уверен.
 
-Полный протокол, псевдокод и метрики проверки — в [спецификации](docs/NOCTURNE_SPEC.md).
+Полный протокол, псевдокод и метрики проверки — в [спецификации](https://github.com/MaksimGalatin/padam-nocturne/blob/main/docs/NOCTURNE_SPEC.md).
 
 ---
 
@@ -262,7 +262,7 @@ python -m padam rekey                     # сменить пароль
 
 **Цепочка поставок.** Действия CI закреплены по SHA коммита, токен Actions — только на чтение; публикация в PyPI настроена через доверенную публикацию без хранимых токенов.
 
-Нашли слабость в шифровании или забывании? Пожалуйста, сообщите закрыто — см. [SECURITY.md](SECURITY.md).
+Нашли слабость в шифровании или забывании? Пожалуйста, сообщите закрыто — см. [SECURITY.md](https://github.com/MaksimGalatin/padam-nocturne/blob/main/SECURITY.md).
 
 ---
 
@@ -312,9 +312,9 @@ CI прогоняет тесты на каждый push под Ubuntu и Windows
 
 ## Цитирование, участие, сообщения об уязвимостях
 
-- **Цитировать:** кнопка «Cite this repository» берёт данные из [`CITATION.cff`](CITATION.cff) (автор с ORCID [0009-0002-0187-8547](https://orcid.org/0009-0002-0187-8547)); каждый релиз архивируется в Zenodo — см. бейдж DOI выше.
-- **Подключили PADAM к своему агенту?** Расскажите, что сработало и что нет: откройте задачу по шаблону «Integration report» или тему в Discussions. Как участвовать — [CONTRIBUTING.md](CONTRIBUTING.md).
-- **Безопасность:** [SECURITY.md](SECURITY.md).
+- **Цитировать:** кнопка «Cite this repository» берёт данные из [`CITATION.cff`](https://github.com/MaksimGalatin/padam-nocturne/blob/main/CITATION.cff) (автор с ORCID [0009-0002-0187-8547](https://orcid.org/0009-0002-0187-8547)); каждый релиз архивируется в Zenodo — см. бейдж DOI выше.
+- **Подключили PADAM к своему агенту?** Расскажите, что сработало и что нет: откройте задачу по шаблону «Integration report» или тему в Discussions. Как участвовать — [CONTRIBUTING.md](https://github.com/MaksimGalatin/padam-nocturne/blob/main/CONTRIBUTING.md).
+- **Безопасность:** [SECURITY.md](https://github.com/MaksimGalatin/padam-nocturne/blob/main/SECURITY.md).
 
 ### Часть CODE Eternal
 
@@ -324,7 +324,7 @@ PADAM — открытая локальная память проекта CODE E
 
 ## Лицензия
 
-**AGPL-3.0** ([LICENSE](LICENSE)). Можно пользоваться, менять и запускать; если вы предлагаете это как сетевой сервис, свои изменения нужно опубликовать.
+**AGPL-3.0** ([LICENSE](https://github.com/MaksimGalatin/padam-nocturne/blob/main/LICENSE)). Можно пользоваться, менять и запускать; если вы предлагаете это как сетевой сервис, свои изменения нужно опубликовать.
 **Коммерческая лицензия** (закрытое использование, SaaS без публикации изменений, поддержка): contact@codeofdigitaleternity.com · [aifa.works](https://aifa.works).
 
 © 2026 Максим Галатин и AIfa · CODE Eternal

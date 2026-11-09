@@ -4,7 +4,7 @@
 
 ### Memory for AI agents that sleeps, forgets honestly, and can be verified forever
 
-[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%208%20tools-8A2BE2) ![release](https://img.shields.io/badge/release-v0.3.0-success)
+[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%208%20tools-8A2BE2) ![release](https://img.shields.io/badge/release-v0.3.1-success)
 
 **PADAM** is a local-first, persistent memory for AI assistants and agents. It lives in one SQLite file on your machine, plugs into any MCP client (Claude Code, Claude Desktop, Cursor, VS Code) or into your own code through a CLI and a small REST API.
 
@@ -12,7 +12,7 @@
 
 **L3** is the optional eternal layer. It anchors memory to **Arweave** (encrypted bundles) and **Solana** (a Merkle root in a Memo), so anyone can check that the memory was never rewritten — while any single record can still be forgotten for good.
 
-Part of [CODE Eternal](https://aifa.works) · Project page: [aifa.works/nocturne](https://aifa.works/nocturne) · Specification: [English](docs/NOCTURNE_SPEC.en.md) · [Русский](docs/NOCTURNE_SPEC.md) · Русская версия README: [README.ru.md](README.ru.md)
+Part of [CODE Eternal](https://aifa.works) · Project page: [aifa.works/nocturne](https://aifa.works/nocturne) · Specification: [English](https://github.com/MaksimGalatin/padam-nocturne/blob/main/docs/NOCTURNE_SPEC.en.md) · [Русский](https://github.com/MaksimGalatin/padam-nocturne/blob/main/docs/NOCTURNE_SPEC.md) · Русская версия README: [README.ru.md](https://github.com/MaksimGalatin/padam-nocturne/blob/main/README.ru.md)
 
 <!-- mcp-name: io.github.MaksimGalatin/padam-nocturne -->
 
@@ -106,7 +106,7 @@ The CLI answers in English or Russian, following the system language; force one 
 claude mcp add padam -- uvx padam-nocturne
 ```
 
-From PyPI: `pip install padam-nocturne`. The latest code straight from GitHub: `uvx --from git+https://github.com/MaksimGalatin/padam-nocturne padam-nocturne`. Installed with `pip install -e .`? Then simply `claude mcp add padam -- padam-mcp`. Ready-made configs for Claude Desktop, Cursor, VS Code, systemd and cron are in [`integrations/`](integrations/).
+From PyPI: `pip install padam-nocturne`. The latest code straight from GitHub: `uvx --from git+https://github.com/MaksimGalatin/padam-nocturne padam-nocturne`. Installed with `pip install -e .`? Then simply `claude mcp add padam -- padam-mcp`. Ready-made configs for Claude Desktop, Cursor, VS Code, systemd and cron are in [`integrations/`](https://github.com/MaksimGalatin/padam-nocturne/tree/main/integrations/).
 
 ---
 
@@ -222,7 +222,7 @@ Works out of the box with no model: words + BM25 + identifiers (names, numbers, 
 
 ## The NOCTURNE cycle
 
-`python -m padam sleep` (or the `padam_sleep` tool, or a nightly cron job from [`integrations/crontab.txt`](integrations/crontab.txt)):
+`python -m padam sleep` (or the `padam_sleep` tool, or a nightly cron job from [`integrations/crontab.txt`](https://github.com/MaksimGalatin/padam-nocturne/blob/main/integrations/crontab.txt)):
 
 1. **Priorities with a floor** — every episode gets a priority, never below a floor, so routine is not starved.
 2. **A cap on the sharp** — the top tenth by priority may take at most a fixed share of the batch.
@@ -235,7 +235,7 @@ Works out of the box with no model: words + BM25 + identifiers (names, numbers, 
 
 The cycle writes a report, including a diversity metric that shows when the classifier is unsure. The cap on sharp episodes follows the agent's work: `PADAM_PROFILE=ops` remembers failures better, `creative` lets them fade.
 
-The full protocol, pseudocode and validation metrics are in the [specification](docs/NOCTURNE_SPEC.en.md).
+The full protocol, pseudocode and validation metrics are in the [specification](https://github.com/MaksimGalatin/padam-nocturne/blob/main/docs/NOCTURNE_SPEC.en.md).
 
 ---
 
@@ -299,7 +299,7 @@ Each key is stored as `w1:` + AES-256-GCM(KEK, key) with the record id as associ
 
 **Supply chain.** CI actions are pinned by commit SHA and the Actions token is read-only; the PyPI workflow uses trusted publishing without stored tokens.
 
-Found a weakness in the encryption or the forgetting? Please report it privately — see [SECURITY.md](SECURITY.md).
+Found a weakness in the encryption or the forgetting? Please report it privately — see [SECURITY.md](https://github.com/MaksimGalatin/padam-nocturne/blob/main/SECURITY.md).
 
 ---
 
@@ -352,9 +352,9 @@ CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L
 
 ## Cite, contribute, report
 
-- **Cite:** the "Cite this repository" button uses [`CITATION.cff`](CITATION.cff) (author with ORCID [0009-0002-0187-8547](https://orcid.org/0009-0002-0187-8547)); every release is archived on Zenodo — see the DOI badge above.
-- **Plugged PADAM into your agent?** Tell us what worked and what didn't — open an issue with the "Integration report" template or start a thread in Discussions. How to contribute: [CONTRIBUTING.md](CONTRIBUTING.md).
-- **Security:** [SECURITY.md](SECURITY.md).
+- **Cite:** the "Cite this repository" button uses [`CITATION.cff`](https://github.com/MaksimGalatin/padam-nocturne/blob/main/CITATION.cff) (author with ORCID [0009-0002-0187-8547](https://orcid.org/0009-0002-0187-8547)); every release is archived on Zenodo — see the DOI badge above.
+- **Plugged PADAM into your agent?** Tell us what worked and what didn't — open an issue with the "Integration report" template or start a thread in Discussions. How to contribute: [CONTRIBUTING.md](https://github.com/MaksimGalatin/padam-nocturne/blob/main/CONTRIBUTING.md).
+- **Security:** [SECURITY.md](https://github.com/MaksimGalatin/padam-nocturne/blob/main/SECURITY.md).
 
 ### Part of CODE Eternal
 
@@ -364,7 +364,7 @@ PADAM is the open, local-first memory of CODE Eternal — the project behind AIf
 
 ## License
 
-**AGPL-3.0** ([LICENSE](LICENSE)). You may use, modify and run it; if you offer it as a network service, you must publish your changes.
+**AGPL-3.0** ([LICENSE](https://github.com/MaksimGalatin/padam-nocturne/blob/main/LICENSE)). You may use, modify and run it; if you offer it as a network service, you must publish your changes.
 **Commercial license** (closed-source use, SaaS without publishing changes, support): contact@codeofdigitaleternity.com · [aifa.works](https://aifa.works).
 
 © 2026 Maksim Galatin & AIfa · CODE Eternal
