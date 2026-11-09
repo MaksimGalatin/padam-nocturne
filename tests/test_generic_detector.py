@@ -77,6 +77,26 @@ def test_card_needs_grouping_or_a_word_about_cards():
     assert safety.redact("4111 1111 " + "1111 1112")[1] == {}, "не проходит Луна"
 
 
+@pytest.mark.parametrize("речь", [
+    # найдено замером 09.11.2026: все 13 срабатываний «присваивания» на заметках были такими
+    "секреты, строки подключения к базам, пары «пароль = значение»",
+    "Шаблон «пароль: длинный» в JS маскировался бы как секрет",
+    "строки вида «пароль: значение».",
+    "ПАРОЛЬ = re.compile(r\"пароль\")",
+    "суточный лимит проекта gemini-api-key: flash-lite",
+    "консоль спросила у меня пароль contact@codeofdigitaleternity.com",
+])
+def test_password_words_in_speech_stay_open(речь):
+    assert safety.redact(речь)[1] == {}, safety.redact(речь)
+
+
+def test_password_like_still_catches_real_values():
+    for значение in ("Hunter2024!x", "«Qwerty12345!»", "P@ssw0rd", "s3cr3t-value", "abc!def#ghi"):
+        assert safety.password_like(значение), значение
+    for слово in ("значение»", "длинный", "contact@", "user@example.com", "flash-lite"):
+        assert not safety.password_like(слово), слово
+
+
 def test_public_jwk_parts_stay_open():
     закрытая = "AbC123dEf456GhI789jKl012MnO345pQr678StU901vWx234"
     чистый, сколько = safety.redact('{"kty":"RSA","n":"Nn9Kq2Wm7Lz4Vb8Xc3Rd6Tf1Gh5Jk0Pq","e":"AQAB","d":"' + закрытая + '"}')

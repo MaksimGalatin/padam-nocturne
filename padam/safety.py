@@ -71,6 +71,24 @@ _PASSWORD_PHRASE = re.compile(
     re.I)
 _PASSWORD_TAIL = ".,;:)]}"
 
+# Края значения, которые принадлежат речи, а не паролю: кавычки всех видов и пунктуация.
+_ВНЕШНИЕ_ЗНАКИ = " \"'«»“”„‘’`.,;:!?()[]{}<>"
+
+
+def password_like(value: str) -> bool:
+    """Значение после «пароль» похоже на пароль, а не на слово.
+
+    Края срезаются (кавычки, пунктуация), и нужна цифра или знак вроде !@#$%^&*~. Раньше хватало любого
+    не-буквенного знака, и «пары «пароль = значение»» закрывалась из-за закрывающей кавычки: на заметках
+    проекта так ложно срабатывали все 13 случаев присваивания из 13 (замер 09.11.2026). Пароль без цифр и
+    без таких знаков остаётся открытым — это сознательная цена: ложная маска молча портит память.
+    """
+    core = value.strip(_ВНЕШНИЕ_ЗНАКИ)
+    # «пароль contact@…» — дальше почта, а не пароль: адрес и «слово@» знаком @ паролем не становятся.
+    if re.fullmatch(r"[^@\s]+@(?:[^@\s]+\.[A-Za-z]{2,})?", core):
+        return False
+    return len(core) >= 6 and bool(re.search(r"\d|[!@#$%^&*~]", core))
+
 # Массив байтов ключа кошелька, как его выгружают Solana CLI и Phantom: [12,34,...], 32 числа и больше.
 _BYTE_ARRAY = re.compile(r"\[\s*(?:\d{1,3}\s*,\s*){31,}\d{1,3}\s*\]")
 
@@ -115,7 +133,7 @@ def redact(text: str) -> tuple[str, dict[str, int]]:
 
     def assignment(m: re.Match) -> str:
         value = m.group(4)
-        if value.startswith("[REDACTED:") or not re.search(r"[\d\W_]", value):
+        if value.startswith("[REDACTED:") or not password_like(value):
             return m.group(0)
         return m.group(1) + m.group(2) + bump("assigned_secret")
 
@@ -133,8 +151,7 @@ def redact(text: str) -> tuple[str, dict[str, int]]:
     def password_phrase(m: re.Match) -> str:
         value = m.group(2)
         core = value.rstrip(_PASSWORD_TAIL)
-        if (value.startswith("[REDACTED:") or len(core) < 6
-                or not re.search(r"\d|[!@#$%^&*+=~?_]", core)):
+        if value.startswith("[REDACTED:") or not password_like(core):
             return m.group(0)
         начало = m.start(2) - m.start(0)
         return m.group(0)[:начало] + bump("password_phrase") + value[len(core):]
