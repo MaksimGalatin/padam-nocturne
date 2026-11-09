@@ -3,7 +3,7 @@
   "name": "io.github.MaksimGalatin/padam-nocturne",
   "title": "PADAM · NOCTURNE memory",
   "description": "Local-first memory for AI agents: sleep-style consolidation and honest, verifiable forgetting",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "repository": {
     "url": "https://github.com/MaksimGalatin/padam-nocturne",
     "source": "github"
@@ -13,7 +13,7 @@
     {
       "registryType": "pypi",
       "identifier": "padam-nocturne",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"

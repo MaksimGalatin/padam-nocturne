@@ -139,6 +139,21 @@ class Memory:
                 content, kind, vec, importance, scope, source_episode_id,
                 origin=origin, status="quarantined", reason="looks like an instruction")
 
+        # Кто человек и как с ним работать, решает только он сам. Через MCP пометку origin
+        # проверить нечем, поэтому запись о личности или предпочтении от агента или чужого
+        # источника ждёт владельца всегда, а с пометкой user — если такая запись у человека
+        # уже есть (первую, пустую, пропускаем). Вид берётся и из самого текста: «Меня зовут Боб»
+        # с kind=fact остаётся записью о личности.
+        причина_защиты = None
+        if guarded:
+            вид_по_тексту = classify.infer_kind_rules(content)
+            защищённый_вид = (kind if kind in config.PROTECTED_KINDS
+                              else вид_по_тексту if вид_по_тексту in config.PROTECTED_KINDS else None)
+            if защищённый_вид and origin != "user":
+                причина_защиты = f"protected {защищённый_вид} record from {origin}"
+            elif защищённый_вид and self._есть_активная(защищённый_вид):
+                причина_защиты = f"would change the owner's {защищённый_вид} records"
+
         # СНАЧАЛА точный поиск по структурному ключу, и только потом — по
         # близости векторов. Порядок важен: ключ находит спорящую запись
         # наверняка, а вектор — как повезёт. Подробности в `_по_ключу`.
@@ -150,6 +165,10 @@ class Memory:
             threshold = config.similarity_threshold(embeddings.backend())
 
             if near is None or near[2] < threshold:
+                if причина_защиты:
+                    return "quarantined", self._insert(
+                        content, kind, vec, importance, scope, source_episode_id,
+                        origin=origin, status="quarantined", reason=причина_защиты)
                 return "created", self._insert(content, kind, vec, importance,
                                                scope, source_episode_id, origin=origin)
 
@@ -157,7 +176,8 @@ class Memory:
         verdict = classify.resolve(content, old_content)
 
         if verdict == "duplicate":
-            if origin == "user":
+            # Через MCP подтверждением не считается и пометка user: её ставит сам агент.
+            if origin == "user" and not guarded:
                 self.store.execute(
                     """UPDATE memory SET last_seen_at = ?, last_confirmed_at = ?,
                        access_count = access_count + 1,
@@ -173,15 +193,19 @@ class Memory:
             return "duplicate", old_id
 
         if verdict == "coexist":
+            if причина_защиты:
+                return "quarantined", self._insert(
+                    content, kind, vec, importance, scope, source_episode_id,
+                    origin=origin, status="quarantined", reason=причина_защиты)
             return "coexists", self._insert(content, kind, vec, importance,
                                             scope, source_episode_id, origin=origin)
 
         if guarded:
             старая = self.store.one("SELECT kind, origin FROM memory WHERE id = ?", (old_id,))
-            причина = None
-            if старая["kind"] in config.PROTECTED_KINDS:
+            причина = причина_защиты
+            if not причина and старая["kind"] in config.PROTECTED_KINDS:
                 причина = f"would replace a protected {старая['kind']} record"
-            elif origin == "external" and (старая["origin"] or "user") == "user":
+            elif not причина and origin == "external" and (старая["origin"] or "user") == "user":
                 причина = "external source over the owner's record"
             if причина:
                 return "quarantined", self._insert(
@@ -196,6 +220,13 @@ class Memory:
                valid_to = ? WHERE id = ?""",
             (new_mid, now_iso(), old_id))
         return ("merged" if verdict == "refinement" else "superseded"), new_mid
+
+    def _есть_активная(self, kind: str) -> bool:
+        # Без учёта scope: человек один, и «первая запись о личности» в новом scope не должна
+        # открывать агенту дорогу к новой личности.
+        return self.store.one(
+            "SELECT 1 FROM memory WHERE user_id = ? AND kind = ? AND status = 'active' LIMIT 1",
+            (self.user_id, kind)) is not None
 
     def _insert(self, content, kind, vec, importance, scope,
                 source_episode_id=None, supersedes=None,
@@ -558,12 +589,14 @@ class Memory:
 
     def export(self, include_superseded: bool = True,
                scope: str | None = None, limit: int | None = None,
-               offset: int = 0) -> dict:
+               offset: int = 0, include_held: bool = True) -> dict:
         """Полная выгрузка памяти. Доступна всегда, без окна и без условий.
 
         Формат самодостаточен: по нему можно восстановить состояние в
         другой системе или просто прочитать глазами. limit и offset нужны тем,
         кому вся память разом не помещается в контекст; по умолчанию отдаётся всё.
+        include_held=False убирает записи на проверке и отклонённые владельцем: так
+        выгружает MCP, агенту читать то, что ждёт решения человека, незачем.
         """
         sql = "SELECT * FROM memory WHERE user_id = ?"
         params: list = [self.user_id]
@@ -572,6 +605,8 @@ class Memory:
             params.append(scope)
         if not include_superseded:
             sql += " AND status = 'active'"
+        if not include_held:
+            sql += " AND status NOT IN ('quarantined', 'rejected')"
         sql += " ORDER BY created_at"
         всего = self.store.one("SELECT COUNT(*) FROM (" + sql + ")", tuple(params))[0]
         if limit is not None:

@@ -132,9 +132,9 @@ For questions that aggregate across many conversations ("how many…", "how much
 **What an agent can and cannot do.** An agent can read a command on a web page and try to carry it out through your memory, so the MCP server treats it as a guest:
 
 - **Search results are fenced as data.** Each answer carries a random marker that stored text cannot know in advance, so a record cannot pretend to end the data block. Records that look like commands are flagged.
-- **Secrets never get stored.** API keys, tokens, private keys and passwords in connection strings are replaced with `[REDACTED:kind]` before the text reaches the database or the vector. Set `PADAM_KEEP_SECRETS=1` to turn this off.
-- **Every record says where it came from:** `user`, `agent` or `external`, with starting confidence 1.0, 0.8 and 0.6. An agent repeating its own conclusion does not raise its confidence, so one mistake cannot grow into a "fact" by repetition.
-- **Some writes wait for you.** A write that looks like a command, one that would replace an identity or preference record, and an external source overriding your own record are held out of search until you decide with `padam review`, `padam approve` or `padam reject`. Claiming `origin: user` does not bypass this. `PADAM_MCP_TRUST_WRITES=1` turns it off.
+- **Secrets never get stored.** API keys and tokens (OpenAI, Anthropic, xAI, GitHub, GitLab, AWS, Google, Stripe, Hugging Face, npm, Neon, Resend, Slack, Vercel, Telegram, JWT, bearer), private keys, passwords in connection strings or said in words ("the password is …", "пароль — …"), wallet seed phrases (12 or more BIP-39 words), key byte arrays and the private part of a JWK are replaced with `[REDACTED:kind]` before the text reaches the database or the vector. Set `PADAM_KEEP_SECRETS=1` to turn this off.
+- **Every record says where it came from:** `user`, `agent` or `external`, with starting confidence 1.0, 0.8 and 0.6. An agent repeating its own conclusion does not raise its confidence, so one mistake cannot grow into a "fact" by repetition. Through MCP even `origin: user` does not raise it: the agent sets that label itself.
+- **Some writes wait for you.** Held out of search until you decide with `padam review`, `padam approve` or `padam reject`: a write that looks like a command (in English, Russian, Spanish, German, French, Italian, Portuguese or Chinese, including look-alike letters and zero-width characters); any identity or preference record from an agent or an external source, also when it is filed under another kind; a write that would replace such a record; and an external source overriding your own record. The first identity or preference record marked `origin: user` is stored, so a fresh memory can learn who you are; every later one waits. Records under review are not shown to agents in search, export or timeline. `PADAM_MCP_TRUST_WRITES=1` turns the review off.
 - **There is no erase tool.** Forgetting, approving and restoring exist only in the console and the REST API.
 
 These are heuristics and a boundary, not a guarantee: patterns can be evaded, so a client should still treat memory as untrusted text.
@@ -291,7 +291,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 | Variable | Default | Meaning |
 |---|---|---|
 | `PADAM_DB` | `~/.padam/memory.db` | SQLite file of the memory |
-| `PADAM_USER` | `default` | memory owner id (MCP server and REST API) |
+| `PADAM_USER` | `default` | memory owner id (MCP server, REST API and the `padam` command) |
 | `PADAM_LANG` | system language | CLI language: `en` or `ru` |
 | `PADAM_EMBED_MODEL` | `nomic-embed-text` | Ollama embedding model |
 | `PADAM_EMBED_DIM` | `768` | embedding dimension |
@@ -312,7 +312,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 233 passed, 1 skipped (9 Nov 2026, Python 3.14.4, Windows)
+python -m pytest tests/ -q        # 297 passed, 1 skipped (9 Nov 2026, Python 3.14.4, Windows)
 ```
 
 CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L3 tests never touch the network: Arweave and Solana are replaced by fakes. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.

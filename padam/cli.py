@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 
 from . import config
@@ -381,7 +382,8 @@ def main(argv=None) -> int:
     _safe_stdout()
     p = argparse.ArgumentParser(prog="padam", description=t(__doc__, DOC_EN),
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--user", default="default")
+    # Тот же пользователь, что у MCP-сервера и API: иначе `padam review` не видит записей агента.
+    p.add_argument("--user", default=os.environ.get("PADAM_USER", "default"))
     p.add_argument("--db", default=None, help=t("путь к файлу базы", "path to the database file"))
     sub = p.add_subparsers(dest="cmd", required=True)
 

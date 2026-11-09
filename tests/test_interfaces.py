@@ -80,7 +80,7 @@ def test_stdio_is_utf8_even_on_legacy_console(tmp_path):
     import subprocess, sys
     env = dict(os.environ, PADAM_DB=str(tmp_path / "u.db"), PYTHONIOENCODING="cp1252", PYTHONUTF8="0")
     запрос = {"jsonrpc": "2.0", "id": 3, "method": "tools/call",
-              "params": {"name": "padam_write", "arguments": {"content": "Отвечать по-русски", "kind": "preference"}}}
+              "params": {"name": "padam_write", "arguments": {"content": "Отвечать по-русски", "kind": "fact"}}}
     поиск = {"jsonrpc": "2.0", "id": 4, "method": "tools/call",
              "params": {"name": "padam_search", "arguments": {"query": "по-русски"}}}
     вход = json.dumps(запрос, ensure_ascii=False) + "\n" + json.dumps(поиск, ensure_ascii=False) + "\n"
