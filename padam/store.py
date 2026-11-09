@@ -95,17 +95,7 @@ WHEN new.content IS NOT NULL BEGIN
     INSERT INTO memory_fts(rowid, content) VALUES (new.rowid, new.content);
 END;
 
-CREATE TRIGGER IF NOT EXISTS memory_fts_delete AFTER DELETE ON memory BEGIN
-    INSERT INTO memory_fts(memory_fts, rowid, content)
-    VALUES ('delete', old.rowid, old.content);
-END;
-
-CREATE TRIGGER IF NOT EXISTS memory_fts_update AFTER UPDATE OF content ON memory BEGIN
-    INSERT INTO memory_fts(memory_fts, rowid, content)
-    VALUES ('delete', old.rowid, old.content);
-    INSERT INTO memory_fts(rowid, content)
-    SELECT new.rowid, new.content WHERE new.content IS NOT NULL;
-END;
+-- Триггеры удаления и правки — в FTS_TRIGGERS ниже: они заменяются и в уже созданных базах.
 
 -- сессии
 CREATE TABLE IF NOT EXISTS session (
@@ -143,6 +133,26 @@ CREATE TABLE IF NOT EXISTS anchor_key (
 """
 
 
+# 09.11.2026: удаление из индекса строки, у которой текста уже нет, портит индекс FTS5 («database disk
+# image is malformed»). Так падало повторное «забудь» и загрузка поверх отозванной записи.
+FTS_TRIGGERS = """
+DROP TRIGGER IF EXISTS memory_fts_delete;
+CREATE TRIGGER memory_fts_delete AFTER DELETE ON memory
+WHEN old.content IS NOT NULL BEGIN
+    INSERT INTO memory_fts(memory_fts, rowid, content)
+    VALUES ('delete', old.rowid, old.content);
+END;
+
+DROP TRIGGER IF EXISTS memory_fts_update;
+CREATE TRIGGER memory_fts_update AFTER UPDATE OF content ON memory BEGIN
+    INSERT INTO memory_fts(memory_fts, rowid, content)
+    SELECT 'delete', old.rowid, old.content WHERE old.content IS NOT NULL;
+    INSERT INTO memory_fts(rowid, content)
+    SELECT new.rowid, new.content WHERE new.content IS NOT NULL;
+END;
+"""
+
+
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -177,7 +187,11 @@ class Store:
         self._lock = threading.RLock()
         self.conn = sqlite3.connect(str(self.path), check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
+        # Без этого затёртый текст остаётся в свободных страницах файла и читается простым
+        # поиском по байтам: «забвение» было бы только в интерфейсе.
+        self.conn.execute("PRAGMA secure_delete = ON")
         self.conn.executescript(SCHEMA)
+        self.conn.executescript(FTS_TRIGGERS)
         self._дополнить_схему()
         self.conn.commit()
 
@@ -191,7 +205,8 @@ class Store:
 
         Только ДОБАВЛЯЕТ. Ничего не удаляет и не переписывает (раздел 19).
         """
-        НУЖНЫЕ = {"memory": {"embedding_model": "TEXT", "факт_ключ": "TEXT"}}
+        НУЖНЫЕ = {"memory": {"embedding_model": "TEXT", "факт_ключ": "TEXT",
+                             "origin": "TEXT", "quarantine_reason": "TEXT"}}
         for таблица, колонки in НУЖНЫЕ.items():
             try:
                 есть = {r["name"] for r in
@@ -231,6 +246,13 @@ class Store:
     def one(self, sql: str, params: tuple = ()) -> sqlite3.Row | None:
         with self._lock:
             return self.conn.execute(sql, params).fetchone()
+
+    def purge(self) -> None:
+        """Убирает следы затёртого текста из индекса и журнала: после этого его нет в файлах базы."""
+        with self._lock:
+            self.conn.execute("INSERT INTO memory_fts(memory_fts) VALUES('optimize')")
+            self.conn.commit()
+            self.conn.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchall()
 
     def script(self, sql: str) -> None:
         """Схема модуля (executescript) — под тем же замком, что и остальные обращения."""

@@ -9,7 +9,7 @@ from datetime import datetime, timezone, timedelta
 
 import numpy as np
 
-from . import classify, config, embeddings, retrieval
+from . import classify, config, embeddings, retrieval, safety
 from .store import Store, new_id, now_iso, pack, parse_ts, unpack
 
 
@@ -25,6 +25,8 @@ class Record:
     score: float = 0.0
     strategies: tuple[str, ...] = ()
     expired: bool = False
+    origin: str | None = None
+    created_at: str | None = None
 
     def explain(self) -> str:
         d = decay(self.kind, self.last_confirmed_at)
@@ -96,6 +98,7 @@ class Memory:
 
     def log(self, content: str, role: str = "user",
             scope: str = "global", priority: float = 1.0) -> str:
+        content = safety.clean(content)
         session_id = self.current_session(content)
         eid = new_id()
         self.store.execute(
@@ -111,15 +114,30 @@ class Memory:
 
     def remember(self, content: str, kind: str | None = None,
                  importance: float = 0.5, scope: str = "global",
-                 source_episode_id: str | None = None) -> tuple[str, str]:
+                 source_episode_id: str | None = None,
+                 origin: str = "user", guarded: bool = False) -> tuple[str, str]:
         """Возвращает (исход, id записи).
 
-        Исходы: created | duplicate | merged | superseded | coexists
+        Исходы: created | duplicate | merged | superseded | coexists | quarantined
+
+        origin — откуда запись (config.ORIGINS). guarded=True ставит вызывающий, которому нельзя
+        верить на слово, прежде всего MCP: агент мог прочитать команду на чужой странице, а его
+        пометку о происхождении проверить нечем. Тогда похожее на команду и замена защищённой
+        записи не применяются, а ждут решения владельца (`padam review`).
         """
+        content = safety.clean(content)
+        if origin not in config.ORIGINS:
+            origin = "agent" if guarded else "user"
+        guarded = guarded and not config.MCP_TRUST_WRITES
         kind = kind or classify.infer_kind(content)
         if kind not in config.KINDS:
             kind = "fact"
         vec = embeddings.embed(content)
+
+        if guarded and safety.looks_like_instruction(content):
+            return "quarantined", self._insert(
+                content, kind, vec, importance, scope, source_episode_id,
+                origin=origin, status="quarantined", reason="looks like an instruction")
 
         # СНАЧАЛА точный поиск по структурному ключу, и только потом — по
         # близости векторов. Порядок важен: ключ находит спорящую запись
@@ -133,26 +151,46 @@ class Memory:
 
             if near is None or near[2] < threshold:
                 return "created", self._insert(content, kind, vec, importance,
-                                               scope, source_episode_id)
+                                               scope, source_episode_id, origin=origin)
 
             old_id, old_content, _ = near
         verdict = classify.resolve(content, old_content)
 
         if verdict == "duplicate":
-            self.store.execute(
-                """UPDATE memory SET last_seen_at = ?, last_confirmed_at = ?,
-                   access_count = access_count + 1,
-                   confidence = MIN(confidence + 0.05, 1.0) WHERE id = ?""",
-                (now_iso(), now_iso(), old_id))
+            if origin == "user":
+                self.store.execute(
+                    """UPDATE memory SET last_seen_at = ?, last_confirmed_at = ?,
+                       access_count = access_count + 1,
+                       confidence = MIN(confidence + 0.05, 1.0) WHERE id = ?""",
+                    (now_iso(), now_iso(), old_id))
+            else:
+                # Модель повторила то, что уже есть: это не новое подтверждение, а её собственное
+                # эхо. Иначе ошибка, записанная один раз, с каждым повтором становилась бы вернее.
+                self.store.execute(
+                    """UPDATE memory SET last_seen_at = ?,
+                       access_count = access_count + 1 WHERE id = ?""",
+                    (now_iso(), old_id))
             return "duplicate", old_id
 
         if verdict == "coexist":
             return "coexists", self._insert(content, kind, vec, importance,
-                                            scope, source_episode_id)
+                                            scope, source_episode_id, origin=origin)
+
+        if guarded:
+            старая = self.store.one("SELECT kind, origin FROM memory WHERE id = ?", (old_id,))
+            причина = None
+            if старая["kind"] in config.PROTECTED_KINDS:
+                причина = f"would replace a protected {старая['kind']} record"
+            elif origin == "external" and (старая["origin"] or "user") == "user":
+                причина = "external source over the owner's record"
+            if причина:
+                return "quarantined", self._insert(
+                    content, kind, vec, importance, scope, source_episode_id,
+                    supersedes=old_id, origin=origin, status="quarantined", reason=причина)
 
         # refinement и contradiction создают новую версию
         new_mid = self._insert(content, kind, vec, importance, scope,
-                               source_episode_id, supersedes=old_id)
+                               source_episode_id, supersedes=old_id, origin=origin)
         self.store.execute(
             """UPDATE memory SET status = 'superseded', superseded_by = ?,
                valid_to = ? WHERE id = ?""",
@@ -161,7 +199,8 @@ class Memory:
 
     def _insert(self, content, kind, vec, importance, scope,
                 source_episode_id=None, supersedes=None,
-                expires_at: str | None = None) -> str:
+                expires_at: str | None = None, origin: str = "user",
+                status: str = "active", reason: str | None = None) -> str:
         mid = new_id()
         ts = now_iso()
         self.store.execute(
@@ -169,13 +208,82 @@ class Memory:
                (id, user_id, scope, kind, content, embedding, importance,
                 confidence, created_at, last_seen_at, last_confirmed_at,
                 valid_from, expires_at, status, supersedes,
-                source_episode_id, content_hash, embedding_model, факт_ключ)
-               VALUES (?,?,?,?,?,?,?,1.0,?,?,?,?,?,'active',?,?,?,?,?)""",
+                source_episode_id, content_hash, embedding_model, факт_ключ,
+                origin, quarantine_reason)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (mid, self.user_id, scope, kind, content, pack(vec),
-             max(0.0, min(1.0, importance)), ts, ts, ts, ts, expires_at,
+             max(0.0, min(1.0, importance)), config.ORIGIN_CONFIDENCE.get(origin, 1.0),
+             ts, ts, ts, ts, expires_at, status,
              supersedes, source_episode_id, content_hash(content),
-             embeddings.метка_модели(), classify.разобрать_факт(content)[0]))
+             embeddings.метка_модели(), classify.разобрать_факт(content)[0],
+             origin, reason))
         return mid
+
+    # -- проверка владельцем -------------------------------------------
+
+    def quarantined(self) -> list[dict]:
+        """Записи, которые агент хотел внести и которые ждут решения владельца."""
+        return [dict(r) for r in self.store.query(
+            """SELECT id, kind, content, origin, created_at, supersedes, quarantine_reason
+               FROM memory WHERE user_id = ? AND status = 'quarantined'
+               ORDER BY created_at""", (self.user_id,))]
+
+    def approve(self, memory_id: str) -> bool:
+        """Владелец принял запись: она становится действующей и, если нужно, заменяет прежнюю."""
+        row = self.store.one(
+            """SELECT supersedes FROM memory
+               WHERE id = ? AND user_id = ? AND status = 'quarantined'""",
+            (memory_id, self.user_id))
+        if not row:
+            return False
+        ts = now_iso()
+        ops = [("""UPDATE memory SET status = 'active', confidence = 1.0,
+                   last_confirmed_at = ?, quarantine_reason = NULL WHERE id = ?""",
+                (ts, memory_id))]
+        if row["supersedes"]:
+            ops.append(("""UPDATE memory SET status = 'superseded', superseded_by = ?, valid_to = ?
+                           WHERE id = ? AND user_id = ? AND status = 'active'""",
+                        (memory_id, ts, row["supersedes"], self.user_id)))
+        self.store.atomic(ops)
+        return True
+
+    def reject(self, memory_id: str) -> bool:
+        """Владелец отклонил запись. Текст остаётся в истории, в поиск она не попадает."""
+        cur = self.store.execute(
+            """UPDATE memory SET status = 'rejected'
+               WHERE id = ? AND user_id = ? AND status = 'quarantined'""",
+            (memory_id, self.user_id))
+        return cur.rowcount > 0
+
+    def restore(self, memory_id: str) -> bool:
+        """Вернуть из архива запись, которую опровергли зря."""
+        cur = self.store.execute(
+            """UPDATE memory SET status = 'active', confidence = 0.5
+               WHERE id = ? AND user_id = ? AND status = 'archived'""",
+            (memory_id, self.user_id))
+        return cur.rowcount > 0
+
+    # -- смена модели эмбеддингов --------------------------------------
+
+    def reindex(self, limit: int | None = None) -> dict:
+        """Пересчитывает векторы записей, посчитанные другой моделью.
+
+        После смены модели старые векторы несравнимы с новыми, и поиск по смыслу молча перестаёт
+        их находить. Текст не меняется, история не трогается.
+        """
+        текущая = embeddings.метка_модели()
+        sql = """SELECT id, content FROM memory
+                 WHERE user_id = ? AND content IS NOT NULL
+                   AND (embedding IS NULL OR embedding_model IS NULL OR embedding_model != ?)"""
+        rows = self.store.query(sql, (self.user_id, текущая))
+        всего = len(rows)
+        if limit is not None:
+            rows = rows[:limit]
+        for r in rows:
+            self.store.execute(
+                "UPDATE memory SET embedding = ?, embedding_model = ? WHERE id = ?",
+                (pack(embeddings.embed(r["content"])), текущая, r["id"]))
+        return {"model": текущая, "reindexed": len(rows), "left": всего - len(rows)}
 
     def связи_от(self, сущность: str, scope: str = "global",
                  предел: int = 12) -> list[str]:
@@ -262,7 +370,7 @@ class Memory:
         в последний раз подтверждалась верной, а не когда её извлекали.
         """
         sql = """SELECT id, kind, content, embedding, importance, confidence,
-                        last_confirmed_at, expires_at, session_id
+                        last_confirmed_at, expires_at, session_id, origin, created_at
                  FROM memory
                  WHERE user_id = ? AND scope = ? AND status = 'active'"""
         params: list = [self.user_id, scope]
@@ -279,7 +387,8 @@ class Memory:
                  "confidence": r["confidence"],
                  "last_confirmed_at": r["last_confirmed_at"],
                  "expires_at": r["expires_at"],
-                 "session_id": r["session_id"]} for r in raw]
+                 "session_id": r["session_id"], "origin": r["origin"],
+                 "created_at": r["created_at"]} for r in raw]
 
         scores, rankings = retrieval.hybrid_rank(
             self.store, self.user_id, scope, query, rows)
@@ -311,7 +420,8 @@ class Memory:
 
             rec = Record(rid, r["kind"], r["content"], r["importance"],
                          r["confidence"], confirmed, rrf,
-                         strategies=found_by, expired=expired)
+                         strategies=found_by, expired=expired,
+                         origin=r["origin"], created_at=r["created_at"])
             rec.score = (rrf * rec.importance * rec.confidence
                          * decay(rec.kind, confirmed) * boost
                          * (config.EXPIRED_PENALTY if expired else 1.0))
@@ -341,17 +451,24 @@ class Memory:
             (now_iso(), memory_id, self.user_id))
         return cur.rowcount > 0
 
-    def refute(self, memory_id: str, drop: float = 0.3) -> bool:
+    def refute(self, memory_id: str, drop: float = 0.3,
+               floor: float = 0.0) -> bool:
         """Запись оказалась неверной: снизить уверенность.
 
-        Свежесть НЕ обновляется. Если уверенность падает до нуля, запись
-        уходит в архив, но остаётся в истории.
+        Свежесть НЕ обновляется. Если уверенность падает до нуля, запись уходит в архив, но
+        остаётся в истории. floor — ниже этого не опускать: так MCP не может вывести из поиска
+        защищённую запись. Несуществующая или уже недействующая запись — False, без молчаливого
+        успеха.
         """
-        self.store.execute(
-            """UPDATE memory SET confidence = MAX(confidence - ?, 0.0),
-               refuted_count = refuted_count + 1
-               WHERE id = ? AND user_id = ?""", (drop, memory_id, self.user_id))
+        drop = max(0.0, min(float(drop), 1.0))
         cur = self.store.execute(
+            """UPDATE memory SET confidence = MAX(confidence - ?, ?),
+               refuted_count = refuted_count + 1
+               WHERE id = ? AND user_id = ? AND status = 'active'""",
+            (drop, floor, memory_id, self.user_id))
+        if cur.rowcount == 0:
+            return False
+        self.store.execute(
             """UPDATE memory SET status = 'archived'
                WHERE id = ? AND user_id = ? AND confidence <= 0.0""",
             (memory_id, self.user_id))
@@ -359,20 +476,67 @@ class Memory:
 
     # -- отзыв ----------------------------------------------------------
 
-    def revoke(self, memory_id: str) -> bool:
-        """Физическое затирание содержания. Хеш и якорь остаются."""
-        cur = self.store.execute(
-            """UPDATE memory SET status = 'revoked', content = NULL,
-               embedding = NULL WHERE id = ? AND user_id = ?""",
-            (memory_id, self.user_id))
-        # Затирается сам ключ, а не только ставится отметка: шифротекст этой
-        # записи в Arweave без ключа — шум навсегда. Отметка времени уходит
-        # в следующий корень L3 «квитанцией забвения» (anchor.py).
-        self.store.execute(
-            """UPDATE anchor_key SET key_ref = 'destroyed', destroyed_at = ?
-               WHERE memory_id = ? AND destroyed_at IS NULL""",
-            (now_iso(), memory_id))
-        return cur.rowcount > 0
+    def _связанные(self, memory_id: str) -> list:
+        """Всё, что несёт то же содержание: цепочка версий в обе стороны и точные копии."""
+        видел: dict = {}
+        очередь = [memory_id]
+        while очередь:
+            текущая = очередь.pop()
+            if текущая in видел:
+                continue
+            row = self.store.one(
+                """SELECT id, content, content_hash, supersedes, superseded_by,
+                          source_episode_id
+                   FROM memory WHERE id = ? AND user_id = ?""",
+                (текущая, self.user_id))
+            if not row:
+                continue
+            видел[текущая] = row
+            очередь += [х for х in (row["supersedes"], row["superseded_by"]) if х]
+            очередь += [r["id"] for r in self.store.query(
+                """SELECT id FROM memory WHERE user_id = ?
+                   AND (supersedes = ? OR superseded_by = ?)""",
+                (self.user_id, текущая, текущая))]
+            if row["content_hash"]:
+                очередь += [r["id"] for r in self.store.query(
+                    "SELECT id FROM memory WHERE user_id = ? AND content_hash = ?",
+                    (self.user_id, row["content_hash"]))]
+        return list(видел.values())
+
+    def revoke(self, memory_id: str, cascade: bool = True) -> bool:
+        """Физическое затирание содержания. Хеш и якорь остаются.
+
+        По умолчанию вместе с записью затираются её прежние и новые версии, точные копии и
+        исходные эпизоды. Иначе «забытое» продолжало бы лежать открытым текстом в истории версий
+        и в буфере, а структурный ключ хранил бы, о чём шла речь.
+        """
+        записи = self._связанные(memory_id)
+        if not cascade:
+            записи = [з for з in записи if з["id"] == memory_id]
+        if not записи:
+            return False
+        ts = now_iso()
+        ops: list[tuple[str, tuple]] = []
+        for з in записи:
+            ops.append(("""UPDATE memory SET status = 'revoked', content = NULL,
+                           embedding = NULL, факт_ключ = NULL WHERE id = ?""", (з["id"],)))
+            # Повторное «забудь» — обычное дело: цепочка могла быть затёрта раньше.
+            # Затирается сам ключ, а не только ставится отметка: шифротекст этой
+            # записи в Arweave без ключа — шум навсегда. Отметка времени уходит
+            # в следующий корень L3 «квитанцией забвения» (anchor.py).
+            ops.append(("""UPDATE anchor_key SET key_ref = 'destroyed', destroyed_at = ?
+                           WHERE memory_id = ? AND destroyed_at IS NULL""", (ts, з["id"])))
+            if з["source_episode_id"]:
+                ops.append(("""UPDATE episode SET content = '', embedding = NULL, processed = 1
+                               WHERE id = ? AND user_id = ?""",
+                            (з["source_episode_id"], self.user_id)))
+            if з["content"]:
+                ops.append(("""UPDATE episode SET content = '', embedding = NULL, processed = 1
+                               WHERE user_id = ? AND content = ?""",
+                            (self.user_id, з["content"])))
+        self.store.atomic(ops)
+        self.store.purge()
+        return True
 
     # -- история версий -------------------------------------------------
 
@@ -393,11 +557,13 @@ class Memory:
     # -- выгрузка -------------------------------------------------------
 
     def export(self, include_superseded: bool = True,
-               scope: str | None = None) -> dict:
+               scope: str | None = None, limit: int | None = None,
+               offset: int = 0) -> dict:
         """Полная выгрузка памяти. Доступна всегда, без окна и без условий.
 
         Формат самодостаточен: по нему можно восстановить состояние в
-        другой системе или просто прочитать глазами.
+        другой системе или просто прочитать глазами. limit и offset нужны тем,
+        кому вся память разом не помещается в контекст; по умолчанию отдаётся всё.
         """
         sql = "SELECT * FROM memory WHERE user_id = ?"
         params: list = [self.user_id]
@@ -407,6 +573,10 @@ class Memory:
         if not include_superseded:
             sql += " AND status = 'active'"
         sql += " ORDER BY created_at"
+        всего = self.store.one("SELECT COUNT(*) FROM (" + sql + ")", tuple(params))[0]
+        if limit is not None:
+            sql += " LIMIT ? OFFSET ?"
+            params += [int(limit), int(offset)]
 
         records = []
         for r in self.store.query(sql, tuple(params)):
@@ -429,8 +599,8 @@ class Memory:
             "format": "padam-export/1",
             "exported_at": now_iso(),
             "user_id": self.user_id,
-            "counts": {"memory": len(records), "sessions": len(sessions),
-                       "nocturne_runs": len(runs)},
+            "counts": {"memory": len(records), "memory_total": всего,
+                       "sessions": len(sessions), "nocturne_runs": len(runs)},
             "memory": records,
             "sessions": sessions,
             "nocturne_runs": runs,
@@ -457,8 +627,9 @@ class Memory:
                     expires_at, valid_from, valid_to, access_count,
                     refuted_count, status, supersedes, superseded_by,
                     source_episode_id, session_id, content_hash,
-                    anchor_tx, anchor_slot)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    anchor_tx, anchor_slot, origin, quarantine_reason,
+                    embedding_model, факт_ключ)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (rec["id"], self.user_id, rec.get("scope", "global"),
                  rec.get("kind", "fact"), rec.get("content"), pack(vec),
                  rec.get("importance", 0.5), rec.get("confidence", 1.0),
@@ -470,7 +641,11 @@ class Memory:
                  rec.get("refuted_count", 0), rec.get("status", "active"),
                  rec.get("supersedes"), rec.get("superseded_by"),
                  rec.get("source_episode_id"), rec.get("session_id"), ch,
-                 rec.get("anchor_tx"), rec.get("anchor_slot")))
+                 rec.get("anchor_tx"), rec.get("anchor_slot"),
+                 rec.get("origin"), rec.get("quarantine_reason"),
+                 embeddings.метка_модели() if vec is not None else None,
+                 # Без ключа восстановленная запись не находилась бы как спорящая (см. `_по_ключу`).
+                 classify.разобрать_факт(rec["content"])[0] if rec.get("content") else None))
             added += 1
         return added
 
@@ -486,6 +661,9 @@ class Memory:
                 """SELECT kind, COUNT(*) AS n FROM memory
                    WHERE user_id = ? AND status = 'active'
                    GROUP BY kind""", (self.user_id,))}
+        ожидает = scalar(
+            "SELECT COUNT(*) FROM episode WHERE user_id=? AND processed=0",
+            (self.user_id,))
 
         return {
             "backend": embeddings.backend(),
@@ -499,8 +677,14 @@ class Memory:
             "revoked": scalar(
                 "SELECT COUNT(*) FROM memory WHERE user_id=? AND status='revoked'",
                 (self.user_id,)),
-            "episodes_pending": scalar(
-                "SELECT COUNT(*) FROM episode WHERE user_id=? AND processed=0",
+            "quarantined": scalar(
+                "SELECT COUNT(*) FROM memory WHERE user_id=? AND status='quarantined'",
                 (self.user_id,)),
+            "episodes_pending": ожидает,
+            "consolidation_due": ожидает >= config.CONSOLIDATION_DUE,
+            "stale_vectors": scalar(
+                """SELECT COUNT(*) FROM memory WHERE user_id=? AND content IS NOT NULL
+                   AND (embedding IS NULL OR embedding_model IS NULL OR embedding_model != ?)""",
+                (self.user_id, embeddings.метка_модели())),
             "by_kind": by_kind,
         }

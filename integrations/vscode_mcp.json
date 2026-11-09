@@ -2,8 +2,7 @@
   "servers": {
     "padam": {
       "type": "stdio",
-      "command": "python",
-      "args": ["-m", "padam.mcp_server"],
+      "command": "padam-mcp",
       "env": {
         "PADAM_DB": "REPLACE_WITH_HOME/.padam/memory.db"
       }

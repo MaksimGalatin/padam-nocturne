@@ -91,7 +91,7 @@ class Nocturne:
 
     def pending(self) -> list:
         return self.store.query(
-            """SELECT id, content, priority, replay_count, scope, session_id
+            """SELECT id, content, role, priority, replay_count, scope, session_id
                FROM episode WHERE user_id = ? AND processed = 0
                ORDER BY created_at""", (self.mem.user_id,))
 
@@ -166,10 +166,14 @@ class Nocturne:
                 outcomes["dry"] += 1
                 continue
 
+            # Реплика модели или чужой текст из буфера не становятся словами человека:
+            # у них меньше начальная уверенность, и защищённое они сами не заменят.
+            откуда = {"user": "user", "assistant": "agent"}.get(ep["role"], "external")
             outcome, _ = self.mem.remember(
                 content=ep["content"], kind=kind,
                 importance=min(1.0, 0.5 * weight + 0.25),
-                scope=ep["scope"], source_episode_id=ep["id"])
+                scope=ep["scope"], source_episode_id=ep["id"],
+                origin=откуда, guarded=откуда != "user")
             outcomes[outcome] += 1
 
             # (3) распад приоритета после переигрывания

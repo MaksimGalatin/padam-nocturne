@@ -35,7 +35,7 @@ import re
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import __version__
+from . import __version__, config, safety
 from .i18n import t
 from .memory import Memory
 from .nocturne import Nocturne
@@ -158,29 +158,38 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(400, {"error": "query is required"})
                 found = m.recall(data["query"], scope=data.get("scope", "global"),
                                  kind=data.get("kind"),
-                                 limit=int(data.get("limit", 5)))
+                                 limit=max(1, min(int(data.get("limit", 5)), config.MAX_RECALL_LIMIT)))
                 return self._send(200, {"results": [
                     {"id": r.id, "kind": r.kind, "content": r.content,
                      "score": round(r.score, 5),
                      "importance": r.importance, "confidence": r.confidence,
+                     "origin": r.origin, "created_at": r.created_at,
                      "expired": r.expired,
+                     "suspicious": safety.looks_like_instruction(r.content),
                      "found_by": list(r.strategies)} for r in found]})
 
             if self.path == "/write":
                 if "content" not in data:
                     return self._send(400, {"error": "content is required"})
+                if len(str(data["content"])) > config.MAX_CONTENT_CHARS:
+                    return self._send(413, {"error": "content too large"})
+                # Без поля origin запись считается словами владельца, как и раньше. Клиент, указавший
+                # agent или external, проходит те же проверки, что и агент через MCP.
+                origin = data.get("origin", "user")
+                if origin not in config.ORIGINS:
+                    return self._send(400, {"error": f"origin must be one of {list(config.ORIGINS)}"})
                 outcome, mid = m.remember(
                     data["content"], kind=data.get("kind"),
                     importance=float(data.get("importance", 0.5)),
-                    scope=data.get("scope", "global"))
+                    scope=data.get("scope", "global"),
+                    origin=origin, guarded=origin != "user")
                 return self._send(200, {"outcome": outcome, "id": mid})
 
             if self.path == "/confirm":
                 return self._send(200, {"ok": m.confirm(data["id"])})
 
             if self.path == "/refute":
-                m.refute(data["id"], drop=float(data.get("drop", 0.3)))
-                return self._send(200, {"ok": True})
+                return self._send(200, {"ok": m.refute(data["id"], drop=float(data.get("drop", 0.3)))})
 
             if self.path == "/forget":
                 return self._send(200, {"ok": m.revoke(data["id"])})

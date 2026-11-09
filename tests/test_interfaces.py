@@ -120,8 +120,7 @@ def test_every_tool_has_m8ven_annotations():
         for h in hints:
             assert h in t["annotations"] and isinstance(t["annotations"][h], bool), \
                 f"{t['name']} missing boolean annotation {h}"
-            assert h in t and isinstance(t[h], bool), \
-                f"{t['name']} missing top-level hint {h}"
+            assert h not in t, f"{t['name']}: подсказка {h} вне annotations, спецификация MCP кладёт их только туда"
 
 
 def test_unknown_method_returns_error():

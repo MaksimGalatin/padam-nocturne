@@ -1,5 +1,7 @@
 # PADAM · NOCTURNE
 
+<!-- mcp-name: io.github.MaksimGalatin/padam-nocturne -->
+
 ### Memory for AI agents that sleeps, forgets honestly, and can be verified forever
 
 [![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%208%20tools-8A2BE2) ![release](https://img.shields.io/badge/release-v0.2.0-success)
@@ -101,10 +103,10 @@ The CLI answers in English or Russian, following the system language; force one 
 **One memory for all your tools (MCP):**
 
 ```bash
-claude mcp add padam -- python -m padam.mcp_server
+claude mcp add padam -- uvx --from git+https://github.com/MaksimGalatin/padam-nocturne padam-nocturne
 ```
 
-Ready-made configs for Claude Desktop, Cursor, VS Code, systemd and cron are in [`integrations/`](integrations/).
+Installed with `pip install -e .`? Then simply `claude mcp add padam -- padam-mcp`. Ready-made configs for Claude Desktop, Cursor, VS Code, systemd and cron are in [`integrations/`](integrations/).
 
 ---
 
@@ -112,20 +114,30 @@ Ready-made configs for Claude Desktop, Cursor, VS Code, systemd and cron are in 
 
 ### MCP server (stdio)
 
-`python -m padam.mcp_server` (or the `padam-mcp` entry point). The server negotiates protocol **2025-06-18** (also 2025-03-26 and 2024-11-05), always speaks UTF-8 over stdio — including Windows consoles in cp1251/cp1252 — and declares all four hints (read-only, destructive, idempotent, open-world) on each of its **8 tools**. Malformed input (`null`, `[]`, a bare number) gets a JSON-RPC `-32600` error instead of crashing the process. Checked end-to-end with the official MCP Python SDK client on 12 Oct 2026.
+`padam-mcp` (the same program is also installed as `padam-nocturne`; `python -m padam.mcp_server` works too). The server negotiates protocol **2025-06-18** (also 2025-03-26 and 2024-11-05), always speaks UTF-8 over stdio — including Windows consoles in cp1251/cp1252 — and declares all four hints (read-only, destructive, idempotent, open-world) on each of its **8 tools**, and checks every call against the tool's schema. Malformed input (`null`, `[]`, a bare number) gets a JSON-RPC `-32600` error instead of crashing the process. Checked end-to-end with the official MCP Python SDK client on 12 Oct 2026.
 
 | Tool | What it does |
 |---|---|
 | `padam_search` | recall by meaning, words and identifiers; `compact: true` for questions across many conversations |
-| `padam_write` | store a record; if a close record exists, PADAM decides itself whether it is a duplicate, a refinement or a contradiction |
+| `padam_write` | store a record; if a close record exists, PADAM decides itself whether it is a duplicate, a refinement or a contradiction. Secrets are masked; some writes wait for the owner (see below) |
 | `padam_confirm` | mark a retrieved record as still true — refreshes it and raises its confidence (retrieval alone never does) |
-| `padam_refute` | mark a record as no longer true — lowers its confidence without refreshing it; after enough refutations it is archived but stays in history |
+| `padam_refute` | mark a record as no longer true — lowers its confidence without refreshing it; after enough refutations it is archived but stays in history. Identity and preference records are never archived through this tool |
 | `padam_timeline` | version history of a record |
-| `padam_stats` | memory state: counts by status and type, the active embedding backend, where the database lives |
+| `padam_stats` | memory state: counts by status and type, records waiting for review, whether consolidation is due, the active embedding backend, where the database lives |
 | `padam_sleep` | run a consolidation cycle (normally scheduled, not called by hand) |
-| `padam_export` | export the whole memory as JSON |
+| `padam_export` | export the whole memory as JSON, or one page with `limit` and `offset` |
 
 For questions that aggregate across many conversations ("how many…", "how much in total…"), call `padam_search` with `limit` 25–30 and `compact: true`: each record keeps the person's words and only the start of the assistant's reply, so more of the scattered facts fit in the same space. Stored records are not changed; `compact` is off by default.
+
+**What an agent can and cannot do.** An agent can read a command on a web page and try to carry it out through your memory, so the MCP server treats it as a guest:
+
+- **Search results are fenced as data.** Each answer carries a random marker that stored text cannot know in advance, so a record cannot pretend to end the data block. Records that look like commands are flagged.
+- **Secrets never get stored.** API keys, tokens, private keys and passwords in connection strings are replaced with `[REDACTED:kind]` before the text reaches the database or the vector. Set `PADAM_KEEP_SECRETS=1` to turn this off.
+- **Every record says where it came from:** `user`, `agent` or `external`, with starting confidence 1.0, 0.8 and 0.6. An agent repeating its own conclusion does not raise its confidence, so one mistake cannot grow into a "fact" by repetition.
+- **Some writes wait for you.** A write that looks like a command, one that would replace an identity or preference record, and an external source overriding your own record are held out of search until you decide with `padam review`, `padam approve` or `padam reject`. Claiming `origin: user` does not bypass this. `PADAM_MCP_TRUST_WRITES=1` turns it off.
+- **There is no erase tool.** Forgetting, approving and restoring exist only in the console and the REST API.
+
+These are heuristics and a boundary, not a guarantee: patterns can be evaded, so a client should still treat memory as untrusted text.
 
 ### REST API
 
@@ -153,7 +165,10 @@ POST bodies must be `application/json` objects of at most 10 MB. When running lo
 | `log` · `sleep` | add to the episode buffer · run the consolidation cycle |
 | `confirm` · `refute` | a record is still true · no longer true |
 | `timeline` | version history of a record |
-| `forget` | revoke a record and destroy its key |
+| `forget` | revoke a record with its versions, exact copies and source episodes, and destroy their keys |
+| `review` · `approve` · `reject` | writes held for the owner: list, accept, reject |
+| `restore` | bring an archived record back |
+| `reindex` | recompute vectors after changing the embedding model |
 | `stats` | memory state |
 | `export` · `import` | the whole memory as JSON and back |
 | `serve` · `api` | start the MCP server (stdio) · start the REST API |
@@ -250,6 +265,8 @@ All three were verified end-to-end with `l3-verify` against Arweave and the chai
 
 **Per-record keys.** Every record is encrypted with its own AES-256-GCM key. Destroying that one key is what "forget" means on an immutable store: the ciphertext stays on Arweave, but nobody can ever read it again.
 
+**Forgetting reaches the disk.** `forget` wipes the record, every version of it, its exact copies and the episodes it came from, then rebuilds the search index and truncates the WAL with `secure_delete` on. A test searches the raw database files for the forgotten words (`tests/test_safety.py`). The content hash stays as a receipt. The same words inside other, unrelated records or episodes are not touched: forget each of those too. The rolling topic vector of a session is not recomputed. Backups you made yourself are outside its reach.
+
 **Protect the keys with a passphrase** (recommended before the first anchoring):
 
 ```bash
@@ -282,6 +299,8 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 | `PADAM_ALLOW_FALLBACK` | `1` | fall back to built-in search when Ollama is unavailable |
 | `PADAM_SIM_THRESHOLD_OLLAMA` | `0.85` | similarity for treating records as duplicates (neural) |
 | `PADAM_SIM_THRESHOLD_BUILTIN` | `0.35` | the same for built-in search |
+| `PADAM_MCP_TRUST_WRITES` | `0` | `1` lets MCP writes through without the owner's review |
+| `PADAM_KEEP_SECRETS` | `0` | `1` stores secret-looking values as they are |
 | `PADAM_API_TOKEN` | — | token for the REST API (required on a public address) |
 | `PADAM_KEY_PASSPHRASE` | — | passphrase for wrapped per-record keys |
 | `PADAM_ARWEAVE_WALLET` · `PADAM_SOLANA_KEYPAIR` · `PADAM_TURBO_SDK_DIR` | — | L3 wallets and the Turbo SDK location |
@@ -292,7 +311,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 133 passed (23 Oct 2026, fresh venv, Python 3.14.4, Windows)
+python -m pytest tests/ -q        # 232 passed, 1 skipped (9 Nov 2026, Python 3.14.4, Windows)
 ```
 
 CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L3 tests never touch the network: Arweave and Solana are replaced by fakes. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.

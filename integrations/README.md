@@ -36,7 +36,7 @@
 ## Claude Code
 
 ```bash
-claude mcp add padam -- python -m padam.mcp_server
+claude mcp add padam -- padam-mcp
 ```
 
 Или вручную в `~/.claude/settings.json` — блок `mcpServers` того же вида.

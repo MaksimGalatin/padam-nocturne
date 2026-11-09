@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.MaksimGalatin/padam-nocturne",
   "title": "PADAM · NOCTURNE memory",
-  "description": "Local-first memory for AI agents: sleep-style consolidation, honest forgetting, verifiable on Arweave + Solana",
-  "version": "0.2.0",
+  "description": "Local-first memory for AI agents: sleep-style consolidation and honest, verifiable forgetting",
+  "version": "0.2.1",
   "repository": {
     "url": "https://github.com/MaksimGalatin/padam-nocturne",
     "source": "github"
@@ -13,11 +13,25 @@
     {
       "registryType": "pypi",
       "identifier": "padam-nocturne",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
-      }
+      },
+      "environmentVariables": [
+        {
+          "name": "PADAM_DB",
+          "description": "Path to the SQLite memory file. Default: ~/.padam/memory.db",
+          "isRequired": false,
+          "format": "filepath"
+        },
+        {
+          "name": "OLLAMA_URL",
+          "description": "Local Ollama address for embeddings. Without it a built-in method is used.",
+          "isRequired": false,
+          "format": "string"
+        }
+      ]
     }
   ]
 }

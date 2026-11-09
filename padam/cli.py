@@ -7,6 +7,11 @@
     padam stats                   состояние памяти
     padam timeline <id>           история версий записи
     padam forget <id>             отозвать запись
+    padam review                  что агент хотел записать и ждёт решения владельца
+    padam approve <id>            принять такую запись
+    padam reject <id>             отклонить такую запись
+    padam restore <id>            вернуть запись из архива
+    padam reindex                 пересчитать векторы после смены модели
 """
 
 from __future__ import annotations
@@ -31,6 +36,11 @@ DOC_EN = """PADAM command line.
     padam stats                   memory state
     padam timeline <id>           version history of a record
     padam forget <id>             revoke a record
+    padam review                  what an agent tried to store and now waits for the owner
+    padam approve <id>            accept such a record
+    padam reject <id>             reject such a record
+    padam restore <id>            bring a record back from the archive
+    padam reindex                 recompute vectors after changing the embedding model
 
 Language: English or Russian by system language; force with PADAM_LANG=en|ru.
 """
@@ -54,6 +64,7 @@ def cmd_remember(m: Memory, a) -> int:
         "superseded": t("заменено, прежняя версия сохранена в истории",
                         "replaced; the previous version is kept in history"),
         "coexists": t("добавлено рядом с прежним", "stored alongside a similar record"),
+        "quarantined": t("ждёт проверки: padam review", "waiting for review: padam review"),
     }
     print(f"{GREEN}{labels.get(outcome, outcome)}{RESET}")
     print(f"{DIM}id: {mid}{RESET}")
@@ -124,6 +135,14 @@ def cmd_stats(m: Memory, a) -> int:
     print(t(f"Замещённых:           {s['superseded']}", f"Superseded:           {s['superseded']}"))
     print(t(f"Отозванных:           {s['revoked']}", f"Revoked:              {s['revoked']}"))
     print(t(f"Эпизодов в буфере:    {s['episodes_pending']}", f"Episodes in buffer:   {s['episodes_pending']}"))
+    if s["quarantined"]:
+        print(t(f"Ждут решения:         {s['quarantined']}  (padam review)",
+                f"Waiting for review:   {s['quarantined']}  (padam review)"))
+    if s["stale_vectors"]:
+        print(t(f"Векторы другой модели: {s['stale_vectors']}  (padam reindex)",
+                f"Stale vectors:         {s['stale_vectors']}  (padam reindex)"))
+    if s["consolidation_due"]:
+        print(t("Пора запустить цикл: padam sleep", "Time for a consolidation cycle: padam sleep"))
     if s["by_kind"]:
         print(t("\nПо типам:", "\nBy kind:"))
         for k, n in sorted(s["by_kind"].items(), key=lambda x: -x[1]):
@@ -185,16 +204,62 @@ def cmd_confirm(m: Memory, a) -> int:
 
 
 def cmd_refute(m: Memory, a) -> int:
-    m.refute(a.id, drop=a.drop)
+    if not m.refute(a.id, drop=a.drop):
+        _not_found()
+        return 1
     print(t(f"{GREEN}Уверенность снижена.{RESET} Свежесть не обновлялась.",
             f"{GREEN}Confidence lowered.{RESET} Freshness not renewed."))
     return 0
 
 
+def cmd_review(m: Memory, a) -> int:
+    записи = m.quarantined()
+    if not записи:
+        print(t("На проверке ничего нет.", "Nothing is waiting for review."))
+        return 0
+    for з in записи:
+        print(f"{GREEN}{з['id']}{RESET}  [{з['kind']}]  {з['content']}")
+        print(f"  {DIM}{t('откуда', 'origin')}: {з['origin']};  {t('причина', 'reason')}: {з['quarantine_reason']};"
+              f"  {з['created_at'][:19]}{RESET}")
+    print(t("\npadam approve <id>  принять;  padam reject <id>  отклонить",
+            "\npadam approve <id>  accept;  padam reject <id>  reject"))
+    return 0
+
+
+def cmd_approve(m: Memory, a) -> int:
+    if m.approve(a.id):
+        print(t(f"{GREEN}Принято.{RESET} Запись действует.", f"{GREEN}Approved.{RESET} The record is active."))
+        return 0
+    _not_found()
+    return 1
+
+
+def cmd_reject(m: Memory, a) -> int:
+    if m.reject(a.id):
+        print(t(f"{GREEN}Отклонено.{RESET} В поиск не попадёт, в истории осталось.",
+                f"{GREEN}Rejected.{RESET} It stays out of search and remains in history."))
+        return 0
+    _not_found()
+    return 1
+
+
+def cmd_restore(m: Memory, a) -> int:
+    if m.restore(a.id):
+        print(t(f"{GREEN}Возвращено из архива.{RESET}", f"{GREEN}Restored from the archive.{RESET}"))
+        return 0
+    _not_found()
+    return 1
+
+
+def cmd_reindex(m: Memory, a) -> int:
+    print(json.dumps(m.reindex(limit=a.limit), ensure_ascii=False))
+    return 0
+
+
 def cmd_forget(m: Memory, a) -> int:
     if m.revoke(a.id):
-        print(t(f"{GREEN}Отозвано.{RESET} Содержание затёрто, хеш и якорь сохранены.",
-                f"{GREEN}Revoked.{RESET} Content wiped; hash and anchor kept."))
+        print(t(f"{GREEN}Отозвано.{RESET} Затёрты запись, её версии, копии и исходные эпизоды; хеш и якорь сохранены.",
+                f"{GREEN}Revoked.{RESET} The record, its versions, copies and source episodes are wiped; hash and anchor kept."))
         print(f"{DIM}" + t("Если запись была заякорена, ключ уничтожен — данные в цепи нечитаемы навсегда.",
                            "If the record was anchored, its key is destroyed — the on-chain data is unreadable forever.")
               + f"{RESET}")
@@ -413,6 +478,26 @@ def main(argv=None) -> int:
     s = sub.add_parser("forget", help=t("отозвать запись", "revoke a record"))
     s.add_argument("id")
     s.set_defaults(fn=cmd_forget)
+
+    s = sub.add_parser("review", help=t("записи агента, ждущие решения владельца", "agent writes waiting for the owner"))
+    s.set_defaults(fn=cmd_review)
+
+    s = sub.add_parser("approve", help=t("принять запись с проверки", "accept a held record"))
+    s.add_argument("id")
+    s.set_defaults(fn=cmd_approve)
+
+    s = sub.add_parser("reject", help=t("отклонить запись с проверки", "reject a held record"))
+    s.add_argument("id")
+    s.set_defaults(fn=cmd_reject)
+
+    s = sub.add_parser("restore", help=t("вернуть запись из архива", "bring a record back from the archive"))
+    s.add_argument("id")
+    s.set_defaults(fn=cmd_restore)
+
+    s = sub.add_parser("reindex", help=t("пересчитать векторы после смены модели",
+                                         "recompute vectors after changing the embedding model"))
+    s.add_argument("--limit", type=int, default=None)
+    s.set_defaults(fn=cmd_reindex)
 
     a = p.parse_args(argv)
     from .store import Store
