@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.1 — 9 November 2026
+
+From an outside review of the 0.4.0 update (9 Nov 2026).
+
+### Security
+- `padam l3` no longer sends anything to Arweave while record keys are not protected by a passphrase: without `protect-keys` the keys sit in the database file in clear, and what reaches Arweave stays there forever. `--allow-unprotected-keys` overrides it knowingly; `--dry-run` sends nothing and is not held. Before, this was advice in the README.
+- `PADAM_MCP_REVIEW_ALL=1`: every agent write through MCP waits for the owner, whatever `origin` the agent claims. MCP carries no proof of where a text came from, so `PADAM_HOLD_EXTERNAL` relies on the agent's word; this boundary does not. Off by default: without the owner the memory would not grow.
+
+### Added
+- `padam stats` and `padam_stats` report `record_keys`: whether a passphrase protects the record keys and how many lie in clear.
+- `redteam/`: the Red Team Challenge. Rules, a runner that writes each case through MCP like an outside agent and judges by the raw database bytes and record status (each secret case in a database of its own), and a public set of 214 cases built from the test suite (214 of 214 pass). The measure that counts is a sealed set written by someone who has not seen the code changes, committed by its SHA-256 before the next release.
+
 ## 0.4.0 — 9 November 2026
 
 ### Changed

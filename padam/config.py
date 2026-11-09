@@ -60,6 +60,9 @@ MCP_TRUST_WRITES = os.environ.get("PADAM_MCP_TRUST_WRITES", "0") == "1"
 # 0.4.0: по умолчанию ВКЛЮЧЕНО — словарь команд подгоняется под виденные атаки (третий набор: 6 из 14),
 # поэтому прочитанное агентом снаружи ждёт владельца всегда. PADAM_HOLD_EXTERNAL=0 выключает.
 HOLD_EXTERNAL = os.environ.get("PADAM_HOLD_EXTERNAL", "1") != "0"
+# 0.4.1: каждая запись агента через MCP ждёт владельца, какую бы пометку источника агент ни поставил (её сервер
+# проверить не может — в MCP нет удостоверения источника). Выключено по умолчанию: без владельца память не растёт.
+MCP_REVIEW_ALL = os.environ.get("PADAM_MCP_REVIEW_ALL", "0") == "1"
 KEEP_SECRETS = os.environ.get("PADAM_KEEP_SECRETS", "0") == "1"
 
 MAX_CONTENT_CHARS = 20000

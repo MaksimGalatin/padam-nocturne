@@ -313,6 +313,17 @@ def cmd_l3(m: Memory, a) -> int:
                 "--arweave-wallet and --solana-keypair are required (or PADAM_ARWEAVE_WALLET / PADAM_SOLANA_KEYPAIR)"))
         return 2
     from . import keyvault
+    # 0.4.1: без защиты паролем ключи записей лежат в базе открыто, а шифротексты в Arweave вечны — у кого файл
+    # базы, тот прочитает их навсегда. Поэтому настоящая заливка без protect-keys не идёт, пока владелец не
+    # согласится явно (--allow-unprotected-keys). Пробный прогон (--dry-run) ничего не отправляет и не держится.
+    if not a.dry_run and not keyvault.is_enabled(m) and not a.allow_unprotected_keys:
+        print(t("Отказ: ключи записей не защищены паролем. Что уйдёт в Arweave, останется там навсегда, а ключи к нему "
+                "лежат в файле базы открыто — кто получит файл, прочитает всё. Сначала: padam protect-keys. "
+                "Осознанно без защиты: --allow-unprotected-keys.",
+                "Refused: record keys are not protected by a passphrase. What goes to Arweave stays there forever, and "
+                "the keys to it sit in the database file in clear — whoever gets the file reads it all. First: padam "
+                "protect-keys. Knowingly without protection: --allow-unprotected-keys."))
+        return 2
     if keyvault.is_enabled(m):
         try:
             keyvault.unlock(m, _пароль(t("Пароль ключей записей: ", "Record-key passphrase: "))
@@ -574,6 +585,9 @@ def main(argv=None) -> int:
     s.add_argument("--ask-passphrase", action="store_true",
                    help=t("спросить пароль ключей записей в консоли (иначе PADAM_KEY_PASSPHRASE)",
                           "ask for the record-key passphrase in the console (otherwise PADAM_KEY_PASSPHRASE)"))
+    s.add_argument("--allow-unprotected-keys", action="store_true",
+                   help=t("заливать, хотя ключи записей не защищены паролем (не советуем)",
+                          "anchor although record keys are not protected by a passphrase (not advised)"))
     s.set_defaults(fn=cmd_l3)
 
     s = sub.add_parser("protect-keys", help=t("защитить ключи записей паролем (и завернуть уже созданные)",

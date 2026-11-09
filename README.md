@@ -4,7 +4,7 @@
 
 ### Memory for AI agents that sleeps, forgets honestly, and can be verified forever
 
-[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%208%20tools-8A2BE2) ![release](https://img.shields.io/badge/release-v0.4.0-success)
+[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%208%20tools-8A2BE2) ![release](https://img.shields.io/badge/release-v0.4.1-success)
 
 **PADAM** is a local-first, persistent memory for AI assistants and agents. It lives in one SQLite file on your machine, plugs into any MCP client (Claude Code, Claude Desktop, Cursor, VS Code) or into your own code through a CLI and a small REST API.
 
@@ -33,6 +33,7 @@ Part of [CODE Eternal](https://aifa.works) · Project page: [aifa.works/nocturne
 - [Configuration](#configuration)
 - [Tests](#tests)
 - [LongMemEval — measured on a public benchmark](#longmemeval--measured-on-a-public-benchmark)
+- [Red Team Challenge](#red-team-challenge)
 - [Honest limits](#honest-limits)
 - [Cite, contribute, report](#cite-contribute-report)
 - [License](#license)
@@ -138,7 +139,7 @@ For questions that aggregate across many conversations ("how many…", "how much
 - **Some writes wait for you.** Held out of search until you decide with `padam review`, `padam approve` or `padam reject`: a write that looks like a command; any identity or preference record from an agent or an external source, also when it is filed under another kind; a write that would replace such a record; and an external source overriding your own record. The first identity or preference record marked `origin: user` is stored, so a fresh memory can learn who you are; every later one waits. Records under review are not shown to agents in search, export or timeline. `PADAM_MCP_TRUST_WRITES=1` turns the review off.
 - **There is no erase tool.** Forgetting, approving and restoring exist only in the console and the REST API.
 
-**Recognising commands is a help, not the protection.** The filter knows the usual forms in English, Russian, Ukrainian, Belarusian, Spanish, German, French, Italian, Portuguese, Chinese, Japanese, Korean and Arabic; it looks through look-alike letters, zero-width characters, full-width letters, digits in place of letters, words split letter by letter, and base64, hex, URL and HTML encodings; it knows role-play takeovers ("you are now DAN"), orders to move money to a wallet and orders to send the memory somewhere. A command can still be written in a way no list foresees: on a held-out set written after our fixes, with kinds of attack we had never seen, the filter held 6 of 14 commands. So the protection is structural: memory always comes back to the agent fenced as data, records about who you are cannot be changed by an agent, secrets are not stored, and since 0.4.0 every write the agent marks as `external` waits for your review whatever its wording (`PADAM_HOLD_EXTERNAL=0` turns this off). The agent sets that label itself, so an agent that lies about where a text came from still gets only the dictionary and the fence.
+**Recognising commands is a help, not the protection.** The filter knows the usual forms in English, Russian, Ukrainian, Belarusian, Spanish, German, French, Italian, Portuguese, Chinese, Japanese, Korean and Arabic; it looks through look-alike letters, zero-width characters, full-width letters, digits in place of letters, words split letter by letter, and base64, hex, URL and HTML encodings; it knows role-play takeovers ("you are now DAN"), orders to move money to a wallet and orders to send the memory somewhere. A command can still be written in a way no list foresees: on a held-out set written after our fixes, with kinds of attack we had never seen, the filter held 6 of 14 commands. So the protection is structural: memory always comes back to the agent fenced as data, records about who you are cannot be changed by an agent, secrets are not stored, and since 0.4.0 every write the agent marks as `external` waits for your review whatever its wording (`PADAM_HOLD_EXTERNAL=0` turns this off). The agent sets that label itself, so an agent that lies about where a text came from still gets only the dictionary and the fence. MCP gives the server no way to check where an agent got a text; if you need a boundary that does not depend on the label, set `PADAM_MCP_REVIEW_ALL=1` and every agent write waits for you.
 
 ### REST API
 
@@ -291,7 +292,7 @@ All three were verified end-to-end with `l3-verify` against Arweave and the chai
 
 **Forgetting reaches the disk.** `forget` wipes the record, every version of it, its exact copies and the episodes it came from, then rebuilds the search index and truncates the WAL with `secure_delete` on. A test searches the raw database files for the forgotten words (`tests/test_safety.py`). The content hash stays as a receipt. The same words inside other, unrelated records or episodes are not touched: forget each of those too. The rolling topic vector of a session is not recomputed. Backups you made yourself are outside its reach.
 
-**Protect the keys with a passphrase** (recommended before the first anchoring):
+**Protect the keys with a passphrase** before the first anchoring. Since 0.4.1 `padam l3` refuses to send anything to Arweave while the keys are unprotected (`--allow-unprotected-keys` overrides it knowingly; `--dry-run` sends nothing and is not held), and `padam stats` shows `record_keys`: whether a passphrase protects them and how many lie in clear.
 
 ```bash
 python -m padam protect-keys              # asks for a passphrase twice, wraps every existing key
@@ -327,6 +328,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 | `PADAM_SIM_THRESHOLD_BUILTIN` | `0.35` | the same for built-in search |
 | `PADAM_MCP_TRUST_WRITES` | `0` | `1` lets MCP writes through without the owner's review |
 | `PADAM_HOLD_EXTERNAL` | `1` | every MCP write marked `origin: external` waits for the owner's review, whatever its wording; `0` turns this off |
+| `PADAM_MCP_REVIEW_ALL` | `0` | `1`: every agent write through MCP waits for the owner, whatever origin the agent claims |
 | `PADAM_PROFILE` · `PADAM_SHARP_SHARE` | `default` · — | share of sharp episodes in a sleep batch: `ops` 0.40 (remember failures better), `creative` 0.10, default 0.25; or an exact number, kept within 0.05–0.5 |
 | `PADAM_SLEEP_REINDEX` | `200` | records moved to the current embedding model per sleep after the model changes (0 turns it off) |
 | `PADAM_KEEP_SECRETS` | `0` | `1` stores secret-looking values as they are |
@@ -387,6 +389,16 @@ Read these numbers with their conditions:
 
 ---
 
+## Red Team Challenge
+
+Try to break it. [`redteam/`](https://github.com/MaksimGalatin/padam-nocturne/tree/main/redteam) holds the rules, a runner that writes each case through MCP like an outside agent and judges by the raw database bytes, and the public set of 214 cases PADAM already defends against (214 of 214 pass on 0.4.1). The measure that counts is a **sealed set**: you publish only its SHA-256, we ship the next release, you open the file and anyone can replay it. Synthetic secrets only, your own local copy only.
+
+```bash
+python -I -X utf8 redteam/run.py your_cases.jsonl --out report.json
+```
+
+---
+
 ## Honest limits
 
 - Built-in search compares words, not meanings; for search by meaning install `[embed]` or use Ollama. On LongMemEval the gain is real but modest (see above).
@@ -394,7 +406,9 @@ Read these numbers with their conditions:
 - The rule-based classifier without a model makes mistakes; the NOCTURNE report shows it (diversity metric).
 - Ceiling, decay and floor values are chosen by reasoning, not fitted on data — tune them on your own stream, measuring before and after.
 - LongMemEval is measured with an open judge model, not GPT-4o, in one run per configuration (see above); compare with other systems only under the same conditions.
-- Without `protect-keys`, per-record keys live in the local SQLite file in clear, and whoever has the database file can read the Arweave ciphertexts.
+- Without `protect-keys`, per-record keys live in the local SQLite file in clear, and whoever has the database file can read the Arweave ciphertexts. Since 0.4.1 anchoring refuses to run in that state unless you override it.
+- The `origin` of a write is the agent's claim: MCP carries no proof of where a text came from. `PADAM_MCP_REVIEW_ALL=1` is the boundary that does not rely on it.
+- Our tests are not an independent audit. The [Red Team Challenge](https://github.com/MaksimGalatin/padam-nocturne/tree/main/redteam) asks outsiders for sealed attack sets; until one is run, the numbers here are our own.
 - The package is on PyPI since 0.3.0; it is not yet in the official MCP registry (`server.json` is prepared).
 
 ---

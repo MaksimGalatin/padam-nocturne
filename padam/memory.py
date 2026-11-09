@@ -194,6 +194,12 @@ class Memory:
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
                 origin=origin, status="quarantined", reason="external source held for the owner (PADAM_HOLD_EXTERNAL, on by default)")
+        # 0.4.1: граница, которая не зависит от пометки источника вовсе. Пометку ставит агент, а MCP не даёт серверу
+        # способа проверить, откуда агент взял текст; с PADAM_MCP_REVIEW_ALL=1 ждёт владельца каждая запись агента.
+        if guarded and config.MCP_REVIEW_ALL:
+            return "quarantined", self._insert(
+                content, kind, vec, importance, scope, source_episode_id,
+                origin=origin, status="quarantined", reason="every agent write waits for the owner (PADAM_MCP_REVIEW_ALL)")
 
         # Кто человек и как с ним работать, решает только он сам. Через MCP пометку origin
         # проверить нечем, поэтому запись о личности или предпочтении от агента или чужого
@@ -1090,5 +1096,16 @@ class Memory:
                    AND (embedding IS NULL OR embedding_model IS NULL OR embedding_model != ?)""",
                 (self.user_id, embeddings.метка_модели())),
             "by_kind": by_kind,
+            # 0.4.1: защищены ли ключи записей паролем и сколько лежит открыто — владелец должен видеть это сразу,
+            # а не узнавать из README (без protect-keys у кого файл базы, тот прочтёт и шифротексты в Arweave).
+            "record_keys": self._состояние_ключей(),
             "self": self.self_report(),
         }
+
+    def _состояние_ключей(self) -> dict:
+        from . import keyvault
+        try:
+            return {"passphrase_protected": keyvault.is_enabled(self),
+                    "plain": keyvault.plain_count(self)}
+        except Exception as e:                     # состояние ключей не должно ронять stats
+            return {"error": str(e)[:200]}
