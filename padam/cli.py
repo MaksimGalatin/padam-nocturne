@@ -128,9 +128,18 @@ def cmd_sleep(m: Memory, a) -> int:
 def cmd_stats(m: Memory, a) -> int:
     s = m.stats()
     print(t(f"База:        {s['db']}", f"Database:    {s['db']}"))
+    # 0.4.2: пояснение только для встроенного метода — при model2vec прежняя строка ложно писала «встроенный».
+    # Python 3.10 не допускает обратную косую внутри выражения f-строки — текст пояснения собран отдельно.
+    пояснение = t('(модели нет: работает встроенный метод; по смыслу — pip install "padam-nocturne[embed]")',
+                  '(no model: built-in method in use; for meaning — pip install "padam-nocturne[embed]")')
     print(t(f"Эмбеддинги:  {s['backend']}", f"Embeddings:  {s['backend']}")
-          + ("" if s["backend"] == "ollama" else
-             f"  {DIM}{t('(Ollama не найдена, работает встроенный метод)', '(Ollama not found, built-in method in use)')}{RESET}"))
+          + ("" if s["backend"] != "builtin" else f"  {DIM}{пояснение}{RESET}"))
+    к = s.get("record_keys") or {}
+    if "passphrase_protected" in к:
+        print(t(f"Ключи записей:  {'защищены паролем' if к['passphrase_protected'] else 'НЕ защищены паролем (padam protect-keys)'}"
+                f", открытых: {к['plain']}",
+                f"Record keys:  {'protected by a passphrase' if к['passphrase_protected'] else 'NOT protected by a passphrase (padam protect-keys)'}"
+                f", in clear: {к['plain']}"))
     print()
     print(t(f"Активных записей:     {s['active']}", f"Active records:       {s['active']}"))
     print(t(f"Замещённых:           {s['superseded']}", f"Superseded:           {s['superseded']}"))
@@ -300,6 +309,48 @@ def cmd_forget(m: Memory, a) -> int:
         return 0
     _not_found()
     return 1
+
+
+def cmd_doctor(m: Memory, a) -> int:
+    """0.4.2: состояние безопасности одним отчётом (внешний разбор 09.11.2026: настроек много, и неверный
+    выключатель равен утечке). Ничего не меняет. Код выхода 1, если есть хоть одно предупреждение."""
+    import stat
+    from . import __version__, keyvault
+    предупреждений = 0
+
+    def строка(ok, ru, en):
+        nonlocal предупреждений
+        предупреждений += 0 if ok else 1
+        print(("  ok    " if ok else "  WARN  ") + t(ru, en))
+
+    print(f"padam-nocturne {__version__} · {m.store.path}")
+    for имя, что in config.unsafe_settings():
+        строка(False, f"{имя}: {что}", f"{имя}: {что}")
+    строка(config.HOLD_EXTERNAL, "внешний текст ждёт проверки владельцем (PADAM_HOLD_EXTERNAL)",
+           "outside text waits for the owner's review (PADAM_HOLD_EXTERNAL)")
+    print(t("  info  каждая запись агента ждёт владельца: ", "  info  every agent write waits for the owner: ")
+          + ("PADAM_MCP_REVIEW_ALL=1" if config.MCP_REVIEW_ALL else t("нет (PADAM_MCP_REVIEW_ALL=1 включает)",
+                                                                       "no (PADAM_MCP_REVIEW_ALL=1 turns it on)")))
+    защищены = keyvault.is_enabled(m)
+    строка(защищены, f"ключи записей защищены паролем; открытых: {keyvault.plain_count(m)}"
+           if защищены else f"ключи записей НЕ защищены паролем, открытых: {keyvault.plain_count(m)} — padam protect-keys",
+           f"record keys protected by a passphrase; in clear: {keyvault.plain_count(m)}"
+           if защищены else f"record keys NOT protected by a passphrase, in clear: {keyvault.plain_count(m)} — padam protect-keys")
+    if os.name == "posix":
+        for путь, нужно in ((m.store.path, 0o600), (m.store.path.parent, 0o700)):
+            права = stat.S_IMODE(os.stat(путь).st_mode)
+            строка(права & 0o077 == 0, f"права {oct(права)} у {путь}", f"mode {oct(права)} on {путь}")
+    else:
+        print(t("  info  права файлов: Windows — доступ задаётся учётной записью, не битами режима",
+                "  info  file modes: Windows — access is set by the user account, not mode bits"))
+    токен = os.environ.get("PADAM_API_TOKEN")
+    print(t("  info  REST API: ", "  info  REST API: ") + (t("постоянный токен задан", "a fixed token is set") if токен
+          else t("токен создаётся при каждом запуске", "a token is created on every start")))
+    s = m.stats()
+    print(t(f"  info  векторы: {s['backend']}; ждут проверки: {s['quarantined']}; другой модели: {s['stale_vectors']}",
+            f"  info  vectors: {s['backend']}; waiting for review: {s['quarantined']}; of another model: {s['stale_vectors']}"))
+    print(t(f"Предупреждений: {предупреждений}", f"Warnings: {предупреждений}"))
+    return 1 if предупреждений else 0
 
 
 def cmd_l3(m: Memory, a) -> int:
@@ -537,6 +588,10 @@ def main(argv=None) -> int:
 
     s = sub.add_parser("stats", help=t("состояние памяти", "memory state"))
     s.set_defaults(fn=cmd_stats)
+
+    s = sub.add_parser("doctor", help=t("состояние безопасности одним отчётом (ничего не меняет)",
+                                        "security state in one report (changes nothing)"))
+    s.set_defaults(fn=cmd_doctor)
 
     s = sub.add_parser("timeline", help=t("история версий записи", "version history of a record"))
     s.add_argument("id")

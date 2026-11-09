@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.2 — 9 November 2026
+
+From a second outside review (9 Nov 2026), each point checked against the code before changing it.
+
+### Security
+- **REST API: the owner is whoever holds the token.** `python -m padam api` used to run without a token on `127.0.0.1`, and every caller was the owner: a sandboxed agent with network access or a second account on the same machine — someone who cannot read the database file — could write as the owner and **approve its own held write**. Now a token is created on every start when none is given (printed once; `PADAM_API_TOKEN` keeps one fixed). `--no-token` (local only) keeps the old way of connecting, but then every write waits for review and owner actions — `approve`, `reject`, `restore`, `forget`, `import`, `export`, the review queue — are refused. **Changed behaviour:** a client that called the local API without a token now needs one.
+- Fenced output: any spelling of the tag name inside stored data (`</MEMORY-DATA>`, `memory‑data` with a look-alike hyphen, `memory — data`, full-width brackets) is neutralised, so a model has no forged tag to believe; the random marker is 128 bits (was 48).
+- The MCP server names every switch that weakens protection on stderr at each start (`PADAM_KEEP_SECRETS=1`, `PADAM_MCP_TRUST_WRITES=1`, `PADAM_HOLD_EXTERNAL=0`); stdout stays clean for the protocol.
+
+### Added
+- `padam doctor`: the security state in one report — switches that weaken protection, whether record keys are protected and how many lie in clear, file modes on POSIX, the REST token, items waiting for review. Exit code 1 when there is a warning. Changes nothing.
+- SECURITY.md: a threat model — who can reach what (a hostile agent over MCP, a web page in the owner's browser, a program that reaches `127.0.0.1` but not the file, anyone with the file, a disk thief, the public reading Arweave and Solana, the future owner), what PADAM does and what remains.
+- `benchmarks/scale/scale.py`: measures write time, search time (median and 95th percentile of 200 queries) and database size at 1,000, 10,000 and 100,000 records, on LongMemEval turns or seeded synthetic notes.
+
+### Fixed
+- `padam stats` said "Ollama not found, built-in method in use" when the local model was working; it now explains only the built-in case, and shows whether record keys are protected (0.4.1 put that only into `padam_stats`).
 ## 0.4.1 — 9 November 2026
 
 From an outside review of the 0.4.0 update (9 Nov 2026).

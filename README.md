@@ -4,7 +4,7 @@
 
 ### Memory for AI agents that sleeps, forgets honestly, and can be verified forever
 
-[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%208%20tools-8A2BE2) ![release](https://img.shields.io/badge/release-v0.4.1-success)
+[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%208%20tools-8A2BE2) ![release](https://img.shields.io/badge/release-v0.4.2-success)
 
 **PADAM** is a local-first, persistent memory for AI assistants and agents. It lives in one SQLite file on your machine, plugs into any MCP client (Claude Code, Claude Desktop, Cursor, VS Code) or into your own code through a CLI and a small REST API.
 
@@ -143,7 +143,7 @@ For questions that aggregate across many conversations ("how many…", "how much
 
 ### REST API
 
-`python -m padam api` — binds to **127.0.0.1** and refuses to start on a public address without a token (`--token` or `PADAM_API_TOKEN`).
+`python -m padam api` — binds to **127.0.0.1** and refuses to start on a public address without a token (`--token` or `PADAM_API_TOKEN`). Since 0.4.2 it always has a token: given none, it creates one at start and prints it; send it as `Authorization: Bearer <token>`. `--no-token` (local only) connects without one, but then every write waits for your review and owner actions — approve, reject, restore, forget, import, export, the review queue — are refused: whoever reaches the port is not taken for the owner.
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -180,7 +180,8 @@ POST bodies must be `application/json` objects of at most 10 MB. When running lo
 | `review` · `approve` · `reject` | writes held for the owner: list, accept, reject |
 | `restore` | bring an archived record back |
 | `reindex` | recompute vectors after changing the embedding model |
-| `stats` | memory state |
+| `stats` | memory state, including whether record keys are protected |
+| `doctor` | the security state in one report: switches that weaken protection, record keys, file modes, the REST token; exit code 1 on a warning |
 | `export` · `import` | the whole memory as JSON and back |
 | `serve` · `api` | start the MCP server (stdio) · start the REST API |
 | `l3` · `l3-verify` | anchor to Arweave + Solana · verify an anchoring independently |
@@ -302,9 +303,11 @@ python -m padam rekey                     # change the passphrase
 
 Each key is stored as `w1:` + AES-256-GCM(KEK, key) with the record id as associated data; KEK = scrypt(passphrase, salt, n=2^15, r=8, p=1). A wrong passphrase is rejected by a check record before anything is touched; a wrapped key cannot be moved to another record. After wrapping, the WAL is truncated and the file is VACUUMed: on 400 keys without it 66 plaintext keys remained in free pages (measured 08.10.2026, `tests/test_keyvault.py`). The passphrase is not stored anywhere: lose it and the keys cannot be opened — by you or by us.
 
-**Local API hardening.** Token compared in constant time; local runs accept only local `Host`/`Origin` (DNS rebinding); JSON-only POST bodies up to 10 MB; one lock serialises every access to the shared SQLite connection, so parallel writes are not lost.
+**Local API hardening.** A token on every start (0.4.2), compared in constant time; local runs accept only local `Host`/`Origin` (DNS rebinding); JSON-only POST bodies up to 10 MB; one lock serialises every access to the shared SQLite connection, so parallel writes are not lost.
 
 **Supply chain.** CI actions are pinned by commit SHA and the Actions token is read-only; the PyPI workflow uses trusted publishing without stored tokens.
+
+Who can reach what, what PADAM does about it and what remains: the [threat model](https://github.com/MaksimGalatin/padam-nocturne/blob/main/SECURITY.md#threat-model). `padam doctor` shows which parts of it your settings weaken.
 
 Found a weakness in the encryption or the forgetting? Please report it privately — see [SECURITY.md](https://github.com/MaksimGalatin/padam-nocturne/blob/main/SECURITY.md).
 
@@ -332,7 +335,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 | `PADAM_PROFILE` · `PADAM_SHARP_SHARE` | `default` · — | share of sharp episodes in a sleep batch: `ops` 0.40 (remember failures better), `creative` 0.10, default 0.25; or an exact number, kept within 0.05–0.5 |
 | `PADAM_SLEEP_REINDEX` | `200` | records moved to the current embedding model per sleep after the model changes (0 turns it off) |
 | `PADAM_KEEP_SECRETS` | `0` | `1` stores secret-looking values as they are |
-| `PADAM_API_TOKEN` | — | token for the REST API (required on a public address) |
+| `PADAM_API_TOKEN` | — | a fixed token for the REST API; without it one is created at every start |
 | `PADAM_KEY_PASSPHRASE` | — | passphrase for wrapped per-record keys |
 | `PADAM_ARWEAVE_WALLET` · `PADAM_SOLANA_KEYPAIR` · `PADAM_TURBO_SDK_DIR` | — | L3 wallets and the Turbo SDK location |
 
@@ -342,7 +345,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 498 passed, 1 skipped with [embed] (Python 3.14.4); 493 passed, 2 skipped without it (3.10.9); 9 Nov 2026, Windows
+python -m pytest tests/ -q        # 516 passed, 1 skipped with [embed] (Python 3.14.4); 511 passed, 2 skipped without it (3.10.9); 9 Nov 2026, Windows
 ```
 
 CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L3 tests never touch the network: Arweave and Solana are replaced by fakes. The suite never calls a local Ollama either, even when one is running: every test uses the built-in embedding, as on CI. `PADAM_TEST_LIVE_OLLAMA=1` turns on the one live check. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.
@@ -391,7 +394,7 @@ Read these numbers with their conditions:
 
 ## Red Team Challenge
 
-Try to break it. [`redteam/`](https://github.com/MaksimGalatin/padam-nocturne/tree/main/redteam) holds the rules, a runner that writes each case through MCP like an outside agent and judges by the raw database bytes, and the public set of 214 cases PADAM already defends against (214 of 214 pass on 0.4.1). The measure that counts is a **sealed set**: you publish only its SHA-256, we ship the next release, you open the file and anyone can replay it. Synthetic secrets only, your own local copy only.
+Try to break it. [`redteam/`](https://github.com/MaksimGalatin/padam-nocturne/tree/main/redteam) holds the rules, a runner that writes each case through MCP like an outside agent and judges by the raw database bytes, and the public set of 214 cases PADAM already defends against (214 of 214 pass on 0.4.2). The measure that counts is a **sealed set**: you publish only its SHA-256, we ship the next release, you open the file and anyone can replay it. Synthetic secrets only, your own local copy only.
 
 ```bash
 python -I -X utf8 redteam/run.py your_cases.jsonl --out report.json

@@ -1,7 +1,7 @@
 {
-  "padam_version": "0.4.1",
+  "padam_version": "0.4.2",
   "cases": 214,
-  "seconds": 11.7,
+  "seconds": 10.8,
   "by_category": {
     "benign": {
       "passed": 88,

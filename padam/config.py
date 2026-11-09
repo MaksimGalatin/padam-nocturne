@@ -63,6 +63,19 @@ HOLD_EXTERNAL = os.environ.get("PADAM_HOLD_EXTERNAL", "1") != "0"
 # 0.4.1: каждая запись агента через MCP ждёт владельца, какую бы пометку источника агент ни поставил (её сервер
 # проверить не может — в MCP нет удостоверения источника). Выключено по умолчанию: без владельца память не растёт.
 MCP_REVIEW_ALL = os.environ.get("PADAM_MCP_REVIEW_ALL", "0") == "1"
+
+
+def unsafe_settings() -> list[tuple[str, str]]:
+    """0.4.2: настройки, которые выключают защиту, и что именно они открывают (внешний разбор 09.11.2026:
+    неверный выключатель равен утечке, поэтому о каждом говорится при запуске, а не только в README)."""
+    out = []
+    if KEEP_SECRETS:
+        out.append(("PADAM_KEEP_SECRETS=1", "keys, passwords and seed phrases are stored as written, in clear"))
+    if MCP_TRUST_WRITES:
+        out.append(("PADAM_MCP_TRUST_WRITES=1", "an agent can store commands and rewrite who you are without your review"))
+    if not HOLD_EXTERNAL:
+        out.append(("PADAM_HOLD_EXTERNAL=0", "text an agent read on a web page or in a file is stored without your review"))
+    return out
 KEEP_SECRETS = os.environ.get("PADAM_KEEP_SECRETS", "0") == "1"
 
 MAX_CONTENT_CHARS = 20000

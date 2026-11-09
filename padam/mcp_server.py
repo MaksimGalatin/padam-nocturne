@@ -607,8 +607,12 @@ def main() -> int:
         return 0
     if "--help" in args or "-h" in args:
         print("PADAM NOCTURNE MCP server. Speaks JSON-RPC over stdin and stdout; start it from an MCP client.\n"
-              "Environment: PADAM_DB (database file), PADAM_USER, OLLAMA_URL, PADAM_MCP_TRUST_WRITES, PADAM_KEEP_SECRETS.")
+              "Environment: PADAM_DB (database file), PADAM_USER, PADAM_EMBEDDER, OLLAMA_URL, PADAM_HOLD_EXTERNAL,\n"
+              "PADAM_MCP_REVIEW_ALL, PADAM_MCP_TRUST_WRITES, PADAM_KEEP_SECRETS. `padam doctor` reports the security state.")
         return 0
+    # 0.4.2: выключенная защита называется при каждом запуске — в stderr, stdout занят протоколом MCP.
+    for имя, что in config.unsafe_settings():
+        print(f"[padam] WARNING {имя}: {что}", file=sys.stderr)
     for _поток in (sys.stdin, sys.stdout):
         if hasattr(_поток, "reconfigure"):
             # Битые байты на входе не должны ронять сервер, поэтому у входа errors="replace".

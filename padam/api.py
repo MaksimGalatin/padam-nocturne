@@ -8,9 +8,14 @@
     python -m padam.api                      # 127.0.0.1:8077
     python -m padam.api --host 0.0.0.0 --port 9000 --token СЕКРЕТ
 
-По умолчанию слушает только локальный интерфейс и работает без токена.
-Как только указан --host, отличный от 127.0.0.1, токен становится
-обязательным: память не должна оказаться открытой в сеть по недосмотру.
+По умолчанию слушает только локальный интерфейс. С 0.4.2 токен есть всегда: не задан
+(--token или PADAM_API_TOKEN) — сервер создаёт случайный при запуске и печатает его.
+Без токена (--no-token, только локально) запись идёт как запись агента, с проверкой
+владельцем, а действия владельца (approve, reject, restore, forget, import, export,
+очередь проверки) запрещены. Повод — внешний разбор 09.11.2026: до порта 127.0.0.1
+дотягивается и тот, кому файл базы недоступен (агент в песочнице с сетью, другая
+учётная запись на том же компьютере), и без токена он мог одобрить свою же задержанную
+запись. Как только указан --host, отличный от 127.0.0.1, токен обязателен.
 
 Маршруты:
     GET  /health
@@ -44,6 +49,9 @@ from .nocturne import Nocturne
 from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
+# Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import"}
+NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
 
 
@@ -152,6 +160,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._send_page(viewer.page())
         if not self._authorized():
             return self._send(401, {"error": "unauthorized"})
+        if not _state["token"]:
+            q0 = parse_qs(путь.query)
+            if путь.path == "/export" or (путь.path == "/records" and q0.get("view", ["active"])[0] != "active"):
+                return self._send(403, NEEDS_TOKEN)
         try:
             if путь.path == "/records":
                 q = parse_qs(путь.query)
@@ -181,6 +193,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(415, {"error": "Content-Type must be application/json"})
         if not self._authorized():
             return self._send(401, {"error": "unauthorized"})
+        if not _state["token"] and self.path in OWNER_POST:
+            return self._send(403, NEEDS_TOKEN)
         try:
             try:
                 data = self._body()
@@ -218,7 +232,8 @@ class Handler(BaseHTTPRequestHandler):
                     data["content"], kind=data.get("kind"),
                     importance=float(data.get("importance", 0.5)),
                     scope=data.get("scope", "global"),
-                    origin=origin, guarded=origin != "user")
+                    # Без токена владельца не отличить от любого процесса, дотянувшегося до порта.
+                    origin=origin, guarded=origin != "user" or not _state["token"])
                 return self._send(200, {"outcome": outcome, "id": mid})
 
             if self.path == "/confirm":
@@ -271,6 +286,9 @@ def main(argv=None) -> int:
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8077)
     p.add_argument("--token", default=os.environ.get("PADAM_API_TOKEN"))
+    p.add_argument("--no-token", action="store_true",
+                   help=t("без токена (только локально): запись с проверкой, действия владельца запрещены",
+                          "no token (local only): writes are reviewed, owner actions are refused"))
     a = p.parse_args(argv)
 
     local = a.host in ("127.0.0.1", "localhost", "::1") or a.host.startswith("127.")
@@ -281,6 +299,9 @@ def main(argv=None) -> int:
                 "Memory must not end up open to the network by accident."), file=sys.stderr)
         return 2
 
+    создан = False
+    if not a.token and not a.no_token:
+        a.token, создан = secrets.token_urlsafe(24), True
     _state["token"] = a.token
     _state["local"] = local
     srv = ThreadingHTTPServer((a.host, a.port), Handler)
@@ -289,6 +310,14 @@ def main(argv=None) -> int:
     token = (t("включён", "required") if a.token else t("не требуется", "not required"))
     print(t(f"PADAM API на http://{a.host}:{a.port}  ({scope}, токен {token})",
             f"PADAM API at http://{a.host}:{a.port}  ({scope}, token {token})"))
+    if создан:
+        print(t(f"Токен этого запуска: {a.token}", f"Token for this run: {a.token}"))
+        print(t("Заголовок: Authorization: Bearer <токен>. Постоянный — PADAM_API_TOKEN.",
+                "Header: Authorization: Bearer <token>. A fixed one: PADAM_API_TOKEN."))
+    elif a.no_token:
+        print(t("Без токена: любая запись ждёт проверки владельцем, действия владельца (approve, forget, export…) "
+                "запрещены.", "No token: every write waits for the owner's review; owner actions (approve, forget, "
+                "export…) are refused."), file=sys.stderr)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
