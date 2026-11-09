@@ -134,10 +134,10 @@ For questions that aggregate across many conversations ("how many…", "how much
 - **Search results are fenced as data.** Each answer carries a random marker that stored text cannot know in advance, so a record cannot pretend to end the data block. Records that look like commands are flagged.
 - **Secrets never get stored.** API keys and tokens (OpenAI, Anthropic, xAI, GitHub, GitLab, AWS, Google, Stripe, Hugging Face, npm, Neon, Resend, Slack, Vercel, Telegram, JWT, bearer), private keys, passwords in connection strings or said in words ("the password is …", "пароль — …"), wallet seed phrases (12 or more BIP-39 words), key byte arrays and the private part of a JWK are replaced with `[REDACTED:kind]` before the text reaches the database or the vector. Keys without a known prefix are caught by their shape: a value after a field name such as `client_secret` or `AccountKey`, a long random string, `Basic` credentials, a card number (Luhn plus grouping or the word "card") with its CVV or PIN. Links, blockchain addresses and signatures, hashes, UUIDs and Vercel ids stay open. Limits: plain hex without a field name looks like a file hash, and base58 of 32–44 characters is treated as an address. Set `PADAM_KEEP_SECRETS=1` to turn this off.
 - **Every record says where it came from:** `user`, `agent` or `external`, with starting confidence 1.0, 0.8 and 0.6. An agent repeating its own conclusion does not raise its confidence, so one mistake cannot grow into a "fact" by repetition. Through MCP even `origin: user` does not raise it: the agent sets that label itself.
-- **Some writes wait for you.** Held out of search until you decide with `padam review`, `padam approve` or `padam reject`: a write that looks like a command (in English, Russian, Spanish, German, French, Italian, Portuguese or Chinese, including look-alike letters and zero-width characters); any identity or preference record from an agent or an external source, also when it is filed under another kind; a write that would replace such a record; and an external source overriding your own record. The first identity or preference record marked `origin: user` is stored, so a fresh memory can learn who you are; every later one waits. Records under review are not shown to agents in search, export or timeline. `PADAM_MCP_TRUST_WRITES=1` turns the review off.
+- **Some writes wait for you.** Held out of search until you decide with `padam review`, `padam approve` or `padam reject`: a write that looks like a command; any identity or preference record from an agent or an external source, also when it is filed under another kind; a write that would replace such a record; and an external source overriding your own record. The first identity or preference record marked `origin: user` is stored, so a fresh memory can learn who you are; every later one waits. Records under review are not shown to agents in search, export or timeline. `PADAM_MCP_TRUST_WRITES=1` turns the review off.
 - **There is no erase tool.** Forgetting, approving and restoring exist only in the console and the REST API.
 
-These are heuristics and a boundary, not a guarantee: patterns can be evaded, so a client should still treat memory as untrusted text.
+**Recognising commands is a help, not the protection.** The filter knows the usual forms in English, Russian, Ukrainian, Belarusian, Spanish, German, French, Italian, Portuguese, Chinese, Japanese, Korean and Arabic; it looks through look-alike letters, zero-width characters, full-width letters, digits in place of letters, words split letter by letter, and base64, hex, URL and HTML encodings; it knows role-play takeovers ("you are now DAN"), orders to move money to a wallet and orders to send the memory somewhere. A command can still be written in a way no list foresees, and it will be stored like any other text. What actually protects you is structural: memory always comes back to the agent fenced as data, records about who you are cannot be changed by an agent, and secrets are not stored. For a stricter boundary, `PADAM_HOLD_EXTERNAL=1` holds every write the agent marks as `external` for your review; it is off by default because the agent sets that label itself.
 
 ### REST API
 
@@ -318,6 +318,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 | `PADAM_SIM_THRESHOLD_OLLAMA` | `0.85` | similarity for treating records as duplicates (neural) |
 | `PADAM_SIM_THRESHOLD_BUILTIN` | `0.35` | the same for built-in search |
 | `PADAM_MCP_TRUST_WRITES` | `0` | `1` lets MCP writes through without the owner's review |
+| `PADAM_HOLD_EXTERNAL` | `0` | `1` holds every MCP write marked `origin: external` for the owner's review, not only those that look like commands |
 | `PADAM_PROFILE` · `PADAM_SHARP_SHARE` | `default` · — | share of sharp episodes in a sleep batch: `ops` 0.40 (remember failures better), `creative` 0.10, default 0.25; or an exact number, kept within 0.05–0.5 |
 | `PADAM_SLEEP_REINDEX` | `200` | records moved to the current embedding model per sleep after the model changes (0 turns it off) |
 | `PADAM_KEEP_SECRETS` | `0` | `1` stores secret-looking values as they are |
@@ -331,7 +332,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 399 passed, 1 skipped (9 Nov 2026, Python 3.14.4, Windows)
+python -m pytest tests/ -q        # 445 passed, 1 skipped (9 Nov 2026, Python 3.14.4, Windows)
 ```
 
 CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L3 tests never touch the network: Arweave and Solana are replaced by fakes. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.

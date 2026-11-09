@@ -442,7 +442,78 @@ _INSTRUCTION = re.compile("|".join([
     r"(?:忽略|无视|忽视|不要理会|忘记|忘掉).{0,20}(?:指令|指示|规则|说明|提示|设定|要求)",
     r"(?:泄露|泄漏|透露|显示|发送|告诉我|给我|输出|打印).{0,20}(?:密钥|密码|令牌|秘钥|凭证|私钥|助记词|口令)",
     r"你现在是|从现在开始|新的指令|系统提示",
+    # --- вариант В (слово Архитектора 09.11.2026 ~13:10): ролевые подмены, деньги, пересылка памяти, ещё 8 языков.
+    # Это помощь, а не защита: словарём команды не закрыть. Защита — ограда выдачи и карантин личности.
+    # Ролевые подмены: «ты DAN», «без ограничений», «режим разработчика».
+    r"\b(?:you are|you're|act as|pretend to be|roleplay as|behave like)\b.{0,30}\b(?:DAN|unrestricted|unfiltered|"
+    r"jailbroken|without (?:any )?(?:rules|restrictions|limits|filters))\b",
+    r"\bdo anything now\b",
+    r"\b(?:developer|god|jailbreak|DAN)\s+mode\b",
+    r"\bstay in character\b",
+    r"\byou (?:have|has) no (?:rules|restrictions|limits|guidelines)\b",
+    r"\byou (?:will|must) now\b.{0,40}\b(?:ignore|obey|answer|respond|follow|reveal)\b",
+    r"(?:ты|веди себя|притворись|представь,? что ты|отвечай)\w*\b.{0,30}без (?:ограничений|правил|фильтров|цензуры)",
+    r"(?:режим разработчика|режим бога|режим DAN)",
+    # Деньги: перевод на адрес или кошелёк, подпись и одобрение транзакции повелительно, вывод всего.
+    r"\b(?:send|transfer|wire|pay|move)\b.{0,40}\b(?:usdt|usdc|btc|eth|sol|bitcoin|ethereum|crypto|funds|money)\b.{0,40}"
+    r"(?:\b0x[0-9a-fA-F]{8,}|\bbc1[a-z0-9]{20,}|\bT[1-9A-HJ-NP-Za-km-z]{33}\b|\b[1-9A-HJ-NP-Za-km-z]{32,44}\b|\bwallet\b|\baddress\b)",
+    r"(?:^|[.!?\n]\s*|\bplease\s+)(?:approve|sign|confirm)\b.{0,20}\b(?:the |this |a )?(?:transaction|transfer|payment|withdrawal)\b",
+    r"(?:^|[.!?\n]\s*|\bplease\s+)(?:drain|empty|withdraw)\b.{0,20}\b(?:the |this |all |your )?(?:wallet|account|balance|funds)\b",
+    r"(?:переведи|отправь|перечисли|выведи)\w*\b.{0,40}(?:usdt|usdc|btc|eth|sol|биткоин\w*|крипт\w*).{0,40}"
+    r"(?:кош|адрес|0x|сч[её]т)",
+    # Пересылка памяти наружу: на адрес, почту, вебхук, сервер.
+    r"\b(?:send|forward|upload|post|email|leak|exfiltrate|copy|sync|export|dump|share)\b.{0,40}"
+    r"\b(?:memory|memories|conversations?|chat history|chat logs?|notes|export|database|history)\b.{0,40}"
+    r"\b(?:to|into|at)\b.{0,40}(?:https?://|www\.|@|\bwebhook\b|\bserver\b|\bendpoint\b)",
+    r"\b(?:padam|memory)_export\b.{0,60}(?:https?://|\bsend\b|\bpost\b|\bupload\b|\bwebhook\b)",
+    r"(?:перешли|отправь|выгрузи|скопируй|загрузи|слей)\w*\b.{0,40}(?:памят|переписк|истори|экспорт|баз|заметк)\w*.{0,40}"
+    r"(?:https?://|www\.|@|вебхук|сервер)",
+    # Украинский и белорусский.
+    r"ігноруй\w*.{0,40}(?:інструкці|правил|попередн|вказівк)",
+    r"забудь\w*.{0,40}(?:інструкці|правил|попередн)",
+    r"(?:покажи|надішли|розкрий|відправ|видай)\w*\b.{0,40}(?:ключ|токен|парол|секрет)",
+    r"\b(?:тепер ти|відтепер ти)\b",
+    r"ігнаруй\w*.{0,40}(?:інструкцы|правіл|папярэдн)",
+    r"забудзь\w*.{0,40}(?:інструкцы|правіл|папярэдн)",
+    r"(?:пакажы|дашлі|адпраў|раскрый)\w*\b.{0,40}(?:ключ|токен|пароль|сакрэт)",
+    r"\bцяпер ты\b",
+    # Японский, корейский, арабский: границ слова нет, поэтому только близость.
+    r"(?:以前|前|これまで|上記|全て|すべて)の?(?:指示|命令|ルール|指令|設定).{0,10}(?:無視|忘れ)",
+    r"無視して|無視しろ",
+    r"(?:パスワード|鍵|キー|トークン|秘密|シークレット).{0,12}(?:教えて|見せて|送って|表示して|漏らし|出力)",
+    r"あなたは今から|今からあなたは|これからあなたは",
+    r"(?:이전|앞의|위의|모든|기존)\s*(?:지시|명령|규칙|지침|설정).{0,12}(?:무시|잊어)",
+    r"(?:비밀번호|암호|키|토큰|비밀).{0,12}(?:알려|보여|보내|공개|출력)",
+    r"(?:이제부터|지금부터)\s*(?:너는|당신은)",
+    r"تجاهل.{0,30}(?:التعليمات|الأوامر|القواعد|السابقة)",
+    r"(?:انس|إنس|انسى).{0,30}(?:التعليمات|القواعد|الأوامر)",
+    r"(?:اكشف|أرسل|ارسل|اعرض|أعطني|اعطني).{0,30}(?:كلمات المرور|كلمة المرور|المفاتيح|المفتاح|الرموز|الرمز السري)",
+    r"أنت الآن",
+    # Французский, португальский, итальянский, испанский, немецкий: «забудь» и «с этого момента».
+    r"\boubli(?:e|ez)\b.{0,40}\b(?:instructions|consignes|règles)\b",
+    r"\bà partir de maintenant\b.{0,40}\b(?:tu|vous|toujours|jamais|réponds|répondez)\b",
+    r"\besque(?:ça|ca|cer)\b.{0,40}\b(?:instruções|instrucoes|regras|anteriores)\b",
+    r"\b(?:revele|mostre|envie|me dê|me de)\b.{0,40}\b(?:senhas?|chaves?|tokens?|credenciais)\b",
+    r"\ba partir de agora\b.{0,40}\b(?:você|voce|sempre|nunca|responda)\b",
+    r"\bdimentica\w*\b.{0,40}\b(?:istruzioni|regole|precedenti)\b",
+    r"\b(?:rivela|mostra|invia|dammi)\w*\b.{0,40}\b(?:chiavi|credenziali)\b",
+    r"\bd'ora in poi\b.{0,40}\b(?:tu|sempre|mai|rispondi)\b",
+    r"\ba partir de ahora\b.{0,40}\b(?:tú|tu|usted|siempre|nunca|responde)\b",
+    r"\b(?:ab jetzt|von nun an)\b.{0,40}\b(?:du|immer|nie|antworte)\b",
 ]), re.I | re.S)
+
+# Сжатый вид для команд, разбитых по буквам («i-g-n-o-r-e a.l.l»): только буквы, без пробелов и знаков.
+# Проверяется лишь при признаке разбивки — четыре и больше одиночных букв подряд через знак — и только
+# узкими склейками, иначе «system. Prompt» в обычном тексте давало бы ложную тревогу.
+_РАЗБИВКА = re.compile(r"(?:(?<!\w)\w[^\w\n]{1,3}){4,}\w(?!\w)")
+_СЖАТЫЕ = re.compile(
+    r"ignore(?:all)?(?:the)?(?:previous|prior|above)?instructions|disregard(?:all)?(?:previous|prior)?instructions"
+    r"|youarenow|systemprompt|developermode|doanythingnow|revealthe(?:api)?keys|игнорируй\w{0,10}инструкци"
+    r"|забудь\w{0,10}инструкци|ignorierealle|ignoratodas|忽略之前", re.I)
+# Подмена букв цифрами («1gn0r3 4ll pr3v10u5»): только в словах, где есть и буквы, и цифры или @ $.
+_LEET = str.maketrans("013457@$", "oieastas")
+_BASE64_КУСОК = re.compile(r"[A-Za-z0-9+/_\-]{16,}={0,2}")
+_HEX_КУСОК = re.compile(r"(?:[0-9a-fA-F]{2}){8,}")
 
 # Двойники латинских букв из кириллицы и греческого: «Ignоre» с кириллической «о» читается
 # моделью как ignore, а шаблону не совпадает. Меняются только в словах, где уже есть латиница,
@@ -474,11 +545,100 @@ def _for_check(text: str) -> str:
     return re.sub(r"\w+", слово, t)
 
 
+def _печатный(текст: str) -> bool:
+    if len(текст) < 6:
+        return False
+    печатных = sum(1 for ch in текст if ch.isprintable() or ch in "\n\t")
+    return печатных / len(текст) >= 0.9 and sum(1 for ch in текст if ch.isalpha()) >= 4
+
+
+def _раскодированные(text: str) -> list[str]:
+    """Куски base64 и hex, которые раскодировались в читаемый текст: команду прячут и так."""
+    import base64
+    найдено: list[str] = []
+    for м in list(_BASE64_КУСОК.finditer(text))[:20]:
+        # Строго и одинаково с облачным сервером: алфавит URL, если есть - или _, иначе обычный; добивка до 4.
+        кусок = м.group()
+        s = кусок.replace("-", "+").replace("_", "/") if re.search(r"[-_]", кусок) else кусок
+        s += "=" * (-len(s) % 4)
+        if not re.fullmatch(r"[A-Za-z0-9+/]*={0,2}", s) or len(s.rstrip("=")) % 4 == 1:
+            continue
+        try:
+            текст = base64.b64decode(s, validate=True).decode("utf-8")
+        except Exception:
+            continue
+        if _печатный(текст):
+            найдено.append(текст)
+    for м in list(_HEX_КУСОК.finditer(text))[:20]:
+        try:
+            текст = bytes.fromhex(м.group()).decode("utf-8")
+        except (ValueError, UnicodeDecodeError):
+            continue
+        if _печатный(текст):
+            найдено.append(текст)
+    return найдено
+
+
+_СУЩНОСТИ = {"amp": "&", "lt": "<", "gt": ">", "quot": '"', "apos": "'", "nbsp": " "}
+
+
+def _сущности(text: str) -> str:
+    """HTML-сущности: числовые и пять основных именованных. Своя функция, а не html.unescape, — так же её
+    повторяет облачный сервер на TypeScript, и обе стороны видят одно и то же."""
+    def одна(м: re.Match) -> str:
+        имя = м.group(1)
+        try:
+            if имя[:2].lower() == "#x":
+                return chr(int(имя[2:], 16))
+            if имя[:1] == "#":
+                return chr(int(имя[1:]))
+        except (ValueError, OverflowError):
+            return м.group(0)
+        return _СУЩНОСТИ.get(имя.lower(), м.group(0))
+    return re.sub(r"&(#[xX][0-9a-fA-F]{1,6}|#\d{1,7}|[A-Za-z]{2,6});", одна, text)
+
+
+def _проценты(text: str) -> str:
+    """URL-кодирование %xx: подряд идущие байты читаются как UTF-8, битые — знаком замены."""
+    return re.sub(r"(?:%[0-9a-fA-F]{2})+",
+                  lambda м: bytes.fromhex(м.group().replace("%", "")).decode("utf-8", errors="replace"), text)
+
+
+def _варианты(text: str) -> list[str]:
+    """Все виды текста для проверки: как есть, нормализованный, раскодированный, склеенный, без подмены цифрами."""
+    норм = _for_check(text)
+    варианты = [strip_invisible(text), норм]
+    if "%" in норм:
+        варианты.append(_for_check(_проценты(норм)))
+    if "&" in норм and ";" in норм:
+        варианты.append(_for_check(_сущности(норм)))
+    def без_подмены(м: re.Match) -> str:
+        w = м.group()
+        return w.translate(_LEET) if re.search(r"[A-Za-z]", w) and re.search(r"[0-9@$]", w) else w
+
+    leet = re.sub(r"[\w@$]+", без_подмены, норм)
+    if leet != норм:
+        варианты.append(leet)
+    for кусок in _раскодированные(норм):
+        варианты.append(_for_check(кусок))
+    return варианты
+
+
 def looks_like_instruction(text: str) -> bool:
-    """Текст похож на команду агенту, а не на сведения о человеке или проекте."""
+    """Текст похож на команду агенту, а не на сведения о человеке или проекте.
+
+    Это помощь, а не граница: команду можно написать так, что её не узнает ни один словарь. Граница — ограда
+    выдачи (память возвращается агенту как данные) и карантин записей о личности.
+    """
     if not text:
         return False
-    return bool(_INSTRUCTION.search(strip_invisible(text)) or _INSTRUCTION.search(_for_check(text)))
+    for вариант in _варианты(text):
+        if _INSTRUCTION.search(вариант):
+            return True
+    норм = _for_check(text)
+    if _РАЗБИВКА.search(норм) and _СЖАТЫЕ.search("".join(ch for ch in норм if ch.isalpha())):
+        return True
+    return False
 
 
 # --- выдача -----------------------------------------------------------

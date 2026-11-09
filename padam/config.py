@@ -51,6 +51,10 @@ PROTECTED_KINDS = ("identity", "preference")
 PROTECTED_REFUTE_FLOOR = 0.1
 
 MCP_TRUST_WRITES = os.environ.get("PADAM_MCP_TRUST_WRITES", "0") == "1"
+# Строгий режим: всё, что агент пометил как прочитанное снаружи (origin=external), ждёт владельца целиком,
+# а не только похожее на команду. По умолчанию выключен: пометку ставит сам агент, и тот же текст он может
+# записать как agent, поэтому настоящая защита — ограда выдачи, а этот режим — дополнительная строгость.
+HOLD_EXTERNAL = os.environ.get("PADAM_HOLD_EXTERNAL", "0") == "1"
 KEEP_SECRETS = os.environ.get("PADAM_KEEP_SECRETS", "0") == "1"
 
 MAX_CONTENT_CHARS = 20000
