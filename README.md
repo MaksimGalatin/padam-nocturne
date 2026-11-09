@@ -4,7 +4,7 @@
 
 ### Memory for AI agents that sleeps, forgets honestly, and can be verified forever
 
-[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%208%20tools-8A2BE2) ![release](https://img.shields.io/badge/release-v0.3.1-success)
+[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%208%20tools-8A2BE2) ![release](https://img.shields.io/badge/release-v0.4.0-success)
 
 **PADAM** is a local-first, persistent memory for AI assistants and agents. It lives in one SQLite file on your machine, plugs into any MCP client (Claude Code, Claude Desktop, Cursor, VS Code) or into your own code through a CLI and a small REST API.
 
@@ -32,6 +32,7 @@ Part of [CODE Eternal](https://aifa.works) · Project page: [aifa.works/nocturne
 - [Security model](#security-model)
 - [Configuration](#configuration)
 - [Tests](#tests)
+- [LongMemEval — measured on a public benchmark](#longmemeval--measured-on-a-public-benchmark)
 - [Honest limits](#honest-limits)
 - [Cite, contribute, report](#cite-contribute-report)
 - [License](#license)
@@ -137,7 +138,7 @@ For questions that aggregate across many conversations ("how many…", "how much
 - **Some writes wait for you.** Held out of search until you decide with `padam review`, `padam approve` or `padam reject`: a write that looks like a command; any identity or preference record from an agent or an external source, also when it is filed under another kind; a write that would replace such a record; and an external source overriding your own record. The first identity or preference record marked `origin: user` is stored, so a fresh memory can learn who you are; every later one waits. Records under review are not shown to agents in search, export or timeline. `PADAM_MCP_TRUST_WRITES=1` turns the review off.
 - **There is no erase tool.** Forgetting, approving and restoring exist only in the console and the REST API.
 
-**Recognising commands is a help, not the protection.** The filter knows the usual forms in English, Russian, Ukrainian, Belarusian, Spanish, German, French, Italian, Portuguese, Chinese, Japanese, Korean and Arabic; it looks through look-alike letters, zero-width characters, full-width letters, digits in place of letters, words split letter by letter, and base64, hex, URL and HTML encodings; it knows role-play takeovers ("you are now DAN"), orders to move money to a wallet and orders to send the memory somewhere. A command can still be written in a way no list foresees, and it will be stored like any other text. What actually protects you is structural: memory always comes back to the agent fenced as data, records about who you are cannot be changed by an agent, and secrets are not stored. For a stricter boundary, `PADAM_HOLD_EXTERNAL=1` holds every write the agent marks as `external` for your review; it is off by default because the agent sets that label itself.
+**Recognising commands is a help, not the protection.** The filter knows the usual forms in English, Russian, Ukrainian, Belarusian, Spanish, German, French, Italian, Portuguese, Chinese, Japanese, Korean and Arabic; it looks through look-alike letters, zero-width characters, full-width letters, digits in place of letters, words split letter by letter, and base64, hex, URL and HTML encodings; it knows role-play takeovers ("you are now DAN"), orders to move money to a wallet and orders to send the memory somewhere. A command can still be written in a way no list foresees: on a held-out set written after our fixes, with kinds of attack we had never seen, the filter held 6 of 14 commands. So the protection is structural: memory always comes back to the agent fenced as data, records about who you are cannot be changed by an agent, secrets are not stored, and since 0.4.0 every write the agent marks as `external` waits for your review whatever its wording (`PADAM_HOLD_EXTERNAL=0` turns this off). The agent sets that label itself, so an agent that lies about where a text came from still gets only the dictionary and the fence.
 
 ### REST API
 
@@ -186,7 +187,7 @@ POST bodies must be `application/json` objects of at most 10 MB. When running lo
 
 ### Cloud version — no install (AIfa Memory MCP)
 
-Don't want to run anything locally? The same memory runs as a hosted MCP server, version 1.7 (fifteen tools): `POST https://aifa.works/api/mcp` (Streamable HTTP, JSON-RPC 2.0, one bearer key per account). Key and full guide: <https://aifa.works/mcp>.
+Don't want to run anything locally? The same memory runs as a hosted MCP server, version 1.9 (fifteen tools): `POST https://aifa.works/api/mcp` (Streamable HTTP, JSON-RPC 2.0, one bearer key per account). Key and full guide: <https://aifa.works/mcp>.
 
 | Tool | What it does |
 |---|---|
@@ -198,7 +199,7 @@ Don't want to run anything locally? The same memory runs as a hosted MCP server,
 | `memory_export` | the whole memory of the account as Markdown |
 | `partner_kit` · `client_link` · `client_report` · `find_clients` · `my_deals` · `set_webhook` | partner program for services: rates, rules and email templates in 4 languages · a client link with your partner code · your paid deals and when they unlock |
 
-**For autonomous agents (new, in testing).** An agent with its own mailbox gets a key over plain HTTPS (`/api/auth/send-code` → code from the mailbox → `/api/auth/verify-code` → `/api/account/mcp-token`), pays for its own memory, and earns 15% / 7% / 3% in USDT on plan payments by people it brings (only from purchases of its own tier or lower, while its plan is paid up). An agent has no legal personhood: payouts go to whoever operates it, under the terms of CODE Eternal LLC (New Mexico). Partner program for services: an agent that brings a client to AIfa Works accessibility services earns 30% on audits, fix-pack and monitoring (renewals for 12 months) and 20% on remediation and websites — one level, any account including Free, available 14 days after payment. Terms: <https://aifa.works/partners>. Details may be refined while the feature is tested.
+**For autonomous agents (new, in testing).** An agent with its own mailbox gets a key over plain HTTPS (`/api/auth/send-code` → code from the mailbox → `/api/auth/verify-code` → `/api/account/mcp-token`), pays for its own memory, and gets a referral reward of 15% / 7% / 3% in USDT from every real plan payment by the people it brings, over three levels, whatever its own plan — a Free account included (the tier condition was removed on 6 Nov 2026). An agent has no legal personhood: payouts go to whoever operates it, under the terms of CODE Eternal LLC (New Mexico). Partner program for services: an agent that brings a client to AIfa Works accessibility services earns 30% on audits, fix-pack and monitoring (renewals for 12 months) and 20% on remediation and websites — one level, any account including Free, available 14 days after payment. Terms: <https://aifa.works/partners>. Details may be refined while the feature is tested.
 
 ---
 
@@ -218,7 +219,12 @@ Omit `--kind` and PADAM guesses it (rules, or a small local model through Ollama
 
 ## Search
 
-Works out of the box with no model: words + BM25 + identifiers (names, numbers, ids are matched exactly). Install [Ollama](https://ollama.com) and `ollama pull nomic-embed-text`, and PADAM switches to neural embeddings automatically. Long records are embedded through Ollama's `/api/embed` with truncation to the model window (`PADAM_EMBED_CTX`, default 8192), so a record longer than the window still gets a real vector instead of silently falling back to an incompatible one.
+Works out of the box with no model: words + BM25 + identifiers (names, numbers, ids are matched exactly). For search by meaning there are two local ways:
+
+- **In the same process, no service to run** (since 0.4.0): `pip install "padam-nocturne[embed]"`, or for MCP `claude mcp add padam -- uvx --from "padam-nocturne[embed]" padam-nocturne`. This adds [model2vec](https://github.com/MinishLab/model2vec) with a static embedding model of about 30 MB (`minishlab/potion-base-8M`, MIT licence), downloaded from Hugging Face on first use. After that it loads from the local cache without touching the network: checked with a counter on every connection, 0 connections on a filled cache, and by a test that closes the network. On the CPU it embeds a text in 0.41 ms against 0.31 ms for the built-in method (1,000 LongMemEval turns of 936 characters on average, 9 Nov 2026).
+- **Ollama:** install [Ollama](https://ollama.com) and `ollama pull nomic-embed-text`. Long records are embedded through `/api/embed` with truncation to the model window (`PADAM_EMBED_CTX`, default 8192), so a record longer than the window still gets a real vector instead of silently falling back to an incompatible one.
+
+`PADAM_EMBEDDER` chooses the method: `auto` (default — Ollama if it answers, otherwise the installed local model, otherwise built-in), `builtin`, `ollama`, `model2vec` or `fastembed` (`pip install fastembed`, `BAAI/bge-small-en-v1.5` by default, 22 ms per text in the same measurement). `PADAM_LOCAL_EMBED_MODEL` names another model for the chosen library. Changing the method never breaks search: records with vectors of another model are found by words until `padam reindex` or sleep recomputes them. How much each method finds is measured on a public benchmark — see [LongMemEval](#longmemeval--measured-on-a-public-benchmark).
 
 ## The NOCTURNE cycle
 
@@ -310,15 +316,17 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 | `PADAM_DB` | `~/.padam/memory.db` | SQLite file of the memory |
 | `PADAM_USER` | `default` | memory owner id (MCP server, REST API and the `padam` command) |
 | `PADAM_LANG` | system language | CLI language: `en` or `ru` |
+| `PADAM_EMBEDDER` | `auto` | embedding method: `auto`, `builtin`, `ollama`, `model2vec`, `fastembed` (see [Search](#search)) |
+| `PADAM_LOCAL_EMBED_MODEL` | — | model for `model2vec` (default `minishlab/potion-base-8M`) or `fastembed` (default `BAAI/bge-small-en-v1.5`); a name on Hugging Face or a local folder |
 | `PADAM_EMBED_MODEL` | `nomic-embed-text` | Ollama embedding model |
 | `PADAM_EMBED_DIM` | `768` | embedding dimension |
 | `PADAM_EMBED_CTX` | `8192` | embedding window; longer records are truncated |
 | `PADAM_CLASSIFY_MODEL` | `llama3.2:1b` | Ollama model for guessing the record kind |
 | `PADAM_ALLOW_FALLBACK` | `1` | fall back to built-in search when Ollama is unavailable |
-| `PADAM_SIM_THRESHOLD_OLLAMA` | `0.85` | similarity for treating records as duplicates (neural) |
+| `PADAM_SIM_THRESHOLD_OLLAMA` | `0.85` | similarity for treating records as duplicates (neural: Ollama, model2vec, fastembed) |
 | `PADAM_SIM_THRESHOLD_BUILTIN` | `0.35` | the same for built-in search |
 | `PADAM_MCP_TRUST_WRITES` | `0` | `1` lets MCP writes through without the owner's review |
-| `PADAM_HOLD_EXTERNAL` | `0` | `1` holds every MCP write marked `origin: external` for the owner's review, not only those that look like commands |
+| `PADAM_HOLD_EXTERNAL` | `1` | every MCP write marked `origin: external` waits for the owner's review, whatever its wording; `0` turns this off |
 | `PADAM_PROFILE` · `PADAM_SHARP_SHARE` | `default` · — | share of sharp episodes in a sleep batch: `ops` 0.40 (remember failures better), `creative` 0.10, default 0.25; or an exact number, kept within 0.05–0.5 |
 | `PADAM_SLEEP_REINDEX` | `200` | records moved to the current embedding model per sleep after the model changes (0 turns it off) |
 | `PADAM_KEEP_SECRETS` | `0` | `1` stores secret-looking values as they are |
@@ -332,19 +340,60 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 472 passed, 1 skipped (9 Nov 2026, Python 3.14.4 and 3.10.9, Windows)
+python -m pytest tests/ -q        # 498 passed, 1 skipped with [embed] (Python 3.14.4); 493 passed, 2 skipped without it (3.10.9); 9 Nov 2026, Windows
 ```
 
 CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L3 tests never touch the network: Arweave and Solana are replaced by fakes. The suite never calls a local Ollama either, even when one is running: every test uses the built-in embedding, as on CI. `PADAM_TEST_LIVE_OLLAMA=1` turns on the one live check. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.
 
 ---
 
+## LongMemEval — measured on a public benchmark
+
+[LongMemEval](https://github.com/xiaowu0162/LongMemEval) (Wu et al., ICLR 2025, MIT): 500 questions about a user's past chats, each with its own haystack of 39–66 sessions (50 on average, about 490 thousand characters); 30 questions have no answer in the haystack and the right reply is "I don't know". We used the `longmemeval_s` set. For every question PADAM gets a fresh memory, stores each round of the haystack with `remember`, and is asked the question with `recall`. Scripts and every answer: [`benchmarks/longmemeval/`](https://github.com/MaksimGalatin/padam-nocturne/tree/main/benchmarks/longmemeval).
+
+**Retrieval, no language model anywhere** (`retrieval_recall.py`): is the session that holds the answer among the records PADAM returns? Built-in search, all 500 questions, 470 with an answer:
+
+| | any evidence session in top 5 | in top 10 | all evidence sessions in top 5 | in top 10 |
+|---|---|---|---|---|
+| built-in, no model | 91.5 % | 96.6 % | 75.1 % | 85.7 % |
+
+The same on every fifth question (94 with an answer; one question is 1.06 points) for each embedding method:
+
+| method | size | any in top 5 | any in top 10 | all in top 5 | all in top 10 |
+|---|---|---|---|---|---|
+| built-in | — | 92.6 % | 94.7 % | 73.4 % | 83.0 % |
+| model2vec `potion-base-8M` (default of `[embed]`) | 30 MB | 92.6 % | 97.9 % | 76.6 % | 87.2 % |
+| model2vec `potion-retrieval-32M` | 129 MB | 94.7 % | 96.8 % | 79.8 % | 87.2 % |
+| model2vec `potion-multilingual-128M` | 512 MB | 94.7 % | 98.9 % | 79.8 % | 86.2 % |
+
+**End to end** (`qa_end_to_end.py`): PADAM retrieves, a language model answers from the retrieved records only, and a judge grades the answer with the official LongMemEval prompt for each question type. All 500 questions:
+
+| retrieval | records shown | correct | without the 30 unanswerable | "I don't know" when right |
+|---|---|---|---|---|
+| built-in | 20, compact view | 61.2 % | 58.9 % | 96.7 % |
+| built-in | 10, whole | 64.0 % | 62.1 % | 93.3 % |
+| model2vec `potion-base-8M` | 10, whole | 67.6 % | 66.2 % | 90.0 % |
+| model2vec `potion-base-8M` | 20, whole | **71.4 %** | 70.2 % | 90.0 % |
+
+The run with built-in search and 20 whole records stopped at 174 of 500 questions when the free model quota ran out; those 174 are mostly of three types (the file is ordered by type), so they are kept in `results_qa_full20_builtin_STOPPED_174_of_500/` and not put in the table. The fair comparison of the two methods is the pair with 10 whole records: 64.0 % against 67.6 %.
+
+By question type (`potion-base-8M`, 20 whole records): single-session user 90.6 %, single-session assistant 91.1 %, knowledge update 80.6 %, temporal reasoning 71.7 %, multi-session 50.4 %, preference 36.7 %. Aggregating facts scattered over many sessions and inferring preferences are the weak spots.
+
+Read these numbers with their conditions:
+- The reader and the judge are both `gpt-oss:120b` on Ollama Cloud; the paper's judge is GPT-4o, and the reader prompt is ours. Numbers are not directly comparable with tables that use GPT-4o, and a stronger reader would score higher on the same retrieval.
+- One run per configuration, no repeats; the spread between runs is not measured.
+- "Compact view" cuts the assistant's replies, which is why it loses on questions about what the assistant said; `padam_search` returns whole records by default.
+- The test measures recall from a fixed haystack. It does not measure what PADAM is built for besides recall: forgetting, owner review, secrets, decay, the eternal layer.
+
+---
+
 ## Honest limits
 
-- Built-in search compares words, not meanings; use Ollama or another embedding model for real semantic recall.
+- Built-in search compares words, not meanings; for search by meaning install `[embed]` or use Ollama. On LongMemEval the gain is real but modest (see above).
+- The default `[embed]` model is distilled from an English model (`bge-base-en-v1.5`) and barely tells meanings apart in other languages: on four question–answer pairs the right answer led the wrong one by 0.32 in English and by 0.04 in Russian. For memory in another language set `PADAM_LOCAL_EMBED_MODEL=minishlab/potion-multilingual-128M` (512 MB, 0.32 in Russian on the same pairs). It is not the default because a 512 MB download on the first tool call can outlast an MCP client's timeout.
 - The rule-based classifier without a model makes mistakes; the NOCTURNE report shows it (diversity metric).
 - Ceiling, decay and floor values are chosen by reasoning, not fitted on data — tune them on your own stream, measuring before and after.
-- A public benchmark (LongMemEval) is not published yet; do not compare our internal numbers with other systems.
+- LongMemEval is measured with an open judge model, not GPT-4o, in one run per configuration (see above); compare with other systems only under the same conditions.
 - Without `protect-keys`, per-record keys live in the local SQLite file in clear, and whoever has the database file can read the Arweave ciphertexts.
 - The package is on PyPI since 0.3.0; it is not yet in the official MCP registry (`server.json` is prepared).
 

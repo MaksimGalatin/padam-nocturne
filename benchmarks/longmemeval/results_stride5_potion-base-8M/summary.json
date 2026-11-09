@@ -1,0 +1,64 @@
+{
+  "dataset": "LongMemEval-S",
+  "questions": 100,
+  "scored_without_abstention": 94,
+  "method": "PADAM Memory.remember per round, Memory.recall(question, limit=50), embedding: model2vec:minishlab/potion-base-8M, no LLM",
+  "padam_version": "0.3.1",
+  "overall": {
+    "any@5": 0.9255,
+    "any@10": 0.9787,
+    "all@5": 0.766,
+    "all@10": 0.8723
+  },
+  "abstention": {
+    "any@5": 1.0,
+    "any@10": 1.0,
+    "all@5": 0.8333,
+    "all@10": 1.0
+  },
+  "by_type": {
+    "knowledge-update": {
+      "n": 14,
+      "any@5": 1.0,
+      "any@10": 1.0,
+      "all@5": 0.8571,
+      "all@10": 0.9286
+    },
+    "multi-session": {
+      "n": 25,
+      "any@5": 1.0,
+      "any@10": 1.0,
+      "all@5": 0.72,
+      "all@10": 0.84
+    },
+    "single-session-assistant": {
+      "n": 11,
+      "any@5": 1.0,
+      "any@10": 1.0,
+      "all@5": 1.0,
+      "all@10": 1.0
+    },
+    "single-session-preference": {
+      "n": 6,
+      "any@5": 0.6667,
+      "any@10": 0.6667,
+      "all@5": 0.6667,
+      "all@10": 0.6667
+    },
+    "single-session-user": {
+      "n": 13,
+      "any@5": 0.7692,
+      "any@10": 1.0,
+      "all@5": 0.7692,
+      "all@10": 1.0
+    },
+    "temporal-reasoning": {
+      "n": 25,
+      "any@5": 0.92,
+      "any@10": 1.0,
+      "all@5": 0.68,
+      "all@10": 0.8
+    }
+  },
+  "seconds": 274.9
+}

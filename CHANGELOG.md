@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0 — 9 November 2026
+
+### Changed
+- Writes the agent marks as `origin: external` now wait for the owner by default, whatever their wording (`PADAM_HOLD_EXTERNAL=0` turns this off). Why: on a held-out set written after our fixes, with kinds of attack we had never seen, recognising commands by their words held 6 of 14. Every round of dictionary fixes fits the attacks it has seen, so the boundary moves from words to the source label. The agent sets that label itself; an agent that lies about the source still gets the dictionary and the fence.
+
+### Added
+- An in-process embedding model, no service to run: `pip install "padam-nocturne[embed]"` (model2vec with `minishlab/potion-base-8M`, about 30 MB, MIT). `PADAM_EMBEDDER` chooses `auto` (default: Ollama if it answers, else the installed local model, else built-in), `builtin`, `ollama`, `model2vec` or `fastembed`; `PADAM_LOCAL_EMBED_MODEL` names another model. A text takes 0.41 ms against 0.31 ms built-in and 22 ms with fastembed (1,000 LongMemEval turns). Vectors of another model never break search: such records are found by words until `padam reindex` or sleep recomputes them. The default model is English: for other languages the README names `potion-multilingual-128M` (512 MB) with the measurement.
+- LongMemEval-S, published with scripts and every answer in `benchmarks/longmemeval/`. Retrieval, no language model: with built-in search the evidence session is in the top 5 for 91.5 % of the 470 answerable questions, in the top 10 for 96.6 %. End to end, all 500 questions, reader and judge `gpt-oss:120b` with the official judge prompt (not GPT-4o): 71.4 % with `[embed]` and 20 whole records, 67.6 % with 10, 64.0 % with built-in search and 10. Conditions and weak spots (multi-session 50.4 %, preferences 36.7 %) are in the README.
+
+### Fixed
+- The local model no longer goes to the network on every start. model2vec checked huggingface.co each time a process loaded the model: `force_download` defaults to true, and on Windows its cache lookup never matches (the model name gets a backslash). PADAM now finds the cached folder itself and hands it to model2vec. Measured with a counter on every connection: 1 connection to huggingface.co per start before, 0 after; a test closes the network and checks that the model still loads.
+- README: the hosted server's referral rule was stale. The tier condition was removed on 6 Nov 2026: the reward comes from every real payment by invited people, whatever the inviter's own plan. The Russian README caught up with the English one (protocol 2026-07-28, browser viewer, `as_of`, `derived_from`, `panic`, `legacy`, `alias`, `trust-protected`, the hosted server, four settings).
+
 ## 0.3.1 — 9 November 2026
 
 ### Fixed

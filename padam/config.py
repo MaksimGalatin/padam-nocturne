@@ -12,6 +12,9 @@ DB_PATH = Path(os.environ.get(
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 EMBED_MODEL = os.environ.get("PADAM_EMBED_MODEL", "nomic-embed-text")
+# 0.4.0: способ векторов — auto | builtin | ollama | model2vec | fastembed (см. embeddings._local_model).
+EMBEDDER = os.environ.get("PADAM_EMBEDDER", "auto").strip().lower()
+LOCAL_EMBED_MODEL = os.environ.get("PADAM_LOCAL_EMBED_MODEL", "")
 CLASSIFY_MODEL = os.environ.get("PADAM_CLASSIFY_MODEL", "llama3.2:1b")
 EMBED_DIM = int(os.environ.get("PADAM_EMBED_DIM", "768"))
 # окно модели эмбеддингов в токенах; длиннее — обрезается (nomic-embed-text держит 8192)
@@ -54,7 +57,9 @@ MCP_TRUST_WRITES = os.environ.get("PADAM_MCP_TRUST_WRITES", "0") == "1"
 # Строгий режим: всё, что агент пометил как прочитанное снаружи (origin=external), ждёт владельца целиком,
 # а не только похожее на команду. По умолчанию выключен: пометку ставит сам агент, и тот же текст он может
 # записать как agent, поэтому настоящая защита — ограда выдачи, а этот режим — дополнительная строгость.
-HOLD_EXTERNAL = os.environ.get("PADAM_HOLD_EXTERNAL", "0") == "1"
+# 0.4.0: по умолчанию ВКЛЮЧЕНО — словарь команд подгоняется под виденные атаки (третий набор: 6 из 14),
+# поэтому прочитанное агентом снаружи ждёт владельца всегда. PADAM_HOLD_EXTERNAL=0 выключает.
+HOLD_EXTERNAL = os.environ.get("PADAM_HOLD_EXTERNAL", "1") != "0"
 KEEP_SECRETS = os.environ.get("PADAM_KEEP_SECRETS", "0") == "1"
 
 MAX_CONTENT_CHARS = 20000
@@ -76,7 +81,8 @@ SIMILARITY_THRESHOLD_BUILTIN = float(
 
 
 def similarity_threshold(backend: str) -> float:
-    return (SIMILARITY_THRESHOLD_OLLAMA if backend == "ollama"
+    # Локальные нейросетевые модели дают близость того же порядка, что и Ollama (замер LongMemEval 09.11.2026).
+    return (SIMILARITY_THRESHOLD_OLLAMA if backend in ("ollama", "model2vec", "fastembed")
             else SIMILARITY_THRESHOLD_BUILTIN)
 
 # --- сессии ----------------------------------------------------------

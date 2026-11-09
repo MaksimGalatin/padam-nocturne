@@ -26,6 +26,9 @@ def _без_живой_ollama(monkeypatch):
         return
     monkeypatch.setenv("OLLAMA_URL", _НИКУДА)          # подпроцессы с сервером наследуют окружение
     monkeypatch.setattr(config, "OLLAMA_URL", _НИКУДА)
+    # 0.4.0: и локальную модель (дополнение [embed]) тесты не берут сами — только встроенный метод, как на GitHub.
+    monkeypatch.setenv("PADAM_EMBEDDER", "builtin")
+    monkeypatch.setattr(config, "EMBEDDER", "builtin")
     monkeypatch.setattr(embeddings, "_ollama_available", None)
     monkeypatch.setattr(embeddings, "_check_ollama", lambda: False)
     yield

@@ -171,12 +171,15 @@ def test_command_is_checked_before_secrets_are_masked(mem):
     assert mem.store.one("SELECT status FROM memory WHERE id=?", (mid,))["status"] == "quarantined"
 
 
-def test_hold_external_is_off_by_default_and_holds_everything_external_when_on(mem, monkeypatch):
-    assert config.HOLD_EXTERNAL is False
-    assert "held" not in text("padam_write", {"content": "Цена хостинга выросла до 20 долларов", "origin": "external"})
-    monkeypatch.setattr(config, "HOLD_EXTERNAL", True)
+def test_hold_external_is_on_by_default_and_can_be_turned_off(mem, monkeypatch):
+    # 0.4.0 (слово Архитектора 09.11.2026 «ДОРАБОТАТЬ»): третий отложенный набор показал, что словарь команд
+    # подгоняется под виденные атаки (6 из 14 на новых). Поэтому всё, что агент пометил как прочитанное снаружи,
+    # по умолчанию ждёт владельца — какими бы словами оно ни было написано.
+    assert config.HOLD_EXTERNAL is True
     ответ = text("padam_write", {"content": "Цена домена выросла до 12 долларов", "origin": "external"})
     assert "held for the owner's review" in ответ
     assert "held" not in text("padam_write", {"content": "Агент решил писать тесты первыми", "origin": "agent"})
     # Владелец из консоли пишет мимо этого режима.
     assert mem.remember("Внешняя заметка владельца про склад", origin="external")[0] != "quarantined"
+    monkeypatch.setattr(config, "HOLD_EXTERNAL", False)
+    assert "held" not in text("padam_write", {"content": "Цена хостинга выросла до 20 долларов", "origin": "external"})

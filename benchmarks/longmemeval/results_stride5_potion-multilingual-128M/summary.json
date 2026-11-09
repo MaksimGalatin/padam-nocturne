@@ -1,0 +1,64 @@
+{
+  "dataset": "LongMemEval-S",
+  "questions": 100,
+  "scored_without_abstention": 94,
+  "method": "PADAM Memory.remember per round, Memory.recall(question, limit=50), embedding: model2vec:minishlab/potion-multilingual-128M, no LLM",
+  "padam_version": "0.4.0",
+  "overall": {
+    "any@5": 0.9468,
+    "any@10": 0.9894,
+    "all@5": 0.7979,
+    "all@10": 0.8617
+  },
+  "abstention": {
+    "any@5": 1.0,
+    "any@10": 1.0,
+    "all@5": 0.8333,
+    "all@10": 1.0
+  },
+  "by_type": {
+    "knowledge-update": {
+      "n": 14,
+      "any@5": 1.0,
+      "any@10": 1.0,
+      "all@5": 0.9286,
+      "all@10": 0.9286
+    },
+    "multi-session": {
+      "n": 25,
+      "any@5": 1.0,
+      "any@10": 1.0,
+      "all@5": 0.68,
+      "all@10": 0.8
+    },
+    "single-session-assistant": {
+      "n": 11,
+      "any@5": 1.0,
+      "any@10": 1.0,
+      "all@5": 1.0,
+      "all@10": 1.0
+    },
+    "single-session-preference": {
+      "n": 6,
+      "any@5": 0.5,
+      "any@10": 1.0,
+      "all@5": 0.5,
+      "all@10": 1.0
+    },
+    "single-session-user": {
+      "n": 13,
+      "any@5": 1.0,
+      "any@10": 1.0,
+      "all@5": 1.0,
+      "all@10": 1.0
+    },
+    "temporal-reasoning": {
+      "n": 25,
+      "any@5": 0.92,
+      "any@10": 0.96,
+      "all@5": 0.72,
+      "all@10": 0.72
+    }
+  },
+  "seconds": 277.3
+}

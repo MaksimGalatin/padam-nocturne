@@ -1,0 +1,35 @@
+{
+  "dataset": "LongMemEval-S",
+  "questions": 500,
+  "reader_and_judge": "gpt-oss:120b (Ollama Cloud)",
+  "retrieval": "PADAM 0.3.1, embedding model2vec, recall limit 20, whole records (padam_search default)",
+  "accuracy_overall": 0.714,
+  "accuracy_without_abstention": 0.7021,
+  "abstention_accuracy": 0.9,
+  "by_type": {
+    "knowledge-update": {
+      "n": 72,
+      "accuracy": 0.8056
+    },
+    "multi-session": {
+      "n": 121,
+      "accuracy": 0.5041
+    },
+    "single-session-assistant": {
+      "n": 56,
+      "accuracy": 0.9107
+    },
+    "single-session-preference": {
+      "n": 30,
+      "accuracy": 0.3667
+    },
+    "single-session-user": {
+      "n": 64,
+      "accuracy": 0.9062
+    },
+    "temporal-reasoning": {
+      "n": 127,
+      "accuracy": 0.7165
+    }
+  }
+}

@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 import sys
 import threading
@@ -67,8 +68,77 @@ def _check_ollama() -> bool:
         return _ollama_available
 
 
+# ---------------------------------------------------------------------
+# Локальная модель в самом процессе (0.4.0): без службы и без сети после первой загрузки.
+# Ставится дополнением `pip install "padam-nocturne[embed]"` (model2vec, ~30 МБ модели). Замер на LongMemEval-S,
+# каждый пятый вопрос (94 без отказных): все нужные сессии в десятке 87,2 % против 83,0 % у встроенного метода,
+# хоть одна в десятке 97,9 % против 94,7 %, скорость та же. Выбор — PADAM_EMBEDDER: auto | builtin | ollama |
+# model2vec | fastembed. auto: Ollama, если отвечает; иначе установленная локальная модель; иначе встроенный.
+# ---------------------------------------------------------------------
+_local_lock = threading.Lock()
+_local = None            # (вид, имя, функция текст -> вектор)
+_local_failed = False
+
+
+def _local_model():
+    """Загружает локальную модель один раз. Не установлена или не загрузилась — None (тогда встроенный метод)."""
+    global _local, _local_failed
+    if _local is not None or _local_failed:
+        return _local
+    with _local_lock:
+        if _local is not None or _local_failed:
+            return _local
+        виды = [config.EMBEDDER] if config.EMBEDDER in ("model2vec", "fastembed") else ["model2vec", "fastembed"]
+        for вид in виды:
+            try:
+                if вид == "model2vec":
+                    from model2vec import StaticModel
+                    имя = config.LOCAL_EMBED_MODEL or "minishlab/potion-base-8M"
+                    # Сеть — только при первой загрузке. Сама model2vec ходит в huggingface.co при КАЖДОМ запуске:
+                    # force_download по умолчанию True, а на Windows и с False — её проверка кэша получает имя
+                    # с обратной косой чертой («minishlab\\potion-base-8M») и не находит модель. Замер 09.11.2026:
+                    # CONNECT huggingface.co:443 при полном кэше. Поэтому папку уже скачанной модели находим сами
+                    # (try_to_load_from_cache только смотрит в кэш, в сеть не ходит) и отдаём model2vec папку, а не
+                    # имя. snapshot_download(local_files_only=True) не годится: он требует ВСЕ файлы репозитория,
+                    # а model2vec скачивает только три нужных.
+                    путь = имя
+                    if not os.path.isdir(имя):
+                        try:
+                            from huggingface_hub import try_to_load_from_cache
+                            файл = try_to_load_from_cache(имя, "config.json")
+                            if isinstance(файл, str):
+                                папка = os.path.dirname(файл)
+                                if all(os.path.isfile(os.path.join(папка, n))
+                                       for n in ("model.safetensors", "tokenizer.json")):
+                                    путь = папка
+                        except Exception:              # нет в кэше — первая загрузка из сети, один раз
+                            путь = имя
+                    м = StaticModel.from_pretrained(путь, force_download=False)
+                    _local = ("model2vec", имя, lambda t, м=м: м.encode([t])[0])
+                else:
+                    from fastembed import TextEmbedding
+                    имя = config.LOCAL_EMBED_MODEL or "BAAI/bge-small-en-v1.5"
+                    м = TextEmbedding(имя)
+                    _local = ("fastembed", имя, lambda t, м=м: next(iter(м.embed([t]))))
+                return _local
+            except Exception as e:                     # не установлена, нет сети при первой загрузке и т.п.
+                if config.EMBEDDER == вид:
+                    from .i18n import t        # язык как у остальных служебных сообщений; stdout не трогаем — там MCP
+                    print("[padam] " + t("локальная модель %s не загрузилась (%s): встроенный метод",
+                                         "local model %s did not load (%s): using built-in search") % (вид, e),
+                          file=sys.stderr)
+        _local_failed = True
+        return None
+
+
 def backend() -> str:
-    return "ollama" if _check_ollama() else "builtin"
+    if config.EMBEDDER == "builtin":
+        return "builtin"
+    if config.EMBEDDER in ("auto", "ollama") and _check_ollama():
+        return "ollama"
+    if config.EMBEDDER in ("auto", "model2vec", "fastembed") and _local_model() is not None:
+        return _local[0]
+    return "builtin"
 
 
 def метка_модели() -> str:
@@ -78,8 +148,11 @@ def метка_модели() -> str:
     и при её смене прежние векторы становятся несравнимыми так же, как при
     смене нейросетевой модели.
     """
-    if _check_ollama():
+    b = backend()
+    if b == "ollama":
         return "ollama:%s" % config.EMBED_MODEL
+    if b in ("model2vec", "fastembed"):
+        return "%s:%s" % (_local[0], _local[1])
     return "builtin:%d" % config.EMBED_DIM
 
 
@@ -183,7 +256,18 @@ def embed(text: str) -> np.ndarray:
     # честный ответ «признаков нет», в отличие от вектора нулевой длины.
     if not text or not text.strip():
         return _builtin_embed(text)
-    if _check_ollama():
+    b = backend()
+    if b in ("model2vec", "fastembed"):
+        try:
+            v = np.asarray(_local[2](text[: config.MAX_CONTENT_CHARS]), dtype=np.float32)
+            n = float(np.linalg.norm(v))
+            if v.size and n > 0:
+                return v / n
+        except Exception:
+            if not config.ALLOW_FALLBACK:
+                raise
+        return _builtin_embed(text)
+    if b == "ollama":
         try:
             v = _ollama_embed(text)
             # Проверяем размерность ЗДЕСЬ, а не внутри _ollama_embed:
