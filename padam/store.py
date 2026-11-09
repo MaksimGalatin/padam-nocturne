@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
 import threading
 import uuid
@@ -187,6 +188,15 @@ class Store:
         self._lock = threading.RLock()
         self.conn = sqlite3.connect(str(self.path), check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
+        # Память личная: на общем компьютере файл базы не должен читаться другими.
+        # Папку закрываем только свою, по умолчанию: путь, заданный человеком, не наш.
+        if str(self.path) != ":memory:" and os.name == "posix":
+            try:
+                os.chmod(self.path, 0o600)
+                if self.path.parent == config.DB_PATH.parent:
+                    os.chmod(self.path.parent, 0o700)
+            except OSError:
+                pass
         # Без этого затёртый текст остаётся в свободных страницах файла и читается простым
         # поиском по байтам: «забвение» было бы только в интерфейсе.
         self.conn.execute("PRAGMA secure_delete = ON")

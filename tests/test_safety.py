@@ -571,3 +571,18 @@ def test_release_metadata_is_consistent():
     assert len(сервер["description"]) <= 100, "реестр MCP не принимает описание длиннее 100 знаков"
     assert f"mcp-name: {сервер['name']}" in (КОРЕНЬ / "README.md").read_text(encoding="utf-8"), \
         "реестр MCP сверяет владельца пакета по этой строке в README на PyPI"
+
+
+def test_import_cleans_secrets_and_keeps_foreign_records(mem):
+    """Импорт идёт теми же воротами, что и запись: секрет вычищается, чужая запись не перезаписывается."""
+    секрет = "sk-" + "a1b2c3d4" * 6
+    добавлено = mem.import_({"format": "padam-export/1", "memory": [
+        {"id": "imp-1", "content": f"my key is {секрет}", "content_hash": "00" * 32},
+    ]})
+    assert добавлено == 1
+    строка = mem.store.one("SELECT content, content_hash FROM memory WHERE id = ?", ("imp-1",))
+    assert секрет not in строка["content"]
+    assert строка["content_hash"] is None
+    mem.store.execute("UPDATE memory SET user_id = 'someone-else' WHERE id = ?", ("imp-1",))
+    assert mem.import_({"format": "padam-export/1", "memory": [{"id": "imp-1", "content": "подмена"}]}, overwrite=True) == 0
+    assert mem.store.one("SELECT user_id FROM memory WHERE id = ?", ("imp-1",))["user_id"] == "someone-else"

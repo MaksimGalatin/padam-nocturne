@@ -612,14 +612,24 @@ class Memory:
             raise ValueError("неизвестный формат выгрузки")
         added = 0
         for rec in payload.get("memory", []):
-            exists = self.store.one("SELECT id FROM memory WHERE id = ?",
+            # Импорт идёт теми же воротами, что и обычная запись: секреты вычищаются, размер ограничен.
+            # Файл выгрузки мог быть изменён, а восстановленная запись потом попадает в контекст модели.
+            ch = bytes.fromhex(rec["content_hash"]) if rec.get("content_hash") else None
+            if rec.get("content") is not None:
+                очищено = safety.clean(str(rec["content"]))[:config.MAX_CONTENT_CHARS]
+                if очищено != rec["content"]:
+                    rec = {**rec, "content": очищено}
+                    ch = None  # текст изменился, прежний отпечаток к нему больше не относится
+            exists = self.store.one("SELECT id, user_id FROM memory WHERE id = ?",
                                     (rec["id"],))
             if exists and not overwrite:
+                continue
+            # Чужую запись импорт не трогает даже при overwrite: id приходит из файла.
+            if exists and exists["user_id"] != self.user_id:
                 continue
             if exists:
                 self.store.execute("DELETE FROM memory WHERE id = ?", (rec["id"],))
             vec = embeddings.embed(rec["content"]) if rec.get("content") else None
-            ch = bytes.fromhex(rec["content_hash"]) if rec.get("content_hash") else None
             self.store.execute(
                 """INSERT INTO memory
                    (id, user_id, scope, kind, content, embedding, importance,

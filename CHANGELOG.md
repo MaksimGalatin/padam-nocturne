@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Security
+- `import` now passes through the same gate as a normal write: secrets are masked, invisible characters removed, size capped; a changed record drops its old content hash.
+- `import` never overwrites a record that belongs to another `user_id`, even with `overwrite`.
+- On POSIX the database file is created with mode `0600` and the default `~/.padam` folder with `0700`.
+
 ## 0.2.1
 
 Security and honesty of the MCP surface.
