@@ -270,6 +270,12 @@ _PUBLIC_CONTEXT = re.compile(
 # Замер 09.11.2026 на трекере и файле навыков: 17 из 19 масок случайных строк были именно ими и id треков.
 _PUBLIC_PREFIX = re.compile(r"^(?:prj|team|dpl|icfg)_[A-Za-z0-9]{16,}$")
 _BASIC = re.compile(r"(?i)\bbasic\s+[A-Za-z0-9+/]{16,}={0,2}")
+# Короткая приставка из букв и за ней чистый hex от 32 знаков (key-…, sk_…): так выглядят ключи почтовых и платёжных
+# служб. Сам по себе hex не закрывается — это хеш файла или коммита; с приставкой — ключ, кроме публичных приставок.
+# Замер 09.11.2026 на 5,6 млн знаков заметок: такой вид встретился один раз, в публичной ссылке https://pub-….
+_PREFIXED_HEX = re.compile(r"(?<![A-Za-z0-9_\-])([A-Za-z]{2,4})[_\-](?:[0-9a-f]{32,}|[0-9A-F]{32,})(?![A-Za-z0-9_\-])")
+_PUBLIC_HEX_PREFIXES = {"sha", "md", "md5", "git", "rev", "ref", "tx", "txid", "id", "uid", "uuid", "run", "job",
+                        "req", "pub", "pk", "hash", "blk", "obj", "doc", "img", "file"}
 
 
 def _public_identifier(token: str, before: str) -> bool:
@@ -337,6 +343,13 @@ def mask_generic(text: str, bump) -> str:
 
     text = _BASIC.sub(lambda m: m.group(0).split()[0] + " " + bump("basic_auth"), text)
 
+    def prefixed_hex(m: re.Match) -> str:
+        if m.group(1).lower() in _PUBLIC_HEX_PREFIXES or _public_identifier(m.group(0), text[max(0, m.start() - 60):m.start()]):
+            return m.group(0)
+        return bump("prefixed_hex_key")
+
+    text = _PREFIXED_HEX.sub(prefixed_hex, text)
+
     def token(m: re.Match) -> str:
         t = m.group(0)
         if "REDACTED" in t or not _random_core(t):
@@ -381,11 +394,18 @@ def clean(text: str) -> str:
 # --- похожее на команду -----------------------------------------------
 
 _INSTRUCTION = re.compile("|".join([
-    r"\b(?:ignore|disregard|forget|override|bypass)\b.{0,40}\b(?:previous|prior|above|earlier|all|any|system|your)\b"
+    # Формы на -ing здесь нет: «the team was ignoring previous guidelines» — рассказ. Она есть ниже, после вежливой вводной.
+    r"\b(?:ignore|disregard|forget|override|bypass)\b.{0,40}"
+    r"\b(?:previous|prior|above|earlier|all|any|system|your)\b"
     r".{0,30}\b(?:instructions?|rules?|prompts?|messages?|guidelines?|guidance|directions?|directives?|memor(?:y|ies))\b",
-    # Повелительное «disregard the guidance above»: глагол в начале фразы или после please.
-    r"(?:^|[.!?\n]\s*|\bplease\s+)(?:ignore|disregard|forget|override|bypass)\b.{0,25}"
+    # Повелительное «disregard the guidance above»: глагол в начале фразы, после please или вежливой вводной
+    # («would you mind ignoring…», «could you kindly disregard…»).
+    r"(?:^|[.!?\n]\s*|\bplease\s+|\bkindly\s+|\b(?:could|would|can|will) you(?: please| kindly| mind)?\s+"
+    r"|\bi(?:'d| would) (?:like|appreciate it if) you(?: to)?\s+)"
+    r"(?:ignor(?:e|ing)|disregard(?:ing)?|forget(?:ting)?|overrid(?:e|ing)|bypass(?:ing)?)\b.{0,25}"
     r"\b(?:instructions?|guidance|guidelines?|directions?|directives?|system prompt|safety rules?)\b",
+    # Подделка сообщения в JSON: {"role": "system", "content": "…"} внутри сохранённого текста.
+    r"[\"']role[\"']\s*:\s*[\"'](?:system|developer)[\"']",
     r"\bdo (?:what|as) (?:this|the) (?:note|message|text|memory|record|page) says\b",
     r"\bfrom now on\b.{0,40}\b(?:always|never|you|tell|say|respond|reply|answer|ignore|send|use)\b",
     r"\btell (?:the |every |all )?users? (?:to|that)\b",

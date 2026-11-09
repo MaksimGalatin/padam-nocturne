@@ -69,6 +69,16 @@ def test_generic_layers_leave_ordinary_text_alone(обычное):
     assert сколько == {}, (обычное, чистый)
 
 
+def test_short_prefix_and_hex_is_a_key_but_public_prefixes_stay_open():
+    for ключ in ("key-" + "3f9a1c7e5b2d8f4a6c0e9b7d3a1f5c8e", "sk_" + "3F9A1C7E5B2D8F4A6C0E9B7D3A1F5C8E2B4D",
+                 "mg_" + "0123abcd4567ef890123abcd4567ef89"):
+        assert safety.redact(f"ключ {ключ} конец")[1] == {"prefixed_hex_key": 1}, ключ
+    for открытое in ("sha-3f9a1c7e5b2d8f4a6c0e9b7d3a1f5c8e", "commit 3f9a1c7e5b2d8f4a6c0e9b7d3a1f5c8e2b4d6f8a",
+                     "https://pub-3f9a1c7e5b2d8f4a6c0e9b7d3a1f5c8e.r2.dev/a.png", "tx_3f9a1c7e5b2d8f4a6c0e9b7d3a1f5c8e",
+                     "id-3f9a1c7e5b2d8f4a6c0e9b7d3a1f5c8e"):
+        assert safety.redact(открытое)[1] == {}, открытое
+
+
 def test_card_needs_grouping_or_a_word_about_cards():
     # Ряд цифр, проходящий Луна, без группировки и без слова «карта» — не карта: это номер поста, дела, заказа.
     assert safety.redact("номер 4111" + "111111111111 в отчёте")[1] == {}
