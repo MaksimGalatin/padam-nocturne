@@ -75,19 +75,30 @@ _PASSWORD_TAIL = ".,;:)]}"
 _ВНЕШНИЕ_ЗНАКИ = " \"'«»“”„‘’`.,;:!?()[]{}<>"
 
 
-def password_like(value: str) -> bool:
+_PHRASE = re.compile(r"[^\W\d_]+(?:[\-_.][^\W\d_]+)+")
+
+
+def password_like(value: str, after_separator: bool = False, phrase: bool = True) -> bool:
     """Значение после «пароль» похоже на пароль, а не на слово.
 
     Края срезаются (кавычки, пунктуация), и нужна цифра или знак вроде !@#$%^&*~. Раньше хватало любого
     не-буквенного знака, и «пары «пароль = значение»» закрывалась из-за закрывающей кавычки: на заметках
-    проекта так ложно срабатывали все 13 случаев присваивания из 13 (замер 09.11.2026). Пароль без цифр и
-    без таких знаков остаётся открытым — это сознательная цена: ложная маска молча портит память.
+    проекта так ложно срабатывали все 13 случаев присваивания из 13 (замер 09.11.2026).
+
+    Парольная фраза из слов без цифр — то, что сейчас советуют людям («correct-horse-battery-staple»), —
+    тоже пароль, если слова соединены -, _ или . без пробелов, всего от 12 знаков, и слов не меньше трёх
+    после явного «:» или «=», не меньше четырёх без них («мой пароль …»). В речи такой связки нет: «пароль:
+    длинный». phrase=False — для имён вроде api_key: ключ из слов не составляют, «flash-lite-preview» — модель.
     """
     core = value.strip(_ВНЕШНИЕ_ЗНАКИ)
     # «пароль contact@…» — дальше почта, а не пароль: адрес и «слово@» знаком @ паролем не становятся.
     if re.fullmatch(r"[^@\s]+@(?:[^@\s]+\.[A-Za-z]{2,})?", core):
         return False
-    return len(core) >= 6 and bool(re.search(r"\d|[!@#$%^&*~]", core))
+    if len(core) >= 6 and re.search(r"\d|[!@#$%^&*~]", core):
+        return True
+    if phrase and len(core) >= 12 and _PHRASE.fullmatch(core):
+        return len(re.split(r"[\-_.]", core)) >= (3 if after_separator else 4)
+    return False
 
 # Массив байтов ключа кошелька, как его выгружают Solana CLI и Phantom: [12,34,...], 32 числа и больше.
 _BYTE_ARRAY = re.compile(r"\[\s*(?:\d{1,3}\s*,\s*){31,}\d{1,3}\s*\]")
@@ -133,7 +144,9 @@ def redact(text: str) -> tuple[str, dict[str, int]]:
 
     def assignment(m: re.Match) -> str:
         value = m.group(4)
-        if value.startswith("[REDACTED:") or not password_like(value):
+        # Фраза из слов — пароль только у паролей; у api_key или token это имя модели или слаг.
+        пароль = bool(re.match(r"pass|pwd|пароль", m.group(1), re.I))
+        if value.startswith("[REDACTED:") or not password_like(value, after_separator=True, phrase=пароль):
             return m.group(0)
         return m.group(1) + m.group(2) + bump("assigned_secret")
 
@@ -151,9 +164,11 @@ def redact(text: str) -> tuple[str, dict[str, int]]:
     def password_phrase(m: re.Match) -> str:
         value = m.group(2)
         core = value.rstrip(_PASSWORD_TAIL)
-        if value.startswith("[REDACTED:") or not password_like(core):
-            return m.group(0)
         начало = m.start(2) - m.start(0)
+        # Явный разделитель — «:» или «=»; тире и просто пробел считаются речью («пароль — …», «мой пароль …»).
+        разделитель = bool(re.search(r"[:=：]", m.group(0)[:начало]))
+        if value.startswith("[REDACTED:") or not password_like(core, after_separator=разделитель):
+            return m.group(0)
         return m.group(0)[:начало] + bump("password_phrase") + value[len(core):]
 
     text = _PASSWORD_PHRASE.sub(password_phrase, text)
@@ -310,6 +325,9 @@ def mask_generic(text: str, bump) -> str:
         weak_name = m.group(2).lower() in ("auth", "sig", "cookie")
         randomish = looks_random(value) or (len(value) >= 12 and re.search(r"\d", value) and re.search(r"[A-Za-z]", value)
                                             and not weak_name and _entropy(value) >= 3.0)
+        # DB_PASSWORD="ocean.maple.thunder": у полей пароля и фраза из слов — пароль (см. password_like).
+        if not randomish and re.search(r"pass|pwd", m.group(2), re.I):
+            randomish = password_like(value, after_separator=True)
         if not randomish:
             return m.group(0)
         начало = m.start(4) - m.start(0)

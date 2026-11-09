@@ -331,7 +331,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 387 passed, 1 skipped (9 Nov 2026, Python 3.14.4, Windows)
+python -m pytest tests/ -q        # 399 passed, 1 skipped (9 Nov 2026, Python 3.14.4, Windows)
 ```
 
 CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L3 tests never touch the network: Arweave and Solana are replaced by fakes. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.

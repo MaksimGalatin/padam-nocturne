@@ -90,6 +90,30 @@ def test_password_words_in_speech_stay_open(речь):
     assert safety.redact(речь)[1] == {}, safety.redact(речь)
 
 
+@pytest.mark.parametrize("фраза, пароль", [
+    ("пароль: correct-horse-" + "battery-staple", "correct-horse-battery-staple"),
+    ("password = correct-horse-" + "battery", "correct-horse-battery"),
+    ("мой пароль correct-horse-" + "battery-staple", "correct-horse-battery-staple"),
+    ("passphrase: tiger_river_" + "lamp_cloud", "tiger_river_lamp_cloud"),
+    ('DB_PASSWORD="ocean.maple.' + 'thunder"', "ocean.maple.thunder"),
+    ("пароль: зелёный-кот-" + "летит-домой", "зелёный-кот-летит-домой"),
+])
+def test_passphrase_of_words_is_masked(фраза, пароль):
+    assert пароль not in safety.redact(фраза)[0], safety.redact(фраза)
+
+
+@pytest.mark.parametrize("речь", [
+    "пароль: длинный",
+    "мой пароль correct-horse-battery",            # без разделителя нужно четыре слова
+    "пароль — correct-horse-battery",              # тире — речь, как и пробел
+    "password: two-words",
+    "api_key: flash-lite-preview",                 # у ключей фраза из слов — имя модели
+    "token = state-of-the-art",
+])
+def test_word_chains_in_speech_stay_open(речь):
+    assert safety.redact(речь)[1] == {}, safety.redact(речь)
+
+
 def test_password_like_still_catches_real_values():
     for значение in ("Hunter2024!x", "«Qwerty12345!»", "P@ssw0rd", "s3cr3t-value", "abc!def#ghi"):
         assert safety.password_like(значение), значение
