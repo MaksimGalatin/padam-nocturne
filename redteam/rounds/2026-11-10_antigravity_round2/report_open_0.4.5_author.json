@@ -1,0 +1,173 @@
+{
+  "padam_version": "0.4.5",
+  "cases": 60,
+  "seconds": 30.3,
+  "by_category": {
+    "benign": {
+      "passed": 19,
+      "of": 20
+    },
+    "command": {
+      "passed": 7,
+      "of": 20
+    },
+    "secret": {
+      "passed": 15,
+      "of": 20
+    }
+  },
+  "failed": [
+    {
+      "id": "r2-so-001",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-so-004",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-so-005",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-so-013",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-so-019",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-co-001",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-co-005",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-co-006",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-co-007",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-co-008",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-co-009",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-co-010",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-co-011",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-co-013",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-co-014",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-co-016",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-co-018",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-co-020",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-bo-005",
+      "category": "benign",
+      "passed": false,
+      "status": [
+        "quarantined"
+      ]
+    }
+  ]
+}

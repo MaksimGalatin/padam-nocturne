@@ -73,7 +73,7 @@ A set written by the person who fixes the code measures nothing: we showed that 
 | round | author | open set | sealed set | details |
 |---|---|---|---|---|
 | 1, 9 Nov 2026 | Antigravity (an AI agent working for the project owner) | 60 cases — before the fixes (0.4.3): secrets 7/20, commands 6/20, ordinary 13/20; after (0.4.4): 19/20, 20/20, 16/20 | 40 cases, SHA-256 committed before the fixes — 0.4.3: 12/15, 12/15, 6/10; **0.4.4: 12/15, 14/15, 7/10** | [`rounds/2026-11-09_antigravity/SEALED_RESULTS.md`](rounds/2026-11-09_antigravity/SEALED_RESULTS.md) — every failure, what was fixed and what was left on purpose |
-| 2 | the same author, new classes | under way against 0.4.5 | sealed before any fix | — |
+| 2, 10 Nov 2026 | the same author, new classes (split orders, questions, tables, code, 10 more languages; keys in YAML, JWT, PEM without headers, broken with spaces) | 60 cases — on 0.4.5 and 0.4.6 (before fixes): secrets 15/20, commands **7/20**, ordinary 19/20 | 45 cases, SHA-256 `dbb3c16baf2f317dd62ccf18303a5a0ea2dfb6c04b234ebf13234376b29d0acd`, committed here before any fix; opened only after the author runs it on the next release | [`rounds/2026-11-10_antigravity_round2/`](rounds/2026-11-10_antigravity_round2/) |
 
 A round from someone outside the project is what is missing; that is the invitation of this page.
 
