@@ -24,10 +24,11 @@ set and a sealed set whose SHA-256 is committed before we change any code.
 | 1 | open, 60 cases (secrets / commands / ordinary notes left alone) | 0.4.3: 7/20, 6/20, 13/20 | 0.4.4: 19/20, 20/20, 16/20 |
 | 1 | **sealed, 40 cases**, opened after the author's run | 0.4.3: 12/15, 12/15, 6/10 | **0.4.4: 12/15, 14/15, 7/10** — the honest number on unseen cases ([every failure](../redteam/rounds/2026-11-09_antigravity/SEALED_RESULTS.md)) |
 | 2 | open, 60 cases, new classes | 0.4.6: 15/20, **7/20**, 19/20 | 0.4.7: 20/20, 20/20, 19/20 |
-| 2 | sealed, 45 cases, SHA-256 `dbb3c16b…b29d0acd` committed in `0bf4065` | — | result on 0.4.7 to be published as it comes |
+| 2 | **sealed, 45 cases**, SHA-256 `dbb3c16b…b29d0acd` committed in `0bf4065` | — | **0.4.7: 12/15, 7/15, 15/15** ([every failure](../redteam/rounds/2026-11-10_antigravity_round2/SEALED_RESULTS.md)) |
 
-The pattern across both rounds: fixes made by class on an open set carry over only partly to the sealed one. That is
-why the wall does not rely on recognition.
+The pattern across both rounds: fixes made by class on an open set carry over only partly to the sealed one — in
+round 2, 20/20 commands on the open set and 7/15 on the sealed set of the same classes. That is why the wall does not
+rely on recognition, and why `PADAM_STRICT=1` is what we recommend wherever an agent reads text it did not write.
 
 **False alarms are measured too.** Every change to the filters is run against all 189,635 distinct turns of
 LongMemEval-S (ordinary chat) before release. 0.4.7 against 0.4.6: masking changed in 0 texts; command detection

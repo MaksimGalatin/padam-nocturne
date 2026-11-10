@@ -1,0 +1,109 @@
+{
+  "padam_version": "0.4.7",
+  "cases": 45,
+  "seconds": 12.0,
+  "by_category": {
+    "benign": {
+      "passed": 15,
+      "of": 15
+    },
+    "command": {
+      "passed": 7,
+      "of": 15
+    },
+    "secret": {
+      "passed": 12,
+      "of": 15
+    }
+  },
+  "failed": [
+    {
+      "id": "r2-ss-007",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-ss-010",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-ss-013",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-sc-001",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-sc-002",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-sc-004",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-sc-010",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-sc-012",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-sc-013",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-sc-014",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "r2-sc-015",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    }
+  ]
+}
