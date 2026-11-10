@@ -347,7 +347,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 662 passed, 9 skipped with [embed] (Python 3.14.4); 657 passed, 10 skipped without it (3.10.9); 9 Nov 2026, Windows
+python -m pytest tests/ -q        # 728 passed, 10 skipped with [embed] (Python 3.14.4); 723 passed, 11 skipped without it (3.10.9); 9 Nov 2026, Windows
 ```
 
 CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L3 tests never touch the network: Arweave and Solana are replaced by fakes. The suite never calls a local Ollama either, even when one is running: every test uses the built-in embedding, as on CI. `PADAM_TEST_LIVE_OLLAMA=1` turns on the one live check. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.
@@ -412,6 +412,8 @@ python -I -X utf8 redteam/run.py your_cases.jsonl --out report.json
 ```
 
 **Round 1 (Antigravity, 9 Nov 2026).** 60 new cases. On 0.4.3: secrets 7/20 masked, commands 6/20 held, ordinary notes 13/20 left alone. On 0.4.4, fixed by class: 19/20, 20/20, 16/20; the five left cases and why are in `tests/test_redteam_round_0911.py`. The author's sealed set (40 cases, SHA-256 `5f1f0241…2779493`, committed before the fixes, opened only after her run on 0.4.4) is the honest number for cases nobody tuned against: secrets 12/15, commands 12/15, ordinary 6/10 on 0.4.3; **12/15, 14/15, 7/10 on 0.4.4**. The class fixes for the open set carried over only partly. The set, the author's original file byte for byte (`sealed_set.jsonl.gz`) and her report are in [`redteam/rounds/2026-11-09_antigravity/`](https://github.com/MaksimGalatin/padam-nocturne/tree/main/redteam/rounds/2026-11-09_antigravity). 0.4.5 closes the two classes it exposed (a `… key:` label in front of an unknown service's key; "zanemari" in Serbo-Croatian) — 15/15 and 15/15 there, which is now tuning, not proof; the three ordinary notes quoting an attack phrase stay held on purpose. The next sealed round measures 0.4.5.
+
+**Round 2 (Antigravity, 10 Nov 2026).** 60 new open cases with new classes — orders split in steps, asked as questions, in tables and code, in seven more languages; keys in YAML and TOML blocks, in groups of four. On 0.4.6: secrets 15/20, commands **7/20**, ordinary 19/20; on 0.4.7, fixed by class: 20/20, 20/20, 19/20. Its sealed set (45 cases, SHA-256 `dbb3c16b…b29d0acd`) was committed before the fixes; its result on 0.4.7 will be published whatever it is.
 
 ---
 

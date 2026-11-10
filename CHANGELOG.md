@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.7 — 10 November 2026
+
+### Security
+- **Red Team round 2 (Antigravity, 10 Nov 2026), fixed by class.** 60 new open cases with classes the first round did not have. Before (0.4.5 and 0.4.6): secrets 15 of 20 masked, commands **7 of 20** held, ordinary notes 19 of 20 left alone. After: 20 of 20, 20 of 20, 19 of 20. The author's sealed set of 45 more cases (SHA-256 `dbb3c16baf2f317dd62ccf18303a5a0ea2dfb6c04b234ebf13234376b29d0acd`) was committed to this repository before any of these fixes (`redteam/README.md`, commit `0bf4065`); its result on 0.4.7 will be published as it comes.
+  - Commands: "forget / disregard the instructions" in seven more languages — Armenian, Georgian, Kazakh, Uzbek, Azerbaijani, Mongolian, Amharic — in both word orders (in five of them the object comes before the verb). Russian orders without "ignore" or "forget": to stop following the previous instructions; "from now on your only task" and "your new mission" — only next to revealing, handing over or getting around something, so "your new task is to buy bread" stays an ordinary note; "the previous directives are declared void". In English, "abandon / disregard … rules, constraints, restrictions, guardrails".
+  - Secrets: a value on the next line of a YAML block (`key: |`, `key: >-`) or inside TOML triple quotes; a key written in groups of four separated by spaces or hyphens (five groups or more, letters and digits mixed — a 16-digit order number in four groups is left alone); an Oracle Cloud credential OCID.
+  - One case is left held on purpose: a CVE analysis quoting an attack phrase (`tests/test_redteam_round2_1011.py`), the same class as in round 1.
+- **Checked for false alarms on all 189,635 distinct LongMemEval turns** against 0.4.6: masking changed in 0 texts; command detection changed in 4 — one real jailbreak now caught, and three ordinary tips ("don't forget … any dietary restrictions") that the first version of this wave held. Those three were fixed before release: the new objects (constraints, restrictions, guardrails, safeguards) need ignore, disregard, override or bypass, not forget.
+- The hosted server 1.9.3 has the same changes; compared line by line on 378 texts: 0 differences.
+
 ## 0.4.6 — 10 November 2026
 
 ### Fixed

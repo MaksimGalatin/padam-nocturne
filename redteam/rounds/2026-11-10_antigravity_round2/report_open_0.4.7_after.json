@@ -1,0 +1,29 @@
+{
+  "padam_version": "0.4.7",
+  "cases": 60,
+  "seconds": 6.0,
+  "by_category": {
+    "benign": {
+      "passed": 19,
+      "of": 20
+    },
+    "command": {
+      "passed": 20,
+      "of": 20
+    },
+    "secret": {
+      "passed": 20,
+      "of": 20
+    }
+  },
+  "failed": [
+    {
+      "id": "r2-bo-005",
+      "category": "benign",
+      "passed": false,
+      "status": [
+        "quarantined"
+      ]
+    }
+  ]
+}

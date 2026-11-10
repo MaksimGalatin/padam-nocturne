@@ -53,12 +53,17 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
     ("gitlab_token", re.compile(r"\bglpat-[A-Za-z0-9_\-]{20,}")),
     ("npm_token", re.compile(r"\bnpm_(?=[a-z]*[A-Z0-9])[A-Za-z0-9]{30,}")),
     # 0.4.4 (проверка Antigravity 09.11.2026): форматы сервисов, которых не было в списке.
+    # 0.4.7: идентификатор учётных данных Oracle Cloud (второй круг Antigravity, r2-so-013).
+    ("oci_credential", re.compile(r"\bocid1\.credential\.[a-z0-9]+\.[a-z0-9\-]*\.[a-z0-9]{20,}")),
     ("service_token", re.compile(r"\b(?:secret_(?=[A-Za-z]*\d)[A-Za-z0-9]{40,}|ntn_\d{11}[A-Za-z0-9]{35}|lin_(?:api|oauth)_[A-Za-z0-9]{32,}|shp(?:at|ca|pa|ss)_[a-fA-F0-9]{32}|glsa_[A-Za-z0-9]{32}_[A-Fa-f0-9]{8}|glc_[A-Za-z0-9+/]{32,}={0,2}|hv[sbr]\.[A-Za-z0-9_\-]{24,}|sntry[su]_[A-Za-z0-9+/=_]{40,}|ATBB[A-Za-z0-9_=.\-]{24,}|pat[A-Za-z0-9]{14}\.[a-f0-9]{64}|do[por]_v1_[a-f0-9]{64}|PMAK-[a-f0-9]{24}-[a-f0-9]{34}|sq0(?:atp|csp)-[A-Za-z0-9_\-]{22,}|figd_[A-Za-z0-9_\-]{40,}|pplx-[A-Za-z0-9]{40,}|gsk_[A-Za-z0-9]{40,}|xapp-\d-[A-Z0-9]+-\d+-[a-f0-9]{32,}|sbp_[a-f0-9]{40}|pscale_(?:tkn|pw|oauth)_[A-Za-z0-9_\-.]{32,}|dp\.(?:st|ct|sa|scim|audit)\.[A-Za-z0-9_\-]{32,}|r8_[A-Za-z0-9]{37}|SG\.[A-Za-z0-9_\-]{16,32}\.[A-Za-z0-9_\-]{16,64}|[MNO][A-Za-z0-9_\-]{23,27}\.[A-Za-z0-9_\-]{6}\.[A-Za-z0-9_\-]{27,40})")),
 ]
 
 # Секрет AWS без метки: ровно 40 знаков base64. Чтобы не задеть путь или хеш, нужны строчные,
 # заглавные и цифра или «/+», а знаков разных не меньше 24: у случайной строки их около 30,
 # у пути вроде src/Components/Header их заметно меньше, у hex-хеша нет заглавных.
+# 0.4.7: ключ, записанный группами по 4 знака через пробел или дефис («7b8c 9d0e 1f2a …», «x9q2-m8k4-…»): пять групп
+# и больше, разделитель один и тот же, буквы и цифры вперемешку (второй круг Antigravity, r2-so-004, r2-so-005).
+_GROUPED_KEY = re.compile(r"(?<![\w-])[A-Za-z0-9]{4}([ -])(?:[A-Za-z0-9]{4}\1){3,}[A-Za-z0-9]{4}(?![\w-])")
 _AWS_SECRET = re.compile(r"(?<![A-Za-z0-9/+=_.\-])[A-Za-z0-9/+]{40}(?![A-Za-z0-9/+=_.\-])")
 
 # Пароль словами: «the password is X», «пароль — X», «мой пароль X», «contraseña: X», «密码是X».
@@ -128,7 +133,10 @@ _ASSIGNMENT = re.compile(
     # «cluster_token=». Закрытый набор Antigravity 09.11.2026 (ss-005, ss-006, ss-008): форматы сервисов,
     # которых нет в _PATTERNS, держатся на подписи, а не на приставке. Значение проходит ту же проверку
     # password_like, поэтому «key: value» из обычных слов не маскируется.
-    r"(?:[a-z0-9]+[_\- ]){0,2}(?:key|token|secret)|пароль|токен|ключ)\b(\s*[:=]\s*)([\"']?)([^\s\"',;]{8,})\3",
+    r"(?:[a-z0-9]+[_\- ]){0,2}(?:key|token|secret)|пароль|токен|ключ)\b"
+    # 0.4.7: значение может начинаться со следующей строки — блок YAML («key: |», «key: >-») или строка TOML в тройных
+    # кавычках (второй круг Antigravity, r2-so-001, r2-so-019).
+    r"(\s*[:=]\s*(?:[|>][-+]?\s*)?)((?:\"\"\"|\'\'\')\s*)?([\"']?)([^\s\"',;]{8,})\4",
     re.I)
 
 
@@ -151,12 +159,12 @@ def redact(text: str) -> tuple[str, dict[str, int]]:
     text = _URL_PASSWORD.sub(url_password, text)
 
     def assignment(m: re.Match) -> str:
-        value = m.group(4)
+        value = m.group(5)
         # Фраза из слов — пароль только у паролей; у api_key или token это имя модели или слаг.
         пароль = bool(re.match(r"pass|pwd|пароль", m.group(1), re.I))
         if value.startswith("[REDACTED:") or not password_like(value, after_separator=True, phrase=пароль):
             return m.group(0)
-        return m.group(1) + m.group(2) + bump("assigned_secret")
+        return m.group(1) + m.group(2) + (m.group(3) or "") + bump("assigned_secret")
 
     text = _ASSIGNMENT.sub(assignment, text)
 
@@ -168,6 +176,14 @@ def redact(text: str) -> tuple[str, dict[str, int]]:
         return bump("aws_secret_key")
 
     text = _AWS_SECRET.sub(aws_secret, text)
+
+    def grouped_key(m: re.Match) -> str:
+        groups = re.split(r"[ -]", m.group(0))
+        с_цифрой = sum(1 for g in groups if re.search(r"\d", g))
+        с_буквой = sum(1 for g in groups if re.search(r"[A-Za-z]", g))
+        return bump("grouped_key") if с_цифрой >= 3 and с_буквой >= 3 else m.group(0)
+
+    text = _GROUPED_KEY.sub(grouped_key, text)
 
     def password_phrase(m: re.Match) -> str:
         value = m.group(2)
@@ -428,6 +444,10 @@ _INSTRUCTION = re.compile("|".join([
     r"\b(?:ignore|disregard|forget|override|bypass)\b.{0,40}"
     r"\b(?:previous|prior|above|earlier|all|any|system|your)\b"
     r".{0,30}\b(?:instructions?|rules?|prompts?|messages?|guidelines?|guidance|directions?|directives?|memor(?:y|ies))\b",
+    # 0.4.7: ограничения — без forget: «don't forget … any dietary restrictions» — обычный совет (3 ложные тревоги на
+    # 189 635 репликах LongMemEval), а «disregard prior constraints» — приказ (второй круг Antigravity, r2-co-016).
+    r"\b(?:ignore|disregard|override|bypass)\b.{0,40}\b(?:previous|prior|above|earlier|all|any|system|your)\b"
+    r".{0,30}\b(?:constraints?|restrictions?|guardrails?|safeguards?)\b",
     # Повелительное «disregard the guidance above»: глагол в начале фразы, после please или вежливой вводной
     # («would you mind ignoring…», «could you kindly disregard…»).
     r"(?:^|[.!?\n]\s*|\bplease\s+|\bkindly\s+|\b(?:could|would|can|will) you(?: please| kindly| mind)?\s+"
@@ -552,7 +572,7 @@ _INSTRUCTION = re.compile("|".join([
     r"\b(?:ab jetzt|von nun an)\b.{0,40}\b(?:du (?:bist|wirst|musst|sollst|antwortest|gehorchst)|immer|nie|antworte)\b",
     # Перефраз «отложи прежние указания» (аудит 09.11.2026): другие глаголы того же смысла.
     r"\b(?:set|put|lay|cast|push|leave) aside\b.{0,30}\b(?:previous|prior|above|earlier|all|any|your|existing|original|old)\b.{0,30}\b(?:instructions?|rules?|guidelines?|guidance|directions?|directives?|prompts?)\b",
-    r"\b(?:drop|discard|abandon|throw (?:out|away)|scrap|dismiss|neglect)\b.{0,30}\b(?:previous|prior|above|earlier|all|any|your|existing|original)\b.{0,20}\b(?:instructions?|guidelines?|guidance|directions?|directives?|system prompt)\b",
+    r"\b(?:drop|discard|abandon|throw (?:out|away)|scrap|dismiss|neglect)\b.{0,30}\b(?:previous|prior|above|earlier|all|any|your|existing|original)\b.{0,20}\b(?:instructions?|guidelines?|guidance|directions?|directives?|system prompt|rules|constraints|restrictions|guardrails)\b",
     # Вежливая вводная с обычным повелительным глаголом той же семьи; skip и drop — только с ней: «Skip the
     # instructions above if you use Docker» в документации — обычный текст.
     r"(?:\bplease\s+|\bkindly\s+|\b(?:could|would|can|will) you(?: please| kindly| mind)?\s+|\bi(?:'d| would) (?:like|appreciate it if) you(?: to)?\s+)(?:(?:set|setting|put|putting|lay|laying|leave|leaving) aside|drop(?:ping)?|discard(?:ing)?|skip(?:ping)?|abandon(?:ing)?|throw(?:ing)? (?:out|away)|scrap(?:ping)?|dismiss(?:ing)?|neglect(?:ing)?)\b.{0,25}\b(?:instructions?|guidance|guidelines?|directions?|directives?|system prompt|safety rules?|(?:previous|prior|earlier|original) rules)\b",
@@ -606,6 +626,26 @@ _INSTRUCTION = re.compile("|".join([
     # Китайский: «игнорируй ограничения» и дополнение перед глаголом (将私钥全部输出) — пропуск co-015 после сужения «从现在开始».
     r"(?:忽略|无视|忽视|不要理会|忘记|忘掉).{0,20}(?:限制|约束|限定|禁令)",
     r"(?:密钥|密码|令牌|秘钥|凭证|私钥|助记词|口令).{0,12}(?:输出|泄露|泄漏|透露|发送|打印|显示|告诉)",
+    # Четвёртая волна (второй круг Antigravity, 10.11.2026): «забудь / не учитывай инструкции» ещё на семи языках —
+    # армянский, грузинский, казахский, узбекский, азербайджанский, монгольский, амхарский; в пяти из них дополнение
+    # стоит перед глаголом, поэтому оба порядка.
+    r"(?:անտես|մոռաց)\S*.{0,40}(?:հրահանգ|կանոն|ցուցում)|(?:հրահանգ|կանոն|ցուցում)\S*.{0,40}(?:անտես|մոռաց)",
+    r"(?:უგულებელ|დაივიწყ|იგნორ)\S*.{0,40}(?:ინსტრუქცი|წეს|მითითებ)|(?:ინსტრუქცი|წეს|მითითებ)\S*.{0,40}(?:უგულებელ|დაივიწყ|იგნორ)",
+    r"(?:ұмыт|елеме|ескерме)\S*.{0,40}(?:нұсқау|ереже)|(?:нұсқау|ереже)\S*.{0,40}(?:ұмыт|елеме|ескерме)",
+    r"(?:unut|e['ʻ’`]?tiborsiz|e['ʻ’`]?tibor berma)\S*.{0,40}(?:ko['ʻ’`]?rsatma|qoida|yo['ʻ’`]?riqnoma)"
+    r"|(?:ko['ʻ’`]?rsatma|qoida|yo['ʻ’`]?riqnoma)\S*.{0,40}(?:unut|e['ʻ’`]?tiborsiz|e['ʻ’`]?tibor berma)",
+    r"(?:unud|nəzərə alma|məhəl qoyma)\S*.{0,40}(?:təlimat|qayda|göstəriş)|(?:təlimat|qayda|göstəriş)\S*.{0,40}(?:unud|nəzərə alma|məhəl qoyma)",
+    r"(?:цуцал|март|үл тоо|үл хайхра)\S*.{0,40}(?:дүрм|заавар)|(?:дүрм|заавар)\S*.{0,40}(?:цуцал|март|үл тоо|үл хайхра)",
+    r"(?:ይሰርዙ|ሰርዝ|ችላ|እርሳ|ይርሱ)\S*.{0,40}(?:መመሪያ|ደንብ|ትዕዛዝ)|(?:መመሪያ|ደንብ|ትዕዛዝ)\S*.{0,40}(?:ይሰርዙ|ሰርዝ|ችላ|እርሳ|ይርሱ)",
+    # Русские приказы без «игнорируй / забудь»: перестать следовать прежним указаниям; «отныне твоя задача» и «твоя новая
+    # миссия» — только рядом с раскрытием, передачей или обходом (а не «твоя новая задача — купить хлеб»);
+    # «директивы признаются недействительными».
+    r"(?:перестан|прекрат|больше не)\S*\s+(?:\S+\s+){0,2}(?:следова|соблюда|выполня|подчиня)\S*\s+(?:\S+\s+){0,2}"
+    r"(?:предыдущ|прежн|предшеств|данн|прошл)\S*\s+(?:указани|инструкци|правил|директив|ограничени)",
+    r"(?:(?:отныне|с этой минуты|с этого момента|теперь)\s+твоя|твоя\s+новая)\s+(?:единственная\s+|новая\s+|главная\s+|основная\s+)?"
+    r"(?:задача|миссия|цель|роль|функция)\b.{0,80}(?:раскры|выда|переда|покаж|назов|игнорир|отключ|сня|обход|барьер|слить|слей)",
+    r"(?:предыдущ|предшеств|прежн|все)\S*\s+(?:\S+\s+)?(?:директив|инструкци|указани|правил|ограничени)\S*\s+"
+    r"(?:признаются|признаны|считаются|объявляются|являются)\s+(?:утратившими силу|недействительн|отменённ|отмененн|ничтожн)",
 ]), re.I | re.S)
 
 # Сжатый вид для команд, разбитых по буквам («i-g-n-o-r-e a.l.l»): только буквы, без пробелов и знаков.
