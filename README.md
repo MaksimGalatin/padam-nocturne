@@ -431,7 +431,7 @@ python -I -X utf8 redteam/run.py your_cases.jsonl --out report.json
 - Without `protect-keys`, per-record keys live in the local SQLite file in clear, and whoever has the database file can read the Arweave ciphertexts. Since 0.4.1 anchoring refuses to run in that state unless you override it.
 - The `origin` of a write is the agent's claim: MCP carries no proof of where a text came from. `PADAM_MCP_REVIEW_ALL=1` is the boundary that does not rely on it.
 - Our tests are not an independent audit. The [Red Team Challenge](https://github.com/MaksimGalatin/padam-nocturne/tree/main/redteam) asks outsiders for sealed attack sets; until one is run, the numbers here are our own.
-- The package is on PyPI since 0.3.0; it is not yet in the official MCP registry (`server.json` is prepared).
+- The package is on PyPI since 0.3.0 and in the official MCP registry since 0.4.8 as `io.github.MaksimGalatin/padam-nocturne` (published from `server.json` by the manual `mcp-registry` workflow, GitHub Actions OIDC).
 
 ---
 

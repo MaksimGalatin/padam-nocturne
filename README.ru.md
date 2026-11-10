@@ -427,7 +427,7 @@ python -I -X utf8 redteam/run.py your_cases.jsonl --out report.json
 - Без `protect-keys` ключи записей лежат в локальном файле SQLite открыто, и тот, у кого есть файл базы, прочитает шифротексты в Arweave. С 0.4.1 закрепление в таком состоянии не запускается, если вы не обойдёте это явно.
 - Пометка `origin` у записи — это заявление агента: MCP не несёт доказательства, откуда взят текст. Граница, которая на неё не опирается, — `PADAM_MCP_REVIEW_ALL=1`.
 - Наши тесты — не независимый аудит. [Red Team Challenge](https://github.com/MaksimGalatin/padam-nocturne/tree/main/redteam) просит у сторонних людей закрытые наборы атак; пока такой не прогнан, все числа здесь — наши собственные.
-- Пакет есть в PyPI начиная с 0.3.0; в официальном реестре MCP его пока нет (`server.json` подготовлен).
+- Пакет есть в PyPI начиная с 0.3.0 и в официальном реестре MCP начиная с 0.4.8 как `io.github.MaksimGalatin/padam-nocturne` (публикуется из `server.json` ручным workflow `mcp-registry` через OIDC GitHub Actions).
 
 ---
 
