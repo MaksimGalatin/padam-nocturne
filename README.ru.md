@@ -4,6 +4,8 @@
 
 [![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%208%20tools-8A2BE2) ![release](https://img.shields.io/badge/release-v0.4.4-success)
 
+**Для проверяющих безопасность:** начните с [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md) — что мы утверждаем, каждый круг Red Team с закрытым набором, что всё ещё проходит и проверка за десять минут.
+
 **PADAM** — постоянная память для ИИ-ассистентов и агентов, которая хранится у владельца. Она живёт в одном файле SQLite на вашем компьютере и подключается к любому MCP-клиенту (Claude Code, Claude Desktop, Cursor, VS Code) или к вашему коду через командную строку и небольшой REST API.
 
 **NOCTURNE** — её цикл закрепления, «сон». Он превращает сырой поток эпизодов в долгую память: сохраняет важное, сводит повторы в общее и даёт остальному угаснуть, не позволяя редким острым событиям захватить память.
