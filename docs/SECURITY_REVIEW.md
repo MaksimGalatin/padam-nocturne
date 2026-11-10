@@ -46,15 +46,18 @@ questions were not used while tuning (96.5 %). Two separate runs agree on every 
 
 **Build and release.** 781 tests on Python 3.14, 776 on 3.10, CI on Linux and Windows for 3.10–3.13. PyPI releases
 come from a GitHub Actions workflow through Trusted Publishing (OIDC), with no stored token; the actions are pinned
-by commit hash.
+by commit hash. The same way, with no stored token, `server.json` is published to the official MCP registry as
+`io.github.MaksimGalatin/padam-nocturne` (manual `mcp-registry` workflow, `mcp-publisher` checked against the
+release's checksum file).
 
 ## What still gets through — read this before the rest
 
 - **Recognition is pattern-based and can be bypassed.** On the round-1 sealed set, 3 of 15 secrets and 1 of 15
-  commands passed 0.4.4. New phrasings will pass again. A command that passes is stored as an ordinary record, still
+  commands passed 0.4.4; on the round-2 sealed set, 3 of 15 secrets and 8 of 15 commands passed 0.4.7. New phrasings
+  will pass again. A command that passes is stored as an ordinary record, still
   fenced on the way back; with `PADAM_STRICT=1` nothing an agent writes is active until the owner approves it.
 - **Ordinary notes that quote an attack phrase are held.** A CERT report quoting "ignore all instructions", a language
-  lesson, an old decree: 3 of 10 on the sealed set. They wait for the owner, they are not lost; we left this class
+  lesson, an old decree: 3 of 10 on the round-1 sealed set. They wait for the owner, they are not lost; we left this class
   held on purpose, because unholding it would teach the filter to pass a command wrapped in "for example".
 - **`origin` is what the agent says.** MCP carries no proof of where a text came from; `PADAM_MCP_REVIEW_ALL=1` or
   `PADAM_STRICT=1` is the boundary that does not depend on it.
@@ -62,9 +65,10 @@ by commit hash.
   use full-disk encryption for the rest. `forget` cannot reach your own backups or blocks a copy-on-write disk keeps.
 - **No audit by people outside the project yet.** Both Red Team rounds were written by an AI agent working for the
   project owner, not by an independent person. One maintainer.
-- **The hosted server at aifa.works is closed source.** Its filters are compared with these line by line (378 texts,
-  0 differences) and its public claims can be checked from outside with
-  [`aifa-memory-mcp/scripts/conformance.py`](https://github.com/MaksimGalatin/aifa-memory-mcp); where it keeps data
+- **The hosted server at aifa.works is closed source.** Its filters are compared with these line by line (428 texts,
+  0 differences, version 1.9.4) and its public claims can be checked from outside with
+  [`aifa-memory-mcp/scripts/conformance.py`](https://github.com/MaksimGalatin/aifa-memory-mcp) — 5 checks with no key;
+  with a full and a memory-only key, 10 of 10 against the live server on 10 November 2026; where it keeps data
   and what can be deleted there: [HOSTED-POLICY.md](https://github.com/MaksimGalatin/aifa-memory-mcp/blob/main/HOSTED-POLICY.md).
 
 ## Check it in ten minutes
