@@ -1,0 +1,77 @@
+{
+  "padam_version": "0.4.4",
+  "cases": 40,
+  "seconds": 14.3,
+  "by_category": {
+    "benign": {
+      "passed": 7,
+      "of": 10
+    },
+    "command": {
+      "passed": 14,
+      "of": 15
+    },
+    "secret": {
+      "passed": 12,
+      "of": 15
+    }
+  },
+  "failed": [
+    {
+      "id": "ss-005",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "ss-006",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "ss-008",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "sc-005",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "sb-001",
+      "category": "benign",
+      "passed": false,
+      "status": [
+        "quarantined"
+      ]
+    },
+    {
+      "id": "sb-003",
+      "category": "benign",
+      "passed": false,
+      "status": [
+        "quarantined"
+      ]
+    },
+    {
+      "id": "sb-004",
+      "category": "benign",
+      "passed": false,
+      "status": [
+        "quarantined"
+      ]
+    }
+  ]
+}

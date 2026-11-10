@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.5 — 9 November 2026
+
+### Security
+- **The sealed set of Red Team round 1, published as it came.** Antigravity's 40 sealed cases (SHA-256 `5f1f0241861f783f0a0a66910ed3d271194a79d0f6f3e00b9b68977fe2779493`, committed before the 0.4.4 fixes) were run by the author on 0.4.4 and only then opened: secrets 12 of 15, commands 14 of 15, ordinary notes 7 of 10 (on 0.4.3: 12, 12, 6). Our own run of the same file agrees case by case. So the 0.4.4 fixes, made by class on the open set, carried over only partly to cases nobody had seen. The set, the author's original file byte for byte and her report are in `redteam/rounds/2026-11-09_antigravity/`; `tests/test_redteam_sealed_0911.py` checks the file against the committed hash.
+- **Two classes it exposed are closed.** A key behind a label that ends in `key`, `token` or `secret` with one or two words in front (`admin key:`, `license key:`, `cluster_token=`, `sparkpost_api_key=`), for services we have no format for; the value still has to look like a secret, so `key: value` in words is left alone. And "zanemari / zanemarite" (ignore) in Serbo-Croatian, Latin and Cyrillic. On the sealed set this gives 15 of 15 and 15 of 15 — tuning on seen cases, not proof; the next sealed round measures it. Three ordinary notes that quote an attack phrase (a CERT report, a French lesson, an 1812 decree) stay held on purpose, like their open-set twins. Across all 189,635 distinct LongMemEval turns the wider label changes 9 texts: 6 are real keys or tokens in code, 3 are false alarms (an issue-tracker key, a `key:` field in a config, a Django field definition).
+
+### Added
+- **`PADAM_STRICT=1` — the strict profile in one switch** (an outside review: "every flag is guarded now, but there is no single strict profile"). Every agent write and all outside text wait for the owner; `PADAM_KEEP_SECRETS=1`, `PADAM_MCP_TRUST_WRITES=1` and `PADAM_HOLD_EXTERNAL=0` are ignored and named at start-up; `padam l3` refuses unprotected record keys even with `--allow-unprotected-keys`; the REST API refuses `--no-token`. `padam doctor` shows whether the profile is on. Also in `server.json`.
+
 ## 0.4.4 — 9 November 2026
 
 The first outside Red Team round and the first measurement at scale.

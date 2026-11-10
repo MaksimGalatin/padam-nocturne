@@ -78,6 +78,26 @@ def unsafe_settings() -> list[tuple[str, str]]:
     return out
 KEEP_SECRETS = os.environ.get("PADAM_KEEP_SECRETS", "0") == "1"
 
+# 0.4.5: строгий профиль одним выключателем вместо россыпи флагов (внешний разбор 09.11.2026: «каждый флаг
+# охраняется, но единого --strict нет»). PADAM_STRICT=1: каждая запись агента ждёт владельца, внешний текст тоже;
+# ослабляющие переменные игнорируются (и об этом говорится при запуске); закрепление в Arweave без защищённых
+# ключей и REST без токена отказываются запускаться даже с явным флагом.
+STRICT = os.environ.get("PADAM_STRICT", "0") == "1"
+_STRICT_IGNORED: list[str] = []
+if STRICT:
+    if KEEP_SECRETS:
+        _STRICT_IGNORED.append("PADAM_KEEP_SECRETS=1")
+    if MCP_TRUST_WRITES:
+        _STRICT_IGNORED.append("PADAM_MCP_TRUST_WRITES=1")
+    if not HOLD_EXTERNAL:
+        _STRICT_IGNORED.append("PADAM_HOLD_EXTERNAL=0")
+    KEEP_SECRETS, MCP_TRUST_WRITES, HOLD_EXTERNAL, MCP_REVIEW_ALL = False, False, True, True
+
+
+def strict_ignored() -> list[str]:
+    """Ослабляющие переменные, которые строгий профиль отменил."""
+    return list(_STRICT_IGNORED)
+
 MAX_CONTENT_CHARS = 20000
 MAX_RECALL_LIMIT = 50
 # Столько несведённых эпизодов — повод предложить цикл консолидации.

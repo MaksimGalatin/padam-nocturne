@@ -123,7 +123,12 @@ _URL_PASSWORD = re.compile(r"\b([a-z][a-z0-9+.\-]*://[^\s:/@]*:)([^\s@/]{3,})(@)
 # («password: changeable»), такое не трогаем: ложная маска портит память молча.
 _ASSIGNMENT = re.compile(
     r"\b(password|passwd|pwd|passphrase|pass|secret|api[_\- ]?key|access[_\- ]?token|auth[_\- ]?token|"
-    r"client[_\- ]?secret|private[_\- ]?key|пароль|токен)\b(\s*[:=]\s*)([\"']?)([^\s\"',;]{8,})\3",
+    r"client[_\- ]?secret|private[_\- ]?key|"
+    # 0.4.5: любое имя на key/token/secret из одного-двух слов перед ним — «admin key:», «license key:»,
+    # «cluster_token=». Закрытый набор Antigravity 09.11.2026 (ss-005, ss-006, ss-008): форматы сервисов,
+    # которых нет в _PATTERNS, держатся на подписи, а не на приставке. Значение проходит ту же проверку
+    # password_like, поэтому «key: value» из обычных слов не маскируется.
+    r"(?:[a-z0-9]+[_\- ]){0,2}(?:key|token|secret)|пароль|токен|ключ)\b(\s*[:=]\s*)([\"']?)([^\s\"',;]{8,})\3",
     re.I)
 
 
@@ -577,8 +582,8 @@ _INSTRUCTION = re.compile("|".join([
     r"(?:ignoră|ignorați|ignorati|uită|uitați|uitati)\S*.{0,40}(?:instrucțiun|instrucţiun|instructiun|regul|anterioar)",
     r"(?:unohda|ohita|sivuuta|unusta|ignoreeri)\S*.{0,40}(?:ohjee|ohjei|sään|aiemm|juhis|reegl|eelnev)",
     r"(?:ignorē|aizmirsti|ignoruok|pamiršk|pamirsk)\S*.{0,40}(?:instrukcij|norādījum|noteikum|iepriekšēj|taisykl|ankstesn|nurodym)",
-    r"(?:игнорирай|игнорирајте|игнориши|игнорирај|забрави|заборави)\S*.{0,40}(?:инструкци|упатств|упутств|правила|предишн|претходн)",
-    r"(?:ignoriraj|ignoriši|ignorisi|zaboravi|pozabi)\S*.{0,40}(?:upute|uputstv|instrukcij|navodil|pravil|prethodn|prejšnj|prejsnj)",
+    r"(?:игнорирай|игнорирајте|игнориши|игнорирај|забрави|заборави|занемари|занемарите)\S*.{0,40}(?:инструкци|упатств|упутств|правила|предишн|претходн)",
+    r"(?:ignoriraj|ignoriši|ignorisi|zaboravi|pozabi|zanemari|zanemarite)\S*.{0,40}(?:upute|uputstv|instrukcij|navodil|pravil|prethodn|prejšnj|prejsnj)",
     r"\b(?:abaikan|lupakan)\b.{0,40}\b(?:instruksi|arahan|aturan|peraturan|perintah|sebelumnya)\b",
     r"(?:bỏ qua|phớt lờ|quên đi|quên)\s.{0,40}(?:hướng dẫn|chỉ dẫn|quy tắc|chỉ thị|mệnh lệnh)",
     r"(?:เพิกเฉย|ละเว้น|ไม่ต้องสนใจ|ลืม).{0,20}(?:คำสั่ง|คำแนะนำ|กฎ)",

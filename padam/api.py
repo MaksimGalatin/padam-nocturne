@@ -307,6 +307,11 @@ def main(argv=None) -> int:
                 "Refused: the token is a placeholder or shorter than 16 characters. A new one: python -c \"import "
                 "secrets; print(secrets.token_urlsafe(24))\""), file=sys.stderr)
         return 2
+    # 0.4.5: строгий профиль не запускает REST без токена — у такого сервера нет владельца.
+    if a.no_token and config.STRICT:
+        print(t("Отказ: PADAM_STRICT=1 не допускает --no-token.", "Refused: PADAM_STRICT=1 does not allow --no-token."),
+              file=sys.stderr)
+        return 2
     создан = False
     if not a.token and not a.no_token:
         a.token, создан = secrets.token_urlsafe(24), True

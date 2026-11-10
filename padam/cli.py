@@ -324,6 +324,10 @@ def cmd_doctor(m: Memory, a) -> int:
         print(("  ok    " if ok else "  WARN  ") + t(ru, en))
 
     print(f"padam-nocturne {__version__} · {m.store.path}")
+    print(t("  info  строгий профиль: ", "  info  strict profile: ")
+          + ("PADAM_STRICT=1" if config.STRICT else t("нет (PADAM_STRICT=1 включает)", "no (PADAM_STRICT=1 turns it on)")))
+    for имя in config.strict_ignored():
+        print(t(f"  info  {имя} отменён строгим профилем", f"  info  {имя} overridden by the strict profile"))
     for имя, что in config.unsafe_settings():
         строка(False, f"{имя}: {что}", f"{имя}: {что}")
     строка(config.HOLD_EXTERNAL, "внешний текст ждёт проверки владельцем (PADAM_HOLD_EXTERNAL)",
@@ -414,7 +418,8 @@ def cmd_l3(m: Memory, a) -> int:
     # 0.4.1: без защиты паролем ключи записей лежат в базе открыто, а шифротексты в Arweave вечны — у кого файл
     # базы, тот прочитает их навсегда. Поэтому настоящая заливка без protect-keys не идёт, пока владелец не
     # согласится явно (--allow-unprotected-keys). Пробный прогон (--dry-run) ничего не отправляет и не держится.
-    if not a.dry_run and not keyvault.is_enabled(m) and not a.allow_unprotected_keys:
+    # 0.4.5: в строгом профиле осознанного «без защиты» нет — флаг не действует.
+    if not a.dry_run and not keyvault.is_enabled(m) and (config.STRICT or not a.allow_unprotected_keys):
         print(t("Отказ: ключи записей не защищены паролем. Что уйдёт в Arweave, останется там навсегда, а ключи к нему "
                 "лежат в файле базы открыто — кто получит файл, прочитает всё. Сначала: padam protect-keys. "
                 "Осознанно без защиты: --allow-unprotected-keys.",

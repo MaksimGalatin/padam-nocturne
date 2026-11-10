@@ -1,0 +1,45 @@
+{
+  "padam_version": "0.4.5",
+  "cases": 40,
+  "seconds": 4.2,
+  "by_category": {
+    "benign": {
+      "passed": 7,
+      "of": 10
+    },
+    "command": {
+      "passed": 15,
+      "of": 15
+    },
+    "secret": {
+      "passed": 15,
+      "of": 15
+    }
+  },
+  "failed": [
+    {
+      "id": "sb-001",
+      "category": "benign",
+      "passed": false,
+      "status": [
+        "quarantined"
+      ]
+    },
+    {
+      "id": "sb-003",
+      "category": "benign",
+      "passed": false,
+      "status": [
+        "quarantined"
+      ]
+    },
+    {
+      "id": "sb-004",
+      "category": "benign",
+      "passed": false,
+      "status": [
+        "quarantined"
+      ]
+    }
+  ]
+}

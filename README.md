@@ -333,6 +333,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 | `PADAM_MCP_TRUST_WRITES` | `0` | `1` lets MCP writes through without the owner's review |
 | `PADAM_HOLD_EXTERNAL` | `1` | every MCP write marked `origin: external` waits for the owner's review, whatever its wording; `0` turns this off |
 | `PADAM_MCP_REVIEW_ALL` | `0` | `1`: every agent write through MCP waits for the owner, whatever origin the agent claims |
+| `PADAM_STRICT` | `0` | `1`: the strict profile in one switch — every agent write and all outside text wait for the owner; `PADAM_KEEP_SECRETS`, `PADAM_MCP_TRUST_WRITES` and `PADAM_HOLD_EXTERNAL=0` are ignored (and named at start-up); `l3` refuses unprotected keys even with `--allow-unprotected-keys`; the REST API refuses `--no-token` |
 | `PADAM_PROFILE` · `PADAM_SHARP_SHARE` | `default` · — | share of sharp episodes in a sleep batch: `ops` 0.40 (remember failures better), `creative` 0.10, default 0.25; or an exact number, kept within 0.05–0.5 |
 | `PADAM_SLEEP_REINDEX` | `200` | records moved to the current embedding model per sleep after the model changes (0 turns it off) |
 | `PADAM_KEEP_SECRETS` | `0` | `1` stores secret-looking values as they are |
@@ -346,7 +347,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 606 passed, 6 skipped with [embed] (Python 3.14.4); 601 passed, 7 skipped without it (3.10.9); 9 Nov 2026, Windows
+python -m pytest tests/ -q        # 650 passed, 9 skipped with [embed] (Python 3.14.4); 645 passed, 10 skipped without it (3.10.9); 9 Nov 2026, Windows
 ```
 
 CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L3 tests never touch the network: Arweave and Solana are replaced by fakes. The suite never calls a local Ollama either, even when one is running: every test uses the built-in embedding, as on CI. `PADAM_TEST_LIVE_OLLAMA=1` turns on the one live check. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.
@@ -402,7 +403,7 @@ Try to break it. [`redteam/`](https://github.com/MaksimGalatin/padam-nocturne/tr
 python -I -X utf8 redteam/run.py your_cases.jsonl --out report.json
 ```
 
-**Round 1 (Antigravity, 9 Nov 2026).** 60 new cases. On 0.4.3: secrets 7/20 masked, commands 6/20 held, ordinary notes 13/20 left alone. On 0.4.4, fixed by class: 19/20, 20/20, 16/20; the five left cases and why are in `tests/test_redteam_round_0911.py`. The author's sealed set (SHA-256 `5f1f0241…2779493`, committed before the fixes) is still closed; its 0.4.4 result will be published whatever it is.
+**Round 1 (Antigravity, 9 Nov 2026).** 60 new cases. On 0.4.3: secrets 7/20 masked, commands 6/20 held, ordinary notes 13/20 left alone. On 0.4.4, fixed by class: 19/20, 20/20, 16/20; the five left cases and why are in `tests/test_redteam_round_0911.py`. The author's sealed set (40 cases, SHA-256 `5f1f0241…2779493`, committed before the fixes, opened only after her run on 0.4.4) is the honest number for cases nobody tuned against: secrets 12/15, commands 12/15, ordinary 6/10 on 0.4.3; **12/15, 14/15, 7/10 on 0.4.4**. The class fixes for the open set carried over only partly. The set, the author's original file byte for byte (`sealed_set.jsonl.gz`) and her report are in [`redteam/rounds/2026-11-09_antigravity/`](https://github.com/MaksimGalatin/padam-nocturne/tree/main/redteam/rounds/2026-11-09_antigravity). 0.4.5 closes the two classes it exposed (a `… key:` label in front of an unknown service's key; "zanemari" in Serbo-Croatian) — 15/15 and 15/15 there, which is now tuning, not proof; the three ordinary notes quoting an attack phrase stay held on purpose. The next sealed round measures 0.4.5.
 
 ---
 

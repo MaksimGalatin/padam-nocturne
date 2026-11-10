@@ -3,7 +3,7 @@
   "name": "io.github.MaksimGalatin/padam-nocturne",
   "title": "PADAM · NOCTURNE memory",
   "description": "Local-first memory for AI agents: sleep-style consolidation and honest, verifiable forgetting",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "repository": {
     "url": "https://github.com/MaksimGalatin/padam-nocturne",
     "source": "github"
@@ -13,7 +13,7 @@
     {
       "registryType": "pypi",
       "identifier": "padam-nocturne",
-      "version": "0.4.4",
+      "version": "0.4.5",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -28,6 +28,12 @@
         {
           "name": "OLLAMA_URL",
           "description": "Local Ollama address for embeddings. Without it a built-in method is used.",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "PADAM_STRICT",
+          "description": "1 turns on every guard at once: each agent write waits for the owner's review, and switches that weaken protection are ignored.",
           "isRequired": false,
           "format": "string"
         }
