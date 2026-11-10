@@ -108,6 +108,8 @@ claude mcp add padam -- uvx padam-nocturne
 
 Из PyPI: `pip install padam-nocturne`. Самый свежий код прямо с GitHub: `uvx --from git+https://github.com/MaksimGalatin/padam-nocturne padam-nocturne`. Если стоит через `pip install -e .`, то просто `claude mcp add padam -- padam-mcp`. Готовые настройки для Claude Desktop, Cursor, VS Code, systemd и cron лежат в [`integrations/`](https://github.com/MaksimGalatin/padam-nocturne/tree/main/integrations/).
 
+**LangChain.** Через [`langchain-mcp-adapters`](https://github.com/langchain-ai/langchain-mcp-adapters) восемь инструментов становятся инструментами LangChain со схемами аргументов. `python integrations/langchain_check.py` запускает `uvx padam-nocturne` с PyPI и без языковой модели проверяет: список инструментов, запись, найденную поиском внутри ограды, внедрённый приказ, задержанный для владельца, и секрет, который не попадает в файл базы (по сырым байтам). 0.4.8 с адаптером 0.3.2 и langchain-core 1.7.7: 6 из 6. Одно отличие: ошибку инструмента (`isError: true`, например `limit must be at most 50`) адаптер отдаёт агенту обычным текстом, а не исключением `ToolException`.
+
 ---
 
 ## Подключение к агенту — MCP, REST, командная строка
