@@ -343,6 +343,19 @@ def cmd_doctor(m: Memory, a) -> int:
     else:
         print(t("  info  права файлов: Windows — доступ задаётся учётной записью, не битами режима",
                 "  info  file modes: Windows — access is set by the user account, not mode bits"))
+    # 0.4.4 (досье Antigravity 09.11.2026): целостность файла и надёжность записи на диск.
+    with m.store._lock:
+        проверка = m.store.conn.execute("PRAGMA quick_check").fetchone()[0]
+        журнал = m.store.conn.execute("PRAGMA journal_mode").fetchone()[0]
+        синхр = m.store.conn.execute("PRAGMA synchronous").fetchone()[0]
+    строка(проверка == "ok", f"целостность базы (PRAGMA quick_check): {проверка}",
+           f"database integrity (PRAGMA quick_check): {проверка}")
+    строка(синхр >= 2, f"запись на диск: журнал {журнал}, synchronous {синхр} (2 = FULL)",
+           f"writes to disk: journal {журнал}, synchronous {синхр} (2 = FULL)")
+    print(t("  info  забывание не достаёт до блоков, которые хранит сама система (copy-on-write, журнал ФС, SSD): "
+            "нужно шифрование всего диска (BitLocker, FileVault, LUKS)",
+            "  info  forgetting cannot reach blocks the system itself keeps (copy-on-write, filesystem journal, SSD): "
+            "use full-disk encryption (BitLocker, FileVault, LUKS)"))
     токен = os.environ.get("PADAM_API_TOKEN")
     print(t("  info  REST API: ", "  info  REST API: ") + (t("постоянный токен задан", "a fixed token is set") if токен
           else t("токен создаётся при каждом запуске", "a token is created on every start")))
@@ -351,6 +364,40 @@ def cmd_doctor(m: Memory, a) -> int:
             f"  info  vectors: {s['backend']}; waiting for review: {s['quarantined']}; of another model: {s['stale_vectors']}"))
     print(t(f"Предупреждений: {предупреждений}", f"Warnings: {предупреждений}"))
     return 1 if предупреждений else 0
+
+
+def cmd_backup(m: Memory, a) -> int:
+    """0.4.4 (досье Antigravity 09.11.2026): копия памяти встроенным механизмом SQLite — целая и согласованная
+    даже под нагрузкой (sqlite3 backup API), в отличие от копирования файла. Существующий файл не перезаписывает."""
+    import shutil
+    from pathlib import Path
+    from . import integrity, keyvault
+    куда = Path(a.path).expanduser()
+    if куда.exists():
+        print(t(f"Отказ: {куда} уже есть — копия не перезаписывает файлы.", f"Refused: {куда} exists — a backup never overwrites."))
+        return 2
+    куда.parent.mkdir(parents=True, exist_ok=True)
+    import sqlite3
+    цель = sqlite3.connect(str(куда))
+    with m.store._lock:
+        m.store.conn.backup(цель)
+    цель.close()
+    if os.name == "posix":
+        os.chmod(куда, 0o600)
+    ключ = integrity.key_path(m.store)
+    if ключ is not None and ключ.exists():
+        shutil.copyfile(ключ, str(куда) + ".owner.key")
+        if os.name == "posix":
+            os.chmod(str(куда) + ".owner.key", 0o600)
+    провер = sqlite3.connect(str(куда)).execute("PRAGMA quick_check").fetchone()[0]
+    print(t(f"Копия: {куда} ({куда.stat().st_size} байт), целостность: {провер}",
+            f"Backup: {куда} ({куда.stat().st_size} bytes), integrity: {провер}"))
+    if not keyvault.is_enabled(m):
+        print(t("Внимание: ключи записей не защищены паролем — в копии они тоже открыты (padam protect-keys).",
+                "Note: record keys are not protected by a passphrase — they are in clear in the backup too (padam protect-keys)."))
+    print(t("Забывание (padam forget) до этой копии не дотянется: забытое останется в ней, пока вы её не удалите.",
+            "Forgetting (padam forget) cannot reach this copy: what you forget stays in it until you delete it."))
+    return 0 if провер == "ok" else 1
 
 
 def cmd_l3(m: Memory, a) -> int:
@@ -588,6 +635,11 @@ def main(argv=None) -> int:
 
     s = sub.add_parser("stats", help=t("состояние памяти", "memory state"))
     s.set_defaults(fn=cmd_stats)
+
+    s = sub.add_parser("backup", help=t("согласованная копия памяти (SQLite backup API)",
+                                        "a consistent copy of the memory (SQLite backup API)"))
+    s.add_argument("path")
+    s.set_defaults(fn=cmd_backup)
 
     s = sub.add_parser("doctor", help=t("состояние безопасности одним отчётом (ничего не меняет)",
                                         "security state in one report (changes nothing)"))

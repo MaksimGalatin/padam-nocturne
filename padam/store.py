@@ -213,6 +213,9 @@ class Store:
         # блокировки два запроса одновременно портили транзакцию («cannot commit — no
         # transaction is active»). Все обращения к соединению идут под этим замком.
         self._lock = threading.RLock()
+        # 0.4.4: счётчик своих коммитов — по нему (вместе с PRAGMA data_version для чужих соединений) кэш
+        # векторов в Memory понимает, что база изменилась, и не может разойтись с ней.
+        self.writes = 0
         self.conn = sqlite3.connect(str(self.path), check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         # Память личная: на общем компьютере файл базы не должен читаться другими.
@@ -270,10 +273,16 @@ class Store:
     def close(self) -> None:
         self.conn.close()
 
+    def stamp(self) -> tuple[int, int]:
+        """Отметка состояния базы: свои коммиты и data_version (меняется, когда коммитит другое соединение)."""
+        with self._lock:
+            return self.writes, self.conn.execute("PRAGMA data_version").fetchone()[0]
+
     def execute(self, sql: str, params: tuple = ()):
         with self._lock:
             cur = self.conn.execute(sql, params)
             self.conn.commit()
+            self.writes += 1
             return cur
 
     def query(self, sql: str, params: tuple = ()) -> list[sqlite3.Row]:
@@ -289,6 +298,7 @@ class Store:
         with self._lock:
             self.conn.execute("INSERT INTO memory_fts(memory_fts) VALUES('optimize')")
             self.conn.commit()
+            self.writes += 1
             self.conn.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchall()
 
     def script(self, sql: str) -> None:
@@ -296,6 +306,7 @@ class Store:
         with self._lock:
             self.conn.executescript(sql)
             self.conn.commit()
+            self.writes += 1
 
     def atomic(self, ops: list[tuple[str, tuple]]) -> None:
         """Несколько записей одной транзакцией: либо все, либо ни одной.
@@ -308,6 +319,7 @@ class Store:
                 for sql, params in ops:
                     self.conn.execute(sql, params)
                 self.conn.commit()
+                self.writes += 1
             except Exception:
                 self.conn.rollback()
                 raise

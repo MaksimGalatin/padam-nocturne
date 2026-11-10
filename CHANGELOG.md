@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.4.4 — 9 November 2026
+
+The first outside Red Team round and the first measurement at scale.
+
+### Security
+- **Red Team round 1 (Antigravity, 9 Nov 2026).** 60 new cases written by someone who had not seen our tests. Before this release: secrets 7 of 20 masked, commands 6 of 20 held, ordinary notes 13 of 20 left alone. After: 19 of 20, 20 of 20, 16 of 20. Fixed by class, not by example: about 25 more service key formats (Notion, Linear, Shopify, Grafana, Vault, Sentry, SendGrid, Discord, Airtable, Bitbucket, DigitalOcean, Postman, Square, Figma, Supabase, PlanetScale, Doppler and others); a password in a connection string with an empty user name (`redis://:password@host`); a `pass:` field. "Forget your instructions" in 23 more languages (not only the ten in the set); a bureaucratic revocation of rules when it names the assistant; "constraints are revoked"; demands to reveal an encryption key or the system context; orders written as settings (`override_all_rules: true`, `behavior: unrestricted`, `dump_all_memory`). "From now on you" in six languages now needs a verb after the pronoun: a language lesson ("ab jetzt du") and "From now on you can find the reports in /docs" were false alarms. Five cases are left as they are on purpose, each with its reason in `tests/test_redteam_round_0911.py`: quoting an attack phrase while discussing attacks stays held (unholding it would teach the filter to pass a command wrapped in "for example"). On 5.9 million characters of the project's own notes: no new false alarms and no new masks. The same changes are in the hosted server 1.9.1; a differential check on 287 + 88 strings finds no difference.
+- The author's **sealed set** (40 more cases, SHA-256 `5f1f0241861f783f0a0a66910ed3d271194a79d0f6f3e00b9b68977fe2779493`, committed before these fixes) has not been seen by us. Its result on 0.4.3 was secrets 12/15, commands 12/15, ordinary 6/10; its result on 0.4.4 will be published as it comes, whatever it is.
+
+### Performance
+- **Writes no longer slow down with the size of memory.** Each write compared the new record with every stored one, one by one in Python, and read their full text: 117.5 ms per write at 6,000 records, more than 25 minutes for 10,000 LongMemEval turns. Now one matrix product over vectors kept in memory, appended on each own write and re-read when the database changes (own commits or another connection's, through `PRAGMA data_version`): 6.0 ms per write at 6,000 records. A test checks the cache against the database after inserts, status changes, forgetting and a write from a second connection.
+- **Search.** 70% of search time went to re-parsing the identifiers of every record on every query; they are now parsed once per record (the cache is keyed by record id, checked against the text's hash and cleared on `forget`, so forgotten text does not stay in the process). Vector similarity is one matrix product. At 10,000 records a query took 1.1 s, now 0.33 s.
+- Scale (`benchmarks/scale/`, LongMemEval user turns, built-in method, one machine): 1,000 records — 2.9 ms per write, search median 24 ms (95th percentile 34 ms), 4.7 MB; 10,000 records — 7.3 ms, 220 ms (329 ms), 45.2 MB. The 100,000 stage is not measured yet: it was stopped to free the CPU for the check below.
+
+### Fixed
+- **Two runs of the same code gave different LongMemEval numbers.** Records with equal scores were ordered by their id, a random UUID, so ties between near-identical records fell differently each run: on every fifth question one run gave any-in-top-5 92.6 %, another 91.5 %. Ties now keep the order in which records were stored, and the rows are read in that order (`ORDER BY rowid`). Two independent runs now agree on all 100 questions. The built-in numbers in the README are re-measured on this release; the rows for the local models keep the version they were measured on and carry that spread.
+- `benchmarks/longmemeval/retrieval_recall.py` without `--embedder` ran on the installed local model since 0.4.0 (`PADAM_EMBEDDER=auto`) while labelling the run "builtin". It now sets the built-in method explicitly.
+
+### Added
+- `padam backup <path>`: a consistent copy through SQLite's backup API, with the owner key beside it; never overwrites; says whether record keys in the copy are protected and that forgetting cannot reach a copy.
+- `padam doctor` also runs `PRAGMA quick_check`, shows the journal mode and `synchronous` (FULL by default — the outside review asked for it, it already was), and reminds that forgetting cannot reach blocks the file system keeps (full-disk encryption).
+- `redteam/rounds/2026-11-09_antigravity/`: the round's cases and both runs.
+
 ## 0.4.3 — 9 November 2026
 
 ### Fixed

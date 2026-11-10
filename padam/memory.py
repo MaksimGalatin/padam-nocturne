@@ -475,6 +475,7 @@ class Memory:
                 status: str = "active", reason: str | None = None) -> str:
         mid = new_id()
         ts = now_iso()
+        отметка_до = self.store.stamp()
         self.store.execute(
             """INSERT INTO memory
                (id, user_id, scope, kind, content, embedding, importance,
@@ -489,6 +490,7 @@ class Memory:
              supersedes, source_episode_id, content_hash(content),
              embeddings.метка_модели(), classify.разобрать_факт(content)[0],
              origin, reason))
+        self._дописать_в_кэш(отметка_до, mid, scope, kind, vec, status)
         return mid
 
     # -- проверка владельцем -------------------------------------------
@@ -619,17 +621,93 @@ class Memory:
         return (rows[0]["id"], rows[0]["content"]) if rows else None
 
     def _nearest_active(self, vec, kind, scope):
+        # 0.4.4: одно матричное умножение вместо цикла Python по каждой записи, без текста всех записей, и
+        # векторы держатся в памяти процесса. Замер 09.11.2026 (benchmarks/scale): каждая запись сравнивалась со
+        # всеми сохранёнными по одной — 117,5 мс на запись при 6 000 записях, запись 10 000 реплик шла дольше
+        # 25 минут. Итог тот же: близость = clip(a·b, -1, 1), 0 при другой размерности (векторы другой модели),
+        # из равных — первая. Кэш сверяется с отметкой базы (свои коммиты + data_version) и не расходится с ней.
+        if vec is None or not vec.size:
+            rows = self.store.query("""SELECT id FROM memory WHERE user_id = ? AND scope = ? AND kind = ?
+                                       AND status = 'active' AND embedding IS NOT NULL""", (self.user_id, scope, kind))
+            if not rows:
+                return None
+            r = self.store.one("SELECT content FROM memory WHERE id = ?", (rows[0]["id"],))
+            return (rows[0]["id"], r["content"], 0.0)
+        v = np.asarray(vec, dtype=np.float32)
+        ids, M = self._векторы(scope, kind, v.size)
+        if not ids:
+            return None
+        sims = np.zeros(len(ids), dtype=np.float64)
+        буфер, n, годные = M
+        if n:
+            sims[годные[:n]] = np.clip(буфер[:n] @ v, -1.0, 1.0)
+        i = int(np.argmax(sims))
+        content = self.store.one("SELECT content FROM memory WHERE id = ?", (ids[i],))["content"]
+        return (ids[i], content, float(sims[i]))
+
+    def _векторы(self, scope, kind, dim):
+        """(ids всех действующих записей с вектором, (матрица векторов размерности dim, их номера в ids))."""
+        кэш = self.__dict__.setdefault("_вкэш", {})
+        ключ = (scope, kind, dim)
+        отметка = self.store.stamp()
+        было = кэш.get(ключ)
+        if было is not None and было[0] == отметка:
+            return было[1], было[2]
         rows = self.store.query(
-            """SELECT id, content, embedding FROM memory
+            """SELECT id, embedding FROM memory
                WHERE user_id = ? AND scope = ? AND kind = ?
-                 AND status = 'active' AND embedding IS NOT NULL""",
+                 AND status = 'active' AND embedding IS NOT NULL ORDER BY rowid""",
             (self.user_id, scope, kind))
-        best = None
-        for r in rows:
-            sim = embeddings.cosine(vec, unpack(r["embedding"]))
-            if best is None or sim > best[2]:
-                best = (r["id"], r["content"], sim)
-        return best
+        ids = [r["id"] for r in rows]
+        годные = [i for i, r in enumerate(rows) if len(r["embedding"]) == dim * 4]
+        # Буфер с запасом: дописывание своей записи не копирует всю матрицу (удвоение ёмкости, в среднем O(1)).
+        ёмкость = max(64, 2 * len(годные))
+        буфер = np.zeros((ёмкость, dim), dtype=np.float32)
+        номера = np.zeros(ёмкость, dtype=np.int64)
+        if годные:
+            буфер[:len(годные)] = np.frombuffer(b"".join(rows[i]["embedding"] for i in годные),
+                                                dtype=np.float32).reshape(-1, dim)
+            номера[:len(годные)] = годные
+        кэш[ключ] = (отметка, ids, (буфер, len(годные), номера))
+        return ids, кэш[ключ][2]
+
+    def _сущности_записи(self, rid, content):
+        """0.4.4: идентификаторы из текста записи — один раз на запись, а не на каждый поиск.
+        Замер 09.11.2026: на 10 000 записях 70 % времени поиска (23 из 33 с на 30 запросов) уходило на то,
+        что retrieval.entities заново разбирал текст каждой записи. Кэш по номеру записи сверяется с хешем
+        текста и чистится при revoke: забытое не остаётся в памяти процесса."""
+        if not content:
+            return set()
+        кэш = self.__dict__.setdefault("_сущности", {})
+        h = hash(content)
+        было = кэш.get(rid)
+        if было is not None and было[0] == h:
+            return было[1]
+        найдено = retrieval.entities(content)
+        кэш[rid] = (h, найдено)
+        return найдено
+
+    def _дописать_в_кэш(self, отметка_до, mid, scope, kind, vec, status):
+        """Своя вставка — единственный коммит после отметки: вектор дописывается, а не перечитывается всё."""
+        кэш = self.__dict__.get("_вкэш")
+        if not кэш:
+            return
+        после = self.store.stamp()
+        for ключ in [к for к in кэш if к[0] == scope and к[1] == kind]:
+            отметка, ids, (буфер, n, номера) = кэш[ключ]
+            if отметка != отметка_до or после != (отметка_до[0] + 1, отметка_до[1]):
+                del кэш[ключ]
+                continue
+            if status == "active" and vec is not None:
+                ids.append(mid)
+                if vec.size == ключ[2]:
+                    if n == len(буфер):
+                        буфер = np.concatenate([буфер, np.zeros_like(буфер)])
+                        номера = np.concatenate([номера, np.zeros_like(номера)])
+                    буфер[n] = np.asarray(vec, dtype=np.float32)
+                    номера[n] = len(ids) - 1
+                    n += 1
+            кэш[ключ] = (после, ids, (буфер, n, номера))
 
     # -- L2: поиск ------------------------------------------------------
 
@@ -705,10 +783,12 @@ class Memory:
                         status, valid_from, valid_to
                  FROM memory
                  WHERE user_id = ? AND scope = ? AND status IN ({",".join("?" * len(statuses))})"""
+        # Порядок строк задан явно (0.4.4): от него зависит, какая из равных записей выше.
         params: list = [self.user_id, scope, *statuses]
         if kind:
             sql += " AND kind = ?"
             params.append(kind)
+        sql += " ORDER BY rowid"
 
         raw = self.store.query(sql, tuple(params))
         if момент:
@@ -726,7 +806,8 @@ class Memory:
                  "last_confirmed_at": r["last_confirmed_at"],
                  "expires_at": r["expires_at"],
                  "session_id": r["session_id"], "origin": r["origin"],
-                 "created_at": r["created_at"]} for r in raw]
+                 "created_at": r["created_at"],
+                 "_ents": self._сущности_записи(r["id"], r["content"])} for r in raw]
 
         scores, rankings = retrieval.hybrid_rank(
             self.store, self.user_id, scope, query, rows, statuses=statuses)
@@ -888,6 +969,11 @@ class Memory:
                             (self.user_id, з["content"])))
         self.store.atomic(ops)
         self.store.purge()
+        # Забытое не должно жить и в памяти процесса: имена и номера из текста записи — тоже её содержание.
+        кэш = self.__dict__.get("_сущности")
+        if кэш:
+            for з in записи:
+                кэш.pop(з["id"], None)
         return True
 
     # -- история версий -------------------------------------------------

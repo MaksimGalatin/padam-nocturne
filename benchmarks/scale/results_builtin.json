@@ -1,0 +1,26 @@
+{
+  "padam_version": "0.4.4 (code; version string raised later)",
+  "embedding": "builtin",
+  "python": "3.14.4",
+  "machine": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+  "texts": "LongMemEval-S user turns",
+  "note": "100,000 stage stopped at 9 Nov 2026 ~20:22 to free the CPU for the LongMemEval reproducibility check; to be run alone.",
+  "rows": [
+    {
+      "records": 1000,
+      "write_seconds": 2.9,
+      "write_ms_per_record": 2.92,
+      "search_ms_median": 23.8,
+      "search_ms_p95": 34.2,
+      "db_mb": 4.7
+    },
+    {
+      "records": 10000,
+      "write_seconds": 72.8,
+      "write_ms_per_record": 7.28,
+      "search_ms_median": 219.8,
+      "search_ms_p95": 329.2,
+      "db_mb": 45.2
+    }
+  ]
+}

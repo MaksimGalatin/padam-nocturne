@@ -66,15 +66,20 @@ def reciprocal_rank_fusion(rankings: dict[str, list[str]],
 
 def rank_semantic(query_vec: np.ndarray, rows: list, limit: int) -> list[str]:
     """Векторная близость. Понимает переформулировки, слепа к цифрам."""
-    scored = []
-    for r in rows:
-        v = r["_vec"]
-        if v is None:
-            continue
-        sim = embeddings.cosine(query_vec, v)
-        if sim > 0:
-            scored.append((sim, r["id"]))
-    scored.sort(reverse=True)
+    # 0.4.4: одно матричное умножение вместо cosine() на каждую запись (285 тысяч вызовов на 30 запросов при
+    # 10 000 записях). Тот же итог: близость = clip(a·b, -1, 1), векторы другой размерности не участвуют
+    # (cosine давал им 0, а 0 сюда не проходил), порядок при равенстве — по номеру записи, как прежде.
+    if query_vec is None or not query_vec.size:
+        return []
+    q = np.asarray(query_vec, dtype=np.float32)
+    годные = [r for r in rows if r["_vec"] is not None and r["_vec"].shape == q.shape]
+    if not годные:
+        return []
+    sims = np.clip(np.stack([r["_vec"] for r in годные]) @ q, -1.0, 1.0)
+    scored = [(float(s), r["id"]) for s, r in zip(sims, годные) if s > 0]
+    # 0.4.4: при равной близости — порядок сохранения записей, а не случайный UUID: иначе два прогона одного кода
+    # давали разные числа LongMemEval (каждый пятый вопрос: 92,6 % против 91,5 %, найдено 09.11.2026).
+    scored.sort(key=lambda x: x[0], reverse=True)
     return [rid for _, rid in scored[:limit]]
 
 
@@ -106,10 +111,12 @@ def rank_entity(query: str, rows: list, limit: int) -> list[str]:
         return []
     scored = []
     for r in rows:
-        overlap = q_ent & entities(r["content"] or "")
+        # 0.4.4: Memory передаёт уже разобранные сущности записи (_ents) — разбирать заново на каждый поиск дорого.
+        ents = r["_ents"] if "_ents" in r else entities(r["content"] or "")
+        overlap = q_ent & ents
         if overlap:
             scored.append((len(overlap), r["id"]))
-    scored.sort(reverse=True)
+    scored.sort(key=lambda x: x[0], reverse=True)       # ничьи — в порядке сохранения, см. rank_semantic
     return [rid for _, rid in scored[:limit]]
 
 

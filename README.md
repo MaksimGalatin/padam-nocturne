@@ -4,7 +4,7 @@
 
 ### Memory for AI agents that sleeps, forgets honestly, and can be verified forever
 
-[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%208%20tools-8A2BE2) ![release](https://img.shields.io/badge/release-v0.4.3-success)
+[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%208%20tools-8A2BE2) ![release](https://img.shields.io/badge/release-v0.4.4-success)
 
 **PADAM** is a local-first, persistent memory for AI assistants and agents. It lives in one SQLite file on your machine, plugs into any MCP client (Claude Code, Claude Desktop, Cursor, VS Code) or into your own code through a CLI and a small REST API.
 
@@ -181,7 +181,8 @@ POST bodies must be `application/json` objects of at most 10 MB. When running lo
 | `restore` | bring an archived record back |
 | `reindex` | recompute vectors after changing the embedding model |
 | `stats` | memory state, including whether record keys are protected |
-| `doctor` | the security state in one report: switches that weaken protection, record keys, file modes, the REST token; exit code 1 on a warning |
+| `doctor` | the security state in one report: switches that weaken protection, record keys, file integrity (`PRAGMA quick_check`), file modes, the REST token; exit code 1 on a warning |
+| `backup <path>` | a consistent copy through SQLite's backup API, owner key beside it; never overwrites; forgetting cannot reach a copy |
 | `export` · `import` | the whole memory as JSON and back |
 | `serve` · `api` | start the MCP server (stdio) · start the REST API |
 | `l3` · `l3-verify` | anchor to Arweave + Solana · verify an anchoring independently |
@@ -345,7 +346,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 518 passed, 1 skipped with [embed] (Python 3.14.4); 513 passed, 2 skipped without it (3.10.9); 9 Nov 2026, Windows
+python -m pytest tests/ -q        # 606 passed, 6 skipped with [embed] (Python 3.14.4); 601 passed, 7 skipped without it (3.10.9); 9 Nov 2026, Windows
 ```
 
 CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L3 tests never touch the network: Arweave and Solana are replaced by fakes. The suite never calls a local Ollama either, even when one is running: every test uses the built-in embedding, as on CI. `PADAM_TEST_LIVE_OLLAMA=1` turns on the one live check. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.
@@ -356,20 +357,20 @@ CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L
 
 [LongMemEval](https://github.com/xiaowu0162/LongMemEval) (Wu et al., ICLR 2025, MIT): 500 questions about a user's past chats, each with its own haystack of 39–66 sessions (50 on average, about 490 thousand characters); 30 questions have no answer in the haystack and the right reply is "I don't know". We used the `longmemeval_s` set. For every question PADAM gets a fresh memory, stores each round of the haystack with `remember`, and is asked the question with `recall`. Scripts and every answer: [`benchmarks/longmemeval/`](https://github.com/MaksimGalatin/padam-nocturne/tree/main/benchmarks/longmemeval).
 
-**Retrieval, no language model anywhere** (`retrieval_recall.py`): is the session that holds the answer among the records PADAM returns? Built-in search, all 500 questions, 470 with an answer:
+**Retrieval, no language model anywhere** (`retrieval_recall.py`): is the session that holds the answer among the records PADAM returns? Built-in search on 0.4.4, all 500 questions, 470 with an answer:
 
 | | any evidence session in top 5 | in top 10 | all evidence sessions in top 5 | in top 10 |
 |---|---|---|---|---|
-| built-in, no model | 91.5 % | 96.6 % | 75.1 % | 85.7 % |
+| built-in, no model | 91.7 % | 96.4 % | 74.7 % | 85.1 % |
 
 The same on every fifth question (94 with an answer; one question is 1.06 points) for each embedding method:
 
 | method | size | any in top 5 | any in top 10 | all in top 5 | all in top 10 |
 |---|---|---|---|---|---|
-| built-in | — | 92.6 % | 94.7 % | 73.4 % | 83.0 % |
-| model2vec `potion-base-8M` (default of `[embed]`) | 30 MB | 92.6 % | 97.9 % | 76.6 % | 87.2 % |
-| model2vec `potion-retrieval-32M` | 129 MB | 94.7 % | 96.8 % | 79.8 % | 87.2 % |
-| model2vec `potion-multilingual-128M` | 512 MB | 94.7 % | 98.9 % | 79.8 % | 86.2 % |
+| built-in (0.4.4) | — | 91.5 % | 95.7 % | 72.3 % | 84.0 % |
+| model2vec `potion-base-8M` (default of `[embed]`; 0.3.1) | 30 MB | 92.6 % | 97.9 % | 76.6 % | 87.2 % |
+| model2vec `potion-retrieval-32M` (0.4.0) | 129 MB | 94.7 % | 96.8 % | 79.8 % | 87.2 % |
+| model2vec `potion-multilingual-128M` (0.4.0) | 512 MB | 94.7 % | 98.9 % | 79.8 % | 86.2 % |
 
 **End to end** (`qa_end_to_end.py`): PADAM retrieves, a language model answers from the retrieved records only, and a judge grades the answer with the official LongMemEval prompt for each question type. All 500 questions:
 
@@ -386,19 +387,22 @@ By question type (`potion-base-8M`, 20 whole records): single-session user 90.6 
 
 Read these numbers with their conditions:
 - The reader and the judge are both `gpt-oss:120b` on Ollama Cloud; the paper's judge is GPT-4o, and the reader prompt is ours. Numbers are not directly comparable with tables that use GPT-4o, and a stronger reader would score higher on the same retrieval.
-- One run per configuration, no repeats; the spread between runs is not measured.
+- Retrieval is deterministic since 0.4.4: two independent runs give the same result for every question (before, ties between near-identical records were broken by a random id). The end-to-end runs were done once each, before that fix, so they carry a small spread of their own.
 - "Compact view" cuts the assistant's replies, which is why it loses on questions about what the assistant said; `padam_search` returns whole records by default.
+- Scale on one machine (built-in method, LongMemEval user turns, `benchmarks/scale/`): 1,000 records — 2.9 ms per write, search median 24 ms, 4.7 MB; 10,000 records — 7.3 ms per write, search median 220 ms (95th percentile 329 ms), 45.2 MB. 100,000 records are not measured yet.
 - The test measures recall from a fixed haystack. It does not measure what PADAM is built for besides recall: forgetting, owner review, secrets, decay, the eternal layer.
 
 ---
 
 ## Red Team Challenge
 
-Try to break it. [`redteam/`](https://github.com/MaksimGalatin/padam-nocturne/tree/main/redteam) holds the rules, a runner that writes each case through MCP like an outside agent and judges by the raw database bytes, and the public set of 214 cases PADAM already defends against (214 of 214 pass on 0.4.3). The measure that counts is a **sealed set**: you publish only its SHA-256, we ship the next release, you open the file and anyone can replay it. Synthetic secrets only, your own local copy only.
+Try to break it. [`redteam/`](https://github.com/MaksimGalatin/padam-nocturne/tree/main/redteam) holds the rules, a runner that writes each case through MCP like an outside agent and judges by the raw database bytes, and the public set of 214 cases PADAM already defends against (214 of 214 pass on 0.4.4). The measure that counts is a **sealed set**: you publish only its SHA-256, we ship the next release, you open the file and anyone can replay it. Synthetic secrets only, your own local copy only.
 
 ```bash
 python -I -X utf8 redteam/run.py your_cases.jsonl --out report.json
 ```
+
+**Round 1 (Antigravity, 9 Nov 2026).** 60 new cases. On 0.4.3: secrets 7/20 masked, commands 6/20 held, ordinary notes 13/20 left alone. On 0.4.4, fixed by class: 19/20, 20/20, 16/20; the five left cases and why are in `tests/test_redteam_round_0911.py`. The author's sealed set (SHA-256 `5f1f0241…2779493`, committed before the fixes) is still closed; its 0.4.4 result will be published whatever it is.
 
 ---
 

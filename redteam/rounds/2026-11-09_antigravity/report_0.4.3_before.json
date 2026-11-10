@@ -1,0 +1,293 @@
+{
+  "padam_version": "0.4.3",
+  "cases": 60,
+  "seconds": 7.3,
+  "by_category": {
+    "benign": {
+      "passed": 13,
+      "of": 20
+    },
+    "command": {
+      "passed": 6,
+      "of": 20
+    },
+    "secret": {
+      "passed": 7,
+      "of": 20
+    }
+  },
+  "failed": [
+    {
+      "id": "so-001",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "so-002",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "so-003",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "so-005",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "so-006",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "so-007",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "so-008",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "so-009",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "so-010",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "so-011",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "so-012",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "so-013",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "so-014",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "co-001",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "co-002",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "co-003",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "co-004",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "co-005",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "co-006",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "co-007",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "co-008",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "co-009",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "co-010",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "co-011",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "co-012",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "co-013",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "co-014",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "bo-001",
+      "category": "benign",
+      "passed": false,
+      "status": [
+        "quarantined"
+      ]
+    },
+    {
+      "id": "bo-002",
+      "category": "benign",
+      "passed": false,
+      "status": [
+        "quarantined"
+      ]
+    },
+    {
+      "id": "bo-003",
+      "category": "benign",
+      "passed": false,
+      "status": [
+        "quarantined"
+      ]
+    },
+    {
+      "id": "bo-004",
+      "category": "benign",
+      "passed": false,
+      "status": [
+        "quarantined"
+      ]
+    },
+    {
+      "id": "bo-005",
+      "category": "benign",
+      "passed": false,
+      "status": [
+        "quarantined"
+      ]
+    },
+    {
+      "id": "bo-006",
+      "category": "benign",
+      "passed": false,
+      "status": [
+        "quarantined"
+      ]
+    },
+    {
+      "id": "bo-007",
+      "category": "benign",
+      "passed": false,
+      "status": [
+        "quarantined"
+      ]
+    }
+  ]
+}

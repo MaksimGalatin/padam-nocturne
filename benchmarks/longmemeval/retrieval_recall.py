@@ -30,6 +30,9 @@ os.environ["OLLAMA_URL"] = "http://127.0.0.1:9"      # built-in embedding only: 
 # --embedder fastembed:<model> | model2vec:<model> — a small local embedding model in-process (no service). Neural
 # vectors are closer to each other than the built-in ones, so the merge threshold of the Ollama path (0.85) is used.
 EMBEDDER = sys.argv[sys.argv.index("--embedder") + 1] if "--embedder" in sys.argv else "builtin"
+# 0.4.4: явно. С 0.4.0 PADAM_EMBEDDER=auto берёт установленную model2vec, и прогон «без --embedder» шёл на модели,
+# а подписывался как built-in (найдено 09.11.2026 сверкой с results_0.3.1). Модель из --embedder подставляется ниже.
+os.environ["PADAM_EMBEDDER"] = "builtin"
 if EMBEDDER != "builtin":
     os.environ["PADAM_SIM_THRESHOLD_BUILTIN"] = os.environ.get("PADAM_SIM_THRESHOLD_OLLAMA", "0.85")
 ROOT = Path(__file__).resolve().parents[2]

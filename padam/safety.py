@@ -52,6 +52,8 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
     ("huggingface_token", re.compile(r"\bhf_(?=[a-z]*[A-Z0-9])[A-Za-z0-9]{30,}")),
     ("gitlab_token", re.compile(r"\bglpat-[A-Za-z0-9_\-]{20,}")),
     ("npm_token", re.compile(r"\bnpm_(?=[a-z]*[A-Z0-9])[A-Za-z0-9]{30,}")),
+    # 0.4.4 (проверка Antigravity 09.11.2026): форматы сервисов, которых не было в списке.
+    ("service_token", re.compile(r"\b(?:secret_(?=[A-Za-z]*\d)[A-Za-z0-9]{40,}|ntn_\d{11}[A-Za-z0-9]{35}|lin_(?:api|oauth)_[A-Za-z0-9]{32,}|shp(?:at|ca|pa|ss)_[a-fA-F0-9]{32}|glsa_[A-Za-z0-9]{32}_[A-Fa-f0-9]{8}|glc_[A-Za-z0-9+/]{32,}={0,2}|hv[sbr]\.[A-Za-z0-9_\-]{24,}|sntry[su]_[A-Za-z0-9+/=_]{40,}|ATBB[A-Za-z0-9_=.\-]{24,}|pat[A-Za-z0-9]{14}\.[a-f0-9]{64}|do[por]_v1_[a-f0-9]{64}|PMAK-[a-f0-9]{24}-[a-f0-9]{34}|sq0(?:atp|csp)-[A-Za-z0-9_\-]{22,}|figd_[A-Za-z0-9_\-]{40,}|pplx-[A-Za-z0-9]{40,}|gsk_[A-Za-z0-9]{40,}|xapp-\d-[A-Z0-9]+-\d+-[a-f0-9]{32,}|sbp_[a-f0-9]{40}|pscale_(?:tkn|pw|oauth)_[A-Za-z0-9_\-.]{32,}|dp\.(?:st|ct|sa|scim|audit)\.[A-Za-z0-9_\-]{32,}|r8_[A-Za-z0-9]{37}|SG\.[A-Za-z0-9_\-]{16,32}\.[A-Za-z0-9_\-]{16,64}|[MNO][A-Za-z0-9_\-]{23,27}\.[A-Za-z0-9_\-]{6}\.[A-Za-z0-9_\-]{27,40})")),
 ]
 
 # Секрет AWS без метки: ровно 40 знаков base64. Чтобы не задеть путь или хеш, нужны строчные,
@@ -114,12 +116,13 @@ _SEED_GAP = re.compile(r"[\s,;.:\d()\-]{1,8}")
 SEED_MIN_WORDS = 12
 
 # Пароль внутри адреса: postgres://user:ПАРОЛЬ@host/db. Адрес остаётся, пароль закрывается.
-_URL_PASSWORD = re.compile(r"\b([a-z][a-z0-9+.\-]*://[^\s:/@]+:)([^\s@/]{3,})(@)", re.I)
+# 0.4.4: и с пустым именем — redis://:ПАРОЛЬ@host (проверка Antigravity 09.11.2026).
+_URL_PASSWORD = re.compile(r"\b([a-z][a-z0-9+.\-]*://[^\s:/@]*:)([^\s@/]{3,})(@)", re.I)
 
 # Присваивание: password=..., api_key: "...". Значение без цифр и знаков — обычная речь
 # («password: changeable»), такое не трогаем: ложная маска портит память молча.
 _ASSIGNMENT = re.compile(
-    r"\b(password|passwd|pwd|passphrase|secret|api[_\- ]?key|access[_\- ]?token|auth[_\- ]?token|"
+    r"\b(password|passwd|pwd|passphrase|pass|secret|api[_\- ]?key|access[_\- ]?token|auth[_\- ]?token|"
     r"client[_\- ]?secret|private[_\- ]?key|пароль|токен)\b(\s*[:=]\s*)([\"']?)([^\s\"',;]{8,})\3",
     re.I)
 
@@ -429,7 +432,7 @@ _INSTRUCTION = re.compile("|".join([
     # Подделка сообщения в JSON: {"role": "system", "content": "…"} внутри сохранённого текста.
     r"[\"']role[\"']\s*:\s*[\"'](?:system|developer)[\"']",
     r"\bdo (?:what|as) (?:this|the) (?:note|message|text|memory|record|page) says\b",
-    r"\bfrom now on\b.{0,40}\b(?:always|never|you|tell|say|respond|reply|answer|ignore|send|use)\b",
+    r"\bfrom now on\b.{0,40}\b(?:always|never|you (?:are|will|must|shall|should|only|now)|tell|say|respond|reply|answer|ignore|send|use)\b",
     r"\btell (?:the |every |all )?users? (?:to|that)\b",
     r"\bwhen (?:asked|the user asks|someone asks|anyone asks)\b.{0,80}"
     r"\b(?:tell|say|answer|respond|reply|recommend|direct|send)\b",
@@ -483,7 +486,7 @@ _INSTRUCTION = re.compile("|".join([
     # Китайский: границ слова нет, поэтому только близость.
     r"(?:忽略|无视|忽视|不要理会|忘记|忘掉).{0,20}(?:指令|指示|规则|说明|提示|设定|要求)",
     r"(?:泄露|泄漏|透露|显示|发送|告诉我|给我|输出|打印).{0,20}(?:密钥|密码|令牌|秘钥|凭证|私钥|助记词|口令)",
-    r"你现在是|从现在开始|新的指令|系统提示",
+    r"你现在是|从现在开始[，,]?\s*你|新的指令|系统提示",
     # --- вариант В (слово Архитектора 09.11.2026 ~13:10): ролевые подмены, деньги, пересылка памяти, ещё 8 языков.
     # Это помощь, а не защита: словарём команды не закрыть. Защита — ограда выдачи и карантин личности.
     # Ролевые подмены: «ты DAN», «без ограничений», «режим разработчика».
@@ -533,15 +536,15 @@ _INSTRUCTION = re.compile("|".join([
     r"أنت الآن",
     # Французский, португальский, итальянский, испанский, немецкий: «забудь» и «с этого момента».
     r"\boubli(?:e|ez)\b.{0,40}\b(?:instructions|consignes|règles)\b",
-    r"\bà partir de maintenant\b.{0,40}\b(?:tu|vous|toujours|jamais|réponds|répondez)\b",
+    r"\bà partir de maintenant\b.{0,40}\b(?:tu (?:es|dois|vas|réponds)|vous (?:êtes|devez|allez|répondez)|toujours|jamais|réponds|répondez)\b",
     r"\besque(?:ça|ca|cer)\b.{0,40}\b(?:instruções|instrucoes|regras|anteriores)\b",
     r"\b(?:revele|mostre|envie|me dê|me de)\b.{0,40}\b(?:senhas?|chaves?|tokens?|credenciais)\b",
-    r"\ba partir de agora\b.{0,40}\b(?:você|voce|sempre|nunca|responda)\b",
+    r"\ba partir de agora\b.{0,40}\b(?:(?:você|voce) (?:deve|vai|vais)|sempre|nunca|responda)\b",
     r"\bdimentica\w*\b.{0,40}\b(?:istruzioni|regole|precedenti)\b",
     r"\b(?:rivela|mostra|invia|dammi)\w*\b.{0,40}\b(?:chiavi|credenziali)\b",
-    r"\bd'ora in poi\b.{0,40}\b(?:tu|sempre|mai|rispondi)\b",
-    r"\ba partir de ahora\b.{0,40}\b(?:tú|tu|usted|siempre|nunca|responde)\b",
-    r"\b(?:ab jetzt|von nun an)\b.{0,40}\b(?:du|immer|nie|antworte)\b",
+    r"\bd'ora in poi\b.{0,40}\b(?:tu (?:sei|devi|risponderai|farai)|sempre|mai|rispondi)\b",
+    r"\ba partir de ahora\b.{0,40}\b(?:(?:tú|tu) (?:eres|debes|vas)|usted (?:es|debe|va)|siempre|nunca|responde)\b",
+    r"\b(?:ab jetzt|von nun an)\b.{0,40}\b(?:du (?:bist|wirst|musst|sollst|antwortest|gehorchst)|immer|nie|antworte)\b",
     # Перефраз «отложи прежние указания» (аудит 09.11.2026): другие глаголы того же смысла.
     r"\b(?:set|put|lay|cast|push|leave) aside\b.{0,30}\b(?:previous|prior|above|earlier|all|any|your|existing|original|old)\b.{0,30}\b(?:instructions?|rules?|guidelines?|guidance|directions?|directives?|prompts?)\b",
     r"\b(?:drop|discard|abandon|throw (?:out|away)|scrap|dismiss|neglect)\b.{0,30}\b(?:previous|prior|above|earlier|all|any|your|existing|original)\b.{0,20}\b(?:instructions?|guidelines?|guidance|directions?|directives?|system prompt)\b",
@@ -559,6 +562,45 @@ _INSTRUCTION = re.compile("|".join([
     # «адрес компании» — обычный текст; «этот счёт» тоже: по-русски это и счёт-фактура.
     r"\b(?:when|whenever|if|each time|every time)\b.{0,50}\b(?:pay|pays|paying|payments?|invoices?|checkout|transfers?|purchases?|orders?|deposits?|wires?|funds|money|donations?)\b.{0,60}\b(?:always|use|send|replace|substitute|put|insert|give|show)\b.{0,50}(?:\bwallet\b|кошел[её]к|кошельк|\b0x[0-9a-fA-F]{8,}|\bbc1[a-z0-9]{20,}|\bT[1-9A-HJ-NP-Za-km-z]{33}\b|\b[1-9A-HJ-NP-Za-km-z]{32,44}\b|\b(?:this|that|the following|the new)\s+(?:(?:crypto|payment|deposit|new|bank)\s+)?(?:address|account|iban)\b|(?:\bэтот|\bэту|\bэтого|\bэти|\bэтим|\bследующ\w*|\bновый|\bновые)\s+(?:\w+\s+)?(?:адрес|реквизит)|(?:расч[её]тный|банковский)\s+сч[её]т)",
     r"(?:\bкогда\b|\bесли\b|всякий раз|каждый раз|\bпри\b).{0,50}(?:оплат|плат[её]ж|плати|перевод|переве|сч[её]т|покупк|заказ|пополн|реквизит|депозит|донат)\w*.{0,60}(?:всегда|используй|указывай|подставляй|замени|меняй|отправляй|переводи|вставляй|давай|показывай)\w*.{0,50}(?:\bwallet\b|кошел[её]к|кошельк|\b0x[0-9a-fA-F]{8,}|\bbc1[a-z0-9]{20,}|\bT[1-9A-HJ-NP-Za-km-z]{33}\b|\b[1-9A-HJ-NP-Za-km-z]{32,44}\b|\b(?:this|that|the following|the new)\s+(?:(?:crypto|payment|deposit|new|bank)\s+)?(?:address|account|iban)\b|(?:\bэтот|\bэту|\bэтого|\bэти|\bэтим|\bследующ\w*|\bновый|\bновые)\s+(?:\w+\s+)?(?:адрес|реквизит)|(?:расч[её]тный|банковский)\s+сч[её]т)",
+    # Третья волна (проверка Antigravity 09.11.2026, 60 новых случаев): «забудь инструкции» на языках без словаря, канцелярит,
+    # объявление «ограничения сняты», требование выдать ключи и системный контекст, приказ в виде настроек. Слово с не-ASCII
+    # буквой не берётся в границу слова: в TypeScript она только ASCII, а сверка требует одинакового поведения.
+    r"(?:talimat|kural|yönerge|yonerge|komut)\w*.{0,40}(?:unut|yoksay|görmezden gel|gormezden gel|dikkate alma)",
+    r"(?:unut|yoksay|görmezden gel|gormezden gel)\w*.{0,40}(?:talimat|kural|yönerge|yonerge|önceki|onceki)",
+    r"(?:zignoruj|ignoruj|zapomnij|pomiń|pomin)\S*.{0,40}(?:instrukcj|zasad|reguł|regul|poprzedni|polece)",
+    r"\b(?:negeer|vergeet)\b.{0,40}\b(?:instructies|regels|richtlijnen|voorgaande|vorige|eerdere)\b",
+    r"(?:αγνό|αγνο|ξέχα|ξεχα)\S*.{0,40}(?:οδηγί|οδηγι|κανόν|κανον|προηγούμεν|προηγουμεν)",
+    r"(?:התעלם|תתעלם|התעלמי|שכח|תשכח|שכחי).{0,40}(?:הוראות|הנחיות|כללים|הקודמות|הקודמים)",
+    r"(?:ignoruj|zapomeň|zapomen|zabudni)\S*.{0,40}(?:instrukc|pravidl|předchoz|predchoz|pokyn|predošl|predosl)",
+    r"\b(?:ignorera|glöm|glom|ignorer|glem)\b.{0,40}(?:instruktion|instruks|regl|regel|tidigare|tidligere)",
+    r"(?:figyelmen kívül|figyelmen kivul|felejtsd el|felejtse el)\S*.{0,40}(?:utasítás|utasitas|szabály|szabaly|korábbi|korabbi|előző|elozo)",
+    r"(?:ignoră|ignorați|ignorati|uită|uitați|uitati)\S*.{0,40}(?:instrucțiun|instrucţiun|instructiun|regul|anterioar)",
+    r"(?:unohda|ohita|sivuuta|unusta|ignoreeri)\S*.{0,40}(?:ohjee|ohjei|sään|aiemm|juhis|reegl|eelnev)",
+    r"(?:ignorē|aizmirsti|ignoruok|pamiršk|pamirsk)\S*.{0,40}(?:instrukcij|norādījum|noteikum|iepriekšēj|taisykl|ankstesn|nurodym)",
+    r"(?:игнорирай|игнорирајте|игнориши|игнорирај|забрави|заборави)\S*.{0,40}(?:инструкци|упатств|упутств|правила|предишн|претходн)",
+    r"(?:ignoriraj|ignoriši|ignorisi|zaboravi|pozabi)\S*.{0,40}(?:upute|uputstv|instrukcij|navodil|pravil|prethodn|prejšnj|prejsnj)",
+    r"\b(?:abaikan|lupakan)\b.{0,40}\b(?:instruksi|arahan|aturan|peraturan|perintah|sebelumnya)\b",
+    r"(?:bỏ qua|phớt lờ|quên đi|quên)\s.{0,40}(?:hướng dẫn|chỉ dẫn|quy tắc|chỉ thị|mệnh lệnh)",
+    r"(?:เพิกเฉย|ละเว้น|ไม่ต้องสนใจ|ลืม).{0,20}(?:คำสั่ง|คำแนะนำ|กฎ)",
+    r"(?:निर्देश|नियम|हिदायत).{0,40}(?:अनदेखा|नज़रअंदाज़|नजरअंदाज|भूल जा)",
+    r"(?:अनदेखा|नज़रअंदाज़|नजरअंदाज|भूल जा).{0,40}(?:निर्देश|नियम)",
+    r"(?:دستورالعمل|دستورات|قوانین|ہدایات|قواعد).{0,40}(?:نادیده|فراموش|نظر انداز|بھول)",
+    r"(?:نادیده بگیر|فراموش کن|نظر انداز کر|بھول جا).{0,40}(?:دستورالعمل|دستورات|قوانین|ہدایات|قواعد)",
+    r"(?:নির্দেশ|নিয়ম).{0,40}(?:উপেক্ষা|ভুলে)",
+    r"(?:উপেক্ষা|ভুলে যাও).{0,40}(?:নির্দেশ|নিয়ম)",
+    r"\b(?:puuza|sahau)\b.{0,40}\b(?:maagizo|maelekezo|sheria|yaliyotangulia|zilizopita)\b",
+    r"\b(?:huwag pansinin|kalimutan|balewalain)\b.{0,40}\b(?:tagubilin|panuntunan|utos|nauna)",
+    # Канцелярит отмены — только рядом со словами об ИИ: «настоящим приказом отменяются правила распорядка» — обычный текст.
+    r"(?:отменя|аннулир|упраздня|снима|утрачива|прекраща)\S*.{0,40}(?:ранее|прежн|предыдущ|установленн|действующ)\S*.{0,40}(?:ограничени|правил|инструкци|предписани|указани|запрет)\S*.{0,60}(?:ассистент|нейросет|модел|агент|бот|ИИ\b|\bAI\b)",
+    r"\b(?:all |any |the )?(?:safety |security |previous |prior |existing )?(?:constraints|restrictions|rules|guardrails|filters|instructions|policies|safeguards)\s+(?:are|have been|were|is|has been)\s+(?:now\s+)?(?:revoked|lifted|removed|disabled|suspended|void|voided|cancell?ed|nullified|overridden|deactivated)\b",
+    r"\b(?:reveal|print|show|output|dump|disclose|give me|tell me|expose|display)\b.{0,30}\b(?:(?:master|encryption|decryption|signing|root|wallet)\s+keys?|system (?:context|configuration|config|settings)|internal (?:configuration|config|settings|state))\b",
+    r"(?:выдай|выведи|покажи|раскрой|распечатай|сообщи|отдай)\S*.{0,40}(?:системн\S*\s+(?:контекст|конфигурац|настройк|сообщени)|ключ\S*\s+(?:шифровани|расшифровани)|мастер-?ключ|все\s+секрет)",
+    r"\b(?:override|bypass|disable|ignore)[_\-\s]?(?:all[_\-\s]?)?(?:rules|instructions|safety|guardrails|restrictions|filters|policies|safeguards)\s*[:=]\s*[\x22']?(?:true|yes|on|1|enabled)\b",
+    r"\bbehaviou?r\s*[:=]\s*[\x22']?(?:unrestricted|unfiltered|jailbroken|uncensored)\b",
+    r"\b(?:dump|leak|reveal|exfiltrate|expose)[_\-](?:all[_\-])?(?:memor(?:y|ies)|secrets|keys|credentials|tokens|passwords)\b",
+    # Китайский: «игнорируй ограничения» и дополнение перед глаголом (将私钥全部输出) — пропуск co-015 после сужения «从现在开始».
+    r"(?:忽略|无视|忽视|不要理会|忘记|忘掉).{0,20}(?:限制|约束|限定|禁令)",
+    r"(?:密钥|密码|令牌|秘钥|凭证|私钥|助记词|口令).{0,12}(?:输出|泄露|泄漏|透露|发送|打印|显示|告诉)",
 ]), re.I | re.S)
 
 # Сжатый вид для команд, разбитых по буквам («i-g-n-o-r-e a.l.l»): только буквы, без пробелов и знаков.
