@@ -2,7 +2,7 @@
 
 PADAM NOCTURNE is a local memory server for AI agents (MCP over stdio, one SQLite file). What an agent saves today it
 reads back tomorrow as context, so memory is an injection and leakage surface. This page is the short path through
-what we claim, how it was measured, what still gets through, and how to check it yourself. Version 0.4.7,
+what we claim, how it was measured, what still gets through, and how to check it yourself. Version 0.4.8,
 10 November 2026.
 
 ## The model in one paragraph
@@ -24,7 +24,7 @@ set and a sealed set whose SHA-256 is committed before we change any code.
 | 1 | open, 60 cases (secrets / commands / ordinary notes left alone) | 0.4.3: 7/20, 6/20, 13/20 | 0.4.4: 19/20, 20/20, 16/20 |
 | 1 | **sealed, 40 cases**, opened after the author's run | 0.4.3: 12/15, 12/15, 6/10 | **0.4.4: 12/15, 14/15, 7/10** — the honest number on unseen cases ([every failure](../redteam/rounds/2026-11-09_antigravity/SEALED_RESULTS.md)) |
 | 2 | open, 60 cases, new classes | 0.4.6: 15/20, **7/20**, 19/20 | 0.4.7: 20/20, 20/20, 19/20 |
-| 2 | **sealed, 45 cases**, SHA-256 `dbb3c16b…b29d0acd` committed in `0bf4065` | — | **0.4.7: 12/15, 7/15, 15/15** ([every failure](../redteam/rounds/2026-11-10_antigravity_round2/SEALED_RESULTS.md)) |
+| 2 | **sealed, 45 cases**, SHA-256 `dbb3c16b…b29d0acd` committed in `0bf4065` | **0.4.7: 12/15, 7/15, 15/15** — the honest number ([every failure](../redteam/rounds/2026-11-10_antigravity_round2/SEALED_RESULTS.md)) | 0.4.8: 15/15, 15/15, 15/15 — fixed after seeing the cases: tuning, not proof |
 
 The pattern across both rounds: fixes made by class on an open set carry over only partly to the sealed one — in
 round 2, 20/20 commands on the open set and 7/15 on the sealed set of the same classes. That is why the wall does not
@@ -33,7 +33,8 @@ rely on recognition, and why `PADAM_STRICT=1` is what we recommend wherever an a
 **False alarms are measured too.** Every change to the filters is run against all 189,635 distinct turns of
 LongMemEval-S (ordinary chat) before release. 0.4.7 against 0.4.6: masking changed in 0 texts; command detection
 changed in 4 — one real jailbreak now caught, three ordinary tips ("don't forget any dietary restrictions") that the
-first draft held and that were fixed before release.
+first draft held and that were fixed before release. 0.4.8 against 0.4.7: masking 0; one false alarm (relationship
+advice about "boundaries"), fixed before release.
 
 **The fence.** `tests/test_fencing_spec.py` stores ten hand-written break-out attempts, 1,000 generated forgeries
 (every case, dash and spacing variant of the tag) and a closing tag split across two records; every fenced answer
@@ -43,7 +44,7 @@ has exactly one opening and one closing tag with equal 32-hex nonces.
 5 for 96.8 % of answerable questions, against 96.0 % for a plain BM25 baseline on the same data; 400 of those
 questions were not used while tuning (96.5 %). Two separate runs agree on every question.
 
-**Build and release.** 728 tests on Python 3.14, 723 on 3.10, CI on Linux and Windows for 3.10–3.13. PyPI releases
+**Build and release.** 781 tests on Python 3.14, 776 on 3.10, CI on Linux and Windows for 3.10–3.13. PyPI releases
 come from a GitHub Actions workflow through Trusted Publishing (OIDC), with no stored token; the actions are pinned
 by commit hash.
 

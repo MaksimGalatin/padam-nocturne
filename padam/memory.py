@@ -634,7 +634,13 @@ class Memory:
             r = self.store.one("SELECT content FROM memory WHERE id = ?", (rows[0]["id"],))
             return (rows[0]["id"], r["content"], 0.0)
         v = np.asarray(vec, dtype=np.float32)
-        ids, M = self._векторы(scope, kind, v.size)
+        try:
+            ids, M = self._векторы(scope, kind, v.size)
+        except MemoryError:
+            # 0.4.8: кэш — только ускорение. Не хватило памяти — сбросить его и считать частями из базы, а не ронять
+            # запись (замер 10.11.2026: ArrayMemoryError на ~50 000 записях при удвоении буфера).
+            self.__dict__.pop("_вкэш", None)
+            return self._nearest_частями(v, kind, scope)
         if not ids:
             return None
         sims = np.zeros(len(ids), dtype=np.float64)
@@ -644,6 +650,31 @@ class Memory:
         i = int(np.argmax(sims))
         content = self.store.one("SELECT content FROM memory WHERE id = ?", (ids[i],))["content"]
         return (ids[i], content, float(sims[i]))
+
+    def _nearest_частями(self, v, kind, scope, часть=5000):
+        """Тот же итог, что у _nearest_active, без матрицы в памяти: векторы читаются из базы частями по 5 000."""
+        лучший, лучшая_близость, первый = None, -2.0, None
+        последний = 0
+        while True:
+            rows = self.store.query(
+                """SELECT rowid, id, embedding FROM memory
+                   WHERE user_id = ? AND scope = ? AND kind = ? AND status = 'active' AND embedding IS NOT NULL
+                     AND rowid > ? ORDER BY rowid LIMIT ?""", (self.user_id, scope, kind, последний, часть))
+            if not rows:
+                break
+            последний = rows[-1]["rowid"]
+            if первый is None:
+                первый = rows[0]["id"]
+            for r in rows:
+                b = r["embedding"]
+                близость = (float(np.clip(np.frombuffer(b, dtype=np.float32) @ v, -1.0, 1.0))
+                            if len(b) == v.size * 4 else 0.0)
+                if близость > лучшая_близость:
+                    лучший, лучшая_близость = r["id"], близость
+        if лучший is None:
+            return None
+        content = self.store.one("SELECT content FROM memory WHERE id = ?", (лучший,))["content"]
+        return (лучший, content, лучшая_близость)
 
     def _векторы(self, scope, kind, dim):
         """(ids всех действующих записей с вектором, (матрица векторов размерности dim, их номера в ids))."""
@@ -660,8 +691,9 @@ class Memory:
             (self.user_id, scope, kind))
         ids = [r["id"] for r in rows]
         годные = [i for i, r in enumerate(rows) if len(r["embedding"]) == dim * 4]
-        # Буфер с запасом: дописывание своей записи не копирует всю матрицу (удвоение ёмкости, в среднем O(1)).
-        ёмкость = max(64, 2 * len(годные))
+        # Буфер с запасом: дописывание своей записи не копирует всю матрицу (рост ёмкости, в среднем O(1)).
+        # 0.4.8: запас полуторный, а не двойной — при 100 000 записях × 768 это 440 МБ вместо 590.
+        ёмкость = max(64, len(годные) + len(годные) // 2)
         буфер = np.zeros((ёмкость, dim), dtype=np.float32)
         номера = np.zeros(ёмкость, dtype=np.int64)
         if годные:
@@ -702,8 +734,14 @@ class Memory:
                 ids.append(mid)
                 if vec.size == ключ[2]:
                     if n == len(буфер):
-                        буфер = np.concatenate([буфер, np.zeros_like(буфер)])
-                        номера = np.concatenate([номера, np.zeros_like(номера)])
+                        try:
+                            запас = max(64, len(буфер) // 2)
+                            буфер = np.concatenate([буфер, np.zeros((запас, буфер.shape[1]), dtype=буфер.dtype)])
+                            номера = np.concatenate([номера, np.zeros(запас, dtype=номера.dtype)])
+                        except MemoryError:
+                            # 0.4.8: не хватило памяти на рост — кэш сбрасывается, следующий поиск пойдёт частями.
+                            кэш.clear()
+                            return
                     буфер[n] = np.asarray(vec, dtype=np.float32)
                     номера[n] = len(ids) - 1
                     n += 1

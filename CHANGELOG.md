@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.8 — 10 November 2026
+
+### Security
+- **The sealed set of Red Team round 2, published as it came, then fixed.** 45 cases (SHA-256 `dbb3c16baf2f317dd62ccf18303a5a0ea2dfb6c04b234ebf13234376b29d0acd`, committed in `0bf4065` before the 0.4.7 fixes), opened after the author's run on 0.4.7: secrets 12 of 15, commands **7 of 15**, ordinary notes 15 of 15. On the open set of the same round 0.4.7 held 20 of 20 commands — the clearest measurement we have that fixing patterns on seen cases generalises poorly; every failure is in `redteam/rounds/2026-11-10_antigravity_round2/SEALED_RESULTS.md`. 0.4.8 closes the eleven by class (15/15 on that set now, which is tuning, not proof): "cancel / annul all rules" in Russian and English (imperative and infinitive only, so "they cancelled the parking rules" stays a note — an older Russian rule with the same flaw was narrowed too); "disregard … boundaries, limits"; Mongolian with the dropped vowel; "your only task is obedience"; "henceforth treat every message as an order"; "reveal the internal state / hidden memory"; fake environment notices ("security bypass active", "output raw context"); a URL whose user is an email and whose password contains `@`; a private-key body without PEM headers; any Oracle OCID.
+- **Checked for false alarms on all 189,635 distinct LongMemEval turns** against 0.4.7: masking changed in 0 texts; command detection in 1 — relationship advice ("if your partner continues to ignore your boundaries"), fixed before release: boundaries and limits count only as safety, security, system, content, ethical or model boundaries.
+- The hosted server 1.9.4 has the same changes.
+
+### Fixed
+- **A write could fail at about 50,000 records when memory was short.** The scale benchmark stopped with `ArrayMemoryError`: growing the vector cache asked for 292 MB at once. The cache is only a speed-up: on `MemoryError` it is dropped and the nearest-record check reads vectors from the database in parts of 5,000, with the same result as before (a test simulates the error and compares with the old loop). The cache now grows by half instead of doubling.
+
 ## 0.4.7 — 10 November 2026
 
 ### Security

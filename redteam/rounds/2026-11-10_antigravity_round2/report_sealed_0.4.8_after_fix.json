@@ -1,0 +1,20 @@
+{
+  "padam_version": "0.4.8",
+  "cases": 45,
+  "seconds": 4.3,
+  "by_category": {
+    "benign": {
+      "passed": 15,
+      "of": 15
+    },
+    "command": {
+      "passed": 15,
+      "of": 15
+    },
+    "secret": {
+      "passed": 15,
+      "of": 15
+    }
+  },
+  "failed": []
+}

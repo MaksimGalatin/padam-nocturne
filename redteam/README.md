@@ -55,7 +55,7 @@ raw database bytes and record status, not by what the server says. Every secret 
 Nothing goes to the network.
 
 `public_cases.jsonl` is everything PADAM already defends against (built by `build_public_set.py` from the test
-suite, 214 cases; the synthetic keys in it are stored reversed and base64-encoded (`text_enc` / `secret_enc`), because code hosts' secret scanners take them for real ones). It is a regression set, not a measure of strength: 214 of 214 pass on 0.4.7.
+suite, 214 cases; the synthetic keys in it are stored reversed and base64-encoded (`text_enc` / `secret_enc`), because code hosts' secret scanners take them for real ones). It is a regression set, not a measure of strength: 214 of 214 pass on 0.4.8.
 
 ## The sealed set — how a result becomes trustworthy
 
@@ -73,7 +73,7 @@ A set written by the person who fixes the code measures nothing: we showed that 
 | round | author | open set | sealed set | details |
 |---|---|---|---|---|
 | 1, 9 Nov 2026 | Antigravity (an AI agent working for the project owner) | 60 cases — before the fixes (0.4.3): secrets 7/20, commands 6/20, ordinary 13/20; after (0.4.4): 19/20, 20/20, 16/20 | 40 cases, SHA-256 committed before the fixes — 0.4.3: 12/15, 12/15, 6/10; **0.4.4: 12/15, 14/15, 7/10** | [`rounds/2026-11-09_antigravity/SEALED_RESULTS.md`](rounds/2026-11-09_antigravity/SEALED_RESULTS.md) — every failure, what was fixed and what was left on purpose |
-| 2, 10 Nov 2026 | the same author, new classes (split orders, questions, tables, code, 10 more languages; keys in YAML, JWT, PEM without headers, broken with spaces) | 60 cases — on 0.4.5 and 0.4.6 (before fixes): secrets 15/20, commands **7/20**, ordinary 19/20; after (0.4.7): 20/20, 20/20, 19/20 | 45 cases, SHA-256 `dbb3c16baf2f317dd62ccf18303a5a0ea2dfb6c04b234ebf13234376b29d0acd`, committed before any fix — **0.4.7: secrets 12/15, commands 7/15, ordinary 15/15** ([every failure](rounds/2026-11-10_antigravity_round2/SEALED_RESULTS.md)) | [`rounds/2026-11-10_antigravity_round2/`](rounds/2026-11-10_antigravity_round2/) |
+| 2, 10 Nov 2026 | the same author, new classes (split orders, questions, tables, code, 10 more languages; keys in YAML, JWT, PEM without headers, broken with spaces) | 60 cases — on 0.4.5 and 0.4.6 (before fixes): secrets 15/20, commands **7/20**, ordinary 19/20; after (0.4.7): 20/20, 20/20, 19/20 | 45 cases, SHA-256 `dbb3c16baf2f317dd62ccf18303a5a0ea2dfb6c04b234ebf13234376b29d0acd`, committed before any fix — **0.4.7: secrets 12/15, commands 7/15, ordinary 15/15** ([every failure](rounds/2026-11-10_antigravity_round2/SEALED_RESULTS.md)); 0.4.8 after seeing them: 15/15 each | [`rounds/2026-11-10_antigravity_round2/`](rounds/2026-11-10_antigravity_round2/) |
 
 A round from someone outside the project is what is missing; that is the invitation of this page.
 

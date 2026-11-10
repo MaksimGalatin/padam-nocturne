@@ -101,3 +101,25 @@ def test_vector_cache_never_drifts_from_the_database(tmp_path):
     сверить()
     другой.close()
     m.close()
+
+
+def test_out_of_memory_falls_back_to_chunks_and_never_breaks_a_write(tmp_path, monkeypatch):
+    """0.4.8: замер масштаба 10.11.2026 уронил remember() на ~50 000 записях — не выделилось 292 МБ под буфер кэша.
+    Кэш — только ускорение: при MemoryError запись идёт дальше, а поиск похожих считается частями из базы с тем же
+    итогом, что у прежнего цикла."""
+    rnd = random.Random(11)
+    m = Memory(user_id="oom", store=Store(tmp_path / "m.db"))
+    for i in range(300):
+        m.remember(f"note {i}: " + " ".join(rnd.choice(СЛОВА) for _ in range(rnd.randint(5, 25))), kind="event")
+
+    def нет_памяти(*a, **k):
+        raise MemoryError("simulated")
+    monkeypatch.setattr(Memory, "_векторы", нет_памяти)
+    for _ in range(100):
+        vec = embeddings.embed(" ".join(rnd.choice(СЛОВА) for _ in range(rnd.randint(2, 10))))
+        старый, новый = _как_прежде(m, vec, "event", "global"), m._nearest_active(vec, "event", "global")
+        assert новый[0] == старый[0] and abs(новый[2] - старый[2]) < 1e-6
+    исход, mid = m.remember("a brand new note about lisbon tea and the album", kind="event")
+    assert mid and m.store.one("SELECT id FROM memory WHERE id = ?", (mid,))
+    assert m._nearest_частями(embeddings.embed("x"), "identity", "global") is None
+    m.close()
