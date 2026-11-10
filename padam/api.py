@@ -180,6 +180,12 @@ class Handler(BaseHTTPRequestHandler):
                 chain = mem().timeline(rid)
                 if not chain:
                     return self._send(404, {"error": "not found"})
+                if not _state["token"]:
+                    # 0.4.9: без токена запрос не от владельца — текст на проверке и отклонённый
+                    # не показывается, так же как в MCP padam_timeline и в /export.
+                    for row in chain:
+                        if row.get("status") in ("quarantined", "rejected"):
+                            row["content"] = None
                 return self._send(200, {"versions": chain})
             return self._send(404, {"error": "unknown route"})
         except Exception as e:

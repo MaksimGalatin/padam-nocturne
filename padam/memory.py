@@ -1052,7 +1052,7 @@ class Memory:
             seen.add(cur_id)
             row = self.store.one(
                 """SELECT id, content, status, created_at, supersedes
-                   FROM memory WHERE id = ?""", (cur_id,))
+                   FROM memory WHERE id = ? AND user_id = ?""", (cur_id, self.user_id))
             if not row:
                 break
             chain.append(dict(row))

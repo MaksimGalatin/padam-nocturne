@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.9 — 10 November 2026
+
+### Security
+- **`timeline` returned another user's record by id.** `Memory.timeline` selected a record by id alone, without the owner, so on a database shared by several `PADAM_USER` identities one user's agent could read another's record through `padam_timeline` or `GET /timeline/<id>`. It now requires `user_id` as every other lookup does; another user's id returns nothing (REST: 404). Found by the project coordinator on 9 November; 0.4.7 and 0.4.8 shipped without the fix.
+- **REST `/timeline` without a token showed held text.** Without a token the request is not the owner's, so the text of records held for review or rejected is now hidden there, as in `padam_timeline` over MCP and in `/export`.
+- Class checked: all 47 lookups in `padam/memory.py` were reviewed for a missing owner filter; `timeline` was the only one. Two tests (`tests/test_timeline_owner_0911.py`) fail on 0.4.8 and pass on 0.4.9.
+
 ## 0.4.8 — 10 November 2026
 
 ### Security

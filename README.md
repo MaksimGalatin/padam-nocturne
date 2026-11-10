@@ -351,7 +351,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 781 passed, 10 skipped with [embed] (Python 3.14.4); 776 passed, 11 skipped without it (3.10.9); 9 Nov 2026, Windows
+python -m pytest tests/ -q        # 783 passed, 10 skipped with [embed] (Python 3.14.4); 778 passed, 11 skipped without it (3.10.9); 10 Nov 2026, Windows
 ```
 
 CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L3 tests never touch the network: Arweave and Solana are replaced by fakes. The suite never calls a local Ollama either, even when one is running: every test uses the built-in embedding, as on CI. `PADAM_TEST_LIVE_OLLAMA=1` turns on the one live check. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.
