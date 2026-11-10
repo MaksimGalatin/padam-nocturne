@@ -299,6 +299,14 @@ def main(argv=None) -> int:
                 "Memory must not end up open to the network by accident."), file=sys.stderr)
         return 2
 
+    # 0.4.3: заглушка из примера службы (REPLACE_WITH_…) или слишком короткий токен — это известная всем
+    # строка, хуже, чем никакого. Отказ с объяснением, а не тихий запуск.
+    if a.token and (a.token.upper().startswith("REPLACE") or len(a.token) < 16):
+        print(t("Отказ: токен — заглушка или короче 16 знаков. Новый: python -c \"import secrets; "
+                "print(secrets.token_urlsafe(24))\"",
+                "Refused: the token is a placeholder or shorter than 16 characters. A new one: python -c \"import "
+                "secrets; print(secrets.token_urlsafe(24))\""), file=sys.stderr)
+        return 2
     создан = False
     if not a.token and not a.no_token:
         a.token, создан = secrets.token_urlsafe(24), True
@@ -309,11 +317,13 @@ def main(argv=None) -> int:
     scope = t("локально", "local only") if local else t("ВНЕШНИЙ ДОСТУП", "EXTERNAL ACCESS")
     token = (t("включён", "required") if a.token else t("не требуется", "not required"))
     print(t(f"PADAM API на http://{a.host}:{a.port}  ({scope}, токен {token})",
-            f"PADAM API at http://{a.host}:{a.port}  ({scope}, token {token})"))
+            f"PADAM API at http://{a.host}:{a.port}  ({scope}, token {token})"), flush=True)
+    # 0.4.3: flush — без него при выводе в файл или журнал службы токен застревал в буфере и не был виден
+    # (замер: 0 байт в журнале через 8 с), а сервер уже ждал запросы с этим токеном.
     if создан:
-        print(t(f"Токен этого запуска: {a.token}", f"Token for this run: {a.token}"))
+        print(t(f"Токен этого запуска: {a.token}", f"Token for this run: {a.token}"), flush=True)
         print(t("Заголовок: Authorization: Bearer <токен>. Постоянный — PADAM_API_TOKEN.",
-                "Header: Authorization: Bearer <token>. A fixed one: PADAM_API_TOKEN."))
+                "Header: Authorization: Bearer <token>. A fixed one: PADAM_API_TOKEN."), flush=True)
     elif a.no_token:
         print(t("Без токена: любая запись ждёт проверки владельцем, действия владельца (approve, forget, export…) "
                 "запрещены.", "No token: every write waits for the owner's review; owner actions (approve, forget, "

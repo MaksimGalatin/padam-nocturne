@@ -55,7 +55,7 @@ raw database bytes and record status, not by what the server says. Every secret 
 Nothing goes to the network.
 
 `public_cases.jsonl` is everything PADAM already defends against (built by `build_public_set.py` from the test
-suite, 214 cases; the synthetic keys in it are stored reversed and base64-encoded (`text_enc` / `secret_enc`), because code hosts' secret scanners take them for real ones). It is a regression set, not a measure of strength: 214 of 214 pass on 0.4.2.
+suite, 214 cases; the synthetic keys in it are stored reversed and base64-encoded (`text_enc` / `secret_enc`), because code hosts' secret scanners take them for real ones). It is a regression set, not a measure of strength: 214 of 214 pass on 0.4.3.
 
 ## The sealed set — how a result becomes trustworthy
 

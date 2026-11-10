@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.3 — 9 November 2026
+
+### Fixed
+- The REST API's token could not be seen when its output went to a file or a service journal: Python held the lines in its buffer (0 bytes in the log 8 s after start) while the server already demanded the token. With 0.4.2 that made `integrations/systemd-padam-api.service` unusable. The start lines are now flushed at once, and the service file sets a fixed `PADAM_API_TOKEN` with the command that makes one.
+- A placeholder (`REPLACE_WITH_…`) or a token shorter than 16 characters is refused at start: a string everyone can read in the example is worse than no token.
+
 ## 0.4.2 — 9 November 2026
 
 From a second outside review (9 Nov 2026), each point checked against the code before changing it.

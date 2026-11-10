@@ -10,6 +10,10 @@ Type=simple
 User=REPLACE_WITH_USER
 Environment=PADAM_DB=/home/REPLACE_WITH_USER/.padam/memory.db
 Environment=OLLAMA_URL=http://localhost:11434
+# Since PADAM 0.4.2 the REST API always has a token. A service restarts, so give it a fixed one:
+#   python3 -c "import secrets; print(secrets.token_urlsafe(24))"
+# The placeholder below is refused at start; clients send Authorization: Bearer <token>.
+Environment=PADAM_API_TOKEN=REPLACE_WITH_A_LONG_RANDOM_TOKEN
 ExecStart=/usr/bin/python3 -m padam.api --host 127.0.0.1 --port 8077
 Restart=on-failure
 

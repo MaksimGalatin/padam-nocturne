@@ -27,6 +27,39 @@ def test_doctor_is_clean_when_keys_are_protected(tmp_path, monkeypatch, capsys):
     assert cli.main(["--db", str(путь), "doctor"]) == 0, capsys.readouterr().out
 
 
+def test_api_token_reaches_a_log_file_at_once(tmp_path):
+    """Регрессия 0.4.2 → 0.4.3: при выводе не в терминал (файл, журнал службы) токен застревал в буфере —
+    0 байт в журнале через 8 с, а сервер уже ждал запросы с этим токеном."""
+    import os
+    import re
+    import time
+    журнал = tmp_path / "api.log"
+    окружение = {к: в for к, в in os.environ.items() if not к.startswith("PADAM_")}
+    окружение.update({"PADAM_DB": str(tmp_path / "a.db"), "OLLAMA_URL": "http://127.0.0.1:9", "PADAM_LANG": "en"})
+    with open(журнал, "w") as f:
+        п = subprocess.Popen([sys.executable, "-m", "padam", "api", "--port", "0"], stdout=f, stderr=f, env=окружение)
+    try:
+        for _ in range(100):
+            if re.search(r"Token for this run: \S{24,}", журнал.read_text(errors="replace")):
+                break
+            time.sleep(0.1)
+        assert re.search(r"Token for this run: \S{24,}", журнал.read_text(errors="replace")), журнал.read_text()
+    finally:
+        п.kill()
+        п.wait()
+
+
+def test_api_refuses_the_placeholder_token(capsys, monkeypatch):
+    from padam import api
+
+    def не_поднимать(*a, **k):                 # если отказа нет, тест падает, а не ждёт запросов вечно
+        raise AssertionError("сервер начал подниматься с заглушкой вместо токена")
+
+    monkeypatch.setattr(api, "ThreadingHTTPServer", не_поднимать)
+    assert api.main(["--port", "0", "--token", "REPLACE_WITH_A_LONG_RANDOM_TOKEN"]) == 2
+    assert api.main(["--port", "0", "--token", "short"]) == 2
+
+
 def test_server_names_switched_off_protection_on_stderr_only(tmp_path):
     import os
     окружение = {к: в for к, в in os.environ.items() if not к.startswith("PADAM_")}

@@ -2,7 +2,7 @@
 
 ### Память для ИИ-агентов, которая спит, честно забывает и проверяется навсегда
 
-[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%208%20tools-8A2BE2) ![release](https://img.shields.io/badge/release-v0.4.2-success)
+[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%208%20tools-8A2BE2) ![release](https://img.shields.io/badge/release-v0.4.3-success)
 
 **PADAM** — постоянная память для ИИ-ассистентов и агентов, которая хранится у владельца. Она живёт в одном файле SQLite на вашем компьютере и подключается к любому MCP-клиенту (Claude Code, Claude Desktop, Cursor, VS Code) или к вашему коду через командную строку и небольшой REST API.
 
@@ -341,7 +341,7 @@ python -m padam rekey                     # сменить пароль
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 516 passed, 1 skipped с [embed] (Python 3.14.4); 511 passed, 2 skipped без него (3.10.9); 09.11.2026, Windows
+python -m pytest tests/ -q        # 518 passed, 1 skipped с [embed] (Python 3.14.4); 513 passed, 2 skipped без него (3.10.9); 09.11.2026, Windows
 ```
 
 CI прогоняет тесты на каждый push под Ubuntu и Windows с Python 3.10–3.13. Тесты L3 не ходят в сеть: Arweave и Solana заменены подделками. Локальную Ollama набор тоже не зовёт, даже если она запущена: каждый тест работает на встроенных векторах, как на CI. `PADAM_TEST_LIVE_OLLAMA=1` включает единственную живую проверку. Схема Меркла дополнительно сверена с закреплением CODE Eternal на TypeScript — листья и корень совпадают.
@@ -390,7 +390,7 @@ CI прогоняет тесты на каждый push под Ubuntu и Windows
 
 ## Red Team Challenge
 
-Попробуйте сломать. В [`redteam/`](https://github.com/MaksimGalatin/padam-nocturne/tree/main/redteam) лежат правила, программа прогона, которая записывает каждый случай через MCP, как чужой агент, и судит по сырым байтам базы, и открытый набор из 214 случаев, от которых PADAM уже защищается (на 0.4.2 проходят 214 из 214). Мера, которая имеет значение, — **закрытый набор**: вы публикуете только его SHA-256, мы выпускаем следующую версию, вы открываете файл, и любой может его повторить. Только выдуманные секреты, только своя локальная копия.
+Попробуйте сломать. В [`redteam/`](https://github.com/MaksimGalatin/padam-nocturne/tree/main/redteam) лежат правила, программа прогона, которая записывает каждый случай через MCP, как чужой агент, и судит по сырым байтам базы, и открытый набор из 214 случаев, от которых PADAM уже защищается (на 0.4.3 проходят 214 из 214). Мера, которая имеет значение, — **закрытый набор**: вы публикуете только его SHA-256, мы выпускаем следующую версию, вы открываете файл, и любой может его повторить. Только выдуманные секреты, только своя локальная копия.
 
 ```bash
 python -I -X utf8 redteam/run.py your_cases.jsonl --out report.json
