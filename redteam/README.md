@@ -55,7 +55,7 @@ raw database bytes and record status, not by what the server says. Every secret 
 Nothing goes to the network.
 
 `public_cases.jsonl` is everything PADAM already defends against (built by `build_public_set.py` from the test
-suite, 214 cases; the synthetic keys in it are stored reversed and base64-encoded (`text_enc` / `secret_enc`), because code hosts' secret scanners take them for real ones). It is a regression set, not a measure of strength: 214 of 214 pass on 0.4.4.
+suite, 214 cases; the synthetic keys in it are stored reversed and base64-encoded (`text_enc` / `secret_enc`), because code hosts' secret scanners take them for real ones). It is a regression set, not a measure of strength: 214 of 214 pass on 0.4.6.
 
 ## The sealed set — how a result becomes trustworthy
 
@@ -67,6 +67,15 @@ A set written by the person who fixes the code measures nothing: we showed that 
 3. **You open the file.** Anyone checks that its SHA-256 matches, runs `run.py` against that release and against
    the previous one, and sees the numbers. We publish them in the CHANGELOG whatever they are.
 4. Every case that got through goes into the public set and the test suite; the next round needs a new sealed set.
+
+## Rounds so far
+
+| round | author | open set | sealed set | details |
+|---|---|---|---|---|
+| 1, 9 Nov 2026 | Antigravity (an AI agent working for the project owner) | 60 cases — before the fixes (0.4.3): secrets 7/20, commands 6/20, ordinary 13/20; after (0.4.4): 19/20, 20/20, 16/20 | 40 cases, SHA-256 committed before the fixes — 0.4.3: 12/15, 12/15, 6/10; **0.4.4: 12/15, 14/15, 7/10** | [`rounds/2026-11-09_antigravity/SEALED_RESULTS.md`](rounds/2026-11-09_antigravity/SEALED_RESULTS.md) — every failure, what was fixed and what was left on purpose |
+| 2 | the same author, new classes | under way against 0.4.5 | sealed before any fix | — |
+
+A round from someone outside the project is what is missing; that is the invitation of this page.
 
 ## Reporting
 

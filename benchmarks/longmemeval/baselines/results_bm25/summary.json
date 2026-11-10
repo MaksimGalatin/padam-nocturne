@@ -1,0 +1,63 @@
+{
+  "dataset": "LongMemEval-S",
+  "questions": 500,
+  "scored_without_abstention": 470,
+  "method": "Okapi BM25 (k1=1.2, b=0.75) over rounds, tokens \\w+ len>=2 lower-cased, no PADAM, no model",
+  "overall": {
+    "any@5": 0.9596,
+    "any@10": 0.9766,
+    "all@5": 0.7979,
+    "all@10": 0.8851
+  },
+  "abstention": {
+    "any@5": 0.9667,
+    "any@10": 0.9667,
+    "all@5": 0.6667,
+    "all@10": 0.7667
+  },
+  "by_type": {
+    "knowledge-update": {
+      "n": 72,
+      "any@5": 1.0,
+      "any@10": 1.0,
+      "all@5": 0.9306,
+      "all@10": 0.9861
+    },
+    "multi-session": {
+      "n": 121,
+      "any@5": 0.9752,
+      "any@10": 0.9917,
+      "all@5": 0.595,
+      "all@10": 0.7686
+    },
+    "single-session-assistant": {
+      "n": 56,
+      "any@5": 1.0,
+      "any@10": 1.0,
+      "all@5": 1.0,
+      "all@10": 1.0
+    },
+    "single-session-preference": {
+      "n": 30,
+      "any@5": 0.7,
+      "any@10": 0.8333,
+      "all@5": 0.7,
+      "all@10": 0.8333
+    },
+    "single-session-user": {
+      "n": 64,
+      "any@5": 1.0,
+      "any@10": 1.0,
+      "all@5": 1.0,
+      "all@10": 1.0
+    },
+    "temporal-reasoning": {
+      "n": 127,
+      "any@5": 0.9449,
+      "any@10": 0.9606,
+      "all@5": 0.748,
+      "all@10": 0.8425
+    }
+  },
+  "seconds": 11.6
+}

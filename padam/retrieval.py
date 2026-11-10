@@ -30,7 +30,11 @@ _ENTITY_PATTERNS = [
     r"https?://\S+",                       # ссылки
     r"\b[0-9A-F]{4,}-[0-9A-F\-]+\b",       # идентификаторы вроде 01DAF7-8B0717
 ]
-_ENTITY_RE = re.compile("|".join(_ENTITY_PATTERNS), re.IGNORECASE)
+# 0.4.6: аббревиатуры (первый шаблон) — только заглавными. С общим re.IGNORECASE «[A-Z]{2,}» совпадал с любым
+# словом от двух букв, и «точные идентификаторы» считали совпадение всех слов подряд, служебных тоже (the, is,
+# what) — с весом 1,5. Найдено 09.11.2026 сравнением с базовой линией BM25 на LongMemEval: поиск проигрывал ей
+# 91,7 % против 96,0 %. Остальные шаблоны регистр по-прежнему не различают.
+_ENTITY_RE = re.compile("(?-i:" + _ENTITY_PATTERNS[0] + ")|" + "|".join(_ENTITY_PATTERNS[1:]), re.IGNORECASE)
 
 
 def entities(text: str) -> set[str]:
@@ -89,6 +93,11 @@ def rank_lexical(store, user_id: str, scope: str, query: str,
     terms = [t for t in re.findall(r"\w+", query.lower()) if len(t) > 1]
     if not terms:
         return []
+    # 0.4.6: слово длиннее пяти букв ищется по основе — без двух последних букв, не короче пяти. Префикс «сервере»*
+    # не находил «сервер», «серверы» — «сервере», и русский запрос в косвенном падеже проигрывал заметке со словом
+    # «на» (найдено 09.11.2026 тестом tests/test_retrieval_0911.py). Окончания русских падежей и английских форм
+    # (servers, planned) — одна-две буквы.
+    terms = list(dict.fromkeys(t[:max(5, len(t) - 2)] if len(t) > 5 else t for t in terms))
     # OR по терминам: пусть BM25 сам взвесит редкие выше частых
     match = " OR ".join(f'"{t}"*' for t in terms)
     try:
@@ -155,6 +164,13 @@ DEFAULT_WEIGHTS = {
     "lexical": 1.0,
     "entity": 1.5,      # точное совпадение идентификатора — сильный сигнал
 }
+# 0.4.6: встроенный «вектор» — это слова, их пятибуквенные основы и пары слов без учёта редкости, то есть шумный
+# двойник лексического поиска, а не смысл. В слиянии он не голосует: LongMemEval-S, все 500 вопросов — с ним
+# (вес 1,0) 91,7 % «доказательство в первой пятёрке», с весом 0,5 — 93,2 %, без него — 96,8 % (BM25 без PADAM — 96,0 %);
+# на 400 вопросах, на которых веса не подбирались, — 96,5 %. Падежи («сервер» / «сервере») держит лексический поиск
+# по основам. Вектор остаётся запасным путём: если ни слова, ни идентификаторы не совпали, поиск идёт по нему.
+# С настоящей моделью (model2vec, fastembed, Ollama) вес прежний.
+BUILTIN_SEMANTIC_WEIGHT = 0.0
 
 
 def hybrid_rank(store, user_id: str, scope: str, query: str,
@@ -170,5 +186,11 @@ def hybrid_rank(store, user_id: str, scope: str, query: str,
         "entity": rank_entity(query, rows, pool),
     }
     rankings = {k: v for k, v in rankings.items() if v}
-    scores = reciprocal_rank_fusion(rankings, weights or DEFAULT_WEIGHTS)
+    if weights is None:
+        weights = dict(DEFAULT_WEIGHTS)
+        if embeddings.метка_модели().startswith("builtin"):
+            # запасной путь: нет ни лексических, ни точных совпадений — ищем по вектору, иначе вернули бы пустоту
+            запасной = not rankings.get("lexical") and not rankings.get("entity")
+            weights["semantic"] = 1.0 if запасной else BUILTIN_SEMANTIC_WEIGHT
+    scores = reciprocal_rank_fusion(rankings, weights)
     return scores, rankings

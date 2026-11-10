@@ -347,7 +347,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 650 passed, 9 skipped with [embed] (Python 3.14.4); 645 passed, 10 skipped without it (3.10.9); 9 Nov 2026, Windows
+python -m pytest tests/ -q        # 662 passed, 9 skipped with [embed] (Python 3.14.4); 657 passed, 10 skipped without it (3.10.9); 9 Nov 2026, Windows
 ```
 
 CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L3 tests never touch the network: Arweave and Solana are replaced by fakes. The suite never calls a local Ollama either, even when one is running: every test uses the built-in embedding, as on CI. `PADAM_TEST_LIVE_OLLAMA=1` turns on the one live check. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.
@@ -358,18 +358,26 @@ CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L
 
 [LongMemEval](https://github.com/xiaowu0162/LongMemEval) (Wu et al., ICLR 2025, MIT): 500 questions about a user's past chats, each with its own haystack of 39–66 sessions (50 on average, about 490 thousand characters); 30 questions have no answer in the haystack and the right reply is "I don't know". We used the `longmemeval_s` set. For every question PADAM gets a fresh memory, stores each round of the haystack with `remember`, and is asked the question with `recall`. Scripts and every answer: [`benchmarks/longmemeval/`](https://github.com/MaksimGalatin/padam-nocturne/tree/main/benchmarks/longmemeval).
 
-**Retrieval, no language model anywhere** (`retrieval_recall.py`): is the session that holds the answer among the records PADAM returns? Built-in search on 0.4.4, all 500 questions, 470 with an answer:
+**Retrieval, no language model anywhere** (`retrieval_recall.py`): is the session that holds the answer among the records PADAM returns? All 500 questions, 470 with an answer, against a plain BM25 baseline with no PADAM at all (`baselines/bm25_recall.py`: the same rounds, the same scoring, Okapi BM25 k1 = 1.2, b = 0.75):
 
 | | any evidence session in top 5 | in top 10 | all evidence sessions in top 5 | in top 10 |
 |---|---|---|---|---|
-| built-in, no model | 91.7 % | 96.4 % | 74.7 % | 85.1 % |
+| **PADAM 0.4.6, built-in, no model** | **96.8 %** | **98.7 %** | **83.0 %** | **90.9 %** |
+| the same, only the 400 questions not used while fixing (every question except each fifth) | 96.5 % | 98.7 % | 83.2 % | 92.0 % |
+| plain BM25, no PADAM | 96.0 % | 97.7 % | 79.8 % | 88.5 % |
+| PADAM 0.4.4 / 0.4.5, built-in | 91.7 % | 96.4 % | 74.7 % | 85.1 % |
+
+**How the BM25 baseline changed 0.4.6.** Until 0.4.5 PADAM's own search lost to plain BM25 on its own benchmark. Two causes, both measured on every fifth question first and then checked on the other 400: the "exact identifiers" strategy treated every word of two letters or more as an identifier (a case-insensitive flag on the acronym pattern), so it counted *the*, *is*, *what* with weight 1.5; and the built-in "vector" — words, five-letter stems and word pairs without any rarity weighting — voted in the fusion as if it were meaning. Now identifiers are identifiers, the built-in vector does not vote (it stays as a fallback when no word matches), and the word search uses stems, so Russian case forms still match (*сервер* / *сервере*; tested). Every fifth question re-run separately gives the same result on all 100.
 
 The same on every fifth question (94 with an answer; one question is 1.06 points) for each embedding method:
 
 | method | size | any in top 5 | any in top 10 | all in top 5 | all in top 10 |
 |---|---|---|---|---|---|
+| built-in (0.4.6) | — | 97.9 % | 98.9 % | 81.9 % | 86.2 % |
+| plain BM25, no PADAM | — | 97.9 % | 97.9 % | 80.9 % | 85.1 % |
+| model2vec `potion-base-8M` (default of `[embed]`; 0.4.6) | 30 MB | 94.7 % | 97.9 % | 81.9 % | 89.4 % |
 | built-in (0.4.4) | — | 91.5 % | 95.7 % | 72.3 % | 84.0 % |
-| model2vec `potion-base-8M` (default of `[embed]`; 0.3.1) | 30 MB | 92.6 % | 97.9 % | 76.6 % | 87.2 % |
+| model2vec `potion-base-8M` (0.3.1) | 30 MB | 92.6 % | 97.9 % | 76.6 % | 87.2 % |
 | model2vec `potion-retrieval-32M` (0.4.0) | 129 MB | 94.7 % | 96.8 % | 79.8 % | 87.2 % |
 | model2vec `potion-multilingual-128M` (0.4.0) | 512 MB | 94.7 % | 98.9 % | 79.8 % | 86.2 % |
 
@@ -409,7 +417,7 @@ python -I -X utf8 redteam/run.py your_cases.jsonl --out report.json
 
 ## Honest limits
 
-- Built-in search compares words, not meanings; for search by meaning install `[embed]` or use Ollama. On LongMemEval the gain is real but modest (see above).
+- Built-in search compares words, not meanings; for search by meaning install `[embed]` or use Ollama. On LongMemEval a model does not help retrieval (the evidence nearly always shares words with the question): `potion-base-8M` finds 94.7 % in the top 5 against 97.9 % built-in on every fifth question, while all evidence in the top 10 rises from 86.2 % to 89.4 %. It helps where words differ — synonyms and paraphrases — which this benchmark barely tests.
 - The default `[embed]` model is distilled from an English model (`bge-base-en-v1.5`) and barely tells meanings apart in other languages: on four question–answer pairs the right answer led the wrong one by 0.32 in English and by 0.04 in Russian. For memory in another language set `PADAM_LOCAL_EMBED_MODEL=minishlab/potion-multilingual-128M` (512 MB, 0.32 in Russian on the same pairs). It is not the default because a 512 MB download on the first tool call can outlast an MCP client's timeout.
 - The rule-based classifier without a model makes mistakes; the NOCTURNE report shows it (diversity metric).
 - Ceiling, decay and floor values are chosen by reasoning, not fitted on data — tune them on your own stream, measuring before and after.

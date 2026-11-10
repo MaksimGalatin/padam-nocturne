@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.6 — 10 November 2026
+
+### Fixed
+- **Search lost to plain BM25 on its own benchmark; now it wins.** A BM25 baseline with no PADAM at all (`benchmarks/longmemeval/baselines/bm25_recall.py`, same rounds, same scoring) found the evidence session in the top 5 for 96.0 % of LongMemEval-S questions; PADAM 0.4.5 found 91.7 %. Two causes. The "exact identifiers" strategy compiled its acronym pattern case-insensitively, so every word of two letters or more — *the*, *is*, *what* — counted as an identifier, with weight 1.5. And the built-in vector (words, five-letter stems and word pairs, no rarity weighting) voted in the fusion as if it carried meaning. Now acronyms must be upper case, the built-in vector does not vote and is used only when no word and no identifier matches, and the word search matches stems (a word longer than five letters loses its last two, but never below five), so *сервере* finds *сервер*. All 500 questions: **96.8 %**, 98.7 %, 83.0 %, 90.9 % (any/all in top 5/10), against BM25's 96.0 %, 97.7 %, 79.8 %, 88.5 %. The variants were compared on every fifth question; on the other 400 questions the result is 96.5 %, 98.7 %, 83.2 %, 92.0 %. A run of every fifth question made separately agrees on all 100. With a real model the vector still votes at full weight; on this benchmark `potion-base-8M` finds 94.7 % in the top 5 on every fifth question — LongMemEval's evidence nearly always shares words with the question.
+
+### Added
+- `docs/FENCING_SPEC.md`: how returned memory is fenced, where (search and timeline), the one exception (`padam_export` is machine-readable JSON for `padam import` and clients) and what a consumer should check. `tests/test_fencing_spec.py` stores ten hand-written break-out attempts, 1,000 generated forgeries and a closing tag split across two records, and checks every fenced answer: one opening and one closing tag, equal 32-hex nonces, no tag name left inside, a fresh nonce each call.
+- `SECURITY.md`: the threat model table gets a "Tested in" column naming the tests behind each row.
+- `redteam/rounds/2026-11-09_antigravity/SEALED_RESULTS.md`: every failure of the sealed set on 0.4.4, why it passed, what 0.4.5 fixed and what is left held on purpose; `redteam/README.md` lists the rounds so far.
+- `tests/test_retrieval_0911.py`: identifiers, Russian case forms, the fallback path.
+
 ## 0.4.5 — 9 November 2026
 
 ### Security
