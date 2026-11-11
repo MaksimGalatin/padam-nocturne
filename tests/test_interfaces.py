@@ -47,6 +47,16 @@ def test_protocol_version_is_negotiated():
     assert r["result"]["instructions"]
 
 
+def test_protocol_2025_11_25_invalid_arguments_are_tool_errors():
+    """2025-11-25 (SEP-1303): неверные аргументы — ошибка инструмента (isError), чтобы модель могла поправиться."""
+    r = mcp_server.handle({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+                           "params": {"protocolVersion": "2025-11-25"}})
+    assert r["result"]["protocolVersion"] == "2025-11-25"
+    r = mcp_server.handle({"jsonrpc": "2.0", "id": 2, "method": "tools/call",
+                           "params": {"name": "padam_search", "arguments": {"query": 42}}})
+    assert "error" not in r and r["result"]["isError"] is True
+
+
 def test_server_version_matches_package_metadata():
     """serverInfo.version, padam.__version__ и pyproject.toml — одно число (было 0.1.0 против 0.2.0)."""
     import re

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.11 — 11 November 2026
+
+### Protocol
+- **MCP 2025-11-25 is accepted through `initialize`.** A client asking for it was answered with 2025-06-18. For a stdio tool server without sign-in, that revision requires one thing — invalid arguments come back as a tool error (`isError`) rather than a protocol error (SEP-1303) — and the server already did that; OAuth, elicitation, sampling, tasks and HTTP changes do not apply. New test in `tests/test_interfaces.py`.
+
+### Performance
+- **Writes no longer rebuild the vector cache after a duplicate or a supersede.** Profiling 500 writes on top of 3,000 records (11 November) found the vector cache re-read from the database 14 times — 12 after a record was superseded, 2 after a duplicate — because each of those paths makes one more commit. A duplicate changes no vectors or statuses, so the cache only takes the new stamp; a supersede removes one record from the active set, so its row leaves the cache in place. Any other commit (an extra write, another process) still drops the cache as before. Checked against a rebuild from scratch after each of 500 writes on top of 3,000 records (988 nearest-record lookups, 0 differences) and by two new tests in `tests/test_search_cache_1111.py`, one of which fails on 0.4.10. 500 writes on top of 10,000 records, three alternating runs each: mean 4.29–4.52 ms → 3.36–3.75 ms, p95 6.49–7.55 ms → 4.85–6.20 ms, median unchanged. The scale benchmark at 100,000 records: 53.2 ms → 5.0 ms per write (5,323 s → 503 s for the whole run), search median 143 ms. Old and new code give the same outcome for each of 10,000 writes and an identical database (SHA-256 of outcomes and of every record's status and text).
+
 ## 0.4.10 — 11 November 2026
 
 ### Performance

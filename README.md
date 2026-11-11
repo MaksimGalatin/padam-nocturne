@@ -120,7 +120,7 @@ From PyPI: `pip install padam-nocturne`. The latest code straight from GitHub: `
 
 ### MCP server (stdio)
 
-`padam-mcp` (the same program is also installed as `padam-nocturne`; `python -m padam.mcp_server` works too). The server speaks both eras of the protocol in one process: **2026-07-28** without a handshake (version and client capabilities in every request's `_meta`, `server/discover`, `resultType` in every result, cacheable `tools/list` with `ttlMs` and `cacheScope`, `-32022` with the supported versions on a mismatch) and the older **2025-06-18**, 2025-03-26 and 2024-11-05 through `initialize`. It always speaks UTF-8 over stdio — including Windows consoles in cp1251/cp1252 — and declares all four hints (read-only, destructive, idempotent, open-world) on each of its **8 tools**, and checks every call against the tool's schema. Malformed input (`null`, `[]`, a bare number) gets a JSON-RPC `-32600` error instead of crashing the process. Checked end-to-end with the official MCP Python SDK client on 12 Oct 2026.
+`padam-mcp` (the same program is also installed as `padam-nocturne`; `python -m padam.mcp_server` works too). The server speaks both eras of the protocol in one process: **2026-07-28** without a handshake (version and client capabilities in every request's `_meta`, `server/discover`, `resultType` in every result, cacheable `tools/list` with `ttlMs` and `cacheScope`, `-32022` with the supported versions on a mismatch) and the older **2025-11-25**, 2025-06-18, 2025-03-26 and 2024-11-05 through `initialize`. It always speaks UTF-8 over stdio — including Windows consoles in cp1251/cp1252 — and declares all four hints (read-only, destructive, idempotent, open-world) on each of its **8 tools**, and checks every call against the tool's schema. Malformed input (`null`, `[]`, a bare number) gets a JSON-RPC `-32600` error instead of crashing the process. Checked end-to-end with the official MCP Python SDK client on 12 Oct 2026.
 
 | Tool | What it does |
 |---|---|
@@ -351,7 +351,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 788 passed, 10 skipped with [embed] (Python 3.14.4); 783 passed, 11 skipped without it (3.10.9); 11 Nov 2026, Windows
+python -m pytest tests/ -q        # 791 passed, 10 skipped with [embed] (Python 3.14.4); 786 passed, 11 skipped without it (3.10.9); 11 Nov 2026, Windows
 ```
 
 CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L3 tests never touch the network: Arweave and Solana are replaced by fakes. The suite never calls a local Ollama either, even when one is running: every test uses the built-in embedding, as on CI. `PADAM_TEST_LIVE_OLLAMA=1` turns on the one live check. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.
@@ -402,7 +402,7 @@ Read these numbers with their conditions:
 - The reader and the judge are both `gpt-oss:120b` on Ollama Cloud; the paper's judge is GPT-4o, and the reader prompt is ours. Numbers are not directly comparable with tables that use GPT-4o, and a stronger reader would score higher on the same retrieval.
 - Retrieval is deterministic since 0.4.4: two independent runs give the same result for every question (before, ties between near-identical records were broken by a random id). The end-to-end runs were done once each, before that fix, so they carry a small spread of their own.
 - "Compact view" cuts the assistant's replies, which is why it loses on questions about what the assistant said; `padam_search` returns whole records by default.
-- Scale on one machine (built-in method, LongMemEval user turns, `benchmarks/scale/`): 1,000 records — 2.9 ms per write, search median 24 ms, 4.7 MB; 10,000 records — 7.3 ms per write, search median 220 ms (95th percentile 329 ms), 45.2 MB. 100,000 records are not measured yet.
+- Scale on one machine (built-in method, LongMemEval user turns, `benchmarks/scale/results_builtin_1111.json`, 11 Nov 2026): 1,000 records — 2.7 ms per write, search median 5.4 ms, 4.7 MB; 10,000 records — 3.5 ms per write, search median 22 ms (95th percentile 25 ms), 45.2 MB; 100,000 records — 5.0 ms per write, search median 143 ms (95th percentile 153 ms), 375 MB. Before 0.4.10 search took 220 ms at 10,000 records and about 1.9 s at 100,000; before the vector-cache change a write at 100,000 records took 53 ms.
 - The test measures recall from a fixed haystack. It does not measure what PADAM is built for besides recall: forgetting, owner review, secrets, decay, the eternal layer.
 
 ---

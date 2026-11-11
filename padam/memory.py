@@ -239,6 +239,7 @@ class Memory:
 
         if verdict == "duplicate":
             # Через MCP подтверждением не считается и пометка user: её ставит сам агент.
+            отметка_до = self.store.stamp()
             if origin == "user" and not guarded:
                 self.store.execute(
                     """UPDATE memory SET last_seen_at = ?, last_confirmed_at = ?,
@@ -252,6 +253,7 @@ class Memory:
                     """UPDATE memory SET last_seen_at = ?,
                        access_count = access_count + 1 WHERE id = ?""",
                     (now_iso(), old_id))
+            self._векторы_после(отметка_до)          # 0.4.11: векторы и статус не менялись
             return "duplicate", old_id
 
         if verdict == "coexist":
@@ -277,10 +279,12 @@ class Memory:
         # refinement и contradiction создают новую версию
         new_mid = self._insert(content, kind, vec, importance, scope,
                                source_episode_id, supersedes=old_id, origin=origin)
+        отметка_до = self.store.stamp()
         self.store.execute(
             """UPDATE memory SET status = 'superseded', superseded_by = ?,
                valid_to = ? WHERE id = ?""",
             (new_mid, now_iso(), old_id))
+        self._векторы_после(отметка_до, убрать=old_id, scope=scope, kind=kind)   # 0.4.11
         return ("merged" if verdict == "refinement" else "superseded"), new_mid
 
     # -- связи выводов и подпись владельца ------------------------------
@@ -718,6 +722,41 @@ class Memory:
         найдено = retrieval.entities(content)
         кэш[rid] = (h, найдено)
         return найдено
+
+    def _векторы_после(self, отметка_до, убрать=None, scope=None, kind=None):
+        """0.4.11: один свой коммит после отметки, который не добавляет векторов, — кэш векторов не перечитывается.
+        Замер 11.11.2026: за 500 записей поверх 3 000 кэш перестраивался 14 раз — 12 после замены записи и 2 после
+        повтора; каждая перестройка читает все векторы базы, на 100 000 записях это и давало 56 мс на запись.
+        Повтор не меняет ни векторов, ни статусов — кэшу нужна только новая отметка. Замена выводит одну запись
+        из действующих — её строка убирается из буфера (на её место встаёт последняя). Во всех других случаях
+        (лишний коммит, чужой процесс) кэш сбрасывается, как раньше."""
+        кэш = self.__dict__.get("_вкэш")
+        if not кэш:
+            return
+        после = self.store.stamp()
+        for ключ in list(кэш):
+            отметка, ids, (буфер, n, номера) = кэш[ключ]
+            if отметка != отметка_до or после != (отметка_до[0] + 1, отметка_до[1]):
+                del кэш[ключ]
+                continue
+            if убрать is not None and ключ[0] == scope and ключ[1] == kind:
+                try:
+                    i = ids.index(убрать)
+                except ValueError:
+                    i = -1
+                if i >= 0:
+                    # Запись уходит из списка совсем, как при построении кэша с нуля: иначе она осталась бы
+                    # «действующей» с нулевой близостью. Номера строк буфера сдвигаются одним действием numpy.
+                    ids.pop(i)
+                    где = np.nonzero(номера[:n] == i)[0]
+                    if len(где):
+                        r = int(где[0])
+                        n -= 1
+                        буфер[r] = буфер[n]
+                        номера[r] = номера[n]
+                    живые = номера[:n]
+                    живые[живые > i] -= 1
+            кэш[ключ] = (после, ids, (буфер, n, номера))
 
     def _дописать_в_кэш(self, отметка_до, mid, scope, kind, vec, status):
         """Своя вставка — единственный коммит после отметки: вектор дописывается, а не перечитывается всё."""

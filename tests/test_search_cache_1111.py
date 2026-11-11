@@ -85,3 +85,74 @@ def test_забытое_уходит_из_кэша(tmp_path):
         assert all("4512" not in (r.content or "") for r in m.recall("office door code", limit=5))
     finally:
         m.close()
+
+
+# --- 0.4.11: кэш векторов переживает «повтор» и «замену» --------------------------------------------------
+# Замер 11.11.2026 (3 000 + 500 записей): кэш векторов перестраивался 14 раз — 12 после замены, 2 после повтора,
+# каждый раз чтением всех векторов из базы. Теперь он правится на месте. Тест сверяет его с расчётом заново.
+
+def _ближайший(m, вектор, kind, scope):
+    return m._nearest_active(вектор, kind, scope)
+
+
+def _ближайший_заново(m, вектор, kind, scope):
+    кэш = m.__dict__.pop("_вкэш", None)
+    try:
+        return m._nearest_active(вектор, kind, scope)
+    finally:
+        m.__dict__.pop("_вкэш", None)
+        if кэш is not None:
+            m.__dict__["_вкэш"] = кэш
+
+
+def _ключ(x):
+    return None if x is None else (x[0], round(x[2], 9))
+
+
+def test_кэш_векторов_после_повтора_и_замены_равен_расчёту_заново(tmp_path):
+    from padam import embeddings
+    m = Memory(user_id="u", store=Store(tmp_path / "m.db"))
+    try:
+        тексты = []
+        for i, город in enumerate(["Manta", "Quito", "Cuenca", "Loja", "Ambato", "Ibarra"]):
+            тексты += [f"The capital of the project is {город}",                 # замена предыдущей
+                       f"Backup job {i} runs at night and keeps 30 copies",      # новая
+                       "The team chose Postgres for billing"]                    # повтор после первого раза
+        пробы = [embeddings.embed(t) for t in ("capital of the project", "backup job copies",
+                                                "postgres billing", "nothing like this")]
+        исходы = []
+        for t in тексты:
+            исход, _ = m.remember(t, kind="fact")
+            исходы.append(исход)
+            for v in пробы:
+                assert _ключ(_ближайший(m, v, "fact", "global")) == _ключ(_ближайший_заново(m, v, "fact", "global"))
+        assert исходы.count("superseded") >= 3 and исходы.count("duplicate") >= 3, исходы
+        # список записей в кэше — тот же, что при построении с нуля (заменённых в нём нет)
+        в_кэше = list(m._векторы("global", "fact", пробы[0].size)[0])
+        m.__dict__.pop("_вкэш", None)
+        assert в_кэше == list(m._векторы("global", "fact", пробы[0].size)[0])
+        # заменённая запись не может быть «ближайшей действующей»
+        best = _ближайший(m, пробы[0], "fact", "global")
+        assert m.store.one("SELECT status FROM memory WHERE id=?", (best[0],))[0] == "active"
+    finally:
+        m.close()
+
+
+def test_замена_не_перестраивает_кэш_векторов(tmp_path):
+    from padam import embeddings
+    m = Memory(user_id="u", store=Store(tmp_path / "m.db"))
+    try:
+        for i in range(20):
+            m.remember(f"Service {i} listens on port {8000 + i}", kind="fact")
+        m.remember("The capital of the project is Manta", kind="fact")
+        _ближайший(m, embeddings.embed("capital"), "fact", "global")           # кэш заполнен
+        было = id(next(iter(m.__dict__["_вкэш"].values()))[1])     # список id — тот же объект, если не перечитан
+        исход, _ = m.remember("The capital of the project is Quito", kind="fact")
+        assert исход == "superseded"
+        assert id(next(iter(m.__dict__["_вкэш"].values()))[1]) == было, "кэш должен пережить замену"
+        исход, _ = m.remember("Service 3 listens on port 8003", kind="fact")
+        assert исход == "duplicate"
+        assert id(next(iter(m.__dict__["_вкэш"].values()))[1]) == было, "кэш должен пережить повтор"
+        assert next(iter(m.__dict__["_вкэш"].values()))[0] == m.store.stamp()
+    finally:
+        m.close()

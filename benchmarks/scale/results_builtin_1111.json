@@ -1,0 +1,33 @@
+{
+  "padam_version": "0.4.10 + commit 'Запись быстрее на больших базах' (vector cache kept across duplicate and supersede; released as the next version)",
+  "embedding": "builtin",
+  "python": "3.14.4",
+  "texts": "LongMemEval-S user turns",
+  "rows": [
+    {
+      "records": 1000,
+      "write_seconds": 2.7,
+      "write_ms_per_record": 2.72,
+      "search_ms_median": 5.4,
+      "search_ms_p95": 6.9,
+      "db_mb": 4.7
+    },
+    {
+      "records": 10000,
+      "write_seconds": 35.2,
+      "write_ms_per_record": 3.52,
+      "search_ms_median": 22.1,
+      "search_ms_p95": 25.2,
+      "db_mb": 45.2
+    },
+    {
+      "records": 100000,
+      "write_seconds": 502.8,
+      "write_ms_per_record": 5.03,
+      "search_ms_median": 142.6,
+      "search_ms_p95": 153.0,
+      "db_mb": 375.2
+    }
+  ],
+  "note": "11 Nov 2026, run alone. The same benchmark on released 0.4.10 gave 53.23 ms per write and 143.8 ms median search at 100,000 records (write 5,323 s)."
+}
