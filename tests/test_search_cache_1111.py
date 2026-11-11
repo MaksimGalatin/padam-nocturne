@@ -156,3 +156,29 @@ def test_замена_не_перестраивает_кэш_векторов(tm
         assert next(iter(m.__dict__["_вкэш"].values()))[0] == m.store.stamp()
     finally:
         m.close()
+
+
+# --- 0.4.12: счётчики поиска одной транзакцией ------------------------------------------------------------------
+
+def test_счётчики_поиска_одной_транзакцией(tmp_path):
+    m = Memory(user_id="u", store=Store(tmp_path / "m.db"))
+    try:
+        m.remember("The team chose Postgres for billing", kind="decision", scope="work")
+        m.remember("Postgres backups run nightly", kind="fact", scope="home")
+        вызовы = []
+        исходный = m.store.counters
+        m.store.counters = lambda ops: (вызовы.append(len(ops)), исходный(ops))[1]
+        m.recall("postgres", scope="work", limit=5)
+        assert вызовы == [2]                 # показ одной записи + статистика дня — один commit
+        вызовы.clear()
+        m.recall_many("postgres", scopes=["work", "home", "nowhere"], limit=5)
+        assert вызовы == [3]                 # два показа из двух областей + статистика — один commit
+        вызовы.clear()
+        m.recall("postgres", scope="work", limit=5, as_of="2999-01-01")
+        assert вызовы == []                  # поиск «на дату» не считается обращением — как и до 0.4.12
+        n = {r["scope"]: r["access_count"] for r in m.store.query("SELECT scope, access_count FROM memory")}
+        assert n == {"work": 2, "home": 1}
+        s = m.store.one("SELECT searches, empty FROM search_stats")
+        assert (s["searches"], s["empty"]) == (2, 0)
+    finally:
+        m.close()

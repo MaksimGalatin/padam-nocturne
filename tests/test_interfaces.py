@@ -395,3 +395,14 @@ def test_cli_survives_legacy_console_encoding(tmp_path):
     assert run("remember", "Отвечать по-русски", "--kind", "preference").returncode == 0
     r = run("recall", "язык ответа", "--explain")
     assert r.returncode == 0, r.stderr.decode("utf-8", "replace")[-300:]
+
+
+def test_rest_refusal_arrives_even_with_a_body(server, wired):
+    """Отказ (403 без токена) должен дойти до клиента, а не оборваться разрывом соединения.
+
+    Найдено 11.11.2026: test_rest_without_token_cannot_act_as_owner падал на Windows раз в несколько прогонов
+    с WinError 10053 — сервер отвечал 403, не дочитав тело POST, а закрытие сокета с непрочитанными данными
+    шлёт клиенту RST. С телом побольше обрыв почти постоянный."""
+    тело = {"records": [{"content": "x" * 1000}] * 1500}       # около 1,5 МБ — меньше предела в 10 МБ
+    for _ in range(5):
+        assert _код(lambda: post(server, "/import", тело)) == 403

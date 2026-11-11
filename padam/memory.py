@@ -407,12 +407,19 @@ class Memory:
 
     # -- учёт поиска (память о самой памяти) ---------------------------
 
-    def _учесть_поиск(self, пусто: bool) -> None:
-        день = datetime.now(timezone.utc).date().isoformat()
-        self.store.counters([(
-            """INSERT INTO search_stats (user_id, day, searches, empty) VALUES (?, ?, 1, ?)
-               ON CONFLICT(user_id, day) DO UPDATE SET searches = searches + 1, empty = empty + excluded.empty""",
-            (self.user_id, день, 1 if пусто else 0))])
+    def _учесть_поиск(self, пусто: bool | None) -> None:
+        """Счётчики одного поиска — показы найденных записей и (кроме поиска «на дату») статистика дня —
+        одной транзакцией. 0.4.12: замер 11.11.2026 на 10 000 записях — два commit с fsync на поиск
+        (0,35 из 2,84 с на 30 поисков), в recall_many по десяти областям — одиннадцать. Пишется то же."""
+        ops = self.__dict__.pop("_показы", [])
+        if пусто is not None:
+            день = datetime.now(timezone.utc).date().isoformat()
+            ops.append((
+                """INSERT INTO search_stats (user_id, day, searches, empty) VALUES (?, ?, 1, ?)
+                   ON CONFLICT(user_id, day) DO UPDATE SET searches = searches + 1, empty = empty + excluded.empty""",
+                (self.user_id, день, 1 if пусто else 0)))
+        if ops:
+            self.store.counters(ops)
 
     def self_report(self, days: int = 30) -> dict:
         """Как работает сама память: поиски без результата, что чаще опровергают, споры, подписи."""
@@ -797,9 +804,9 @@ class Memory:
         Запрос дополняется синонимами терминов (`add_alias`); каждая найденная запись получает
         пометки: подписана ли владельцем (для личности и предпочтений) и спорит ли с другой.
         """
+        self.__dict__["_показы"] = []
         найдено = self._recall(self._расширить(query), scope, kind, limit, session_id, as_of)
-        if as_of is None:
-            self._учесть_поиск(not найдено)
+        self._учесть_поиск(not найдено if as_of is None else None)
         self._пометить(найдено)
         return найдено
 
@@ -812,11 +819,11 @@ class Memory:
         """
         запрос = self._расширить(query)
         всё: list[Record] = []
+        self.__dict__["_показы"] = []
         for s in list(dict.fromkeys(scopes))[:10]:
             всё += self._recall(запрос, s, kind, limit, None, as_of)
         всё.sort(key=lambda x: x.score, reverse=True)
-        if as_of is None:
-            self._учесть_поиск(not всё)
+        self._учесть_поиск(not всё if as_of is None else None)
         self._пометить(всё[:limit])
         return всё[:limit]
 
@@ -967,8 +974,10 @@ class Memory:
         # извлечение обновляет только last_seen_at: сам факт того, что
         # запись показали, не делает её верной
         показано = now_iso()
-        self.store.counters([("""UPDATE memory SET access_count = access_count + 1,
-                                  last_seen_at = ? WHERE id = ?""", (показано, rec.id)) for rec in top])
+        # 0.4.12: записывается вместе со статистикой поиска одной транзакцией (_учесть_поиск)
+        self.__dict__.setdefault("_показы", []).extend(
+            ("""UPDATE memory SET access_count = access_count + 1, last_seen_at = ? WHERE id = ?""",
+             (показано, rec.id)) for rec in top)
         return top
 
     def confirm(self, memory_id: str) -> bool:

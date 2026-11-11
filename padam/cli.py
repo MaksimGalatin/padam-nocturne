@@ -437,8 +437,36 @@ def cmd_l3(m: Memory, a) -> int:
     rep = anchor.run_l3(
         m, dry_run=a.dry_run, network=a.network, save_dir=save_dir,
         uploader=(lambda data, tags: anchor.turbo_upload(data, wallet, tags, a.turbo_sdk)) if wallet else None,
-        anchorer=(lambda memo: anchor.solana_memo(memo, keypair, a.network)) if keypair else None)
+        anchorer=(lambda memo: anchor.solana_memo(memo, keypair, a.network)) if keypair else None,
+        stamper=None if a.no_bitcoin else _ots_stamper())
     print(json.dumps(rep, ensure_ascii=False, indent=2))
+    return 0
+
+
+def _ots_stamper():
+    from . import ots
+    return lambda digest: ots.stamp(digest)
+
+
+def cmd_l3_ots_upgrade(m: Memory, a) -> int:
+    """Штампы OpenTimestamps «дозревают» за несколько часов: спросить календари о блоке Bitcoin."""
+    from pathlib import Path
+    from . import anchor, ots
+    anchor.ensure_schema(m)
+    итог = []
+    for row in m.store.query("SELECT id, ots FROM l3_anchor WHERE ots IS NOT NULL ORDER BY created_at"):
+        было = bytes(row["ots"])
+        if ots.info(было)["bitcoin_blocks"]:
+            итог.append({"anchor": row["id"], "bitcoin_blocks": ots.info(было)["bitcoin_blocks"]})
+            continue
+        стало, блоки = ots.upgrade(было)
+        if стало != было:
+            m.store.execute("UPDATE l3_anchor SET ots = ? WHERE id = ?", (стало, row["id"]))
+            файл = Path(str(m.store.path) + ".l3") / f"{row['id']}.json.ots"
+            if файл.parent.exists():
+                файл.write_bytes(стало)
+        итог.append({"anchor": row["id"], "bitcoin_blocks": блоки or t("ещё не вошёл в блок", "not in a block yet")})
+    print(json.dumps(итог, ensure_ascii=False, indent=2))
     return 0
 
 
@@ -588,6 +616,14 @@ def cmd_l3_verify(m: Memory, a) -> int:
                                                "local copy (the gateway has not propagated it yet)"),
              sha256_matches_db=hashlib.sha256(payload).hexdigest() == row["bundle_sha256"])
     v["ok"] = bool(v["ok"] and v["sha256_matches_db"])
+    if row["ots"] is not None:                 # второй свидетель: штамп Bitcoin (OpenTimestamps)
+        try:
+            from . import ots
+            о = ots.info(bytes(row["ots"]))
+            v["bitcoin_ots"] = {"matches_bundle": ots.matches(bytes(row["ots"]), payload),
+                                "bitcoin_blocks": о["bitcoin_blocks"], "pending_calendars": о["pending"]}
+        except Exception as e:
+            v["bitcoin_ots"] = {"error": f"{type(e).__name__}: {e}"}
     print(json.dumps(v, ensure_ascii=False, indent=2))
     return 0 if v["ok"] else 1
 
@@ -700,7 +736,14 @@ def main(argv=None) -> int:
     s.add_argument("--allow-unprotected-keys", action="store_true",
                    help=t("заливать, хотя ключи записей не защищены паролем (не советуем)",
                           "anchor although record keys are not protected by a passphrase (not advised)"))
+    s.add_argument("--no-bitcoin", action="store_true",
+                   help=t("не штамповать пакет в Bitcoin через OpenTimestamps (бесплатно; по умолчанию штампуется)",
+                          "do not timestamp the bundle in Bitcoin via OpenTimestamps (free; on by default)"))
     s.set_defaults(fn=cmd_l3)
+
+    s = sub.add_parser("l3-ots-upgrade", help=t("штампы Bitcoin: спросить календари о номере блока",
+                                                "Bitcoin timestamps: ask the calendars for the block height"))
+    s.set_defaults(fn=cmd_l3_ots_upgrade)
 
     s = sub.add_parser("protect-keys", help=t("защитить ключи записей паролем (и завернуть уже созданные)",
                                               "protect record keys with a passphrase (and wrap existing ones)"))

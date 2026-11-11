@@ -87,12 +87,30 @@ def rank_semantic(query_vec: np.ndarray, rows: list, limit: int) -> list[str]:
     return [rid for _, rid in scored[:limit]]
 
 
+_СЛУЖЕБНЫЕ = frozenset("""
+a an the and or but if of to in on at by for from with about into over as is are was were be been being am do does
+did done have has had having i me my mine we us our you your he him his she her it its they them their this that
+these those what which who whom whose when where why how many much there here can could would should will shall may
+might must not no yes so than then too very just also any some all each other such own same only
+что как где когда это этот эта эти мой моя моё мои мне меня мы нас наш ты тебя твой вы вас ваш он она оно они его её
+их был была было были быть есть для на в во по из от до за под над при про о об и или но а же ли не ни да нет так
+то тот та те уже ещё сколько какой какая какие который которая которые
+""".split())
+
+
 def rank_lexical(store, user_id: str, scope: str, query: str,
                  limit: int, statuses: tuple[str, ...] = ("active",)) -> list[str]:
     """BM25 через FTS5. Промышленный лексический поиск, встроен в SQLite."""
     terms = [t for t in re.findall(r"\w+", query.lower()) if len(t) > 1]
     if not terms:
         return []
+    # 0.4.12: служебные слова (what, did, the, my, что, как…) в OR-запросе совпадают почти с каждой записью, и BM25
+    # считался для всей базы. Опыт 11.11.2026, LongMemEval-S, 470 вопросов с ответом: без них «нужная беседа в
+    # пятёрке» 96,8 → 97,2 %, «все нужные в пятёрке» 83,0 → 84,0 %, на 376 ненастроенных вопросах лучше по всем
+    # четырём мерам; поиск на 10 000 записей 46,4 → 24,6 мс (медиана). Запрос из одних служебных слов — как есть.
+    значимые = [t for t in terms if t not in _СЛУЖЕБНЫЕ]
+    if значимые:
+        terms = значимые
     # 0.4.6: слово длиннее пяти букв ищется по основе — без двух последних букв, не короче пяти. Префикс «сервере»*
     # не находил «сервер», «серверы» — «сервере», и русский запрос в косвенном падеже проигрывал заметке со словом
     # «на» (найдено 09.11.2026 тестом tests/test_retrieval_0911.py). Окончания русских падежей и английских форм

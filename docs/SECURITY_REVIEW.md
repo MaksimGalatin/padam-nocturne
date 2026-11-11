@@ -2,7 +2,7 @@
 
 PADAM NOCTURNE is a local memory server for AI agents (MCP over stdio, one SQLite file). What an agent saves today it
 reads back tomorrow as context, so memory is an injection and leakage surface. This page is the short path through
-what we claim, how it was measured, what still gets through, and how to check it yourself. Version 0.4.11,
+what we claim, how it was measured, what still gets through, and how to check it yourself. Version 0.4.12,
 11 November 2026.
 
 ## The model in one paragraph
@@ -46,10 +46,10 @@ advice about "boundaries"), fixed before release.
 has exactly one opening and one closing tag with equal 32-hex nonces.
 
 **Retrieval quality**, so security does not cost usefulness: LongMemEval-S, 500 questions, evidence session in the top
-5 for 96.8 % of answerable questions, against 96.0 % for a plain BM25 baseline on the same data; 400 of those
-questions were not used while tuning (96.5 %). Two separate runs agree on every question.
+5 for 97.2 % of answerable questions, against 96.0 % for a plain BM25 baseline on the same data; 400 of those
+questions were not used while tuning (97.3 %). Two separate runs agree on every question.
 
-**Build and release.** 791 tests on Python 3.14, 786 on 3.10, CI on Linux and Windows for 3.10–3.13. PyPI releases
+**Build and release.** 800 tests on Python 3.14, 795 on 3.10, CI on Linux and Windows for 3.10–3.13. PyPI releases
 come from a GitHub Actions workflow through Trusted Publishing (OIDC), with no stored token; the actions are pinned
 by commit hash. The same way, with no stored token, `server.json` is published to the official MCP registry as
 `io.github.MaksimGalatin/padam-nocturne` (manual `mcp-registry` workflow, `mcp-publisher` checked against the

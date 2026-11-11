@@ -73,6 +73,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def _send(self, code: int, payload) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        if code >= 400:
+            self._дочитать_тело()
         self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -96,6 +98,23 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _дочитать_тело(self) -> None:
+        """Отказ до чтения тела (403, 401, 415…) — тело всё равно дочитывается, если оно в пределе.
+        Найдено 11.11.2026: на Windows закрытие сокета с непрочитанными входными данными шлёт клиенту RST, и
+        вместо ответа «403» клиент получал разрыв (WinError 10053). Тело больше предела не читается: такой
+        запрос — атака, соединение закрывается. Отметка «прочитано» привязана к заголовкам этого запроса."""
+        if self.command != "POST" or getattr(self, "_тело_прочитано", None) is self.headers:
+            return
+        self._тело_прочитано = self.headers
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            return
+        if 0 < length <= MAX_BODY:
+            self.rfile.read(length)
+        elif length > MAX_BODY:
+            self.close_connection = True
+
     def _body(self) -> dict:
         length = int(self.headers.get("Content-Length") or 0)
         if not length:
@@ -103,6 +122,7 @@ class Handler(BaseHTTPRequestHandler):
         # 16.10.2026: размер тела не ограничивался — один запрос мог занять всю память процесса.
         if length > MAX_BODY:
             raise ValueError("payload too large")
+        self._тело_прочитано = self.headers
         raw = self.rfile.read(length)
         try:
             data = json.loads(raw)

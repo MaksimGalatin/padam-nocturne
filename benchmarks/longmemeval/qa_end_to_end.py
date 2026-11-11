@@ -18,6 +18,7 @@ is GPT-4o), and the reader prompt is ours. Numbers are therefore not directly co
 GPT-4o as the judge.
 
 Run: python -I -X utf8 qa_end_to_end.py <longmemeval_s.json> <out folder> [--stride N] [--workers 4] [--k 20]
+     [--budget 1.00]  (USD, hard cap: the run stops before a call that could pass it)
 The API key is read from the environment variable OLLAMA_API_KEY and never printed. Results are appended to
 answers.jsonl after every question; a rerun skips questions already done.
 """
@@ -104,14 +105,39 @@ def judge_prompt(task, question, answer, response, abstention):
     return t.format(question, answer, response)
 
 
+# Spending cap (11 Nov 2026). On a paid Ollama plan, usage past the monthly pool is billed per token and we found no
+# way to stop it on the Pro plan, so the cap lives here: every reply's token counts are priced, and before each call
+# the worst case (input + MAX_OUT output) must fit in what is left of --budget (USD, default 1.00), or the run stops.
+# Prices per million tokens (input, output), ollama.com/pricing, read 11 Nov 2026; an unknown model is priced at the
+# most expensive rate in the table.
+BUDGET = arg("--budget", 1.0)
+MAX_OUT = 4000
+PRICES = {"gpt-oss:20b": (0.07, 0.30), "gpt-oss:120b": (0.15, 0.60), "glm-5.3-flash": (0.15, 0.50),
+          "deepseek-v4.1-flash": (0.30, 1.20), "kimi-k2.6": (0.95, 4.00), "glm-5.3": (1.40, 4.40),
+          "kimi-k3": (3.00, 15.00)}
+PRICE = PRICES.get(MODEL, max(PRICES.values(), key=lambda p: p[1]))
+spent = [0.0]
+spend_lock = threading.Lock()
+
+
 def chat(prompt: str) -> str:
+    worst = (len(prompt) * PRICE[0] + MAX_OUT * PRICE[1]) / 1e6      # characters >= tokens, so this over-estimates
+    with spend_lock:
+        if spent[0] + worst > BUDGET:
+            raise SystemExit(f"spending cap: ${spent[0]:.4f} spent, next call could cost ${worst:.4f}, cap ${BUDGET:.2f}")
+        spent[0] += worst                                             # reserved; corrected when the reply arrives
     for attempt in range(6):
         try:
             r = requests.post("https://ollama.com/api/chat", timeout=300,
                               headers={"Authorization": "Bearer " + KEY},
-                              json={"model": MODEL, "messages": [{"role": "user", "content": prompt}], "stream": False})
+                              json={"model": MODEL, "messages": [{"role": "user", "content": prompt}], "stream": False,
+                                    "options": {"num_predict": MAX_OUT}})
             if r.status_code == 200:
-                return (r.json().get("message") or {}).get("content", "").strip()
+                d = r.json()
+                actual = (d.get("prompt_eval_count", 0) * PRICE[0] + d.get("eval_count", 0) * PRICE[1]) / 1e6
+                with spend_lock:
+                    spent[0] += actual - worst
+                return (d.get("message") or {}).get("content", "").strip()
             if r.status_code in (401, 402, 403):
                 raise SystemExit(f"Ollama Cloud refused: HTTP {r.status_code} {r.text[:200]}")
         except requests.RequestException:
@@ -158,7 +184,8 @@ def one(q):
 
 
 started = time.time()
-print(f"questions to run: {len(questions)} (already done {len(done)}), model {MODEL}, k={K}, workers={WORKERS}", flush=True)
+print(f"questions to run: {len(questions)} (already done {len(done)}), model {MODEL}, k={K}, workers={WORKERS}, "
+      f"spending cap ${BUDGET:.2f}", flush=True)
 n = 0
 with ThreadPoolExecutor(WORKERS) as pool:
     for row in pool.map(one, questions):
@@ -169,6 +196,7 @@ with ThreadPoolExecutor(WORKERS) as pool:
 rows = [json.loads(line) for line in answers_path.open(encoding="utf-8") if line.strip()]
 def acc(rs): return round(sum(r["correct"] for r in rs) / len(rs), 4) if rs else None
 summary = {"dataset": "LongMemEval-S", "questions": len(rows), "reader_and_judge": MODEL + " (Ollama Cloud)",
+           "spent_usd_this_run": round(spent[0], 4), "budget_usd": BUDGET,
            "retrieval": f"PADAM {__import__('padam').__version__}, embedding {embeddings.backend()}, recall limit {K}, "
                         + ("whole records (padam_search default)" if FULL else "compact view"),
            "accuracy_overall": acc(rows), "accuracy_without_abstention": acc([r for r in rows if not r["abstention"]]),

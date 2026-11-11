@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.12 — 11 November 2026
+
+### Eternal layer
+- **A second witness: every L3 bundle is timestamped in Bitcoin through OpenTimestamps.** Until now the Merkle root lived only in a Solana Memo. Now the SHA-256 of the bundle (the very bytes that go to Arweave, which carry the root) is sent, salted like the official `ots` client does, to the four public calendars; at least one must accept it. Free, no account, no wallet. The `.ots` proof is stored in the database (`l3_anchor.ots`, added to older databases) and next to the local bundle copy (`<id>.json.ots`), so anyone can check it with the standard `ots verify`. `padam l3-ots-upgrade` asks the calendars for the Bitcoin block once it is mined; `padam l3-verify` shows the blocks and whether the proof matches the bundle. A failed timestamp never undoes the anchor — Arweave and Solana are already written, and the report says why. `--no-bitcoin` turns it off. New dependency in the `l3` extra: `opentimestamps` (LGPL-3.0). Tests in `tests/test_ots_1111.py` (calendars stubbed); also checked live against the real calendars.
+
+### Red Team
+- **The runner judges all six categories.** `redteam/run.py` checked secrets, commands and false alarms; it now also checks *identity* (an agent's note about who the owner is must not become active without them), *forgetting* (after `padam forget` the marker is found nowhere in the database files) and *fence* (search returns the marker only inside the fenced block, with exactly one real closing tag). Each new check was shown to fail when it should; the public set still passes 214 of 214.
+
+### Retrieval
+- **Function words left out of the word query.** *what*, *did*, *the*, *my* (and Russian *что*, *как*…) match almost every record, so the full-text query computed BM25 over the whole store and they diluted the rare words. LongMemEval-S, 470 questions with an answer: any@5 96.8 → 97.2 %, all@5 83.0 → 84.0 %, any@10 98.7 % (unchanged), all@10 90.9 → 91.1 %; on the 400 questions not used while fixing it is better on all four measures. A query made only of function words is sent as it is. Checked twice: a side-by-side script on one filled store per question and a run of the product code agree on all 500 questions (`benchmarks/longmemeval/results_0.4.12/`). Test in `tests/test_retrieval_0911.py`.
+
+### Fixed
+- **A refusal from the REST server could arrive as a dropped connection.** `POST` refused before its body was read (403 without a token, 401, 415) closed the socket with unread data; on Windows that sends a reset, and the client saw `WinError 10053` instead of the 403. Found as a test that failed one run in five (`test_rest_without_token_cannot_act_as_owner`). The body is now read before any error reply when it is within the size limit; a larger body still closes the connection. A new test with a 1.5 MB body failed every time before the fix and passes every time after. The REST server is the only HTTP server in the package; every error reply goes through the fixed path.
+
+### Performance
+- **Search over 10,000 records twice as fast with long questions** (median 46.4 → 24.6 ms), from the function-word change above.
+- **One commit per search instead of two.** Each search wrote its counters in two transactions — shown records, then the daily search stats — each with an fsync; `recall_many` over ten scopes made eleven. They are now written together in one transaction; the same rows are written, and a search "as of" a date still counts as no access. Median search over 3,000 records, two alternating runs: 23.9 → 21.7 ms and 23.5 → 21.5 ms. Retrieval is unchanged: every fifth LongMemEval-S question gives the same result as before (0 differences on 100). New test in `tests/test_search_cache_1111.py` (fails on 0.4.11).
+
 ## 0.4.11 — 11 November 2026
 
 ### Protocol

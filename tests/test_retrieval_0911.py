@@ -60,3 +60,23 @@ def test_builtin_vector_is_the_fallback_when_nothing_matches(память):
     """Ни одного общего слова и идентификатора: поиск не пустой, его ведёт вектор (основы и пары слов)."""
     найдено = память.recall("серверная инфраструктура", limit=1)
     assert найдено, "запасной путь по вектору ничего не вернул"
+
+
+def test_служебные_слова_не_тянут_поиск_1111(tmp_path):
+    """0.4.12: «what / did / the / что / как» совпадают почти с каждой записью; в лексический запрос они не идут."""
+    from padam.memory import Memory
+    from padam.store import Store
+    m = Memory(user_id="u", store=Store(tmp_path / "m.db"))
+    try:
+        for i in range(30):
+            m.remember(f"What did the team do on day {i}? They did the same as always, what else", kind="event")
+        m.remember("Billing moved to Postgres in March", kind="decision")
+        top = m.recall("What did we decide about Postgres?", limit=3)
+        assert top and "Postgres" in top[0].content
+        # запрос из одних служебных слов не становится пустым
+        assert m.recall("what did the", limit=3)
+        # по-русски так же
+        m.remember("Оплату перевели на Postgres в марте", kind="decision")
+        assert any("Postgres" in r.content for r in m.recall("Что мы решили про Postgres?", limit=3))
+    finally:
+        m.close()

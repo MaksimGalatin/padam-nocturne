@@ -1,6 +1,6 @@
 [project]
 name = "padam-nocturne"
-version = "0.4.11"
+version = "0.4.12"
 description = "Persistent memory for AI agents with sleep-style consolidation (NOCTURNE) and a verifiable eternal layer on Arweave + Solana"
 readme = "README.md"
 license = { text = "AGPL-3.0-only" }
@@ -22,7 +22,7 @@ classifiers = [
 dependencies = ["numpy>=1.24", "requests>=2.33.0", "cryptography>=50.0.0"]
 
 [project.optional-dependencies]
-l3 = ["solders>=0.20"]
+l3 = ["solders>=0.20", "opentimestamps>=0.4.5"]
 embed = ["model2vec>=0.10"]
 test = ["pytest>=9.0.3"]
 

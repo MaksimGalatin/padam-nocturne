@@ -6,13 +6,21 @@
 
 [![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%208%20tools-8A2BE2) [![PyPI](https://img.shields.io/pypi/v/padam-nocturne)](https://pypi.org/project/padam-nocturne/)
 
+**Your agent reads a web page today and treats it as memory tomorrow.** PADAM keeps that memory in one local SQLite file and makes it safe to read back:
+
+- an order hidden in a page can be held for you instead of becoming an instruction (`PADAM_STRICT=1` holds every agent write for your review);
+- API keys and passwords are masked before they reach the disk;
+- what comes back is fenced as data, and a forgotten record is wiped from the file; if it was sent to Arweave, destroying its own key leaves only unreadable ciphertext there.
+
+Measured, not claimed: two sealed red-team rounds with every failure published, LongMemEval-S retrieval 97.2 % in the top 5 against 96.0 % for plain BM25, 800 tests and public CI. Listed in the [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) catalog and the official MCP registry.
+
 **Security reviewers:** start at [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md) — what we claim, every Red Team round with its sealed set, what still gets through, and a ten-minute check.
 
 **PADAM** is a local-first, persistent memory for AI assistants and agents. It lives in one SQLite file on your machine, plugs into any MCP client (Claude Code, Claude Desktop, Cursor, VS Code) or into your own code through a CLI and a small REST API.
 
 **NOCTURNE** is its consolidation cycle — a "sleep" that turns a raw stream of episodes into lasting memory: it keeps what matters, generalises what repeats and lets the rest fade, without letting rare dramatic events take the memory over.
 
-**L3** is the optional eternal layer. It anchors memory to **Arweave** (encrypted bundles) and **Solana** (a Merkle root in a Memo), so anyone can check that the memory was never rewritten — while any single record can still be forgotten for good.
+**L3** is the optional eternal layer. It anchors memory to **Arweave** (encrypted bundles) and **Solana** (a Merkle root in a Memo), so anyone can check that the memory was never rewritten — while any single record can still be forgotten for good. Since 0.4.12 each bundle is also timestamped in **Bitcoin** through OpenTimestamps (free, no account): a second, independent witness. The `.ots` file lies next to the bundle, `padam l3-ots-upgrade` fetches the block height once it is mined, and `padam l3-verify` shows it.
 
 Part of [CODE Eternal](https://aifa.works) · Project page: [aifa.works/nocturne](https://aifa.works/nocturne) · Specification: [English](https://github.com/MaksimGalatin/padam-nocturne/blob/main/docs/NOCTURNE_SPEC.en.md) · [Русский](https://github.com/MaksimGalatin/padam-nocturne/blob/main/docs/NOCTURNE_SPEC.md) · Русская версия README: [README.ru.md](https://github.com/MaksimGalatin/padam-nocturne/blob/main/README.ru.md)
 
@@ -351,7 +359,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 791 passed, 10 skipped with [embed] (Python 3.14.4); 786 passed, 11 skipped without it (3.10.9); 11 Nov 2026, Windows
+python -m pytest tests/ -q        # 800 passed, 10 skipped with [embed] (Python 3.14.4); 795 passed, 11 skipped without it (3.10.9); 11 Nov 2026, Windows
 ```
 
 CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L3 tests never touch the network: Arweave and Solana are replaced by fakes. The suite never calls a local Ollama either, even when one is running: every test uses the built-in embedding, as on CI. `PADAM_TEST_LIVE_OLLAMA=1` turns on the one live check. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.
@@ -366,10 +374,13 @@ CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L
 
 | | any evidence session in top 5 | in top 10 | all evidence sessions in top 5 | in top 10 |
 |---|---|---|---|---|
-| **PADAM 0.4.6, built-in, no model** | **96.8 %** | **98.7 %** | **83.0 %** | **90.9 %** |
-| the same, only the 400 questions not used while fixing (every question except each fifth) | 96.5 % | 98.7 % | 83.2 % | 92.0 % |
+| **PADAM 0.4.12, built-in, no model** | **97.2 %** | **98.7 %** | **84.0 %** | **91.1 %** |
+| the same, only the 400 questions not used while fixing (every question except each fifth) | 97.3 % | 98.9 % | 84.6 % | 92.3 % |
+| PADAM 0.4.6 – 0.4.11, built-in | 96.8 % | 98.7 % | 83.0 % | 90.9 % |
 | plain BM25, no PADAM | 96.0 % | 97.7 % | 79.8 % | 88.5 % |
 | PADAM 0.4.4 / 0.4.5, built-in | 91.7 % | 96.4 % | 74.7 % | 85.1 % |
+
+**0.4.12: function words left out of the word query.** *what*, *did*, *the*, *my* (and *что*, *как*…) match almost every record, so BM25 was computed over the whole store and they diluted the rare words. Without them: 3 questions won and 1 lost on any@5, 10 won and 5 lost on all@5, better on all four measures on the 400 questions not used while fixing, and search over 10,000 records twice as fast (median 46 → 25 ms). A side-by-side script and the product run agree on every one of the 500 questions (`results_0.4.12/`).
 
 **How the BM25 baseline changed 0.4.6.** Until 0.4.5 PADAM's own search lost to plain BM25 on its own benchmark. Two causes, both measured on every fifth question first and then checked on the other 400: the "exact identifiers" strategy treated every word of two letters or more as an identifier (a case-insensitive flag on the acronym pattern), so it counted *the*, *is*, *what* with weight 1.5; and the built-in "vector" — words, five-letter stems and word pairs without any rarity weighting — voted in the fusion as if it were meaning. Now identifiers are identifiers, the built-in vector does not vote (it stays as a fallback when no word matches), and the word search uses stems, so Russian case forms still match (*сервер* / *сервере*; tested). Every fifth question re-run separately gives the same result on all 100.
 
@@ -402,7 +413,7 @@ Read these numbers with their conditions:
 - The reader and the judge are both `gpt-oss:120b` on Ollama Cloud; the paper's judge is GPT-4o, and the reader prompt is ours. Numbers are not directly comparable with tables that use GPT-4o, and a stronger reader would score higher on the same retrieval.
 - Retrieval is deterministic since 0.4.4: two independent runs give the same result for every question (before, ties between near-identical records were broken by a random id). The end-to-end runs were done once each, before that fix, so they carry a small spread of their own.
 - "Compact view" cuts the assistant's replies, which is why it loses on questions about what the assistant said; `padam_search` returns whole records by default.
-- Scale on one machine (built-in method, LongMemEval user turns, `benchmarks/scale/results_builtin_1111.json`, 11 Nov 2026): 1,000 records — 2.7 ms per write, search median 5.4 ms, 4.7 MB; 10,000 records — 3.5 ms per write, search median 22 ms (95th percentile 25 ms), 45.2 MB; 100,000 records — 5.0 ms per write, search median 143 ms (95th percentile 153 ms), 375 MB. Before 0.4.10 search took 220 ms at 10,000 records and about 1.9 s at 100,000; before the vector-cache change a write at 100,000 records took 53 ms.
+- Scale on one machine (built-in method, LongMemEval user turns, `benchmarks/scale/results_builtin_1111.json`, 11 Nov 2026): 1,000 records — 2.7 ms per write, search median 5.4 ms, 4.7 MB; 10,000 records — 3.5 ms per write, search median 22 ms (95th percentile 25 ms), 45.2 MB; 100,000 records — 5.1 ms per write, search median 145 ms (95th percentile 160 ms), 375 MB. Before 0.4.10 search took 220 ms at 10,000 records and about 1.9 s at 100,000; before the vector-cache change a write at 100,000 records took 53 ms. 0.4.12 measured again at 100,000, each version run alone and in both orders: 5.1 ms per write and 145 ms search for both — the function-word change speeds up long questions (46 → 25 ms at 10,000), not these short queries.
 - The test measures recall from a fixed haystack. It does not measure what PADAM is built for besides recall: forgetting, owner review, secrets, decay, the eternal layer.
 
 ---

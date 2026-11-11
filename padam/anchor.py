@@ -86,6 +86,10 @@ DESTROYED = "destroyed"
 
 def ensure_schema(memory: Memory) -> None:
     memory.store.script(L3_SCHEMA)
+    # 0.4.12: штамп OpenTimestamps пакета (второй свидетель — Bitcoin). Столбец добавляется к прежним базам.
+    столбцы = {r[1] for r in memory.store.query("PRAGMA table_info(l3_anchor)")}
+    if "ots" not in столбцы:
+        memory.store.execute("ALTER TABLE l3_anchor ADD COLUMN ots BLOB")
 
 
 # ---------------------------------------------------------------- Меркл
@@ -325,8 +329,12 @@ Anchorer = Callable[[str], tuple[str, int]]
 def run_l3(memory: Memory, uploader: Optional[Uploader] = None,
            anchorer: Optional[Anchorer] = None, network: str = "devnet",
            allow_paid_arweave: bool = False, dry_run: bool = False,
-           save_dir: Optional[str] = None) -> dict:
-    """Закрепить новое: пакет → Arweave → корень в Solana → отметки в базе."""
+           save_dir: Optional[str] = None,
+           stamper: Optional[Callable[[bytes], bytes]] = None) -> dict:
+    """Закрепить новое: пакет → Arweave → корень в Solana → штамп в Bitcoin → отметки в базе.
+
+    stamper(sha256 пакета) -> байты .ots — второй свидетель (padam.ots.stamp). Его сбой якорь не отменяет:
+    Arweave и Solana уже записаны, в отчёте появляется ots_error, штамп можно сделать позже."""
     b = build_bundle(memory)
     if b is None:
         return {"status": "nothing_new"}
@@ -347,17 +355,25 @@ def run_l3(memory: Memory, uploader: Optional[Uploader] = None,
     memo = f"{MEMO_PREFIX} root={b.root.hex()} n={len(b.leaves)} ar={ar_tx} d={now_iso()[:10]}"
     sig, slot = anchorer(memo)
     aid = uuid.uuid4().hex
+    штамп: Optional[bytes] = None
+    if stamper is not None:
+        try:
+            штамп = stamper(hashlib.sha256(b.payload).digest())
+        except Exception as e:
+            report["ots_error"] = f"{type(e).__name__}: {e}"
     if save_dir:                       # своя копия пакета у владельца — проверка без шлюза
         Path(save_dir).mkdir(parents=True, exist_ok=True)
         (Path(save_dir) / f"{aid}.json").write_bytes(b.payload)
+        if штамп:                      # рядом с пакетом — как ждёт штатный `ots verify <файл>.ots`
+            (Path(save_dir) / f"{aid}.json.ots").write_bytes(штамп)
     # 16.10.2026: одной транзакцией — якорь, все листья и пометки записей. Раньше каждый шаг
     # был отдельным коммитом, и сбой посередине оставлял якорь без части листьев.
     ops: list[tuple[str, tuple]] = [(
         """INSERT INTO l3_anchor (id, user_id, created_at, root_hex, leaf_count, bundle_sha256,
-           bundle_bytes, arweave_tx, solana_sig, solana_slot, network, memo)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+           bundle_bytes, arweave_tx, solana_sig, solana_slot, network, memo, ots)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (aid, memory.user_id, now_iso(), b.root.hex(), len(b.leaves),
-         hashlib.sha256(b.payload).hexdigest(), len(b.payload), ar_tx, sig, slot, network, memo))]
+         hashlib.sha256(b.payload).hexdigest(), len(b.payload), ar_tx, sig, slot, network, memo, штамп))]
     for pos, ((kind, mid), lf) in enumerate(zip(b.entries, b.leaves)):
         ops.append((
             "INSERT INTO l3_leaf (anchor_id, position, kind, memory_id, leaf_hex) VALUES (?,?,?,?,?)",
@@ -366,7 +382,8 @@ def run_l3(memory: Memory, uploader: Optional[Uploader] = None,
             ops.append((
                 "UPDATE memory SET anchor_tx = ?, anchor_slot = ? WHERE id = ?", (sig, slot, mid)))
     memory.store.atomic(ops)
-    report.update(anchor_id=aid, arweave_tx=ar_tx, solana_sig=sig, solana_slot=slot, memo=memo)
+    report.update(anchor_id=aid, arweave_tx=ar_tx, solana_sig=sig, solana_slot=slot, memo=memo,
+                  bitcoin_ots="pending" if штамп else None)
     return report
 
 
