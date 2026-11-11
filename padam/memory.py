@@ -405,10 +405,10 @@ class Memory:
 
     def _учесть_поиск(self, пусто: bool) -> None:
         день = datetime.now(timezone.utc).date().isoformat()
-        self.store.execute(
+        self.store.counters([(
             """INSERT INTO search_stats (user_id, day, searches, empty) VALUES (?, ?, 1, ?)
                ON CONFLICT(user_id, day) DO UPDATE SET searches = searches + 1, empty = empty + excluded.empty""",
-            (self.user_id, день, 1 if пусто else 0))
+            (self.user_id, день, 1 if пусто else 0))])
 
     def self_report(self, days: int = 30) -> dict:
         """Как работает сама память: поиски без результата, что чаще опровергают, споры, подписи."""
@@ -828,6 +828,11 @@ class Memory:
             params.append(kind)
         sql += " ORDER BY rowid"
 
+        if not момент:
+            rows, статусы = self._кандидаты(sql, tuple(params))
+            if not rows:
+                return []
+            return self._ранжировать(query, scope, statuses, rows, статусы, session_id, limit, момент)
         raw = self.store.query(sql, tuple(params))
         if момент:
             # Сравнение по разобранному времени, а не по строкам: у строк ISO разная точность.
@@ -847,6 +852,36 @@ class Memory:
                  "created_at": r["created_at"],
                  "_ents": self._сущности_записи(r["id"], r["content"])} for r in raw]
 
+        return self._ранжировать(query, scope, statuses, rows, статусы, session_id, limit, момент)
+
+
+    def _кандидаты(self, sql, params):
+        """0.4.10: кандидаты поиска (текст, вектор, поля оценки) один раз на состояние базы, а не на каждый поиск.
+        Замер 11.11.2026 на 10 000 записях: 2,81 из 4,15 с на 20 поисков уходило на этот SELECT — каждый
+        поиск заново читал и распаковывал все действующие записи. Кэш сверяется с store.stamp() (свои
+        коммиты + PRAGMA data_version), поэтому любая запись, правка, забывание или коммит другого
+        процесса его сбрасывает; служебные счётчики поиска идут через store.counters и не сбрасывают.
+        Строки только читаются дальше; итог поиска тот же, что без кэша."""
+        кэш = self.__dict__.setdefault("_ккэш", {})
+        отметка = self.store.stamp()
+        было = кэш.get(params)
+        if было is not None and было[0] == отметка and было[1] == sql:
+            return было[2], было[3]
+        raw = self.store.query(sql, params)
+        статусы = {r["id"]: r["status"] for r in raw}
+        rows = [{"id": r["id"], "kind": r["kind"], "content": r["content"],
+                 "_vec": unpack(r["embedding"]), "importance": r["importance"],
+                 "confidence": r["confidence"],
+                 "last_confirmed_at": r["last_confirmed_at"],
+                 "expires_at": r["expires_at"],
+                 "session_id": r["session_id"], "origin": r["origin"],
+                 "created_at": r["created_at"],
+                 "_ents": self._сущности_записи(r["id"], r["content"])} for r in raw]
+        кэш[params] = (отметка, sql, rows, статусы)
+        return rows, статусы
+
+    def _ранжировать(self, query, scope, statuses, rows, статусы, session_id, limit, момент):
+        """Общий хвост поиска: гибридное ранжирование и итоговая оценка (0.4.10 — вынесено из _recall)."""
         scores, rankings = retrieval.hybrid_rank(
             self.store, self.user_id, scope, query, rows, statuses=statuses)
         if not scores:
@@ -892,10 +927,9 @@ class Memory:
 
         # извлечение обновляет только last_seen_at: сам факт того, что
         # запись показали, не делает её верной
-        for rec in top:
-            self.store.execute(
-                """UPDATE memory SET access_count = access_count + 1,
-                   last_seen_at = ? WHERE id = ?""", (now_iso(), rec.id))
+        показано = now_iso()
+        self.store.counters([("""UPDATE memory SET access_count = access_count + 1,
+                                  last_seen_at = ? WHERE id = ?""", (показано, rec.id)) for rec in top])
         return top
 
     def confirm(self, memory_id: str) -> bool:
@@ -1008,6 +1042,7 @@ class Memory:
         self.store.atomic(ops)
         self.store.purge()
         # Забытое не должно жить и в памяти процесса: имена и номера из текста записи — тоже её содержание.
+        self.__dict__.pop("_ккэш", None)          # 0.4.10: и текст в кэше кандидатов поиска
         кэш = self.__dict__.get("_сущности")
         if кэш:
             for з in записи:

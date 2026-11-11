@@ -308,6 +308,21 @@ class Store:
             self.conn.commit()
             self.writes += 1
 
+    def counters(self, ops: list[tuple[str, tuple]]) -> None:
+        """0.4.10: служебные счётчики поиска (сколько раз показана запись, статистика поисков) одной
+        транзакцией и без сдвига отметки stamp(). Они не участвуют в ранжировании, поэтому не должны сбрасывать
+        кэш кандидатов и векторов: раньше каждый поиск сам сбрасывал кэш своей же записью счётчика."""
+        if not ops:
+            return
+        with self._lock:
+            try:
+                for sql, params in ops:
+                    self.conn.execute(sql, params)
+                self.conn.commit()
+            except Exception:
+                self.conn.rollback()
+                raise
+
     def atomic(self, ops: list[tuple[str, tuple]]) -> None:
         """Несколько записей одной транзакцией: либо все, либо ни одной.
 
