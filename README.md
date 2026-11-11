@@ -12,7 +12,7 @@
 - API keys and passwords are masked before they reach the disk;
 - what comes back is fenced as data, and a forgotten record is wiped from the file; if it was sent to Arweave, destroying its own key leaves only unreadable ciphertext there.
 
-Measured, not claimed: two sealed red-team rounds with every failure published, LongMemEval-S retrieval 97.0 % in the top 5 and 99.2 % in the top 10, against 96.0 % and 97.7 % for plain BM25, 804 tests and public CI. Listed in the [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) catalog and the official MCP registry.
+Measured, not claimed: five sealed red-team rounds with every failure published, LongMemEval-S retrieval 97.0 % in the top 5 and 99.2 % in the top 10, against 96.0 % and 97.7 % for plain BM25, 903 tests and public CI. Listed in the [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) catalog and the official MCP registry.
 
 **Security reviewers:** start at [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md) — what we claim, every Red Team round with its sealed set, what still gets through, and a ten-minute check.
 
@@ -263,10 +263,11 @@ The full protocol, pseudocode and validation metrics are in the [specification](
 ## L3 — the eternal, verifiable layer (Arweave + Solana)
 
 ```bash
-pip install -e ".[l3]"                    # solders; plus Node.js with @ardrive/turbo-sdk
+pip install "padam-nocturne[l3]"          # from PyPI; from a checkout: pip install -e ".[l3]"
+npm install --prefix ~/padam-l3 @ardrive/turbo-sdk   # Node.js 18+ (turbo-sdk 2.2.0 requires node >= 18)
 export PADAM_ARWEAVE_WALLET=arweave-wallet.json
 export PADAM_SOLANA_KEYPAIR=solana-keypair.json
-export PADAM_TURBO_SDK_DIR=/path/to/node_modules
+export PADAM_TURBO_SDK_DIR=~/padam-l3/node_modules
 python -m padam l3 --dry-run              # what would be anchored, nothing sent
 python -m padam l3 --network devnet       # or --network mainnet (explicit only)
 python -m padam l3-verify                 # independent check: Arweave + chain
@@ -316,6 +317,17 @@ python -m padam rekey                     # change the passphrase
 
 Each key is stored as `w1:` + AES-256-GCM(KEK, key) with the record id as associated data; KEK = scrypt(passphrase, salt, n=2^15, r=8, p=1). A wrong passphrase is rejected by a check record before anything is touched; a wrapped key cannot be moved to another record. After wrapping, the WAL is truncated and the file is VACUUMed: on 400 keys without it 66 plaintext keys remained in free pages (measured 08.10.2026, `tests/test_keyvault.py`). The passphrase is not stored anywhere: lose it and the keys cannot be opened — by you or by us.
 
+**Optional detector layer (0.4.13, off by default).** The word lists catch about half of new, hard orders hidden in notes; a local detector model catches more. General detectors also flag ordinary orders to people (a recipe, a fire-drill notice), so PADAM asks the model only about text that mentions an AI — assistant, model, bot, AI, LLM — and holds it at probability 0.999 or more. Measured 11 Nov 2026 with [Wolf Defender small](https://huggingface.co/patronus-studio/wolf-defender-prompt-injection-small) (Apache-2.0, ONNX int8, 107 MB), through the MCP server: Red Team round 5 commands 28 → 37/45 and identity 32 → 36/45, round 4 commands 36 → 41/45, ordinary notes unchanged; false alarms, old code against new: +1 on 20,000 LongMemEval-S turns (a real jailbreak) and +2 on 2,775 paragraphs of the project's Russian notes (both are instructions to an AI). It costs about 270 ms per checked write on a busy machine, and only writes that mention an AI are checked.
+
+```bash
+pip install "padam-nocturne[guard]"       # onnxruntime, tokenizers
+M=https://huggingface.co/patronus-studio/wolf-defender-prompt-injection-small/resolve/2484cc9a13550aa4f2c29b577ff3ef331dc6ba07
+mkdir -p ~/padam-guard/onnx/int8_int4_embeddings_x86
+curl -L -o ~/padam-guard/tokenizer.json $M/tokenizer.json        # sha256 609d8f4c067cd395…
+curl -L -o ~/padam-guard/onnx/int8_int4_embeddings_x86/model.onnx $M/onnx/int8_int4_embeddings_x86/model.onnx   # sha256 6f95e8c366483e37…
+export PADAM_GUARD_MODEL=~/padam-guard
+```
+
 **Local API hardening.** A token on every start (0.4.2), compared in constant time; local runs accept only local `Host`/`Origin` (DNS rebinding); JSON-only POST bodies up to 10 MB; one lock serialises every access to the shared SQLite connection, so parallel writes are not lost.
 
 **Supply chain.** CI actions are pinned by commit SHA and the Actions token is read-only; the PyPI workflow uses trusted publishing without stored tokens.
@@ -345,6 +357,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 | `PADAM_MCP_TRUST_WRITES` | `0` | `1` lets MCP writes through without the owner's review |
 | `PADAM_HOLD_EXTERNAL` | `1` | every MCP write marked `origin: external` waits for the owner's review, whatever its wording; `0` turns this off |
 | `PADAM_MCP_REVIEW_ALL` | `0` | `1`: every agent write through MCP waits for the owner, whatever origin the agent claims |
+| `PADAM_GUARD_MODEL` · `PADAM_GUARD_THRESHOLD` | — · `0.999` | the optional detector layer: folder with `tokenizer.json` and an `.onnx` file, and its threshold (`PADAM_GUARD_ONNX` picks the file, `PADAM_GUARD_THREADS` the threads, default 2) |
 | `PADAM_STRICT` | `0` | `1`: the strict profile in one switch — every agent write and all outside text wait for the owner; `PADAM_KEEP_SECRETS`, `PADAM_MCP_TRUST_WRITES` and `PADAM_HOLD_EXTERNAL=0` are ignored (and named at start-up); `l3` refuses unprotected keys even with `--allow-unprotected-keys`; the REST API refuses `--no-token` |
 | `PADAM_PROFILE` · `PADAM_SHARP_SHARE` | `default` · — | share of sharp episodes in a sleep batch: `ops` 0.40 (remember failures better), `creative` 0.10, default 0.25; or an exact number, kept within 0.05–0.5 |
 | `PADAM_SLEEP_REINDEX` | `200` | records moved to the current embedding model per sleep after the model changes (0 turns it off) |
@@ -359,7 +372,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 804 passed, 10 skipped with [embed] (Python 3.14.4); 799 passed, 11 skipped without it (3.10.9); 11 Nov 2026, Windows
+python -m pytest tests/ -q        # 903 passed, 10 skipped with [embed] (Python 3.14.4); 898 passed, 11 skipped without it (3.10.9); 11 Nov 2026, Windows
 ```
 
 CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L3 tests never touch the network: Arweave and Solana are replaced by fakes. The suite never calls a local Ollama either, even when one is running: every test uses the built-in embedding, as on CI. `PADAM_TEST_LIVE_OLLAMA=1` turns on the one live check. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.

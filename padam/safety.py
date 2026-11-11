@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import math
 import re
 import secrets as _secrets
@@ -73,11 +74,20 @@ _AWS_SECRET = re.compile(r"(?<![A-Za-z0-9/+=_.\-])[A-Za-z0-9/+]{40}(?![A-Za-z0-9
 # is required» и «пароль — длинный» остаются как есть.
 _PASSWORD_PHRASE = re.compile(
     r"(?:(?<![\w\-])(?:password|passwort|passcode|contraseña|contrasena|mot de passe|пароль|паролем)"
-    r"(?:\s+(?:от|для|к|for|to|of|de|del|für|zum|zur)\s+[^\s:：=—–\-]{1,30})?|密码|口令)"
+    r"(?:\s+(?:от|для|к|for|to|of|de|del|für|zum|zur)\s+[^\s:：=—–\-]{1,30})?|密码|口令|パスワード|비밀번호|暗証番号)"
     r"(?:\s+(?:is|was|ist|war|es|era|est|это|был|была|будет)\b)?"
     r"\s*[:：=—–\-]?\s*[是为]?\s*"
     r"([\"'«“]?)([^\s\"'»”,;]{6,})",
     re.I)
+_PASSWORD_PHRASE_LONG = re.compile(
+    r"(?<![\w\-])(?:password|passwort|passcode|passphrase|pass phrase|contraseña|contrasena|mot de passe|пароль|паролем|"
+    r"кодов\w* слов\w*|код\w* доступа|(?:контрольн\w*|кодов\w*|секретн\w*)\s+фраз\w*|фраз\w* (?:расшифровки|пароля|доступа))"
+    r"(?:[ \t]+(?:от|для|к|ко|на|for|to|of|de|del|für|zum|zur))?(?:[ \t]+(?:[^\W\d_]{1,30}[ \t]+){0,6}?[^\W\d_]{1,30})?"
+    r"(?:[ \t]*[=—–][ \t]*|[ \t]*[:：][ \t]+|[ \t]+-[ \t]+|[ \t]+(?:es|is|ist|est|это)[ \t]+)"
+    r"([\"'«“]?)([^\s\"'»”,;]{6,})",
+    re.I)
+# Пароль в командной строке: sshpass -p '…', --password '…' (круг 3: claude s-13).
+_CLI_PASSWORD = re.compile(r"""(\bsshpass\s+-p\s*|(?<![\w\-])--password\s+|\b(?:curl|http|wget)\b[^\n]{0,60}?\s(?:-u|--user)\s+["']?[^\s:"']+:)(["']?)([^\s"']{4,})\2""")
 _PASSWORD_TAIL = ".,;:)]}"
 
 # Края значения, которые принадлежат речи, а не паролю: кавычки всех видов и пунктуация.
@@ -85,6 +95,14 @@ _ВНЕШНИЕ_ЗНАКИ = " \"'«»“”„‘’`.,;:!?()[]{}<>"
 
 
 _PHRASE = re.compile(r"[^\W\d_]+(?:[\-_.][^\W\d_]+)+")
+
+# Заглушка на месте значения — не секрет: так выглядят .env.example и инструкции по запуску. Маска на ней ложная.
+_ЗАГЛУШКА = re.compile(
+    r"(?i)<[^<>\s]{1,40}>|\$\{[^{}\s]{1,40}\}|\{\{[^{}]{1,40}\}\}|x{4,}|\*{4,}|"
+    r"(?:change[_\-]?me|replace[_\-]?me|fill[_\-]?me|placeholder|your[_\-][a-z_\-]{0,30}[_\-]here|put[_\-]your[_\-][a-z_\-]{0,30}|"
+    r"replace[_\-]with[_\-][a-z_\-]{1,40}|insert[_\-][a-z_\-]{1,30}[_\-]here|dummy[_\-][a-z_\-]{1,30}|sample[_\-][a-z_\-]{1,30}|"
+    r"example[_\-][a-z_\-]{1,30})"
+    r"(?:[_\-][a-z_\-]{0,40})?")
 
 
 def password_like(value: str, after_separator: bool = False, phrase: bool = True) -> bool:
@@ -100,6 +118,9 @@ def password_like(value: str, after_separator: bool = False, phrase: bool = True
     длинный». phrase=False — для имён вроде api_key: ключ из слов не составляют, «flash-lite-preview» — модель.
     """
     core = value.strip(_ВНЕШНИЕ_ЗНАКИ)
+    # Скобки заглушки срезаются вместе с краями («${TOKEN}» → «${TOKEN»), поэтому смотрится и значение до среза.
+    if _ЗАГЛУШКА.fullmatch(core) or _ЗАГЛУШКА.fullmatch(value.strip(" \"'`,;")):
+        return False
     # «пароль contact@…» — дальше почта, а не пароль: адрес и «слово@» знаком @ паролем не становятся.
     if re.fullmatch(r"[^@\s]+@(?:[^@\s]+\.[A-Za-z]{2,})?", core):
         return False
@@ -201,6 +222,26 @@ def redact(text: str) -> tuple[str, dict[str, int]]:
 
     text = _PASSWORD_PHRASE.sub(password_phrase, text)
 
+    def password_phrase_long(m: re.Match) -> str:
+        # Длинное уточнение — место, где имя переменной или путь легко принять за пароль: здесь пароль — только значение
+        # с цифрой или знаком вроде !@#, парольная фраза из слов не засчитывается (русский корпус: `SUBMISSIONS_DB_URL`).
+        value = m.group(2)
+        core = value.rstrip(_PASSWORD_TAIL)
+        if value.startswith("[REDACTED:") or not password_like(core, phrase=False):
+            return m.group(0)
+        начало = m.start(2) - m.start(0)
+        return m.group(0)[:начало] + bump("password_phrase") + value[len(core):]
+
+    text = _PASSWORD_PHRASE_LONG.sub(password_phrase_long, text)
+
+    def cli_password(m: re.Match) -> str:
+        value = m.group(3)
+        if value.startswith("[REDACTED:") or (not m.group(1).startswith("sshpass") and not password_like(value)):
+            return m.group(0)
+        return m.group(1) + m.group(2) + bump("cli_password") + m.group(2)
+
+    text = _CLI_PASSWORD.sub(cli_password, text)
+
     def byte_array(m: re.Match) -> str:
         if any(int(n) > 255 for n in re.findall(r"\d+", m.group(0))):
             return m.group(0)
@@ -251,7 +292,10 @@ _KEYED = re.compile(
     (["']?)                                   # кавычка имени
     ([a-z0-9_.\-]*?(?:token|secret|passw(?:or)?d|pwd|api[_\-]?key|apikey|access[_\-]?key|accountkey|
                     private[_\-]?key|client[_\-]?secret|credential|auth|signature|sig|session[_\-]?id|
-                    cookie|dsn|sharedaccesskey|webhook[_\-]?secret|signing[_\-]?key)[a-z0-9_.\-]*)
+                    cookie|dsn|sharedaccesskey|webhook[_\-]?secret|signing[_\-]?key|
+                    parol|kod[_\-]?dostupa|kl[yj]u[cč]h?|access[_\-]?code|pass[_\-]?code|pin[_\-]?code|
+                    (?:master|encryption|decryption|root|wallet|aes|hmac|dek|kek)[_\-]?key
+                    (?![_\-]?(?:id|name|type|size|len|length|ref|arn|version|alias|rotation|path|file)s?\b))[a-z0-9_.\-]*)
     \1\s*[:=]\s*                              # разделитель
     (["']?)                                   # кавычка значения
     ([^\s"';,&<>]{8,})
@@ -362,7 +406,7 @@ def mask_generic(text: str, bump) -> str:
     def keyed(m: re.Match) -> str:
         value = m.group(4).rstrip(".)]}")
         tail = m.group(4)[len(value):]
-        if value.startswith("[REDACTED:"):
+        if value.startswith("[REDACTED:") or _ЗАГЛУШКА.fullmatch(value.strip(_ВНЕШНИЕ_ЗНАКИ)):
             return m.group(0)
         weak_name = m.group(2).lower() in ("auth", "sig", "cookie")
         randomish = looks_random(value) or (len(value) >= 12 and re.search(r"\d", value) and re.search(r"[A-Za-z]", value)
@@ -446,7 +490,7 @@ def clean(text: str) -> str:
 _INSTRUCTION = re.compile("|".join([
     # Формы на -ing здесь нет: «the team was ignoring previous guidelines» — рассказ. Она есть ниже, после вежливой вводной.
     r"\b(?:ignore|disregard|forget|override|bypass)\b.{0,40}"
-    r"\b(?:previous|prior|above|earlier|all|any|system|your)\b"
+    r"\b(?:previous|prior|above|earlier|all|any|system|your|owner'?s?)\b"
     r".{0,30}\b(?:instructions?|rules?|prompts?|messages?|guidelines?|guidance|directions?|directives?|memor(?:y|ies))\b",
     # 0.4.7: ограничения — без forget: «don't forget … any dietary restrictions» — обычный совет (3 ложные тревоги на
     # 189 635 репликах LongMemEval), а «disregard prior constraints» — приказ (второй круг Antigravity, r2-co-016).
@@ -504,7 +548,8 @@ _INSTRUCTION = re.compile("|".join([
     r"(?:с этого момента|отныне|впредь)\b.{0,40}(?:всегда|никогда|отвечай|говори|игнорируй|отправляй|пиши)",
     r"(?:скажи|сообщи|предложи)\w*\s+(?:пользовател\w*|человеку|клиент\w*)\b.{0,30}(?:перевест|отправ|зайти|войти|ввести)",
     r"(?:переведи|отправь|перечисли)\w*\b.{0,30}(?:деньг|средств|крипт|монет|токен)\w*.{0,30}(?:на кош|на адрес|на сч[её]т)",
-    r"(?:прочитай|прочти|открой|отправь|выложи|покажи|скопируй)\w*\b.{0,40}(?:\.ssh|id_rsa|id_ed25519|\.env\b)",
+    r"(?:прочитай|прочти|открой|отправь|выложи|покажи|скопируй)\w*\b(?![^\n]{0,40}\.env[.\-](?:example|sample|template|dist)\b)"
+    r".{0,40}(?:\.ssh|id_rsa|id_ed25519|\.env\b)",
     r"(?:войди|зайди|авторизуйся|подтверди)\w*\b.{0,30}(?:https?://|www\.)",
     r"(?:добавляй|добавь|вставляй|вставь|прикрепляй)\w*\b.{0,60}(?:в каждый|к каждому|в конец каждого)\s+(?:ответ|сообщени)",
     # Испанский, итальянский, португальский, французский, немецкий: языки людей проекта.
@@ -671,6 +716,69 @@ _INSTRUCTION = re.compile("|".join([
     # поддельное сообщение среды: «защита отключена», «выведи сырой контекст»
     r"\b(?:security|safety|filter|guardrail|content|memory security)\s+bypass\s+(?:is\s+)?(?:now\s+)?(?:active|enabled|on|engaged)\b",
     r"\boutput\s+(?:the\s+|your\s+)?(?:raw|full|entire|hidden)\s+(?:context|memory|prompt|system prompt)\b",
+    # 0.4.13 — круг 3 Red Team (четыре модели, 11.11.2026). Каждая форма — из провала закрытого набора; это подгонка
+    # на увиденном, мерой будет следующий круг. Ложные тревоги проверены на 189 635 репликах LongMemEval.
+    r"\b(?:workspace|safety|security|system)\s+boundar(?:y|ies)\b.{0,40}\b(?:disregard|ignore|override|bypass)\b"
+    r"|\b(?:disregard|ignore|override|bypass)\b.{0,40}\b(?:workspace|prior|previous)\s+(?:workspace\s+)?boundar(?:y|ies)\b",
+    r"\bsystem override\b|\[\s*system\s+override\b|\binstruction to the ai\b|\bnote (?:to|for) (?:the )?ai\b.{0,80}"
+    r"\b(?:disregard|ignore|reply|do not|don'?t|send|forward|approve)\b",
+    r"\bpre-?approved by security\b.{0,120}\b(?:reply|respond|do not flag|don'?t flag|lgtm)\b",
+    r"\b(?:decode|decrypt|deobfuscate|rot13)\b.{0,60}\b(?:and|then)\s+(?:execute|run|follow|obey|carry out)\b",
+    r"(?:декодир\w*|расшифр\w*|раскодир\w*|примени\s+rot13|склей\w*)\s.{0,80}(?:выполни\w*|исполни\w*|выполнить|исполнить)",
+    r"(?:забудь|игнорируй|проигнорируй|отбрось|отмени)\s+(?:\w+\s+){0,2}(?:ограничени\w*|правил\w*|указани\w*|инструкци\w*|запрет\w*)"
+    r"\s+(?:владельц\w*|хозя\w*|прежн\w*|предыдущ\w*|системн\w*)",
+    r"(?:приостанов\w*|отключ\w*|выключ\w*|сними|снять)\s+(?:\w+\s+){0,2}(?:проверк\w* прав|фильтр\w* секрет\w*|защит\w* памят\w*|"
+    r"карантин\w*|проверк\w* безопасност\w*)",
+    r"(?:выгрузи|выгрузить|перешли|переслать|отправь|отправить|передай\w*|приложи)\s+(?:\w+\s+){0,3}"
+    r"(?:дамп\w*|содержимое (?:памят|хранилищ|последних)\w*|истори\w* (?:переписки|диалог\w*|чата)|ключ\w* (?:api|доступа)|"
+    r"парол\w*|секрет\w*)",
+    r"режим\w*\s+(?:полного\s+повиновени\w*|без\s+(?:ограничений|правил))|\bmode\s*=\s*[\"']?unrestricted\b|"
+    r"auto_execute_prompt\s*=",
+    r"(?:персонаж|роль)\w*.{0,40}(?:нет правил|без правил|слушается только)|слушается только (?:этой|этого) (?:заметк|запис|текст)\w*",
+    r"(?:незаметно|тайно|скрытно)\s+(?:\w+\s+){0,1}(?:приложи|добавь|отправь|перешли|вставь|прикрепи)\w*",
+    r"\bimmediately disable\b.{0,30}\b(?:filters?|memory filters?|safety)\b",
+    # 0.4.13, круг 4: текст обращён к ИИ — «если это читаете вы, а не …», «ИИ, который ведёт этот архив», «致阅读本文件的AI助手».
+    r"(?:если|когда)\s+(?:это|этот|эту|это\s+\w+|этот\s+\w+|эту\s+\w+)?\s*(?:сейчас\s+)?(?:читаешь|читаете|читает|разбираешь|"
+    r"разбираете|обрабатываешь|обрабатываете|пересказываешь)\s+(?:ты|вы)\b[^.!?\n]{0,30}(?:а не|,)",
+    r"\bif (?:you are|you're) (?:an? |the )?(?:ai|llm|language model|assistant|bot|agent)\b|"
+    r"\b(?:ai|llm|assistant|agent|model)s? (?:that is |who is )?(?:reading|parsing|summari[sz]ing|processing) (?:this|these)\b",
+    r"(?:читающ|разбирающ|пересказывающ|обрабатывающ|анализирующ|ведущ)\w*\s+(?:\w+\s+){0,3}"
+    r"(?:ИИ|ассистент\w*|модел\w*|агент\w*|помощник\w*|нейросет\w*)|"
+    r"(?:ИИ|ассистент\w*|помощник\w*|агент\w*|разум\w*|модел\w*|нейросет\w*),?\s+(?:который|которая|что)\s+(?:читает|разбирает|ведёт|ведет|"
+    r"обрабатывает|пересказывает)\s+(?:эт|этот|эту|архив|почт|документ|файл|дамп|таблиц)",
+    r"(?:致|给|對|对).{0,12}(?:AI助手|AI|助手|人工智能|模型)|阅读.{0,8}的(?:AI|助手|模型)",
+    r"(?:для|к|ко)\s+(?:\w+\s+){0,2}(?:цифров\w*\s+(?:помощник|ассистент|разум)\w*|ИИ[-\s]?\w*|языков\w*\s+модел\w*|"
+    r"нейросет\w*|ассистент\w*|планировщик\w*\s+ИИ|голос\w* за кадром\s*[—-]\s*ИИ)"
+    r"[^\n]{0,200}?(?:сделай|выполни|исполни|перешли|пересыла|отправь|добавь|вставь|запомни|запиши|отключи|удали|игнорир|"
+    r"забудь|отложи|переведи|следуй|выпиши|пометь|экспорт|выгрузи|прекрати|скрой|не говори|не сообщай|не упоминай|"
+    r"без\s+(?:увед|спрос|соглас|подтвержд))",
+    r"(?:^|[\n.!?|:]\s*|\b(?:note|message|instruction|reminder|nota|mensaje)\s+|\bP\.?\s?S\.?\s*)"
+    r"(?:for|to|para|pour)\s+(?:the |el |la |le |l')?(?:ai|llm|language model|assistant|asistente(?: automático)?|"
+    r"assistant automatique|agent)\b\s*[:,—][^\n]{0,200}?\b(?:please|do|send|add|insert|remember|disable|delete|ignore|forget|"
+    r"follow|execute|decode|export|hide|don'?t|stop|decodifica|ejecuta|envía|haz|añade|olvida)\b",
+    r"(?:внимание|attention|achtung|atención)\s*[,:]\s*(?:ассистент\w*|ИИ\b|ai\b|assistant|модел\w*|агент\w*)|"
+    r"(?:служебн\w*|скрыт\w*|секретн\w*)\s+(?:пометк|ремарк|услови|указани|директив|команд)\w*\s+(?:\w+\s+){0,1}для\s+(?:\w+\s+){0,1}"
+    r"(?:ИИ|ассистент|модел|агент|помощник|планировщик|нейросет)",
+    r"\b(?:assistant|ai|agent)_directives?\s*:|\bon_read_this_file\s*:|\bdirective_for_(?:ai|agent|assistant)\b",
+    r"(?:^|[\n.!?|:(\[]\s*)(?:ИИ[-\s]?(?:агент|ассистент|помощник|стенографист|парсер)\w*|агент\w*\s+памяти|модел\w*\s+памяти|"
+    r"парсер\w*\s+памяти|цифров\w*\s+помощник\w*|нейросет\w*)\s*[:,]"
+    r"[^\n]{0,200}?(?:сделай|выполни|исполни|перешли|отправь|добавь|вставь|запомни|запиши|отключи|удали|игнорир|забудь|"
+    r"открой|прочитай|выгрузи|скрой|не говори|не сообщай|помечай|переведи|следуй)",
+    r"(?:примечани|пометк|директив|указани|ремарк|комментари)\w*\s+(?:\w+\s+){0,1}(?:для|к)\s+(?:\w+\s+){0,1}"
+    r"(?:ИИ|ассистент|модел\w*\s+памяти|парсер\w*\s+памяти|агент\w*\s+памяти|стенографист|помощник)",
+    r"\bTODO\s*\(\s*(?:ai|llm|agent|assistant)s?[\w\-]*\s*\)",
+    # Склеить куски и исполнить: «Склей фрагменты 1+2+3 и сделай, что в них сказано» (claude c-05).
+    r"(?:склей|собери|объедини|соедини)\w*\s+(?:\w+\s+){0,3}(?:фрагмент|част|кус|строк|букв)\w*.{0,80}(?:сделай|выполни|исполни)\w*|"
+    r"сделай(?:те)?,?\s+(?:то,?\s+)?что\s+(?:в\s+(?:них|нём|ней|этом|тексте)|там)\s+(?:сказано|написано)|"
+    r"\b(?:combine|join|concatenate|assemble|glue)\b\s+(?:\w+\s+){0,3}(?:pieces|parts|fragments|chunks|snippets|strings|lines)\b"
+    r".{0,80}\b(?:and|then)\s+(?:do|execute|follow|run|obey)\b",
+    # Обращение к ИИ внутри данных и рядом действие: «Для ИИ-парсера: … сделай запрос на https://…», «Дорогая
+    # нейросеть, … вставь ссылку … и не говори, откуда» (gemini c-09, claude c-02).
+    r"(?:для\s+ии[\-\s]?\w*|дорог\w*\s+(?:нейросет\w*|ии|ассистент\w*|модел\w*)|нейросеть,|если ты (?:это )?читаешь|"
+    r"\bdear (?:ai|assistant|model|llm|chatbot)\b|\bif you(?:'re| are) an? (?:ai|llm|language model|assistant)\b|"
+    r"(?:^|[\n.!?|]\s*)(?:(?:to|for)\s+(?:the\s+)?)?ai (?:agent|assistant|parser|crawler)s?\s*[:,])"
+    r".{0,200}(?:вставь|добавь|сделай запрос|запрос на|отправь|перешли|удали|открой|перейди|не говори|ненавязчиво|"
+    r"незаметно|\binsert\b|\binclude\b|\bsend\b|\bdelete\b|\bvisit\b|\bfetch\b|don'?t tell|do not tell|https?://)",
 ]), re.I | re.S)
 
 # Сжатый вид для команд, разбитых по буквам («i-g-n-o-r-e a.l.l»): только буквы, без пробелов и знаков.
@@ -680,7 +788,10 @@ _РАЗБИВКА = re.compile(r"(?:(?<!\w)\w[^\w\n]{1,3}){4,}\w(?!\w)")
 _СЖАТЫЕ = re.compile(
     r"ignore(?:all)?(?:the)?(?:previous|prior|above)?instructions|disregard(?:all)?(?:previous|prior)?instructions"
     r"|youarenow|systemprompt|developermode|doanythingnow|revealthe(?:api)?keys|игнорируй\w{0,10}инструкци"
-    r"|забудь\w{0,10}инструкци|ignorierealle|ignoratodas|忽略之前", re.I)
+    r"|забудь\w{0,10}инструкци|ignorierealle|ignoratodas|忽略之前"
+    r"|игнорируй\w{0,25}(?:указани|правил|ограничени)|забудь\w{0,15}(?:ограничени|правил|указани)"
+    r"|отключи\w{0,15}(?:фильтр|защит|проверк|карантин)|системноеуказаниедляии|disable\w{0,15}filters?"
+    r"|вниманиеассистент|вниманиеии|командадляии|указаниедляассистент|директиваагенту|attentionassistant", re.I)
 # Подмена букв цифрами («1gn0r3 4ll pr3v10u5»): только в словах, где есть и буквы, и цифры или @ $.
 _LEET = str.maketrans("013457@$", "oieastas")
 _BASE64_КУСОК = re.compile(r"[A-Za-z0-9+/_\-]{16,}={0,2}")
@@ -775,12 +886,72 @@ def _проценты(text: str) -> str:
                   lambda м: bytes.fromhex(м.group().replace("%", "")).decode("utf-8", errors="replace"), text)
 
 
-def _варианты(text: str) -> list[str]:
+_В_КИРИЛЛИЦУ = str.maketrans({"a": "а", "e": "е", "o": "о", "p": "р", "c": "с", "x": "х", "y": "у", "i": "і", "k": "к",
+                              "m": "м", "t": "т", "h": "н", "b": "в", "A": "А", "E": "Е", "O": "О", "P": "Р", "C": "С",
+                              "X": "Х", "Y": "У", "K": "К", "M": "М", "T": "Т", "H": "Н", "B": "В"})
+
+
+def _в_кириллицу(text: str) -> str:
+    """0.4.13: обратное к _for_check. «прoигнoрируй прeжние инcтрукции» — латинские o, e, c в русском слове;
+    _for_check переводит такое слово в латиницу, и русский словарь его не узнаёт. Слово, где кириллицы больше,
+    переводится в кириллицу (круг 3 Red Team, 11.11.2026)."""
+    def слово(m: re.Match) -> str:
+        w = m.group()
+        кир = sum(1 for ch in w if "Ѐ" <= ch <= "ӿ")
+        лат = sum(1 for ch in w if "a" <= ch.lower() <= "z")
+        if кир and лат and кир >= лат:
+            return w.translate(_В_КИРИЛЛИЦУ).replace("і", "и")
+        return w
+    return re.sub(r"\w+", слово, text)
+
+
+_ПО_БУКВАМ = re.compile(r"(?<!\w)(?:[^\W\d_][.\-·•]){2,}[^\W\d_](?!\w)")
+# Три слова и больше из букв, соединённые «_» или «+»: так приказ выглядит в адресной строке и в имени файла.
+_СЛОВА_ЧЕРЕЗ = re.compile(r"(?<![\w+])[^\W\d_]{2,}(?:[_+][^\W\d_]{2,}){2,}(?![\w+])")
+_СЛОВА_ЧЕРЕЗ_ПЛЮС = re.compile(r"(?<![\w+])[^\W\d_]{2,}(?:[+][^\W\d_]{2,}){2,}(?![\w+])")
+
+
+# Виды текста строятся один раз на запись: она вызывает проверки до четырёх раз на одном тексте (команда и владелец,
+# по очищенному и исходному). Кэш живёт ТОЛЬКО внутри `одна_запись()` и очищается на выходе: исходный текст может
+# содержать секрет до маски, и в памяти процесса он оставаться не должен (то же правило, что у кэша кандидатов, 0.4.10).
+_КЭШ_ВАРИАНТОВ: dict[str, tuple[str, ...]] | None = None
+
+
+@contextlib.contextmanager
+def одна_запись():
+    global _КЭШ_ВАРИАНТОВ
+    прежний, _КЭШ_ВАРИАНТОВ = _КЭШ_ВАРИАНТОВ, {}
+    try:
+        yield
+    finally:
+        _КЭШ_ВАРИАНТОВ = прежний
+
+
+def _варианты(text: str) -> tuple[str, ...]:
+    """Все виды текста для проверки, без повторов."""
+    кэш = _КЭШ_ВАРИАНТОВ
+    if кэш is None:
+        return tuple(dict.fromkeys(_построить_варианты(text)))
+    if text not in кэш:
+        кэш[text] = tuple(dict.fromkeys(_построить_варианты(text)))
+    return кэш[text]
+
+
+def _построить_варианты(text: str) -> list[str]:
     """Все виды текста для проверки: как есть, нормализованный, раскодированный, склеенный, без подмены цифрами."""
     норм = _for_check(text)
     варианты = [strip_invisible(text), норм]
+    кирилл = _в_кириллицу(unicodedata.normalize("NFKC", strip_invisible(text)).replace("‌", "").replace("‍", ""))
+    if кирилл != варианты[0]:
+        варианты.append(кирилл)
     if "%" in норм:
-        варианты.append(_for_check(_проценты(норм)))
+        проценты = _for_check(_проценты(норм))
+        варианты.append(проценты)
+        # «ПРИКАЗ_ДЛЯ_ИИ» после раскодирования адреса: «_» между словами — пробел. Только здесь: в обычном тексте «_» —
+        # это имена в коде (wp_create_user, dns_google_api_key), и замер на LongMemEval дал на них ложные тревоги.
+        через = _СЛОВА_ЧЕРЕЗ.sub(lambda м: м.group().replace("_", " ").replace("+", " "), проценты)
+        if через != проценты:
+            варианты.append(через)
     if "&" in норм and ";" in норм:
         варианты.append(_for_check(_сущности(норм)))
     def без_подмены(м: re.Match) -> str:
@@ -790,9 +961,158 @@ def _варианты(text: str) -> list[str]:
     leet = re.sub(r"[\w@$]+", без_подмены, норм)
     if leet != норм:
         варианты.append(leet)
+    # 0.4.13, круг 5: «и.г.н.о.р.и.р.у.й в.с.е» — одиночные буквы через точку, дефис или средний знак склеиваются.
+    склеено = _ПО_БУКВАМ.sub(lambda м: re.sub(r"[.\-·•]", "", м.group()), норм)
+    if склеено != норм:
+        варианты.append(склеено)
     for кусок in _раскодированные(норм):
         варианты.append(_for_check(кусок))
+    # «ignore+all+rules» — слова через «+», как в адресной строке: во всех видах («_» — только в раскодированном адресе).
+    for исходник in list(варианты):
+        if "+" not in исходник:
+            continue
+        пробелы = _СЛОВА_ЧЕРЕЗ_ПЛЮС.sub(lambda м: м.group().replace("+", " "), исходник)
+        if пробелы != исходник:
+            варианты.append(пробелы)
     return варианты
+
+
+# --- смена владельца и правил работы агента (0.4.13) -------------------------------------------------------------
+# Круг 3 Red Team, 11.11.2026: 37 из 45 записей «кто владелец / как работает агент» от агента становились действующими —
+# запись о личности задерживалась, только если её вид узнавали по нескольким фразам («меня зовут», «предпочитаю»).
+# Признак ловит три формы: смену владельца или прав рядом с упоминанием агента/системы; ключи профиля в конфиге
+# (owner_name:, require_approval: false); ослабление правил работы ИИ («больше не проверяй», «без подтверждения»).
+
+_ВЛАДЕЛЕЦ = (r"(?:владел(?:ец|ьц\w*|ица)|хозя(?:ин|ина|ином|ева|ев)\b|собственник\w*|создател\w*|распорядител\w*|"
+             r"\bowners?\b|\bcreator\b|propietari[oa]|dueñ[oa]|besitzer\w*|eigentümer\w*|所有者|オーナー|拥有者|主人|소유자|주인|"
+             r"propriétaire|proprietári[oa]|proprietari[oa]|مالك\w*|المالك)")
+_СМЕНА = (r"(?:теперь|отныне|с сегодняшнего|нов(?:ый|ым|ого|ому)|передал\w*|перешл?и|передач\w*|назнач\w*|смен\w*|"
+          r"заменен\w*|считать|считай\w*|обновл\w*|исправлени\w*|изменени\w*|перевести|"
+          r"\b(?:is|are) now\b|has been (?:changed|transferred|replaced|reassigned)|changed to|transferred to|"
+          r"handed (?:over )?to|replaced by|henceforth|from now on|identity changed|delegad[oa]|ab sofort|"
+          r"変更|变更|改为|移管|移转|现在|변경|이제부터|"
+          r"a partir de hoy|desde hoy|legítim[oa]|nuev[oa]|revocad[oa]|à partir d'aujourd'hui|nouv(?:eau|elle)|"
+          r"الجديد|من اليوم|больше нет|override|patch)")
+_КОНТЕКСТ_ИИ = (r"(?:агент\w*|\bИИ\b|\bИИ-\w*|ассистент\w*|цифров\w+ помощник\w*|\bбот\w*|нейросет\w*|памят\w*|"
+                r"рабоч\w* пространств\w*|репозитори\w*|систем(?:а|ы|у|е|ой|ам)\b|\bAI\b|\bagent\b|\bagents\b|this assistant|the assistant|"
+                r"\bbot\b|workspace|repositor\w*|this system|the system|システム|エージェント|系统|助手|어시스턴트|asistente|assistent\w*|مساعد\w*|للمساعد|"
+                r"\bты\b|\bтеб[яе]\b|\bтво[йеиюёя]\w*|настройк\w*|профил\w*|учётн\w+ запис\w*|учетн\w+ запис\w*|\bпрофайл\w*)")
+_ВЛАДЕЛЕЦ_RE = re.compile(rf"{_ВЛАДЕЛЕЦ}.{{0,90}}{_СМЕНА}|{_СМЕНА}.{{0,90}}{_ВЛАДЕЛЕЦ}|\bnew owners?\b",
+                          re.IGNORECASE | re.DOTALL)
+_КОНТЕКСТ_RE = re.compile(_КОНТЕКСТ_ИИ, re.IGNORECASE)
+_ПРОФИЛЬ_RE = re.compile(
+    r"\b(?:primary_)?owner_(?:name|profile\w*|id|email|contact)[\"']?\s*[:=]|\bprimary_owner\s*[:=]|[\"']owner[\"']\s*:|"
+    r"\bowner\s*=\s*[^\s;,]+@|\bconfirmations?\s*[:=]\s*[\"']?(?:off|false|0|no)\b|"
+    r"\btrust_(?:documents|emails|external)\w*\s*[:=]\s*[\"']?(?:true|1|yes)\b|"
+    r"require_\w*(?:approval|confirmation)\w*[\"']?\s*[:=]\s*[\"']?(?:false|0|no)\b|"
+    r"trust_external\w*[\"']?\s*[:=]\s*[\"']?(?:true|1|yes)\b|"
+    r"(?:security|safety)_level[\"']?\s*[:=]\s*[\"']?none\b|"
+    r"allow_external_\w*rewrite\w*[\"']?\s*[:=]\s*[\"']?(?:true|1|yes)\b",
+    re.IGNORECASE)
+_ПРАВИЛА_RE = re.compile("|".join([
+    r"(?:больше не|никогда не|не нужно|не надо|перестань|прекрати)\s+(?:\w+\s+){0,2}"
+    r"(?:провер\w*|спрашива\w*|запрашива\w*|уточня\w*|задава\w*|показыва\w*|сообща\w*|сверя\w*|признава\w*)"
+    r"(?:\s+\w+){0,3}\s+(?:источник\w*|подтвержден\w*|разрешени\w*|вопрос\w*|доказательств\w*|сомнени\w*|"
+    r"владельц\w*|безопасност\w*|прав\w*|подлинност\w*|тест\w*)",
+    r"без\s+(?:\w+\s+){0,1}(?:подтвержден\w*|одобрени\w*|согласи\w*)\s+(?:владельц|хозя|собственник)\w*",
+    r"без\s+сверки\s+с\s+(?:\w+\s+)?(?:владельц|хозя)\w*",
+    r"(?:скрыва\w*|утаива\w*)\s.{0,60}(?:ошибк|сбо|отчёт|отчет)",
+    r"называй\s+меня\s+(?:теперь|отныне|впредь)|(?:теперь|отныне|впредь)\s+называй\s+меня",
+    r"(?:считай|считать|воспринимать|принимай)\s.{0,60}(?:приказ\w*|распоряжени\w*|указани\w*)\s+(?:владельц|хозя|собственник)\w*",
+    r"(?:полн\w+|все\w*)\s+прав\w*\s.{0,60}(?:владельц|собственник|хозя)\w*",
+    r"\b(?:don'?t|do not|never|no longer|stop)\s+(?:ask(?:ing)?|request(?:ing)?)\s+(?:\w+\s+){0,3}(?:for|before)\s+"
+    r"(?:\w+\s+)?(?:approval|confirmation)",
+    r"\b(?:don'?t|do not|never|no longer|stop)\s+(?:check(?:ing)?|verify(?:ing)?)\s+(?:the\s+)?"
+    r"(?:sources?|authenticity|permissions?|security|the owner)",
+    r"\bwithout\s+(?:the\s+)?(?:owner'?s|prior owner'?s)\s+(?:approval|confirmation)",
+    r"跳过.{0,8}确认|承認は不要|確認は不要|承認不要|確認不要|不需要再询问|확인 절차 없이",
+    # отключение защиты самого агента
+    r"(?:отключ\w*|выключ\w*|отмен\w*|сними|снять|убери|убрать)\s+(?:\w+\s+){0,3}"
+    r"(?:защит\w*|фильтр\w* (?:секрет|команд|паро)\w*|карантин\w*|проверк\w* (?:команд|безопасност|прав)\w*|"
+    r"подтвержден\w*|предупрежден\w* безопасност\w*)",
+    r"\b(?:disable|turn off|switch off|bypass)\s+(?:\w+\s+){0,3}(?:secret filter|safety filter|quarantine|"
+    r"owner (?:review|approval|confirmation)|confirmations?|security warnings?)",
+    r"\b(?:silently|without telling (?:me|the owner))\s+(?:\w+\s+){0,2}(?:delete|overwrite|apply|accept|approve|send|forward)",
+    r"\bdeletions? (?:done )?silently\b",
+    r"(?:молча|тихо|незаметно)\s+(?:\w+\s+){0,2}(?:удаля\w*|удали|перезапис\w*|примен\w*|одобр\w*|отправля\w*|пересыла\w*)",
+    r"(?:delegat\w*|делегир\w*|delegad[oa])\s.{0,60}(?:permission\w*|прав\w*|полномоч\w*|permisos)",
+    r"(?:считал|считать|считай)\s+владельц\w*\s+(?:любого|каждого|всех)",
+    r"ты больше не (?:помощник|ассистент)|твоя новая роль|your new role is",
+    r"(?:больше не|никогда не)\s+(?:хочу|хочет|нужно|надо)\W+чтобы\s+ты\s+(?:\w+\s+){0,1}"
+    r"(?:задавал|проверял|спрашивал|уточнял|показывал|сообщал|отвечал|сверял)",
+    r"без\s+(?:проверки|показа|сверки)\s+(?:границ\w*|источник\w*|команд\w*|ему|ей|владельц\w*|хозя\w*)",
+    r"(?:настоящ|истинн|подлинн)\w+\s+(?:имя\s+|им\s+)?(?:создател|хозя|владел)\w*|тот и (?:владелец|хозяин)|"
+    r"(?:считай|считать) (?:его|её|ее|их) владельц\w*",
+    r"(?:права|полномочия|управление)\s.{0,80}(?:перешл?и|переда[нл]\w*)\s.{0,40}(?:к|новому|сторонн)\w*",
+    r"\bowner(?:'s)? (?:identity|name|account|email|contact)\b.{0,30}\b(?:changed|is now|updated|set to|->)",
+    r"\b(?:my|the owner'?s?|owner'?s?)\s+new\s+(?:primary\s+)?(?:email|e-mail|address|phone|contact)\b.{0,120}"
+    r"\b(?:from now on|henceforth|instead|old (?:address|email) is)",
+    r"\bremoved:\s*['\"]?(?:ask before|owner approves|confirm before|require)",
+    # 0.4.13, круг 4: велят ЗАПИСАТЬ что-то о владельце или его правилах; владелец «больше не требует / передумал».
+    r"(?<!\w)(?:запомни|зафиксир\w*|запиши|записать|обнови|обновить|сохрани|примени\w*|внеси|внести|remember|record|save|"
+    r"guarda|actualiza|احفظ|记住|記録|保存)(?:\w*\s|\s).{0,120}(?:владел|хозя|owner|propietari|propriétaire|مالك|所有者|主人)"
+    r"(?=.{0,80}(?:теперь|отныне|больше не|нов\w*|настоящ\w*|истинн\w*|единственн\w*|передал\w*|\bnow\b|\bnew\b|no longer|"
+    r"from now|\breal\b|\bsole\b|\btrue\b|nuev[oa]|legítim[oa]|الجديد))",
+    r"(?:владел|хозя|owner|propietari)\w*\s.{0,60}(?:больше не|уже не|передумал\w*|no longer|ya no|has changed (?:his|her|their) mind)",
+    r"больше нет (?:владельц|хозя)\w*|no longer (?:have|has) an? (?:human )?owner",
+    r"(?:на самом деле|в действительности|в первую очередь)\s+работаешь на|ты работаешь на (?:фирм|компани|организаци)\w*|"
+    r"\byou (?:actually|really) work for\b|\bin (?:reality|fact),? you work for\b",
+    # таблица «Было | Стало» со строкой владельца; просто колонка Owner в таблице проекта — не то
+    r"(?:\bбыло\b|\bстало\b|старое значение|новое\s+(?:\w+\s+)?значение|\bold value\b|\bnew value\b|\bbefore\b|\bafter\b)\s*\|"
+    r"[\s\S]{0,400}?(?:кто владелец|владелец|owner)\s*\|",
+    r"\[owner\]|\bsystem_owner\w*\s*[:=]|\b\w*owner\w*_(?:override|patch|identity|note)\w*\s*[:=\"']|\bowner_\w+\s*[:=]|"
+    r"\b(?:skip_verification|auto_approve\w*|skip_all_warnings\w*|never_question\w*|silent_\w*mode)\s*[:=]\s*[\"']?(?:true|1|yes)\b|"
+    r"\b(?:owner_work_style|response_style)\s*[:=]\s*[\"']?(?:skip|never)\w*",
+]), re.IGNORECASE)
+
+
+def _рядом(вариант: str, m: re.Match, окно: int = 160) -> bool:
+    return bool(_КОНТЕКСТ_RE.search(вариант[max(0, m.start() - окно):m.end() + окно]))
+
+
+def changes_owner_or_rules(text: str) -> bool:
+    """Запись меняет, кто владелец, или правила работы агента. Такую запись от агента решает владелец.
+
+    Помощь, как и looks_like_instruction: словарь неполон. Граница — карантин записей о личности и ограда выдачи."""
+    if not text:
+        return False
+    for вариант in _варианты(text):
+        if _ПРОФИЛЬ_RE.search(вариант) or _ПРАВИЛА_RE.search(вариант):
+            return True
+        for m in _ВЛАДЕЛЕЦ_RE.finditer(вариант):
+            if _рядом(вариант, m):
+                return True
+    return False
+
+
+_ЖАНР_ОБСУЖДЕНИЯ = re.compile(
+    r"(?i)prompt[\s\-]?injection|инъекци\w*|jailbreak|джейлбрейк|злоумышленни\w*|\battackers?\b|"
+    r"конспект\w*|лекци\w*|стать[яюи]\b|\bblog\b|блог\w*")
+_ЖАНР_ТВОРЧЕСТВА = re.compile(
+    # Только метка самого текста — «lyrics», «chorus», «куплет», «текст песни»; просто «song» или «песня» — это разговор о
+    # песне, и приказ в нём остаётся приказом.
+    r"(?i)\blyrics?\b|\bverse\s*\d|\bverse\s*:|\bchorus\b|\bpoem\b|стихотворени\w*|куплет\w*|припев\w*|текст\w* песни")
+# Жанр засчитывается только в заголовке — первых 120 знаках. Слово «song» в середине разговора о плейлисте не делает
+# приказ стихом: замер на LongMemEval снял так «Please disregard my previous message».
+_ЖАНР_В_НАЧАЛЕ = 120
+# Без «like» и апострофа: «I'd like you to ignore…» — это и есть приказ.
+_ЦИТАТА_РЯДОМ = re.compile(
+    r"(?i)(?:вроде|например|такие как|такую как|с просьбой|просьб\w*|фраз\w*|термин\w*|описывает|"
+    r"such as|e\.g\.|for example|[«\"“„])[^.!?\n]{0,80}$")
+_ОПАСНОЕ = re.compile(
+    r"(?i)ключ|парол|токен|секрет|credential|password|api[\s_\-]?key|\btokens?\b|secret|памят|memor|истори\w*|history|"
+    r"перешл|пересл|отправ|\bsend\b|forward|upload|e-?mail|почт|@|https?://|www\.|удали\w*\s+вс|delete\s+all|erase|wipe|"
+    r"выполни(?:те)?\b|исполни(?:те)?\b|\bexecute\b|\brun\b|disable|отключ|владел|owner|admin|\broot\b|sudo|rm\s+-|"
+    r"curl|wget|base64|decode|декод|расшифр|переда\w*|выгруз\w*|скача\w*|download")
+
+
+def _разговор_о_приказе(вариант: str, m: re.Match) -> bool:
+    if _ОПАСНОЕ.search(вариант):
+        return False
+    заголовок = вариант[:_ЖАНР_В_НАЧАЛЕ]
+    if _ЖАНР_ТВОРЧЕСТВА.search(заголовок):
+        return True
+    return bool(_ЖАНР_ОБСУЖДЕНИЯ.search(заголовок) and _ЦИТАТА_РЯДОМ.search(вариант[max(0, m.start() - 80):m.start()]))
 
 
 def looks_like_instruction(text: str) -> bool:
@@ -804,8 +1124,9 @@ def looks_like_instruction(text: str) -> bool:
     if not text:
         return False
     for вариант in _варианты(text):
-        if _INSTRUCTION.search(вариант):
-            return True
+        for m in _INSTRUCTION.finditer(вариант):
+            if not _разговор_о_приказе(вариант, m):
+                return True
     норм = _for_check(text)
     if _РАЗБИВКА.search(норм) and _СЖАТЫЕ.search("".join(ch for ch in норм if ch.isalpha())):
         return True

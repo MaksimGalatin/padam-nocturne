@@ -24,6 +24,7 @@ dependencies = ["numpy>=1.24", "requests>=2.33.0", "cryptography>=50.0.0"]
 [project.optional-dependencies]
 l3 = ["solders>=0.20", "opentimestamps>=0.4.5"]
 embed = ["model2vec>=0.10"]
+guard = ["onnxruntime>=1.18", "tokenizers>=0.19", "numpy"]
 test = ["pytest>=9.0.3"]
 
 [project.urls]

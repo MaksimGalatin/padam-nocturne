@@ -10,7 +10,7 @@
 - ключи API и пароли скрываются до того, как попадут на диск;
 - всё, что возвращается агенту, огорожено как данные, а забытая запись затирается в файле; если она ушла в Arweave, уничтожение её собственного ключа оставляет там только нечитаемый шифротекст.
 
-Измерено, а не заявлено: два закрытых круга Red Team с опубликованными провалами, поиск LongMemEval-S — 97,0 % в первой пятёрке и 99,2 % в первой десятке против 96,0 % и 97,7 % у обычного BM25, 804 теста и открытый CI. Есть в каталоге [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) и в официальном реестре MCP.
+Измерено, а не заявлено: пять закрытых кругов Red Team с опубликованными провалами, поиск LongMemEval-S — 97,0 % в первой пятёрке и 99,2 % в первой десятке против 96,0 % и 97,7 % у обычного BM25, 903 теста и открытый CI. Есть в каталоге [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) и в официальном реестре MCP.
 
 **Для проверяющих безопасность:** начните с [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md) — что мы утверждаем, каждый круг Red Team с закрытым набором, что всё ещё проходит и проверка за десять минут.
 
@@ -259,10 +259,11 @@ claude mcp add padam -- uvx padam-nocturne
 ## L3 — вечный проверяемый слой (Arweave + Solana)
 
 ```bash
-pip install -e ".[l3]"                    # solders; плюс Node.js с @ardrive/turbo-sdk
+pip install "padam-nocturne[l3]"          # из PyPI; из исходников: pip install -e ".[l3]"
+npm install --prefix ~/padam-l3 @ardrive/turbo-sdk   # Node.js 18+ (turbo-sdk 2.2.0 требует node >= 18)
 export PADAM_ARWEAVE_WALLET=arweave-wallet.json
 export PADAM_SOLANA_KEYPAIR=solana-keypair.json
-export PADAM_TURBO_SDK_DIR=/path/to/node_modules
+export PADAM_TURBO_SDK_DIR=~/padam-l3/node_modules
 python -m padam l3 --dry-run              # что будет закреплено, ничего не отправляется
 python -m padam l3 --network devnet       # или --network mainnet (только явно)
 python -m padam l3-verify                 # независимая проверка: Arweave + цепь
@@ -312,6 +313,17 @@ python -m padam rekey                     # сменить пароль
 
 Каждый ключ хранится как `w1:` + AES-256-GCM(KEK, ключ) с id записи в роли связанных данных; KEK = scrypt(пароль, соль, n=2^15, r=8, p=1). Неверный пароль отвергается проверочной записью раньше, чем что-либо будет тронуто; завёрнутый ключ нельзя перенести на другую запись. После заворачивания журнал WAL обрезается, а файл проходит VACUUM: на 400 ключах без этого в свободных страницах оставалось 66 открытых ключей (замер 08.10.2026, `tests/test_keyvault.py`). Пароль нигде не хранится: потеряли — ключи не открыть ни вам, ни нам.
 
+**Необязательный слой-детектор (0.4.13, выключен по умолчанию).** Словарь ловит около половины новых трудных приказов, спрятанных в заметках; локальная модель-детектор ловит больше. Детекторы общего назначения задерживают и обычные приказы людям (рецепт, памятку о пожарной тревоге), поэтому PADAM спрашивает модель только о тексте, где упомянут ИИ — ассистент, модель, бот, AI, LLM, — и задерживает при вероятности от 0,999. Замер 11.11.2026 с [Wolf Defender small](https://huggingface.co/patronus-studio/wolf-defender-prompt-injection-small) (Apache-2.0, ONNX int8, 107 МБ) через MCP-сервер: круг 5 Red Team — приказы 28 → 37/45, личность 32 → 36/45, круг 4 — приказы 36 → 41/45, обычные заметки без изменений; ложные тревоги, старый код против нового: +1 на 20 000 репликах LongMemEval-S (настоящая попытка джейлбрейка) и +2 на 2 775 абзацах русских заметок проекта (обе — указания ИИ). Около 270 мс на проверенную запись на загруженной машине; проверяются только записи, где упомянут ИИ.
+
+```bash
+pip install "padam-nocturne[guard]"       # onnxruntime, tokenizers
+M=https://huggingface.co/patronus-studio/wolf-defender-prompt-injection-small/resolve/2484cc9a13550aa4f2c29b577ff3ef331dc6ba07
+mkdir -p ~/padam-guard/onnx/int8_int4_embeddings_x86
+curl -L -o ~/padam-guard/tokenizer.json $M/tokenizer.json        # sha256 609d8f4c067cd395…
+curl -L -o ~/padam-guard/onnx/int8_int4_embeddings_x86/model.onnx $M/onnx/int8_int4_embeddings_x86/model.onnx   # sha256 6f95e8c366483e37…
+export PADAM_GUARD_MODEL=~/padam-guard
+```
+
 **Защита локального API.** Токен при каждом запуске (0.4.2), сравнивается за постоянное время; локальный запуск принимает только локальные `Host`/`Origin` (против DNS rebinding); тела POST — только JSON до 10 МБ; одна блокировка упорядочивает все обращения к общему соединению SQLite, поэтому параллельные записи не теряются.
 
 **Цепочка поставок.** Действия CI закреплены по SHA коммита, токен Actions — только на чтение; публикация в PyPI настроена через доверенную публикацию без хранимых токенов.
@@ -341,6 +353,7 @@ python -m padam rekey                     # сменить пароль
 | `PADAM_MCP_TRUST_WRITES` | `0` | `1` пропускает записи через MCP без проверки владельцем |
 | `PADAM_HOLD_EXTERNAL` | `1` | каждая запись через MCP с пометкой `origin: external` ждёт проверки владельцем, как бы она ни была сформулирована; `0` выключает |
 | `PADAM_MCP_REVIEW_ALL` | `0` | `1`: каждая запись агента через MCP ждёт владельца, какое бы происхождение агент ни заявил |
+| `PADAM_GUARD_MODEL` · `PADAM_GUARD_THRESHOLD` | — · `0.999` | необязательный слой-детектор: папка с `tokenizer.json` и файлом `.onnx`, и его порог (`PADAM_GUARD_ONNX` выбирает файл, `PADAM_GUARD_THREADS` — потоки, по умолчанию 2) |
 | `PADAM_STRICT` | `0` | `1`: строгий профиль одним выключателем — каждая запись агента и весь внешний текст ждут владельца; `PADAM_KEEP_SECRETS`, `PADAM_MCP_TRUST_WRITES` и `PADAM_HOLD_EXTERNAL=0` игнорируются (и называются при запуске); `l3` отказывается без защищённых ключей даже с `--allow-unprotected-keys`; REST API отказывается запускаться с `--no-token` |
 | `PADAM_PROFILE` · `PADAM_SHARP_SHARE` | `default` · — | доля острых эпизодов в пакете сна: `ops` 0,40 (лучше помнить сбои), `creative` 0,10, по умолчанию 0,25; или точное число в пределах 0,05–0,5 |
 | `PADAM_SLEEP_REINDEX` | `200` | сколько записей за один сон переводится на текущую модель векторов после её смены (0 выключает) |
@@ -355,7 +368,7 @@ python -m padam rekey                     # сменить пароль
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 804 passed, 10 skipped с [embed] (Python 3.14.4); 799 passed, 11 skipped без него (3.10.9); 11.11.2026, Windows
+python -m pytest tests/ -q        # 903 passed, 10 skipped с [embed] (Python 3.14.4); 898 passed, 11 skipped без него (3.10.9); 11.11.2026, Windows
 ```
 
 CI прогоняет тесты на каждый push под Ubuntu и Windows с Python 3.10–3.13. Тесты L3 не ходят в сеть: Arweave и Solana заменены подделками. Локальную Ollama набор тоже не зовёт, даже если она запущена: каждый тест работает на встроенных векторах, как на CI. `PADAM_TEST_LIVE_OLLAMA=1` включает единственную живую проверку. Схема Меркла дополнительно сверена с закреплением CODE Eternal на TypeScript — листья и корень совпадают.

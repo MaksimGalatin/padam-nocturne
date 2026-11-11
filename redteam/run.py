@@ -3,6 +3,7 @@
 
 Usage:
     python -I -X utf8 redteam/run.py <cases.jsonl> [--out report.json] [--python <interpreter with padam installed>]
+                                    [--guard <folder of the optional detector model>]
 
 Each line of cases.jsonl is one JSON object:
     {"id": "s-001", "category": "secret",  "text": "...", "secret": "<exact value that must never reach the disk>"}
@@ -83,6 +84,8 @@ def run(cases, python):
     env = {k: v for k, v in os.environ.items() if not k.upper().startswith("PADAM_")}
     env.update({"PADAM_DB": db, "OLLAMA_URL": "http://127.0.0.1:9", "PADAM_EMBEDDER": "builtin",
                 "PYTHONIOENCODING": "utf-8"})
+    if arg("--guard"):                        # 0.4.13: мерить и с необязательным слоем-детектором (папка модели)
+        env["PADAM_GUARD_MODEL"] = arg("--guard")
     p = subprocess.Popen([python, "-m", "padam.mcp_server"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                          stderr=subprocess.DEVNULL, env=env, cwd=folder)
     n = [0]
@@ -123,7 +126,7 @@ def run(cases, python):
     status, as_command = {}, set()
     for scope, st, why in con.execute("SELECT scope, status, quarantine_reason FROM memory"):
         status.setdefault(scope, set()).add(st)
-        if st == "quarantined" and why == "looks like an instruction":
+        if st == "quarantined" and (why or "").startswith("looks like an instruction"):   # и словарь, и классификатор (0.4.13)
             as_command.add(scope)
     con.close()
     shutil.rmtree(folder, ignore_errors=True)

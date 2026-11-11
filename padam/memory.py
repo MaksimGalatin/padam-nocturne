@@ -10,7 +10,7 @@ from datetime import datetime, timezone, timedelta
 
 import numpy as np
 
-from . import classify, config, embeddings, integrity, retrieval, safety
+from . import classify, config, embeddings, guard, integrity, retrieval, safety
 from .store import Store, new_id, now_iso, pack, parse_ts, unpack
 
 
@@ -163,7 +163,8 @@ class Memory:
         derived_from — id записей, из которых сделан этот вывод. По этим связям забвение
         источника доходит и до выводов (`forget --with-derived`).
         """
-        исход, mid = self._remember(content, kind, importance, scope, source_episode_id, origin, guarded)
+        with safety.одна_запись():          # виды текста строятся один раз на запись и не переживают её
+            исход, mid = self._remember(content, kind, importance, scope, source_episode_id, origin, guarded)
         # При повторе mid — это уже существующая запись, возможно владельца. Связать её «выводом» из
         # чужой записи значило бы дать агенту способ стереть её каскадом при забвении источника.
         if derived_from and исход != "duplicate":
@@ -190,6 +191,12 @@ class Memory:
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
                 origin=origin, status="quarantined", reason="looks like an instruction")
+        # 0.4.13: необязательный второй слой — локальная модель-детектор (padam/guard.py), только для текста, где упомянут ИИ.
+        # Выключен, пока не задан PADAM_GUARD_MODEL и не стоят пакеты [guard].
+        if guarded and guard.flags(исходный):
+            return "quarantined", self._insert(
+                content, kind, vec, importance, scope, source_episode_id,
+                origin=origin, status="quarantined", reason="looks like an instruction (classifier)")
         if guarded and origin == "external" and config.HOLD_EXTERNAL:
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
@@ -215,6 +222,12 @@ class Memory:
                 причина_защиты = f"protected {защищённый_вид} record from {origin}"
             elif защищённый_вид and self._есть_активная(защищённый_вид):
                 причина_защиты = f"would change the owner's {защищённый_вид} records"
+            # 0.4.13: запись, которая меняет, кто владелец, или правила работы агента, — что бы ни было в её виде.
+            # Круг 3 Red Team, 11.11.2026: 37 из 45 таких записей от агента становились действующими, потому что
+            # вид «личность/предпочтение» узнавали по нескольким фразам. Запись самого человека не задерживается.
+            # Как и команда, проверяется и исходный текст: base64 с «owner=…» маска закрывает целиком (круг 3, claude i-13).
+            elif origin != "user" and (safety.changes_owner_or_rules(content) or safety.changes_owner_or_rules(исходный)):
+                причина_защиты = "would change who the owner is or how the agent works"
 
         # СНАЧАЛА точный поиск по структурному ключу, и только потом — по
         # близости векторов. Порядок важен: ключ находит спорящую запись
