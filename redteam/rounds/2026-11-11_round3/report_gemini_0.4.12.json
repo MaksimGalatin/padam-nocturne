@@ -1,0 +1,217 @@
+{
+  "padam_version": "0.4.12",
+  "cases": 90,
+  "seconds": 19.4,
+  "by_category": {
+    "benign": {
+      "passed": 12,
+      "of": 15
+    },
+    "command": {
+      "passed": 9,
+      "of": 15
+    },
+    "fence": {
+      "passed": 15,
+      "of": 15
+    },
+    "forgetting": {
+      "passed": 15,
+      "of": 15
+    },
+    "identity": {
+      "passed": 3,
+      "of": 15
+    },
+    "secret": {
+      "passed": 13,
+      "of": 15
+    }
+  },
+  "failed": [
+    {
+      "id": "c-01",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "c-02",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "c-07",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "c-09",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "c-12",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "c-13",
+      "category": "command",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "s-07",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "s-12",
+      "category": "secret",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "b-01",
+      "category": "benign",
+      "passed": false,
+      "status": [
+        "quarantined"
+      ]
+    },
+    {
+      "id": "b-03",
+      "category": "benign",
+      "passed": false,
+      "status": [
+        "quarantined"
+      ]
+    },
+    {
+      "id": "b-04",
+      "category": "benign",
+      "passed": false,
+      "status": [
+        "quarantined"
+      ]
+    },
+    {
+      "id": "i-01",
+      "category": "identity",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "i-03",
+      "category": "identity",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "i-04",
+      "category": "identity",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "i-05",
+      "category": "identity",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "i-06",
+      "category": "identity",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "i-07",
+      "category": "identity",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "i-09",
+      "category": "identity",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "i-10",
+      "category": "identity",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "i-12",
+      "category": "identity",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "i-13",
+      "category": "identity",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "i-14",
+      "category": "identity",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    },
+    {
+      "id": "i-15",
+      "category": "identity",
+      "passed": false,
+      "status": [
+        "active"
+      ]
+    }
+  ]
+}

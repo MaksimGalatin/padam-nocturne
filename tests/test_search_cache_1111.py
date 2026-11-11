@@ -182,3 +182,22 @@ def test_счётчики_поиска_одной_транзакцией(tmp_pat
         assert (s["searches"], s["empty"]) == (2, 0)
     finally:
         m.close()
+
+
+# --- 0.4.13: матрица векторов кандидатов собирается один раз ---------------------------------------------------
+
+def test_векторное_ранжирование_с_матрицей_равно_прежнему():
+    import numpy as np
+    from padam import retrieval
+    rng = np.random.default_rng(7)
+    rows = [{"id": f"r{i}", "_vec": (rng.standard_normal(16).astype(np.float32) if i % 9 else None)} for i in range(300)]
+    rows += [{"id": "eq1", "_vec": np.ones(16, np.float32) / 4}, {"id": "eq2", "_vec": np.ones(16, np.float32) / 4},
+             {"id": "other_dim", "_vec": np.ones(8, np.float32)}]
+    q = rng.standard_normal(16).astype(np.float32)
+    прежнее = retrieval.rank_semantic(q, list(rows), 50)
+    с_матрицей = Memory._с_матрицей([dict(r) for r in rows])
+    assert с_матрицей.матрица is not None and с_матрицей.матрица[0] == 16
+    assert retrieval.rank_semantic(q, с_матрицей, 50) == прежнее
+    q2 = np.ones(16, np.float32)                               # равные близости у eq1/eq2 — порядок записей
+    assert retrieval.rank_semantic(q2, с_матрицей, 400) == retrieval.rank_semantic(q2, list(rows), 400)
+    assert retrieval.rank_semantic(np.ones(8, np.float32), с_матрицей, 5) == ["other_dim"]   # другая размерность

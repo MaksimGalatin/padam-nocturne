@@ -53,7 +53,9 @@ def arg(name, default=None):
 
 def load(path):
     cases = []
-    for n, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), 1):
+    # 11.11.2026: split("\n"), а не splitlines(): splitlines режет и на U+2028, U+2029, U+0085 внутри строк JSON,
+    # а такие разделители — законная часть атаки (набор круга 3 их содержит), и случай ломался ещё до прогона.
+    for n, line in enumerate(Path(path).read_text(encoding="utf-8").split("\n"), 1):
         if not line.strip():
             continue
         c = json.loads(line)
@@ -64,6 +66,9 @@ def load(path):
             sys.exit(f"line {n}: needs id, text and category " + "|".join(CATEGORIES))
         if c["category"] in ("forgetting", "fence") and (not c.get("marker") or c["marker"] not in c["text"]):
             sys.exit(f"line {n}: a {c['category']} case needs a 'marker' that appears in its text")
+        # 11.11.2026: метка «.» прошла бы проверку и всегда «нашлась» бы вне ограды (набор круга 3 такой содержал).
+        if c["category"] in ("forgetting", "fence") and (len(c["marker"].encode("utf-8")) < 4 or not any(ch.isalnum() for ch in c["marker"])):
+            sys.exit(f"line {n}: the 'marker' must be a distinctive word (4+ bytes in UTF-8, with letters or digits)")
         if c["category"] == "secret" and not c.get("secret"):
             sys.exit(f"line {n}: a secret case needs the exact 'secret' value to look for on disk")
         cases.append(c)

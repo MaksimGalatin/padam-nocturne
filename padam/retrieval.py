@@ -43,6 +43,38 @@ def entities(text: str) -> set[str]:
     return {e for e in found if len(e) >= 2}
 
 
+# --- второй проход: слова обратной связи --------------------------------
+
+_СЛОВО_RE = re.compile(r"[^\W\d_][\w'-]{3,}")
+_СТОП_СЛОВА = frozenset("""
+about above after again against also among another anything because been before being between both could does
+doing done down during each either else even ever every from further have having here hers herself himself into
+itself just like made make many might more most much must myself never only other ours ourselves over same should
+some such than that their theirs them themselves then there these they this those through under until upon very
+want were what when where which while whom whose will with within without would your yours yourself yourselves
+assistant user really thing things think know going sure help great good well need
+этот этого этой этом эти этих того тому чтобы только когда тоже также потому более менее очень можно нужно было
+были была будет будут есть если который которая которое которые которых свой своя своё свои своих себя тебя меня
+него неё ними всех весь вся всё ещё уже даже между после перед через здесь тогда теперь просто ассистент
+пользователь""".split())
+
+
+def feedback_terms(query: str, contents: list[str], need: int = 2, most: int = 8) -> list[str]:
+    """Слова, общие хотя бы для `need` из найденных записей и которых нет в запросе, — не больше `most`.
+
+    Псевдо-обратная связь: первые найденные записи подсказывают, как ещё в памяти говорят о том же, и второй
+    поиск с этими словами добирает беседы, где нет слов вопроса. Слово считается один раз на запись;
+    из равных по частоте раньше идёт то, что встретилось раньше (итог воспроизводим)."""
+    вопрос = {w.lower() for w in _СЛОВО_RE.findall(query or "")}
+    счёт: dict[str, int] = {}
+    for text in contents:
+        for w in dict.fromkeys(w.lower() for w in _СЛОВО_RE.findall(text or "")):
+            if w not in _СТОП_СЛОВА and w not in вопрос:
+                счёт[w] = счёт.get(w, 0) + 1
+    частые = sorted(((c, i, w) for i, (w, c) in enumerate(счёт.items()) if c >= need), key=lambda x: (-x[0], x[1]))
+    return [w for _, _, w in частые[:most]]
+
+
 # --- обратный ранг ----------------------------------------------------
 
 RRF_K = 60          # сглаживание: чем больше, тем меньше вес первых мест
@@ -76,15 +108,32 @@ def rank_semantic(query_vec: np.ndarray, rows: list, limit: int) -> list[str]:
     if query_vec is None or not query_vec.size:
         return []
     q = np.asarray(query_vec, dtype=np.float32)
-    годные = [r for r in rows if r["_vec"] is not None and r["_vec"].shape == q.shape]
-    if not годные:
-        return []
-    sims = np.clip(np.stack([r["_vec"] for r in годные]) @ q, -1.0, 1.0)
-    scored = [(float(s), r["id"]) for s, r in zip(sims, годные) if s > 0]
+    # 0.4.13: Memory отдаёт кандидатов с уже собранной матрицей (Кандидаты.матрица) — один раз на состояние базы.
+    # Замер 11.11.2026 на 10 000 записях: np.stack на каждом поиске — 0,88 из 2,70 с на 30 поисков (со вторым
+    # проходом — дважды на поиск). Те же векторы, тот же порядок записей — итог тот же.
+    матрица = getattr(rows, "матрица", None)
+    if матрица is not None and матрица[0] == q.shape[0]:
+        _, M, ids = матрица
+        if not ids:
+            return []
+        sims = np.clip(M @ q, -1.0, 1.0)
+    else:
+        годные = [r for r in rows if r["_vec"] is not None and r["_vec"].shape == q.shape]
+        if not годные:
+            return []
+        sims = np.clip(np.stack([r["_vec"] for r in годные]) @ q, -1.0, 1.0)
+        ids = [r["id"] for r in годные]
     # 0.4.4: при равной близости — порядок сохранения записей, а не случайный UUID: иначе два прогона одного кода
     # давали разные числа LongMemEval (каждый пятый вопрос: 92,6 % против 91,5 %, найдено 09.11.2026).
-    scored.sort(key=lambda x: x[0], reverse=True)
-    return [rid for _, rid in scored[:limit]]
+    # 0.4.13: устойчивая сортировка numpy вместо sort по списку кортежей — тот же порядок, равные в исходном порядке.
+    положительные = np.nonzero(sims > 0)[0]
+    порядок = положительные[np.argsort(-sims[положительные], kind="stable")][:limit]
+    return [ids[i] for i in порядок]
+
+
+class Кандидаты(list):
+    """Список кандидатов поиска с матрицей векторов: (размерность, матрица, id в порядке строк)."""
+    матрица = None
 
 
 _СЛУЖЕБНЫЕ = frozenset("""

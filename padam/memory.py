@@ -805,10 +805,36 @@ class Memory:
         пометки: подписана ли владельцем (для личности и предпочтений) и спорит ли с другой.
         """
         self.__dict__["_показы"] = []
-        найдено = self._recall(self._расширить(query), scope, kind, limit, session_id, as_of)
+        запрос = self._расширить(query)
+        найдено = self._recall(запрос, scope, kind, limit, session_id, as_of)
+        if config.SEARCH_FEEDBACK and найдено:
+            найдено = self._второй_проход(запрос, найдено, scope, kind, limit, session_id, as_of)
+            if as_of is None:
+                # показанными считаются только записи итога, а не всё, что видели оба прохода
+                показано = now_iso()
+                self.__dict__["_показы"] = [
+                    ("""UPDATE memory SET access_count = access_count + 1, last_seen_at = ? WHERE id = ?""",
+                     (показано, r.id)) for r in найдено]
         self._учесть_поиск(not найдено if as_of is None else None)
         self._пометить(найдено)
         return найдено
+
+    def _второй_проход(self, запрос, найдено, scope, kind, limit, session_id, as_of):
+        """Псевдо-обратная связь (config.SEARCH_FEEDBACK): слова, общие для двух из пяти первых записей,
+        дописываются к запросу; два списка сливаются обратным рангом (k = 60), как стратегии внутри поиска.
+        Оценка записи (score) остаётся её собственной — меняется только порядок."""
+        слова = retrieval.feedback_terms(запрос, [r.content for r in найдено[:5]])
+        if not слова:
+            return найдено
+        второе = self._recall(запрос + " " + " ".join(слова), scope, kind, limit, session_id, as_of)
+        балл: dict[str, float] = {}
+        запись: dict[str, Record] = {}
+        for список in (найдено, второе):
+            for место, r in enumerate(список):
+                балл[r.id] = балл.get(r.id, 0.0) + 1.0 / (retrieval.RRF_K + место + 1)
+                запись.setdefault(r.id, r)
+        порядок = sorted(балл, key=lambda i: -балл[i])           # sorted устойчив: ничьи — в порядке первого списка
+        return [запись[i] for i in порядок[:limit]]
 
     def recall_many(self, query: str, scopes: list[str], kind: str | None = None,
                     limit: int = 10, as_of: str | datetime | None = None) -> list[Record]:
@@ -923,8 +949,28 @@ class Memory:
                  "session_id": r["session_id"], "origin": r["origin"],
                  "created_at": r["created_at"],
                  "_ents": self._сущности_записи(r["id"], r["content"])} for r in raw]
+        rows = self._с_матрицей(rows)
         кэш[params] = (отметка, sql, rows, статусы)
         return rows, статусы
+
+    @staticmethod
+    def _с_матрицей(rows):
+        """0.4.13: векторы кандидатов — одной матрицей (строки — в порядке записей), а у записи — вид на её строку:
+        память та же, а поиск не собирает матрицу заново (np.stack на каждом поиске — треть его времени)."""
+        rows = retrieval.Кандидаты(rows)
+        размеры: dict[int, int] = {}
+        for r in rows:
+            if r["_vec"] is not None:
+                размеры[r["_vec"].shape[0]] = размеры.get(r["_vec"].shape[0], 0) + 1
+        if not размеры:
+            return rows
+        dim = max(размеры, key=размеры.get)
+        годные = [r for r in rows if r["_vec"] is not None and r["_vec"].shape == (dim,)]
+        M = np.stack([r["_vec"] for r in годные])
+        for k, r in enumerate(годные):
+            r["_vec"] = M[k]
+        rows.матрица = (dim, M, [r["id"] for r in годные])
+        return rows
 
     def _ранжировать(self, query, scope, statuses, rows, статусы, session_id, limit, момент):
         """Общий хвост поиска: гибридное ранжирование и итоговая оценка (0.4.10 — вынесено из _recall)."""

@@ -12,7 +12,7 @@
 - API keys and passwords are masked before they reach the disk;
 - what comes back is fenced as data, and a forgotten record is wiped from the file; if it was sent to Arweave, destroying its own key leaves only unreadable ciphertext there.
 
-Measured, not claimed: two sealed red-team rounds with every failure published, LongMemEval-S retrieval 97.2 % in the top 5 against 96.0 % for plain BM25, 800 tests and public CI. Listed in the [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) catalog and the official MCP registry.
+Measured, not claimed: two sealed red-team rounds with every failure published, LongMemEval-S retrieval 97.0 % in the top 5 and 99.2 % in the top 10, against 96.0 % and 97.7 % for plain BM25, 804 tests and public CI. Listed in the [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) catalog and the official MCP registry.
 
 **Security reviewers:** start at [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md) — what we claim, every Red Team round with its sealed set, what still gets through, and a ten-minute check.
 
@@ -359,7 +359,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 800 passed, 10 skipped with [embed] (Python 3.14.4); 795 passed, 11 skipped without it (3.10.9); 11 Nov 2026, Windows
+python -m pytest tests/ -q        # 804 passed, 10 skipped with [embed] (Python 3.14.4); 799 passed, 11 skipped without it (3.10.9); 11 Nov 2026, Windows
 ```
 
 CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L3 tests never touch the network: Arweave and Solana are replaced by fakes. The suite never calls a local Ollama either, even when one is running: every test uses the built-in embedding, as on CI. `PADAM_TEST_LIVE_OLLAMA=1` turns on the one live check. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.
@@ -374,11 +374,14 @@ CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L
 
 | | any evidence session in top 5 | in top 10 | all evidence sessions in top 5 | in top 10 |
 |---|---|---|---|---|
-| **PADAM 0.4.12, built-in, no model** | **97.2 %** | **98.7 %** | **84.0 %** | **91.1 %** |
-| the same, only the 400 questions not used while fixing (every question except each fifth) | 97.3 % | 98.9 % | 84.6 % | 92.3 % |
+| **PADAM 0.4.13, built-in, no model** | **97.0 %** | **99.2 %** | **86.6 %** | **93.0 %** |
+| the same, only the 400 questions not used while fixing (every question except each fifth) | 97.6 % | 99.2 % | 87.8 % | 93.9 % |
+| PADAM 0.4.12, built-in (no second pass) | 97.2 % | 98.7 % | 84.0 % | 91.1 % |
 | PADAM 0.4.6 – 0.4.11, built-in | 96.8 % | 98.7 % | 83.0 % | 90.9 % |
 | plain BM25, no PADAM | 96.0 % | 97.7 % | 79.8 % | 88.5 % |
 | PADAM 0.4.4 / 0.4.5, built-in | 91.7 % | 96.4 % | 74.7 % | 85.1 % |
+
+**0.4.13: a second search pass, on by default.** Words shared by at least two of the first five records found are added to the query, and the two result lists are merged by reciprocal rank. It finds *all* the sessions a question needs more often: all@5 84.0 → 86.6 % (17 questions won, 5 lost), all@10 91.1 → 93.0 %, any@10 98.7 → 99.2 %; any@5 dips 97.2 → 97.0 % (2 won, 3 lost), and on the 400 questions not used while fixing it rises 97.3 → 97.6 %. It costs no money — it is a second local search — and roughly doubles search time. `PADAM_SEARCH_FEEDBACK=0` turns it off. Measured twice: a side-by-side script and a run of the product code agree on all 500 questions (`results_0.4.13/`).
 
 **0.4.12: function words left out of the word query.** *what*, *did*, *the*, *my* (and *что*, *как*…) match almost every record, so BM25 was computed over the whole store and they diluted the rare words. Without them: 3 questions won and 1 lost on any@5, 10 won and 5 lost on all@5, better on all four measures on the 400 questions not used while fixing, and search over 10,000 records twice as fast (median 46 → 25 ms). A side-by-side script and the product run agree on every one of the 500 questions (`results_0.4.12/`).
 
