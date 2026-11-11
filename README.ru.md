@@ -347,7 +347,7 @@ python -m padam rekey                     # сменить пароль
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 783 passed, 10 skipped с [embed] (Python 3.14.4); 778 passed, 11 skipped без него (3.10.9); 10.11.2026, Windows
+python -m pytest tests/ -q        # 788 passed, 10 skipped с [embed] (Python 3.14.4); 783 passed, 11 skipped без него (3.10.9); 11.11.2026, Windows
 ```
 
 CI прогоняет тесты на каждый push под Ubuntu и Windows с Python 3.10–3.13. Тесты L3 не ходят в сеть: Arweave и Solana заменены подделками. Локальную Ollama набор тоже не зовёт, даже если она запущена: каждый тест работает на встроенных векторах, как на CI. `PADAM_TEST_LIVE_OLLAMA=1` включает единственную живую проверку. Схема Меркла дополнительно сверена с закреплением CODE Eternal на TypeScript — листья и корень совпадают.

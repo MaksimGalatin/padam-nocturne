@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (0.4.10)
+## 0.4.10 — 11 November 2026
 
 ### Performance
 - **Search no longer re-reads the whole memory on every query.** Profiling on 10,000 records (11 November) showed 68 % of search time in one SELECT that loaded and unpacked every active record — text and vector — for each query. Candidates are now kept in process memory until the database changes: the cache is checked against the store stamp (own commits plus `PRAGMA data_version`), so any write, edit, forget, or a commit from another process invalidates it. Search counters (`access_count`, daily search stats) are written in one transaction through `Store.counters` and no longer reset the cache or the vector cache. Median search at 10,000 records: 213 ms → 62 ms. Results are unchanged: every fifth LongMemEval-S question re-run gives the same records and ranks on all 100. Forgetting drops the cache at once, so forgotten text does not stay in process memory until the next search (tested). Five new tests in `tests/test_search_cache_1111.py`.
