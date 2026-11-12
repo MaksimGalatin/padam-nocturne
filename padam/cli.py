@@ -567,7 +567,8 @@ def cmd_protect_keys(m: Memory, a) -> int:
         итог = keyvault.protect_existing(m, п)
     except keyvault.WrongPassphrase as e:
         print(e); return 1
-    print(json.dumps(итог, ensure_ascii=False))
+    print(t(f"Защита ключей включена: завёрнуто {итог['wrapped']}, открытых осталось {итог['plain_left']}.",
+            f"Key protection is on: {итог['wrapped']} wrapped, {итог['plain_left']} left unwrapped."))
     print(f"{DIM}" + t("Пароль не хранится нигде. Без него ключи записей не открыть — "
                        "ни вам, ни нам. Запишите его там, где храните важное.",
                        "The passphrase is stored nowhere. Without it the record keys cannot be opened — "
@@ -586,7 +587,7 @@ def cmd_rekey(m: Memory, a) -> int:
                            _пароль(t("Новый пароль: ", "New passphrase: "), повтор=True))
     except keyvault.WrongPassphrase as e:
         print(e); return 1
-    print(json.dumps({"перезавёрнуто": n}, ensure_ascii=False))
+    print(t(f"Пароль сменён: перезавёрнуто ключей — {n}.", f"Passphrase changed: {n} keys re-wrapped."))
     return 0
 
 

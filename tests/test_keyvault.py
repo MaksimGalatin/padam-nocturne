@@ -93,7 +93,7 @@ def test_protect_existing_leaves_no_plain_key_in_the_file(mem, tmp_path):
     plain_bytes = {mid: bytes.fromhex(v) for mid, v in старые.items()}
 
     итог = keyvault.protect_existing(mem, ПАРОЛЬ)
-    assert итог == {"включена_сейчас": True, "завёрнуто": 2, "открытых_осталось": 0}
+    assert итог == {"enabled_now": True, "wrapped": 2, "plain_left": 0}
     for mid, v in _ключи(mem).items():
         assert v.startswith("w1:")
         assert anchor.key_for(mem, mid) == plain_bytes[mid], "ключ тот же — шифротексты в Arweave читаются"
@@ -110,7 +110,7 @@ def test_protect_twice_is_harmless_and_checks_passphrase(mem):
     anchor.ensure_keys(mem)
     keyvault.protect_existing(mem, ПАРОЛЬ)
     keyvault.lock(mem)
-    assert keyvault.protect_existing(mem, ПАРОЛЬ)["завёрнуто"] == 0
+    assert keyvault.protect_existing(mem, ПАРОЛЬ)["wrapped"] == 0
     keyvault.lock(mem)
     with pytest.raises(keyvault.WrongPassphrase):
         keyvault.protect_existing(mem, "чужой пароль")
@@ -166,6 +166,6 @@ def test_protect_existing_400_keys_no_residue_in_free_pages(mem, tmp_path):
                 (f"id{i}", secrets.token_bytes(32).hex(), now_iso()))
     mem.store.conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     старые = list(_ключи(mem).values())
-    assert keyvault.protect_existing(mem, ПАРОЛЬ)["завёрнуто"] == 400
+    assert keyvault.protect_existing(mem, ПАРОЛЬ)["wrapped"] == 400
     сырьё = b"".join(p.read_bytes() for p in tmp_path.iterdir() if p.name.startswith("t.db"))
     assert sum(k.encode() in сырьё for k in старые) == 0

@@ -12,6 +12,7 @@ import numpy as np
 
 from . import classify, config, embeddings, guard, integrity, retrieval, safety
 from .store import Store, new_id, now_iso, pack, parse_ts, unpack
+from .i18n import t
 
 
 @dataclass
@@ -1236,6 +1237,10 @@ class Memory:
             d.pop("owner_sig", None)          # подпись имеет смысл только с ключом этой машины
             h = d.pop("content_hash", None)
             d["content_hash"] = h.hex() if h else None
+            # 0.4.14: колонка базы называется по-русски, а выгрузку читают люди по всему миру — в файле
+            # поле зовётся fact_key. import_ его не читает: ключ факта пересчитывается из текста заново.
+            if "факт_ключ" in d:
+                d["fact_key"] = d.pop("факт_ключ")
             records.append(d)
 
         sessions = [dict(r) for r in self.store.query(
@@ -1269,7 +1274,7 @@ class Memory:
     def import_(self, payload: dict, overwrite: bool = False) -> int:
         """Загрузка выгрузки обратно. Возвращает число внесённых записей."""
         if payload.get("format") != "padam-export/1":
-            raise ValueError("неизвестный формат выгрузки")
+            raise ValueError(t("неизвестный формат выгрузки", "unknown export format"))
         added = 0
         for rec in payload.get("memory", []):
             # Импорт идёт теми же воротами, что и обычная запись: секреты вычищаются, размер ограничен.

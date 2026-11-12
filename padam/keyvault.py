@@ -31,6 +31,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
 from .store import now_iso
+from .i18n import t
 
 PREFIX = "w1:"
 ENV = "PADAM_KEY_PASSPHRASE"
@@ -63,7 +64,7 @@ class WrongPassphrase(KeyVaultError):
 
 def _derive(passphrase: str, salt: bytes, n: int = SCRYPT_N, r: int = SCRYPT_R, p: int = SCRYPT_P) -> bytes:
     if not passphrase:
-        raise KeyVaultError("пустой пароль недопустим")
+        raise KeyVaultError(t("пустой пароль недопустим", "an empty passphrase is not allowed"))
     return Scrypt(salt=salt, length=32, n=n, r=r, p=p).derive(passphrase.encode("utf-8"))
 
 
@@ -87,7 +88,8 @@ def is_enabled(memory) -> bool:
 def enable(memory, passphrase: str) -> None:
     """Включить защиту для этой базы: соль, параметры, проверочная запись."""
     if is_enabled(memory):
-        raise KeyVaultError("защита уже включена; для смены пароля — rekey()")
+        raise KeyVaultError(t("защита уже включена; для смены пароля — rekey()",
+                               "protection is already on; use rekey() to change the passphrase"))
     salt = secrets.token_bytes(16)
     kek = _derive(passphrase, salt)
     nonce = secrets.token_bytes(12)
@@ -111,14 +113,16 @@ def unlock(memory, passphrase: Optional[str] = None) -> bool:
         return True
     passphrase = passphrase if passphrase is not None else os.environ.get(ENV)
     if not passphrase:
-        raise Locked(f"ключи записей защищены паролем: задайте {ENV} или запустите с --ask-passphrase")
+        raise Locked(t(f"ключи записей защищены паролем: задайте {ENV} или запустите с --ask-passphrase",
+                         f"record keys are protected by a passphrase: set {ENV} or run with --ask-passphrase"))
     _, n, r, p = row["kdf"].split(":")
     kek = _derive(passphrase, bytes.fromhex(row["salt_hex"]), int(n), int(r), int(p))
     check = bytes.fromhex(row["check_hex"])
     try:
         AESGCM(kek).decrypt(check[:12], check[12:], _CHECK_AAD)
     except InvalidTag:
-        raise WrongPassphrase("пароль не подходит к этой базе") from None
+        raise WrongPassphrase(t("пароль не подходит к этой базе",
+                                 "the passphrase does not match this database")) from None
     memory._kek = kek
     return True
 
@@ -132,7 +136,8 @@ def _kek(memory) -> bytes:
     if not getattr(memory, "_kek", None):
         unlock(memory)          # PADAM_KEY_PASSPHRASE, если задана
     if not getattr(memory, "_kek", None):
-        raise Locked(f"ключи записей защищены паролем: задайте {ENV} или запустите с --ask-passphrase")
+        raise Locked(t(f"ключи записей защищены паролем: задайте {ENV} или запустите с --ask-passphrase",
+                         f"record keys are protected by a passphrase: set {ENV} or run with --ask-passphrase"))
     return memory._kek
 
 
@@ -146,8 +151,8 @@ def unwrap(memory, memory_id: str, key_ref: str) -> bytes:
     try:
         return AESGCM(_kek(memory)).decrypt(blob[:12], blob[12:], _aad(memory_id))
     except InvalidTag:
-        raise KeyVaultError(f"обёртка ключа записи {memory_id} не сходится "
-                            "(чужая запись или повреждение)") from None
+        raise KeyVaultError(t(f"обёртка ключа записи {memory_id} не сходится (чужая запись или повреждение)",
+                              f"the wrapped key of record {memory_id} does not verify (another record's key or damage)")) from None
 
 
 def store_form(memory, memory_id: str, key: bytes) -> str:
@@ -192,7 +197,8 @@ def protect_existing(memory, passphrase: str) -> dict:
         conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         conn.execute("VACUUM")
         conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-    return {"включена_сейчас": enabled_now, "завёрнуто": len(rows), "открытых_осталось": plain_count(memory)}
+    # 0.4.14: ключи ответа — английские, как во всех машинных ответах PADAM (CLI печатает их словами на языке человека).
+    return {"enabled_now": enabled_now, "wrapped": len(rows), "plain_left": plain_count(memory)}
 
 
 def rekey(memory, old_passphrase: str, new_passphrase: str) -> int:

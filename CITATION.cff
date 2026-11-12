@@ -11,7 +11,7 @@ authors:
 repository-code: "https://github.com/MaksimGalatin/padam-nocturne"
 url: "https://aifa.works/nocturne"
 license: AGPL-3.0-only
-version: "0.4.13"
+version: "0.4.14"
 date-released: "2026-11-12"
 keywords:
   - AI agents

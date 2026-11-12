@@ -45,6 +45,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from . import keyvault
 from .memory import Memory
 from .store import now_iso
+from .i18n import t
 
 # ---------------------------------------------------------------- схема L3
 
@@ -109,7 +110,7 @@ def node(left: bytes, right: bytes) -> bytes:
 
 def merkle_root(leaves: list[bytes]) -> bytes:
     if not leaves:
-        raise ValueError("пустое дерево: нечего закреплять")
+        raise ValueError(t("пустое дерево: нечего закреплять", "empty tree: nothing to anchor"))
     level = list(leaves)
     while len(level) > 1:
         nxt = [node(level[i], level[i + 1]) for i in range(0, len(level) - 1, 2)]
@@ -282,7 +283,7 @@ def solana_memo(memo: str, keypair_path: str, network: str = "devnet") -> tuple[
     # имя сети проверяется ДО импорта solders: защита от случайного mainnet не должна зависеть
     # от того, установлен ли extra [l3] (08.10.2026: в установке без [l3] тест падал на импорте)
     if network not in RPC:
-        raise ValueError(f"сеть {network!r}: допустимо devnet или mainnet")
+        raise ValueError(t(f"сеть {network!r}: допустимо devnet или mainnet", f"network {network!r}: use devnet or mainnet"))
     from solders.hash import Hash
     from solders.instruction import AccountMeta, Instruction
     from solders.keypair import Keypair
@@ -303,10 +304,10 @@ def solana_memo(memo: str, keypair_path: str, network: str = "devnet") -> tuple[
         st = _rpc(url, "getSignatureStatuses", [[sig]])["value"][0]
         if st and st.get("confirmationStatus") in ("confirmed", "finalized"):
             if st.get("err"):
-                raise RuntimeError(f"транзакция упала: {st['err']}")
+                raise RuntimeError(t(f"транзакция упала: {st['err']}", f"transaction failed: {st['err']}"))
             return sig, int(st["slot"])
         time.sleep(2)
-    raise TimeoutError(f"не подтверждена за 120 с: {sig}")
+    raise TimeoutError(t(f"не подтверждена за 120 с: {sig}", f"not confirmed within 120 s: {sig}"))
 
 
 def read_memo(sig: str, network: str = "devnet") -> str:
@@ -317,7 +318,7 @@ def read_memo(sig: str, network: str = "devnet") -> str:
     for line in (tx or {}).get("meta", {}).get("logMessages", []):
         if "Memo" in line and MEMO_PREFIX in line:
             return line.split('"', 1)[1].rsplit('"', 1)[0] if '"' in line else line
-    raise LookupError("заметка PADAM-NOCTURNE в транзакции не найдена")
+    raise LookupError(t("заметка PADAM-NOCTURNE в транзакции не найдена", "no PADAM-NOCTURNE memo found in the transaction"))
 
 
 # ---------------------------------------------------------------- прогон
@@ -344,12 +345,12 @@ def run_l3(memory: Memory, uploader: Optional[Uploader] = None,
               "forgets": sum(1 for k, _ in b.entries if k == "forget"),
               "bundle_bytes": len(b.payload), "network": network}
     if len(b.payload) > TURBO_FREE_LIMIT and not allow_paid_arweave:
-        raise RuntimeError(f"пакет {len(b.payload)} байт > бесплатного порога Turbo "
-                           f"{TURBO_FREE_LIMIT}: заливка платная, нужен allow_paid_arweave=True")
+        raise RuntimeError(t(f"пакет {len(b.payload)} байт > бесплатного порога Turbo {TURBO_FREE_LIMIT}: заливка платная, нужен allow_paid_arweave=True",
+                             f"bundle of {len(b.payload)} bytes > Turbo free limit {TURBO_FREE_LIMIT}: the upload is paid, set allow_paid_arweave=True"))
     if dry_run:
         return report
     if uploader is None or anchorer is None:
-        raise ValueError("нужны uploader и anchorer (или dry_run=True)")
+        raise ValueError(t("нужны uploader и anchorer (или dry_run=True)", "uploader and anchorer are required (or dry_run=True)"))
     ar_tx = uploader(b.payload, {"Content-Type": "application/json", "App-Name": "PADAM-Nocturne",
                                  "Type": "padam-l3-bundle", "Merkle-Root": b.root.hex()})
     memo = f"{MEMO_PREFIX} root={b.root.hex()} n={len(b.leaves)} ar={ar_tx} d={now_iso()[:10]}"

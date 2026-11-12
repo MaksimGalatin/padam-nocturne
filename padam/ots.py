@@ -19,6 +19,7 @@ import hashlib
 import io
 import os
 from typing import Iterable
+from .i18n import t
 
 # Общественные календари — те же, что у официального клиента `ots` по умолчанию.
 CALENDARS = (
@@ -38,7 +39,8 @@ def _lib():
         from opentimestamps.core import notary, op, serialize, timestamp  # noqa: F401
         from opentimestamps import calendar  # noqa: F401
     except ImportError as e:                                    # pragma: no cover — зависит от установки
-        raise OtsError("нужен пакет opentimestamps: pip install padam-nocturne[l3]") from e
+        raise OtsError(t("нужен пакет opentimestamps: pip install padam-nocturne[l3]",
+                          "the opentimestamps package is required: pip install padam-nocturne[l3]")) from e
     return notary, op, serialize, timestamp, calendar
 
 
@@ -47,7 +49,7 @@ def stamp(digest: bytes, calendars: Iterable[str] = CALENDARS, timeout: int = 15
 
     submit(url, msg, timeout) -> Timestamp — для тестов без сети; по умолчанию RemoteCalendar(url).submit."""
     if len(digest) != 32:
-        raise OtsError("нужен SHA-256: 32 байта")
+        raise OtsError(t("нужен SHA-256: 32 байта", "a SHA-256 digest is required: 32 bytes"))
     notary, op, serialize, timestamp, calendar = _lib()
     файл = timestamp.DetachedTimestampFile(op.OpSHA256(), timestamp.Timestamp(digest))
     вершина = файл.timestamp.ops.add(op.OpAppend(os.urandom(16))).ops.add(op.OpSHA256())
@@ -60,7 +62,8 @@ def stamp(digest: bytes, calendars: Iterable[str] = CALENDARS, timeout: int = 15
         except Exception as e:                                  # календарь недоступен — пробуем следующий
             ошибки.append(f"{url}: {type(e).__name__}")
     if not принято:
-        raise OtsError("ни один календарь OpenTimestamps не принял отпечаток: " + "; ".join(ошибки))
+        raise OtsError(t("ни один календарь OpenTimestamps не принял отпечаток: ",
+                      "no OpenTimestamps calendar accepted the digest: ") + "; ".join(ошибки))
     buf = io.BytesIO()
     файл.serialize(serialize.StreamSerializationContext(buf))
     return buf.getvalue()

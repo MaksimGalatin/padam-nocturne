@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import secrets
+from .i18n import t
 
 ПРЕФИКС = "padam-share-1"
 
@@ -31,7 +32,7 @@ def _умножить(a: int, b: int) -> int:
 
 def _обратный(a: int) -> int:
     if a == 0:
-        raise ZeroDivisionError("в GF(256) у нуля нет обратного")
+        raise ZeroDivisionError(t("в GF(256) у нуля нет обратного", "zero has no inverse in GF(256)"))
     # a^254 = a^-1 в GF(256)
     итог, степень, основание = 1, 254, a
     while степень:
@@ -45,9 +46,9 @@ def _обратный(a: int) -> int:
 def split(secret: bytes, shares: int, threshold: int) -> list[str]:
     """Делит секрет на `shares` долей, любые `threshold` из которых его восстанавливают."""
     if not 2 <= threshold <= shares <= 255:
-        raise ValueError("нужно 2 ≤ порог ≤ число долей ≤ 255")
+        raise ValueError(t("нужно 2 ≤ порог ≤ число долей ≤ 255", "need 2 ≤ threshold ≤ number of shares ≤ 255"))
     if not secret:
-        raise ValueError("пустой секрет делить нечего")
+        raise ValueError(t("пустой секрет делить нечего", "nothing to split: the secret is empty"))
     # Четыре байта контрольной суммы: подменённая или чужая доля даёт ошибку, а не тихо неверную фразу.
     secret = secret + hashlib.sha256(secret).digest()[:4]
     доли = [bytearray() for _ in range(shares)]
@@ -65,7 +66,8 @@ def split(secret: bytes, shares: int, threshold: int) -> list[str]:
 def _разобрать(доля: str) -> tuple[int, int, bytes]:
     части = доля.strip().split("-")
     if len(части) != 6 or "-".join(части[:3]) != ПРЕФИКС:
-        raise ValueError("это не доля padam: ожидается padam-share-1-<порог>-<номер>-<hex>")
+        raise ValueError(t("это не доля padam: ожидается padam-share-1-<порог>-<номер>-<hex>",
+                            "not a padam share: expected padam-share-1-<threshold>-<index>-<hex>"))
     return int(части[3]), int(части[4]), bytes.fromhex(части[5])
 
 
@@ -74,17 +76,18 @@ def combine(shares: list[str]) -> bytes:
     разобранные = [_разобрать(д) for д in shares]
     пороги = {п for п, _, _ in разобранные}
     if len(пороги) != 1:
-        raise ValueError("доли от разных разделений")
+        raise ValueError(t("доли от разных разделений", "the shares come from different splits"))
     порог = пороги.pop()
     точки: dict[int, bytes] = {}
     for _, номер, данные in разобранные:
         точки[номер] = данные
     if len(точки) < порог:
-        raise ValueError(f"нужно не меньше {порог} разных долей, есть {len(точки)}")
+        raise ValueError(t(f"нужно не меньше {порог} разных долей, есть {len(точки)}",
+                            f"need at least {порог} distinct shares, got {len(точки)}"))
     выбранные = list(точки.items())[:порог]
     длины = {len(д) for _, д in выбранные}
     if len(длины) != 1:
-        raise ValueError("доли разной длины")
+        raise ValueError(t("доли разной длины", "the shares have different lengths"))
     длина = длины.pop()
     секрет = bytearray()
     for i in range(длина):
@@ -100,5 +103,6 @@ def combine(shares: list[str]) -> bytes:
         секрет.append(значение)
     тело, сумма = bytes(секрет[:-4]), bytes(секрет[-4:])
     if hashlib.sha256(тело).digest()[:4] != сумма:
-        raise ValueError("доли не сходятся: одна из них неверна или от другого разделения")
+        raise ValueError(t("доли не сходятся: одна из них неверна или от другого разделения",
+                            "the shares do not agree: one is wrong or comes from another split"))
     return тело
