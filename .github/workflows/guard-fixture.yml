@@ -35,7 +35,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install "uv>=0.5"
-      - name: Guard environment (as Guard's CI: uv sync --frozen --no-dev --group ci-test)
+      - name: "Guard environment, as Guard's CI does (uv sync --frozen --no-dev --group ci-test)"
         working-directory: hol-guard
         run: uv sync --frozen --no-dev --group ci-test --python 3.12
       - name: Trust bindings
