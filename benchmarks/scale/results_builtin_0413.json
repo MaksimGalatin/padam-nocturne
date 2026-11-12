@@ -1,0 +1,33 @@
+{
+ "padam_version": "0.4.13 (release, commit d723e7e code)",
+ "embedding": "builtin",
+ "python": "3.14.4",
+ "texts": "LongMemEval-S user turns",
+ "rows": [
+  {
+   "records": 1000,
+   "write_seconds": 3.7,
+   "write_ms_per_record": 3.69,
+   "search_ms_median": 5.3,
+   "search_ms_p95": 7.3,
+   "db_mb": 4.7
+  },
+  {
+   "records": 10000,
+   "write_seconds": 63.2,
+   "write_ms_per_record": 6.32,
+   "search_ms_median": 15.2,
+   "search_ms_p95": 24.3,
+   "db_mb": 45.2
+  },
+  {
+   "records": 100000,
+   "write_seconds": 570.2,
+   "write_ms_per_record": 5.7,
+   "search_ms_median": 97.4,
+   "search_ms_p95": 161.5,
+   "db_mb": 375.2
+  }
+ ],
+ "note": "12 Nov 2026 ~03:55, pinned to 4 CPU cores (4-7) at normal priority; the site-audit browser workers ran on other cores (14-27) and shared the disk. Not a fully idle machine, but no other job on these cores."
+}
