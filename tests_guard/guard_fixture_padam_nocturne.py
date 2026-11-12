@@ -92,7 +92,31 @@ from codex_plugin_scanner.guard.store import GuardStore
 
 from .local_cli_native_fixture import native_local_cli_grant_resident, native_test_guard_home  # noqa: F401
 from .mcp_extension_driver import apply_contributed_mcp_decision, apply_local_mcp_extension_decision
-from .mcp_policy_catalog_fixture import admit_mcp_layers
+import pytest as _pytest
+
+from .mcp_policy_catalog_fixture import _CATALOG_HOMES, _DELIVERY, admit_mcp_layers
+
+# Guard prepares the signed MCP policy catalog only for test modules on a fixed list
+# (tests/mcp_policy_catalog_fixture.py::native_mcp_catalog_admission). Ours is not on it, so prepare the same
+# delivery here for the decision tests, exactly as that fixture does.
+_NEEDS_CATALOG = {
+    "test_padam_nocturne_stays_inert_until_local_admin_enable",
+    "test_padam_nocturne_enabled_raises_write_to_review",
+    "test_padam_nocturne_signed_cloud_enable_does_not_activate",
+    "test_padam_nocturne_enabled_search_keeps_guard_handling",
+    "test_padam_nocturne_enabled_unlisted_tool_goes_to_review",
+}
+
+
+@_pytest.fixture(autouse=True)
+def _padam_catalog_admission(request):
+    if request.function.__name__ not in _NEEDS_CATALOG:
+        yield
+        return
+    _DELIVERY[:] = [request.getfixturevalue("mcp_policy_delivery")]
+    yield
+    _DELIVERY.clear()
+    _CATALOG_HOMES.clear()
 
 _EXTENSION = "command.mcp-padam-nocturne"
 
