@@ -1,0 +1,45 @@
+name: guard-fixture
+
+# Controlled fixture for the HOL Guard entry mcp.padam-nocturne.
+# Runs HOL Guard's own contribution checks (pinned commit) plus our fixture
+# tests_guard/guard_fixture_padam_nocturne.py against the catalog entry that Guard ships.
+# Guard's code runs here, on GitHub's runner — never on a maintainer machine.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "tests_guard/**"
+      - ".github/workflows/guard-fixture.yml"
+
+permissions:
+  contents: read
+
+env:
+  HOL_GUARD_REF: adb0437213280cce60458c1f0da8600b60830009
+
+jobs:
+  fixture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: hashgraph-online/hol-guard
+          ref: ${{ env.HOL_GUARD_REF }}
+          path: hol-guard
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      # Only the runtime dependencies HOL Guard declares; its build hook is not run.
+      - run: >
+          pip install "rich>=14.0,<15" "cryptography>=50.0.0" "sigstore>=4.5,<5" "keyring>=25.0"
+          "packaging>=24.0" "jsonschema>=4.26.0" "pyyaml>=6.0.3" "requests>=2.32,<3"
+          "typing_extensions>=4.15.0" "mcp>=1.30.0,<2" "tomlkit>=0.13.3,<1" "pytest>=8"
+      - run: cp tests_guard/guard_fixture_padam_nocturne.py hol-guard/tests/test_guard_mcp_padam_nocturne.py
+      - name: HOL Guard contribution checks + PADAM NOCTURNE fixture
+        working-directory: hol-guard
+        env:
+          PYTHONPATH: src:.
+        run: python -m pytest -q -p no:cacheprovider tests/test_guard_mcp_padam_nocturne.py tests/test_guard_mcp_server_contribution.py

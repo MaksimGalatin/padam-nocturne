@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### HOL Guard fixture
+- New workflow `.github/workflows/guard-fixture.yml` runs HOL Guard's own MCP contribution checks at a pinned commit together with `tests_guard/guard_fixture_padam_nocturne.py` against the `mcp.padam-nocturne` catalog entry: external and opt-in, the exact `uvx padam-nocturne` launch, search/timeline/stats inherit, write/confirm/refute/sleep/export and any unlisted tool review. Guard's code runs on GitHub's runner only; it checks the shipped entry, not a live agent session.
+
 ## 0.4.14 — 12 November 2026
 
 ### Language
