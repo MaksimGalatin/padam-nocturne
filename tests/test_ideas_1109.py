@@ -170,7 +170,7 @@ def test_shamir_any_threshold_opens_fewer_do_not():
     assert len(доли) == 5 and all(д.startswith("padam-share-1-3-") for д in доли)
     for выбор in ([0, 1, 2], [4, 2, 0], [1, 3, 4]):
         assert legacy.combine([доли[i] for i in выбор]) == фраза
-    with pytest.raises(ValueError, match="не меньше 3"):
+    with pytest.raises(ValueError, match="не меньше 3|at least 3"):  # 0.4.14: сообщение на языке пользователя
         legacy.combine(доли[:2])
     испорченная = доли[0][:-2] + ("00" if not доли[0].endswith("00") else "11")
     with pytest.raises(ValueError):

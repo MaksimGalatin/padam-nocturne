@@ -7,6 +7,7 @@
 - `padam protect-keys` and `padam rekey` print a sentence in the reader's language instead of a JSON object with Russian keys; `keyvault.protect_existing()` returns English keys (`enabled_now`, `wrapped`, `plain_left`).
 - In `padam export` and the MCP `padam_export` the field `факт_ключ` is now `fact_key`. Import does not read it (the fact key is recomputed from the text), so older exports still load.
 - Checked by running every CLI command, all 8 MCP tools and the error paths with `PADAM_LANG=en`: no Cyrillic in the output. New test: `tests/test_english_output_0414.py`. Russian-language attack patterns and database column names stay Russian by design: they recognise Russian text and are not shown to people.
+- `tests/test_ideas_1109.py` matched the Russian error text and failed on English systems (CI); it now accepts either language. The suite passes with both `PADAM_LANG=en` and `PADAM_LANG=ru` (906 passed, 10 skipped each).
 
 ### Packaging
 - The licence is declared as an SPDX expression (`license = "AGPL-3.0-only"`, `license-files = ["LICENSE"]`) instead of the table form and the licence classifier that setuptools deprecates (support ends in February 2027). The build gives no warnings; the wheel's metadata reads `License-Expression: AGPL-3.0-only` and carries `LICENSE`.
