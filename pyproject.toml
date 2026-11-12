@@ -3,14 +3,14 @@ name = "padam-nocturne"
 version = "0.4.13"
 description = "Persistent memory for AI agents with sleep-style consolidation (NOCTURNE) and a verifiable eternal layer on Arweave + Solana"
 readme = "README.md"
-license = { text = "AGPL-3.0-only" }
+license = "AGPL-3.0-only"
+license-files = ["LICENSE"]
 authors = [{ name = "Maksim Galatin", email = "contact@codeofdigitaleternity.com" }]
 requires-python = ">=3.10"
 keywords = ["mcp", "model-context-protocol", "ai-agents", "memory", "llm", "sqlite", "arweave", "solana"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: GNU Affero General Public License v3",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",

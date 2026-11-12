@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Packaging
+- The licence is declared as an SPDX expression (`license = "AGPL-3.0-only"`, `license-files = ["LICENSE"]`) instead of the table form and the licence classifier that setuptools deprecates (support ends in February 2027). The build gives no warnings; the wheel's metadata reads `License-Expression: AGPL-3.0-only` and carries `LICENSE`.
+
 ## 0.4.13 — 12 November 2026
 
 ### Security — Red Team round 3
