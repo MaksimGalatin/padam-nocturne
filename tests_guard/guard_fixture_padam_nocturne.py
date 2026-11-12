@@ -62,3 +62,128 @@ def test_padam_nocturne_unlisted_tools_default_to_review() -> None:
 def test_padam_nocturne_declares_every_server_tool() -> None:
     declared = {item["name"] for item in _payload()["tools"] if isinstance(item, dict)}
     assert _READ_ONLY | _REVIEW <= declared
+
+
+# --- Review bar (docs/guard/mcp-server-contributions.md): inert until local-admin enable; a this-device grant wins.
+# Same structure as Guard's tests/test_guard_mcp_server_grants.py, applied to mcp.padam-nocturne.
+
+from pathlib import Path as _Path
+
+from codex_plugin_scanner.guard.local_cli_trust import utc_now
+from codex_plugin_scanner.guard.mcp_tool_calls import build_tool_call_artifact
+from codex_plugin_scanner.guard.runtime.command_extensions import BUILT_IN_COMMAND_EXTENSION_REGISTRY
+from codex_plugin_scanner.guard.runtime.extension_control_authority import (
+    AuthorityHealth,
+    ExtensionControlAuthorityView,
+)
+from codex_plugin_scanner.guard.runtime.extension_control_contract import (
+    CONTROL_SCHEMA_VERSION,
+    ControlLayerKind,
+    ControlState,
+    ControlTarget,
+    ControlTargetKind,
+    ExtensionControl,
+    ExtensionControlLayer,
+)
+from codex_plugin_scanner.guard.runtime.local_cli_commands import LocalCliCommand
+from codex_plugin_scanner.guard.runtime.local_cli_identity import UnlistedCliIdentity
+from codex_plugin_scanner.guard.runtime.mcp_protection import build_mcp_server_identity
+from codex_plugin_scanner.guard.store import GuardStore
+
+from .local_cli_native_fixture import native_local_cli_grant_resident, native_test_guard_home  # noqa: F401
+from .mcp_extension_driver import apply_contributed_mcp_decision, apply_local_mcp_extension_decision
+from .mcp_policy_catalog_fixture import admit_mcp_layers
+
+_EXTENSION = "command.mcp-padam-nocturne"
+
+
+def _padam_identity():
+    return build_mcp_server_identity(config_path="", command="uvx", args=("padam-nocturne",), transport="stdio")
+
+
+def _padam_artifact(tool_name: str):
+    return build_tool_call_artifact(
+        harness="codex",
+        server_name="padam",
+        tool_name=tool_name,
+        source_scope="project",
+        config_path=".mcp.json",
+        transport="stdio",
+        server_identity=_padam_identity(),
+    )
+
+
+def _layer(kind: ControlLayerKind) -> ExtensionControlLayer:
+    return ExtensionControlLayer(
+        schema_version=CONTROL_SCHEMA_VERSION,
+        kind=kind,
+        catalog_digest=BUILT_IN_COMMAND_EXTENSION_REGISTRY.catalog_digest,
+        global_lockdown=False,
+        controls=(ExtensionControl(target=ControlTarget(ControlTargetKind.EXTENSION, _EXTENSION), state=ControlState.ENABLED),),
+    )
+
+
+class _AuthorityStore:
+    def __init__(self, layers=()) -> None:
+        self.layers = tuple(layers)
+        self.guard_home = native_test_guard_home()
+        self.path = self.guard_home / "guard.db"
+        admit_mcp_layers(self, self.layers)
+
+    def has_local_cli_grant_rules(self) -> bool:
+        return False
+
+    def read_extension_control_authority_for_registry(self, registry, **_kwargs) -> ExtensionControlAuthorityView:
+        digest = getattr(registry, "catalog_digest", "0" * 64)
+        return ExtensionControlAuthorityView(health=AuthorityHealth.PROTECTED, revision=1, catalog_digest=digest, layers=self.layers)
+
+
+def test_padam_nocturne_stays_inert_until_local_admin_enable() -> None:
+    assert apply_contributed_mcp_decision(_AuthorityStore(), _padam_artifact("padam_write"), "allow") is None
+
+
+def test_padam_nocturne_enabled_raises_write_to_review() -> None:
+    enabled = _AuthorityStore((_layer(ControlLayerKind.LOCAL_ADMIN),))
+    decision = apply_contributed_mcp_decision(enabled, _padam_artifact("padam_write"), "allow")
+    assert decision is not None and decision[:2] == ("review", "catalog-mcp-extension")
+
+
+def test_padam_nocturne_signed_cloud_enable_does_not_activate() -> None:
+    cloud = _AuthorityStore((_layer(ControlLayerKind.SIGNED_CLOUD),))
+    assert apply_contributed_mcp_decision(cloud, _padam_artifact("padam_write"), "allow") is None
+
+
+def test_padam_nocturne_enabled_search_keeps_guard_handling() -> None:
+    enabled = _AuthorityStore((_layer(ControlLayerKind.LOCAL_ADMIN),))
+    assert apply_contributed_mcp_decision(enabled, _padam_artifact("padam_search"), "allow") is None
+
+
+def test_padam_nocturne_enabled_unlisted_tool_goes_to_review() -> None:
+    enabled = _AuthorityStore((_layer(ControlLayerKind.LOCAL_ADMIN),))
+    decision = apply_contributed_mcp_decision(enabled, _padam_artifact("padam_erase_everything"), "allow")
+    assert decision is not None and decision[:2] == ("review", "catalog-mcp-extension")
+
+
+def test_padam_nocturne_this_device_grant_wins(tmp_path: _Path) -> None:
+    identity = _padam_identity()
+    store = GuardStore(tmp_path / "guard-home")
+    cli_identity = UnlistedCliIdentity(
+        cli_id=f"local-cli.mcp-{identity.identity_hash[:8]}",
+        name=identity.package_name or "mcp-server",
+        kind="executable",
+        identity_hash=identity.identity_hash,
+        example_label="uvx padam-nocturne",
+    )
+    store.record_local_cli_observation(
+        cli_identity, seen_at=utc_now(), surface="mcp", server_identity_hash=identity.identity_hash,
+        server_command=identity.command, server_args_hash=identity.args_hash, help_status="ok",
+    )
+    store.replace_local_cli_commands(
+        cli_identity.cli_id, (LocalCliCommand("padam_write", "padam_write", "padam_write", "Write a memory"),)
+    )
+    store.upsert_local_cli_grant(
+        identity=cli_identity, state="allowed", expected_revision=0, updated_at=utc_now(),
+        command_states={"padam_write": "allow"},
+    )
+    granted = apply_local_mcp_extension_decision(store, _padam_artifact("padam_write"), "review")
+    assert granted is not None and granted[:2] == ("allow", "local-mcp-extension")

@@ -61,4 +61,4 @@ jobs:
         working-directory: hol-guard
         run: |
           export HOL_GUARD_NATIVE_BINARY="$PWD/rust/target/release/hol-guard-runtime"
-          uv run --no-sync pytest -q -p no:cacheprovider tests/test_guard_mcp_padam_nocturne.py tests/test_guard_mcp_server_contribution.py
+          uv run --no-sync pytest -q -p no:cacheprovider tests/test_guard_mcp_padam_nocturne.py tests/test_guard_mcp_server_contribution.py tests/test_guard_mcp_server_grants.py
