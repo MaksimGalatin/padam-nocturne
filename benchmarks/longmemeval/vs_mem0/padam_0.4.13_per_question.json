@@ -1,0 +1,1497 @@
+[
+{
+"question_id": "e47becba",
+"type": "single-session-user",
+"abstention": false,
+"rounds_written": 277,
+"records_found": 50,
+"gold": [
+"answer_280352e9"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "c5e8278d",
+"type": "single-session-user",
+"abstention": false,
+"rounds_written": 236,
+"records_found": 50,
+"gold": [
+"answer_f6168136"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "5d3d2817",
+"type": "single-session-user",
+"abstention": false,
+"rounds_written": 259,
+"records_found": 50,
+"gold": [
+"answer_235eb6fb"
+],
+"any@5": false,
+"all@5": false,
+"any@10": false,
+"all@10": false
+},
+{
+"question_id": "94f70d80",
+"type": "single-session-user",
+"abstention": false,
+"rounds_written": 257,
+"records_found": 50,
+"gold": [
+"answer_c63c0458"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "c8c3f81d",
+"type": "single-session-user",
+"abstention": false,
+"rounds_written": 246,
+"records_found": 50,
+"gold": [
+"answer_761acef8"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "95bcc1c8",
+"type": "single-session-user",
+"abstention": false,
+"rounds_written": 245,
+"records_found": 50,
+"gold": [
+"answer_cb742a61"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "b86304ba",
+"type": "single-session-user",
+"abstention": false,
+"rounds_written": 229,
+"records_found": 50,
+"gold": [
+"answer_645b0329"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "60d45044",
+"type": "single-session-user",
+"abstention": false,
+"rounds_written": 273,
+"records_found": 50,
+"gold": [
+"answer_9cddca88"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "15745da0",
+"type": "single-session-user",
+"abstention": false,
+"rounds_written": 239,
+"records_found": 50,
+"gold": [
+"answer_586de428"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "b320f3f8",
+"type": "single-session-user",
+"abstention": false,
+"rounds_written": 234,
+"records_found": 50,
+"gold": [
+"answer_5cc9b056"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "76d63226",
+"type": "single-session-user",
+"abstention": false,
+"rounds_written": 247,
+"records_found": 50,
+"gold": [
+"answer_bbdc7b0a"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "4100d0a0",
+"type": "single-session-user",
+"abstention": false,
+"rounds_written": 264,
+"records_found": 50,
+"gold": [
+"answer_83c13ff9"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "c14c00dd",
+"type": "single-session-user",
+"abstention": false,
+"rounds_written": 250,
+"records_found": 50,
+"gold": [
+"answer_304511ce"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "15745da0_abs",
+"type": "single-session-user",
+"abstention": true,
+"rounds_written": 278,
+"records_found": 50,
+"gold": [
+"answer_586de428_abs"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "0a995998",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 242,
+"records_found": 50,
+"gold": [
+"answer_afa9873b_1",
+"answer_afa9873b_2",
+"answer_afa9873b_3"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "3a704032",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 241,
+"records_found": 50,
+"gold": [
+"answer_c2204106_1",
+"answer_c2204106_2",
+"answer_c2204106_3"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "c4a1ceb8",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 245,
+"records_found": 50,
+"gold": [
+"answer_56d02cab_1",
+"answer_56d02cab_2",
+"answer_56d02cab_3",
+"answer_56d02cab_4"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "28dc39ac",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 216,
+"records_found": 50,
+"gold": [
+"answer_8d015d9d_1",
+"answer_8d015d9d_2",
+"answer_8d015d9d_3",
+"answer_8d015d9d_4",
+"answer_8d015d9d_5"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "80ec1f4f",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 245,
+"records_found": 50,
+"gold": [
+"answer_990c8992_1",
+"answer_990c8992_2",
+"answer_990c8992_3"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "gpt4_5501fe77",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 258,
+"records_found": 50,
+"gold": [
+"answer_203bf3fa_1",
+"answer_203bf3fa_2",
+"answer_203bf3fa_3"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "00ca467f",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 243,
+"records_found": 50,
+"gold": [
+"answer_39900a0a_1",
+"answer_39900a0a_2",
+"answer_39900a0a_3"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "60bf93ed",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 249,
+"records_found": 50,
+"gold": [
+"answer_e0956e0a_1",
+"answer_e0956e0a_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "a9f6b44c",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 239,
+"records_found": 50,
+"gold": [
+"answer_cc021f81_1",
+"answer_cc021f81_2",
+"answer_cc021f81_3"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "gpt4_731e37d7",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 265,
+"records_found": 50,
+"gold": [
+"answer_826d51da_1",
+"answer_826d51da_2",
+"answer_826d51da_3",
+"answer_826d51da_4"
+],
+"any@5": true,
+"all@5": false,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "1a8a66a6",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 253,
+"records_found": 50,
+"gold": [
+"answer_2bd23659_1",
+"answer_2bd23659_2",
+"answer_2bd23659_3",
+"answer_2bd23659_4"
+],
+"any@5": true,
+"all@5": false,
+"any@10": true,
+"all@10": false
+},
+{
+"question_id": "81507db6",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 257,
+"records_found": 50,
+"gold": [
+"answer_da3c1266_1",
+"answer_da3c1266_2",
+"answer_da3c1266_3",
+"answer_da3c1266_4",
+"answer_da3c1266_5"
+],
+"any@5": true,
+"all@5": false,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "edced276_abs",
+"type": "multi-session",
+"abstention": true,
+"rounds_written": 272,
+"records_found": 50,
+"gold": [
+"answer_60e8941a_abs_1",
+"answer_60e8941a_abs_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "0edc2aef",
+"type": "single-session-preference",
+"abstention": false,
+"rounds_written": 239,
+"records_found": 50,
+"gold": [
+"answer_d586e9cd"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "caf03d32",
+"type": "single-session-preference",
+"abstention": false,
+"rounds_written": 247,
+"records_found": 50,
+"gold": [
+"answer_2fc6aabb"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "09d032c9",
+"type": "single-session-preference",
+"abstention": false,
+"rounds_written": 242,
+"records_found": 50,
+"gold": [
+"answer_b10dce5e"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "505af2f5",
+"type": "single-session-preference",
+"abstention": false,
+"rounds_written": 253,
+"records_found": 50,
+"gold": [
+"answer_f3164f2c"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "b6025781",
+"type": "single-session-preference",
+"abstention": false,
+"rounds_written": 231,
+"records_found": 50,
+"gold": [
+"answer_8414cc57"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "1c0ddc50",
+"type": "single-session-preference",
+"abstention": false,
+"rounds_written": 278,
+"records_found": 50,
+"gold": [
+"answer_8da8c7e0"
+],
+"any@5": false,
+"all@5": false,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "a11281a2",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 231,
+"records_found": 50,
+"gold": [
+"answer_c69ee1f9_1",
+"answer_c69ee1f9_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "e6041065",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 248,
+"records_found": 50,
+"gold": [
+"answer_4eb6d671_1",
+"answer_4eb6d671_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "6456829e",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 246,
+"records_found": 50,
+"gold": [
+"answer_743f03a1_1",
+"answer_743f03a1_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "e25c3b8d",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 270,
+"records_found": 50,
+"gold": [
+"answer_6702277b_1",
+"answer_6702277b_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "a1cc6108",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 249,
+"records_found": 50,
+"gold": [
+"answer_17dc2f5b_1",
+"answer_17dc2f5b_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "720133ac",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 236,
+"records_found": 50,
+"gold": [
+"answer_c9dfeaea_1",
+"answer_c9dfeaea_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "92a0aa75",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 230,
+"records_found": 50,
+"gold": [
+"answer_6cb8f792_1",
+"answer_6cb8f792_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "0ea62687",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 233,
+"records_found": 50,
+"gold": [
+"answer_dc5e537d_1",
+"answer_dc5e537d_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "60159905",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 225,
+"records_found": 50,
+"gold": [
+"answer_75eca223_1",
+"answer_75eca223_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "09ba9854",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 240,
+"records_found": 50,
+"gold": [
+"answer_96c743d0_1",
+"answer_96c743d0_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "55241a1f",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 260,
+"records_found": 50,
+"gold": [
+"answer_fa08bf49_1",
+"answer_fa08bf49_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "a346bb18",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 239,
+"records_found": 50,
+"gold": [
+"answer_4934b2d7_1",
+"answer_4934b2d7_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "efc3f7c2",
+"type": "multi-session",
+"abstention": false,
+"rounds_written": 252,
+"records_found": 50,
+"gold": [
+"answer_fc81d1a2_1",
+"answer_fc81d1a2_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "a96c20ee_abs",
+"type": "multi-session",
+"abstention": true,
+"rounds_written": 270,
+"records_found": 50,
+"gold": [
+"answer_ef84b994_abs_1",
+"answer_ef84b994_abs_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "71017276",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 309,
+"records_found": 50,
+"gold": [
+"answer_0b4a8adc_1"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "gpt4_4929293a",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 244,
+"records_found": 50,
+"gold": [
+"answer_add9b012_1",
+"answer_add9b012_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "0db4c65d",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 233,
+"records_found": 50,
+"gold": [
+"answer_b9e32ff8_1",
+"answer_b9e32ff8_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "gpt4_18c2b244",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 248,
+"records_found": 50,
+"gold": [
+"answer_c862f65a_1",
+"answer_c862f65a_2",
+"answer_c862f65a_3"
+],
+"any@5": true,
+"all@5": false,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "gpt4_7abb270c",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 242,
+"records_found": 50,
+"gold": [
+"answer_7093d898_1",
+"answer_7093d898_2",
+"answer_7093d898_3",
+"answer_7093d898_4",
+"answer_7093d898_5",
+"answer_7093d898_6"
+],
+"any@5": true,
+"all@5": false,
+"any@10": true,
+"all@10": false
+},
+{
+"question_id": "gpt4_45189cb4",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 251,
+"records_found": 50,
+"gold": [
+"answer_e6c20e52_1",
+"answer_e6c20e52_2",
+"answer_e6c20e52_3"
+],
+"any@5": true,
+"all@5": false,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "gpt4_4ef30696",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 262,
+"records_found": 50,
+"gold": [
+"answer_f964cea3_1",
+"answer_f964cea3_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "gpt4_8e165409",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 242,
+"records_found": 50,
+"gold": [
+"answer_d97db962_1",
+"answer_d97db962_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "gpt4_98f46fc6",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 247,
+"records_found": 50,
+"gold": [
+"answer_5850de18_1",
+"answer_5850de18_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "gpt4_85da3956",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 255,
+"records_found": 50,
+"gold": [
+"answer_581ab834_1"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "gpt4_7bc6cf22",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 262,
+"records_found": 50,
+"gold": [
+"answer_e22d6aef_1"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "gpt4_d6585ce9",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 220,
+"records_found": 50,
+"gold": [
+"answer_f999b05c_1",
+"answer_f999b05c_2",
+"answer_f999b05c_3",
+"answer_f999b05c_4",
+"answer_f999b05c_5"
+],
+"any@5": true,
+"all@5": false,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "gpt4_4929293b",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 236,
+"records_found": 50,
+"gold": [
+"answer_add9b013_1",
+"answer_add9b013_2"
+],
+"any@5": false,
+"all@5": false,
+"any@10": false,
+"all@10": false
+},
+{
+"question_id": "4dfccbf8",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 229,
+"records_found": 50,
+"gold": [
+"answer_4bebc783_1",
+"answer_4bebc783_2"
+],
+"any@5": false,
+"all@5": false,
+"any@10": true,
+"all@10": false
+},
+{
+"question_id": "gpt4_68e94288",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 232,
+"records_found": 50,
+"gold": [
+"answer_9793daa4_1",
+"answer_9793daa4_2"
+],
+"any@5": false,
+"all@5": false,
+"any@10": true,
+"all@10": false
+},
+{
+"question_id": "0bb5a684",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 235,
+"records_found": 50,
+"gold": [
+"answer_e936197f_1",
+"answer_e936197f_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "bbf86515",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 247,
+"records_found": 50,
+"gold": [
+"answer_b3763b6b_1",
+"answer_b3763b6b_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "gpt4_70e84552",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 235,
+"records_found": 50,
+"gold": [
+"answer_b3070ec4_1",
+"answer_b3070ec4_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "982b5123",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 238,
+"records_found": 50,
+"gold": [
+"answer_ab603dd5_1",
+"answer_ab603dd5_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "e4e14d04",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 232,
+"records_found": 50,
+"gold": [
+"answer_cf425855_1",
+"answer_cf425855_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "gpt4_9a159967",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 236,
+"records_found": 50,
+"gold": [
+"answer_8a42fedf_1",
+"answer_8a42fedf_2",
+"answer_8a42fedf_3"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "d01c6aa8",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 216,
+"records_found": 50,
+"gold": [
+"answer_991d55e5_1",
+"answer_991d55e5_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "gpt4_88806d6e",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 249,
+"records_found": 50,
+"gold": [
+"answer_e60a93ff_1",
+"answer_e60a93ff_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "6613b389",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 226,
+"records_found": 50,
+"gold": [
+"answer_aaf71ce2_1",
+"answer_aaf71ce2_2",
+"answer_aaf71ce2_3"
+],
+"any@5": true,
+"all@5": false,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "gpt4_213fd887",
+"type": "temporal-reasoning",
+"abstention": false,
+"rounds_written": 224,
+"records_found": 50,
+"gold": [
+"answer_53582e7e_1",
+"answer_53582e7e_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "gpt4_70e84552_abs",
+"type": "temporal-reasoning",
+"abstention": true,
+"rounds_written": 263,
+"records_found": 50,
+"gold": [
+"answer_b3070ec4_abs_1",
+"answer_b3070ec4_abs_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "gpt4_fe651585_abs",
+"type": "temporal-reasoning",
+"abstention": true,
+"rounds_written": 249,
+"records_found": 50,
+"gold": [
+"answer_65600ff6_abs_1",
+"answer_65600ff6_abs_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "945e3d21",
+"type": "knowledge-update",
+"abstention": false,
+"rounds_written": 248,
+"records_found": 50,
+"gold": [
+"answer_6a4f8626_1",
+"answer_6a4f8626_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "9ea5eabc",
+"type": "knowledge-update",
+"abstention": false,
+"rounds_written": 270,
+"records_found": 50,
+"gold": [
+"answer_02e66dec_1",
+"answer_02e66dec_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "4d6b87c8",
+"type": "knowledge-update",
+"abstention": false,
+"rounds_written": 259,
+"records_found": 50,
+"gold": [
+"answer_766ab8da_1",
+"answer_766ab8da_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "2698e78f",
+"type": "knowledge-update",
+"abstention": false,
+"rounds_written": 240,
+"records_found": 50,
+"gold": [
+"answer_9282283d_1",
+"answer_9282283d_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "e493bb7c",
+"type": "knowledge-update",
+"abstention": false,
+"rounds_written": 255,
+"records_found": 50,
+"gold": [
+"answer_1a374afa_1",
+"answer_1a374afa_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "6a27ffc2",
+"type": "knowledge-update",
+"abstention": false,
+"rounds_written": 249,
+"records_found": 50,
+"gold": [
+"answer_77f32504_1",
+"answer_77f32504_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "e61a7584",
+"type": "knowledge-update",
+"abstention": false,
+"rounds_written": 251,
+"records_found": 50,
+"gold": [
+"answer_f25c32f5_1",
+"answer_f25c32f5_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "22d2cb42",
+"type": "knowledge-update",
+"abstention": false,
+"rounds_written": 238,
+"records_found": 50,
+"gold": [
+"answer_bcce0b73_1",
+"answer_bcce0b73_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "59524333",
+"type": "knowledge-update",
+"abstention": false,
+"rounds_written": 266,
+"records_found": 50,
+"gold": [
+"answer_b28f2c7a_1",
+"answer_b28f2c7a_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "e66b632c",
+"type": "knowledge-update",
+"abstention": false,
+"rounds_written": 256,
+"records_found": 50,
+"gold": [
+"answer_ac0140ce_1",
+"answer_ac0140ce_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "69fee5aa",
+"type": "knowledge-update",
+"abstention": false,
+"rounds_written": 243,
+"records_found": 50,
+"gold": [
+"answer_d6028d6e_1",
+"answer_d6028d6e_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "06db6396",
+"type": "knowledge-update",
+"abstention": false,
+"rounds_written": 241,
+"records_found": 50,
+"gold": [
+"answer_da72b1b4_1",
+"answer_da72b1b4_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "ba61f0b9",
+"type": "knowledge-update",
+"abstention": false,
+"rounds_written": 229,
+"records_found": 50,
+"gold": [
+"answer_f377cda7_1",
+"answer_f377cda7_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "0977f2af",
+"type": "knowledge-update",
+"abstention": false,
+"rounds_written": 245,
+"records_found": 50,
+"gold": [
+"answer_3bf5b73b_1",
+"answer_3bf5b73b_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "0ddfec37_abs",
+"type": "knowledge-update",
+"abstention": true,
+"rounds_written": 225,
+"records_found": 50,
+"gold": [
+"answer_a22b654d_abs_1",
+"answer_a22b654d_abs_2"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "c4f10528",
+"type": "single-session-assistant",
+"abstention": false,
+"rounds_written": 244,
+"records_found": 50,
+"gold": [
+"answer_ultrachat_234453"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "7e00a6cb",
+"type": "single-session-assistant",
+"abstention": false,
+"rounds_written": 288,
+"records_found": 50,
+"gold": [
+"answer_ultrachat_370515"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "fea54f57",
+"type": "single-session-assistant",
+"abstention": false,
+"rounds_written": 266,
+"records_found": 50,
+"gold": [
+"answer_ultrachat_187684"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "58470ed2",
+"type": "single-session-assistant",
+"abstention": false,
+"rounds_written": 239,
+"records_found": 50,
+"gold": [
+"answer_sharegpt_U4oCSfU_7"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "71a3fd6b",
+"type": "single-session-assistant",
+"abstention": false,
+"rounds_written": 222,
+"records_found": 50,
+"gold": [
+"answer_ultrachat_417348"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "1b9b7252",
+"type": "single-session-assistant",
+"abstention": false,
+"rounds_written": 235,
+"records_found": 50,
+"gold": [
+"answer_ultrachat_115151"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "e3fc4d6e",
+"type": "single-session-assistant",
+"abstention": false,
+"rounds_written": 261,
+"records_found": 50,
+"gold": [
+"answer_sharegpt_5m7gg5F_0"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "fca762bc",
+"type": "single-session-assistant",
+"abstention": false,
+"rounds_written": 232,
+"records_found": 50,
+"gold": [
+"answer_ultrachat_39395"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "41275add",
+"type": "single-session-assistant",
+"abstention": false,
+"rounds_written": 267,
+"records_found": 50,
+"gold": [
+"answer_sharegpt_81riySf_0"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "ac031881",
+"type": "single-session-assistant",
+"abstention": false,
+"rounds_written": 265,
+"records_found": 50,
+"gold": [
+"answer_sharegpt_GYqnAhC_190"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+},
+{
+"question_id": "c7cf7dfd",
+"type": "single-session-assistant",
+"abstention": false,
+"rounds_written": 262,
+"records_found": 50,
+"gold": [
+"answer_ultrachat_456407"
+],
+"any@5": true,
+"all@5": true,
+"any@10": true,
+"all@10": true
+}
+]

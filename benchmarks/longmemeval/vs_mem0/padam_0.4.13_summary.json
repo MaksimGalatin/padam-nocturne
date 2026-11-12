@@ -1,0 +1,64 @@
+{
+  "dataset": "LongMemEval-S",
+  "questions": 100,
+  "scored_without_abstention": 94,
+  "method": "PADAM Memory.remember per round, Memory.recall(question, limit=50), embedding: fastembed:BAAI/bge-small-en-v1.5, no LLM",
+  "padam_version": "0.4.13",
+  "overall": {
+    "any@5": 0.9468,
+    "any@10": 0.9787,
+    "all@5": 0.8617,
+    "all@10": 0.9362
+  },
+  "abstention": {
+    "any@5": 1.0,
+    "any@10": 1.0,
+    "all@5": 1.0,
+    "all@10": 1.0
+  },
+  "by_type": {
+    "knowledge-update": {
+      "n": 14,
+      "any@5": 1.0,
+      "any@10": 1.0,
+      "all@5": 1.0,
+      "all@10": 1.0
+    },
+    "multi-session": {
+      "n": 25,
+      "any@5": 1.0,
+      "any@10": 1.0,
+      "all@5": 0.88,
+      "all@10": 0.96
+    },
+    "single-session-assistant": {
+      "n": 11,
+      "any@5": 1.0,
+      "any@10": 1.0,
+      "all@5": 1.0,
+      "all@10": 1.0
+    },
+    "single-session-preference": {
+      "n": 6,
+      "any@5": 0.8333,
+      "any@10": 1.0,
+      "all@5": 0.8333,
+      "all@10": 1.0
+    },
+    "single-session-user": {
+      "n": 13,
+      "any@5": 0.9231,
+      "any@10": 0.9231,
+      "all@5": 0.9231,
+      "all@10": 0.9231
+    },
+    "temporal-reasoning": {
+      "n": 25,
+      "any@5": 0.88,
+      "any@10": 0.96,
+      "all@5": 0.68,
+      "all@10": 0.84
+    }
+  },
+  "seconds": 5614.8
+}

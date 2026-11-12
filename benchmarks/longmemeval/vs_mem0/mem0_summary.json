@@ -1,0 +1,12 @@
+{
+  "system": "mem0 2.2.1, add(infer=False), fastembed BAAI/bge-small-en-v1.5, qdrant local, search top_k=50",
+  "questions": 100,
+  "scored_without_abstention": 94,
+  "overall": {
+    "any@5": 0.9681,
+    "any@10": 0.9894,
+    "all@5": 0.8511,
+    "all@10": 0.9149
+  },
+  "seconds": 31336
+}
