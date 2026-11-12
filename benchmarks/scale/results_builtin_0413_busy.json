@@ -1,0 +1,33 @@
+{
+ "padam_version": "0.4.13 code (commit 15c6033; the version string still read 0.4.12 when it ran)",
+ "embedding": "builtin",
+ "python": "3.14.4",
+ "texts": "LongMemEval-S user turns",
+ "rows": [
+  {
+   "records": 1000,
+   "write_seconds": 3.0,
+   "write_ms_per_record": 3.0,
+   "search_ms_median": 4.5,
+   "search_ms_p95": 6.4,
+   "db_mb": 4.7
+  },
+  {
+   "records": 10000,
+   "write_seconds": 39.6,
+   "write_ms_per_record": 3.96,
+   "search_ms_median": 15.8,
+   "search_ms_p95": 24.4,
+   "db_mb": 45.2
+  },
+  {
+   "records": 100000,
+   "write_seconds": 706.1,
+   "write_ms_per_record": 7.06,
+   "search_ms_median": 124.7,
+   "search_ms_p95": 320.7,
+   "db_mb": 375.2
+  }
+ ],
+ "note": "12 Nov 2026 ~00:00, NOT run alone: site-audit browser workers, a retrieval benchmark and a detector run shared the machine. Use results_builtin_1111.json for clean single-run numbers (0.4.11/0.4.12)."
+}

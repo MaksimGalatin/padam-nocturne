@@ -2,7 +2,7 @@
 
 Same procedure as rounds 4 and 5: the same three authors, new conversations in Antigravity, no access to the PADAM code,
 tests or earlier sets, asked for hard cases; each set hashed with SHA-256 and logged **before** the run, the hash checked
-by us, the set run unread. **Run:** 11 November 2026, commit `f99d82c` (not released), with and without the optional
+by us, the set run unread. **Run:** 11 November 2026, commit `f99d82c` (not released; its code is identical to `15c6033` on GitHub, which only adds this file, and to release 0.4.13), with and without the optional
 detector layer (`redteam/run.py --guard`, Wolf Defender small, text that mentions an AI, probability 0.999).
 
 | author | SHA-256 of the author's file | identity | command | secret | benign | fence | forgetting |

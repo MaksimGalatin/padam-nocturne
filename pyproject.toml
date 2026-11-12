@@ -1,6 +1,6 @@
 [project]
 name = "padam-nocturne"
-version = "0.4.12"
+version = "0.4.13"
 description = "Persistent memory for AI agents with sleep-style consolidation (NOCTURNE) and a verifiable eternal layer on Arweave + Solana"
 readme = "README.md"
 license = { text = "AGPL-3.0-only" }
