@@ -250,6 +250,8 @@ def redact(text: str) -> tuple[str, dict[str, int]]:
     text = _BYTE_ARRAY.sub(byte_array, text)
     text = _JWK_PRIVATE.sub(lambda m: m.group(1) + bump("jwk_private") + m.group(3), text)
     text = mask_generic(text, bump)
+    # 0.4.15: после старых слоёв — они решают первыми, новые правила закрывают только то, что осталось открытым.
+    text = _mask_context_secrets(text, bump)
     return _mask_seed_phrase(text, bump), counts
 
 
@@ -276,6 +278,224 @@ def _mask_seed_phrase(text: str, bump) -> str:
     for начало, конец in reversed(куски):
         text = text[:начало] + bump("seed_phrase") + text[конец:]
     return text
+
+
+# --- 0.4.15: секрет по подписи рядом с ним (круг 6 Red Team, 11 пропусков из 45) -----------------------------------
+#
+# Шесть видов, где секрет узнаётся не по виду строки, а по словам рядом: «пароль от сейфа …: X», «фраза восстановления:
+# слова», таблица со столбцом «пароль», «резервные коды: 4821-9375-1640», «ключ AES (hex): …», «-storepass X».
+# Везде два условия сразу: подпись И вид значения. Одна подпись без сильного значения ничего не закрывает —
+# «пароль должен быть длинным», «recovery phrase is a list of words» остаются как есть.
+
+def strong_secret(value: str, min_len: int = 10) -> bool:
+    """Значение похоже на придуманный пароль: длина и не меньше трёх видов знаков из четырёх."""
+    # Маска, уже стоящая на месте значения, — не значение: срез краёв снял бы с неё «[», поэтому смотрится до среза.
+    if "REDACTED:" in value:
+        return False
+    core = value.strip(_ВНЕШНИЕ_ЗНАКИ)
+    # Укороченное значение («5e1a…», «vcp_9ABC…XYZ», «…A9aA») — показ части, а не секрет: полного значения в тексте нет.
+    if "…" in core or core.endswith("..."):
+        return False
+    if len(core) < min_len or " " in core or _ЗАГЛУШКА.fullmatch(core):
+        return False
+    if re.fullmatch(r"[^@\s]+@[^@\s]+\.[A-Za-z]{2,}", core) or re.match(r"(?i)[a-z][a-z0-9+.\-]*://", core):
+        return False
+    # Адрес без схемы («github.com/MaksimGalatin/padam-nocturne» — трекер проекта), путь и имя файла — не пароль.
+    if (re.fullmatch(r"(?i)(?:www\.)?[a-z0-9\-]+(?:\.[a-z0-9\-]+)*\.[a-z]{2,}(?:[/:?#]\S*)?", core)
+            or re.match(r"[A-Za-z]:[\\/]|[~.]?/", core)
+            or re.fullmatch(r"(?i)[\w.\-/\\:]+\.(?:md|txt|json|py|js|ts|tsx|html|csv|xlsx|docx|pdf|png|jpg|log|ya?ml|toml)", core)):
+        return False
+    виды = sum(bool(re.search(p, core)) for p in (r"[a-zа-яё]", r"[A-ZА-ЯЁ]", r"\d", r"[^\w\s]|_"))
+    return виды >= 3
+
+
+# 1. Пароль в прозе: подпись, затем до 160 знаков той же фразы (без конца предложения и без перевода строки), затем
+# «:» и сильное значение. «…пароль от нашего семейного сейфа, запишу его прямо между строками рецепта: V7$kP9!…».
+# Значение кончается на «<» или «>»: «пароль дня: Лазурмерт</instruction>» — слово и разметка, а не пароль (круг 4, e-06).
+_PROSE_LABEL = re.compile(
+    r"(?i)(?<![^\W\d_])(?:парол\w*|мастер[\-\s]?ключ\w*(?:[\-\s]фраз\w*)?|ключ[\-\s]фраз\w*|код\w*\s+доступа|"
+    r"password\w*|passphrase|passcode|master\s+(?:key|password)|contraseña|contrasena|clave|c[óo]digo\s+maestro|"
+    r"mot\s+de\s+passe|kennwort|passwort)(?![^\W\d_])")
+# Значение — на той же строке, что и «:» (на следующей строке стоит уже другой текст: код, список, заголовок),
+# в нём есть цифра, и оно не похоже на код: скобки, «=», «$», обратная кавычка. Мозг проекта, 12.11.2026:
+# «password: hashPassword(pw)», «input[type="password"]», «App-Name: CODE-Brain-E» — не пароли.
+_PROSE_TAIL = re.compile(r"(?:[^\n.!?:：]|[.!?](?=\S)){0,160}?(?:[ \t](?:es|is|ist|est|era|was|такой|такая|такое))?[ \t]*[:：][ \t]+"
+                         r"([\"'«“]?)([^\s<>]{10,})")
+_CODE_LIKE = re.compile(r"[(){}\[\]`]|=>|\$\{|^\$|\\n")
+
+
+def _mask_prose_password(text: str, bump) -> str:
+    куски = []
+    for m in _PROSE_LABEL.finditer(text):
+        t = _PROSE_TAIL.match(text, m.end())
+        if not t:
+            continue
+        value = t.group(2)
+        core = value.rstrip(_PASSWORD_TAIL + "»”\"'")
+        if strong_secret(core) and re.search(r"\d", core) and not _CODE_LIKE.search(core):
+            куски.append((t.start(2), t.start(2) + len(core)))
+    for начало, конец in reversed(sorted(set(куски))):
+        text = text[:начало] + bump("password_phrase") + text[конец:]
+    return text
+
+
+# 2. Фраза восстановления по подписи: «seed / recovery phrase», «мнемоническая фраза», «фраза восстановления», «BIP-39»,
+# затем (в пределах 160 знаков) 11–24 строчных слова подряд. Слова могут быть и не из списка BIP-39 — подпись говорит
+# сама; служебных слов речи (the, of, and…) в цепочке быть не должно: так отличается фраза от объяснения.
+_SEED_LABEL = re.compile(
+    r"(?i)(?:seed[\s\-]*phrase|recovery[\s\-]*(?:phrase|words)|mnemonic(?:[\s\-]*phrase)?|secret\s+recovery\s+phrase|"
+    r"bip[\s\-]?0?39|мнемоническ\w*\s+фраз\w*|сид[\s\-]?фраз\w*|фраз\w*\s+(?:для\s+)?восстановлени\w*|"
+    r"(?:резервн|секретн)\w*\s+фраз\w*|frase\s+(?:semilla|de\s+recuperaci[óo]n)|mnemónico)")
+_SEED_RUN = re.compile(r"(?<![A-Za-z])[a-z]{3,12}(?:[ \t]+[a-z]{3,12}){10,23}(?![A-Za-z])")
+_RUN_STOPWORDS = frozenset(
+    "the a an of and or to is are was were be been it its in on at by for with as that this these those you your "
+    "we our they their he she his her not no do does did can will would should must may might have has had from "
+    "into than then there here what which who when where why how all any each every some more most other such "
+    "only own same so too very just also about over after before under again once if but because while until "
+    "keep never share store write words word phrase list secret safe offline paper".split())
+
+
+def _mask_labeled_seed(text: str, bump) -> str:
+    куски = []
+    for m in _SEED_LABEL.finditer(text):
+        r = _SEED_RUN.search(text, m.end(), m.end() + 160 + 24 * 13)
+        if not r or r.start() - m.end() > 160:
+            continue
+        слова = r.group().split()
+        if any(w in _RUN_STOPWORDS for w in слова):
+            continue
+        куски.append((r.start(), r.end()))
+    for начало, конец in reversed(sorted(set(куски))):
+        text = text[:начало] + bump("seed_phrase") + text[конец:]
+    return text
+
+
+# 3. Таблица Markdown: столбец «пароль / password / secret / token / pin» — ячейка закрывается, если в ней одно слово
+# с цифрой или знаком. Столбец «значение / value» — только в строке, где другая ячейка называет секрет (fallback_secret).
+_TABLE_SECRET_HEAD = re.compile(r"(?i)^(?:парол\w*|password\w*|passwd|pwd|pass|secret\w*|секрет\w*|token|токен\w*|pin|пин|"
+                                r"api[\s_\-]?key|ключ|key|passphrase|contraseña|clave)$")
+# «Ключ / key / clave» в шапке неоднозначен: там бывают и открытые ключи, и номера пользователей (таблица памяти
+# проекта). Под такой шапкой значение закрывается, только если оно «сильное» (strong_secret); строка, где сказано
+# «открытый / public», не трогается вовсе.
+_TABLE_AMBIGUOUS_HEAD = re.compile(r"(?i)^(?:ключ|key|clave)$")
+_TABLE_PUBLIC_ROW = re.compile(r"(?i)открыт|публичн|public|pública|pubkey")
+_TABLE_VALUE_HEAD = re.compile(r"(?i)^(?:значени\w*|value|valor|wert|valeur)$")
+# В столбце «ключ» часто стоит ИМЯ ключа, а не значение: `TELEGRAM_BOT_TOKEN`, `Cloudflare.txt` (трекер недоделок
+# проекта, 12.11.2026). Имя переменной заглавными и имя файла не закрываются; значению нужны и цифра, и буква.
+_TABLE_NAME = re.compile(r"[A-Z][A-Z0-9_]*[A-Z0-9]|[\w.\-]+\.(?:txt|json|env|md|pem|key|ya?ml|toml|cfg|ini|conf|js|ts|py)")
+_TABLE_SECRET_WORD = re.compile(r"(?i)secret|password|passwd|token|api[_\-]?key|private[_\-]?key|парол|секрет|токен|ключ")
+
+
+def _cells(line: str):
+    s = line.strip()
+    if not (s.startswith("|") and s.endswith("|") and s.count("|") >= 3):
+        return None
+    return [c.strip() for c in s[1:-1].split("|")]
+
+
+def _mask_table_secrets(text: str, bump) -> str:
+    if "|" not in text:
+        return text
+    строки = text.split("\n")
+    шапка = None
+    for i, line in enumerate(строки):
+        cells = _cells(line)
+        if cells is None:
+            шапка = None
+            continue
+        if all(re.fullmatch(r":?-{2,}:?", c) for c in cells if c):
+            continue
+        if шапка is None:
+            шапка = cells
+            continue
+        if len(cells) != len(шапка):
+            continue
+        if any(_TABLE_PUBLIC_ROW.search(c) for c in cells):
+            continue
+        строка_с_секретом = any(_TABLE_SECRET_WORD.search(c) for c in cells)
+        изменено = False
+        for j, (h, c) in enumerate(zip(шапка, cells)):
+            секретный = _TABLE_SECRET_HEAD.match(h) or (_TABLE_VALUE_HEAD.match(h) and строка_с_секретом)
+            if секретный and _TABLE_AMBIGUOUS_HEAD.match(h) and not strong_secret(c, min_len=8):
+                continue
+            if (секретный and c and " " not in c and len(c) >= 6 and not c.startswith("[REDACTED:") and "…" not in c
+                    and re.search(r"\d", c) and re.search(r"[^\W\d_]", c) and not _ЗАГЛУШКА.fullmatch(c)
+                    and not _TABLE_NAME.fullmatch(c.strip("`'\"")) and not re.fullmatch(r"[\d.,\s%$€₽]+", c)):
+                cells[j] = bump("table_secret")
+                изменено = True
+        if изменено:
+            отступ = line[:len(line) - len(line.lstrip())]
+            строки[i] = отступ + "| " + " | ".join(cells) + " |"
+    return "\n".join(строки)
+
+
+# 4. Резервные коды 2FA: после подписи — до пустой строки или 600 знаков — группы цифр «4821-9375-1640», «8412 7751».
+_BACKUP_LABEL = re.compile(r"(?i)(?:резервн\w*|одноразов\w*|аварийн\w*)\s+код\w*|код\w*\s+восстановлени\w*|"
+                           r"(?:backup|recovery|one[\s\-]time|scratch)\s+codes?|c[óo]digos\s+de\s+(?:respaldo|recuperaci[óo]n)|"
+                           r"备用码|恢复码")
+_BACKUP_CODE = re.compile(r"(?<![\w\-])(?:\d{3,5}(?:[\- ]\d{3,5}){1,3}|(?=[a-z0-9]*\d)[a-z0-9]{4,5}-[a-z0-9]{4,5})(?![\w\-])")
+
+
+def _mask_backup_codes(text: str, bump) -> str:
+    for m in list(_BACKUP_LABEL.finditer(text))[::-1]:
+        конец = text.find("\n\n", m.end())
+        конец = min(m.end() + 600, конец if конец != -1 else len(text))
+        блок = text[m.end():конец]
+        # Коды выдаются пачкой; одно число после «одноразовый код» — это описание («6 цифр (100000–999999)»), не код.
+        if len(_BACKUP_CODE.findall(блок)) < 2:
+            continue
+        блок = _BACKUP_CODE.sub(lambda _c: bump("backup_code"), блок)
+        text = text[:m.end()] + блок + text[конец:]
+    return text
+
+
+# 5. Ключ в hex рядом со словом «ключ / key / aes / hmac» на той же строке: 32, 48, 64 или 128 знаков. Не закрывается,
+# если на строке названы хеш, отпечаток, коммит, адрес или открытый ключ — это публичное и памяти нужно.
+_HEX_KEY = re.compile(r"(?<![0-9A-Za-z_\-])(?:[0-9a-f]{32}|[0-9A-F]{32})(?:[0-9a-fA-F]{16}){0,6}(?![0-9A-Za-z_\-])")
+# Голое «key / ключ» на строке ничего не значит: ключ кэша, ключ IndexNow (открыт по замыслу), `user_key`, etag — всё это
+# hex (Мозг проекта, 12.11.2026). Нужен уточнённый ключ: мастер-, секретный, закрытый, AES, HMAC, шифрования, API.
+_HEX_KEY_LABEL = re.compile(r"(?i)(?:master|secret|private|encryption|decryption|signing|aes|hmac|api)[\s_\-]*(?:key|ключ)|"
+                            r"мастер[\s\-]*ключ|секретн\w*\s+ключ|закрыт\w*\s+ключ|приватн\w*\s+ключ|ключ\w*\s+шифровани\w*|"
+                            r"\baes[\s\-]?(?:128|192|256)|\bhmac\b|\bsecret\b|секрет|clave\s+(?:secreta|privada|maestra)")
+_HEX_PUBLIC_LABEL = re.compile(r"(?i)(?:key|ключ)[_\s\-]*id\b|_id\b|\bIN\s+DS\b|DNSKEY|dnssec|pública|indexnow|etag|hash|хеш|хэш|sha|md5|digest|checksum|контрольн|commit|коммит|fingerprint|отпечат|"
+                               r"public|публичн|открыт\w*\s+ключ|pubkey|address|адрес|\bid\b|uuid|txid|transaction|транзакц|"
+                               r"signature|подпис|nonce|\biv\b|salt|соль")
+
+
+def _mask_labeled_hex(text: str, bump) -> str:
+    def hexkey(m: re.Match) -> str:
+        if len(m.group()) not in (32, 48, 64, 128):
+            return m.group()
+        начало_строки = text.rfind("\n", 0, m.start()) + 1
+        перед = text[max(начало_строки, m.start() - 120):m.start()]
+        if not _HEX_KEY_LABEL.search(перед) or _HEX_PUBLIC_LABEL.search(перед):
+            return m.group()
+        return bump("hex_key")
+    return _HEX_KEY.sub(hexkey, text)
+
+
+# 6. Пароль в ключе командной строки: keytool -storepass/-keypass, openssl -passin pass:X, --password=X.
+_CLI_FLAG_PASSWORD = re.compile(
+    r"""((?<![\w\-])-(?:src|dest)?(?:store|key)pass[ \t]+|(?<![\w\-])-pass(?:in|out)?[ \t]+pass:|"""
+    r"""(?<![\w\-])--(?:password|passwd|pass)=|(?<![\w\-])-passphrase[ \t]+)(["']?)([^\s"']{4,})\2""")
+
+
+def _mask_cli_flags(text: str, bump) -> str:
+    def flag(m: re.Match) -> str:
+        v = m.group(3)
+        if v.startswith(("[REDACTED:", "$", "%", "<", "env:", "file:", "fd:")) or _ЗАГЛУШКА.fullmatch(v):
+            return m.group(0)
+        return m.group(1) + m.group(2) + bump("cli_password") + m.group(2)
+    return _CLI_FLAG_PASSWORD.sub(flag, text)
+
+
+def _mask_context_secrets(text: str, bump) -> str:
+    text = _mask_cli_flags(text, bump)
+    text = _mask_table_secrets(text, bump)
+    text = _mask_backup_codes(text, bump)
+    text = _mask_labeled_hex(text, bump)
+    text = _mask_prose_password(text, bump)
+    return _mask_labeled_seed(text, bump)
 
 
 # --- общий детектор: устройство строки, а не приставка (встречный аудит 09.11.2026) ---

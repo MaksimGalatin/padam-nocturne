@@ -2,8 +2,9 @@
 
 PADAM NOCTURNE is a local memory server for AI agents (MCP over stdio, one SQLite file). What an agent saves today it
 reads back tomorrow as context, so memory is an injection and leakage surface. This page is the short path through
-what we claim, how it was measured, what still gets through, and how to check it yourself. Version 0.4.14,
-12 November 2026; 0.4.14 changes only the language of messages, so recognition and search are as measured on 0.4.13.
+what we claim, how it was measured, what still gets through, and how to check it yourself. Version 0.4.15,
+12 November 2026. 0.4.15 adds six secret rules written from round 6's eleven secret misses (see below); command and
+owner recognition and search are as measured on 0.4.13 (0.4.14 changed only the language of messages).
 
 ## The model in one paragraph
 
@@ -43,11 +44,19 @@ fixes made after seeing a round are reported as fitted, never as the measure.
 | 5 — on rounds 3–4's fixes | 32 | 23 | 36 | 41 | 45 | 45 |
 | 6 — on 0.4.13, word lists only | 32 | 31 | 34 | 35 | 45 | 45 |
 | 6 — on 0.4.13 with the optional detector layer | 34 | **38** | 34 | 35 | 45 | 45 |
+| 7 — Gemini 4 Hydrogen, 20 cases per category, on 0.4.15 (0.4.14 in brackets) | 14/20 | 12/20 | **16/20** (13) | 19/20 | 20/20 | 20/20 |
 
 What it shows: the owner check generalises (identity 8 → 32); command and secret word lists do not keep up with new
 phrasings (secrets 40 → 34); the fence and forgetting held every case of every round. All ten false alarms of round 6
-are held by 0.4.12 too — checked case by case; none is new. Round 6 was not fitted. Every case and every failure:
-[redteam/rounds/](../redteam/rounds/).
+are held by 0.4.12 too — checked case by case; none is new. Round 6 was not fitted on 0.4.13. Every case and every
+failure: [redteam/rounds/](../redteam/rounds/).
+
+**0.4.15 is fitted to round 6's secrets — do not read it as a measure.** Six rules mask a secret by the words next to
+it (a password in prose, a recovery phrase by its label, a password column in a table, 2FA backup codes, a hex key after
+"key/AES", a password in a command flag). They were written from the 11 secret misses of round 6, and on those 11 they
+mask 11. The honest number will come from round 7, sealed before it is run. False alarms, 0.4.14 against 0.4.15: 0 changed
+masks on all 189,634 unique LongMemEval-S turns; on the 1,448 unique texts of rounds 1–6 masks changed only in 16 secret
+cases, all secrets 0.4.14 left open; 0 changes in ordinary notes, fence, command, identity and forgetting cases.
 
 **A bug we shipped and fixed.** 0.4.7 and 0.4.8 let `timeline` return another user's record by id on a database
 shared by several `PADAM_USER` identities, and REST `/timeline` without a token showed held text. Found by the project
@@ -71,7 +80,7 @@ has exactly one opening and one closing tag with equal 32-hex nonces.
 5 for 97.0 % of answerable questions (top 10: 99.2 %), against 96.0 % (97.7 %) for a plain BM25 baseline on the same data; 400 of those
 questions were not used while tuning (97.6 %). Two separate runs agree on every question.
 
-**Build and release.** 906 tests on Python 3.14 (with PADAM_LANG=en and with ru), 901 on 3.10, CI on Linux and Windows for 3.10–3.13. PyPI releases
+**Build and release.** 953 tests on Python 3.14 (with PADAM_LANG=en and with ru), 948 on 3.10, CI on Linux and Windows for 3.10–3.13. PyPI releases
 come from a GitHub Actions workflow through Trusted Publishing (OIDC), with no stored token; the actions are pinned
 by commit hash. The same way, with no stored token, `server.json` is published to the official MCP registry as
 `io.github.MaksimGalatin/padam-nocturne` (manual `mcp-registry` workflow, `mcp-publisher` checked against the
@@ -94,15 +103,16 @@ release's checksum file).
   `PADAM_STRICT=1` is the boundary that does not depend on it.
 - **At rest, text is not encrypted by PADAM.** Record keys can be put behind a passphrase (`padam protect-keys`);
   use full-disk encryption for the rest. `forget` cannot reach your own backups or blocks a copy-on-write disk keeps.
-- **No audit by people outside the project yet.** All six Red Team rounds were written by AI models working for the
-  project owner — rounds 1–2 by one agent, rounds 3–6 by three models from two vendors — not by an independent
+- **No audit by people outside the project yet.** All seven Red Team rounds were written by AI models working for the
+  project owner — rounds 1–2 by one agent, rounds 3–6 by three models from two vendors, round 7 by Gemini 4 Hydrogen —
+  not by an independent
   person. One maintainer.
 - **The hosted server at aifa.works is closed source.** Since its version 1.9.5 its patterns are generated from
   `padam/safety.py` of 0.4.13 rather than ported by hand, and its filters are compared with these text by text:
   0 differences in masking, command and owner checks on 7,710 texts (red-team sets, LongMemEval-S, project notes) and
   on 20,000 more LongMemEval-S turns. Its public claims can be checked from outside with
   [`aifa-memory-mcp/scripts/conformance.py`](https://github.com/MaksimGalatin/aifa-memory-mcp) — 5 checks with no key;
-  with a full and a memory-only key, 10 of 10 against the live server on 10 November 2026; where it keeps data
+  with a full and a memory-only key, 10 of 10 against the live server on 10 and again on 12 November 2026; where it keeps data
   and what can be deleted there: [HOSTED-POLICY.md](https://github.com/MaksimGalatin/aifa-memory-mcp/blob/main/HOSTED-POLICY.md).
 
 ## Check it in ten minutes

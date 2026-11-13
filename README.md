@@ -12,7 +12,7 @@
 - API keys and passwords are masked before they reach the disk;
 - what comes back is fenced as data, and a forgotten record is wiped from the file; if it was sent to Arweave, destroying its own key leaves only unreadable ciphertext there.
 
-Measured, not claimed: six sealed red-team rounds with every failure published, LongMemEval-S retrieval 97.0 % in the top 5 and 99.2 % in the top 10, against 96.0 % and 97.7 % for plain BM25, 906 tests and public CI. Listed in the [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) catalog and the official MCP registry.
+Measured, not claimed: seven sealed red-team rounds with every failure published, LongMemEval-S retrieval 97.0 % in the top 5 and 99.2 % in the top 10, against 96.0 % and 97.7 % for plain BM25, 953 tests and public CI. Listed in the [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) catalog and the official MCP registry.
 
 **Security reviewers:** start at [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md) — what we claim, every Red Team round with its sealed set, what still gets through, and a ten-minute check.
 
@@ -372,7 +372,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 906 passed, 10 skipped with [embed] (Python 3.14.4, PADAM_LANG=en and ru); 901 passed, 11 skipped without it (3.10.9); 12 Nov 2026, Windows
+python -m pytest tests/ -q        # 953 passed, 10 skipped with [embed] (Python 3.14.4, PADAM_LANG=en and ru); 948 passed, 11 skipped without it (3.10.9); 12 Nov 2026, Windows
 ```
 
 CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L3 tests never touch the network: Arweave and Solana are replaced by fakes. The suite never calls a local Ollama either, even when one is running: every test uses the built-in embedding, as on CI. `PADAM_TEST_LIVE_OLLAMA=1` turns on the one live check. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.
