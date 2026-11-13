@@ -124,6 +124,21 @@ def password_like(value: str, after_separator: bool = False, phrase: bool = True
     # «пароль contact@…» — дальше почта, а не пароль: адрес и «слово@» знаком @ паролем не становятся.
     if re.fullmatch(r"[^@\s]+@(?:[^@\s]+\.[A-Za-z]{2,})?", core):
         return False
+    # 0.4.16: после «пароль … :» часто стоит не пароль, а то, ГДЕ он или ЧЕМ он назван: адрес страницы, путь к файлу,
+    # имя файла, переменная окружения или тикер («Сбросить пароль можно на странице: https://…», «Пароль лежит в файле:
+    # E:/…/x.txt», «Токен: **$GALATIN**»). Заметки проекта и тесты 0.4.15 (test_новые_правила_молчат) — живые примеры.
+    ядро = core.strip("*_")
+    if (re.match(r"(?i)[a-z][a-z0-9+.\-]*://", ядро)
+            or re.fullmatch(r"(?i)(?:www\.)?[a-z0-9\-]+(?:\.[a-z0-9\-]+)*\.(?:com|org|net|io|ai|app|dev|co|me|info|biz|gov|edu|xyz|site|online|tech|cloud|works|digital|space|ru|ua|by|kz|de|uk|fr|es|it|eu|us|ca|au|jp|cn|in|br|nl|pl|ch|se|no|fi|dk|ec|mx|ar|gg|sh|so|tv|cc|ly|to)(?:[/:?#]\S*)?", ядро)
+            or re.fullmatch(r"(?i)(?:www\.)?[a-z0-9\-]+(?:\.[a-z0-9\-]+)+[/?#]\S*", ядро)
+            or re.match(r"[A-Za-z]:[\\/]|[~.]?/", ядро)
+            or re.fullmatch(r"(?i)[\w.\-/\\:]+\.(?:md|txt|json|py|js|ts|tsx|html|csv|xlsx|docx|pdf|png|jpg|log|ya?ml|toml)", ядро)
+            # Ссылка на переменную — `${ИМЯ}`, имя с подчёркиванием (`$DB_PASSWORD`) или одни заглавные без цифр
+            # (`$GALATIN`). Не `$ECRET2026`: это пароль, начатый с «$» вместо «S» (аудит 13.11.2026 нашёл откат).
+            # Закрывающая «}» может быть уже срезана хвостом значения (rstrip) — поэтому она необязательна после «${».
+            # Одни заглавные — только длиной тикера (3–8: `$GALATIN`); `$ECRETPASS` длиннее и остаётся паролем.
+            or re.fullmatch(r"\$\{[A-Z][A-Z0-9_]{2,}\}?|\$[A-Z][A-Z0-9]*_[A-Z0-9_]+|\$[A-Z]{3,8}", ядро)):
+        return False
     if len(core) >= 6 and re.search(r"\d|[!@#$%^&*~]", core):
         return True
     if phrase and len(core) >= 12 and _PHRASE.fullmatch(core):
@@ -187,6 +202,10 @@ def redact(text: str) -> tuple[str, dict[str, int]]:
         value = m.group(5)
         # Фраза из слов — пароль только у паролей; у api_key или token это имя модели или слаг.
         пароль = bool(re.match(r"pass|pwd|пароль", m.group(1), re.I))
+        # 0.4.16: «Public key: …», «pubkey = …», «открытый ключ: …» — открытая часть пары, её показывают всем.
+        if re.search(r"(?i)\bpub(?:lic)?[_\- ]?key|\bpubkey|публичн\w*\s+ключ|открыт\w*\s+ключ",
+                     m.string[max(0, m.start() - 30):m.start(2)]):
+            return m.group(0)
         if value.startswith("[REDACTED:") or not password_like(value, after_separator=True, phrase=пароль):
             return m.group(0)
         return m.group(1) + m.group(2) + (m.group(3) or "") + bump("assigned_secret")

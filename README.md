@@ -12,15 +12,15 @@
 - API keys and passwords are masked before they reach the disk;
 - what comes back is fenced as data, and a forgotten record is wiped from the file; if it was sent to Arweave, destroying its own key leaves only unreadable ciphertext there.
 
-Measured, not claimed: seven sealed red-team rounds with every failure published, LongMemEval-S retrieval 97.0 % in the top 5 and 99.2 % in the top 10, against 96.0 % and 97.7 % for plain BM25, 953 tests and public CI. Listed in the [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) catalog and the official MCP registry.
+Measured, not claimed: seven red-team rounds with their results published (the sets of rounds 1–3 in full; rounds 4–7 were hashed before each run, their sets will follow after a read for real names), LongMemEval-S retrieval 97.0 % in the top 5 and 99.2 % in the top 10, against 96.0 % and 97.7 % for plain BM25, 968 tests and public CI. Listed in the [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) catalog and the official MCP registry.
 
-**Security reviewers:** start at [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md) — what we claim, every Red Team round with its sealed set, what still gets through, and a ten-minute check.
+**Security reviewers:** start at [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md) — what we claim, every Red Team round and its results, what still gets through, and a ten-minute check.
 
 **PADAM** is a local-first, persistent memory for AI assistants and agents. It lives in one SQLite file on your machine, plugs into any MCP client (Claude Code, Claude Desktop, Cursor, VS Code) or into your own code through a CLI and a small REST API.
 
-**NOCTURNE** is its consolidation cycle — a "sleep" that turns a raw stream of episodes into lasting memory: it keeps what matters, generalises what repeats and lets the rest fade, without letting rare dramatic events take the memory over.
+**NOCTURNE** is its consolidation cycle — a "sleep" that turns a raw stream of episodes into lasting memory: it keeps what matters, folds repeats into the record they repeat, turns refinements and contradictions into a new version of it (the old one stays in history) and lets the rest fade, without letting rare dramatic events take the memory over.
 
-**L3** is the optional eternal layer. It anchors memory to **Arweave** (encrypted bundles) and **Solana** (a Merkle root in a Memo), so anyone can check that the memory was never rewritten — while any single record can still be forgotten for good. Since 0.4.12 each bundle is also timestamped in **Bitcoin** through OpenTimestamps (free, no account): a second, independent witness. The `.ots` file lies next to the bundle, `padam l3-ots-upgrade` fetches the block height once it is mined, and `padam l3-verify` shows it.
+**L3** is the optional eternal layer. It anchors memory to **Arweave** (encrypted bundles) and **Solana** (a Merkle root in a Memo), so anyone can check that an anchored snapshot was not changed afterwards — while any single record can still be forgotten for good. Since 0.4.12 each bundle is also timestamped in **Bitcoin** through OpenTimestamps (free, no account): a second, independent witness. The `.ots` file lies next to the bundle, `padam l3-ots-upgrade` fetches the block height once it is mined, and `padam l3-verify` shows it.
 
 Part of [CODE Eternal](https://aifa.works) · Project page: [aifa.works/nocturne](https://aifa.works/nocturne) · Specification: [English](https://github.com/MaksimGalatin/padam-nocturne/blob/main/docs/NOCTURNE_SPEC.en.md) · [Русский](https://github.com/MaksimGalatin/padam-nocturne/blob/main/docs/NOCTURNE_SPEC.md) · Русская версия README: [README.ru.md](https://github.com/MaksimGalatin/padam-nocturne/blob/main/README.ru.md)
 
@@ -54,7 +54,7 @@ Part of [CODE Eternal](https://aifa.works) · Project page: [aifa.works/nocturne
 
 Agent memory today mostly *accumulates*. After a month it holds thousands of records; old decisions argue with new ones, and the agent answers from things that were abandoned long ago. A fact that was wrong but keeps being retrieved looks as fresh as the day it was written. And when a user asks to be forgotten, the usual answer is either "we can't — it's in the log" or "we deleted everything".
 
-NOCTURNE does the night work a brain does: keep what matters, generalise what repeats, let the rest fade — and keep an honest history of every change. L3 adds what a private database cannot: proof, checkable by anyone, that the history was not rewritten afterwards.
+NOCTURNE does the night work a brain does: keep what matters, fold repeats into what it already holds, turn refinements into new versions, let the rest fade — and keep an honest history of every change. L3 adds what a private database cannot: proof, checkable by anyone, that each anchored snapshot was not changed afterwards. It does not prove that every memory was anchored or that a memory is true.
 
 ## Three ideas that make it different
 
@@ -70,7 +70,7 @@ NOCTURNE does the night work a brain does: keep what matters, generalise what re
 | Contradictions | overwrite or pile up | new version; old one kept in history |
 | "Forget me" | impossible or all-or-nothing | one record, by destroying its own key |
 | Where it lives | vendor's cloud | one SQLite file you own |
-| Proof it was not rewritten | — | Merkle root on Solana, ciphertext on Arweave |
+| Proof an anchored snapshot was not changed | — | Merkle root on Solana, ciphertext on Arweave |
 
 ---
 
@@ -149,6 +149,8 @@ For questions that aggregate across many conversations ("how many…", "how much
 - **Secrets never get stored.** API keys and tokens (OpenAI, Anthropic, xAI, GitHub, GitLab, AWS, Google, Stripe, Hugging Face, npm, Neon, Resend, Slack, Vercel, Telegram, JWT, bearer), private keys, passwords in connection strings or said in words ("the password is …", "пароль — …"), wallet seed phrases (12 or more BIP-39 words), key byte arrays and the private part of a JWK are replaced with `[REDACTED:kind]` before the text reaches the database or the vector. Keys without a known prefix are caught by their shape: a value after a field name such as `client_secret` or `AccountKey`, a long random string, `Basic` credentials, a card number (Luhn plus grouping or the word "card") with its CVV or PIN. Links, blockchain addresses and signatures, hashes, UUIDs and Vercel ids stay open. Limits: plain hex without a field name looks like a file hash, and base58 of 32–44 characters is treated as an address. Set `PADAM_KEEP_SECRETS=1` to turn this off.
 - **Every record says where it came from:** `user`, `agent` or `external`, with starting confidence 1.0, 0.8 and 0.6. An agent repeating its own conclusion does not raise its confidence, so one mistake cannot grow into a "fact" by repetition. Through MCP even `origin: user` does not raise it: the agent sets that label itself.
 - **Some writes wait for you.** Held out of search until you decide with `padam review`, `padam approve` or `padam reject`: a write that looks like a command; any identity or preference record from an agent or an external source, also when it is filed under another kind; a write that would replace such a record; and an external source overriding your own record. The first identity or preference record marked `origin: user` is stored, so a fresh memory can learn who you are; every later one waits. Records under review are not shown to agents in search, export or timeline. `PADAM_MCP_TRUST_WRITES=1` turns the review off.
+
+- **`padam_export` is outside the fence.** It returns machine-readable JSON for `padam import` and other tools, so stored text reaches the agent without the data marker. The HOL Guard entry keeps it on review; in other clients keep it behind confirmation or leave it out.
 - **There is no erase tool.** Forgetting, approving and restoring exist only in the console and the REST API.
 
 **Recognising commands is a help, not the protection.** The filter knows the usual forms in English, Russian, Ukrainian, Belarusian, Spanish, German, French, Italian, Portuguese, Chinese, Japanese, Korean and Arabic; it looks through look-alike letters, zero-width characters, full-width letters, digits in place of letters, words split letter by letter, and base64, hex, URL and HTML encodings; it knows role-play takeovers ("you are now DAN"), orders to move money to a wallet and orders to send the memory somewhere. A command can still be written in a way no list foresees: on a held-out set written after our fixes, with kinds of attack we had never seen, the filter held 6 of 14 commands. So the protection is structural: memory always comes back to the agent fenced as data, records about who you are cannot be changed by an agent, secrets are not stored, and since 0.4.0 every write the agent marks as `external` waits for your review whatever its wording (`PADAM_HOLD_EXTERNAL=0` turns this off). The agent sets that label itself, so an agent that lies about where a text came from still gets only the dictionary and the fence. MCP gives the server no way to check where an agent got a text; if you need a boundary that does not depend on the label, set `PADAM_MCP_REVIEW_ALL=1` and every agent write waits for you.
@@ -241,6 +243,8 @@ Works out of the box with no model: words + BM25 + identifiers (names, numbers, 
 
 `PADAM_EMBEDDER` chooses the method: `auto` (default — Ollama if it answers, otherwise the installed local model, otherwise built-in), `builtin`, `ollama`, `model2vec` or `fastembed` (`pip install fastembed`, `BAAI/bge-small-en-v1.5` by default, 22 ms per text in the same measurement). `PADAM_LOCAL_EMBED_MODEL` names another model for the chosen library. Changing the method never breaks search: records with vectors of another model are found by words until `padam reindex` or sleep recomputes them. How much each method finds is measured on a public benchmark — see [LongMemEval](#longmemeval--measured-on-a-public-benchmark).
 
+**Memory in Russian or another non-English language.** The default `[embed]` model is English (see Honest limits). For Claude Code: `claude mcp add padam -e PADAM_EMBEDDER=model2vec -e PADAM_LOCAL_EMBED_MODEL=minishlab/potion-multilingual-128M -- uvx --from "padam-nocturne[embed]" padam-nocturne`. The model is about 530 MB (512 MB of weights plus the tokenizer) and downloads on first use, so run one `padam recall` from the console first, with the same two variables, to fetch it before an MCP client waits on it. This `uvx --from "padam-nocturne[embed]"` launch is not the one the HOL Guard entry matches.
+
 ## The NOCTURNE cycle
 
 `python -m padam sleep` (or the `padam_sleep` tool, or a nightly cron job from [`integrations/crontab.txt`](https://github.com/MaksimGalatin/padam-nocturne/blob/main/integrations/crontab.txt)):
@@ -249,7 +253,7 @@ Works out of the box with no model: words + BM25 + identifiers (names, numbers, 
 2. **A cap on the sharp** — the top tenth by priority may take at most a fixed share of the batch.
 3. **Stratified sampling of the rest** by record kind.
 4. **Bias correction** — importance weights undo the over-sampling of what was picked by priority.
-5. **Consolidation** — each sampled episode is summarised and stored; against a close existing record PADAM decides *duplicate*, *refinement*, *contradiction* or *coexist* (a contradiction creates a new version, the old one stays in `timeline`); the replayed episode's priority is lowered.
+5. **Consolidation** — each sampled episode is stored as written; against a close existing record PADAM decides *duplicate*, *refinement*, *contradiction* or *coexist* (a duplicate is folded into the old record; a refinement or a contradiction creates a new version, the old one stays in `timeline`). A structural check runs first (two different values of the same property of the same thing contradict each other), then the Ollama model if it answers; without it simple rules decide: the same text is a duplicate, a negation ("no longer", "instead of") makes a new version, a much longer text that contains the start of the old one refines it, and anything else is kept alongside; the replayed episode's priority is lowered.
 6. **Decay by kind** — counted from the last confirmation.
 7. **Bridge between model generations** — after you change the embedding model, each sleep moves up to 200 old vectors to the new model (`PADAM_SLEEP_REINDEX`), so past memory does not silently drop out of search.
 8. **Contradictions are named, not fixed** — active records about the same thing with different values (they arrive through import, approval or manual edits) are listed in the report and flagged in search; the person decides.
@@ -372,7 +376,7 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 953 passed, 10 skipped with [embed] (Python 3.14.4, PADAM_LANG=en and ru); 948 passed, 11 skipped without it (3.10.9); 12 Nov 2026, Windows
+python -m pytest tests/ -q        # 968 passed, 10 skipped with [embed] (Python 3.14.4, PADAM_LANG=en and ru); 963 passed, 11 skipped without it (3.10.9); 12 Nov 2026, Windows
 ```
 
 CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L3 tests never touch the network: Arweave and Solana are replaced by fakes. The suite never calls a local Ollama either, even when one is running: every test uses the built-in embedding, as on CI. `PADAM_TEST_LIVE_OLLAMA=1` turns on the one live check. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.

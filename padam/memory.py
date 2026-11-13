@@ -1281,7 +1281,10 @@ class Memory:
             # Файл выгрузки мог быть изменён, а восстановленная запись потом попадает в контекст модели.
             ch = bytes.fromhex(rec["content_hash"]) if rec.get("content_hash") else None
             if rec.get("content") is not None:
-                очищено = safety.clean(str(rec["content"]))[:config.MAX_CONTENT_CHARS]
+                # 0.4.16: сначала обрезка с запасом, потом маскировка. Маскировка растёт сверхлинейно на сплошной строке
+                # (320 000 знаков — 32 с), и одна запись в миллионы знаков в файле выгрузки подвешивала импорт.
+                # Запас 256 знаков — чтобы ключ на границе маскировка видела целиком.
+                очищено = safety.clean(str(rec["content"])[:config.MAX_CONTENT_CHARS + 256])[:config.MAX_CONTENT_CHARS]
                 if очищено != rec["content"]:
                     rec = {**rec, "content": очищено}
                     ch = None  # текст изменился, прежний отпечаток к нему больше не относится

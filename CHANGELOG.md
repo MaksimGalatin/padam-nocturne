@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.4.16 — 13 November 2026
+
+### Fewer false alarms around the word "password" (three old classes)
+Found while running a secret guard over the project's own notes. Each class is narrowed, never a single case, and each is a test (`tests/test_context_secrets_0415.py`):
+- after "password … :" the value is often *where* the password is or *what* names it, not the password: a link with a scheme (`https://…`), a domain with a known zone or a path, a file path, a file name, a reference to a variable (`${VAR}`, or a name with an underscore such as `$DB_PASSWORD`) or a short all-caps ticker of 3–8 letters (`$GALATIN`). These are no longer masked. A value that only starts with `$` — `$ECRET2026`, `$ECRETPASS` — is still a password (an outside review caught an early draft that opened it). A password inside a link (`postgres://user:…@host`) is still masked by the URL layer;
+- `Public key: …`, `pubkey = …`, "открытый ключ: …" — the public half of a key pair is meant to be shown and is no longer masked as an assigned secret;
+- measured, 0.4.15 from PyPI against 0.4.16: LongMemEval-S, all 189,634 non-empty unique turns (189,635 counting one empty turn, as the 0.4.13 notes did) — 2 changed, both false alarms removed (`MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}` and a link to an article whose address contains "password-policy"); the project's notes, 3,748,287 paragraphs — 111 changed, every one checked by the form of the value that is no longer masked: 33 variables, 9 file names, 3 links, 9 masks that only changed kind, and 60 of eight further false-alarm kinds (a ticker, a public key, Markdown links, a token already shown as `ghp_***`) — no real secret was opened. 142 paragraphs longer than 100,000 characters were not compared (see below). All 1,692 unique texts of the published and sealed red-team sets of rounds 1–7: 0 changes in ordinary notes, commands, owner changes, fence and forgetting; 3 secret cases changed only the kind of their mask (the number of masks stayed the same, no secret was opened).
+- Suite: 968 passed, 10 skipped with `PADAM_LANG=en` and with `PADAM_LANG=ru` (Python 3.14, with [embed]); 963 passed, 11 skipped on Python 3.10.
+
+### Import no longer stalls on a huge record
+Masking grows faster than linearly on one unbroken line of millions of characters (measured: 80,000 characters 2.2 s, 320,000 characters 32 s). MCP writes and the REST API already refuse content over `MAX_CONTENT_CHARS` (20,000) before masking, but `padam import` masked a record whole and cut it afterwards, so one huge record in an export file could hold an import for many minutes. It now cuts to the limit plus 256 characters first, so a key on the boundary is still seen whole. A 200,000-character record imports in 0.6 s instead of 2.2 s. New tests: `tests/test_import_long_0416.py`.
+
+### README, after an outside review
+- NOCTURNE was described as "generalising what repeats" and as "summarising" each episode. It keeps each episode as written, folds repeats into the record they repeat and turns refinements and contradictions into a new version of it, with history (`padam/nocturne.py`, `padam/memory.py`); the text now says so, and says how the relation is decided without Ollama.
+- L3 was described as proof that "the memory was never rewritten". A Merkle root proves that an anchored snapshot was not changed afterwards; it does not prove that every memory was anchored or that a memory is true. The text now says exactly that.
+- A ready command for memory in Russian or another non-English language (`PADAM_LOCAL_EMBED_MODEL=minishlab/potion-multilingual-128M`), checked: a question with no shared words finds the right record, built-in search finds nothing.
+- `padam_export` returns raw JSON outside the data fence (checked with a live MCP call); keep it behind confirmation in clients other than HOL Guard.
+- The package description on PyPI and the server description in the MCP registry said "sleep-style consolidation" and "verifiable forgetting". They now say what the code does: local memory that masks secrets, holds injected orders for review and forgets one record at a time (on Arweave, by destroying its key).
+
 ## 0.4.15 — 12 November 2026
 
 ### Secrets recognised by the words next to them (round 6 Red Team misses)

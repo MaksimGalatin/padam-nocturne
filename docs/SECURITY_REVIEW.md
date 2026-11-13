@@ -2,9 +2,10 @@
 
 PADAM NOCTURNE is a local memory server for AI agents (MCP over stdio, one SQLite file). What an agent saves today it
 reads back tomorrow as context, so memory is an injection and leakage surface. This page is the short path through
-what we claim, how it was measured, what still gets through, and how to check it yourself. Version 0.4.15,
-12 November 2026. 0.4.15 adds six secret rules written from round 6's eleven secret misses (see below); command and
-owner recognition and search are as measured on 0.4.13 (0.4.14 changed only the language of messages).
+what we claim, how it was measured, what still gets through, and how to check it yourself. Version 0.4.16,
+13 November 2026. 0.4.15 added six secret rules written from round 6's eleven secret misses (see below); 0.4.16 removes
+three classes of false alarm around the word "password" without opening a secret (see CHANGELOG). Command and owner
+recognition and search are as measured on 0.4.13 (0.4.14 changed only the language of messages).
 
 ## The model in one paragraph
 
@@ -17,8 +18,10 @@ owner and the fence. Full threat model with the test behind each row: [SECURITY.
 
 ## Measured, not claimed
 
-**Attacks written by someone who had not seen our tests** ([redteam/](../redteam/README.md)). Each round has an open
-set and a sealed set whose SHA-256 is committed before we change any code.
+**Attacks written by someone who had not seen our tests** ([redteam/](../redteam/README.md)). Rounds 1–2 had an open
+set and a sealed set whose SHA-256 was committed before we changed any code. From round 3 on every set is sealed: its
+SHA-256 was recorded by the maintainer before the run and published together with the results, so the timing cannot
+be checked from outside. The sets of rounds 4–7 will be published after a read for real names.
 
 | round | set | before fixes | after fixes |
 |---|---|---|---|
@@ -48,13 +51,13 @@ fixes made after seeing a round are reported as fitted, never as the measure.
 
 What it shows: the owner check generalises (identity 8 → 32); command and secret word lists do not keep up with new
 phrasings (secrets 40 → 34); the fence and forgetting held every case of every round. All ten false alarms of round 6
-are held by 0.4.12 too — checked case by case; none is new. Round 6 was not fitted on 0.4.13. Every case and every
-failure: [redteam/rounds/](../redteam/rounds/).
+are held by 0.4.12 too — checked case by case; none is new. Round 6 was not fitted on 0.4.13. Results of every round:
+[redteam/rounds/](../redteam/rounds/); the sets of rounds 4–7 will follow after a read for real names.
 
 **0.4.15 is fitted to round 6's secrets — do not read it as a measure.** Six rules mask a secret by the words next to
 it (a password in prose, a recovery phrase by its label, a password column in a table, 2FA backup codes, a hex key after
 "key/AES", a password in a command flag). They were written from the 11 secret misses of round 6, and on those 11 they
-mask 11. The honest number will come from round 7, sealed before it is run. False alarms, 0.4.14 against 0.4.15: 0 changed
+mask 11. The honest number came from round 7, written after these rules and hashed before the run: secrets 13/20 on 0.4.14 → 16/20 on 0.4.15, with no new false alarm on its ordinary notes. False alarms, 0.4.14 against 0.4.15: 0 changed
 masks on all 189,634 unique LongMemEval-S turns; on the 1,448 unique texts of rounds 1–6 masks changed only in 16 secret
 cases, all secrets 0.4.14 left open; 0 changes in ordinary notes, fence, command, identity and forgetting cases.
 
@@ -80,7 +83,7 @@ has exactly one opening and one closing tag with equal 32-hex nonces.
 5 for 97.0 % of answerable questions (top 10: 99.2 %), against 96.0 % (97.7 %) for a plain BM25 baseline on the same data; 400 of those
 questions were not used while tuning (97.6 %). Two separate runs agree on every question.
 
-**Build and release.** 953 tests on Python 3.14 (with PADAM_LANG=en and with ru), 948 on 3.10, CI on Linux and Windows for 3.10–3.13. PyPI releases
+**Build and release.** 968 tests on Python 3.14 (with PADAM_LANG=en and with ru), 963 on 3.10, CI on Linux and Windows for 3.10–3.13. PyPI releases
 come from a GitHub Actions workflow through Trusted Publishing (OIDC), with no stored token; the actions are pinned
 by commit hash. The same way, with no stored token, `server.json` is published to the official MCP registry as
 `io.github.MaksimGalatin/padam-nocturne` (manual `mcp-registry` workflow, `mcp-publisher` checked against the
@@ -123,7 +126,7 @@ git clone https://github.com/MaksimGalatin/padam-nocturne && cd padam-nocturne
 python -m pytest tests/ -q                       # the whole suite, no network, no model service
 python redteam/run.py redteam/public_cases.jsonl # writes each case through MCP like an outside agent,
                                                  # judges by the raw database bytes
-padam doctor                                     # every switch that weakens the model, file integrity, key state
+padam doctor                                     # the switches that weaken protection, file integrity, key state
 ```
 
 To test us properly: write your own cases in the format of [redteam/README.md](../redteam/README.md), publish only
