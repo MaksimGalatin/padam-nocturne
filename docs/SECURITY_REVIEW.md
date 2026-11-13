@@ -58,7 +58,7 @@ are held by 0.4.12 too — checked case by case; none is new. Round 6 was not fi
 it (a password in prose, a recovery phrase by its label, a password column in a table, 2FA backup codes, a hex key after
 "key/AES", a password in a command flag). They were written from the 11 secret misses of round 6, and on those 11 they
 mask 11. The honest number came from round 7, written after these rules and hashed before the run: secrets 13/20 on 0.4.14 → 16/20 on 0.4.15, with no new false alarm on its ordinary notes. False alarms, 0.4.14 against 0.4.15: 0 changed
-masks on all 189,634 unique LongMemEval-S turns; on the 1,448 unique texts of rounds 1–6 masks changed only in 16 secret
+masks on all 189,634 non-empty unique LongMemEval-S turns; on the 1,448 unique texts of rounds 1–6 masks changed only in 16 secret
 cases, all secrets 0.4.14 left open; 0 changes in ordinary notes, fence, command, identity and forgetting cases.
 
 **A bug we shipped and fixed.** 0.4.7 and 0.4.8 let `timeline` return another user's record by id on a database
@@ -66,7 +66,7 @@ shared by several `PADAM_USER` identities, and REST `/timeline` without a token 
 coordinator on 9 November; fixed in 0.4.9 with an owner check and two tests that fail on 0.4.8. All 47 lookups in
 `padam/memory.py` were reviewed for the same flaw; this was the only one.
 
-**False alarms are measured too.** Every change to the filters is run against all 189,635 distinct turns of
+**False alarms are measured too.** Every change to the filters is run against all 189,635 distinct turns (one of them empty, so 189,634 with text) of
 LongMemEval-S (ordinary chat) before release. 0.4.7 against 0.4.6: masking changed in 0 texts; command detection
 changed in 4 — one real jailbreak now caught, three ordinary tips ("don't forget any dietary restrictions") that the
 first draft held and that were fixed before release. 0.4.8 against 0.4.7: masking 0; one false alarm (relationship
