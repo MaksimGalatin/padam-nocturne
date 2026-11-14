@@ -140,9 +140,9 @@ Con un clic en Cursor o VS Code (requiere [uv](https://docs.astral.sh/uv/)): [![
 
 Desde PyPI: `pip install padam-nocturne`. El código más reciente directo desde GitHub: `uvx --from git+https://github.com/MaksimGalatin/padam-nocturne padam-nocturne`. ¿Instalado con `pip install -e .`? Entonces basta con `claude mcp add padam -- padam-mcp`. En [`integrations/`](https://github.com/MaksimGalatin/padam-nocturne/tree/main/integrations/) y [`plugins/`](plugins/) hay configuraciones listas para Claude Code, Claude Desktop, Cursor, Codex, Gemini CLI, Antigravity, VS Code, systemd y cron.
 
-**LangChain.** Mediante [`langchain-mcp-adapters`](https://github.com/langchain-ai/langchain-mcp-adapters) las herramientas se convierten en herramientas de LangChain con sus esquemas de argumentos. `python integrations/langchain_check.py` inicia `uvx padam-nocturne` desde PyPI y verifica sin modelo de lenguaje: la lista de herramientas, una escritura encontrada dentro del cerco de datos, una orden inyectada retenida para el propietario y un secreto que nunca llega al archivo de base de datos (leído en bytes crudos). 0.4.8 con adapters 0.3.2 y langchain-core 1.7.7: 6 de 6.
+**LangChain.** Mediante [`langchain-mcp-adapters`](https://github.com/langchain-ai/langchain-mcp-adapters) las nueve herramientas se convierten en herramientas de LangChain con sus esquemas de argumentos. `python integrations/langchain_check.py` inicia `uvx padam-nocturne` desde PyPI (o una ruta local) y verifica sin modelo de lenguaje: la lista de herramientas, una escritura encontrada dentro del cerco de datos, una orden inyectada retenida para el propietario y un secreto que nunca llega al archivo de base de datos (leído en bytes crudos). Comprobado con las 9 herramientas (`langchain-mcp-adapters 0.3.2`, `langchain-core 1.8.0`, `mcp 1.30.0`, 14 Nov 2026): 6 de 6 (medición anterior en `0.4.8` con 8 herramientas y `langchain-core 1.7.7`: 6 de 6).
 
-**CrewAI.** Mediante `MCPServerAdapter` de [`crewai-tools`](https://pypi.org/project/crewai-tools/) las herramientas se integran en CrewAI. `python integrations/crewai_check.py` ejecuta las mismas comprobaciones sin modelo de lenguaje. 0.4.18 con crewai y crewai-tools 1.15.41, mcp 1.30.0: 5 de 5 (14 Nov 2026). CrewAI requiere Python inferior a 3.14.
+**CrewAI.** Mediante `MCPServerAdapter` de [`crewai-tools`](https://pypi.org/project/crewai-tools/) las herramientas MCP se integran en CrewAI. `python integrations/crewai_check.py` ejecuta las mismas comprobaciones sin modelo de lenguaje. El servidor actual expone 9 herramientas; el resultado `5 de 5` corresponde a **0.4.18 (8 herramientas)** con `crewai` y `crewai-tools 1.15.41`, `mcp 1.30.0` (14 Nov 2026). CrewAI requiere Python inferior a 3.14.
 
 ---
 
@@ -212,6 +212,8 @@ python -m padam demo --studio
 ```
 
 Disponible en **4 idiomas** (`ru`, `en`, `es`, `zh`, tomando por defecto el idioma del sistema) y **2 temas** (oscuro CODE Eternal y claro de alto contraste, tomando por defecto `prefers-color-scheme`). El enlace impreso lleva un token de un solo uso tras `#` (`history.replaceState` lo limpia de la barra de direcciones al instante); el HTML no contiene registros almacenados, muestra todo mediante `textContent` (`0` `innerHTML`) y aplica `Content-Security-Policy: default-src 'none'; script-src 'nonce-…'; style-src 'nonce-…'; connect-src 'self'; img-src 'none'`.
+
+![PADAM Studio — Recorrido rápido](docs/media/padam-studio-demo.gif)
 
 ![PADAM Studio — Resumen y Doctor de Seguridad](docs/images/studio-overview.png)
 
@@ -382,6 +384,10 @@ python -m pytest tests/ -q        # 968 passed, 10 skipped with [embed] and [l3]
 | model2vec `potion-base-8M` | 20, completos | **71.4 %** | 70.2 % | 90.0 % |
 
 **Escala en una máquina** (`benchmarks/scale/results_builtin_0413.json`, 12 Nov 2026): 10,000 registros — 6.3 ms por escritura, mediana de búsqueda 15 ms; 100,000 registros — 5.7 ms por escritura, mediana de búsqueda 97 ms (percentil 95: 162 ms), 375 MB.
+
+### LoCoMo — 10 conversaciones completas (1,982 preguntas)
+
+En [LoCoMo](https://github.com/snap-research/locomo) (`benchmarks/locomo/`, 10 conversaciones, 5,882 turnos, búsqueda integrada sin LLM, 14 Nov 2026): en 1,536 preguntas de categorías 1–4, `sess_any@5` = **90.10 %**, `sess_any@10` = **95.51 %**, `turn_any@5` = **56.12 %**; activando el reordenamiento opcional `PADAM_RERANK=1` sube a `sess_any@5` = **91.08 %**, `sess_any@10` = **95.77 %**, `turn_any@5` = **57.68 %** (en multi-hop: `sess_any@5` de 84.04 % a **87.94 %**).
 
 ---
 

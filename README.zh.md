@@ -140,7 +140,7 @@ claude mcp add padam -- uvx padam-nocturne
 
 从 PyPI 安装：`pip install padam-nocturne`。直接从 GitHub 运行最新代码：`uvx --from git+https://github.com/MaksimGalatin/padam-nocturne padam-nocturne`。如果已通过 `pip install -e .` 安装，直接运行 `claude mcp add padam -- padam-mcp`。[`integrations/`](https://github.com/MaksimGalatin/padam-nocturne/tree/main/integrations/) 与 [`plugins/`](plugins/) 目录中提供了面向 Claude Code、Claude Desktop、Cursor、Codex、Gemini CLI、Antigravity、VS Code、systemd 和 cron 的现成配置。
 
-**LangChain 与 CrewAI。** 通过 [`langchain-mcp-adapters`](https://github.com/langchain-ai/langchain-mcp-adapters)（`python integrations/langchain_check.py`，0.4.8 实测 6/6 通过）或 [`crewai-tools`](https://pypi.org/project/crewai-tools/) 的 `MCPServerAdapter`（`python integrations/crewai_check.py`，0.4.18 实测 5/5 通过，2026-11-14）可直接将 PADAM 工具接入智能体工作流。
+**LangChain 与 CrewAI。** 通过 [`langchain-mcp-adapters`](https://github.com/langchain-ai/langchain-mcp-adapters)（`python integrations/langchain_check.py`，已在新版 9 个工具下实测通过 6/6，2026-11-14，`langchain-mcp-adapters 0.3.2`、`langchain-core 1.8.0`、`mcp 1.30.0`；早期 `0.4.8` 的 8 工具版本同样 6/6）或 [`crewai-tools`](https://pypi.org/project/crewai-tools/) 的 `MCPServerAdapter`（`python integrations/crewai_check.py`，在 `0.4.18` 的 8 工具版本上实测 5/5 通过，2026-11-14，需 Python < 3.14；当前服务端已扩展至 9 个工具）可直接将 PADAM 工具接入智能体工作流。
 
 ---
 
@@ -210,6 +210,8 @@ python -m padam demo --studio
 ```
 
 支持 **4 种语言**（`ru`、`en`、`es`、`zh`，默认跟随系统语言）与 **2 套主题**（CODE Eternal 深色与高对比度浅色，默认跟随 `prefers-color-scheme`）。启动链接在 `#` 后附带一次性令牌（页面加载后立即通过 `history.replaceState` 从地址栏清除）；HTML 源码不包含任何存储记录，所有文本严格通过 `textContent` 渲染（`0` 处 `innerHTML`），并强制执行 `Content-Security-Policy: default-src 'none'; script-src 'nonce-…'; style-src 'nonce-…'; connect-src 'self'; img-src 'none'`。
+
+![PADAM Studio — 功能演示](docs/media/padam-studio-demo.gif)
 
 ![PADAM Studio — 总览与安全体检](docs/images/studio-overview.png)
 
@@ -380,6 +382,10 @@ python -m pytest tests/ -q        # 968 passed, 10 skipped with [embed] and [l3]
 | model2vec `potion-base-8M` | 20 条，完整视图 | **71.4 %** | 70.2 % | 90.0 % |
 
 **单机性能规模实测**（`benchmarks/scale/results_builtin_0413.json`，2026-11-12）：10,000 条记录 —— 单次写入 6.3 ms，搜索中位数 15 ms；100,000 条记录 —— 单次写入 5.7 ms，搜索中位数 97 ms（P95 为 162 ms），数据库文件 375 MB。
+
+### LoCoMo —— 10 段完整对话基准（1,982 题）
+
+在 [LoCoMo](https://github.com/snap-research/locomo) 公开基准上（`benchmarks/locomo/`，全部 10 段对话、5,882 条对话轮次，内置检索、零大模型，2026-11-14）：1,536 道 1–4 类问题中，会话召回 `sess_any@5` = **90.10 %**、`sess_any@10` = **95.51 %**、单轮精确召回 `turn_any@5` = **56.12 %**；开启可选重排 `PADAM_RERANK=1` 后升至 `sess_any@5` = **91.08 %**、`sess_any@10` = **95.77 %**、`turn_any@5` = **57.68 %**（多跳推理 multi-hop：`sess_any@5` 从 84.04 % 提升至 **87.94 %**）。
 
 ---
 

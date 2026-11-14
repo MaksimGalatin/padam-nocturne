@@ -140,9 +140,9 @@ One click in Cursor or VS Code (needs [uv](https://docs.astral.sh/uv/)): [![Add 
 
 From PyPI: `pip install padam-nocturne`. The latest code straight from GitHub: `uvx --from git+https://github.com/MaksimGalatin/padam-nocturne padam-nocturne`. Installed with `pip install -e .`? Then simply `claude mcp add padam -- padam-mcp`. Ready-made configs for Claude Desktop, Cursor, VS Code, systemd and cron are in [`integrations/`](https://github.com/MaksimGalatin/padam-nocturne/tree/main/integrations/).
 
-**LangChain.** Through [`langchain-mcp-adapters`](https://github.com/langchain-ai/langchain-mcp-adapters) the nine tools become LangChain tools with their argument schemas. `python integrations/langchain_check.py` starts `uvx padam-nocturne` from PyPI and checks, with no language model: the tool list, a write found by search inside the fence, an injected order held for the owner, a secret that never reaches the database file (read as raw bytes). 0.4.8 with adapters 0.3.2 and langchain-core 1.7.7: 6 of 6. One difference to know: the adapter passes a tool error (`isError: true`, e.g. `limit must be at most 50`) to the agent as ordinary text, not as a `ToolException`.
+**LangChain.** Through [`langchain-mcp-adapters`](https://github.com/langchain-ai/langchain-mcp-adapters) the nine tools become LangChain tools with their argument schemas. `python integrations/langchain_check.py` starts `uvx padam-nocturne` from PyPI (or a local path passed as argv[1]) and checks, with no language model: the tool list, a write found by search inside the fence, an injected order held for the owner, a secret that never reaches the database file (read as raw bytes). Verified on the 9-tool build with `langchain-mcp-adapters 0.3.2`, `langchain-core 1.8.0`, `mcp 1.30.0`: 6 of 6 (14 Nov 2026; earlier run on `0.4.8` with 8 tools and `langchain-core 1.7.7`: 6 of 6). One difference to know: the adapter passes a tool error (`isError: true`, e.g. `limit must be at most 50`) to the agent as ordinary text, not as a `ToolException`.
 
-**CrewAI.** Through `MCPServerAdapter` from [`crewai-tools`](https://pypi.org/project/crewai-tools/) the nine tools become CrewAI tools. `python integrations/crewai_check.py` starts `uvx padam-nocturne` from PyPI and runs the same checks with no language model: the tool list, a write found by search inside the fence, an injected order held for the owner, a secret that never reaches the database file. 0.4.18 with crewai and crewai-tools 1.15.41, mcp 1.30.0: 5 of 5 (14 Nov 2026). CrewAI needs Python below 3.14.
+**CrewAI.** Through `MCPServerAdapter` from [`crewai-tools`](https://pypi.org/project/crewai-tools/) the MCP tools become CrewAI tools. `python integrations/crewai_check.py` starts `uvx padam-nocturne` from PyPI (or a local path) and runs the same checks with no language model: the tool list, a write found by search inside the fence, an injected order held for the owner, a secret that never reaches the database file. The current MCP server exposes 9 tools; the last run `5 of 5` was measured on **0.4.18 (8 tools)** with `crewai` and `crewai-tools 1.15.41`, `mcp 1.30.0` (14 Nov 2026). CrewAI needs Python below 3.14.
 
 ---
 
@@ -214,6 +214,8 @@ python -m padam demo --studio
 ```
 
 Available in **4 languages** (`ru`, `en`, `es`, `zh`, defaulting to your system language) and **2 themes** (dark CODE Eternal and high-contrast light, defaulting to `prefers-color-scheme`). The printed link carries a one-time token after `#` (`history.replaceState` removes it from the address bar immediately); the HTML contains no stored records, renders all content strictly via `textContent` (`0` `innerHTML`), and enforces `Content-Security-Policy: default-src 'none'; script-src 'nonce-…'; style-src 'nonce-…'; connect-src 'self'; img-src 'none'`. The lightweight single-page `padam viewer` remains available as well.
+
+![PADAM Studio — Demo Walkthrough](docs/media/padam-studio-demo.gif)
 
 ![PADAM Studio — Overview & Security Doctor](docs/images/studio-overview.png)
 
@@ -485,6 +487,10 @@ Read these numbers with their conditions:
 - "Compact view" cuts the assistant's replies, which is why it loses on questions about what the assistant said; `padam_search` returns whole records by default.
 - Scale on one machine (built-in method, LongMemEval user turns, `benchmarks/scale/results_builtin_1111.json`, 11 Nov 2026): 1,000 records — 2.7 ms per write, search median 5.4 ms, 4.7 MB; 10,000 records — 3.5 ms per write, search median 22 ms (95th percentile 25 ms), 45.2 MB; 100,000 records — 5.1 ms per write, search median 145 ms (95th percentile 160 ms), 375 MB. Before 0.4.10 search took 220 ms at 10,000 records and about 1.9 s at 100,000; before the vector-cache change a write at 100,000 records took 53 ms. 0.4.12 measured again at 100,000, each version run alone and in both orders: 5.1 ms per write and 145 ms search for both — the function-word change speeds up long questions (46 → 25 ms at 10,000), not these short queries. 0.4.13 with the second search pass, 12 Nov 2026, pinned to four cores that no other job used (browser workers ran on other cores and shared the disk; `results_builtin_0413.json`): 100,000 records — 5.7 ms per write, search median 97 ms (95th percentile 162 ms); 10,000 — 6.3 ms and 15 ms. An earlier run with everything sharing the cores gave 7.1 ms and 125 ms (`results_builtin_0413_busy.json`).
 - The test measures recall from a fixed haystack. It does not measure what PADAM is built for besides recall: forgetting, owner review, secrets, decay, the eternal layer.
+
+### LoCoMo — 10 full conversations (1,982 questions)
+
+On [LoCoMo](https://github.com/snap-research/locomo) (`benchmarks/locomo/`, all 10 conversations, 5,882 turns, built-in search, no LLM, 14 Nov 2026): across 1,536 answerable questions (categories 1–4), `sess_any@5` = **90.10 %**, `sess_any@10` = **95.51 %**, `turn_any@5` = **56.12 %**; enabling optional second-stage reranking (`PADAM_RERANK=1`) lifts `sess_any@5` to **91.08 %**, `sess_any@10` to **95.77 %**, and `turn_any@5` to **57.68 %** (multi-hop `sess_any@5`: 84.04 → **87.94 %**).
 
 ---
 

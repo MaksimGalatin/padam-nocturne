@@ -1,0 +1,102 @@
+{
+  "dataset": "LoCoMo (locomo10.json)",
+  "dialogs": 10,
+  "turns_written": 5882,
+  "questions_scored": 1982,
+  "skipped_no_evidence": 4,
+  "method": "PADAM Memory.remember per turn, Memory.recall(question, limit=50), embedding=builtin, rerank=False, no LLM",
+  "rerank": false,
+  "rerank_top_k": 0,
+  "padam_version": "0.4.18",
+  "qa_categories_1_4": {
+    "n": 1536,
+    "turn_any@5": 0.5612,
+    "turn_any@10": 0.64,
+    "turn_all@5": 0.4583,
+    "turn_all@10": 0.5247,
+    "sess_any@5": 0.901,
+    "sess_any@10": 0.9551,
+    "sess_all@5": 0.7832,
+    "sess_all@10": 0.8561
+  },
+  "adversarial_category_5": {
+    "n": 446,
+    "turn_any@5": 0.6099,
+    "turn_any@10": 0.6794,
+    "turn_all@5": 0.6009,
+    "turn_all@10": 0.6682,
+    "sess_any@5": 0.9507,
+    "sess_any@10": 0.9753,
+    "sess_all@5": 0.9507,
+    "sess_all@10": 0.9753
+  },
+  "all_with_evidence": {
+    "n": 1982,
+    "turn_any@5": 0.5721,
+    "turn_any@10": 0.6488,
+    "turn_all@5": 0.4904,
+    "turn_all@10": 0.557,
+    "sess_any@5": 0.9122,
+    "sess_any@10": 0.9596,
+    "sess_all@5": 0.8209,
+    "sess_all@10": 0.8829
+  },
+  "by_category": {
+    "multi-hop": {
+      "n": 282,
+      "turn_any@5": 0.4326,
+      "turn_any@10": 0.5709,
+      "turn_all@5": 0.0603,
+      "turn_all@10": 0.1277,
+      "sess_any@5": 0.8404,
+      "sess_any@10": 0.9539,
+      "sess_all@5": 0.2943,
+      "sess_all@10": 0.5213
+    },
+    "temporal": {
+      "n": 321,
+      "turn_any@5": 0.6698,
+      "turn_any@10": 0.7227,
+      "turn_all@5": 0.6106,
+      "turn_all@10": 0.6667,
+      "sess_any@5": 0.8879,
+      "sess_any@10": 0.9408,
+      "sess_all@5": 0.8598,
+      "sess_all@10": 0.9128
+    },
+    "open-domain": {
+      "n": 92,
+      "turn_any@5": 0.3152,
+      "turn_any@10": 0.3804,
+      "turn_all@5": 0.163,
+      "turn_all@10": 0.2065,
+      "sess_any@5": 0.6413,
+      "sess_any@10": 0.7826,
+      "sess_all@5": 0.4565,
+      "sess_all@10": 0.5652
+    },
+    "single-hop": {
+      "n": 841,
+      "turn_any@5": 0.5898,
+      "turn_any@10": 0.6599,
+      "turn_all@5": 0.566,
+      "turn_all@10": 0.6385,
+      "sess_any@5": 0.9548,
+      "sess_any@10": 0.9798,
+      "sess_all@5": 0.9536,
+      "sess_all@10": 0.9786
+    },
+    "adversarial": {
+      "n": 446,
+      "turn_any@5": 0.6099,
+      "turn_any@10": 0.6794,
+      "turn_all@5": 0.6009,
+      "turn_all@10": 0.6682,
+      "sess_any@5": 0.9507,
+      "sess_any@10": 0.9753,
+      "sess_all@5": 0.9507,
+      "sess_all@10": 0.9753
+    }
+  },
+  "seconds": 64.5
+}
