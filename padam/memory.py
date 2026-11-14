@@ -1744,7 +1744,7 @@ class Memory:
                     "id": r["id"],
                     "kind": r["kind"],
                     "scope": r["scope"],
-                    "label": ((текст or "—")[:64] + ("…" if текст and len(текст) > 64 else "")),
+                    "label": (текст or "—"),
                     "content": текст,
                     "status": r["status"],
                     "origin": r["origin"] or "user",

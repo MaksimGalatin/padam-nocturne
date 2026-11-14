@@ -902,6 +902,20 @@ def main(argv=None) -> int:
     s.add_argument("--no-open", action="store_true", help=t("не открывать браузер", "do not open a browser"))
     s.set_defaults(fn=cmd_studio)
 
+    s = sub.add_parser("desktop", help=t("настольное окно центра памяти и ярлык запуска (без встроенного Chromium)",
+                                         "desktop memory center window and launcher shortcut (no bundled Chromium)"))
+    s.add_argument("--port", type=int, default=0)
+    s.add_argument("--self-test", action="store_true")
+    s.add_argument("--create-shortcut", default=None, help=t("создать ярлык запуска в папке", "create launcher shortcut in folder"))
+    s.set_defaults(fn=lambda m, a: (
+        __import__("padam.desktop", fromlist=["create_launcher_shortcut", "run_desktop_gui"]).main(
+            ["--create-shortcut", a.create_shortcut]
+        ) if a.create_shortcut else
+        __import__("padam.desktop", fromlist=["run_desktop_gui"]).run_desktop_gui(
+            m, port=a.port, self_test=a.self_test
+        )
+    ))
+
     s = sub.add_parser("demo", help=t("создать отдельную демо-память с примерами (не трогает основную базу)",
                                       "create a standalone demo memory database with examples (leaves main DB untouched)"))
     s.add_argument("--out", default=None, help=t("путь к файлу демо-базы (по умолчанию ~/.padam/demo.db)",

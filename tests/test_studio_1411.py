@@ -1,3 +1,4 @@
+from pathlib import Path
 # -*- coding: utf-8 -*-
 """Тесты приложения PADAM Studio (А1), пустых состояний (Б18) и квитанции удаления (Б3): 14.11.2026."""
 
@@ -351,3 +352,74 @@ def test_settings_get_and_safe_toggle(tmp_path):
         srv.shutdown()
         srv.server_close()
         mem.close()
+
+
+def test_russian_ui_has_no_3_english_words_chain_and_section9_fixes():
+    """Раздел 9.6: в русском интерфейсе нет строк из 3+ английских слов подряд вне кода и id."""
+    ru = studio.STRINGS["ru"]
+    # Разрешённые собственные названия продуктов в заголовке/шагах подключения
+    allowed_names = (
+        "PADAM · NOCTURNE Studio",
+        "PADAM NOCTURNE",
+        "CODE Eternal",
+        "Claude Code",
+        "VS Code",
+        "SQLite backup API",
+        "padam remember",
+        "padam recall",
+        "padam forget",
+        "padam l3",
+        "padam demo",
+        "padam review",
+        "padam protect-keys",
+    )
+    three_eng_words = re.compile(r"\b[A-Za-z]{2,}\s+[A-Za-z]{2,}\s+[A-Za-z]{2,}\b")
+    offenders = []
+    for key, val in ru.items():
+        cleaned = val
+        for name in allowed_names:
+            cleaned = cleaned.replace(name, "")
+        # Убираем CLI-команды после двоеточия
+        cleaned = re.sub(r"padam\s+[^\n]+$", "", cleaned)
+        m = three_eng_words.search(cleaned)
+        if m:
+            offenders.append((key, val, m.group(0)))
+    assert not offenders, f"Найдены 3+ английских слова подряд в русском UI: {offenders}"
+
+    # Проверим также новые ключи раздела 9 во всех 4 языках
+    for lang in ("ru", "en", "es", "zh"):
+        s = studio.STRINGS[lang]
+        for k in ("time_local", "ov_conflict_two", "ov_btn_compare", "origin_external", "status_quarantined"):
+            assert k in s and s[k].strip(), (lang, k)
+
+
+def test_desktop_mode_and_tauri_security_section10(tmp_path):
+    """Раздел 10 (А2): настольный режим работает без .exe-дроппера, без зашитых путей и без --token в argv."""
+    from padam import desktop
+
+    # 1. Создание ярлыка запуска без записи .exe в AppData
+    shortcut_dir = tmp_path / "shortcuts"
+    shortcut = desktop.create_launcher_shortcut(shortcut_dir)
+    assert shortcut.exists()
+    content = shortcut.read_text(encoding="utf-8")
+    assert "padam" in content
+    assert "FromBase64String" not in content
+
+    # 2. Самопроверка настольного центра памяти в одном процессе
+    db_path = tmp_path / "desk.db"
+    mem = Memory(user_id="desk_user", store=Store(db_path))
+    mem.remember("Проверка настольного центра памяти PADAM Studio", kind="fact")
+    try:
+        rc = desktop.run_desktop_gui(mem, port=0, self_test=True)
+        assert rc == 0
+    finally:
+        mem.close()
+
+    # 3. В исходниках desktop/ и padam/desktop.py нет зашитых путей E:\CODE, версий Edge и --token в спауне
+    root = Path(__file__).resolve().parents[1]
+    desk_py = (root / "padam" / "desktop.py").read_text(encoding="utf-8")
+    tauri_rs = (root / "desktop" / "tauri" / "src" / "main.rs").read_text(encoding="utf-8")
+    for src in (desk_py, tauri_rs):
+        assert "E:\\CODE" not in src and "E:/CODE" not in src
+        assert "157.0.4341.42" not in src
+        assert 'args(["--token"' not in src and '"--token"' not in src

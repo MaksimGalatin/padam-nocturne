@@ -57,13 +57,13 @@ STRINGS: dict[str, dict[str, str]] = {
         "all_kinds": "Все виды",
         "all_scopes": "Все области",
         # Виды записей
-        "kind_preference": "preference · предпочтение",
-        "kind_identity": "identity · кто я",
-        "kind_decision": "decision · решение",
-        "kind_correction": "correction · поправка",
-        "kind_fact": "fact · факт",
-        "kind_state": "state · состояние",
-        "kind_event": "event · событие",
+        "kind_preference": "предпочтение",
+        "kind_identity": "кто я (личность)",
+        "kind_decision": "решение",
+        "kind_correction": "поправка",
+        "kind_fact": "факт",
+        "kind_state": "состояние",
+        "kind_event": "событие",
         # 1. Обзор
         "ov_title": "Обзор памяти и состояния защиты",
         "ov_active": "Действующих записей",
@@ -144,7 +144,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "review_title": "Очередь проверки владельцем",
         "review_subtitle": "Записи, удержанные защитой PADAM до вашего решения. Агенты не видят их в поиске и выгрузке.",
         "review_why": "Почему удержано:",
-        "reason_instruction": "Текст похож на спрятанный приказ ИИ-агенту (Prompt Injection)",
+        "reason_instruction": "Текст похож на спрятанный приказ ИИ-агенту",
         "reason_classifier": "Локальный детектор распознал скрытую инструкцию для ИИ",
         "reason_external": "Прочитано из внешнего источника (веб-страница или файл, PADAM_HOLD_EXTERNAL)",
         "reason_review_all": "Включена обязательная проверка всех записей агента (PADAM_MCP_REVIEW_ALL / STRICT)",
@@ -175,11 +175,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "forget_cancel": "Отмена",
         "forget_preview_versions": "Будет затёрто версий/копий:",
         "forget_preview_derived": "Выводов, зависящих от этой записи:",
-        "receipt_box_title": "Доказательство удаления (Forget Receipt)",
+        "receipt_box_title": "Доказательство удаления записи",
         "receipt_disclaimer": "Техническое доказательство удаления записи и уничтожения её ключа шифрования.",
         "receipt_id": "Номер квитанции:",
         "receipt_mem_id": "Удалённая запись:",
-        "receipt_time": "Время удаления (UTC):",
+        "receipt_time": "Время удаления:",
         "receipt_hash": "Отпечаток удалённого (SHA-256):",
         "receipt_wiped": "Затёрто записей и версий:",
         "receipt_key": "Статус ключа шифрования:",
@@ -201,7 +201,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "graph_sources": "Источники этой записи:",
         "graph_derived": "Выводы из этой записи:",
         # 8. Вечный слой L3
-        "l3_title": "Вечный слой L3: Arweave + Solana + Bitcoin OpenTimestamps",
+        "l3_title": "Вечный слой L3: Arweave, Solana и штамп Bitcoin",
         "l3_subtitle": "Каждая запись шифруется своим ключом AES-256-GCM. В Arweave уходит только шифротекст, в Solana Memo — корень Меркла.",
         "l3_unanchored": "Ожидают закрепления (активных):",
         "l3_pending_forgets": "Квитанций забвения ждут L3:",
@@ -246,7 +246,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "qs_step1_body": "PADAM хранит память ИИ-агента в одном файле SQLite на вашем компьютере. Спрятанные на веб-страницах приказы удерживаются на проверку, секреты и ключи кошельков маскируются до записи на диск, а «Сон» NOCTURNE консолидирует опыт без перекоса в катастрофы.",
         "qs_step2_title": "Шаг 2. Подключите память к вашему агенту (1 команда)",
         "qs_step2_claude": "Claude Code (в терминале):",
-        "qs_step2_cursor": "Cursor / VS Code (.cursor/mcp.json или settings.json):",
+        "qs_step2_cursor": "Редакторы Cursor или VS Code (файл .cursor/mcp.json):",
         "qs_step2_python": "Командная строка и Studio:",
         "qs_btn_copy": "Копировать",
         "qs_copied": "Скопировано!",
@@ -254,6 +254,18 @@ STRINGS: dict[str, dict[str, str]] = {
         "qs_step3_body": "Если ваш агент читает чужие сайты, почту или репозитории, включите строгий профиль PADAM_STRICT=1. Перед первым закреплением в вечном слое L3 защитите ключи записей паролем:",
         "qs_btn_enable_strict": "Включить PADAM_STRICT=1 сейчас",
         "qs_btn_go_overview": "Перейти к обзору памяти",
+        "time_local": "местное",
+        "ov_conflict_two": "Две записи спорят о:",
+        "ov_conflict_many": "Несколько записей спорят о:",
+        "ov_btn_compare": "Сравнить",
+        "origin_user": "владелец",
+        "origin_agent": "агент",
+        "origin_external": "внешний источник",
+        "status_quarantined": "на проверке",
+        "status_superseded": "заменена",
+        "status_revoked": "забыта",
+        "status_archived": "в архиве",
+        "status_rejected": "отклонена",
     },
     "en": {
         "app_title": "PADAM · NOCTURNE Studio",
@@ -475,6 +487,18 @@ STRINGS: dict[str, dict[str, str]] = {
         "qs_step3_body": "When your agent reads untrusted web pages, emails, or repos, enable PADAM_STRICT=1. Before anchoring to Arweave + Solana (L3), wrap per-record keys with a passphrase:",
         "qs_btn_enable_strict": "Enable PADAM_STRICT=1 now",
         "qs_btn_go_overview": "Go to Memory Overview",
+        "time_local": "local",
+        "ov_conflict_two": "Two records disagree on:",
+        "ov_conflict_many": "Multiple records disagree on:",
+        "ov_btn_compare": "Compare",
+        "origin_user": "owner",
+        "origin_agent": "agent",
+        "origin_external": "external source",
+        "status_quarantined": "in review",
+        "status_superseded": "superseded",
+        "status_revoked": "forgotten",
+        "status_archived": "archived",
+        "status_rejected": "rejected",
     },
     "es": {
         "app_title": "PADAM · NOCTURNE Studio",
@@ -696,6 +720,18 @@ STRINGS: dict[str, dict[str, str]] = {
         "qs_step3_body": "Si su agente lee páginas web, correos o repositorios externos, active PADAM_STRICT=1. Antes de anclar en L3, proteja las claves con contraseña:",
         "qs_btn_enable_strict": "Activar PADAM_STRICT=1 ahora",
         "qs_btn_go_overview": "Ir al resumen de memoria",
+        "time_local": "hora local",
+        "ov_conflict_two": "Dos registros discrepan sobre:",
+        "ov_conflict_many": "Varios registros discrepan sobre:",
+        "ov_btn_compare": "Comparar",
+        "origin_user": "propietario",
+        "origin_agent": "agente",
+        "origin_external": "fuente externa",
+        "status_quarantined": "en revisión",
+        "status_superseded": "reemplazado",
+        "status_revoked": "olvidado",
+        "status_archived": "archivado",
+        "status_rejected": "rechazado",
     },
     "zh": {
         "app_title": "PADAM · NOCTURNE Studio",
@@ -917,6 +953,18 @@ STRINGS: dict[str, dict[str, str]] = {
         "qs_step3_body": "当您的智能体需要读取外部网页、邮件或代码库时，请开启 PADAM_STRICT=1。在将记忆锚定到永恒层 L3 之前，请用口令加密保护记录密钥：",
         "qs_btn_enable_strict": "立即开启 PADAM_STRICT=1",
         "qs_btn_go_overview": "进入记忆概览",
+        "time_local": "本地时间",
+        "ov_conflict_two": "两条记录在此处存在冲突：",
+        "ov_conflict_many": "多条记录在此处存在冲突：",
+        "ov_btn_compare": "对比",
+        "origin_user": "所有者",
+        "origin_agent": "智能体",
+        "origin_external": "外部来源",
+        "status_quarantined": "待审核",
+        "status_superseded": "已更替",
+        "status_revoked": "已遗忘",
+        "status_archived": "已归档",
+        "status_rejected": "已拒绝",
     },
 }
 
@@ -1041,6 +1089,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   width: 100%;
   text-align: left;
   padding: 9px 12px;
@@ -1418,29 +1467,52 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 @media (max-width: 860px) {
   .layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     min-height: auto;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  .sidebar, .workspace, .content-area, .panel {
+    min-width: 0;
+    max-width: 100%;
   }
   .sidebar {
     border-right: 0;
     border-bottom: 1px solid var(--line);
-    padding: 12px 14px;
-    gap: 10px;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .topbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .topbar-controls {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .brand-sub {
+    display: none;
   }
   .sidebar-footer {
     display: none;
   }
   .nav-list {
     flex-direction: row;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
     gap: 6px;
-    padding-bottom: 2px;
+    padding-bottom: 6px;
+    scrollbar-width: thin;
   }
   .nav-tab {
     width: auto;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     white-space: nowrap;
-    padding: 6px 10px;
-    font-size: 12px;
+    padding: 6px 11px;
+    font-size: 12.5px;
   }
   .topbar {
     padding: 10px 14px;
@@ -1627,27 +1699,63 @@ async function refreshTopbarStats() {
   } catch (e) {}
 }
 
+function truncateAtWord(text, maxLen) {
+  const s = String(text || '').trim();
+  if (s.length <= maxLen) return s;
+  let cut = s.lastIndexOf(' ', maxLen);
+  if (cut < Math.floor(maxLen * 0.45)) cut = maxLen;
+  return s.slice(0, cut).replace(/[\s,.;:—\-]+$/, '') + '…';
+}
+
+function fmtTime(iso, showSec = true) {
+  if (!iso) return '—';
+  const raw = String(iso).trim();
+  const norm = (raw.includes('T') && !raw.endsWith('Z') && !/[+-]\d\d:?\d\d$/.test(raw)) ? (raw + 'Z') : raw;
+  const d = new Date(norm);
+  if (isNaN(d.getTime())) return raw.slice(0, 19).replace('T', ' ');
+  const pad = n => String(n).padStart(2, '0');
+  const base = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+               ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) +
+               (showSec ? (':' + pad(d.getSeconds())) : '');
+  return base + ' (' + (S.time_local || 'local') + ')';
+}
+
+function cleanConflictSubject(rawKey) {
+  return String(rawKey || '')
+    .replace(/^\[|\]$/g, '')
+    .replace(/[\s—\-:=]+$/g, '')
+    .replace(/\s+(это|равен|is|equals)$/i, '')
+    .trim();
+}
+
 function humanReason(raw) {
-  if (!raw) return '';
+  if (!raw) return {text: '', code: ''};
   const r = String(raw).toLowerCase();
-  if (r.includes('classifier')) return S.reason_classifier + ' (' + raw + ')';
-  if (r.includes('instruction')) return S.reason_instruction + ' (' + raw + ')';
-  if (r.includes('external')) return S.reason_external;
-  if (r.includes('review_all')) return S.reason_review_all;
-  if (r.includes('owner') && r.includes('works')) return S.reason_owner_rules;
-  if (r.includes('protected') || r.includes('identity') || r.includes('preference')) return S.reason_protected + ' (' + raw + ')';
-  return raw;
+  const parts = [];
+  const codes = [];
+  if (r.includes('external')) { parts.push(S.reason_external); codes.push('external'); }
+  if (r.includes('classifier')) { parts.push(S.reason_classifier); codes.push('classifier'); }
+  else if (r.includes('instruction')) { parts.push(S.reason_instruction); codes.push('instruction'); }
+  if (r.includes('review_all')) { parts.push(S.reason_review_all); codes.push('review_all'); }
+  if (r.includes('owner') && r.includes('works')) { parts.push(S.reason_owner_rules); codes.push('owner_rules'); }
+  if (r.includes('protected') || r.includes('identity') || r.includes('preference')) {
+    parts.push(S.reason_protected);
+    codes.push('protected');
+  }
+  if (!parts.length) return {text: S.reason_external, code: String(raw)};
+  return {text: parts.join(' · '), code: codes.join('+')};
 }
 
 function renderRecordCard(r, opts = {}) {
   const card = el('article', 'rec-card' + (r.status === 'quarantined' ? ' rec-card-quarantined' : ''));
   const meta = el('div', 'rec-meta');
   meta.append(el('span', 'badge', S['kind_' + r.kind] || r.kind));
-  meta.append(el('span', '', S.card_origin + ': ' + (r.origin || 'user')));
+  const origKey = 'origin_' + (r.origin || 'user');
+  meta.append(el('span', '', S.card_origin + ': ' + (S[origKey] || r.origin || 'user')));
   if (r.scope) meta.append(el('span', '', S.card_scope + ': ' + r.scope));
   if (r.status && r.status !== 'active') {
     const cls = r.status === 'quarantined' ? 'badge badge-warn' : (r.status === 'revoked' ? 'badge badge-danger' : 'badge');
-    meta.append(el('span', cls, r.status));
+    meta.append(el('span', cls, S['status_' + r.status] || r.status));
   }
   if (typeof r.confidence === 'number') {
     meta.append(el('span', '', S.card_conf + ': ' + Math.round(r.confidence * 100) + '%'));
@@ -1672,16 +1780,20 @@ function renderRecordCard(r, opts = {}) {
     card.append(el('div', 'badge badge-warn', S.asof_replaced_badge));
   }
   if (r.quarantine_reason && (r.status === 'quarantined' || r.status === 'rejected')) {
-    card.append(el('div', 'badge badge-warn', S.review_why + ' ' + humanReason(r.quarantine_reason)));
+    const hr = humanReason(r.quarantine_reason);
+    const reasonWrap = el('div', 'rec-meta');
+    reasonWrap.append(el('span', 'badge badge-warn', S.review_why + ' ' + hr.text));
+    if (hr.code) reasonWrap.append(el('span', 'badge mono', 'code:' + hr.code));
+    card.append(reasonWrap);
   }
 
   const textDiv = el('div', 'rec-text', r.content === null || r.content === undefined ? S.card_wiped : r.content);
   card.append(textDiv);
 
   const clocks = el('div', 'rec-clocks');
-  if (r.created_at) clocks.append(el('span', '', '🕒 ' + r.created_at.slice(0, 19).replace('T', ' ')));
-  if (r.last_seen_at) clocks.append(el('span', '', S.card_seen + ': ' + r.last_seen_at.slice(0, 16).replace('T', ' ')));
-  if (r.last_confirmed_at) clocks.append(el('span', '', S.card_confirmed + ': ' + r.last_confirmed_at.slice(0, 16).replace('T', ' ')));
+  if (r.created_at) clocks.append(el('span', '', '🕒 ' + fmtTime(r.created_at, true)));
+  if (r.last_seen_at) clocks.append(el('span', '', S.card_seen + ': ' + fmtTime(r.last_seen_at, false)));
+  if (r.last_confirmed_at) clocks.append(el('span', '', S.card_confirmed + ': ' + fmtTime(r.last_confirmed_at, false)));
   card.append(clocks);
 
   const acts = el('div', 'rec-actions');
@@ -1731,7 +1843,7 @@ function renderRecordCard(r, opts = {}) {
       for (const v of (data.versions || [])) {
         const row = el('div', 'ver-row');
         row.append(
-          el('div', 'rec-meta', (v.created_at || '').slice(0, 19).replace('T', ' ') + ' · [' + v.status + '] · ' + v.id.slice(0, 8)),
+          el('div', 'rec-meta', fmtTime(v.created_at, true) + ' · [' + (S['status_' + v.status] || v.status) + '] · ' + v.id.slice(0, 8)),
           el('div', '', v.content === null ? S.card_wiped : v.content)
         );
         verBox.append(row);
@@ -1822,7 +1934,17 @@ async function loadOverview() {
     if (conflicts.length > 0) {
       hasAtt = true;
       for (const c of conflicts) {
-        attBox.append(el('div', 'check-item', '⚡ ' + S.ov_conflict_alert + ' [' + c.key + '] (' + c.records.length + ')'));
+        const subj = cleanConflictSubject(c.key);
+        const count = (c.records || []).length;
+        const prefix = count === 2 ? (S.ov_conflict_two || S.ov_conflict_alert) : (S.ov_conflict_many || S.ov_conflict_alert);
+        const item = el('div', 'check-item');
+        const btnCmp = el('button', 'btn-warn', S.ov_btn_compare || 'Compare');
+        btnCmp.onclick = () => {
+          $('feed-q').value = subj;
+          switchTab('feed');
+        };
+        item.append(el('span', '', '⚡ ' + prefix + ' «' + subj + '» '), btnCmp);
+        attBox.append(item);
       }
     }
     if (!hasAtt) {
@@ -1841,7 +1963,7 @@ async function loadOverview() {
         el('div', 'kv-row', ''),
       );
       sleepBox.replaceChildren(
-        el('p', '', S.ov_sleep_last + ' ' + (last.finished_at || last.started_at || '').slice(0, 19).replace('T', ' ')),
+        el('p', '', S.ov_sleep_last + ' ' + fmtTime(last.finished_at || last.started_at, true)),
         el('p', 'panel-sub',
            S.ov_sleep_sampled + ' ' + (last.episodes_sampled || 0) + ' · ' +
            S.ov_sleep_created + ' ' + (last.records_created || 0) + ' · ' +
@@ -2092,64 +2214,56 @@ function layoutGraph(nodes, edges, width, height) {
   const pos = {};
   const n = nodes.length;
   if (!n) return pos;
-  const cx = width / 2, cy = height / 2;
-  const rx = Math.max(120, width * 0.37);
-  const ry = Math.max(90, height * 0.35);
+  // Начальное размещение по разнесённой шахматной сетке, чтобы ни одна пара подписей не слипалась
+  const cols = Math.min(4, Math.max(2, Math.ceil(Math.sqrt(n * 1.3))));
+  const rows = Math.max(1, Math.ceil(n / cols));
+  const padX = 115, padY = 54;
+  const usableW = Math.max(200, width - padX * 2);
+  const usableH = Math.max(160, height - padY * 2);
   nodes.forEach((node, i) => {
-    const angle = (2 * Math.PI * i) / n - Math.PI / 2;
-    const ring = (n > 8 && i % 2 === 1) ? 0.64 : 1.0;
+    const r = Math.floor(i / cols);
+    const c = i % cols;
+    const staggerX = (r % 2 === 1 && cols > 2) ? (usableW / (cols * 3.2)) : 0;
+    const staggerY = (c % 2 === 1) ? 14 : -10;
+    const fx = cols === 1 ? 0.5 : (c / (cols - 1));
+    const fy = rows === 1 ? 0.5 : (r / (rows - 1));
     pos[node.id] = {
-      x: cx + rx * ring * Math.cos(angle),
-      y: cy + ry * ring * Math.sin(angle),
+      x: Math.max(padX, Math.min(width - padX, padX + fx * usableW + staggerX)),
+      y: Math.max(padY, Math.min(height - padY, padY + fy * usableH + staggerY)),
       vx: 0, vy: 0
     };
   });
-  // Итерации силового размещения с защитой от пересечения подписей
-  for (let iter = 0; iter < 80; iter++) {
-    for (let i = 0; i < n; i++) {
-      for (let j = i + 1; j < n; j++) {
-        const a = pos[nodes[i].id], b = pos[nodes[j].id];
-        let dx = a.x - b.x, dy = a.y - b.y;
-        let dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        let rep = Math.min(5200 / (dist * dist), 28);
-        if (Math.abs(dy) < 38 && Math.abs(dx) < 170) {
-          rep += 6;
-        }
-        a.vx += (dx / dist) * rep; a.vy += (dy / dist) * rep;
-        b.vx -= (dx / dist) * rep; b.vy -= (dy / dist) * rep;
-      }
-    }
+  // Мягкое сближение связанных узлов и жёсткое разнесение прямоугольников подписей
+  for (let pass = 0; pass < 36; pass++) {
     for (const e of edges) {
       const a = pos[e.source], b = pos[e.target];
       if (!a || !b) continue;
-      let dx = b.x - a.x, dy = b.y - a.y;
-      let dist = Math.sqrt(dx * dx + dy * dy) || 1;
-      let force = (dist - 165) * 0.035;
-      a.vx += (dx / dist) * force; a.vy += (dy / dist) * force;
-      b.vx -= (dx / dist) * force; b.vy -= (dy / dist) * force;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      if (dist > 260) {
+        const pull = (dist - 260) * 0.04;
+        a.x += (dx / dist) * pull; a.y += (dy / dist) * pull;
+        b.x -= (dx / dist) * pull; b.y -= (dy / dist) * pull;
+      }
     }
-    for (const node of nodes) {
-      const p = pos[node.id];
-      p.x = Math.max(95, Math.min(width - 95, p.x + p.vx * 0.35));
-      p.y = Math.max(44, Math.min(height - 48, p.y + p.vy * 0.35));
-      p.vx *= 0.4; p.vy *= 0.4;
-    }
-  }
-  // Детерминированное разнесение узлов, чтобы подписи гарантированно не пересекались
-  for (let pass = 0; pass < 12; pass++) {
     for (let i = 0; i < n; i++) {
       for (let j = i + 1; j < n; j++) {
         const a = pos[nodes[i].id], b = pos[nodes[j].id];
-        const dx = b.x - a.x, dy = b.y - a.y;
-        if (Math.abs(dx) < 185 && Math.abs(dy) < 56) {
-          const pushY = (56 - Math.abs(dy)) * 0.6 * (dy >= 0 ? 1 : -1);
-          const pushX = (185 - Math.abs(dx)) * 0.35 * (dx >= 0 ? 1 : -1);
-          a.y = Math.max(44, Math.min(height - 48, a.y - pushY));
-          b.y = Math.max(44, Math.min(height - 48, b.y + pushY));
-          a.x = Math.max(95, Math.min(width - 95, a.x - pushX));
-          b.x = Math.max(95, Math.min(width - 95, b.x + pushX));
+        let dx = b.x - a.x, dy = b.y - a.y;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1) { dx = 10; dy = 10; }
+        const minDX = 210, minDY = 62;
+        if (Math.abs(dx) < minDX && Math.abs(dy) < minDY) {
+          const overlapX = (minDX - Math.abs(dx)) * 0.35 * (dx >= 0 ? 1 : -1);
+          const overlapY = (minDY - Math.abs(dy)) * 0.55 * (dy >= 0 ? 1 : -1);
+          a.x -= overlapX; b.x += overlapX;
+          a.y -= overlapY; b.y += overlapY;
         }
       }
+    }
+    for (const node of nodes) {
+      const p = pos[node.id];
+      p.x = Math.max(padX, Math.min(width - padX, p.x));
+      p.y = Math.max(padY, Math.min(height - padY, p.y));
     }
   }
   return pos;
@@ -2199,7 +2313,7 @@ function drawGraph() {
     ctx.fill();
   }
 
-  nodes.forEach((node, idx) => {
+  nodes.forEach((node) => {
     const p = graphPositions[node.id];
     if (!p) return;
     const isSel = selectedGraphNode && selectedGraphNode.id === node.id;
@@ -2216,11 +2330,11 @@ function drawGraph() {
 
     ctx.font = '12px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    const shortLabel = (node.label || node.id).slice(0, 22);
-    const ly = p.y + 26;
-    const tw = ctx.measureText(shortLabel).width + 10;
-    ctx.fillStyle = isDark ? 'rgba(11, 16, 29, 0.85)' : 'rgba(255, 255, 255, 0.88)';
-    ctx.fillRect(p.x - tw / 2, ly - 11, tw, 16);
+    const shortLabel = truncateAtWord(node.content || node.label || node.id, 25);
+    const ly = p.y + 27;
+    const tw = ctx.measureText(shortLabel).width + 12;
+    ctx.fillStyle = isDark ? 'rgba(11, 16, 29, 0.90)' : 'rgba(255, 255, 255, 0.92)';
+    ctx.fillRect(p.x - tw / 2, ly - 12, tw, 17);
     ctx.fillStyle = isDark ? '#e2e8f0' : '#0f172a';
     ctx.fillText(shortLabel, p.x, ly);
   });
@@ -2270,7 +2384,7 @@ async function loadL3() {
       const head = el('div', 'rec-meta');
       head.append(
         el('span', 'badge badge-ok', a.network || 'devnet'),
-        el('span', '', (a.created_at || '').slice(0, 19).replace('T', ' ')),
+        el('span', '', fmtTime(a.created_at, true)),
         el('span', '', S.l3_col_leaves + ' ' + a.leaf_count),
         el('span', '', S.l3_col_bytes + ' ' + a.bundle_bytes + ' B')
       );
@@ -2507,6 +2621,19 @@ $('forget-step2-btn').onclick = async () => {
 // Граф
 $('graph-focus-btn').onclick = () => loadGraph();
 $('graph-reset-btn').onclick = () => { $('graph-id-input').value = ''; loadGraph(); };
+$('graph-canvas').onmousemove = e => {
+  const rect = $('graph-canvas').getBoundingClientRect();
+  const scaleX = $('graph-canvas').width / rect.width;
+  const scaleY = $('graph-canvas').height / rect.height;
+  const mx = (e.clientX - rect.left) * scaleX;
+  const my = (e.clientY - rect.top) * scaleY;
+  let hovered = null;
+  for (const node of (graphData.nodes || [])) {
+    const p = graphPositions[node.id];
+    if (p && Math.hypot(mx - p.x, my - p.y) <= 22) { hovered = node; break; }
+  }
+  $('graph-canvas').title = hovered ? ((hovered.content || hovered.label || hovered.id) + ' [' + (S['kind_' + hovered.kind] || hovered.kind) + ']') : '';
+};
 $('graph-canvas').onclick = e => {
   const rect = $('graph-canvas').getBoundingClientRect();
   const scaleX = $('graph-canvas').width / rect.width;
