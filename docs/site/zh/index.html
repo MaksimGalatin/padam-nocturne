@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'">
   <title>概览 · PADAM · NOCTURNE</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
   <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
@@ -25,11 +26,11 @@
     </aside>
     <main>
 <section class="hero">
-  <span class="badge">版本 0.4.18 · 1020 项测试 · Python &gt;= 3.10 · 单个本地 SQLite 文件</span>
+  <span class="badge">版本 0.4.18 · 1027 项测试 · Python &gt;= 3.10 · 单个本地 SQLite 文件</span>
   <h1>PADAM · NOCTURNE —— 会自我守护的智能体记忆</h1>
   <p class="lead">基于单个本地 SQLite 文件的三层记忆系统：落盘前自动掩码 API 密钥与 Solana 钱包私钥，拦截可疑指令等待主人审核，区分检索时间与确认时间，并通过销毁每条记录独立的 AES-256-GCM 密钥实现可验证的单条遗忘。</p>
 </section>
-<div class="grid"><article class="card"><h3>写入零费用、零云端调用</h3><p>内置混合检索整合 BM25、精确标识符与本地向量，无需付费模型或联网。</p></article><article class="card"><h3>LongMemEval-S 97.0% / 99.2%</h3><p>470 道有答案题（内置检索）：any@5 达 97.0%，any@10 达 99.2%，all@5 为 86.6%，all@10 为 93.0%。</p></article><article class="card"><h3>30,000 条模拟密钥 0 泄露</h3><p>在写入 SQLite 前掩码 20+ 种密钥、Solana 私钥/助记词（保留公开收款地址）与 Luhn 银行卡号。</p></article><article class="card"><h3>单条记录密钥销毁 + 删除回执</h3><p>每条记录拥有独立 AES-256-GCM 密钥。padam forget 永久销毁密钥并生成 JSON/HTML 证明。</p></article></div>
+<div class="grid"><article class="card"><h3>写入零费用、零云端调用</h3><p>内置混合检索整合 BM25、精确标识符与本地向量，无需付费模型或联网。</p></article><article class="card"><h3>LongMemEval-S 97.0% / 99.2% · LoCoMo 91.1% / 95.8%</h3><p>LongMemEval-S（470 题）：any@5 97.0%、any@10 99.2%、all@10 93.0%。LoCoMo（10 段对话 1,536 题）：sess_any@5 90.1%（启用 PADAM_RERANK=1 达 91.1%）、sess_any@10 95.5%（95.8%）。</p></article><article class="card"><h3>30,000 条模拟密钥 0 泄露</h3><p>在写入 SQLite 前掩码 20+ 种密钥、Solana 私钥/助记词（保留公开收款地址）与 Luhn 银行卡号。</p></article><article class="card"><h3>单条记录密钥销毁 + 删除回执</h3><p>每条记录拥有独立 AES-256-GCM 密钥。padam forget 永久销毁密钥并生成 JSON/HTML 证明。</p></article></div>
 <h2>三层架构 (L1 -&gt; L2 -&gt; L3)</h2>
 <div class="grid-3"><article class="card"><h3>L1 —— 工作记忆缓冲</h3><p>当前对话与 <code>padam log</code> 记录的事件流，不直接污染长期事实。</p></article><article class="card"><h3>L2 —— 整合后的 SQLite</h3><p>7 类记忆、双时钟机制（<code>last_seen_at</code> 与 <code>last_confirmed_at</code>）、版本链、审核队列与混合检索。</p></article><article class="card"><h3>L3 —— 永恒可验证层</h3><p>可选上链：Arweave 加密数据包（Turbo）、Solana Memo 默克尔根与 Bitcoin OpenTimestamps 时间戳。</p></article></div>
 <h2>单机读写性能（内置检索，2026-11-11 至 12 实测）</h2>

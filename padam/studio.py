@@ -20,6 +20,7 @@ import json
 import secrets
 
 from .i18n import lang as _sys_lang
+from .logo import code_logo_svg_inline
 
 
 STRINGS: dict[str, dict[str, str]] = {
@@ -270,6 +271,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "card_agent": "агент",
         "set_mask_pii_name": "PADAM_MASK_PII — Маскировка почты и телефонов",
         "set_mask_pii_desc": "По умолчанию выключено, чтобы не портить ваши контакты. При включении маскирует адреса почты и телефоны до записи на диск.",
+        "set_rerank_name": "PADAM_RERANK — Переранжирование кандидатов (опционально)",
+        "set_rerank_desc": "По умолчанию выключено. Переупорядочивает верхних кандидатов по покрытию терминов вопроса, компактности окна и биграммам (или локальной ONNX-моделью PADAM_RERANK_MODEL).",
         "audit_box_title": "Журнал действий с памятью (audit_log)",
         "audit_box_desc": "Кто, когда и какое действие выполнил (запись, одобрение, отклонение, забывание). Текст записей в журнале не хранится.",
         "audit_export_json": "Скачать журнал JSON",
@@ -511,6 +514,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "card_agent": "agent",
         "set_mask_pii_name": "PADAM_MASK_PII — Mask emails & phone numbers",
         "set_mask_pii_desc": "Off by default so your own contacts stay intact. When enabled, masks email addresses and phone numbers before disk.",
+        "set_rerank_name": "PADAM_RERANK — Candidate reranking (optional)",
+        "set_rerank_desc": "Off by default. Re-scores top candidates by query term coverage, proximity span and bigrams (or local ONNX model via PADAM_RERANK_MODEL).",
         "audit_box_title": "Memory Action Audit Log (audit_log)",
         "audit_box_desc": "Who performed which action and when (write, approve, reject, forget). Record content is never stored in the audit log.",
         "audit_export_json": "Download Audit JSON",
@@ -752,6 +757,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "card_agent": "agente",
         "set_mask_pii_name": "PADAM_MASK_PII — Enmascarar correos y teléfonos",
         "set_mask_pii_desc": "Desactivado por defecto para conservar sus contactos. Al activarse, oculta correos y teléfonos antes de guardar en disco.",
+        "set_rerank_name": "PADAM_RERANK — Reordenamiento de candidatos (opcional)",
+        "set_rerank_desc": "Desactivado por defecto. Reordena candidatos principales por cobertura de términos, proximidad y bigramas (o modelo ONNX local PADAM_RERANK_MODEL).",
         "audit_box_title": "Registro de auditoría de acciones (audit_log)",
         "audit_box_desc": "Quién realizó cada acción y cuándo (escritura, aprobación, rechazo, olvido). El texto nunca se guarda en la auditoría.",
         "audit_export_json": "Descargar auditoría JSON",
@@ -993,6 +1000,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "card_agent": "智能体",
         "set_mask_pii_name": "PADAM_MASK_PII — 邮箱与电话号码脱敏",
         "set_mask_pii_desc": "默认关闭以保留您的联系人信息。开启后将在落盘前自动掩码电子邮箱与电话号码。",
+        "set_rerank_name": "PADAM_RERANK — 候选结果重排序（可选开关）",
+        "set_rerank_desc": "默认关闭。按查询词覆盖率、窗口紧凑度与双词组（或本地 ONNX 模型 PADAM_RERANK_MODEL）对前列候选重新排序。",
         "audit_box_title": "记忆操作审计日志 (audit_log)",
         "audit_box_desc": "记录何人在何时执行了何种操作（写入、批准、拒绝、遗忘）。审计日志绝不存储记忆正文。",
         "audit_export_json": "下载审计 JSON",
@@ -1100,8 +1109,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   padding: 4px 6px;
 }
 .brand-logo {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
 }
 .brand-title {
@@ -2486,6 +2495,7 @@ async function loadSettings() {
       makeToggleRow('set_strict_name', 'set_strict_desc', Boolean(s.strict), 'strict'),
       makeToggleRow('set_review_all_name', 'set_review_all_desc', Boolean(s.mcp_review_all), 'mcp_review_all'),
       makeToggleRow('set_feedback_name', 'set_feedback_desc', Boolean(s.search_feedback), 'search_feedback'),
+      makeToggleRow('set_rerank_name', 'set_rerank_desc', Boolean(s.rerank), 'rerank'),
       makeToggleRow('set_mask_pii_name', 'set_mask_pii_desc', Boolean(s.mask_pii), 'mask_pii')
     );
 
@@ -2775,23 +2785,15 @@ def page() -> tuple[str, str]:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{s['app_title']}</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
 <style nonce="{nonce}">{_CSS}</style>
 </head>
 <body>
 <div class="layout">
   <aside class="sidebar" aria-label="PADAM Studio Navigation">
     <div class="brand">
-      <svg class="brand-logo" viewBox="0 0 48 48" aria-hidden="true">
-        <defs>
-          <linearGradient id="aifa-grad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#00d2ff"/>
-            <stop offset="100%" stop-color="#8b5cf6"/>
-          </linearGradient>
-        </defs>
-        <rect x="2" y="2" width="44" height="44" rx="12" fill="none" stroke="url(#aifa-grad)" stroke-width="2.5"/>
-        <circle cx="24" cy="24" r="9" fill="none" stroke="url(#aifa-grad)" stroke-width="2.2"/>
-        <path d="M24 7 v8 M24 33 v8 M7 24 h8 M33 24 h8" stroke="#00d2ff" stroke-width="2" stroke-linecap="round"/>
-      </svg>
+      {code_logo_svg_inline("brand-logo")}
       <div>
         <h1 class="brand-title" data-i18n="app_title">{s['app_title']}</h1>
         <p class="brand-sub" data-i18n="app_subtitle">{s['app_subtitle']}</p>

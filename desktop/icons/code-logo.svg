@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="code-bg" x1="256" y1="12" x2="256" y2="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#070a18"/>
+      <stop offset="100%" stop-color="#091025"/>
+    </linearGradient>
+    <filter id="code-glow" x="-22%" y="-22%" width="144%" height="144%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8" result="blur-wide"/>
+      <feFlood flood-color="#93c5fd" flood-opacity="0.55" result="tint"/>
+      <feComposite in="tint" in2="blur-wide" operator="in" result="glow-wide"/>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2.8" result="blur-core"/>
+      <feFlood flood-color="#ffffff" flood-opacity="0.55" result="white"/>
+      <feComposite in="white" in2="blur-core" operator="in" result="glow-core"/>
+      <feMerge>
+        <feMergeNode in="glow-wide"/>
+        <feMergeNode in="glow-core"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <circle cx="256" cy="256" r="240" fill="url(#code-bg)" stroke="#ffffff" stroke-width="13"/>
+  <g filter="url(#code-glow)">
+    <circle cx="193.5" cy="195.0" r="32.2" fill="#ffffff"/>
+    <circle cx="318.5" cy="195.0" r="32.2" fill="#ffffff"/>
+    <path d="M 148.0 351.0 L 148.0 306.0 A 45.5 45.5 0 0 1 239.0 306.0 L 239.0 333.5 A 17.0 17.0 0 0 0 273.0 333.5 L 273.0 306.0 A 45.5 45.5 0 0 1 364.0 306.0 L 364.0 351.0"
+          fill="none" stroke="#ffffff" stroke-width="22.0" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

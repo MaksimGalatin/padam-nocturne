@@ -1,12 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs>
-    <linearGradient id="g" x1="8" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#38bdf8"/>
-      <stop offset="100%" stop-color="#8b5cf6"/>
+    <linearGradient id="code-bg" x1="256" y1="12" x2="256" y2="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#070a18"/>
+      <stop offset="100%" stop-color="#091025"/>
     </linearGradient>
+    <filter id="code-glow" x="-22%" y="-22%" width="144%" height="144%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8" result="blur-wide"/>
+      <feFlood flood-color="#93c5fd" flood-opacity="0.55" result="tint"/>
+      <feComposite in="tint" in2="blur-wide" operator="in" result="glow-wide"/>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2.8" result="blur-core"/>
+      <feFlood flood-color="#ffffff" flood-opacity="0.55" result="white"/>
+      <feComposite in="white" in2="blur-core" operator="in" result="glow-core"/>
+      <feMerge>
+        <feMergeNode in="glow-wide"/>
+        <feMergeNode in="glow-core"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
   </defs>
-  <rect x="4" y="4" width="56" height="56" rx="16" fill="#0e1422" stroke="url(#g)" stroke-width="2.5"/>
-  <path d="M32 14L46 21V33C46 42 39.8 49 32 51C24.2 49 18 42 18 33V21L32 14Z" fill="#121a2c" stroke="url(#g)" stroke-width="2.5"/>
-  <circle cx="32" cy="30" r="5" fill="#38bdf8"/>
-  <path d="M25 40C27 36.8 29.4 35.5 32 35.5C34.6 35.5 37 36.8 39 40" stroke="#8b5cf6" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="256" cy="256" r="240" fill="url(#code-bg)" stroke="#ffffff" stroke-width="13"/>
+  <g filter="url(#code-glow)">
+    <circle cx="193.5" cy="195.0" r="32.2" fill="#ffffff"/>
+    <circle cx="318.5" cy="195.0" r="32.2" fill="#ffffff"/>
+    <path d="M 148.0 351.0 L 148.0 306.0 A 45.5 45.5 0 0 1 239.0 306.0 L 239.0 333.5 A 17.0 17.0 0 0 0 273.0 333.5 L 273.0 306.0 A 45.5 45.5 0 0 1 364.0 306.0 L 364.0 351.0"
+          fill="none" stroke="#ffffff" stroke-width="22.0" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
 </svg>

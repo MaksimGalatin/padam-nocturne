@@ -42,7 +42,7 @@ import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
-from . import __version__, config, safety, studio, viewer
+from . import __version__, config, logo, safety, studio, viewer
 from .i18n import t
 from .memory import Memory, decay, parse_ts
 from .nocturne import Nocturne
@@ -211,6 +211,22 @@ class Handler(BaseHTTPRequestHandler):
         if путь.path == "/studio" and _state.get("ui"):
             # Приложение PADAM Studio: строгий CSP, без встроенных данных и токена в HTML.
             return self._send_page(studio.page())
+        if путь.path in ("/favicon.svg", "/favicon.ico") and _state.get("ui"):
+            if путь.path == "/favicon.svg":
+                body = logo.CODE_LOGO_SVG.encode("utf-8")
+                ctype = "image/svg+xml; charset=utf-8"
+            else:
+                body = logo.favicon_ico_bytes()
+                ctype = "image/x-icon"
+            self.send_response(200)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Content-Security-Policy", "default-src 'none'; script-src 'none'; style-src 'none'")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("Cache-Control", "public, max-age=86400")
+            self.end_headers()
+            self.wfile.write(body)
+            return None
         if not self._authorized():
             return self._send(401, {"error": "unauthorized"})
         if not _state["token"]:
@@ -321,6 +337,7 @@ class Handler(BaseHTTPRequestHandler):
                     "strict": config.STRICT,
                     "mcp_review_all": config.MCP_REVIEW_ALL,
                     "search_feedback": config.SEARCH_FEEDBACK,
+                    "rerank": config.RERANK,
                     "mask_pii": config.MASK_PII,
                     "hold_external": config.HOLD_EXTERNAL,
                     "keep_secrets": config.KEEP_SECRETS,
@@ -451,6 +468,8 @@ class Handler(BaseHTTPRequestHandler):
                     config.MCP_REVIEW_ALL = bool(data["mcp_review_all"])
                 if "search_feedback" in data:
                     config.SEARCH_FEEDBACK = bool(data["search_feedback"])
+                if "rerank" in data:
+                    config.RERANK = bool(data["rerank"])
                 if "mask_pii" in data:
                     config.MASK_PII = bool(data["mask_pii"])
                 if "hold_external" in data and bool(data["hold_external"]):
@@ -468,6 +487,7 @@ class Handler(BaseHTTPRequestHandler):
                     "strict": config.STRICT,
                     "mcp_review_all": config.MCP_REVIEW_ALL,
                     "search_feedback": config.SEARCH_FEEDBACK,
+                    "rerank": config.RERANK,
                     "mask_pii": config.MASK_PII,
                     "hold_external": config.HOLD_EXTERNAL,
                     "keep_secrets": config.KEEP_SECRETS,

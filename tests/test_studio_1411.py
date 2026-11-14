@@ -1112,3 +1112,290 @@ def test_b15_offline_static_docs_site_four_languages(tmp_path):
             assert tool_name in ref_txt
 
 
+def test_b13_rerank_default_off_scoring_and_tail_floor():
+    """Б13: по умолчанию PADAM_RERANK выключен; rerank_records поднимает плотное совпадение."""
+    from types import SimpleNamespace
+    from padam import retrieval
+
+    if os.environ.get("PADAM_RERANK", "0") != "1":
+        assert config.RERANK is False
+
+    q = "postgresql backup port 5432"
+    r_diffuse = SimpleNamespace(
+        id="r_diff",
+        content=("postgresql " + " ".join(f"noise{i}" for i in range(45)) + " backup " + " ".join(f"pad{i}" for i in range(40)) + " port 5432"),
+        score=0.52,
+        strategies=("bm25",),
+    )
+    r_dense = SimpleNamespace(
+        id="r_dense",
+        content="Daily postgresql backup runs on port 5432 without downtime",
+        score=0.47,
+        strategies=("bm25", "vec"),
+    )
+    r_tail = SimpleNamespace(
+        id="r_tail",
+        content="Unrelated tail item kept behind head cutoff",
+        score=0.99,
+        strategies=("bm25",),
+    )
+
+    out = retrieval.rerank_records(q, [r_diffuse, r_dense, r_tail], top_k=2)
+    assert [r.id for r in out] == ["r_dense", "r_diff", "r_tail"]
+    assert "rerank" in out[0].strategies
+    assert "rerank" in out[1].strategies
+    assert "rerank" not in out[2].strategies
+    assert out[2].score < out[1].score
+
+
+def test_b13_memory_recall_rerank_and_exact_access_count(tmp_path, monkeypatch):
+    """Б13: включение RERANK не раздувает access_count на весь пул кандидатов."""
+    db_path = tmp_path / "b13_rerank.db"
+    mem = Memory(user_id="b13_user", store=Store(db_path))
+    try:
+        monkeypatch.setattr(config, "SEARCH_FEEDBACK", False)
+        monkeypatch.setattr(config, "RERANK", False)
+        monkeypatch.setattr(config, "RERANK_TOP_K", 6)
+
+        ids = []
+        ids.append(mem.remember("Сервер логирования пишет события аудита каждые 5 минут", kind="fact", importance=0.6)[1])
+        ids.append(mem.remember("Сервер отчётов собирает метрики по понедельникам", kind="fact", importance=0.6)[1])
+        ids.append(mem.remember(
+            "PostgreSQL сервер " + " ".join(f"текст{i}" for i in range(35)) + " резервное копирование порт 5432",
+            kind="fact",
+            importance=0.7,
+        )[1])
+        _, target_id = mem.remember(
+            "Резервное копирование PostgreSQL на сервере через порт 5432 работает стабильно",
+            kind="fact",
+            importance=0.7,
+        )
+        ids.append(target_id)
+
+        off_res = mem.recall("PostgreSQL сервер резервное копирование порт 5432", limit=2)
+        assert len(off_res) == 2
+        assert all("rerank" not in (r.strategies or ()) for r in off_res)
+
+        before_counts = dict(mem.store.conn.execute("SELECT id, access_count FROM memory").fetchall())
+        before_sum = sum(before_counts.values())
+
+        monkeypatch.setattr(config, "RERANK", True)
+        on_res = mem.recall("PostgreSQL сервер резервное копирование порт 5432", limit=2)
+        assert len(on_res) == 2
+        assert on_res[0].id == target_id
+        assert all("rerank" in (r.strategies or ()) for r in on_res)
+
+        after_counts = dict(mem.store.conn.execute("SELECT id, access_count FROM memory").fetchall())
+        shown_ids = {r.id for r in on_res}
+        assert sum(after_counts.values()) == before_sum + 2
+        for rid, old_c in before_counts.items():
+            expected = old_c + (1 if rid in shown_ids else 0)
+            assert after_counts[rid] == expected
+    finally:
+        mem.close()
+
+
+def test_b13_studio_settings_rerank_api_and_four_languages(tmp_path, monkeypatch):
+    """Б13: GET/POST /settings управляет rerank, переводы присутствуют на 4 языках Studio."""
+    monkeypatch.setattr(config, "RERANK", False)
+    db_path = tmp_path / "b13_studio.db"
+    mem = Memory(user_id="b13_studio", store=Store(db_path))
+    mem.remember("Тестовая запись для проверки переключателя rerank", kind="fact")
+    srv, link = api.make_studio_server(mem, port=0)
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+    try:
+        m = re.match(r"^(http://127\.0\.0\.1:\d+)/studio#t=(.+)$", link)
+        assert m, link
+        base, token = m.group(1), m.group(2)
+
+        code, _, st = _http_json(f"{base}/settings", token=token)
+        assert code == 200
+        assert st["rerank"] is False
+
+        code, _, upd = _http_json(f"{base}/settings", token=token, body={"rerank": True})
+        assert code == 200
+        assert upd["ok"] is True
+        assert upd["rerank"] is True
+        assert config.RERANK is True
+
+        code, _, st2 = _http_json(f"{base}/settings", token=token)
+        assert code == 200 and st2["rerank"] is True
+
+        for lang in ("ru", "en", "es", "zh"):
+            assert studio.STRINGS[lang]["set_rerank_name"].startswith("PADAM_RERANK")
+            assert len(studio.STRINGS[lang]["set_rerank_desc"].strip()) > 20
+        html, _ = studio.page()
+        assert "'set_rerank_name'" in html and "'rerank'" in html
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        mem.close()
+
+
+def test_b16_locomo_retrieval_metrics_and_schema(tmp_path):
+    """Б16: парсинг диалогов LoCoMo (в т.ч. blip_caption) и точный расчёт turn/session метрик."""
+    import importlib.util
+
+    script_path = Path(__file__).resolve().parents[1] / "benchmarks" / "locomo" / "retrieval_recall.py"
+    spec = importlib.util.spec_from_file_location("locomo_retrieval_recall", script_path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec and spec.loader
+    spec.loader.exec_module(mod)
+
+    mini_locomo = [
+        {
+            "sample_id": "conv-test-1",
+            "conversation": {
+                "speaker_a": "Alice",
+                "speaker_b": "Bob",
+                "session_2_date_time": "3:15 pm on 12 June, 2024",
+                "session_2": [
+                    {
+                        "speaker": "Bob",
+                        "dia_id": "D2:1",
+                        "text": "I painted a blue ceramic teapot at the pottery studio today",
+                        "blip_caption": "a handmade cobalt ceramic teapot on a wooden table",
+                    }
+                ],
+                "session_1_date_time": "10:00 am on 1 May, 2024",
+                "session_1": [
+                    {"speaker": "Alice", "dia_id": "D1:1", "text": "Our weekly standup moves to Thursday mornings"},
+                    {"speaker": "Bob", "dia_id": "D1:2", "text": "Got it, Thursday works great"},
+                ],
+            },
+            "qa": [
+                {
+                    "question": "What ceramic item did Bob paint at the pottery studio?",
+                    "answer": "a blue ceramic teapot",
+                    "evidence": ["D2:1"],
+                    "category": 4,
+                },
+                {
+                    "question": "What color glaze did Bob use on the coffee mug?",
+                    "adversarial_answer": "red",
+                    "evidence": ["D2:1"],
+                    "category": 5,
+                },
+                {
+                    "question": "Question without evidence should be skipped cleanly",
+                    "answer": "n/a",
+                    "evidence": [],
+                    "category": 3,
+                },
+            ],
+        }
+    ]
+    data_file = tmp_path / "mini_locomo.json"
+    data_file.write_text(json.dumps(mini_locomo, ensure_ascii=False), encoding="utf-8")
+    out_dir = tmp_path / "out_locomo"
+    summary = mod.run_benchmark(data_file, out_dir)
+
+    assert summary["turns_written"] == 3
+    assert summary["questions_scored"] == 2
+    assert summary["skipped_no_evidence"] == 1
+    assert summary["qa_categories_1_4"]["n"] == 1
+    assert summary["qa_categories_1_4"]["turn_any@5"] == 1.0
+    assert summary["qa_categories_1_4"]["sess_any@5"] == 1.0
+    assert summary["adversarial_category_5"]["n"] == 1
+    assert (out_dir / "per_question.json").exists()
+    assert (out_dir / "summary.json").exists()
+
+
+def test_stage_v_architecture_docs_present():
+    """Этап В: все 5 проектных документов (В1–В5) присутствуют, содержательны и не содержат секретов."""
+    plans_dir = Path(__file__).resolve().parents[1] / "docs" / "plans"
+    expected = (
+        "V1_roles_teams.md",
+        "V2_connectors.md",
+        "V3_post_quantum_keys.md",
+        "V4_agent_cloud_signup.md",
+        "V5_solana_confidential_compute.md",
+    )
+    for fname in expected:
+        p = plans_dir / fname
+        assert p.exists(), f"Отсутствует проектный документ {p}"
+        txt = p.read_text(encoding="utf-8")
+        assert 1500 <= len(txt) <= 25000, f"Неожиданный объём {fname}: {len(txt)} символов"
+        assert "без внедрения" in txt.lower()
+        assert "риск" in txt.lower()
+        assert "архитектор" in txt.lower()
+
+
+def test_14_1_code_logo_everywhere_and_favicons():
+    """14.1: единый векторный логотип CODE (без старого прицела), иконки, расширение и favicon Studio."""
+    root = Path(__file__).resolve().parents[1]
+    from padam import api, logo, studio
+    from padam.memory import Memory
+    from padam.store import Store
+
+    # Канонический векторный SVG содержит две фигуры, а не старый прицел
+    assert 'viewBox="0 0 512 512"' in logo.CODE_LOGO_SVG
+    assert "M 148.0 351.0" in logo.CODE_LOGO_SVG
+    assert "aifa-grad" not in logo.CODE_LOGO_SVG
+
+    html, _ = studio.page()
+    assert 'class="brand-logo"' in html
+    assert "M 148.0 351.0" in html
+    assert "aifa-grad" not in html
+    assert 'href="/favicon.svg"' in html
+    assert 'href="/favicon.ico"' in html
+
+    # Наличие всех сгенерированных иконок CODE и обновления в Tauri/расширении
+    for rel in (
+        "desktop/icons/code-logo.svg",
+        "desktop/icons/padam.ico",
+        "desktop/icons/code-logo-16.png",
+        "desktop/icons/code-logo-32.png",
+        "desktop/icons/code-logo-64.png",
+        "desktop/icons/code-logo-128.png",
+        "desktop/icons/code-logo-256.png",
+        "desktop/icons/code-logo-512.png",
+        "desktop/icons/code-logo-1024.png",
+        "desktop/tauri/icons/icon.ico",
+        "desktop/tauri/icons/32x32.png",
+        "desktop/tauri/icons/128x128.png",
+        "desktop/tauri/icons/128x128@2x.png",
+        "extensions/chromium/icons/icon16.png",
+        "extensions/chromium/icons/icon48.png",
+        "extensions/chromium/icons/icon128.png",
+        "docs/site/assets/logo.svg",
+    ):
+        p = root / rel
+        assert p.is_file() and p.stat().st_size > 100, f"Не найден или пуст {rel}"
+
+    assert "M 148.0 351.0" in (root / "docs" / "site" / "assets" / "logo.svg").read_text("utf-8")
+
+    # Favicon-ы Studio отвечают 200 без ослабления CSP самой HTML-страницы
+    import tempfile
+    import threading
+    import urllib.request
+
+    with tempfile.TemporaryDirectory() as td:
+        mem = Memory(store=Store(Path(td) / "fav.db"))
+        srv, _ = api.make_studio_server(mem, port=0)
+        port = srv.server_address[1]
+        t = threading.Thread(target=srv.serve_forever, daemon=True)
+        t.start()
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/favicon.svg", timeout=3) as r:
+                assert r.status == 200
+                assert "image/svg+xml" in r.headers.get("Content-Type", "")
+                svg_bytes = r.read().decode("utf-8")
+                assert "M 148.0 351.0" in svg_bytes
+                assert "script-src 'none'" in r.headers.get("Content-Security-Policy", "")
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/favicon.ico", timeout=3) as r:
+                assert r.status == 200
+                assert "image/x-icon" in r.headers.get("Content-Type", "")
+                ico_bytes = r.read()
+                assert ico_bytes[:4] == b"\x00\x00\x01\x00"
+        finally:
+            srv.shutdown()
+            srv.server_close()
+            mem.close()
+
+
+
+
+
+

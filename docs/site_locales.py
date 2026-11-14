@@ -97,6 +97,9 @@ ENV_VARS = [
     ("PADAM_EMBEDDER", "auto", "`auto`, `builtin`, `ollama`, `model2vec`, or `fastembed`"),
     ("PADAM_LOCAL_EMBED_MODEL", "—", "Hugging Face or local path, e.g. `minishlab/potion-multilingual-128M`"),
     ("PADAM_SEARCH_FEEDBACK", "1", "`1`: second local search pass with feedback terms; `0` disables"),
+    ("PADAM_RERANK", "0", "`1`: re-score top search candidates by term coverage, proximity span, bigrams (or local ONNX model); `0` by default"),
+    ("PADAM_RERANK_TOP", "30", "Maximum number of top candidates passed to the reranker when `PADAM_RERANK=1`"),
+    ("PADAM_RERANK_MODEL", "—", "Optional directory with local ONNX cross-encoder (`tokenizer.json` + `.onnx`)"),
     ("PADAM_GUARD_MODEL", "—", "Path to optional ONNX prompt-injection classifier (`[guard]`, off by default)"),
     ("PADAM_PROFILE", "default", "Sleep sharp-episode share: `default` (0.25), `ops` (0.40), `creative` (0.10)"),
 ]
@@ -163,7 +166,7 @@ UI_STRINGS = {
         "all_docs": "Выбор языка",
         "footer_left": "PADAM · NOCTURNE 0.4.18 · Локальная память с открытым кодом (AGPL-3.0) · CODE Eternal",
         "footer_right": "Автономная статическая документация · Без внешних скриптов, стилей и CDN",
-        "hero_badge": "Версия 0.4.18 · 1020 автотестов · Python >= 3.10 · Один локальный SQLite",
+        "hero_badge": "Версия 0.4.18 · 1027 автотестов · Python >= 3.10 · Один локальный SQLite",
         "not_stated": "Не указано в README",
         "yes": "Да",
         "overview": {
@@ -171,7 +174,7 @@ UI_STRINGS = {
             "lead": "Локальная трёхуровневая память для ИИ-агентов в одном SQLite-файле: маскирует секреты и кошельки до диска, удерживает подозрительные приказы на решение владельца, отделяет подтверждение факта от показа и умеет стирать одну запись криптографическим уничтожением ключа.",
             "cards": [
                 ("0 $ и 0 внешних вызовов", "Базовый поиск объединяет слова (BM25), точные идентификаторы и локальный фоллбэк без платных API и интернета."),
-                ("97.0 % / 99.2 % LongMemEval-S", "470 вопросов с ответом (встроенный метод): any@5 — 97.0 %, any@10 — 99.2 %, all@5 — 86.6 %, all@10 — 93.0 %."),
+                ("97.0 % / 99.2 % LongMemEval-S · LoCoMo 91.1 % / 95.8 %", "LongMemEval-S (470 с ответом): any@5 — 97.0 %, any@10 — 99.2 %, all@10 — 93.0 %. LoCoMo (10 диалогов, 1 536 с ответом): sess_any@5 — 90.1 % (91.1 % с PADAM_RERANK=1), sess_any@10 — 95.5 % (95.8 %)."),
                 ("30 000 фейковых ключей -> 0 утечек", "До записи на диск маскируются 20+ форматов ключей API, кошельки Solana (id.json, base58, сид-фразы) и карты по Луну."),
                 ("Стирание одной записи + квитанция", "У каждой записи свой ключ AES-256-GCM. Команда forget уничтожает ключ и выдаёт проверяемую квитанцию JSON/HTML."),
             ],
@@ -289,7 +292,7 @@ UI_STRINGS = {
         "all_docs": "Languages",
         "footer_left": "PADAM · NOCTURNE 0.4.18 · Open-source local-first memory (AGPL-3.0) · CODE Eternal",
         "footer_right": "Self-contained static documentation · Zero external CSS, JS, fonts or CDNs",
-        "hero_badge": "Version 0.4.18 · 1020 tests · Python >= 3.10 · One local SQLite file",
+        "hero_badge": "Version 0.4.18 · 1027 tests · Python >= 3.10 · One local SQLite file",
         "not_stated": "Not stated in README",
         "yes": "Yes",
         "overview": {
@@ -297,7 +300,7 @@ UI_STRINGS = {
             "lead": "A three-tier local-first memory stored in a single SQLite file: masks API keys and Solana wallets before disk, holds prompt injections for owner review, splits retrieval clock from confirmation clock, and proves single-record deletion via per-record AES-256-GCM key destruction.",
             "cards": [
                 ("$0 per write, 0 cloud calls", "Built-in hybrid search combines BM25, exact identifiers, and local vectors without paid APIs or network traffic."),
-                ("97.0% / 99.2% LongMemEval-S", "470 answerable questions (built-in method): 97.0% any@5, 99.2% any@10, 86.6% all@5, 93.0% all@10."),
+                ("97.0% / 99.2% LongMemEval-S · LoCoMo 91.1% / 95.8%", "LongMemEval-S (470 answerable): 97.0% any@5, 99.2% any@10, 93.0% all@10. LoCoMo (10 chats, 1,536 answerable): 90.1% sess_any@5 (91.1% with PADAM_RERANK=1), 95.5% sess_any@10 (95.8%)."),
                 ("0 of 30,000 fake keys leaked", "20+ secret formats, Solana keypairs/seeds (with readable public address) and Luhn cards are redacted before SQLite."),
                 ("Single-record crypto-shredding", "Each record uses its own AES-256-GCM key. Forgetting wipes the key forever and exports a JSON/HTML receipt."),
             ],
@@ -415,7 +418,7 @@ UI_STRINGS = {
         "all_docs": "Idiomas",
         "footer_left": "PADAM · NOCTURNE 0.4.18 · Memoria local de código abierto (AGPL-3.0) · CODE Eternal",
         "footer_right": "Documentación estática autónoma · Cero scripts, fuentes o CDN externos",
-        "hero_badge": "Versión 0.4.18 · 1020 pruebas · Python >= 3.10 · Un archivo SQLite local",
+        "hero_badge": "Versión 0.4.18 · 1027 pruebas · Python >= 3.10 · Un archivo SQLite local",
         "not_stated": "No indicado en README",
         "yes": "Sí",
         "overview": {
@@ -423,7 +426,7 @@ UI_STRINGS = {
             "lead": "Memoria local de tres niveles en un único archivo SQLite: enmascara claves API y billeteras Solana antes de escribir en disco, retiene órdenes ocultas para revisión del propietario, separa el reloj de consulta del reloj de confirmación y borra registros individuales destruyendo su clave AES-256-GCM.",
             "cards": [
                 ("$0 por escritura, 0 llamadas cloud", "La búsqueda híbrida combina BM25, identificadores exactos y respaldo vectorial local sin APIs de pago."),
-                ("97.0 % / 99.2 % en LongMemEval-S", "470 preguntas con respuesta (método integrado): 97.0 % any@5, 99.2 % any@10, 86.6 % all@5 y 93.0 % all@10."),
+                ("97.0 % / 99.2 % LongMemEval-S · LoCoMo 91.1 % / 95.8 %", "LongMemEval-S (470 con respuesta): 97.0 % any@5, 99.2 % any@10, 93.0 % all@10. LoCoMo (10 chats, 1,536 preguntas): 90.1 % sess_any@5 (91.1 % con PADAM_RERANK=1), 95.5 % sess_any@10 (95.8 %)."),
                 ("0 de 30 000 claves falsas filtradas", "Más de 20 formatos de secretos, llaves/frases Solana (conservando la dirección pública) y tarjetas Luhn se ocultan antes de SQLite."),
                 ("Olvido criptográfico por registro", "Cada registro tiene su propia clave AES-256-GCM. padam forget la destruye y emite un recibo JSON/HTML."),
             ],
@@ -541,7 +544,7 @@ UI_STRINGS = {
         "all_docs": "语言切换",
         "footer_left": "PADAM · NOCTURNE 0.4.18 · 开源本地优先记忆库 (AGPL-3.0) · CODE Eternal",
         "footer_right": "完全离线的静态文档站点 · 零外部脚本、字体或 CDN 依赖",
-        "hero_badge": "版本 0.4.18 · 1020 项测试 · Python >= 3.10 · 单个本地 SQLite 文件",
+        "hero_badge": "版本 0.4.18 · 1027 项测试 · Python >= 3.10 · 单个本地 SQLite 文件",
         "not_stated": "README 未提及",
         "yes": "支持",
         "overview": {
@@ -549,7 +552,7 @@ UI_STRINGS = {
             "lead": "基于单个本地 SQLite 文件的三层记忆系统：落盘前自动掩码 API 密钥与 Solana 钱包私钥，拦截可疑指令等待主人审核，区分检索时间与确认时间，并通过销毁每条记录独立的 AES-256-GCM 密钥实现可验证的单条遗忘。",
             "cards": [
                 ("写入零费用、零云端调用", "内置混合检索整合 BM25、精确标识符与本地向量，无需付费模型或联网。"),
-                ("LongMemEval-S 97.0% / 99.2%", "470 道有答案题（内置检索）：any@5 达 97.0%，any@10 达 99.2%，all@5 为 86.6%，all@10 为 93.0%。"),
+                ("LongMemEval-S 97.0% / 99.2% · LoCoMo 91.1% / 95.8%", "LongMemEval-S（470 题）：any@5 97.0%、any@10 99.2%、all@10 93.0%。LoCoMo（10 段对话 1,536 题）：sess_any@5 90.1%（启用 PADAM_RERANK=1 达 91.1%）、sess_any@10 95.5%（95.8%）。"),
                 ("30,000 条模拟密钥 0 泄露", "在写入 SQLite 前掩码 20+ 种密钥、Solana 私钥/助记词（保留公开收款地址）与 Luhn 银行卡号。"),
                 ("单条记录密钥销毁 + 删除回执", "每条记录拥有独立 AES-256-GCM 密钥。padam forget 永久销毁密钥并生成 JSON/HTML 证明。"),
             ],

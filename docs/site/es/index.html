@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'">
   <title>Resumen · PADAM · NOCTURNE</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
   <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
@@ -25,11 +26,11 @@
     </aside>
     <main>
 <section class="hero">
-  <span class="badge">Versión 0.4.18 · 1020 pruebas · Python &gt;= 3.10 · Un archivo SQLite local</span>
+  <span class="badge">Versión 0.4.18 · 1027 pruebas · Python &gt;= 3.10 · Un archivo SQLite local</span>
   <h1>PADAM · NOCTURNE — memoria que se protege a sí misma</h1>
   <p class="lead">Memoria local de tres niveles en un único archivo SQLite: enmascara claves API y billeteras Solana antes de escribir en disco, retiene órdenes ocultas para revisión del propietario, separa el reloj de consulta del reloj de confirmación y borra registros individuales destruyendo su clave AES-256-GCM.</p>
 </section>
-<div class="grid"><article class="card"><h3>$0 por escritura, 0 llamadas cloud</h3><p>La búsqueda híbrida combina BM25, identificadores exactos y respaldo vectorial local sin APIs de pago.</p></article><article class="card"><h3>97.0 % / 99.2 % en LongMemEval-S</h3><p>470 preguntas con respuesta (método integrado): 97.0 % any@5, 99.2 % any@10, 86.6 % all@5 y 93.0 % all@10.</p></article><article class="card"><h3>0 de 30 000 claves falsas filtradas</h3><p>Más de 20 formatos de secretos, llaves/frases Solana (conservando la dirección pública) y tarjetas Luhn se ocultan antes de SQLite.</p></article><article class="card"><h3>Olvido criptográfico por registro</h3><p>Cada registro tiene su propia clave AES-256-GCM. padam forget la destruye y emite un recibo JSON/HTML.</p></article></div>
+<div class="grid"><article class="card"><h3>$0 por escritura, 0 llamadas cloud</h3><p>La búsqueda híbrida combina BM25, identificadores exactos y respaldo vectorial local sin APIs de pago.</p></article><article class="card"><h3>97.0 % / 99.2 % LongMemEval-S · LoCoMo 91.1 % / 95.8 %</h3><p>LongMemEval-S (470 con respuesta): 97.0 % any@5, 99.2 % any@10, 93.0 % all@10. LoCoMo (10 chats, 1,536 preguntas): 90.1 % sess_any@5 (91.1 % con PADAM_RERANK=1), 95.5 % sess_any@10 (95.8 %).</p></article><article class="card"><h3>0 de 30 000 claves falsas filtradas</h3><p>Más de 20 formatos de secretos, llaves/frases Solana (conservando la dirección pública) y tarjetas Luhn se ocultan antes de SQLite.</p></article><article class="card"><h3>Olvido criptográfico por registro</h3><p>Cada registro tiene su propia clave AES-256-GCM. padam forget la destruye y emite un recibo JSON/HTML.</p></article></div>
 <h2>Tres capas, una sola memoria (L1 -&gt; L2 -&gt; L3)</h2>
 <div class="grid-3"><article class="card"><h3>L1 — memoria de trabajo</h3><p>Conversación actual y búfer de episodios (<code>padam log</code>) sin contaminar hechos verificados.</p></article><article class="card"><h3>L2 — SQLite consolidado</h3><p>7 tipos de registros, dos relojes independientes (<code>last_seen_at</code> y <code>last_confirmed_at</code>), historial de versiones y búsqueda híbrida.</p></article><article class="card"><h3>L3 — capa eterna verificable</h3><p>Opcional: lotes cifrados en Arweave (Turbo), raíz de Merkle en Solana Memo y sello temporal en Bitcoin OpenTimestamps.</p></article></div>
 <h2>Rendimiento local (método integrado, 11–12 nov 2026)</h2>

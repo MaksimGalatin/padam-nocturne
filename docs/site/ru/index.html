@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'">
   <title>Обзор · PADAM · NOCTURNE</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
   <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
@@ -25,11 +26,11 @@
     </aside>
     <main>
 <section class="hero">
-  <span class="badge">Версия 0.4.18 · 1020 автотестов · Python &gt;= 3.10 · Один локальный SQLite</span>
+  <span class="badge">Версия 0.4.18 · 1027 автотестов · Python &gt;= 3.10 · Один локальный SQLite</span>
   <h1>PADAM · NOCTURNE — память, которая сторожит себя сама</h1>
   <p class="lead">Локальная трёхуровневая память для ИИ-агентов в одном SQLite-файле: маскирует секреты и кошельки до диска, удерживает подозрительные приказы на решение владельца, отделяет подтверждение факта от показа и умеет стирать одну запись криптографическим уничтожением ключа.</p>
 </section>
-<div class="grid"><article class="card"><h3>0 $ и 0 внешних вызовов</h3><p>Базовый поиск объединяет слова (BM25), точные идентификаторы и локальный фоллбэк без платных API и интернета.</p></article><article class="card"><h3>97.0 % / 99.2 % LongMemEval-S</h3><p>470 вопросов с ответом (встроенный метод): any@5 — 97.0 %, any@10 — 99.2 %, all@5 — 86.6 %, all@10 — 93.0 %.</p></article><article class="card"><h3>30 000 фейковых ключей -&gt; 0 утечек</h3><p>До записи на диск маскируются 20+ форматов ключей API, кошельки Solana (id.json, base58, сид-фразы) и карты по Луну.</p></article><article class="card"><h3>Стирание одной записи + квитанция</h3><p>У каждой записи свой ключ AES-256-GCM. Команда forget уничтожает ключ и выдаёт проверяемую квитанцию JSON/HTML.</p></article></div>
+<div class="grid"><article class="card"><h3>0 $ и 0 внешних вызовов</h3><p>Базовый поиск объединяет слова (BM25), точные идентификаторы и локальный фоллбэк без платных API и интернета.</p></article><article class="card"><h3>97.0 % / 99.2 % LongMemEval-S · LoCoMo 91.1 % / 95.8 %</h3><p>LongMemEval-S (470 с ответом): any@5 — 97.0 %, any@10 — 99.2 %, all@10 — 93.0 %. LoCoMo (10 диалогов, 1 536 с ответом): sess_any@5 — 90.1 % (91.1 % с PADAM_RERANK=1), sess_any@10 — 95.5 % (95.8 %).</p></article><article class="card"><h3>30 000 фейковых ключей -&gt; 0 утечек</h3><p>До записи на диск маскируются 20+ форматов ключей API, кошельки Solana (id.json, base58, сид-фразы) и карты по Луну.</p></article><article class="card"><h3>Стирание одной записи + квитанция</h3><p>У каждой записи свой ключ AES-256-GCM. Команда forget уничтожает ключ и выдаёт проверяемую квитанцию JSON/HTML.</p></article></div>
 <h2>Три уровня памяти (L1 -&gt; L2 -&gt; L3)</h2>
 <div class="grid-3"><article class="card"><h3>L1 — рабочая память</h3><p>Текущий диалог и буфер эпизодов (padam log). Принимает сырые события без засорения долгосрочных фактов.</p></article><article class="card"><h3>L2 — консолидированный SQLite</h3><p>7 видов записей, два независимых часа (last_seen_at и last_confirmed_at), версионность, очередь проверки и гибридный поиск FTS5 + векторы.</p></article><article class="card"><h3>L3 — вечный проверяемый слой</h3><p>Необязательный слой: шифротекст каждой записи в Arweave (Turbo), корень Меркла в Solana Memo и штамп времени в Bitcoin (OpenTimestamps).</p></article></div>
 <h2>Скорость на одной машине (встроенный метод, 11–12 ноя 2026)</h2>

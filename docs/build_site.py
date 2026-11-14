@@ -10,8 +10,14 @@ from __future__ import annotations
 import argparse
 import html
 import shutil
+import sys
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from padam.logo import CODE_LOGO_SVG as LOGO_SVG
 from site_locales import (
     CLI_COMMANDS,
     COMPETITORS_ROWS,
@@ -26,7 +32,6 @@ from site_locales import (
     UI_STRINGS,
 )
 
-ROOT = Path(__file__).resolve().parent.parent
 DOCS_DIR = ROOT / "docs"
 DEFAULT_OUT = DOCS_DIR / "site"
 
@@ -35,20 +40,6 @@ CSP_META = (
     "content=\"default-src 'self'; script-src 'self'; style-src 'self'; "
     "img-src 'self' data:; object-src 'none'; base-uri 'self'\">"
 )
-
-LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <defs>
-    <linearGradient id="g" x1="8" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#38bdf8"/>
-      <stop offset="100%" stop-color="#8b5cf6"/>
-    </linearGradient>
-  </defs>
-  <rect x="4" y="4" width="56" height="56" rx="16" fill="#0e1422" stroke="url(#g)" stroke-width="2.5"/>
-  <path d="M32 14L46 21V33C46 42 39.8 49 32 51C24.2 49 18 42 18 33V21L32 14Z" fill="#121a2c" stroke="url(#g)" stroke-width="2.5"/>
-  <circle cx="32" cy="30" r="5" fill="#38bdf8"/>
-  <path d="M25 40C27 36.8 29.4 35.5 32 35.5C34.6 35.5 37 36.8 39 40" stroke="#8b5cf6" stroke-width="2.5" stroke-linecap="round"/>
-</svg>
-"""
 
 STYLE_CSS = """/* Автономная дизайн-система документации PADAM · NOCTURNE (CODE Eternal) */
 :root {
@@ -743,6 +734,7 @@ def render_page(lang: str, page: str) -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1">
   {CSP_META}
   <title>{_esc(page_title)} · PADAM · NOCTURNE</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
   <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
@@ -785,6 +777,7 @@ def render_root_index() -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1">
   {CSP_META}
   <title>PADAM · NOCTURNE Documentation</title>
+  <link rel="icon" type="image/svg+xml" href="./assets/logo.svg">
   <link rel="stylesheet" href="./assets/style.css">
 </head>
 <body>

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'">
   <title>Overview · PADAM · NOCTURNE</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
   <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
@@ -25,11 +26,11 @@
     </aside>
     <main>
 <section class="hero">
-  <span class="badge">Version 0.4.18 · 1020 tests · Python &gt;= 3.10 · One local SQLite file</span>
+  <span class="badge">Version 0.4.18 · 1027 tests · Python &gt;= 3.10 · One local SQLite file</span>
   <h1>PADAM · NOCTURNE — agent memory that defends itself</h1>
   <p class="lead">A three-tier local-first memory stored in a single SQLite file: masks API keys and Solana wallets before disk, holds prompt injections for owner review, splits retrieval clock from confirmation clock, and proves single-record deletion via per-record AES-256-GCM key destruction.</p>
 </section>
-<div class="grid"><article class="card"><h3>$0 per write, 0 cloud calls</h3><p>Built-in hybrid search combines BM25, exact identifiers, and local vectors without paid APIs or network traffic.</p></article><article class="card"><h3>97.0% / 99.2% LongMemEval-S</h3><p>470 answerable questions (built-in method): 97.0% any@5, 99.2% any@10, 86.6% all@5, 93.0% all@10.</p></article><article class="card"><h3>0 of 30,000 fake keys leaked</h3><p>20+ secret formats, Solana keypairs/seeds (with readable public address) and Luhn cards are redacted before SQLite.</p></article><article class="card"><h3>Single-record crypto-shredding</h3><p>Each record uses its own AES-256-GCM key. Forgetting wipes the key forever and exports a JSON/HTML receipt.</p></article></div>
+<div class="grid"><article class="card"><h3>$0 per write, 0 cloud calls</h3><p>Built-in hybrid search combines BM25, exact identifiers, and local vectors without paid APIs or network traffic.</p></article><article class="card"><h3>97.0% / 99.2% LongMemEval-S · LoCoMo 91.1% / 95.8%</h3><p>LongMemEval-S (470 answerable): 97.0% any@5, 99.2% any@10, 93.0% all@10. LoCoMo (10 chats, 1,536 answerable): 90.1% sess_any@5 (91.1% with PADAM_RERANK=1), 95.5% sess_any@10 (95.8%).</p></article><article class="card"><h3>0 of 30,000 fake keys leaked</h3><p>20+ secret formats, Solana keypairs/seeds (with readable public address) and Luhn cards are redacted before SQLite.</p></article><article class="card"><h3>Single-record crypto-shredding</h3><p>Each record uses its own AES-256-GCM key. Forgetting wipes the key forever and exports a JSON/HTML receipt.</p></article></div>
 <h2>Three layers, one architecture (L1 -&gt; L2 -&gt; L3)</h2>
 <div class="grid-3"><article class="card"><h3>L1 — working buffer</h3><p>Current dialogue and raw episodes queued via padam log without polluting verified long-term facts.</p></article><article class="card"><h3>L2 — consolidated SQLite</h3><p>7 record kinds, two independent clocks (last_seen_at vs last_confirmed_at), full version history, review queue, and hybrid search.</p></article><article class="card"><h3>L3 — eternal verifiable anchor</h3><p>Optional layer: encrypted Arweave bundles (Turbo), Solana Memo Merkle roots, and Bitcoin OpenTimestamps.</p></article></div>
 <h2>Single-machine throughput (built-in method, 11–12 Nov 2026)</h2>
