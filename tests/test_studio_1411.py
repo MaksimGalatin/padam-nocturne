@@ -487,3 +487,131 @@ def test_chrome_extension_origin_forces_external_and_review_queue(tmp_path):
         srv.server_close()
         mem.close()
 
+
+
+def test_b20_export_markdown_active_only_and_obsidian_links(tmp_path):
+    """Б20: экспорт в папку Markdown / Obsidian выгружает ТОЛЬКО действующие записи (active) с YAML и [[ссылками]]."""
+    db_path = tmp_path / "md_export.db"
+    mem = Memory(user_id="md_user", store=Store(db_path))
+    try:
+        # 1. Активные записи + связь derived
+        _, id_src = mem.remember("Основной сервер работает на порту 8077.", kind="fact", importance=0.8)
+        _, id_dst = mem.remember("Для подключения к серверу укажите порт 8077.", kind="decision", importance=0.7)
+        mem._связать([id_src], id_dst)
+
+        # 2. Запись, которая будет заменена (superseded)
+        _, id_old = mem.remember("Секрет старой версии: OLD_SUPERSEDED_MARKER", kind="fact")
+        mem.store.execute("UPDATE memory SET status = 'superseded' WHERE id = ?", (id_old,))
+
+        # 3. Удержанная запись (quarantined)
+        _, id_held = mem.remember("Внешняя непроверенная запись: QUARANTINED_MARKER", kind="fact",
+                                  origin="external", guarded=True)
+
+        # 4. Отклонённая запись (rejected)
+        _, id_rej = mem.remember("Отклонённая запись агента: REJECTED_MARKER", kind="fact",
+                                 origin="external", guarded=True)
+        mem.reject(id_rej)
+
+        # 5. Забытая запись (revoked)
+        _, id_rev = mem.remember("Удалённая запись: REVOKED_MARKER", kind="fact")
+        mem.revoke(id_rev)
+
+        out_dir = tmp_path / "obsidian_vault"
+        rep = mem.export_markdown(str(out_dir))
+        assert rep["exported"] == 2
+        assert (out_dir / "INDEX.md").exists()
+
+        all_md_text = "\n".join(p.read_text(encoding="utf-8") for p in out_dir.rglob("*.md"))
+        assert "Основной сервер работает на порту 8077." in all_md_text
+        assert "Для подключения к серверу укажите порт 8077." in all_md_text
+        # Вики-ссылки Obsidian между источником и выводом
+        assert f"|{id_src[:8]}]]" in all_md_text
+        assert f"|{id_dst[:8]}]]" in all_md_text
+        # Ни одна неактивная запись не попала в экспорт
+        for forbidden in ("OLD_SUPERSEDED_MARKER", "QUARANTINED_MARKER", "REJECTED_MARKER", "REVOKED_MARKER"):
+            assert forbidden not in all_md_text
+    finally:
+        mem.close()
+
+
+def test_b8_import_external_formats_quarantined_and_secrets_masked(tmp_path):
+    """Б8: импорт из ChatGPT, Claude, Markdown/Obsidian и mem0 маскирует секреты и ставит origin=external в карантин."""
+    db_path = tmp_path / "ext_import.db"
+    mem = Memory(user_id="import_user", store=Store(db_path))
+    try:
+        # 1. Формат ChatGPT conversations.json
+        chatgpt_file = tmp_path / "chatgpt_conversations.json"
+        chatgpt_file.write_text(json.dumps([
+            {
+                "title": "Архитектура",
+                "mapping": {
+                    "node1": {
+                        "message": {
+                            "author": {"role": "user"},
+                            "content": {"parts": ["Используем SQLite в режиме WAL и токен sk-1234567890abcdefghijklmnop."]},
+                        }
+                    },
+                    "node2": {
+                        "message": {
+                            "author": {"role": "assistant"},
+                            "content": {"parts": ["Ответ ассистента не должен импортироваться как слова человека."]},
+                        }
+                    },
+                },
+            }
+        ], ensure_ascii=False), encoding="utf-8")
+        r1 = mem.import_external(chatgpt_file, fmt="auto")
+        assert r1["format"] == "chatgpt"
+        assert r1["imported"] == 1
+        assert r1["outcomes"].get("quarantined") == 1
+
+        # 2. Формат Claude conversations.json
+        claude_file = tmp_path / "claude_conversations.json"
+        claude_file.write_text(json.dumps([
+            {
+                "name": "Дизайн Studio",
+                "chat_messages": [
+                    {"sender": "human", "text": "Предпочитаю тёмную тему по умолчанию."},
+                    {"sender": "assistant", "text": "Принято."},
+                ],
+            }
+        ], ensure_ascii=False), encoding="utf-8")
+        r2 = mem.import_external(claude_file, fmt="auto")
+        assert r2["format"] == "claude"
+        assert r2["imported"] == 1
+        assert r2["outcomes"].get("quarantined") == 1
+
+        # 3. Формат папки Markdown / Obsidian
+        md_dir = tmp_path / "notes"
+        (md_dir / "preference").mkdir(parents=True)
+        (md_dir / "preference" / "note1.md").write_text(
+            "---\nkind: preference\nimportance: 0.9\n---\n\nВсегда отвечать по-русски.\n",
+            encoding="utf-8",
+        )
+        r3 = mem.import_external(md_dir, fmt="auto")
+        assert r3["format"] == "markdown"
+        assert r3["imported"] == 1
+        assert r3["outcomes"].get("quarantined") == 1
+
+        # 4. Формат mem0 JSON
+        mem0_file = tmp_path / "mem0_export.json"
+        mem0_file.write_text(json.dumps({
+            "memories": [
+                {"memory": "Любимый редактор кода — VS Code и Cursor.", "metadata": {"kind": "preference"}}
+            ]
+        }, ensure_ascii=False), encoding="utf-8")
+        r4 = mem.import_external(mem0_file, fmt="auto")
+        assert r4["format"] == "mem0"
+        assert r4["imported"] == 1
+        assert r4["outcomes"].get("quarantined") == 1
+
+        # Все 4 импортированные записи находятся на проверке (quarantined), с origin='external', а секрет замаскирован
+        assert mem.stats()["active"] == 0
+        held = mem.quarantined()
+        assert len(held) == 4
+        for h in held:
+            assert h["origin"] == "external"
+            assert "sk-1234567890abcdefghijklmnop" not in h["content"]
+        assert any("[REDACTED:" in h["content"] for h in held)
+    finally:
+        mem.close()

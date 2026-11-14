@@ -340,9 +340,12 @@ class Memory:
             f"""SELECT id, kind, content FROM memory WHERE user_id = ? AND status = 'active'
                 AND kind IN ({",".join("?" * len(config.PROTECTED_KINDS))})""",
             (self.user_id, *config.PROTECTED_KINDS))
-        for r in rows:
-            self.store.execute("UPDATE memory SET owner_sig = ? WHERE id = ?",
-                               (integrity.sign(ключ, r["id"], r["kind"], r["content"]), r["id"]))
+        if rows:
+            self.store.atomic([
+                ("UPDATE memory SET owner_sig = ? WHERE id = ?",
+                 (integrity.sign(ключ, r["id"], r["kind"], r["content"]), r["id"]))
+                for r in rows
+            ])
         return len(rows)
 
     def _подписать(self, memory_id: str) -> None:
@@ -1916,3 +1919,14 @@ class Memory:
             except Exception as e:
                 v["bitcoin_ots"] = {"error": f"{type(e).__name__}: {e}"}
         return v
+
+    def export_markdown(self, out_dir: str, scope: str | None = None) -> dict:
+        """Б20: выгрузить действующие записи (status='active') в папку Markdown / Obsidian."""
+        from . import portability
+        return portability.export_markdown(self, out_dir=out_dir, scope=scope)
+
+    def import_external(self, source, fmt: str = "auto", scope: str = "global") -> dict:
+        """Б8: защищённый импорт внешней памяти (ChatGPT, Claude, Markdown/Obsidian, mem0) с origin='external'."""
+        from . import portability
+        return portability.import_external(self, source=source, fmt=fmt, scope=scope)
+

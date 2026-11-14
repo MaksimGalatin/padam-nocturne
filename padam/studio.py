@@ -1039,7 +1039,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   border-color: transparent;
   font-weight: 600;
 }
-.btn-primary:hover { opacity: 0.94; border-color: var(--fg); }
+.btn-primary:hover { background: var(--accent); color: var(--accent-fg); opacity: 0.94; border-color: var(--fg); }
+.btn-ok:hover { background: var(--ok-bg); color: var(--ok); }
+.btn-danger:hover { background: var(--danger-bg); color: var(--danger); }
+.btn-warn:hover { background: var(--warn-bg); color: var(--warn); }
 .btn-ok { border-color: var(--ok); color: var(--ok); background: var(--ok-bg); font-weight: 600; }
 .btn-danger { border-color: var(--danger); color: var(--danger); background: var(--danger-bg); font-weight: 600; }
 .btn-warn { border-color: var(--warn); color: var(--warn); background: var(--warn-bg); font-weight: 600; }

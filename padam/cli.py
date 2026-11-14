@@ -197,10 +197,42 @@ def cmd_export(m: Memory, a) -> int:
 
 def cmd_import(m: Memory, a) -> int:
     import json
+    fmt = getattr(a, "format", "padam") or "padam"
+    if fmt != "padam":
+        res = m.import_external(a.file, fmt=fmt, scope=getattr(a, "scope", "global") or "global")
+        print(t(
+            f"{GREEN}Импортировано из внешнего источника ({res['format']}):{RESET} {res['imported']} "
+            f"(исходы: {res['outcomes']}, ждут проверки в padam review)",
+            f"{GREEN}Imported from external source ({res['format']}):{RESET} {res['imported']} "
+            f"(outcomes: {res['outcomes']}, waiting for review in padam review)",
+        ))
+        return 0
     with open(a.file, encoding="utf-8") as f:
         payload = json.load(f)
     n = m.import_(payload, overwrite=a.overwrite)
     print(f"{GREEN}{t('Загружено записей', 'Records imported')}: {n}{RESET}")
+    return 0
+
+
+def cmd_export_md(m: Memory, a) -> int:
+    """Б20: выгрузить только действующие записи в папку Markdown / Obsidian."""
+    res = m.export_markdown(a.dir, scope=a.scope)
+    print(t(
+        f"{GREEN}Выгружено в Markdown / Obsidian:{RESET} {res['dir']} (действующих записей: {res['exported']})",
+        f"{GREEN}Exported to Markdown / Obsidian:{RESET} {res['dir']} (active records: {res['exported']})",
+    ))
+    return 0
+
+
+def cmd_import_ext(m: Memory, a) -> int:
+    """Б8: импорт внешней памяти (ChatGPT, Claude, Markdown/Obsidian, mem0) с origin=external."""
+    res = m.import_external(a.source, fmt=a.format, scope=a.scope)
+    print(t(
+        f"{GREEN}Импортировано ({res['format']}, origin=external):{RESET} {res['imported']} "
+        f"(исходы: {res['outcomes']})",
+        f"{GREEN}Imported ({res['format']}, origin=external):{RESET} {res['imported']} "
+        f"(outcomes: {res['outcomes']})",
+    ))
     return 0
 
 
@@ -780,10 +812,27 @@ def main(argv=None) -> int:
     s.add_argument("--active-only", action="store_true")
     s.set_defaults(fn=cmd_export)
 
-    s = sub.add_parser("import", help=t("загрузить выгрузку обратно", "load an export back"))
+    s = sub.add_parser("export-md", help=t("выгрузить действующую память в папку Markdown / Obsidian",
+                                           "export active memory to a Markdown / Obsidian folder"))
+    s.add_argument("dir", help=t("папка назначения", "destination folder"))
+    s.add_argument("--scope", default=None)
+    s.set_defaults(fn=cmd_export_md)
+
+    s = sub.add_parser("import", help=t("загрузить выгрузку обратно (или внешний формат с --format)",
+                                        "load an export back (or external format with --format)"))
     s.add_argument("file")
     s.add_argument("--overwrite", action="store_true")
+    s.add_argument("--format", choices=["padam", "auto", "chatgpt", "claude", "markdown", "obsidian", "mem0"],
+                   default="padam", help=t("формат источника", "source format"))
+    s.add_argument("--scope", default="global")
     s.set_defaults(fn=cmd_import)
+
+    s = sub.add_parser("import-ext", help=t("импорт чужой памяти (ChatGPT, Claude, Markdown/Obsidian, mem0) с проверкой",
+                                            "import external memory (ChatGPT, Claude, Markdown/Obsidian, mem0) with review"))
+    s.add_argument("source", help=t("файл или папка", "file or folder"))
+    s.add_argument("--format", choices=["auto", "chatgpt", "claude", "markdown", "obsidian", "mem0"], default="auto")
+    s.add_argument("--scope", default="global")
+    s.set_defaults(fn=cmd_import_ext)
 
     s = sub.add_parser("confirm", help=t("запись оказалась верной", "a record proved correct"))
     s.add_argument("id")
