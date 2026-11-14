@@ -158,6 +158,24 @@ CREATE TABLE IF NOT EXISTS anchor_key (
     destroyed_at TEXT,
     created_at   TEXT NOT NULL
 );
+
+-- квитанции об удалении (доказательство удаления без хранения самого текста)
+CREATE TABLE IF NOT EXISTS forget_receipt (
+    receipt_id          TEXT PRIMARY KEY,
+    user_id             TEXT NOT NULL,
+    memory_id           TEXT NOT NULL,
+    forgotten_at        TEXT NOT NULL,
+    content_hash_sha256 TEXT,
+    kind                TEXT,
+    scope               TEXT,
+    with_derived        INTEGER NOT NULL DEFAULT 0,
+    wiped_count         INTEGER NOT NULL DEFAULT 1,
+    wiped_ids_json      TEXT NOT NULL,
+    key_destroyed       INTEGER NOT NULL DEFAULT 1,
+    anchor_tx           TEXT,
+    leaf_forget_hex     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS forget_receipt_user ON forget_receipt (user_id, forgotten_at DESC);
 """
 
 

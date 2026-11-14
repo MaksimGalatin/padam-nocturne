@@ -478,7 +478,8 @@ class Memory:
             ops += [("""UPDATE memory SET status = 'revoked', content = NULL, embedding = NULL,
                         факт_ключ = NULL, owner_sig = NULL WHERE user_id = ?""", (self.user_id,)),
                     ("DELETE FROM episode WHERE user_id = ?", (self.user_id,)),
-                    ("DELETE FROM term_alias WHERE user_id = ?", (self.user_id,))]
+                    ("DELETE FROM term_alias WHERE user_id = ?", (self.user_id,)),
+                    ("DELETE FROM forget_receipt WHERE user_id = ?", (self.user_id,))]
         self.store.atomic(ops)
         if wipe_local:
             self.store.purge()
@@ -1128,7 +1129,49 @@ class Memory:
         if not записи:
             return False
         ts = now_iso()
-        ops: list[tuple[str, tuple]] = []
+        import json as _json
+        цель = next((з for з in записи if з["id"] == memory_id), записи[0])
+        доп = self.store.one(
+            "SELECT kind, scope, anchor_tx, anchor_slot FROM memory WHERE id = ? AND user_id = ?",
+            (цель["id"], self.user_id))
+        ch_bytes = цель["content_hash"]
+        if ch_bytes:
+            ch_hex = bytes(ch_bytes).hex()
+        elif цель["content"]:
+            ch_hex = hashlib.sha256(цель["content"].encode("utf-8")).hexdigest()
+        else:
+            ch_hex = None
+        leaf_hex = hashlib.sha256(
+            b"\x02" + f"AIFA-FORGET|{memory_id}|{ts}".encode("utf-8")).hexdigest()
+        receipt_id = new_id()
+        wiped_ids = [з["id"] for з in записи]
+        self._last_receipt = {
+            "format": "padam-forget-receipt/1",
+            "statement": "proof_of_erasure",
+            "receipt_id": receipt_id,
+            "memory_id": memory_id,
+            "forgotten_at": ts,
+            "content_hash_sha256": ch_hex,
+            "kind": доп["kind"] if доп else None,
+            "scope": доп["scope"] if доп else "global",
+            "with_derived": bool(with_derived),
+            "wiped_count": len(wiped_ids),
+            "wiped_ids": wiped_ids,
+            "key_destroyed": True,
+            "anchor_tx": доп["anchor_tx"] if доп else None,
+            "solana_url": f"https://solscan.io/tx/{доп['anchor_tx']}" if (доп and доп["anchor_tx"]) else None,
+            "leaf_forget_hex": leaf_hex,
+        }
+        ops: list[tuple[str, tuple]] = [(
+            """INSERT INTO forget_receipt
+               (receipt_id, user_id, memory_id, forgotten_at, content_hash_sha256,
+                kind, scope, with_derived, wiped_count, wiped_ids_json,
+                key_destroyed, anchor_tx, leaf_forget_hex)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (receipt_id, self.user_id, memory_id, ts, ch_hex,
+             доп["kind"] if доп else None, доп["scope"] if доп else "global",
+             1 if with_derived else 0, len(wiped_ids), _json.dumps(wiped_ids),
+             1, доп["anchor_tx"] if доп else None, leaf_hex))]
         for з in записи:
             # Подпись тоже затирается: по ней с ключом можно проверить догадку «текст был таким».
             ops.append(("""UPDATE memory SET status = 'revoked', content = NULL,
@@ -1163,7 +1206,8 @@ class Memory:
              "history": ("superseded", "archived", "rejected", "revoked")}
 
     def list_records(self, view: str = "active", text: str | None = None,
-                     limit: int = 100, offset: int = 0, as_of: str | None = None) -> dict:
+                     limit: int = 100, offset: int = 0, as_of: str | None = None,
+                     kind: str | None = None, scope: str | None = None) -> dict:
         """Записи для просмотра владельцем: действующие, на проверке или история, новые сверху.
 
         as_of — все записи, что действовали в тот момент, включая заменённые позже.
@@ -1172,21 +1216,38 @@ class Memory:
         statuses = ("active", "superseded") if момент else self.VIEWS.get(view, self.VIEWS["active"])
         sql = (f"FROM memory WHERE user_id = ? AND status IN ({','.join('?' * len(statuses))})")
         params: list = [self.user_id, *statuses]
+        if kind:
+            sql += " AND kind = ?"
+            params.append(kind)
+        if scope:
+            sql += " AND scope = ?"
+            params.append(scope)
         if text:
             sql += " AND content LIKE ? ESCAPE '\\'"
             params.append("%" + text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%")
         поля = ("SELECT id, kind, scope, content, status, origin, confidence, importance, created_at, "
-                "valid_from, valid_to, quarantine_reason, supersedes ")
+                "last_seen_at, last_confirmed_at, access_count, refuted_count, "
+                "valid_from, valid_to, quarantine_reason, supersedes, superseded_by, anchor_tx, anchor_slot ")
         предел, сдвиг = max(1, min(int(limit), 500)), max(0, int(offset))
+        def _обогатить(row_list):
+            out = []
+            for r in row_list:
+                d = dict(r)
+                try:
+                    d["decay"] = round(decay(d["kind"], parse_ts(d["last_confirmed_at"] or d["created_at"])), 4)
+                except Exception:
+                    d["decay"] = 1.0
+                out.append(d)
+            return out
         if момент:
             rows = [r for r in self.store.query(поля + sql + " ORDER BY created_at DESC, rowid DESC", tuple(params))
                     if parse_ts(r["valid_from"] or r["created_at"]) <= момент
                     and (r["valid_to"] is None or parse_ts(r["valid_to"]) > момент)]
-            return {"view": "as_of", "total": len(rows), "records": [dict(r) for r in rows[сдвиг:сдвиг + предел]]}
+            return {"view": "as_of", "total": len(rows), "records": _обогатить(rows[сдвиг:сдвиг + предел])}
         всего = self.store.one("SELECT COUNT(*) " + sql, tuple(params))[0]
         rows = self.store.query(поля + sql + " ORDER BY created_at DESC, rowid DESC LIMIT ? OFFSET ?",
                                 tuple(params) + (предел, сдвиг))
-        return {"view": view, "total": всего, "records": [dict(r) for r in rows]}
+        return {"view": view, "total": всего, "records": _обогатить(rows)}
 
     def timeline(self, memory_id: str) -> list[dict]:
         """Цепочка версий: от текущей вглубь, к самой первой."""
@@ -1374,6 +1435,7 @@ class Memory:
             # а не узнавать из README (без protect-keys у кого файл базы, тот прочтёт и шифротексты в Arweave).
             "record_keys": self._состояние_ключей(),
             "self": self.self_report(),
+            "last_sleep": (self.nocturne_runs(1) or [None])[0],
         }
 
     def _состояние_ключей(self) -> dict:
@@ -1383,3 +1445,474 @@ class Memory:
                     "plain": keyvault.plain_count(self)}
         except Exception as e:                     # состояние ключей не должно ронять stats
             return {"error": str(e)[:200]}
+
+    def nocturne_runs(self, limit: int = 10) -> list[dict]:
+        """Последние циклы консолидации NOCTURNE."""
+        rows = self.store.query(
+            """SELECT id, started_at, finished_at, episodes_sampled, high_priority_share,
+                      kind_entropy, records_created, records_merged, records_superseded
+               FROM nocturne_run WHERE user_id = ?
+               ORDER BY started_at DESC LIMIT ?""",
+            (self.user_id, max(1, min(int(limit), 100))))
+        return [dict(r) for r in rows]
+
+    def forget_preview(self, memory_id: str) -> dict | None:
+        """Предпросмотр удаления: сама запись, цепочка версий и все выводы из неё."""
+        row = self.store.one(
+            """SELECT id, kind, scope, content, status, created_at, content_hash, anchor_tx
+               FROM memory WHERE id = ? AND user_id = ?""",
+            (memory_id, self.user_id))
+        if not row:
+            return None
+        связанные = self._связанные(memory_id)
+        выводы_ids = self.derived(memory_id)
+        выводы = []
+        for вид in выводы_ids:
+            r = self.store.one(
+                "SELECT id, kind, scope, content, status, created_at FROM memory WHERE id = ? AND user_id = ?",
+                (вид, self.user_id))
+            if r:
+                выводы.append(dict(r))
+        ch = bytes(row["content_hash"]).hex() if row["content_hash"] else (
+            hashlib.sha256(row["content"].encode("utf-8")).hexdigest() if row["content"] else None)
+        return {
+            "id": row["id"],
+            "target_id": row["id"],
+            "kind": row["kind"],
+            "scope": row["scope"],
+            "content": row["content"],
+            "status": row["status"],
+            "created_at": row["created_at"],
+            "content_hash_sha256": ch,
+            "anchor_tx": row["anchor_tx"],
+            "versions_count": len(связанные),
+            "version_ids": [з["id"] for з in связанные],
+            "derived_count": len(выводы),
+            "derived": выводы,
+        }
+
+    def forget_receipts(self, limit: int = 50) -> list[dict]:
+        """Выданные квитанции об удалении (доказательства забвения)."""
+        import json as _json
+        rows = self.store.query(
+            """SELECT receipt_id, memory_id, forgotten_at, content_hash_sha256,
+                      kind, scope, with_derived, wiped_count, wiped_ids_json,
+                      key_destroyed, anchor_tx, leaf_forget_hex
+               FROM forget_receipt WHERE user_id = ?
+               ORDER BY forgotten_at DESC LIMIT ?""",
+            (self.user_id, max(1, min(int(limit), 200))))
+        итог = []
+        for r in rows:
+            try:
+                wids = _json.loads(r["wiped_ids_json"] or "[]")
+            except Exception:
+                wids = [r["memory_id"]]
+            итог.append({
+                "format": "padam-forget-receipt/1",
+                "statement": "proof_of_erasure",
+                "receipt_id": r["receipt_id"],
+                "memory_id": r["memory_id"],
+                "forgotten_at": r["forgotten_at"],
+                "content_hash_sha256": r["content_hash_sha256"],
+                "kind": r["kind"],
+                "scope": r["scope"],
+                "with_derived": bool(r["with_derived"]),
+                "wiped_count": r["wiped_count"],
+                "wiped_ids": wids,
+                "key_destroyed": bool(r["key_destroyed"]),
+                "anchor_tx": r["anchor_tx"],
+                "solana_url": f"https://solscan.io/tx/{r['anchor_tx']}" if r["anchor_tx"] else None,
+                "leaf_forget_hex": r["leaf_forget_hex"],
+            })
+        return итог
+
+    def doctor_report(self) -> dict:
+        """Состояние защиты одним структурированным отчётом для Studio и API."""
+        import os as _os
+        import stat as _stat
+        from . import __version__, keyvault
+        предупреждений = 0
+        опасностей = 0
+        проверки = []
+
+        unsafe = config.unsafe_settings()
+        for имя, что in unsafe:
+            предупреждений += 1
+            опасностей += 1
+            проверки.append({"id": "unsafe_" + имя.split("=")[0].lower(), "ok": False,
+                             "severity": "danger", "name": имя, "detail": что})
+
+        проверки.append({
+            "id": "strict_profile",
+            "ok": bool(config.STRICT),
+            "severity": "ok" if config.STRICT else "info",
+            "value": "PADAM_STRICT=1" if config.STRICT else "0",
+            "ignored": config.strict_ignored(),
+        })
+
+        hold_ok = bool(config.HOLD_EXTERNAL)
+        if not hold_ok:
+            предупреждений += 1
+            опасностей += 1
+        проверки.append({
+            "id": "hold_external",
+            "ok": hold_ok,
+            "severity": "ok" if hold_ok else "danger",
+            "value": "1" if hold_ok else "0",
+        })
+
+        проверки.append({
+            "id": "mcp_review_all",
+            "ok": bool(config.MCP_REVIEW_ALL),
+            "severity": "ok" if config.MCP_REVIEW_ALL else "info",
+            "value": "1" if config.MCP_REVIEW_ALL else "0",
+        })
+
+        защищены = keyvault.is_enabled(self)
+        открытых = keyvault.plain_count(self)
+        if not защищены:
+            предупреждений += 1
+        проверки.append({
+            "id": "record_keys",
+            "ok": защищены and открытых == 0,
+            "severity": "ok" if (защищены and открытых == 0) else "warn",
+            "protected": защищены,
+            "plain": открытых,
+        })
+
+        if _os.name == "posix" and str(self.store.path) != ":memory:" and self.store.path.exists():
+            права = _stat.S_IMODE(_os.stat(self.store.path).st_mode)
+            ok_mode = (права & 0o077) == 0
+            if not ok_mode:
+                предупреждений += 1
+            проверки.append({
+                "id": "file_mode",
+                "ok": ok_mode,
+                "severity": "ok" if ok_mode else "warn",
+                "value": oct(права),
+            })
+        else:
+            проверки.append({
+                "id": "file_mode",
+                "ok": True,
+                "severity": "info",
+                "value": "windows_acl" if _os.name != "posix" else "memory",
+            })
+
+        with self.store._lock:
+            целостность = self.store.conn.execute("PRAGMA quick_check").fetchone()[0]
+            журнал = self.store.conn.execute("PRAGMA journal_mode").fetchone()[0]
+            синхр = int(self.store.conn.execute("PRAGMA synchronous").fetchone()[0])
+
+        if целостность != "ok":
+            предупреждений += 1
+            опасностей += 1
+        проверки.append({
+            "id": "db_integrity",
+            "ok": целостность == "ok",
+            "severity": "ok" if целостность == "ok" else "danger",
+            "value": целостность,
+        })
+
+        if синхр < 2:
+            предупреждений += 1
+        проверки.append({
+            "id": "disk_sync",
+            "ok": синхр >= 2,
+            "severity": "ok" if синхр >= 2 else "warn",
+            "journal": журнал,
+            "synchronous": синхр,
+        })
+
+        неподписанных = len(self.unsigned_protected())
+        if неподписанных > 0:
+            предупреждений += 1
+            опасностей += 1
+        проверки.append({
+            "id": "owner_signatures",
+            "ok": неподписанных == 0,
+            "severity": "ok" if неподписанных == 0 else "danger",
+            "unsigned_count": неподписанных,
+        })
+
+        удержано = self.store.one(
+            "SELECT COUNT(*) FROM memory WHERE user_id = ? AND status = 'quarantined'",
+            (self.user_id,))[0]
+        споров = len(self.conflicts())
+
+        if опасностей > 0:
+            level = "red"
+        elif предупреждений > 0 or удержано > 0 or споров > 0:
+            level = "yellow"
+        else:
+            level = "green"
+
+        return {
+            "version": __version__,
+            "db": str(self.store.path),
+            "level": level,
+            "warnings": предупреждений,
+            "dangers": опасностей,
+            "strict": bool(config.STRICT),
+            "hold_external": hold_ok,
+            "mcp_review_all": bool(config.MCP_REVIEW_ALL),
+            "keys_protected": защищены,
+            "keys_plain": открытых,
+            "integrity": целостность,
+            "journal_mode": журнал,
+            "synchronous": синхр,
+            "unsigned_protected": неподписанных,
+            "quarantined": удержано,
+            "conflicts": споров,
+            "fixed_api_token": bool(_os.environ.get("PADAM_API_TOKEN")),
+            "checks": проверки,
+        }
+
+    def graph(self, center_id: str | None = None, limit: int = 200) -> dict:
+        """Граф связей для Studio и API (/graph?id=):
+        - derived: вывод сделан из источника (таблица memory_link)
+        - version: новая версия заменила старую (supersedes)
+        - conflict: активные записи спорят по факт_ключ
+        """
+        предел = max(10, min(int(limit), 500))
+        все_ссылки = self.store.query(
+            """SELECT l.src, l.dst, l.created_at
+               FROM memory_link l JOIN memory m ON m.id = l.dst
+               WHERE m.user_id = ?""", (self.user_id,))
+        версии_строки = self.store.query(
+            """SELECT id, supersedes, created_at FROM memory
+               WHERE user_id = ? AND supersedes IS NOT NULL""", (self.user_id,))
+        споры = self.conflicts()
+
+        edges = []
+        связанные_ids = set()
+        for r in все_ссылки:
+            edges.append({"source": r["src"], "target": r["dst"], "type": "derived",
+                          "created_at": r["created_at"]})
+            связанные_ids.add(r["src"])
+            связанные_ids.add(r["dst"])
+        for r in версии_строки:
+            edges.append({"source": r["supersedes"], "target": r["id"], "type": "version",
+                          "created_at": r["created_at"]})
+            связанные_ids.add(r["supersedes"])
+            связанные_ids.add(r["id"])
+        for с in споры:
+            recs = с["records"]
+            for i in range(len(recs)):
+                for j in range(i + 1, len(recs)):
+                    edges.append({"source": recs[i]["id"], "target": recs[j]["id"],
+                                  "type": "conflict", "key": с["key"]})
+                    связанные_ids.add(recs[i]["id"])
+                    связанные_ids.add(recs[j]["id"])
+
+        if center_id:
+            соседи = {center_id}
+            очередь = [center_id]
+            while очередь and len(соседи) < предел:
+                cur = очередь.pop(0)
+                for e in edges:
+                    if e["source"] == cur and e["target"] not in соседи:
+                        соседи.add(e["target"])
+                        очередь.append(e["target"])
+                    elif e["target"] == cur and e["source"] not in соседи:
+                        соседи.add(e["source"])
+                        очередь.append(e["source"])
+            узлы_ids = соседи
+            edges = [e for e in edges if e["source"] in узлы_ids and e["target"] in узлы_ids]
+        else:
+            узлы_ids = set(list(связанные_ids)[:предел])
+            if len(узлы_ids) < min(30, предел):
+                доп = self.store.query(
+                    """SELECT id FROM memory WHERE user_id = ? AND status = 'active'
+                       ORDER BY created_at DESC LIMIT ?""",
+                    (self.user_id, min(30, предел) - len(узлы_ids)))
+                for r in доп:
+                    узлы_ids.add(r["id"])
+            edges = [e for e in edges if e["source"] in узлы_ids and e["target"] in узлы_ids]
+
+        nodes = []
+        if узлы_ids:
+            список_ids = list(узлы_ids)
+            rows = self.store.query(
+                f"""SELECT id, kind, scope, content, status, origin, confidence, importance,
+                           created_at, last_confirmed_at, supersedes, superseded_by, факт_ключ
+                    FROM memory WHERE user_id = ? AND id IN ({','.join('?' * len(список_ids))})""",
+                (self.user_id, *список_ids))
+            for r in rows:
+                текст = r["content"]
+                nodes.append({
+                    "id": r["id"],
+                    "kind": r["kind"],
+                    "scope": r["scope"],
+                    "label": ((текст or "—")[:64] + ("…" if текст and len(текст) > 64 else "")),
+                    "content": текст,
+                    "status": r["status"],
+                    "origin": r["origin"] or "user",
+                    "confidence": r["confidence"],
+                    "importance": r["importance"],
+                    "created_at": r["created_at"],
+                    "last_confirmed_at": r["last_confirmed_at"],
+                    "fact_key": r["факт_ключ"],
+                })
+
+        прямые_источники = []
+        выводы_цепочкой = []
+        if center_id:
+            выводы_цепочкой = self.derived(center_id)
+            оч = [center_id]
+            while оч:
+                cur = оч.pop()
+                for r in self.store.query(
+                        """SELECT l.src FROM memory_link l JOIN memory m ON m.id = l.src
+                           WHERE l.dst = ? AND m.user_id = ?""", (cur, self.user_id)):
+                    if r["src"] not in прямые_источники and r["src"] != center_id:
+                        прямые_источники.append(r["src"])
+                        оч.append(r["src"])
+
+        return {
+            "center_id": center_id,
+            "nodes": nodes,
+            "edges": edges,
+            "derived": выводы_цепочкой,
+            "sources": прямые_источники,
+            "counts": {
+                "nodes": len(nodes),
+                "edges": len(edges),
+                "derived_edges": sum(1 for e in edges if e["type"] == "derived"),
+                "version_edges": sum(1 for e in edges if e["type"] == "version"),
+                "conflict_edges": sum(1 for e in edges if e["type"] == "conflict"),
+            },
+        }
+
+    def l3_status(self) -> dict:
+        """Состояние вечного слоя L3: якоря, ссылки на Solscan и Arweave, ожидающие записи."""
+        from . import anchor
+        anchor.ensure_schema(self)
+        rows = self.store.query(
+            """SELECT id, created_at, root_hex, leaf_count, bundle_sha256, bundle_bytes,
+                      arweave_tx, solana_sig, solana_slot, network, memo, ots
+               FROM l3_anchor WHERE user_id = ?
+               ORDER BY created_at DESC""",
+            (self.user_id,))
+        якоря = []
+        for r in rows:
+            net = r["network"] or "devnet"
+            sig = r["solana_sig"]
+            ar = r["arweave_tx"]
+            sol_url = (f"https://solscan.io/tx/{sig}" + ("?cluster=devnet" if net == "devnet" else "")) if sig else None
+            ar_url = f"https://arweave.net/{ar}" if ar else None
+            ots_info = None
+            if r["ots"] is not None:
+                try:
+                    from . import ots as _ots
+                    о = _ots.info(bytes(r["ots"]))
+                    ots_info = {"bitcoin_blocks": о.get("bitcoin_blocks", []),
+                                "pending": len(о.get("pending", []))}
+                except Exception:
+                    ots_info = {"present": True}
+            якоря.append({
+                "id": r["id"],
+                "created_at": r["created_at"],
+                "root_hex": r["root_hex"],
+                "leaf_count": r["leaf_count"],
+                "bundle_sha256": r["bundle_sha256"],
+                "bundle_bytes": r["bundle_bytes"],
+                "arweave_tx": ar,
+                "arweave_url": ar_url,
+                "solana_sig": sig,
+                "solana_slot": r["solana_slot"],
+                "solscan_url": sol_url,
+                "network": net,
+                "memo": r["memo"],
+                "has_ots": r["ots"] is not None,
+                "ots": ots_info,
+            })
+        незаякорено = self.store.one(
+            """SELECT COUNT(*) FROM memory WHERE user_id = ? AND status = 'active'
+               AND content IS NOT NULL AND anchor_tx IS NULL""",
+            (self.user_id,))[0]
+        ждут_забвения = self.store.one(
+            """SELECT COUNT(*) FROM anchor_key k JOIN memory m ON m.id = k.memory_id
+               WHERE m.user_id = ? AND k.destroyed_at IS NOT NULL
+                 AND NOT EXISTS (SELECT 1 FROM l3_leaf l WHERE l.memory_id = k.memory_id AND l.kind = 'forget')
+                 AND EXISTS (SELECT 1 FROM l3_leaf l WHERE l.memory_id = k.memory_id AND l.kind = 'record')""",
+            (self.user_id,))[0]
+        return {
+            "anchors": якоря,
+            "unanchored_records": незаякорено,
+            "pending_forgets": ждут_забвения,
+            "record_keys": self._состояние_ключей(),
+        }
+
+    def l3_verify_anchor(self, anchor_id: str | None = None, online: bool = False) -> dict:
+        """Проверка закрепления L3 (локальная копия пакета или шлюз + корень Меркла + OTS)."""
+        import hashlib as _hashlib
+        from pathlib import Path as _Path
+        from . import anchor
+        anchor.ensure_schema(self)
+        row = (self.store.one("SELECT * FROM l3_anchor WHERE user_id = ? ORDER BY created_at DESC LIMIT 1",
+                              (self.user_id,))
+               if not anchor_id else
+               self.store.one("SELECT * FROM l3_anchor WHERE id = ? AND user_id = ?",
+                              (anchor_id, self.user_id)))
+        if not row:
+            return {"ok": False, "error": "no_anchors"}
+        local_path = _Path(str(self.store.path) + ".l3") / f"{row['id']}.json"
+        local = local_path.read_bytes() if local_path.exists() else None
+        remote = None
+        if online and row["arweave_tx"]:
+            try:
+                remote = anchor.fetch_arweave(row["arweave_tx"], timeout=10)
+            except Exception:
+                remote = None
+        payload = remote or local
+        memo = row["memo"] or ""
+        if online and row["solana_sig"]:
+            try:
+                memo = anchor.read_memo(row["solana_sig"], row["network"] or "devnet")
+            except Exception:
+                memo = row["memo"] or ""
+        if payload is None:
+            # Проверим листья из таблицы l3_leaf против root_hex в l3_anchor и memo
+            листья = [bytes.fromhex(r["leaf_hex"]) for r in self.store.query(
+                "SELECT leaf_hex FROM l3_leaf WHERE anchor_id = ? ORDER BY position", (row["id"],))]
+            if листья:
+                пересчитан = anchor.merkle_root(листья).hex()
+                in_memo = memo.split("root=", 1)[1].split()[0] if "root=" in memo else row["root_hex"]
+                ok = (пересчитан == row["root_hex"] == in_memo)
+                return {
+                    "anchor_id": row["id"],
+                    "ok": ok,
+                    "source": "db_leaves",
+                    "root_recomputed": пересчитан,
+                    "root_in_db": row["root_hex"],
+                    "root_in_memo": in_memo,
+                    "leaves": len(листья),
+                    "arweave_tx": row["arweave_tx"],
+                    "solana_sig": row["solana_sig"],
+                    "network": row["network"],
+                }
+            return {"anchor_id": row["id"], "ok": False, "error": "bundle_not_found"}
+        v = anchor.verify_bundle(payload, memo)
+        sha_ok = _hashlib.sha256(payload).hexdigest() == row["bundle_sha256"]
+        v.update(
+            anchor_id=row["id"],
+            arweave_tx=row["arweave_tx"],
+            solana_sig=row["solana_sig"],
+            network=row["network"],
+            source="arweave" if remote else "local_copy",
+            sha256_matches_db=sha_ok,
+        )
+        v["ok"] = bool(v["ok"] and sha_ok)
+        if row["ots"] is not None:
+            try:
+                from . import ots as _ots
+                о = _ots.info(bytes(row["ots"]))
+                v["bitcoin_ots"] = {
+                    "matches_bundle": _ots.matches(bytes(row["ots"]), payload),
+                    "bitcoin_blocks": о["bitcoin_blocks"],
+                    "pending_calendars": о["pending"],
+                }
+            except Exception as e:
+                v["bitcoin_ots"] = {"error": f"{type(e).__name__}: {e}"}
+        return v
