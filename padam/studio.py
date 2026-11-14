@@ -266,6 +266,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "status_revoked": "забыта",
         "status_archived": "в архиве",
         "status_rejected": "отклонена",
+        "feed_agent_placeholder": "Фильтр по агенту (agent_id)…",
+        "card_agent": "агент",
+        "set_mask_pii_name": "PADAM_MASK_PII — Маскировка почты и телефонов",
+        "set_mask_pii_desc": "По умолчанию выключено, чтобы не портить ваши контакты. При включении маскирует адреса почты и телефоны до записи на диск.",
+        "audit_box_title": "Журнал действий с памятью (audit_log)",
+        "audit_box_desc": "Кто, когда и какое действие выполнил (запись, одобрение, отклонение, забывание). Текст записей в журнале не хранится.",
+        "audit_export_json": "Скачать журнал JSON",
+        "audit_empty": "В журнале действий пока нет событий.",
     },
     "en": {
         "app_title": "PADAM · NOCTURNE Studio",
@@ -499,6 +507,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "status_revoked": "forgotten",
         "status_archived": "archived",
         "status_rejected": "rejected",
+        "feed_agent_placeholder": "Filter by agent (agent_id)…",
+        "card_agent": "agent",
+        "set_mask_pii_name": "PADAM_MASK_PII — Mask emails & phone numbers",
+        "set_mask_pii_desc": "Off by default so your own contacts stay intact. When enabled, masks email addresses and phone numbers before disk.",
+        "audit_box_title": "Memory Action Audit Log (audit_log)",
+        "audit_box_desc": "Who performed which action and when (write, approve, reject, forget). Record content is never stored in the audit log.",
+        "audit_export_json": "Download Audit JSON",
+        "audit_empty": "No audit events recorded yet.",
     },
     "es": {
         "app_title": "PADAM · NOCTURNE Studio",
@@ -732,6 +748,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "status_revoked": "olvidado",
         "status_archived": "archivado",
         "status_rejected": "rechazado",
+        "feed_agent_placeholder": "Filtrar por agente (agent_id)…",
+        "card_agent": "agente",
+        "set_mask_pii_name": "PADAM_MASK_PII — Enmascarar correos y teléfonos",
+        "set_mask_pii_desc": "Desactivado por defecto para conservar sus contactos. Al activarse, oculta correos y teléfonos antes de guardar en disco.",
+        "audit_box_title": "Registro de auditoría de acciones (audit_log)",
+        "audit_box_desc": "Quién realizó cada acción y cuándo (escritura, aprobación, rechazo, olvido). El texto nunca se guarda en la auditoría.",
+        "audit_export_json": "Descargar auditoría JSON",
+        "audit_empty": "Aún no hay eventos en el registro de auditoría.",
     },
     "zh": {
         "app_title": "PADAM · NOCTURNE Studio",
@@ -965,6 +989,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "status_revoked": "已遗忘",
         "status_archived": "已归档",
         "status_rejected": "已拒绝",
+        "feed_agent_placeholder": "按智能体筛选 (agent_id)…",
+        "card_agent": "智能体",
+        "set_mask_pii_name": "PADAM_MASK_PII — 邮箱与电话号码脱敏",
+        "set_mask_pii_desc": "默认关闭以保留您的联系人信息。开启后将在落盘前自动掩码电子邮箱与电话号码。",
+        "audit_box_title": "记忆操作审计日志 (audit_log)",
+        "audit_box_desc": "记录何人在何时执行了何种操作（写入、批准、拒绝、遗忘）。审计日志绝不存储记忆正文。",
+        "audit_export_json": "下载审计 JSON",
+        "audit_empty": "审计日志中暂无事件。",
     },
 }
 
@@ -1756,6 +1788,7 @@ function renderRecordCard(r, opts = {}) {
   const origKey = 'origin_' + (r.origin || 'user');
   meta.append(el('span', '', S.card_origin + ': ' + (S[origKey] || r.origin || 'user')));
   if (r.scope) meta.append(el('span', '', S.card_scope + ': ' + r.scope));
+  if (r.agent_id) meta.append(el('span', 'badge', S.card_agent + ': ' + r.agent_id));
   if (r.status && r.status !== 'active') {
     const cls = r.status === 'quarantined' ? 'badge badge-warn' : (r.status === 'revoked' ? 'badge badge-danger' : 'badge');
     meta.append(el('span', cls, S['status_' + r.status] || r.status));
@@ -2043,7 +2076,8 @@ async function loadFeed(reset = true) {
   if (reset) { feedOffset = 0; feedShown = []; }
   try {
     const q = encodeURIComponent($('feed-q').value.trim());
-    const r = await api('/records?view=' + feedView + '&q=' + q + '&limit=100&offset=' + feedOffset);
+    const ag = encodeURIComponent(($('feed-agent') ? $('feed-agent').value : '').trim());
+    const r = await api('/records?view=' + feedView + '&q=' + q + (ag ? ('&agent_id=' + ag) : '') + '&limit=100&offset=' + feedOffset);
     feedShown = feedShown.concat(r.records || []);
     feedOffset += (r.records || []).length;
     $('feed-more').hidden = feedOffset >= (r.total || 0);
@@ -2451,7 +2485,8 @@ async function loadSettings() {
     safeBox.append(
       makeToggleRow('set_strict_name', 'set_strict_desc', Boolean(s.strict), 'strict'),
       makeToggleRow('set_review_all_name', 'set_review_all_desc', Boolean(s.mcp_review_all), 'mcp_review_all'),
-      makeToggleRow('set_feedback_name', 'set_feedback_desc', Boolean(s.search_feedback), 'search_feedback')
+      makeToggleRow('set_feedback_name', 'set_feedback_desc', Boolean(s.search_feedback), 'search_feedback'),
+      makeToggleRow('set_mask_pii_name', 'set_mask_pii_desc', Boolean(s.mask_pii), 'mask_pii')
     );
 
     // Профиль консолидации
@@ -2496,6 +2531,27 @@ async function loadSettings() {
       makeReadOnlyRow('set_keep_secrets_name', 'set_keep_secrets_desc', Boolean(s.keep_secrets), 'keep_secrets'),
       makeReadOnlyRow('set_trust_mcp_name', 'set_trust_mcp_desc', Boolean(s.mcp_trust_writes), 'mcp_trust_writes')
     );
+    const auditBox = $('settings-audit-list');
+    if (auditBox) {
+      auditBox.replaceChildren();
+      const au = await api('/audit?limit=40');
+      const entries = au.entries || [];
+      if (!entries.length) {
+        auditBox.append(el('p', 'panel-sub', S.audit_empty));
+      } else {
+        for (const item of entries) {
+          const row = el('div', 'check-item');
+          const tag = item.action + (item.outcome ? (' → ' + item.outcome) : '');
+          const who = (item.actor || 'user') + (item.agent_id ? (' [' + item.agent_id + ']') : '');
+          const memRef = item.memory_id ? (' · id:' + String(item.memory_id).slice(0, 10) + '…') : '';
+          row.append(
+            el('span', 'badge', tag),
+            el('span', 'mono', fmtTime(item.created_at, true) + ' · ' + who + memRef)
+          );
+          auditBox.append(row);
+        }
+      }
+    }
   } catch (e) { say(S.failed + ': ' + e.message, false); }
 }
 
@@ -2564,6 +2620,24 @@ $('feed-q').oninput = () => {
   clearTimeout(window._fqt);
   window._fqt = setTimeout(() => loadFeed(true), 220);
 };
+if ($('feed-agent')) {
+  $('feed-agent').oninput = () => {
+    clearTimeout(window._fat);
+    window._fat = setTimeout(() => loadFeed(true), 220);
+  };
+}
+if ($('audit-export-btn')) {
+  $('audit-export-btn').onclick = async () => {
+    try {
+      const au = await api('/audit?limit=500');
+      const blob = new Blob([JSON.stringify(au, null, 2)], {type: 'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'padam-audit-log.json';
+      a.click();
+    } catch (e) { say(S.failed + ': ' + e.message, false); }
+  };
+}
 $('feed-more').onclick = () => loadFeed(false);
 $('feed-new-save').onclick = async () => {
   const text = $('feed-new-text').value.trim();
@@ -2842,6 +2916,7 @@ def page() -> tuple[str, str]:
           <button id="feed-view-active" aria-pressed="true" data-i18n="feed_view_active">{s['feed_view_active']}</button>
           <button id="feed-view-history" aria-pressed="false" data-i18n="feed_view_history">{s['feed_view_history']}</button>
           <input id="feed-q" type="search" data-i18n-placeholder="feed_filter_placeholder" data-i18n-aria="feed_filter_placeholder" placeholder="{s['feed_filter_placeholder']}" aria-label="{s['feed_filter_placeholder']}">
+          <input id="feed-agent" type="search" data-i18n-placeholder="feed_agent_placeholder" data-i18n-aria="feed_agent_placeholder" placeholder="{s['feed_agent_placeholder']}" aria-label="{s['feed_agent_placeholder']}">
         </div>
         <div id="feed-kinds" class="chips-row"></div>
         <div id="feed-list"></div>
@@ -2983,6 +3058,14 @@ def page() -> tuple[str, str]:
         <div class="box">
           <h3 class="box-title" data-i18n="set_readonly_title">{s['set_readonly_title']}</h3>
           <div id="settings-readonly-list"></div>
+        </div>
+        <div class="box">
+          <div class="box-title">
+            <span data-i18n="audit_box_title">{s['audit_box_title']}</span>
+            <button id="audit-export-btn" data-i18n="audit_export_json">{s['audit_export_json']}</button>
+          </div>
+          <p class="panel-sub" data-i18n="audit_box_desc">{s['audit_box_desc']}</p>
+          <div id="settings-audit-list" class="check-list"></div>
         </div>
       </section>
 

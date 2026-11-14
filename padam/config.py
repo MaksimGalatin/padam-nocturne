@@ -77,6 +77,9 @@ def unsafe_settings() -> list[tuple[str, str]]:
         out.append(("PADAM_HOLD_EXTERNAL=0", "text an agent read on a web page or in a file is stored without your review"))
     return out
 KEEP_SECRETS = os.environ.get("PADAM_KEEP_SECRETS", "0") == "1"
+# Б4 (14.11.2026): маскировка телефонов и почты переключателем PADAM_MASK_PII=1.
+# По умолчанию выключена: в личной памяти человеку часто нужны свои номера и адреса.
+MASK_PII = os.environ.get("PADAM_MASK_PII", "0") == "1"
 
 # Второй проход поиска (псевдо-обратная связь): слова, общие для нескольких первых найденных записей, дописываются
 # к запросу, и два списка сливаются обратным рангом. Опыт 11.11.2026 на LongMemEval-S (470 вопросов с ответом):

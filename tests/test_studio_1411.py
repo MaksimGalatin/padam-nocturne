@@ -615,3 +615,182 @@ def test_b8_import_external_formats_quarantined_and_secrets_masked(tmp_path):
         assert any("[REDACTED:" in h["content"] for h in held)
     finally:
         mem.close()
+
+
+def test_b4_mask_pii_toggle_emails_and_phones(tmp_path):
+    """Б4: при выключенном PADAM_MASK_PII контакты владельца не портятся, а при включённом маскируются почта и телефон."""
+    from padam import config as pcfg, safety
+
+    orig = pcfg.MASK_PII
+    try:
+        pcfg.MASK_PII = False
+        sample = "Связаться со мной можно по почте architect@codeeternal.org или телефону +1 (415) 555-2671."
+        out_off, counts_off = safety.redact(sample)
+        assert "architect@codeeternal.org" in out_off
+        assert "555-2671" in out_off
+        assert "[REDACTED:email]" not in out_off
+        assert "[REDACTED:phone]" not in out_off
+        assert counts_off == {}
+
+        pcfg.MASK_PII = True
+        out_on, counts_on = safety.redact(sample)
+        assert "architect@codeeternal.org" not in out_on
+        assert "555-2671" not in out_on
+        assert "[REDACTED:email]" in out_on
+        assert "[REDACTED:phone]" in out_on
+        assert counts_on.get("email") == 1 and counts_on.get("phone") == 1
+
+        # Проверим переключение через /settings в Studio
+        mem = Memory(user_id="pii_user", store=Store(tmp_path / "pii.db"))
+        srv, link = api.make_studio_server(mem, port=0)
+        t = threading.Thread(target=srv.serve_forever, daemon=True)
+        t.start()
+        try:
+            m = re.match(r"^(http://127\.0\.0\.1:\d+)/studio#t=(.+)$", link)
+            assert m
+            base, token = m.group(1), m.group(2)
+            code, _, st = _http_json(f"{base}/settings", token=token, body={"mask_pii": True})
+            assert code == 200 and st["mask_pii"] is True
+            code, _, st2 = _http_json(f"{base}/settings", token=token, body={"mask_pii": False})
+            assert code == 200 and st2["mask_pii"] is False
+        finally:
+            srv.shutdown()
+            srv.server_close()
+            mem.close()
+    finally:
+        pcfg.MASK_PII = orig
+
+
+def test_b9_profile_returns_only_owner_signed_identity_and_preferences(tmp_path):
+    """Б9: `Memory.profile()` и `GET /profile` возвращают только подписанные владельцем записи identity и preference."""
+    db_path = tmp_path / "prof.db"
+    mem = Memory(user_id="prof_user", store=Store(db_path))
+    try:
+        mem.remember("Я — главный архитектор проекта.", kind="identity", origin="user", importance=0.95)
+        mem.remember("Отвечать всегда кратко и по-русски.", kind="preference", origin="user", importance=0.9)
+        mem.remember("Обычный рабочий факт о сервере.", kind="fact", origin="user")
+
+        # Добавим запись и сотрём у неё owner_sig напрямую в SQLite (имитация записи в обход ключа владельца)
+        _, forged_id = mem.remember("FORGED_UNSIGNED_IDENTITY_MARKER", kind="identity", origin="user")
+        mem.store.execute("UPDATE memory SET owner_sig = NULL WHERE id = ?", (forged_id,))
+
+        prof = mem.profile()
+        assert len(prof["identity"]) == 1
+        assert len(prof["preferences"]) == 1
+        assert prof["unsigned_skipped"] == 1
+        assert "FORGED_UNSIGNED_IDENTITY_MARKER" not in prof["summary"]
+        assert "главный архитектор" in prof["summary"]
+        assert "по-русски" in prof["summary"]
+
+        # Проверим маршрут GET /profile
+        srv, link = api.make_studio_server(mem, port=0)
+        t = threading.Thread(target=srv.serve_forever, daemon=True)
+        t.start()
+        try:
+            m = re.match(r"^(http://127\.0\.0\.1:\d+)/studio#t=(.+)$", link)
+            assert m
+            base, token = m.group(1), m.group(2)
+            code, _, http_prof = _http_json(f"{base}/profile", token=token)
+            assert code == 200
+            assert http_prof["unsigned_skipped"] == 1
+            assert "FORGED_UNSIGNED_IDENTITY_MARKER" not in http_prof["summary"]
+        finally:
+            srv.shutdown()
+            srv.server_close()
+    finally:
+        mem.close()
+
+
+def test_b11_agent_id_header_and_filtering(tmp_path):
+    """Б11: заголовок X-Agent-ID и поле agent_id сохраняются в записи и позволяют фильтровать выдачу."""
+    db_path = tmp_path / "agents.db"
+    mem = Memory(user_id="ag_user", store=Store(db_path))
+    srv, link = api.make_studio_server(mem, port=0)
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+    try:
+        m = re.match(r"^(http://127\.0\.0\.1:\d+)/studio#t=(.+)$", link)
+        assert m
+        base, token = m.group(1), m.group(2)
+
+        # Запись от первого агента через заголовок X-Agent-ID
+        code, _, r1 = _http_json(
+            f"{base}/write",
+            token=token,
+            body={"content": "Сборка бэкенда выполнена агентом Claude Code", "kind": "fact", "origin": "user"},
+            extra_headers={"X-Agent-ID": "claude-code"},
+        )
+        assert code == 200 and r1["outcome"] == "created"
+
+        # Запись от второго агента через поле agent_id
+        code, _, r2 = _http_json(
+            f"{base}/write",
+            token=token,
+            body={"content": "Вёрстка проверена агентом Cursor", "kind": "fact", "origin": "user", "agent_id": "cursor"},
+        )
+        assert code == 200 and r2["outcome"] == "created"
+
+        # Фильтрация в /records?agent_id=claude-code
+        code, _, feed_cc = _http_json(f"{base}/records?view=active&agent_id=claude-code", token=token)
+        assert code == 200
+        assert feed_cc["total"] == 1
+        assert feed_cc["records"][0]["agent_id"] == "claude-code"
+
+        # Фильтрация в /search по agent_id
+        code, _, sr_cur = _http_json(
+            f"{base}/search",
+            token=token,
+            body={"query": "проверена агентом", "agent_id": "cursor"},
+        )
+        assert code == 200
+        assert len(sr_cur["results"]) == 1
+        assert sr_cur["results"][0]["agent_id"] == "cursor"
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        mem.close()
+
+
+def test_b12_audit_log_records_actions_without_content(tmp_path):
+    """Б12: таблица audit_log и маршрут GET /audit фиксируют действия (write, approve, reject, forget), но не хранят текст."""
+    db_path = tmp_path / "audit.db"
+    mem = Memory(user_id="audit_user", store=Store(db_path))
+    try:
+        secret_phrase = "SUPER_SENSITIVE_CONTENT_NEVER_IN_AUDIT_LOG_9911"
+        _, id_ok = mem.remember(secret_phrase, kind="fact", origin="user", agent_id="claude-code")
+        _, id_q1 = mem.remember("Внешняя запись 1: " + secret_phrase, kind="fact", origin="external", guarded=True, agent_id="web-clipper")
+        _, id_q2 = mem.remember("Внешняя запись 2: " + secret_phrase, kind="fact", origin="external", guarded=True, agent_id="web-clipper")
+        mem.approve(id_q1)
+        mem.reject(id_q2)
+        mem.revoke(id_ok)
+
+        entries = mem.audit_log(limit=50)
+        actions = [e["action"] for e in entries]
+        assert "write" in actions
+        assert "approve" in actions
+        assert "reject" in actions
+        assert "forget" in actions
+
+        # Ни в одном поле audit_log нет текста записи
+        dump = json.dumps(entries, ensure_ascii=False)
+        assert secret_phrase not in dump
+        assert any(e["agent_id"] == "claude-code" for e in entries)
+        assert any(e["agent_id"] == "web-clipper" for e in entries)
+
+        # Проверим маршрут GET /audit
+        srv, link = api.make_studio_server(mem, port=0)
+        t = threading.Thread(target=srv.serve_forever, daemon=True)
+        t.start()
+        try:
+            m = re.match(r"^(http://127\.0\.0\.1:\d+)/studio#t=(.+)$", link)
+            assert m
+            base, token = m.group(1), m.group(2)
+            code, _, http_au = _http_json(f"{base}/audit?limit=20", token=token)
+            assert code == 200
+            assert len(http_au["entries"]) >= 6
+            assert secret_phrase not in json.dumps(http_au, ensure_ascii=False)
+        finally:
+            srv.shutdown()
+            srv.server_close()
+    finally:
+        mem.close()

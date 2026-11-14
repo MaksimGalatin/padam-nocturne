@@ -33,6 +33,7 @@ class Record:
     scope: str = "global"
     signed: bool | None = None       # для личности и предпочтений: подписана ли владельцем
     conflict: bool = False           # другая действующая запись о том же говорит иное
+    agent_id: str | None = None      # Б11: идентификатор агента, создавшего запись
 
     def explain(self) -> str:
         d = decay(self.kind, self.last_confirmed_at)
@@ -151,7 +152,8 @@ class Memory:
                  importance: float = 0.5, scope: str = "global",
                  source_episode_id: str | None = None,
                  origin: str = "user", guarded: bool = False,
-                 derived_from: list[str] | None = None) -> tuple[str, str]:
+                 derived_from: list[str] | None = None,
+                 agent_id: str | None = None) -> tuple[str, str]:
         """Возвращает (исход, id записи).
 
         Исходы: created | duplicate | merged | superseded | coexists | quarantined
@@ -164,14 +166,19 @@ class Memory:
         derived_from — id записей, из которых сделан этот вывод. По этим связям забвение
         источника доходит и до выводов (`forget --with-derived`).
         """
+        norm_agent = (str(agent_id).strip()[:64] if agent_id else None) or None
         with safety.одна_запись():          # виды текста строятся один раз на запись и не переживают её
             исход, mid = self._remember(content, kind, importance, scope, source_episode_id, origin, guarded)
+        if norm_agent and исход != "duplicate":
+            self.store.execute("UPDATE memory SET agent_id = ? WHERE id = ?", (norm_agent, mid))
         # При повторе mid — это уже существующая запись, возможно владельца. Связать её «выводом» из
         # чужой записи значило бы дать агенту способ стереть её каскадом при забвении источника.
         if derived_from and исход != "duplicate":
             self._связать(derived_from, mid)
         if исход in ("created", "merged", "superseded", "coexists") and not (guarded and not config.MCP_TRUST_WRITES):
             self._подписать(mid)
+        self._log_audit("write", mid, actor=origin or "user", agent_id=norm_agent,
+                        scope=scope, kind=kind, outcome=исход)
         return исход, mid
 
     def _remember(self, content: str, kind: str | None, importance: float, scope: str,
@@ -549,6 +556,7 @@ class Memory:
                         (memory_id, ts, row["supersedes"], self.user_id)))
         self.store.atomic(ops)
         self._подписать(memory_id)       # принял владелец — значит запись его
+        self._log_audit("approve", memory_id, actor="owner", outcome="active")
         return True
 
     def reject(self, memory_id: str) -> bool:
@@ -557,7 +565,10 @@ class Memory:
             """UPDATE memory SET status = 'rejected'
                WHERE id = ? AND user_id = ? AND status = 'quarantined'""",
             (memory_id, self.user_id))
-        return cur.rowcount > 0
+        ok = cur.rowcount > 0
+        if ok:
+            self._log_audit("reject", memory_id, actor="owner", outcome="rejected")
+        return ok
 
     def restore(self, memory_id: str) -> bool:
         """Вернуть из архива запись, которую опровергли зря."""
@@ -565,7 +576,10 @@ class Memory:
             """UPDATE memory SET status = 'active', confidence = 0.5
                WHERE id = ? AND user_id = ? AND status = 'archived'""",
             (memory_id, self.user_id))
-        return cur.rowcount > 0
+        ok = cur.rowcount > 0
+        if ok:
+            self._log_audit("restore", memory_id, actor="owner", outcome="active")
+        return ok
 
     # -- смена модели эмбеддингов --------------------------------------
 
@@ -816,7 +830,8 @@ class Memory:
     def recall(self, query: str, scope: str = "global",
                kind: str | None = None, limit: int = 10,
                session_id: str | None = None,
-               as_of: str | datetime | None = None) -> list[Record]:
+               as_of: str | datetime | None = None,
+               agent_id: str | None = None) -> list[Record]:
         """Поиск в одной области памяти. Подробности — в `_recall`.
 
         Запрос дополняется синонимами терминов (`add_alias`); каждая найденная запись получает
@@ -824,8 +839,8 @@ class Memory:
         """
         self.__dict__["_показы"] = []
         запрос = self._расширить(query)
-        найдено = self._recall(запрос, scope, kind, limit, session_id, as_of)
-        if config.SEARCH_FEEDBACK and найдено:
+        найдено = self._recall(запрос, scope, kind, limit, session_id, as_of, agent_id=agent_id)
+        if config.SEARCH_FEEDBACK and найдено and not agent_id:
             найдено = self._второй_проход(запрос, найдено, scope, kind, limit, session_id, as_of)
             if as_of is None:
                 # показанными считаются только записи итога, а не всё, что видели оба прохода
@@ -875,7 +890,7 @@ class Memory:
         if not записи:
             return
         строки = {r["id"]: r for r in self.store.query(
-            f"""SELECT id, kind, content, owner_sig, факт_ключ, scope FROM memory
+            f"""SELECT id, kind, content, owner_sig, факт_ключ, scope, agent_id FROM memory
                 WHERE id IN ({",".join("?" * len(записи))})""", tuple(з.id for з in записи))}
         спорные = {(r["scope"], r["факт_ключ"]) for r in self.store.query(
             """SELECT scope, факт_ключ FROM memory WHERE user_id = ? AND status = 'active'
@@ -886,6 +901,7 @@ class Memory:
             if r is None:
                 continue
             з.scope = r["scope"]
+            з.agent_id = r["agent_id"]
             if ключ is not None and integrity.protected(з.kind) and з.status == "active":
                 з.signed = integrity.valid(ключ, r)
             з.conflict = з.status == "active" and (r["scope"], r["факт_ключ"]) in спорные
@@ -893,7 +909,8 @@ class Memory:
     def _recall(self, query: str, scope: str = "global",
                 kind: str | None = None, limit: int = 10,
                 session_id: str | None = None,
-                as_of: str | datetime | None = None) -> list[Record]:
+                as_of: str | datetime | None = None,
+                agent_id: str | None = None) -> list[Record]:
         """Гибридный поиск: вектор + BM25 + точные идентификаторы, RRF.
 
         Итог: rrf × важность × уверенность × затухание × свежесть сессии.
@@ -916,6 +933,9 @@ class Memory:
         if kind:
             sql += " AND kind = ?"
             params.append(kind)
+        if agent_id:
+            sql += " AND agent_id = ?"
+            params.append(agent_id)
         sql += " ORDER BY rowid"
 
         if not момент:
@@ -1201,6 +1221,10 @@ class Memory:
         if кэш:
             for з in записи:
                 кэш.pop(з["id"], None)
+        self._log_audit("forget", memory_id, actor="owner",
+                        scope=доп["scope"] if доп else "global",
+                        kind=доп["kind"] if доп else None,
+                        outcome="revoked", detail=f"wiped={len(wiped_ids)}")
         return True
 
     # -- история версий -------------------------------------------------
@@ -1210,7 +1234,8 @@ class Memory:
 
     def list_records(self, view: str = "active", text: str | None = None,
                      limit: int = 100, offset: int = 0, as_of: str | None = None,
-                     kind: str | None = None, scope: str | None = None) -> dict:
+                     kind: str | None = None, scope: str | None = None,
+                     agent_id: str | None = None) -> dict:
         """Записи для просмотра владельцем: действующие, на проверке или история, новые сверху.
 
         as_of — все записи, что действовали в тот момент, включая заменённые позже.
@@ -1228,7 +1253,10 @@ class Memory:
         if text:
             sql += " AND content LIKE ? ESCAPE '\\'"
             params.append("%" + text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%")
-        поля = ("SELECT id, kind, scope, content, status, origin, confidence, importance, created_at, "
+        if agent_id:
+            sql += " AND agent_id = ?"
+            params.append(agent_id)
+        поля = ("SELECT id, kind, scope, content, status, origin, agent_id, confidence, importance, created_at, "
                 "last_seen_at, last_confirmed_at, access_count, refuted_count, "
                 "valid_from, valid_to, quarantine_reason, supersedes, superseded_by, anchor_tx, anchor_slot ")
         предел, сдвиг = max(1, min(int(limit), 500)), max(0, int(offset))
@@ -1929,4 +1957,98 @@ class Memory:
         """Б8: защищённый импорт внешней памяти (ChatGPT, Claude, Markdown/Obsidian, mem0) с origin='external'."""
         from . import portability
         return portability.import_external(self, source=source, fmt=fmt, scope=scope)
+
+    # -- Б9: профиль человека (только подписанные владельцем identity и preference) и Б12: журнал действий --
+
+    def _log_audit(self, action: str, memory_id: str | None = None,
+                   actor: str = "user", agent_id: str | None = None,
+                   scope: str | None = None, kind: str | None = None,
+                   outcome: str | None = None, detail: str | None = None) -> None:
+        """Б12: записать действие в таблицу audit_log (без текста самой записи)."""
+        try:
+            if not kind and memory_id:
+                row = self.store.one("SELECT kind, scope, agent_id FROM memory WHERE id = ?", (memory_id,))
+                if row:
+                    kind = kind or row["kind"]
+                    scope = scope or row["scope"]
+                    agent_id = agent_id or row["agent_id"]
+            self.store.execute(
+                """INSERT INTO audit_log
+                   (id, user_id, created_at, action, memory_id, actor, agent_id, scope, kind, outcome, detail)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                (new_id(), self.user_id, now_iso(), action, memory_id,
+                 actor or "user", agent_id, scope or "global", kind, outcome, detail),
+            )
+        except Exception:
+            pass
+
+    def audit_log(self, limit: int = 100, action: str | None = None,
+                  agent_id: str | None = None) -> list[dict]:
+        """Б12: получить последние записи журнала действий."""
+        sql = """SELECT id, user_id, created_at, action, memory_id, actor, agent_id, scope, kind, outcome, detail
+                 FROM audit_log WHERE user_id = ?"""
+        params: list = [self.user_id]
+        if action:
+            sql += " AND action = ?"
+            params.append(action)
+        if agent_id:
+            sql += " AND agent_id = ?"
+            params.append(agent_id)
+        sql += " ORDER BY created_at DESC, rowid DESC LIMIT ?"
+        params.append(max(1, min(int(limit), 500)))
+        return [dict(r) for r in self.store.query(sql, tuple(params))]
+
+    def profile(self, scope: str = "global") -> dict:
+        """Б9: сводка «кто я и что предпочитаю» ТОЛЬКО из подписанных владельцем записей identity и preference."""
+        ключ = self._ключ_подписи()
+        scopes = ["global"] if scope == "global" else ["global", scope]
+        rows = self.store.query(
+            f"""SELECT id, kind, scope, content, owner_sig, confidence, importance, created_at, last_confirmed_at
+                FROM memory
+                WHERE user_id = ? AND status = 'active'
+                  AND kind IN ('identity', 'preference')
+                  AND scope IN ({','.join('?' * len(scopes))})
+                ORDER BY importance DESC, created_at DESC""",
+            (self.user_id, *scopes),
+        )
+        identity_items = []
+        preference_items = []
+        unsigned_skipped = 0
+        for r in rows:
+            if not integrity.valid(ключ, r):
+                unsigned_skipped += 1
+                continue
+            item = {
+                "id": r["id"],
+                "kind": r["kind"],
+                "scope": r["scope"],
+                "content": r["content"],
+                "confidence": r["confidence"],
+                "importance": r["importance"],
+                "created_at": r["created_at"],
+                "signed": True,
+            }
+            if r["kind"] == "identity":
+                identity_items.append(item)
+            else:
+                preference_items.append(item)
+        lines = []
+        if identity_items:
+            lines.append("Identity (owner-signed):")
+            for it in identity_items:
+                lines.append(f"- {it['content']} (id={it['id'][:8]})")
+        if preference_items:
+            lines.append("Preferences (owner-signed):")
+            for pr in preference_items:
+                lines.append(f"- {pr['content']} (id={pr['id'][:8]})")
+        if not lines:
+            lines.append("No owner-signed identity or preference records stored yet.")
+        return {
+            "user_id": self.user_id,
+            "scope": scope,
+            "identity": identity_items,
+            "preferences": preference_items,
+            "unsigned_skipped": unsigned_skipped,
+            "summary": "\n".join(lines),
+        }
 

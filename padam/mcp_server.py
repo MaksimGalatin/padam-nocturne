@@ -118,6 +118,8 @@ TOOLS = [
                 "scopes": {"type": "array", "maxItems": 10, "items": {"type": "string", "minLength": 1, "maxLength": 200},
                            "description": "Search several scopes at once (e.g. work and home) instead of one; "
                                           "each record shows its scope. Scopes are never mixed unless you ask."},
+                "agent_id": {"type": "string", "minLength": 1, "maxLength": 64,
+                             "description": "Filter records written by a specific agent"},
             },
             "required": ["query"],
             "additionalProperties": False,
@@ -151,6 +153,8 @@ TOOLS = [
                                  "items": {"type": "string", "minLength": 1, "maxLength": 64},
                                  "description": ("Ids of the records this conclusion was drawn from. When the person "
                                                  "forgets a source, its conclusions can be forgotten with it.")},
+                "agent_id": {"type": "string", "minLength": 1, "maxLength": 64,
+                             "description": "Identifier of the agent storing the record (e.g. claude-code, cursor)"},
             },
             "required": ["content"],
             "additionalProperties": False,
@@ -243,6 +247,21 @@ TOOLS = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "padam_profile",
+        "description": (
+            "Return the person's profile: a concise read-only summary of who the person is and what they prefer, "
+            "built strictly from owner-signed identity and preference records. Call this at the start of a "
+            "conversation to align with the owner's verified preferences. Unsigned records are never included."),
+        "annotations": _hints(True, False, True),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "scope": _SCOPE,
+            },
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -256,6 +275,7 @@ _TITLES = {
     "padam_stats": "Memory statistics",
     "padam_sleep": "Run NOCTURNE consolidation",
     "padam_export": "Export memory as JSON",
+    "padam_profile": "User profile (owner-signed)",
 }
 for _t in TOOLS:
     _t.setdefault("title", _TITLES[_t["name"]])
@@ -350,7 +370,7 @@ def call_tool(name: str, args: dict) -> str:
         else:
             found = m.recall(args["query"], scope=args.get("scope", "global"),
                              kind=args.get("kind"), limit=int(args.get("limit", 5)),
-                             as_of=args.get("as_of"))
+                             as_of=args.get("as_of"), agent_id=args.get("agent_id"))
         if not found:
             return "Nothing found in memory for this query." + _sleep_hint(m)
         lines = []
@@ -392,11 +412,13 @@ def call_tool(name: str, args: dict) -> str:
     if name == "padam_write":
         _, masked = safety.redact(safety.strip_invisible(args["content"]))
         origin = args.get("origin", "agent")
+        agent_id = args.get("agent_id") or os.environ.get("PADAM_AGENT_ID") or None
         outcome, mid = m.remember(
             args["content"], kind=args.get("kind"),
             importance=float(args.get("importance", 0.5)),
             scope=args.get("scope", "global"), origin=origin, guarded=True,
-            derived_from=args.get("derived_from"))
+            derived_from=args.get("derived_from"),
+            agent_id=agent_id)
         поднята = origin == "user" and config.MCP_TRUST_WRITES
         notes = {
             "created": "stored as a new record",
@@ -469,6 +491,10 @@ def call_tool(name: str, args: dict) -> str:
         # поэтому без метки ограды: текст записей в нём — экранированные строки JSON, рядом поле notice
         # (docs/FENCING_SPEC.md, «Исключение»).
         return json.dumps(payload, ensure_ascii=False, indent=2)
+
+    if name == "padam_profile":
+        prof = m.profile(scope=args.get("scope", "global"))
+        return safety.fence(prof["summary"]) + _sleep_hint(m)
 
     raise ValueError(f"unknown tool: {name}")
 

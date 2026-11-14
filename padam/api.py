@@ -51,7 +51,7 @@ from .store import Store
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
 OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
 
@@ -104,7 +104,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", cors)
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Agent-ID")
         self.send_header("Content-Length", "0")
         self.end_headers()
 
@@ -225,7 +225,18 @@ class Handler(BaseHTTPRequestHandler):
                     limit=int(q.get("limit", ["100"])[0]), offset=int(q.get("offset", ["0"])[0]),
                     as_of=q.get("as_of", [None])[0],
                     kind=q.get("kind", [None])[0] or None,
-                    scope=q.get("scope", [None])[0] or None))
+                    scope=q.get("scope", [None])[0] or None,
+                    agent_id=q.get("agent_id", [None])[0] or None))
+            if путь.path == "/profile":
+                q = parse_qs(путь.query)
+                return self._send(200, mem().profile(scope=q.get("scope", ["global"])[0] or "global"))
+            if путь.path == "/audit":
+                q = parse_qs(путь.query)
+                return self._send(200, {"entries": mem().audit_log(
+                    limit=int(q.get("limit", ["100"])[0]),
+                    action=q.get("action", [None])[0] or None,
+                    agent_id=q.get("agent_id", [None])[0] or None,
+                )})
             if self.path == "/stats":
                 return self._send(200, mem().stats())
             if путь.path == "/doctor":
@@ -268,6 +279,7 @@ class Handler(BaseHTTPRequestHandler):
                     "strict": config.STRICT,
                     "mcp_review_all": config.MCP_REVIEW_ALL,
                     "search_feedback": config.SEARCH_FEEDBACK,
+                    "mask_pii": config.MASK_PII,
                     "hold_external": config.HOLD_EXTERNAL,
                     "keep_secrets": config.KEEP_SECRETS,
                     "mcp_trust_writes": config.MCP_TRUST_WRITES,
@@ -314,14 +326,15 @@ class Handler(BaseHTTPRequestHandler):
                 found = m.recall(data["query"], scope=data.get("scope", "global"),
                                  kind=data.get("kind"),
                                  limit=max(1, min(int(data.get("limit", 5)), config.MAX_RECALL_LIMIT)),
-                                 as_of=data.get("as_of") or None)
+                                 as_of=data.get("as_of") or None,
+                                 agent_id=data.get("agent_id") or None)
                 return self._send(200, {"results": [
                     {"id": r.id, "kind": r.kind, "content": r.content,
                      "score": round(r.score, 5),
                      "rrf": round(r.similarity, 5),
                      "decay": round(decay(r.kind, r.last_confirmed_at), 4),
                      "importance": r.importance, "confidence": r.confidence,
-                     "origin": r.origin, "created_at": r.created_at,
+                     "origin": r.origin, "agent_id": r.agent_id, "created_at": r.created_at,
                      "last_confirmed_at": r.last_confirmed_at.isoformat() if hasattr(r.last_confirmed_at, "isoformat") else str(r.last_confirmed_at),
                      "expired": r.expired, "status": r.status,
                      "scope": r.scope, "signed": r.signed, "conflict": r.conflict,
@@ -345,13 +358,15 @@ class Handler(BaseHTTPRequestHandler):
                 req_origin = (self.headers.get("Origin") or "").strip().lower()
                 if req_origin.startswith("chrome-extension://"):
                     origin = "external"
+                agent_id = data.get("agent_id") or (self.headers.get("X-Agent-ID") or "").strip() or None
                 outcome, mid = m.remember(
                     data["content"], kind=data.get("kind"),
                     importance=float(data.get("importance", 0.5)),
                     scope=data.get("scope", "global"),
                     # Без токена владельца не отличить от любого процесса, дотянувшегося до порта.
-                    origin=origin, guarded=origin != "user" or not _state["token"])
-                return self._send(200, {"outcome": outcome, "id": mid})
+                    origin=origin, guarded=origin != "user" or not _state["token"],
+                    agent_id=agent_id)
+                return self._send(200, {"outcome": outcome, "id": mid, "agent_id": agent_id})
 
             if self.path == "/confirm":
                 return self._send(200, {"ok": m.confirm(data["id"])})
@@ -394,6 +409,8 @@ class Handler(BaseHTTPRequestHandler):
                     config.MCP_REVIEW_ALL = bool(data["mcp_review_all"])
                 if "search_feedback" in data:
                     config.SEARCH_FEEDBACK = bool(data["search_feedback"])
+                if "mask_pii" in data:
+                    config.MASK_PII = bool(data["mask_pii"])
                 if "hold_external" in data and bool(data["hold_external"]):
                     config.HOLD_EXTERNAL = True
                 if "keep_secrets" in data and not bool(data["keep_secrets"]):
@@ -409,6 +426,7 @@ class Handler(BaseHTTPRequestHandler):
                     "strict": config.STRICT,
                     "mcp_review_all": config.MCP_REVIEW_ALL,
                     "search_feedback": config.SEARCH_FEEDBACK,
+                    "mask_pii": config.MASK_PII,
                     "hold_external": config.HOLD_EXTERNAL,
                     "keep_secrets": config.KEEP_SECRETS,
                     "mcp_trust_writes": config.MCP_TRUST_WRITES,

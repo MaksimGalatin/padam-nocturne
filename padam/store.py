@@ -176,6 +176,22 @@ CREATE TABLE IF NOT EXISTS forget_receipt (
     leaf_forget_hex     TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS forget_receipt_user ON forget_receipt (user_id, forgotten_at DESC);
+
+-- Б12: журнал действий (кто, когда и что записал, принял, отклонил, восстановил или забыл; без хранения текста)
+CREATE TABLE IF NOT EXISTS audit_log (
+    id          TEXT PRIMARY KEY,
+    user_id     TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    action      TEXT NOT NULL,
+    memory_id   TEXT,
+    actor       TEXT NOT NULL DEFAULT 'user',
+    agent_id    TEXT,
+    scope       TEXT,
+    kind        TEXT,
+    outcome     TEXT,
+    detail      TEXT
+);
+CREATE INDEX IF NOT EXISTS audit_log_user ON audit_log (user_id, created_at DESC);
 """
 
 
@@ -264,7 +280,7 @@ class Store:
         Только ДОБАВЛЯЕТ. Ничего не удаляет и не переписывает (раздел 19).
         """
         НУЖНЫЕ = {"memory": {"embedding_model": "TEXT", "факт_ключ": "TEXT",
-                             "origin": "TEXT", "quarantine_reason": "TEXT", "owner_sig": "TEXT"}}
+                             "origin": "TEXT", "quarantine_reason": "TEXT", "owner_sig": "TEXT", "agent_id": "TEXT"}}
         for таблица, колонки in НУЖНЫЕ.items():
             try:
                 есть = {r["name"] for r in
@@ -287,6 +303,9 @@ class Store:
         self.conn.execute(
             """CREATE INDEX IF NOT EXISTS memory_факт_ключ
                ON memory (user_id, scope, факт_ключ, status)""")
+        self.conn.execute(
+            """CREATE INDEX IF NOT EXISTS memory_agent_id
+               ON memory (user_id, agent_id, status)""")
 
     def close(self) -> None:
         self.conn.close()

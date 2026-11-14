@@ -56,7 +56,7 @@ _CHECKS_EN = {"Доля острых эпизодов": "Share of sharp episodes
 
 def cmd_remember(m: Memory, a) -> int:
     outcome, mid = m.remember(a.text, kind=a.kind, importance=a.importance,
-                              scope=a.scope)
+                              scope=a.scope, agent_id=getattr(a, "agent", None))
     labels = {
         "created": t("запомнено", "remembered"),
         "duplicate": t("уже известно, уверенность повышена", "already known; confidence raised"),
@@ -73,7 +73,8 @@ def cmd_remember(m: Memory, a) -> int:
 
 
 def cmd_recall(m: Memory, a) -> int:
-    found = m.recall(a.query, scope=a.scope, kind=a.kind, limit=a.limit)
+    found = m.recall(a.query, scope=a.scope, kind=a.kind, limit=a.limit,
+                     agent_id=getattr(a, "agent", None))
     if not found:
         print(t("Ничего не найдено.", "Nothing found."))
         return 0
@@ -363,6 +364,31 @@ def cmd_restore(m: Memory, a) -> int:
 
 def cmd_reindex(m: Memory, a) -> int:
     print(json.dumps(m.reindex(limit=a.limit), ensure_ascii=False))
+    return 0
+
+
+def cmd_profile(m: Memory, a) -> int:
+    """Б9: сводка профиля человека (только подписанные владельцем identity и preference)."""
+    prof = m.profile(scope=a.scope)
+    if a.json:
+        print(json.dumps(prof, ensure_ascii=False, indent=2))
+    else:
+        print(prof["summary"])
+    return 0
+
+
+def cmd_audit(m: Memory, a) -> int:
+    """Б12: журнал действий (audit_log)."""
+    entries = m.audit_log(limit=a.limit, action=a.action, agent_id=a.agent)
+    if a.json:
+        print(json.dumps(entries, ensure_ascii=False, indent=2))
+        return 0
+    if not entries:
+        print(t("Журнал действий пуст.", "Audit log is empty."))
+        return 0
+    for e in entries:
+        ag = f"  agent={e['agent_id']}" if e.get("agent_id") else ""
+        print(f"{e['created_at'][:19]}  [{e['action']:8s}]  actor={e['actor']}{ag}  outcome={e.get('outcome') or '—'}  id={e.get('memory_id') or '—'}")
     return 0
 
 
@@ -769,6 +795,7 @@ def main(argv=None) -> int:
     s.add_argument("--kind", choices=config.KINDS, default=None)
     s.add_argument("--importance", type=float, default=0.5)
     s.add_argument("--scope", default="global")
+    s.add_argument("--agent", default=None, help=t("идентификатор агента", "agent identifier"))
     s.set_defaults(fn=cmd_remember)
 
     s = sub.add_parser("recall", help=t("вспомнить", "recall by meaning, words and identifiers"))
@@ -776,6 +803,7 @@ def main(argv=None) -> int:
     s.add_argument("--kind", choices=config.KINDS, default=None)
     s.add_argument("--limit", type=int, default=5)
     s.add_argument("--scope", default="global")
+    s.add_argument("--agent", default=None, help=t("фильтр по агенту", "filter by agent"))
     s.add_argument("--explain", action="store_true", help=t("показать разбор оценки", "show how the score was built"))
     s.set_defaults(fn=cmd_recall)
 
@@ -979,6 +1007,20 @@ def main(argv=None) -> int:
                                          "recompute vectors after changing the embedding model"))
     s.add_argument("--limit", type=int, default=None)
     s.set_defaults(fn=cmd_reindex)
+
+    s = sub.add_parser("profile", help=t("сводка профиля человека (подписанные identity и preference)",
+                                         "user profile summary (owner-signed identity and preferences)"))
+    s.add_argument("--scope", default="global")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_profile)
+
+    s = sub.add_parser("audit", help=t("журнал действий с памятью (audit_log)",
+                                       "memory action audit log (audit_log)"))
+    s.add_argument("--limit", type=int, default=50)
+    s.add_argument("--action", default=None)
+    s.add_argument("--agent", default=None)
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_audit)
 
     a = p.parse_args(argv)
     if a.fn is cmd_demo:
