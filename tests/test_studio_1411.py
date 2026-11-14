@@ -19,10 +19,12 @@ from padam.memory import Memory
 from padam.store import Store
 
 
-def _http_json(url: str, token: str | None = None, body: dict | None = None) -> tuple[int, dict, dict]:
+def _http_json(url: str, token: str | None = None, body: dict | None = None, extra_headers: dict[str, str] | None = None) -> tuple[int, dict, dict]:
     headers = {}
     if token:
         headers["Authorization"] = f"Bearer {token}"
+    if extra_headers:
+        headers.update(extra_headers)
     data = None
     if body is not None:
         data = json.dumps(body).encode("utf-8")
@@ -445,3 +447,43 @@ def test_chromium_extension_manifest_v3_and_external_quarantine():
     assert 'style="' not in popup_html
     for sz in (16, 48, 128):
         assert (ext_dir / "icons" / f"icon{sz}.png").exists()
+
+
+def test_chrome_extension_origin_forces_external_and_review_queue(tmp_path):
+    """Раздел 11 (А3): запрос с Origin: chrome-extension://<32 буквы>, валидным токеном и origin='user'
+    принудительно получает origin='external' на сервере и удерживается в очереди проверки."""
+    db_path = tmp_path / "ext_origin.db"
+    mem = Memory(user_id="ext_test_user", store=Store(db_path))
+    srv, url = api.make_studio_server(mem, port=0)
+    th = threading.Thread(target=srv.serve_forever, daemon=True)
+    th.start()
+    try:
+        m = re.match(r"^(http://127\.0\.0\.1:\d+)/studio#t=(.+)$", url)
+        assert m
+        base, token = m.group(1), m.group(2)
+        ext_origin = "chrome-extension://" + ("a" * 32)
+
+        code, _, res = _http_json(
+            f"{base}/write",
+            token=token,
+            body={"content": "Запись из расширения с подменённым origin=user", "origin": "user", "kind": "fact"},
+            extra_headers={"Origin": ext_origin},
+        )
+        assert code == 200
+        assert res["outcome"] == "quarantined"
+        rec_id = res["id"]
+
+        # В активной памяти записи нет — она удерживается в очереди проверки (review) с origin='external'
+        _, _, active = _http_json(f"{base}/records?view=active", token=token)
+        assert all(r["id"] != rec_id for r in active["records"])
+
+        _, _, review = _http_json(f"{base}/records?view=review", token=token)
+        matched = [r for r in review["records"] if r["id"] == rec_id]
+        assert len(matched) == 1
+        assert matched[0]["origin"] == "external"
+        assert matched[0]["status"] == "quarantined"
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        mem.close()
+

@@ -339,6 +339,12 @@ class Handler(BaseHTTPRequestHandler):
                 origin = data.get("origin", "user")
                 if origin not in config.ORIGINS:
                     return self._send(400, {"error": f"origin must be one of {list(config.ORIGINS)}"})
+                # Раздел 11 (14.11.2026): если запрос пришёл из браузерного расширения
+                # (Origin: chrome-extension://<32 буквы>), сервер САМ принудительно ставит origin = "external",
+                # не веря значению в теле запроса, чтобы расширение не могло писать как владелец в обход очереди проверки.
+                req_origin = (self.headers.get("Origin") or "").strip().lower()
+                if req_origin.startswith("chrome-extension://"):
+                    origin = "external"
                 outcome, mid = m.remember(
                     data["content"], kind=data.get("kind"),
                     importance=float(data.get("importance", 0.5)),
