@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <title>PADAM · NOCTURNE Memory Guard</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="ext-header">
+    <div class="ext-brand">
+      <div class="ext-logo" aria-hidden="true">◎</div>
+      <div>
+        <h1 id="t-title" class="ext-title">PADAM · NOCTURNE</h1>
+        <p id="t-sub" class="ext-sub">Защищённая память браузера</p>
+      </div>
+    </div>
+    <div class="lang-bar" role="group" aria-label="Language">
+      <button id="lang-ru" class="lang-btn" aria-pressed="true">RU</button>
+      <button id="lang-en" class="lang-btn" aria-pressed="false">EN</button>
+      <button id="lang-es" class="lang-btn" aria-pressed="false">ES</button>
+      <button id="lang-zh" class="lang-btn" aria-pressed="false">ZH</button>
+    </div>
+  </header>
+
+  <section class="status-card" aria-live="polite">
+    <div class="status-row">
+      <span id="t-active-label">Действующих в памяти:</span>
+      <strong id="val-active" class="num-cyan">0</strong>
+    </div>
+    <div class="status-row status-warn">
+      <span id="t-review-label">🛡️ Удержано на проверку:</span>
+      <strong id="val-review" class="num-amber">0</strong>
+    </div>
+    <p id="t-guard-note" class="guard-note">
+      Все записи из браузера получают метку origin: external и ждут вашего одобрения: веб-страница не может подсунуть скрытый приказ.
+    </p>
+  </section>
+
+  <section class="actions-section">
+    <button id="btn-save-selection" class="btn-primary">
+      ✂️ <span id="t-btn-selection">Сохранить выделенное в память</span>
+    </button>
+    <button id="btn-save-page" class="btn-secondary">
+      📄 <span id="t-btn-page">Сохранить текущую страницу</span>
+    </button>
+  </section>
+
+  <section class="note-section">
+    <label id="t-note-label" for="note-input" class="field-label">Быстрая заметка со страницы (origin: external):</label>
+    <textarea id="note-input" rows="2" placeholder="Введите заметку для отправки на проверку…"></textarea>
+    <button id="btn-save-note" class="btn-outline">
+      ➕ <span id="t-btn-note">Отправить заметку в PADAM</span>
+    </button>
+  </section>
+
+  <details class="conn-details">
+    <summary id="t-conn-summary">Настройки подключения к локальному PADAM</summary>
+    <div class="conn-body">
+      <label id="t-url-label" for="api-url" class="field-label">Адрес локального API:</label>
+      <input id="api-url" type="url" value="http://127.0.0.1:8078">
+      <label id="t-token-label" for="api-token" class="field-label">Токен владельца (Bearer):</label>
+      <input id="api-token" type="password" placeholder="Вставьте токен из padam studio / api">
+      <div class="conn-actions">
+        <button id="btn-save-cfg" class="btn-primary">Сохранить</button>
+        <button id="btn-open-studio" class="btn-outline">Открыть Studio</button>
+      </div>
+    </div>
+  </details>
+
+  <div id="ext-msg" class="ext-msg" role="status" aria-live="polite"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -72,15 +72,41 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         sys.stderr.write(f"{self.address_string()} {fmt % args}\n")
 
+    def _cors_origin(self) -> str | None:
+        origin = (self.headers.get("Origin") or "").strip()
+        low = origin.lower()
+        if re.match(r"^https?://(127\.\d+\.\d+\.\d+|localhost|\[::1\])(:\d+)?$", low):
+            return origin
+        if _state.get("token") and re.match(r"^chrome-extension://[a-z]{32}$", low):
+            return origin
+        return None
+
     def _send(self, code: int, payload) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         if code >= 400:
             self._дочитать_тело()
         self.send_response(code)
+        cors = self._cors_origin()
+        if cors:
+            self.send_header("Access-Control-Allow-Origin", cors)
+            self.send_header("Vary", "Origin")
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def do_OPTIONS(self) -> None:
+        if not self._trusted():
+            return self._send(403, {"error": "forbidden origin or host"})
+        cors = self._cors_origin()
+        if not cors:
+            return self._send(403, {"error": "forbidden origin"})
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", cors)
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
 
     def _send_page(self, страница: tuple[str, str]) -> None:
         html, nonce = страница
@@ -158,8 +184,11 @@ class Handler(BaseHTTPRequestHandler):
             if имя not in ("127.0.0.1", "localhost", "[::1]") and not имя.startswith("127."):
                 return False
         origin = (self.headers.get("Origin") or "").strip().lower()
-        if origin and not re.match(r"^https?://(127\.\d+\.\d+\.\d+|localhost|\[::1\])(:\d+)?$", origin):
-            return False
+        if origin:
+            is_local_orig = bool(re.match(r"^https?://(127\.\d+\.\d+\.\d+|localhost|\[::1\])(:\d+)?$", origin))
+            is_ext_orig = bool(_state.get("token") and re.match(r"^chrome-extension://[a-z]{32}$", origin))
+            if not (is_local_orig or is_ext_orig):
+                return False
         return True
 
     # -- маршруты ------------------------------------------------------

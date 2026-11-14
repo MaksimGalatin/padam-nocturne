@@ -423,3 +423,25 @@ def test_desktop_mode_and_tauri_security_section10(tmp_path):
         assert "E:\\CODE" not in src and "E:/CODE" not in src
         assert "157.0.4341.42" not in src
         assert 'args(["--token"' not in src and '"--token"' not in src
+
+
+def test_chromium_extension_manifest_v3_and_external_quarantine():
+    """А3: расширение Chrome/Edge Manifest V3 имеет строгий CSP, 0 innerHTML и отправляет записи с origin=external."""
+    root = Path(__file__).resolve().parents[1]
+    ext_dir = root / "extensions" / "chromium"
+    manifest = json.loads((ext_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["manifest_version"] == 3
+    assert "contextMenus" in manifest["permissions"]
+    csp = manifest["content_security_policy"]["extension_pages"]
+    assert "default-src 'none'" in csp
+    assert "script-src 'self'" in csp
+
+    bg_js = (ext_dir / "background.js").read_text(encoding="utf-8")
+    popup_js = (ext_dir / "popup.js").read_text(encoding="utf-8")
+    popup_html = (ext_dir / "popup.html").read_text(encoding="utf-8")
+    assert "origin: 'external'" in bg_js
+    assert "origin: 'external'" in popup_js
+    assert "innerHTML" not in bg_js and "innerHTML" not in popup_js
+    assert 'style="' not in popup_html
+    for sz in (16, 48, 128):
+        assert (ext_dir / "icons" / f"icon{sz}.png").exists()

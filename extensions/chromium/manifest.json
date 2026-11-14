@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "PADAM · NOCTURNE Memory Guard",
+  "version": "0.2.0",
+  "description": "Save highlighted text or web pages into local PADAM memory with origin=external quarantine protection and review queue badge.",
+  "permissions": [
+    "contextMenus",
+    "activeTab",
+    "scripting",
+    "storage",
+    "alarms"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "PADAM · NOCTURNE Memory",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src http://127.0.0.1:* http://localhost:*; img-src 'self' data:;"
+  }
+}
