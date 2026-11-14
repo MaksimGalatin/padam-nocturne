@@ -34,7 +34,7 @@ def main() -> int:
 
     with MCPServerAdapter(params, connect_timeout=120) as tool_list:
         tools = {t.name: t for t in tool_list}
-        check("8 tools as CrewAI tools", len(tools) == 8, ", ".join(sorted(tools)))
+        check("9 tools as CrewAI tools", len(tools) == 9, ", ".join(sorted(tools)))
 
         tools["padam_write"].run(content="The team chose Postgres for billing.", kind="decision", origin="user")
         found = str(tools["padam_search"].run(query="which database for billing"))

@@ -407,7 +407,7 @@ def test_largest_allowed_limit_works(mem):
 
 def test_annotations_match_behaviour():
     a = {t["name"]: t["annotations"] for t in mcp_server.TOOLS}
-    assert {к for к, v in a.items() if v["readOnlyHint"]} == {"padam_search", "padam_timeline", "padam_stats", "padam_export"}
+    assert {к for к, v in a.items() if v["readOnlyHint"]} == {"padam_search", "padam_timeline", "padam_stats", "padam_export", "padam_profile"}
     assert {к for к, v in a.items() if v["destructiveHint"]} == {"padam_refute", "padam_sleep"}
     assert a["padam_sleep"]["idempotentHint"] is False
     assert a["padam_confirm"]["idempotentHint"] is False

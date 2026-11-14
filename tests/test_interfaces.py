@@ -111,7 +111,7 @@ def test_tools_list_complete():
     names = {t["name"] for t in r["result"]["tools"]}
     assert names == {"padam_search", "padam_write", "padam_confirm",
                      "padam_refute", "padam_timeline", "padam_stats",
-                     "padam_sleep", "padam_export"}
+                     "padam_sleep", "padam_export", "padam_profile"}
 
 
 def test_every_tool_has_schema_and_description():

@@ -34,7 +34,7 @@ async def main() -> int:
         print(("PASS " if ok else "FAIL ") + name + (f" — {detail}" if detail else ""))
 
     tools = {t.name: t for t in await client.get_tools()}
-    check("8 tools as LangChain tools", len(tools) == 8, ", ".join(sorted(tools)))
+    check("9 tools as LangChain tools", len(tools) == 9, ", ".join(sorted(tools)))
     check("padam_write takes content, kind, origin", {"content", "kind", "origin"} <= set(tools["padam_write"].args or {}))
 
     await tools["padam_write"].ainvoke({"content": "The team chose Postgres for billing.", "kind": "decision", "origin": "user"})

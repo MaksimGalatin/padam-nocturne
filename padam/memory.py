@@ -168,9 +168,7 @@ class Memory:
         """
         norm_agent = (str(agent_id).strip()[:64] if agent_id else None) or None
         with safety.одна_запись():          # виды текста строятся один раз на запись и не переживают её
-            исход, mid = self._remember(content, kind, importance, scope, source_episode_id, origin, guarded)
-        if norm_agent and исход != "duplicate":
-            self.store.execute("UPDATE memory SET agent_id = ? WHERE id = ?", (norm_agent, mid))
+            исход, mid = self._remember(content, kind, importance, scope, source_episode_id, origin, guarded, norm_agent)
         # При повторе mid — это уже существующая запись, возможно владельца. Связать её «выводом» из
         # чужой записи значило бы дать агенту способ стереть её каскадом при забвении источника.
         if derived_from and исход != "duplicate":
@@ -182,7 +180,8 @@ class Memory:
         return исход, mid
 
     def _remember(self, content: str, kind: str | None, importance: float, scope: str,
-                  source_episode_id: str | None, origin: str, guarded: bool) -> tuple[str, str]:
+                  source_episode_id: str | None, origin: str, guarded: bool,
+                  agent_id: str | None = None) -> tuple[str, str]:
         # Команда проверяется и по исходному тексту: маскирование секретов закрывает длинные случайные строки,
         # а base64 с командой внутри выглядит именно так — после маски раскодировать было бы нечего (аудит 09.11.2026).
         исходный = content
@@ -198,23 +197,23 @@ class Memory:
         if guarded and (safety.looks_like_instruction(content) or safety.looks_like_instruction(исходный)):
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
-                origin=origin, status="quarantined", reason="looks like an instruction")
+                origin=origin, status="quarantined", reason="looks like an instruction", agent_id=agent_id)
         # 0.4.13: необязательный второй слой — локальная модель-детектор (padam/guard.py), только для текста, где упомянут ИИ.
         # Выключен, пока не задан PADAM_GUARD_MODEL и не стоят пакеты [guard].
         if guarded and guard.flags(исходный):
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
-                origin=origin, status="quarantined", reason="looks like an instruction (classifier)")
+                origin=origin, status="quarantined", reason="looks like an instruction (classifier)", agent_id=agent_id)
         if guarded and origin == "external" and config.HOLD_EXTERNAL:
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
-                origin=origin, status="quarantined", reason="external source held for the owner (PADAM_HOLD_EXTERNAL, on by default)")
+                origin=origin, status="quarantined", reason="external source held for the owner (PADAM_HOLD_EXTERNAL, on by default)", agent_id=agent_id)
         # 0.4.1: граница, которая не зависит от пометки источника вовсе. Пометку ставит агент, а MCP не даёт серверу
         # способа проверить, откуда агент взял текст; с PADAM_MCP_REVIEW_ALL=1 ждёт владельца каждая запись агента.
         if guarded and config.MCP_REVIEW_ALL:
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
-                origin=origin, status="quarantined", reason="every agent write waits for the owner (PADAM_MCP_REVIEW_ALL)")
+                origin=origin, status="quarantined", reason="every agent write waits for the owner (PADAM_MCP_REVIEW_ALL)", agent_id=agent_id)
 
         # Кто человек и как с ним работать, решает только он сам. Через MCP пометку origin
         # проверить нечем, поэтому запись о личности или предпочтении от агента или чужого
@@ -251,9 +250,9 @@ class Memory:
                 if причина_защиты:
                     return "quarantined", self._insert(
                         content, kind, vec, importance, scope, source_episode_id,
-                        origin=origin, status="quarantined", reason=причина_защиты)
+                        origin=origin, status="quarantined", reason=причина_защиты, agent_id=agent_id)
                 return "created", self._insert(content, kind, vec, importance,
-                                               scope, source_episode_id, origin=origin)
+                                               scope, source_episode_id, origin=origin, agent_id=agent_id)
 
             old_id, old_content, _ = near
         verdict = classify.resolve(content, old_content)
@@ -281,9 +280,9 @@ class Memory:
             if причина_защиты:
                 return "quarantined", self._insert(
                     content, kind, vec, importance, scope, source_episode_id,
-                    origin=origin, status="quarantined", reason=причина_защиты)
+                    origin=origin, status="quarantined", reason=причина_защиты, agent_id=agent_id)
             return "coexists", self._insert(content, kind, vec, importance,
-                                            scope, source_episode_id, origin=origin)
+                                            scope, source_episode_id, origin=origin, agent_id=agent_id)
 
         if guarded:
             старая = self.store.one("SELECT kind, origin FROM memory WHERE id = ?", (old_id,))
@@ -295,11 +294,11 @@ class Memory:
             if причина:
                 return "quarantined", self._insert(
                     content, kind, vec, importance, scope, source_episode_id,
-                    supersedes=old_id, origin=origin, status="quarantined", reason=причина)
+                    supersedes=old_id, origin=origin, status="quarantined", reason=причина, agent_id=agent_id)
 
         # refinement и contradiction создают новую версию
         new_mid = self._insert(content, kind, vec, importance, scope,
-                               source_episode_id, supersedes=old_id, origin=origin)
+                               source_episode_id, supersedes=old_id, origin=origin, agent_id=agent_id)
         отметка_до = self.store.stamp()
         self.store.execute(
             """UPDATE memory SET status = 'superseded', superseded_by = ?,
@@ -312,15 +311,18 @@ class Memory:
 
     def _связать(self, источники: list[str], вывод: str) -> int:
         """Связи «вывод сделан из записи». Только записи этого же человека; не больше 20 за раз."""
-        добавлено = 0
+        ops = []
+        ts = now_iso()
         for src in list(dict.fromkeys(источники))[:20]:
             if src == вывод or not self.store.one(
                     "SELECT 1 FROM memory WHERE id = ? AND user_id = ?", (src, self.user_id)):
                 continue
-            self.store.execute("INSERT OR IGNORE INTO memory_link (src, dst, created_at) VALUES (?,?,?)",
-                               (src, вывод, now_iso()))
-            добавлено += 1
-        return добавлено
+            ops.append(("INSERT OR IGNORE INTO memory_link (src, dst, created_at) VALUES (?,?,?)",
+                        (src, вывод, ts)))
+        if ops:
+            # Связи не влияют на векторы и ранжирование, поэтому пишем через counters без сброса кэша.
+            self.store.counters(ops)
+        return len(ops)
 
     def derived(self, memory_id: str) -> list[str]:
         """Все выводы из записи, по цепочке: вывод из вывода тоже считается."""
@@ -348,7 +350,8 @@ class Memory:
                 AND kind IN ({",".join("?" * len(config.PROTECTED_KINDS))})""",
             (self.user_id, *config.PROTECTED_KINDS))
         if rows:
-            self.store.atomic([
+            # Подпись owner_sig не меняет ни векторы, ни статус записи; counters не сбивает кэш поиска.
+            self.store.counters([
                 ("UPDATE memory SET owner_sig = ? WHERE id = ?",
                  (integrity.sign(ключ, r["id"], r["kind"], r["content"]), r["id"]))
                 for r in rows
@@ -359,8 +362,8 @@ class Memory:
         row = self.store.one("SELECT id, kind, content FROM memory WHERE id = ?", (memory_id,))
         if row and integrity.protected(row["kind"]):
             ключ = self._ключ_подписи()
-            self.store.execute("UPDATE memory SET owner_sig = ? WHERE id = ?",
-                               (integrity.sign(ключ, row["id"], row["kind"], row["content"]), memory_id))
+            self.store.counters([("UPDATE memory SET owner_sig = ? WHERE id = ?",
+                                  (integrity.sign(ключ, row["id"], row["kind"], row["content"]), memory_id))])
 
     def unsigned_protected(self) -> list[dict]:
         """Действующие записи о личности и предпочтениях без подписи владельца: внесены мимо PADAM."""
@@ -508,7 +511,8 @@ class Memory:
     def _insert(self, content, kind, vec, importance, scope,
                 source_episode_id=None, supersedes=None,
                 expires_at: str | None = None, origin: str = "user",
-                status: str = "active", reason: str | None = None) -> str:
+                status: str = "active", reason: str | None = None,
+                agent_id: str | None = None) -> str:
         mid = new_id()
         ts = now_iso()
         отметка_до = self.store.stamp()
@@ -518,14 +522,14 @@ class Memory:
                 confidence, created_at, last_seen_at, last_confirmed_at,
                 valid_from, expires_at, status, supersedes,
                 source_episode_id, content_hash, embedding_model, факт_ключ,
-                origin, quarantine_reason)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                origin, quarantine_reason, agent_id)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (mid, self.user_id, scope, kind, content, pack(vec),
              max(0.0, min(1.0, importance)), config.ORIGIN_CONFIDENCE.get(origin, 1.0),
              ts, ts, ts, ts, expires_at, status,
              supersedes, source_episode_id, content_hash(content),
              embeddings.метка_модели(), classify.разобрать_факт(content)[0],
-             origin, reason))
+             origin, reason, agent_id))
         self._дописать_в_кэш(отметка_до, mid, scope, kind, vec, status)
         return mid
 
@@ -1974,13 +1978,14 @@ class Memory:
                     agent_id = agent_id or row["agent_id"]
             ev_id = new_id()
             ts = now_iso()
-            self.store.execute(
+            # Запись в audit_log не меняет таблицу memory, поэтому пишем через counters без сброса кэша поиска.
+            self.store.counters([(
                 """INSERT INTO audit_log
                    (id, user_id, created_at, action, memory_id, actor, agent_id, scope, kind, outcome, detail)
                    VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
                 (ev_id, self.user_id, ts, action, memory_id,
                  actor or "user", agent_id, scope or "global", kind, outcome, detail),
-            )
+            )])
             ev = {
                 "id": ev_id,
                 "user_id": self.user_id,
