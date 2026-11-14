@@ -1,4 +1,4 @@
-// PADAM · NOCTURNE Memory Guard — Popup UI (4 languages, 0 innerHTML)
+// PADAM · NOCTURNE Memory Guard — окно расширения (4 языка, безопасный вывод через textContent)
 
 const I18N = {
   ru: {
