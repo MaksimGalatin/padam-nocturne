@@ -843,15 +843,21 @@ class Memory:
         """
         self.__dict__["_показы"] = []
         запрос = self._расширить(query)
-        найдено = self._recall(запрос, scope, kind, limit, session_id, as_of, agent_id=agent_id)
+        внутр_лимит = max(limit, config.RERANK_TOP_K) if config.RERANK else limit
+        найдено = self._recall(запрос, scope, kind, внутр_лимит, session_id, as_of, agent_id=agent_id)
         if config.SEARCH_FEEDBACK and найдено and not agent_id:
-            найдено = self._второй_проход(запрос, найдено, scope, kind, limit, session_id, as_of)
-            if as_of is None:
-                # показанными считаются только записи итога, а не всё, что видели оба прохода
-                показано = now_iso()
-                self.__dict__["_показы"] = [
-                    ("""UPDATE memory SET access_count = access_count + 1, last_seen_at = ? WHERE id = ?""",
-                     (показано, r.id)) for r in найдено]
+            найдено = self._второй_проход(запрос, найдено, scope, kind, внутр_лимит, session_id, as_of)
+        if config.RERANK and len(найдено) > 1:
+            найдено = retrieval.rerank_records(
+                query, найдено, top_k=config.RERANK_TOP_K, model_dir=config.RERANK_MODEL
+            )
+        найдено = найдено[:limit]
+        if as_of is None and найдено and (config.SEARCH_FEEDBACK or config.RERANK):
+            # показанными считаются только финальные записи итога после второго прохода/переранжирования
+            показано = now_iso()
+            self.__dict__["_показы"] = [
+                ("""UPDATE memory SET access_count = access_count + 1, last_seen_at = ? WHERE id = ?""",
+                 (показано, r.id)) for r in найдено]
         self._учесть_поиск(not найдено if as_of is None else None)
         self._пометить(найдено)
         return найдено

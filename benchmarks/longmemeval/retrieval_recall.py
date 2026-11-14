@@ -41,6 +41,9 @@ from padam import config, embeddings  # noqa: E402
 from padam.memory import Memory  # noqa: E402
 from padam.store import Store  # noqa: E402
 
+if "--rerank" in sys.argv:
+    config.RERANK = True
+
 config.OLLAMA_URL = "http://127.0.0.1:9"
 embeddings._check_ollama = lambda: False
 sys.stdout.reconfigure(encoding="utf-8")
@@ -137,7 +140,9 @@ def share(rows, key):
 main = [r for r in per_question if not r["abstention"]]
 summary = {
     "dataset": "LongMemEval-S", "questions": len(per_question), "scored_without_abstention": len(main),
-    "method": "PADAM Memory.remember per round, Memory.recall(question, limit=50), embedding: " + EMBEDDER + ", no LLM",
+    "method": f"PADAM Memory.remember per round, Memory.recall(question, limit=50), embedding: {EMBEDDER}, rerank={config.RERANK}, no LLM",
+    "rerank": config.RERANK,
+    "rerank_top_k": config.RERANK_TOP_K if config.RERANK else 0,
     "padam_version": __import__("padam").__version__,
     "overall": {f"{m}@{k}": share(main, f"{m}@{k}") for m in ("any", "all") for k in KS},
     "abstention": {f"{m}@{k}": share([r for r in per_question if r["abstention"]], f"{m}@{k}") for m in ("any", "all") for k in KS},

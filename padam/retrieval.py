@@ -261,3 +261,184 @@ def hybrid_rank(store, user_id: str, scope: str, query: str,
             weights["semantic"] = 1.0 if запасной else BUILTIN_SEMANTIC_WEIGHT
     scores = reciprocal_rank_fusion(rankings, weights)
     return scores, rankings
+
+
+# --- Б13: переранжирование верхних кандидатов по переключателю PADAM_RERANK=1 ---
+
+_RERANK_STOP = _СТОП_СЛОВА | frozenset(
+    "is are was were am be do did does has had have can could would should may might will shall "
+    "the a an in on at to of for from by with as into than that this it its he she they we you my your our their "
+    "на по за из от до не да но и в во со с к ко у о об про при без для как что где кто".split()
+)
+_RERANK_TOK_RE = re.compile(r"[^\W_]{2,}", re.UNICODE)
+_RERANK_MODELS: dict[str, object] = {}
+
+
+def _rerank_tokens(text: str) -> list[str]:
+    out: list[str] = []
+    for raw in _RERANK_TOK_RE.findall((text or "").lower()):
+        if raw in _RERANK_STOP:
+            continue
+        out.append(raw[:5] if len(raw) > 4 and not raw.isdigit() else raw)
+    return out
+
+
+def _min_span_score(q_set: set[str], doc_tokens: list[str]) -> float:
+    """Минимальное окно в документе, содержащее максимальное число уникальных терминов вопроса."""
+    if len(q_set) < 2 or not doc_tokens:
+        return 0.0
+    hits = [(i, tok) for i, tok in enumerate(doc_tokens) if tok in q_set]
+    present = {tok for _, tok in hits}
+    if len(present) < 2:
+        return 0.0
+    need = len(present)
+    counts: dict[str, int] = {}
+    have = 0
+    left = 0
+    best_span = len(doc_tokens) + 1
+    for right in range(len(hits)):
+        _, rtok = hits[right]
+        counts[rtok] = counts.get(rtok, 0) + 1
+        if counts[rtok] == 1:
+            have += 1
+        while have == need and left <= right:
+            span = hits[right][0] - hits[left][0] + 1
+            if span < best_span:
+                best_span = span
+            _, ltok = hits[left]
+            counts[ltok] -= 1
+            if counts[ltok] == 0:
+                have -= 1
+            left += 1
+    if best_span <= 0 or best_span > len(doc_tokens):
+        return 0.0
+    density = len(present) / best_span
+    coverage = len(present) / len(q_set)
+    return min(1.0, density) * coverage
+
+
+def _get_onnx_reranker(model_dir: str):
+    if not model_dir:
+        return None
+    if model_dir in _RERANK_MODELS:
+        return _RERANK_MODELS[model_dir]
+    import glob
+    import math
+    import os
+    try:
+        import numpy as np
+        import onnxruntime as ort
+        from tokenizers import Tokenizer
+    except Exception:
+        _RERANK_MODELS[model_dir] = None
+        return None
+    tok_path = os.path.join(model_dir, "tokenizer.json")
+    onnx_files = sorted(glob.glob(os.path.join(model_dir, "**", "*.onnx"), recursive=True))
+    if not os.path.exists(tok_path) or not onnx_files:
+        _RERANK_MODELS[model_dir] = None
+        return None
+
+    class _OnnxCross:
+        def __init__(self):
+            self.tok = Tokenizer.from_file(tok_path)
+            self.tok.enable_truncation(max_length=512)
+            self.tok.no_padding()
+            so = ort.SessionOptions()
+            so.intra_op_num_threads = 2
+            so.inter_op_num_threads = 1
+            self.sess = ort.InferenceSession(onnx_files[0], so, providers=["CPUExecutionProvider"])
+            self.inputs = [i.name for i in self.sess.get_inputs()]
+
+        def score_pairs(self, query: str, docs: list[str]) -> list[float]:
+            out: list[float] = []
+            for d in docs:
+                enc = self.tok.encode(query, d)
+                type_ids = getattr(enc, "type_ids", None) or [0] * len(enc.ids)
+                feed = {
+                    "input_ids": np.array([enc.ids], dtype=np.int64),
+                    "attention_mask": np.array([enc.attention_mask], dtype=np.int64),
+                    "token_type_ids": np.array([type_ids], dtype=np.int64),
+                }
+                logits = self.sess.run(None, {k: v for k, v in feed.items() if k in self.inputs})[0]
+                val = float(logits.reshape(-1)[0])
+                out.append(1.0 / (1.0 + math.exp(-max(-30.0, min(30.0, val)))))
+            return out
+
+    try:
+        inst = _OnnxCross()
+    except Exception:
+        inst = None
+    _RERANK_MODELS[model_dir] = inst
+    return inst
+
+
+def _pair_relevance(query: str, doc: str, q_tokens: list[str], q_bigrams: list[tuple[str, str]],
+                    q_ents: set[str]) -> float:
+    if not q_tokens:
+        return 0.0
+    d_tokens = _rerank_tokens(doc)
+    if not d_tokens:
+        return 0.0
+    q_set = set(q_tokens)
+    d_set = set(d_tokens)
+    cov = len(q_set & d_set) / len(q_set)
+    prox = _min_span_score(q_set, d_tokens)
+
+    bg = 0.0
+    if q_bigrams:
+        d_pairs = {(d_tokens[i], d_tokens[j]) for i in range(len(d_tokens))
+                   for j in (i + 1, i + 2) if j < len(d_tokens)}
+        bg = sum(1 for p in q_bigrams if p in d_pairs) / len(q_bigrams)
+
+    if q_ents:
+        d_ents = entities(doc)
+        ent_cov = len(q_ents & d_ents) / len(q_ents)
+        return 0.45 * cov + 0.25 * prox + 0.15 * bg + 0.15 * ent_cov
+    return 0.50 * cov + 0.30 * prox + 0.20 * bg
+
+
+def rerank_records(query: str, records: list, *, top_k: int = 30, model_dir: str = "") -> list:
+    """Переранжирует верхние `top_k` записей по парной релевантности (query, content).
+
+    По умолчанию в PADAM выключено (`PADAM_RERANK=0`). Работает детерминированно без сети:
+    при указании локальной папки ONNX-модели использует кросс-энкодер, иначе — встроенный
+    кросс-парный анализатор (охват терминов, компактность окна, биграммы, точные сущности).
+    """
+    if len(records) <= 1 or top_k <= 1:
+        return list(records)
+    head = list(records[:top_k])
+    tail = list(records[top_k:])
+
+    max_base = max((getattr(r, "score", 0.0) for r in head), default=0.0)
+    if max_base <= 0.0:
+        max_base = 1.0
+
+    onnx = _get_onnx_reranker(model_dir)
+    if onnx is not None:
+        pair_scores = onnx.score_pairs(query, [getattr(r, "content", "") for r in head])
+    else:
+        q_tokens = _rerank_tokens(query)
+        q_bigrams = [(q_tokens[i], q_tokens[i + 1]) for i in range(len(q_tokens) - 1)]
+        q_ents = entities(query)
+        pair_scores = [_pair_relevance(query, getattr(r, "content", ""), q_tokens, q_bigrams, q_ents) for r in head]
+
+    w_pair = 0.45 if onnx is not None else 0.30
+    w_base = 1.0 - w_pair
+    rescored = []
+    for idx, (rec, pscore) in enumerate(zip(head, pair_scores)):
+        base_norm = getattr(rec, "score", 0.0) / max_base
+        combined = (w_base * base_norm + w_pair * pscore) * max_base
+        rec.score = combined
+        strats = getattr(rec, "strategies", ()) or ()
+        if "rerank" not in strats:
+            rec.strategies = tuple(strats) + ("rerank",)
+        rescored.append((combined, -idx, rec))
+
+    rescored.sort(key=lambda x: (x[0], x[1]), reverse=True)
+    reordered_head = [x[2] for x in rescored]
+    if tail and reordered_head:
+        floor = min(getattr(r, "score", 0.0) for r in reordered_head)
+        for r in tail:
+            if getattr(r, "score", 0.0) >= floor:
+                r.score = floor * 0.999
+    return reordered_head + tail

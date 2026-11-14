@@ -93,6 +93,13 @@ WEBHOOK_SECRET = os.environ.get("PADAM_WEBHOOK_SECRET", "").strip()
 # локальный поиск; время поиска примерно вдвое. Выключить: PADAM_SEARCH_FEEDBACK=0.
 SEARCH_FEEDBACK = os.environ.get("PADAM_SEARCH_FEEDBACK", "1") != "0"
 
+# Б13 (14.11.2026): переранжирование верхних кандидатов поиска по переключателю (выключено по умолчанию).
+# Без внешней модели использует встроенный кросс-парный реранкер (охват терминов, близость окна, биграммы и сущности);
+# при указании PADAM_RERANK_MODEL (папка с tokenizer.json + .onnx) применяет локальный ONNX cross-encoder.
+RERANK = os.environ.get("PADAM_RERANK", "0") == "1"
+RERANK_TOP_K = int(os.environ.get("PADAM_RERANK_TOP", "30"))
+RERANK_MODEL = os.environ.get("PADAM_RERANK_MODEL", "").strip()
+
 # 0.4.5: строгий профиль одним выключателем вместо россыпи флагов (внешний разбор 09.11.2026: «каждый флаг
 # охраняется, но единого --strict нет»). PADAM_STRICT=1: каждая запись агента ждёт владельца, внешний текст тоже;
 # ослабляющие переменные игнорируются (и об этом говорится при запуске); закрепление в Arweave без защищённых
