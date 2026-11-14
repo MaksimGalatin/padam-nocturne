@@ -51,7 +51,7 @@ from .store import Store
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
 OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
 
@@ -237,6 +237,48 @@ class Handler(BaseHTTPRequestHandler):
                     action=q.get("action", [None])[0] or None,
                     agent_id=q.get("agent_id", [None])[0] or None,
                 )})
+            if путь.path == "/events":
+                q = parse_qs(путь.query)
+                replay = max(0, min(int(q.get("replay", ["10"])[0]), 100))
+                once = q.get("once", ["0"])[0] == "1"
+                wait_sec = max(0.1, min(float(q.get("timeout", ["5.0"])[0]), 30.0))
+                m = mem()
+                chunks: list[str] = ["event: ready\ndata: {\"status\":\"connected\"}\n\n"]
+                if replay > 0:
+                    recent = list(reversed(m.audit_log(limit=replay)))
+                    for ev in recent:
+                        chunks.append(
+                            f"id: {ev['id']}\nevent: {ev['action']}\ndata: "
+                            + json.dumps(ev, ensure_ascii=False)
+                            + "\n\n"
+                        )
+                if not once:
+                    import queue as _queue
+                    sub_q = m.subscribe_events()
+                    try:
+                        live_ev = sub_q.get(timeout=wait_sec)
+                        chunks.append(
+                            f"id: {live_ev['id']}\nevent: {live_ev['action']}\ndata: "
+                            + json.dumps(live_ev, ensure_ascii=False)
+                            + "\n\n"
+                        )
+                    except _queue.Empty:
+                        chunks.append(": keepalive\n\n")
+                    finally:
+                        m.unsubscribe_events(sub_q)
+                payload_bytes = "".join(chunks).encode("utf-8")
+                self.send_response(200)
+                cors = self._cors_origin()
+                if cors:
+                    self.send_header("Access-Control-Allow-Origin", cors)
+                    self.send_header("Vary", "Origin")
+                self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                self.send_header("Cache-Control", "no-cache")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.send_header("Content-Length", str(len(payload_bytes)))
+                self.end_headers()
+                self.wfile.write(payload_bytes)
+                return None
             if self.path == "/stats":
                 return self._send(200, mem().stats())
             if путь.path == "/doctor":
@@ -484,6 +526,9 @@ def main(argv=None, memory: Memory | None = None) -> int:
     p.add_argument("--no-token", action="store_true",
                    help=t("без токена (только локально): запись с проверкой, действия владельца запрещены",
                           "no token (local only): writes are reviewed, owner actions are refused"))
+    p.add_argument("--ui", action="store_true",
+                   help=t("включить веб-интерфейс PADAM Studio (/studio и /ui)",
+                          "enable PADAM Studio web interface (/studio and /ui)"))
     a = p.parse_args(argv)
 
     local = a.host in ("127.0.0.1", "localhost", "::1") or a.host.startswith("127.")
@@ -512,6 +557,9 @@ def main(argv=None, memory: Memory | None = None) -> int:
         a.token, создан = secrets.token_urlsafe(24), True
     _state["token"] = a.token
     _state["local"] = local
+    if a.ui:
+        _state["ui"] = True
+        _state["studio_default"] = True
     srv = ThreadingHTTPServer((a.host, a.port), Handler)
     # 12.10.2026: раньше «локально» считалось только для 127.*, и localhost / ::1 печатались как «ВНЕШНИЙ ДОСТУП».
     scope = t("локально", "local only") if local else t("ВНЕШНИЙ ДОСТУП", "EXTERNAL ACCESS")

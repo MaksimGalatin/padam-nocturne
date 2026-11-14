@@ -1,0 +1,11 @@
+---
+description: PADAM NOCTURNE memory protocol — recall before acting, record decisions and corrections after
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# PADAM · NOCTURNE Memory Protocol
+
+1. **Before starting a task:** Call `padam_profile` to read the owner-signed identity & preferences, then call `padam_search` for relevant context.
+2. **External data:** When storing facts from web pages or external files, always pass `origin: "external"` to `padam_write` so they wait in the owner review queue.
+3. **After completing a task:** Call `padam_write` with `kind: "decision"` or `kind: "correction"` to persist architectural choices and fixes.

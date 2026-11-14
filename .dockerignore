@@ -1,0 +1,12 @@
+.git
+.pytest_cache
+__pycache__
+*.pyc
+*.pyo
+*.db
+*.db-wal
+*.db-shm
+.venv
+venv
+node_modules
+desktop/tauri/target

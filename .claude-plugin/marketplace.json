@@ -1,0 +1,16 @@
+{
+  "name": "padam-nocturne-marketplace",
+  "description": "Official PADAM · NOCTURNE plugin marketplace for Claude Code (local verifiable memory, MCP server, and memory discipline skills).",
+  "owner": {
+    "name": "Maksim Galatin",
+    "email": "codeofdigitaleternity@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "padam-nocturne",
+      "source": "./",
+      "description": "PADAM · NOCTURNE verifiable local memory with MCP server, memory workflow skill (recall before work, record decisions & corrections after), and slash commands.",
+      "version": "0.4.18"
+    }
+  ]
+}

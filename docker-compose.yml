@@ -1,0 +1,30 @@
+services:
+  padam-studio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: padam-nocturne-studio
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${PADAM_PORT:-8077}:8077"
+    environment:
+      PADAM_HOME: /data
+      PADAM_USER: ${PADAM_USER:-default}
+      PADAM_API_TOKEN: ${PADAM_API_TOKEN:?Set PADAM_API_TOKEN (at least 16 chars) before running docker compose}
+      PADAM_STRICT: ${PADAM_STRICT:-0}
+      PADAM_HOLD_EXTERNAL: ${PADAM_HOLD_EXTERNAL:-1}
+      PADAM_MASK_PII: ${PADAM_MASK_PII:-0}
+      PADAM_SEARCH_FEEDBACK: ${PADAM_SEARCH_FEEDBACK:-1}
+      PADAM_WEBHOOK_URL: ${PADAM_WEBHOOK_URL:-}
+      PADAM_WEBHOOK_SECRET: ${PADAM_WEBHOOK_SECRET:-}
+    volumes:
+      - padam_data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=64M,mode=1777
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  padam_data:
+    name: padam_nocturne_data

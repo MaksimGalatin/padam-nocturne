@@ -1,0 +1,22 @@
+{
+  "name": "padam-client",
+  "version": "0.4.15",
+  "private": true,
+  "description": "TypeScript & JavaScript client for PADAM NOCTURNE local REST API and AIfa Memory Cloud MCP (with Vercel AI SDK & Mastra adapters)",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    }
+  },
+  "files": [
+    "src",
+    "examples",
+    "README.md"
+  ],
+  "license": "AGPL-3.0-only",
+  "author": "Maksim Galatin <codeofdigitaleternity@gmail.com>"
+}

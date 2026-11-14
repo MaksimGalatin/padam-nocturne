@@ -80,6 +80,10 @@ KEEP_SECRETS = os.environ.get("PADAM_KEEP_SECRETS", "0") == "1"
 # Б4 (14.11.2026): маскировка телефонов и почты переключателем PADAM_MASK_PII=1.
 # По умолчанию выключена: в личной памяти человеку часто нужны свои номера и адреса.
 MASK_PII = os.environ.get("PADAM_MASK_PII", "0") == "1"
+# Б10 (14.11.2026): исходящий вебхук событий памяти (write, approve, reject, forget).
+# Отправляется только при явно заданном PADAM_WEBHOOK_URL и подписывается HMAC-SHA256 (PADAM_WEBHOOK_SECRET).
+WEBHOOK_URL = os.environ.get("PADAM_WEBHOOK_URL", "").strip()
+WEBHOOK_SECRET = os.environ.get("PADAM_WEBHOOK_SECRET", "").strip()
 
 # Второй проход поиска (псевдо-обратная связь): слова, общие для нескольких первых найденных записей, дописываются
 # к запросу, и два списка сливаются обратным рангом. Опыт 11.11.2026 на LongMemEval-S (470 вопросов с ответом):

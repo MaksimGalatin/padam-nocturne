@@ -1972,15 +1972,78 @@ class Memory:
                     kind = kind or row["kind"]
                     scope = scope or row["scope"]
                     agent_id = agent_id or row["agent_id"]
+            ev_id = new_id()
+            ts = now_iso()
             self.store.execute(
                 """INSERT INTO audit_log
                    (id, user_id, created_at, action, memory_id, actor, agent_id, scope, kind, outcome, detail)
                    VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-                (new_id(), self.user_id, now_iso(), action, memory_id,
+                (ev_id, self.user_id, ts, action, memory_id,
                  actor or "user", agent_id, scope or "global", kind, outcome, detail),
             )
+            ev = {
+                "id": ev_id,
+                "user_id": self.user_id,
+                "created_at": ts,
+                "action": action,
+                "memory_id": memory_id,
+                "actor": actor or "user",
+                "agent_id": agent_id,
+                "scope": scope or "global",
+                "kind": kind,
+                "outcome": outcome,
+                "detail": detail,
+            }
+            for q in list(getattr(self, "_event_queues", [])):
+                try:
+                    q.put_nowait(ev)
+                except Exception:
+                    pass
+            if getattr(config, "WEBHOOK_URL", ""):
+                self._dispatch_webhook(ev)
         except Exception:
             pass
+
+    def subscribe_events(self):
+        """Б10: подписаться на живой поток событий памяти (SSE)."""
+        import queue
+        if not hasattr(self, "_event_queues"):
+            self._event_queues = []
+        q = queue.Queue(maxsize=256)
+        self._event_queues.append(q)
+        return q
+
+    def unsubscribe_events(self, q) -> None:
+        """Б10: отписаться от потока событий памяти."""
+        qs = getattr(self, "_event_queues", None)
+        if qs and q in qs:
+            qs.remove(q)
+
+    def _dispatch_webhook(self, event: dict) -> bool:
+        """Б10: отправка события наружу по явно заданному PADAM_WEBHOOK_URL с подписью HMAC-SHA256."""
+        url = (getattr(config, "WEBHOOK_URL", "") or "").strip()
+        if not url or not (url.startswith("http://") or url.startswith("https://")):
+            return False
+        import hashlib
+        import hmac as _hmac
+        import json
+        import urllib.request
+        body = json.dumps(event, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        headers = {
+            "Content-Type": "application/json; charset=utf-8",
+            "User-Agent": "PADAM-Nocturne-Webhook/1.0",
+            "X-Padam-Event": str(event.get("action") or "event"),
+        }
+        secret = (getattr(config, "WEBHOOK_SECRET", "") or "").strip()
+        if secret:
+            sig = _hmac.new(secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
+            headers["X-Padam-Signature"] = f"sha256={sig}"
+        try:
+            req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=3.0) as resp:
+                return 200 <= resp.status < 300
+        except Exception:
+            return False
 
     def audit_log(self, limit: int = 100, action: str | None = None,
                   agent_id: str | None = None) -> list[dict]:

@@ -1,0 +1,6 @@
+# PADAM · NOCTURNE Configuration for OpenAI Codex CLI
+# Copy into ~/.codex/config.toml
+
+[mcp_servers.padam-nocturne]
+command = "python"
+args = ["-m", "padam.mcp_server"]

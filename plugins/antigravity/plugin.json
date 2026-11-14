@@ -1,0 +1,10 @@
+{
+  "name": "padam-nocturne",
+  "description": "PADAM · NOCTURNE local verifiable memory for Antigravity: recall owner profile & facts before work, record decisions & corrections after, and hold untrusted external writes for review.",
+  "logo": "assets/logo.svg",
+  "suggestedPrompts": [
+    "Check my owner-signed profile and recall recent architectural decisions from PADAM memory",
+    "Search PADAM memory for our database configuration and record today's deployment decision",
+    "Review held external writes in PADAM Studio"
+  ]
+}

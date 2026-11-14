@@ -794,3 +794,210 @@ def test_b12_audit_log_records_actions_without_content(tmp_path):
             srv.server_close()
     finally:
         mem.close()
+
+
+def test_b10_sse_events_and_hmac_signed_webhooks(tmp_path):
+    """Б10: поток SSE GET /events и исходящие вебхуки с проверкой подписи HMAC-SHA256 без утечки текста."""
+    import hashlib
+    import hmac as _hmac
+    from http.server import BaseHTTPRequestHandler
+    from padam import config as pcfg
+
+    received_webhooks: list[tuple[dict, bytes]] = []
+
+    class WebhookReceiver(BaseHTTPRequestHandler):
+        def log_message(self, fmt, *args):
+            pass
+
+        def do_POST(self):
+            length = int(self.headers.get("Content-Length") or 0)
+            raw = self.rfile.read(length)
+            received_webhooks.append((dict(self.headers), raw))
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"ok")
+
+    wh_srv = ThreadingHTTPServer(("127.0.0.1", 0), WebhookReceiver)
+    wh_thread = threading.Thread(target=wh_srv.serve_forever, daemon=True)
+    wh_thread.start()
+
+    orig_url, orig_sec = pcfg.WEBHOOK_URL, pcfg.WEBHOOK_SECRET
+    secret = "padam-hmac-secret-1411"
+    pcfg.WEBHOOK_URL = f"http://127.0.0.1:{wh_srv.server_address[1]}/hook"
+    pcfg.WEBHOOK_SECRET = secret
+
+    db_path = tmp_path / "events.db"
+    mem = Memory(user_id="ev_user", store=Store(db_path))
+    srv, link = api.make_studio_server(mem, port=0)
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+    try:
+        m = re.match(r"^(http://127\.0\.0\.1:\d+)/studio#t=(.+)$", link)
+        assert m
+        base, token = m.group(1), m.group(2)
+
+        secret_marker = "NEVER_LEAK_THIS_TEXT_IN_SSE_OR_WEBHOOK_7788"
+        _, rec_id = mem.remember(
+            "Внешняя заметка: " + secret_marker,
+            kind="fact",
+            origin="external",
+            guarded=True,
+            agent_id="research-agent",
+        )
+        mem.approve(rec_id)
+        mem.revoke(rec_id)
+
+        assert len(received_webhooks) == 3
+        seen_actions = []
+        for hdrs, raw_body in received_webhooks:
+            sig_hdr = hdrs.get("X-Padam-Signature") or hdrs.get("x-padam-signature")
+            expected = "sha256=" + _hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
+            assert sig_hdr == expected
+            body_str = raw_body.decode("utf-8")
+            assert secret_marker not in body_str
+            ev_obj = json.loads(body_str)
+            seen_actions.append(ev_obj["action"])
+        assert seen_actions == ["write", "approve", "forget"]
+
+        # Проверим SSE-поток GET /events?once=1&replay=10
+        req = urllib.request.Request(
+            f"{base}/events?once=1&replay=10",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            ctype = resp.headers.get("Content-Type", "")
+            sse_text = resp.read().decode("utf-8")
+            assert resp.status == 200
+            assert "text/event-stream" in ctype
+            assert "event: ready" in sse_text
+            assert "event: write" in sse_text
+            assert "event: approve" in sse_text
+            assert "event: forget" in sse_text
+            assert secret_marker not in sse_text
+    finally:
+        pcfg.WEBHOOK_URL = orig_url
+        pcfg.WEBHOOK_SECRET = orig_sec
+        srv.shutdown()
+        srv.server_close()
+        wh_srv.shutdown()
+        wh_srv.server_close()
+        mem.close()
+
+
+def test_b6_docker_and_compose_enforce_token_and_ui():
+    """Б6: Dockerfile и docker-compose.yml требуют PADAM_API_TOKEN, используют непривилегированного пользователя и том /data."""
+    root = Path(__file__).resolve().parents[1]
+    dockerfile = (root / "Dockerfile").read_text(encoding="utf-8")
+    compose = (root / "docker-compose.yml").read_text(encoding="utf-8")
+
+    assert "USER padam" in dockerfile
+    assert 'VOLUME ["/data"]' in dockerfile
+    assert "PADAM_API_TOKEN" in dockerfile
+    assert "--ui" in dockerfile
+
+    assert "PADAM_API_TOKEN: ${PADAM_API_TOKEN:?" in compose
+    assert "padam_data:/data" in compose
+    assert "no-new-privileges:true" in compose
+
+    # Запуск api.main на 0.0.0.0 без токена обязан завершаться отказом (код 2)
+    rc = api.main(["--host", "0.0.0.0", "--port", "0", "--token", ""])
+    assert rc == 2
+
+
+def test_b5_typescript_padam_client_against_live_api(tmp_path):
+    """Б5: пакет packages/padam-client работает с живым локальным сервером PADAM и предоставляет адаптеры Vercel AI SDK и Mastra."""
+    db_path = tmp_path / "ts_client.db"
+    mem = Memory(user_id="ts_user", store=Store(db_path))
+    mem.remember("Я — архитектор системы.", kind="identity", origin="user", importance=0.95)
+    srv, link = api.make_studio_server(mem, port=0)
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+    try:
+        m = re.match(r"^(http://127\.0\.0\.1:\d+)/studio#t=(.+)$", link)
+        assert m
+        base, token = m.group(1), m.group(2)
+        root = Path(__file__).resolve().parents[1]
+        pkg_index = (root / "packages" / "padam-client" / "src" / "index.js").as_uri()
+        pkg_json = json.loads((root / "packages" / "padam-client" / "package.json").read_text(encoding="utf-8"))
+        assert pkg_json["private"] is True
+
+        node_script = f"""
+import {{ PadamRestClient, createVercelAiTools, createMastraMemoryTools }} from {json.dumps(pkg_index)};
+const client = new PadamRestClient({{ baseUrl: {json.dumps(base)}, token: {json.dumps(token)}, agentId: "ts-sdk-test" }});
+const h = await client.health();
+const w = await client.write({{ content: "Сервис очередей использует порт 6379", kind: "fact", origin: "user" }});
+const s = await client.search({{ query: "порт 6379", limit: 3 }});
+const p = await client.profile("global");
+const ev = await client.eventsSnapshot(5);
+const vTools = createVercelAiTools(client);
+const mTools = createMastraMemoryTools(client);
+const fg = await client.forget(w.id);
+console.log(JSON.stringify({{
+  status: h.status,
+  outcome: w.outcome,
+  hits: s.results.length,
+  agent: s.results[0]?.agent_id,
+  identityCount: p.identity.length,
+  eventsCount: ev.length,
+  vercelTools: Object.keys(vTools),
+  mastraCount: mTools.length,
+  receiptDestroyed: fg.receipt?.key_destroyed
+}}));
+"""
+        proc = subprocess.run(
+            ["node", "--input-type=module", "-e", node_script],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=30,
+        )
+        assert proc.returncode == 0, proc.stderr
+        out = json.loads(proc.stdout.strip().splitlines()[-1])
+        assert out["status"] == "ok"
+        assert out["outcome"] == "created"
+        assert out["hits"] >= 1
+        assert out["agent"] == "ts-sdk-test"
+        assert out["identityCount"] == 1
+        assert out["eventsCount"] >= 2
+        assert set(out["vercelTools"]) == {"padam_profile", "padam_search", "padam_write"}
+        assert out["mastraCount"] == 3
+        assert out["receiptDestroyed"] is True
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        mem.close()
+
+
+def test_b2_one_click_plugins_for_claude_cursor_codex_gemini_antigravity():
+    """Б2: плагины в один клик с навыками памяти для Claude Code, Cursor, Codex, Gemini CLI и Antigravity."""
+    root = Path(__file__).resolve().parents[1]
+
+    # 1. Claude Code
+    claude_plugin = json.loads((root / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    claude_mp = json.loads((root / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+    assert claude_plugin["name"] == "padam-nocturne"
+    assert claude_mp["plugins"][0]["name"] == "padam-nocturne"
+    assert (root / "skills" / "padam-memory" / "SKILL.md").exists()
+    for cmd in ("recall.md", "remember.md", "profile.md"):
+        assert (root / "commands" / cmd).exists()
+
+    # 2. Cursor
+    cursor_plugin = json.loads((root / "plugins" / "cursor" / ".cursor-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    assert cursor_plugin["name"] == "padam-nocturne"
+    assert (root / "plugins" / "cursor" / ".cursor" / "rules" / "padam-memory.mdc").exists()
+
+    # 3. Codex
+    codex_cfg = (root / "plugins" / "codex" / "config.toml").read_text(encoding="utf-8")
+    assert "[mcp_servers.padam-nocturne]" in codex_cfg
+    assert (root / "plugins" / "codex" / "AGENTS.md").exists()
+
+    # 4. Gemini CLI
+    gemini_ext = json.loads((root / "plugins" / "gemini-cli" / "gemini-extension.json").read_text(encoding="utf-8"))
+    assert gemini_ext["name"] == "padam-nocturne"
+    assert "padam-nocturne" in gemini_ext["mcpServers"]
+
+    # 5. Antigravity
+    agy_plugin = json.loads((root / "plugins" / "antigravity" / "plugin.json").read_text(encoding="utf-8"))
+    assert agy_plugin["name"] == "padam-nocturne"
+    assert (root / "plugins" / "antigravity" / "skills" / "padam-memory" / "SKILL.md").exists()
+    assert (root / "plugins" / "antigravity" / "rules" / "AGENTS.md").exists()
