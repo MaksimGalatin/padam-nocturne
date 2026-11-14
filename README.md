@@ -124,6 +124,8 @@ From PyPI: `pip install padam-nocturne`. The latest code straight from GitHub: `
 
 **LangChain.** Through [`langchain-mcp-adapters`](https://github.com/langchain-ai/langchain-mcp-adapters) the eight tools become LangChain tools with their argument schemas. `python integrations/langchain_check.py` starts `uvx padam-nocturne` from PyPI and checks, with no language model: the tool list, a write found by search inside the fence, an injected order held for the owner, a secret that never reaches the database file (read as raw bytes). 0.4.8 with adapters 0.3.2 and langchain-core 1.7.7: 6 of 6. One difference to know: the adapter passes a tool error (`isError: true`, e.g. `limit must be at most 50`) to the agent as ordinary text, not as a `ToolException`.
 
+**CrewAI.** Through `MCPServerAdapter` from [`crewai-tools`](https://pypi.org/project/crewai-tools/) the eight tools become CrewAI tools. `python integrations/crewai_check.py` starts `uvx padam-nocturne` from PyPI and runs the same checks with no language model: the tool list, a write found by search inside the fence, an injected order held for the owner, a secret that never reaches the database file. 0.4.18 with crewai and crewai-tools 1.15.41, mcp 1.30.0: 5 of 5 (14 Nov 2026). CrewAI needs Python below 3.14.
+
 ---
 
 ## Plug it into your agent — MCP, REST, CLI

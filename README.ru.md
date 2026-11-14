@@ -120,6 +120,8 @@ claude mcp add padam -- uvx padam-nocturne
 
 **LangChain.** Через [`langchain-mcp-adapters`](https://github.com/langchain-ai/langchain-mcp-adapters) восемь инструментов становятся инструментами LangChain со схемами аргументов. `python integrations/langchain_check.py` запускает `uvx padam-nocturne` с PyPI и без языковой модели проверяет: список инструментов, запись, найденную поиском внутри ограды, внедрённый приказ, задержанный для владельца, и секрет, который не попадает в файл базы (по сырым байтам). 0.4.8 с адаптером 0.3.2 и langchain-core 1.7.7: 6 из 6. Одно отличие: ошибку инструмента (`isError: true`, например `limit must be at most 50`) адаптер отдаёт агенту обычным текстом, а не исключением `ToolException`.
 
+**CrewAI.** Через `MCPServerAdapter` из [`crewai-tools`](https://pypi.org/project/crewai-tools/) восемь инструментов становятся инструментами CrewAI. `python integrations/crewai_check.py` запускает `uvx padam-nocturne` из PyPI и без языковой модели проверяет то же самое: список инструментов, запись, найденную поиском внутри ограждения, приказ, удержанный для владельца, и секрет, который не попадает в файл базы. 0.4.18 с crewai и crewai-tools 1.15.41, mcp 1.30.0: 5 из 5 (14.11.2026). CrewAI требует Python ниже 3.14.
+
 ---
 
 ## Подключение к агенту — MCP, REST, командная строка
