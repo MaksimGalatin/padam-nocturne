@@ -279,6 +279,31 @@ def cmd_studio(m: Memory, a) -> int:
     return 0
 
 
+def cmd_demo(_m: Memory | None, a) -> int:
+    """Б17: создать отдельную демонстрационную базу памяти (не трогая основную) и по желанию открыть Studio."""
+    from . import demo
+    target = a.out or a.db or str(demo.default_demo_path())
+    demo_mem, summary = demo.build_demo_memory(
+        db_path=target,
+        user_id=a.user if a.user != "default" else "demo_architect",
+    )
+    try:
+        st = summary["stats"]
+        print(t(f"{GREEN}Демонстрационная память создана:{RESET} {summary['db']}  (пользователь: {summary['user']})",
+                f"{GREEN}Demo memory created:{RESET} {summary['db']}  (user: {summary['user']})"))
+        print(t(f"  Действующих: {st['active']} · На проверке: {st['quarantined']} · "
+                f"Прежних версий: {st['superseded']} · Забытых с квитанцией: {st['revoked']}",
+                f"  Active: {st['active']} · Waiting review: {st['quarantined']} · "
+                f"Superseded: {st['superseded']} · Forgotten with receipt: {st['revoked']}"))
+        print(t(f"  Открыть в Studio: padam --db \"{summary['db']}\" --user {summary['user']} studio",
+                f"  Open in Studio: padam --db \"{summary['db']}\" --user {summary['user']} studio"))
+        if a.studio:
+            return cmd_studio(demo_mem, a)
+        return 0
+    finally:
+        demo_mem.close()
+
+
 def cmd_approve(m: Memory, a) -> int:
     if m.approve(a.id):
         print(t(f"{GREEN}Принято.{RESET} Запись действует.", f"{GREEN}Approved.{RESET} The record is active."))
@@ -877,12 +902,24 @@ def main(argv=None) -> int:
     s.add_argument("--no-open", action="store_true", help=t("не открывать браузер", "do not open a browser"))
     s.set_defaults(fn=cmd_studio)
 
+    s = sub.add_parser("demo", help=t("создать отдельную демо-память с примерами (не трогает основную базу)",
+                                      "create a standalone demo memory database with examples (leaves main DB untouched)"))
+    s.add_argument("--out", default=None, help=t("путь к файлу демо-базы (по умолчанию ~/.padam/demo.db)",
+                                                 "path to demo database file (default: ~/.padam/demo.db)"))
+    s.add_argument("--studio", action="store_true", help=t("сразу открыть демо-память в PADAM Studio",
+                                                           "immediately open the demo memory in PADAM Studio"))
+    s.add_argument("--port", type=int, default=8078)
+    s.add_argument("--no-open", action="store_true", help=t("не открывать браузер", "do not open a browser"))
+    s.set_defaults(fn=cmd_demo)
+
     s = sub.add_parser("reindex", help=t("пересчитать векторы после смены модели",
                                          "recompute vectors after changing the embedding model"))
     s.add_argument("--limit", type=int, default=None)
     s.set_defaults(fn=cmd_reindex)
 
     a = p.parse_args(argv)
+    if a.fn is cmd_demo:
+        return cmd_demo(None, a)
     from .store import Store
     mem = Memory(user_id=a.user, store=Store(a.db) if a.db else None)
     try:

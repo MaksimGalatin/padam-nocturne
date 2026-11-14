@@ -288,3 +288,41 @@ def test_studio_server_endpoints_and_forget_receipt(tmp_path):
     assert saved["memory_id"] == id1
     assert len(saved["content_hash_sha256"]) == 64
     assert "краткие ответы" not in r_json.read_text(encoding="utf-8")
+
+
+def test_demo_command_creates_rich_isolated_db(tmp_path):
+    """Б17: `padam demo` создаёт отдельную базу со всеми ключевыми состояниями PADAM, не трогая основную."""
+    demo_db = tmp_path / "demo_test.db"
+    env = dict(os.environ, PADAM_LANG="ru", PYTHONIOENCODING="utf-8")
+    proc = subprocess.run(
+        [sys.executable, "-m", "padam", "demo", "--out", str(demo_db)],
+        capture_output=True, env=env, timeout=60,
+    )
+    assert proc.returncode == 0, proc.stderr.decode("utf-8", "replace")
+    assert demo_db.exists()
+
+    mem = Memory(user_id="demo_architect", store=Store(demo_db))
+    try:
+        st = mem.stats()
+        assert st["active"] >= 8
+        assert st["quarantined"] >= 2
+        assert st["superseded"] >= 1
+        assert st["revoked"] >= 1
+        assert st["record_keys"]["passphrase_protected"] is True
+
+        # Проверим наличие замаскированного секрета, квитанции удаления, споров, графа и якоря L3
+        recs = mem.list_records(view="active", limit=100)["records"]
+        assert any("[REDACTED:" in (r["content"] or "") for r in recs)
+        assert len(mem.conflicts()) >= 1
+        assert len(mem.forget_receipts()) >= 1
+        assert len(mem.nocturne_runs()) >= 1
+        gr = mem.graph()
+        assert gr["counts"]["derived_edges"] >= 2
+        assert gr["counts"]["version_edges"] >= 1
+        assert gr["counts"]["conflict_edges"] >= 1
+        l3 = mem.l3_status()
+        assert len(l3["anchors"]) == 1
+        ver = mem.l3_verify_anchor()
+        assert ver["ok"] is True
+    finally:
+        mem.close()
