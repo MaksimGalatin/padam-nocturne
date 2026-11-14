@@ -508,7 +508,123 @@ def _mask_cli_flags(text: str, bump) -> str:
     return _CLI_FLAG_PASSWORD.sub(flag, text)
 
 
+# --- 0.4.17: ключ по подписи «ключ / токен / секрет», строка из двух ячеек, имя секрета через тире ---------------------
+# Найдено проверкой на фейковых ключах перед сменой настоящих (13.11.2026): «Вот ключ от сервиса, запиши: X»,
+# «| NOWPAYMENTS_API_KEY | X |», «ARWEAVE_ENCRYPTION_SECRET — X» оставляли значение открытым (9 из 66).
+_SECRET_NAME = re.compile(r"[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_?(?:KEY|SECRET|TOKEN|PASSWORD|PASSWD|PASS|PWD)(?:_[A-Z0-9]+)*")
+_HEX_32 = re.compile(r"(?:[0-9a-f]{32,}|[0-9A-F]{32,})")
+_KEY_PROSE_LABEL = re.compile(r"(?i)(?<![^\W\d_])(?:ключ\w*|токен\w*|секрет\w*|key|token|secret)(?![^\W\d_])")
+_KEY_PROSE_LABEL_EXTRA = re.compile(r"(?i)(?<![^\W\d_])(?:парол\w*|password|passwd)(?![^\W\d_])")
+# Второй прогон фейков 13.11.2026 (27 000 фраз, 18 форм): значение после подписи БЕЗ двоеточия оставалось открытым —
+# «my api key is X», «новый ключ X — сохрани», «set K to X», «K теперь X», «ключ API от сервиса — X» (1 927 утечек).
+# Окно — до 80 знаков той же строки и до конца предложения; берётся первый СИЛЬНЫЙ токен от 16 знаков в окне.
+_KEY_PROSE_WINDOW_END = re.compile(r"\n|[.!?](?:\s|$)")
+_KEY_PROSE_TOKEN = re.compile(r"(?<![^\s\"'«“:：=(])([\"'«“]?)([^\s<>\"'»”`]{16,})")
+# Формат ключей NowPayments: четыре группы по семь знаков через дефис — бывают и без цифр, strong_secret их не видит.
+_GROUPED_7X4 = re.compile(r"[A-Z0-9]{7}(?:-[A-Z0-9]{7}){3}")
+# Имя, а не ключ: snake_case и camelCase из слов с коротким хвостом («user_profile_settings_v2», «authenticationService»).
+_IDENTIFIER = re.compile(r"[a-z]{2,}(?:_[a-z]{2,})+(?:_v?\d{1,3})?|[a-z]{2,}(?:[A-Z][a-z]{2,})+\d{0,3}")
+
+
+def _сильное_значение(core: str) -> bool:
+    """Ключ, а не слово: сильное (длина и три вида знаков), hex от 32 знаков или группы 7×4."""
+    if "REDACTED:" in core or _ЗАГЛУШКА.fullmatch(core) or _CODE_LIKE.search(core):
+        return False
+    # Повтор из двух-трёх знаков («9f9f9f…», «aaaa…») — заглушка или кэш-ключ, а не случайный секрет.
+    if _IDENTIFIER.fullmatch(core) or len(set(core)) < 6:
+        return False
+    return (strong_secret(core, min_len=16) or bool(_HEX_32.fullmatch(core)) or bool(_GROUPED_7X4.fullmatch(core))
+            or _случайный_регистр(core))
+
+
+def _случайный_регистр(core: str) -> bool:
+    """Случайная строка из букв обоих регистров без цифр (токен Vercel в 1–2 % случаев): от 20 знаков и частые
+    переходы регистра — у camelCase-имени их два-три, у случайной строки — каждый второй-третий знак."""
+    if len(core) < 20 or not re.fullmatch(r"[A-Za-z0-9_\-]+", core):
+        return False
+    переходы = sum(1 for x, y in zip(core, core[1:]) if x.isalpha() and y.isalpha() and x.isupper() != y.isupper())
+    return переходы >= len(core) // 4
+
+
+# Проза шире таблицы и «ИМЯ=»: после слова key стоят заголовки («**Key Considerations:**»), названия
+# («Intermediate-Range»), ссылки на переменные («process.env.API_KEY»). Замер на LongMemEval-S 13.11.2026: 51 ложная маска
+# из 189 635 реплик. Поэтому в прозе значение обязано содержать цифру — или быть hex, группами 7×4, случайным регистром.
+_AWS_PUBLIC_ID = re.compile(r"(?:sg|subnet|vpc|ami|i|eni|vol|snap|igw|rtb|acl|lt|pcx|nat|eipalloc)-[0-9a-f]{8,18}")
+
+
+def _сильное_в_прозе(core: str) -> bool:
+    if not _сильное_значение(core) or _AWS_PUBLIC_ID.fullmatch(core) or re.match(r"(?:process\.env|os\.environ|env)\.", core):
+        return False
+    # Код и адреса, а не значения: присваивание внутри («status=status.HTTP_200_OK»), путь («3000/api/datasources»).
+    if re.search(r"=[^=]", core) or re.search(r"/[A-Za-z]{3,}", core):
+        return False
+    return (any(ch.isdigit() for ch in core) or bool(_HEX_32.fullmatch(core)) or bool(_GROUPED_7X4.fullmatch(core))
+            or _случайный_регистр(core))
+
+
+def _mask_key_prose(text: str, bump) -> str:
+    куски = []
+    подписи = list(_KEY_PROSE_LABEL.finditer(text)) + list(_KEY_PROSE_LABEL_EXTRA.finditer(text))
+    for m in подписи:
+        конец = min(m.end() + 80, len(text))
+        e = _KEY_PROSE_WINDOW_END.search(text, m.end())
+        if e and e.start() < конец:
+            конец = e.start()
+        for t in _KEY_PROSE_TOKEN.finditer(text, m.end(), min(конец + 200, len(text))):
+            if t.start(2) >= конец:
+                break
+            перед = text[max(0, m.start() - 40):t.start(2)]
+            if _HEX_PUBLIC_LABEL.search(перед):
+                break
+            core = t.group(2).rstrip(_PASSWORD_TAIL + "»”\"'*_")
+            if _сильное_в_прозе(core):
+                куски.append((t.start(2), t.start(2) + len(core)))
+                break
+    for начало, конец in reversed(sorted(set(куски))):
+        text = text[:начало] + bump("labeled_key") + text[конец:]
+    return text
+
+
+def _mask_two_cell_rows(text: str, bump) -> str:
+    if "|" not in text:
+        return text
+    строки = text.split("\n")
+    for i, line in enumerate(строки):
+        cells = _cells(line)
+        if cells is None or len(cells) != 2:
+            continue
+        имя, значение = cells[0].strip("`*_ "), cells[1].strip("`")
+        if not значение or " " in значение or значение.startswith("[REDACTED:") or _ЗАГЛУШКА.fullmatch(значение):
+            continue
+        пароль = re.match(r"(?i)(?:парол\w*|password\w*|passwd|pwd|pin|пин)$", имя)
+        if _SECRET_NAME.fullmatch(имя) or _TABLE_SECRET_HEAD.match(имя):
+            if _сильное_значение(значение) or (пароль and re.fullmatch(r"\d{6,}|(?=\S*\d)\S{6,}", значение)
+                                               and not _TABLE_NAME.fullmatch(значение)):
+                cells[1] = bump("table_secret")
+                отступ = line[:len(line) - len(line.lstrip())]
+                строки[i] = отступ + "| " + " | ".join(cells) + " |"
+    return "\n".join(строки)
+
+
+# Разделитель — тире, «=», двоеточие (в т.ч. JSON «"K": "v"» и «K:» с значением на следующей строке).
+_NAMED_DASH = re.compile(r"(?<![\w$])(" + _SECRET_NAME.pattern + r")([\"']?[ \t]*[—–\-=:：][ \t]*\n?[ \t]*)([\"'`]?)([^\s\"'`]{8,})\3")
+
+
+def _mask_named_dash(text: str, bump) -> str:
+    def заменить(m: re.Match) -> str:
+        v = m.group(4).rstrip(_PASSWORD_TAIL)
+        тире = bool(re.search(r"[—–\-]", m.group(2)))
+        # «=» и «:» с паролем-словом уже закрывает старый слой assigned_secret; здесь — только сильные значения.
+        if not (_сильное_значение(v) or (тире and password_like(v, after_separator=True))):
+            return m.group(0)
+        return m.group(1) + m.group(2) + m.group(3) + bump("assigned_secret") + m.group(4)[len(v):] + m.group(3)
+    return _NAMED_DASH.sub(заменить, text)
+
+
 def _mask_context_secrets(text: str, bump) -> str:
+    text = _mask_named_dash(text, bump)
+    text = _mask_two_cell_rows(text, bump)
+    text = _mask_key_prose(text, bump)
     text = _mask_cli_flags(text, bump)
     text = _mask_table_secrets(text, bump)
     text = _mask_backup_codes(text, bump)

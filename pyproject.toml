@@ -1,6 +1,6 @@
 [project]
 name = "padam-nocturne"
-version = "0.4.16"
+version = "0.4.17"
 description = "Local memory for AI agents in one SQLite file: masks secrets, holds injected orders for the owner's review, forgets one record at a time (on Arweave, by destroying its key)"
 readme = "README.md"
 license = "AGPL-3.0-only"

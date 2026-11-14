@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.17 — 13 November 2026
+
+### Secrets that stayed open in ordinary notes, found with fake keys
+Before rotating real keys we generated **fake** ones in the formats of real services (Telegram bot token, a payments key of four 7-character groups, a 32-character IPN secret, a 64-hex master key, a URL-safe encryption secret, a Neon password, OpenAI, Resend, a 24-character deploy token) and wrote each into 20 forms people use in notes. 0.4.16 left the value open in 9 of 66 phrases of the first round and in 1,927 of 27,000 of the second. The forms, now masked (`padam/safety.py`, `_mask_context_secrets`):
+- a value after a label with no colon — "my api key is X", "новый ключ X — сохрани", "set API_KEY to X", "ARWEAVE_SECRET теперь X", "ключ API от сервиса — X", "Here is the token X";
+- a value after a label with a colon in a sentence — "Вот ключ от сервиса, запиши: X";
+- a two-cell Markdown row `| NOWPAYMENTS_API_KEY | X |`;
+- `NAME — X`, and `NAME = X` / `"NAME": "X"` / `NAME:` with the value on the next line when the value is strong;
+- a key of four 7-character groups with no digit, and a 20+ character random string of both cases with no digit (about 1–2 % of random 24-character tokens), which `strong_secret` did not see.
+In prose (the widest form) the value must also contain a digit, or be hex, 7×4 groups or a random-case string; snake_case / camelCase names, two- or three-character repeats (`9f9f…`), AWS public ids (`sg-…`), `process.env.X`, code with `=` inside and paths are not values.
+
+Measured:
+- fake keys: 30,000 phrases (150 rounds × 10 key kinds × 20 forms) — 0 left open; 12 ordinary phrases with key / token / password / ключ — 0 masked. The script is `tests/test_fake_keys_0417.py` (fixed seed, 2,160 phrases on every run).
+- LongMemEval-S, all 189,635 unique turns, 0.4.16 against 0.4.17: the first draft changed 51 turns, almost all false alarms ("**Key Considerations:**", "1987 Intermediate-Range Nuclear Forces Treaty", a security-group id, `status=status.HTTP_200_OK`); the rules above were narrowed from them. The release changes **1** turn: a real 40-hex SparkPost API key in a code example, now masked.
+- Suite: 984 passed, 11 skipped with `PADAM_LANG=en` and with `PADAM_LANG=ru` (Python 3.14).
+
 ## 0.4.16 — 13 November 2026
 
 ### Fewer false alarms around the word "password" (three old classes)
