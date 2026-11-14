@@ -258,6 +258,27 @@ def cmd_viewer(m: Memory, a) -> int:
     return 0
 
 
+def cmd_studio(m: Memory, a) -> int:
+    """PADAM Studio: полное приложение управления памятью в браузере (10 экранов, 4 языка, 2 темы)."""
+    from . import api
+    srv, ссылка = api.make_studio_server(m, port=a.port)
+    print(t("PADAM Studio в браузере (только этот компьютер). Ссылка действует, пока команда работает:",
+            "PADAM Studio in the browser (this computer only). The link works while this command runs:"), flush=True)
+    print(f"  {ссылка}", flush=True)
+    print(t("Ссылку никому не пересылайте: в ней одноразовый ключ к вашей памяти. Остановить — Ctrl+C.",
+            "Do not share the link: it carries a one-time key to your memory. Stop with Ctrl+C."), flush=True)
+    if not a.no_open:
+        import webbrowser
+        webbrowser.open(ссылка)
+    try:
+        srv.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        srv.server_close()
+    return 0
+
+
 def cmd_approve(m: Memory, a) -> int:
     if m.approve(a.id):
         print(t(f"{GREEN}Принято.{RESET} Запись действует.", f"{GREEN}Approved.{RESET} The record is active."))
@@ -306,6 +327,43 @@ def cmd_forget(m: Memory, a) -> int:
         print(f"{DIM}" + t("Если запись была заякорена, ключ уничтожен — данные в цепи нечитаемы навсегда.",
                            "If the record was anchored, its key is destroyed — the on-chain data is unreadable forever.")
               + f"{RESET}")
+        receipt = getattr(m, "_last_receipt", None)
+        if getattr(a, "receipt", None) and receipt:
+            import html as _html
+            out_path = a.receipt
+            if out_path.lower().endswith((".html", ".htm")):
+                doc = (
+                    "<!doctype html><html lang='ru'><head><meta charset='utf-8'>"
+                    "<title>PADAM NOCTURNE — Доказательство удаления / Proof of Deletion</title>"
+                    "<style>body{font-family:system-ui,sans-serif;max-width:740px;margin:32px auto;padding:24px;"
+                    "background:#0a0d14;color:#eef2ff;border:1px solid #1e293b;border-radius:12px}"
+                    "h1{font-size:20px;margin:0 0 8px;color:#38bdf8}p{color:#94a3b8;font-size:13px}"
+                    "table{width:100%;border-collapse:collapse;margin-top:16px;font-size:13px}"
+                    "td{padding:8px 10px;border-bottom:1px solid #1e293b;word-break:break-all}"
+                    "td:first-child{color:#94a3b8;width:36%;font-weight:600}"
+                    "code{font-family:monospace;color:#e2e8f0}</style></head><body>"
+                    "<h1>PADAM NOCTURNE · Доказательство удаления (Proof of Deletion)</h1>"
+                    "<p>Удалённый текст не сохранён в этой квитанции. Криптографический след доказывает факт и полноту уничтожения.</p>"
+                    "<table>"
+                    f"<tr><td>Receipt ID</td><td><code>{_html.escape(str(receipt.get('receipt_id', '')))}</code></td></tr>"
+                    f"<tr><td>Memory ID</td><td><code>{_html.escape(str(receipt.get('memory_id', '')))}</code></td></tr>"
+                    f"<tr><td>Forgotten At (UTC)</td><td><code>{_html.escape(str(receipt.get('forgotten_at', '')))}</code></td></tr>"
+                    f"<tr><td>Content SHA-256</td><td><code>{_html.escape(str(receipt.get('content_hash_sha256', '')))}</code></td></tr>"
+                    f"<tr><td>Wiped Records Count</td><td><code>{_html.escape(str(receipt.get('wiped_count', 0)))}</code></td></tr>"
+                    f"<tr><td>Wiped IDs</td><td><code>{_html.escape(', '.join(receipt.get('wiped_ids', [])))}</code></td></tr>"
+                    f"<tr><td>With Derived</td><td><code>{_html.escape(str(receipt.get('with_derived', False)))}</code></td></tr>"
+                    f"<tr><td>L3 Key Destroyed</td><td><code>{_html.escape(str(receipt.get('key_destroyed', False)))}</code></td></tr>"
+                    f"<tr><td>Anchor TX</td><td><code>{_html.escape(str(receipt.get('anchor_tx') or '—'))}</code></td></tr>"
+                    f"<tr><td>Merkle Forget Leaf</td><td><code>{_html.escape(str(receipt.get('leaf_forget_hex', '')))}</code></td></tr>"
+                    "</table></body></html>"
+                )
+                with open(out_path, "w", encoding="utf-8") as f:
+                    f.write(doc)
+            else:
+                with open(out_path, "w", encoding="utf-8") as f:
+                    json.dump(receipt, f, ensure_ascii=False, indent=2)
+            print(t(f"{GREEN}Квитанция удаления сохранена:{RESET} {out_path}",
+                    f"{GREEN}Deletion receipt saved:{RESET} {out_path}"))
         return 0
     _not_found()
     return 1
@@ -762,6 +820,8 @@ def main(argv=None) -> int:
     s.add_argument("id")
     s.add_argument("--with-derived", action="store_true",
                    help=t("стереть и выводы, сделанные из записи", "also wipe conclusions drawn from the record"))
+    s.add_argument("--receipt", default=None,
+                   help=t("сохранить квитанцию удаления (.json или .html)", "save a deletion receipt (.json or .html)"))
     s.set_defaults(fn=cmd_forget)
 
     s = sub.add_parser("alias", help=t("синонимы терминов для поиска", "term aliases for search"))
@@ -810,6 +870,12 @@ def main(argv=None) -> int:
     s.add_argument("--port", type=int, default=8078)
     s.add_argument("--no-open", action="store_true", help=t("не открывать браузер", "do not open a browser"))
     s.set_defaults(fn=cmd_viewer)
+
+    s = sub.add_parser("studio", help=t("приложение PADAM Studio в браузере (10 экранов, 4 языка, граф, L3, доктор)",
+                                        "PADAM Studio app in the browser (10 screens, 4 languages, graph, L3, doctor)"))
+    s.add_argument("--port", type=int, default=8078)
+    s.add_argument("--no-open", action="store_true", help=t("не открывать браузер", "do not open a browser"))
+    s.set_defaults(fn=cmd_studio)
 
     s = sub.add_parser("reindex", help=t("пересчитать векторы после смены модели",
                                          "recompute vectors after changing the embedding model"))

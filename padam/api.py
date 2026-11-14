@@ -42,15 +42,16 @@ import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
-from . import __version__, config, safety, viewer
+from . import __version__, config, safety, studio, viewer
 from .i18n import t
-from .memory import Memory
+from .memory import Memory, decay, parse_ts
 from .nocturne import Nocturne
 from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/trust-protected", "/settings", "/l3-verify"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
 
@@ -171,18 +172,21 @@ class Handler(BaseHTTPRequestHandler):
         путь = urlsplit(self.path)
         if путь.path == "/" and _state.get("ui"):
             self.send_response(302)
-            self.send_header("Location", "/ui")
+            self.send_header("Location", "/studio" if _state.get("studio_default") else "/ui")
             self.send_header("Content-Length", "0")
             self.end_headers()
             return None
         if путь.path == "/ui" and _state.get("ui"):
             # Сама страница данных не содержит: записи она берёт через API с токеном из ссылки.
             return self._send_page(viewer.page())
+        if путь.path == "/studio" and _state.get("ui"):
+            # Приложение PADAM Studio: строгий CSP, без встроенных данных и токена в HTML.
+            return self._send_page(studio.page())
         if not self._authorized():
             return self._send(401, {"error": "unauthorized"})
         if not _state["token"]:
             q0 = parse_qs(путь.query)
-            if путь.path == "/export" or (путь.path == "/records" and q0.get("view", ["active"])[0] != "active"):
+            if путь.path in OWNER_GET or (путь.path == "/records" and q0.get("view", ["active"])[0] != "active"):
                 return self._send(403, NEEDS_TOKEN)
         try:
             if путь.path == "/records":
@@ -190,9 +194,56 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, mem().list_records(
                     view=q.get("view", ["active"])[0], text=q.get("q", [None])[0],
                     limit=int(q.get("limit", ["100"])[0]), offset=int(q.get("offset", ["0"])[0]),
-                    as_of=q.get("as_of", [None])[0]))
+                    as_of=q.get("as_of", [None])[0],
+                    kind=q.get("kind", [None])[0] or None,
+                    scope=q.get("scope", [None])[0] or None))
             if self.path == "/stats":
                 return self._send(200, mem().stats())
+            if путь.path == "/doctor":
+                return self._send(200, mem().doctor_report())
+            if путь.path == "/overview":
+                m = mem()
+                unsigned = m.unsigned_protected()
+                return self._send(200, {
+                    "stats": m.stats(),
+                    "doctor": m.doctor_report(),
+                    "nocturne_runs": m.nocturne_runs(5),
+                    "unsigned_protected": [
+                        {"id": r["id"], "kind": r["kind"], "content": r["content"][:160]}
+                        for r in unsigned
+                    ],
+                    "conflicts": m.conflicts(),
+                })
+            if путь.path == "/graph":
+                q = parse_qs(путь.query)
+                return self._send(200, mem().graph(
+                    center_id=q.get("id", [None])[0] or None,
+                    limit=int(q.get("limit", ["200"])[0]),
+                ))
+            if путь.path == "/forget-preview":
+                q = parse_qs(путь.query)
+                rid = q.get("id", [None])[0]
+                if not rid:
+                    return self._send(400, {"error": "id is required"})
+                prev = mem().forget_preview(rid)
+                if not prev:
+                    return self._send(404, {"error": "not found"})
+                return self._send(200, prev)
+            if путь.path == "/forget-receipts":
+                q = parse_qs(путь.query)
+                return self._send(200, {"receipts": mem().forget_receipts(limit=int(q.get("limit", ["50"])[0]))})
+            if путь.path == "/l3":
+                return self._send(200, mem().l3_status())
+            if путь.path == "/settings":
+                return self._send(200, {
+                    "strict": config.STRICT,
+                    "mcp_review_all": config.MCP_REVIEW_ALL,
+                    "search_feedback": config.SEARCH_FEEDBACK,
+                    "hold_external": config.HOLD_EXTERNAL,
+                    "keep_secrets": config.KEEP_SECRETS,
+                    "mcp_trust_writes": config.MCP_TRUST_WRITES,
+                    "profile": config.PROFILE_NAME,
+                })
             if self.path == "/export":
                 return self._send(200, mem().export())
             if self.path.startswith("/timeline/"):
@@ -238,11 +289,16 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"results": [
                     {"id": r.id, "kind": r.kind, "content": r.content,
                      "score": round(r.score, 5),
+                     "rrf": round(r.similarity, 5),
+                     "decay": round(decay(r.kind, r.last_confirmed_at), 4),
                      "importance": r.importance, "confidence": r.confidence,
                      "origin": r.origin, "created_at": r.created_at,
+                     "last_confirmed_at": r.last_confirmed_at.isoformat() if hasattr(r.last_confirmed_at, "isoformat") else str(r.last_confirmed_at),
                      "expired": r.expired, "status": r.status,
+                     "scope": r.scope, "signed": r.signed, "conflict": r.conflict,
                      "suspicious": safety.looks_like_instruction(r.content),
-                     "found_by": list(r.strategies)} for r in found]})
+                     "found_by": list(r.strategies),
+                     "explain": r.explain()} for r in found]})
 
             if self.path == "/write":
                 if "content" not in data:
@@ -269,7 +325,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": m.refute(data["id"], drop=float(data.get("drop", 0.3)))})
 
             if self.path == "/forget":
-                return self._send(200, {"ok": m.revoke(data["id"])})
+                ok = m.revoke(data["id"], with_derived=bool(data.get("with_derived", False)))
+                return self._send(200, {
+                    "ok": ok,
+                    "receipt": getattr(m, "_last_receipt", None) if ok else None,
+                })
 
             # Решения владельца по записям агента. У MCP этих действий нет; здесь они под токеном.
             if self.path == "/approve":
@@ -278,6 +338,48 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": m.reject(data["id"])})
             if self.path == "/restore":
                 return self._send(200, {"ok": m.restore(data["id"])})
+            if self.path == "/trust-protected":
+                return self._send(200, {"ok": True, "signed": m.trust_protected()})
+            if self.path == "/l3-verify":
+                return self._send(200, m.l3_verify_anchor(
+                    anchor_id=data.get("anchor"),
+                    online=bool(data.get("online", False)),
+                ))
+            if self.path == "/settings":
+                # Опасные настройки нельзя включать из браузера: только читать или выключать в сторону защиты.
+                if data.get("keep_secrets") is True or data.get("mcp_trust_writes") is True or data.get("hold_external") is False:
+                    return self._send(403, {"error": "unsafe setting cannot be enabled from the browser"})
+                if "strict" in data:
+                    config.STRICT = bool(data["strict"])
+                    if config.STRICT:
+                        config.KEEP_SECRETS = False
+                        config.HOLD_EXTERNAL = True
+                        config.MCP_TRUST_WRITES = False
+                if "mcp_review_all" in data:
+                    config.MCP_REVIEW_ALL = bool(data["mcp_review_all"])
+                if "search_feedback" in data:
+                    config.SEARCH_FEEDBACK = bool(data["search_feedback"])
+                if "hold_external" in data and bool(data["hold_external"]):
+                    config.HOLD_EXTERNAL = True
+                if "keep_secrets" in data and not bool(data["keep_secrets"]):
+                    config.KEEP_SECRETS = False
+                if "mcp_trust_writes" in data and not bool(data["mcp_trust_writes"]):
+                    config.MCP_TRUST_WRITES = False
+                if "profile" in data and str(data["profile"]) in config.PROFILES:
+                    config.PROFILE_NAME = str(data["profile"])
+                    prof = config.PROFILES[config.PROFILE_NAME]
+                    config.SEMANTIC_WEIGHT = prof["semantic"]
+                    config.LEXICAL_WEIGHT = prof["lexical"]
+                return self._send(200, {
+                    "ok": True,
+                    "strict": config.STRICT,
+                    "mcp_review_all": config.MCP_REVIEW_ALL,
+                    "search_feedback": config.SEARCH_FEEDBACK,
+                    "hold_external": config.HOLD_EXTERNAL,
+                    "keep_secrets": config.KEEP_SECRETS,
+                    "mcp_trust_writes": config.MCP_TRUST_WRITES,
+                    "profile": config.PROFILE_NAME,
+                })
 
             if self.path == "/sleep":
                 report = Nocturne(m, batch_size=int(data.get("batch", 256)),
@@ -301,10 +403,23 @@ def make_viewer_server(memory: Memory | None = None, port: int = 8078) -> tuple[
     _state["token"] = secrets.token_urlsafe(24)
     _state["local"] = True
     _state["ui"] = True
+    _state["studio_default"] = False
     if memory is not None:
         _state["memory"] = memory
     srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     return srv, f"http://127.0.0.1:{srv.server_address[1]}/ui#t={_state['token']}"
+
+
+def make_studio_server(memory: Memory | None = None, port: int = 8078) -> tuple[ThreadingHTTPServer, str]:
+    """Сервер приложения PADAM Studio: только 127.0.0.1, одноразовый токен в якоре ссылки."""
+    _state["token"] = secrets.token_urlsafe(24)
+    _state["local"] = True
+    _state["ui"] = True
+    _state["studio_default"] = True
+    if memory is not None:
+        _state["memory"] = memory
+    srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    return srv, f"http://127.0.0.1:{srv.server_address[1]}/studio#t={_state['token']}"
 
 
 def main(argv=None) -> int:
