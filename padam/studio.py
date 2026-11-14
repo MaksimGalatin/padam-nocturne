@@ -1419,34 +1419,50 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 @media (max-width: 860px) {
   .layout {
     grid-template-columns: 1fr;
+    min-height: auto;
   }
   .sidebar {
     border-right: 0;
     border-bottom: 1px solid var(--line);
-    padding: 12px;
+    padding: 12px 14px;
+    gap: 10px;
+  }
+  .sidebar-footer {
+    display: none;
   }
   .nav-list {
     flex-direction: row;
-    overflow-x: auto;
-    padding-bottom: 4px;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-bottom: 2px;
   }
   .nav-tab {
     width: auto;
     white-space: nowrap;
-    padding: 7px 11px;
-    font-size: 13px;
+    padding: 6px 10px;
+    font-size: 12px;
   }
   .topbar {
-    padding: 12px 14px;
+    padding: 10px 14px;
+  }
+  .topbar-title {
+    font-size: 16px;
   }
   .content-area {
     padding: 14px;
+  }
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .kpi-value {
+    font-size: 24px;
   }
   .two-col {
     grid-template-columns: 1fr;
   }
   .kind-row {
-    grid-template-columns: 130px 1fr 38px;
+    grid-template-columns: 110px 1fr 34px;
   }
   .kv-row {
     grid-template-columns: 1fr;
@@ -2077,23 +2093,28 @@ function layoutGraph(nodes, edges, width, height) {
   const n = nodes.length;
   if (!n) return pos;
   const cx = width / 2, cy = height / 2;
-  const radius = Math.min(width, height) * 0.36;
+  const rx = Math.max(120, width * 0.37);
+  const ry = Math.max(90, height * 0.35);
   nodes.forEach((node, i) => {
     const angle = (2 * Math.PI * i) / n - Math.PI / 2;
+    const ring = (n > 8 && i % 2 === 1) ? 0.64 : 1.0;
     pos[node.id] = {
-      x: cx + radius * Math.cos(angle),
-      y: cy + radius * Math.sin(angle),
+      x: cx + rx * ring * Math.cos(angle),
+      y: cy + ry * ring * Math.sin(angle),
       vx: 0, vy: 0
     };
   });
-  // Итерации силового размещения
-  for (let iter = 0; iter < 60; iter++) {
+  // Итерации силового размещения с защитой от пересечения подписей
+  for (let iter = 0; iter < 80; iter++) {
     for (let i = 0; i < n; i++) {
       for (let j = i + 1; j < n; j++) {
         const a = pos[nodes[i].id], b = pos[nodes[j].id];
         let dx = a.x - b.x, dy = a.y - b.y;
         let dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        let rep = Math.min(1800 / (dist * dist), 18);
+        let rep = Math.min(5200 / (dist * dist), 28);
+        if (Math.abs(dy) < 38 && Math.abs(dx) < 170) {
+          rep += 6;
+        }
         a.vx += (dx / dist) * rep; a.vy += (dy / dist) * rep;
         b.vx -= (dx / dist) * rep; b.vy -= (dy / dist) * rep;
       }
@@ -2103,15 +2124,32 @@ function layoutGraph(nodes, edges, width, height) {
       if (!a || !b) continue;
       let dx = b.x - a.x, dy = b.y - a.y;
       let dist = Math.sqrt(dx * dx + dy * dy) || 1;
-      let force = (dist - 120) * 0.04;
+      let force = (dist - 165) * 0.035;
       a.vx += (dx / dist) * force; a.vy += (dy / dist) * force;
       b.vx -= (dx / dist) * force; b.vy -= (dy / dist) * force;
     }
     for (const node of nodes) {
       const p = pos[node.id];
-      p.x = Math.max(48, Math.min(width - 48, p.x + p.vx * 0.35));
-      p.y = Math.max(36, Math.min(height - 36, p.y + p.vy * 0.35));
+      p.x = Math.max(95, Math.min(width - 95, p.x + p.vx * 0.35));
+      p.y = Math.max(44, Math.min(height - 48, p.y + p.vy * 0.35));
       p.vx *= 0.4; p.vy *= 0.4;
+    }
+  }
+  // Детерминированное разнесение узлов, чтобы подписи гарантированно не пересекались
+  for (let pass = 0; pass < 12; pass++) {
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const a = pos[nodes[i].id], b = pos[nodes[j].id];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        if (Math.abs(dx) < 185 && Math.abs(dy) < 56) {
+          const pushY = (56 - Math.abs(dy)) * 0.6 * (dy >= 0 ? 1 : -1);
+          const pushX = (185 - Math.abs(dx)) * 0.35 * (dx >= 0 ? 1 : -1);
+          a.y = Math.max(44, Math.min(height - 48, a.y - pushY));
+          b.y = Math.max(44, Math.min(height - 48, b.y + pushY));
+          a.x = Math.max(95, Math.min(width - 95, a.x - pushX));
+          b.x = Math.max(95, Math.min(width - 95, b.x + pushX));
+        }
+      }
     }
   }
   return pos;
@@ -2141,7 +2179,7 @@ function drawGraph() {
     const a = graphPositions[e.source], b = graphPositions[e.target];
     if (!a || !b) continue;
     ctx.beginPath();
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.2;
     if (e.type === 'derived') ctx.strokeStyle = isDark ? '#00d2ff' : '#0284c7';
     else if (e.type === 'version') ctx.strokeStyle = isDark ? '#a78bfa' : '#4f46e5';
     else ctx.strokeStyle = isDark ? '#f87171' : '#dc2626';
@@ -2153,17 +2191,17 @@ function drawGraph() {
     const angle = Math.atan2(b.y - a.y, b.x - a.x);
     const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
     ctx.beginPath();
-    ctx.moveTo(mx + 6 * Math.cos(angle), my + 6 * Math.sin(angle));
-    ctx.lineTo(mx - 6 * Math.cos(angle - 0.5), my - 6 * Math.sin(angle - 0.5));
-    ctx.lineTo(mx - 6 * Math.cos(angle + 0.5), my - 6 * Math.sin(angle + 0.5));
+    ctx.moveTo(mx + 7 * Math.cos(angle), my + 7 * Math.sin(angle));
+    ctx.lineTo(mx - 6 * Math.cos(angle - 0.55), my - 6 * Math.sin(angle - 0.55));
+    ctx.lineTo(mx - 6 * Math.cos(angle + 0.55), my - 6 * Math.sin(angle + 0.55));
     ctx.closePath();
     ctx.fillStyle = ctx.strokeStyle;
     ctx.fill();
   }
 
-  for (const node of nodes) {
+  nodes.forEach((node, idx) => {
     const p = graphPositions[node.id];
-    if (!p) continue;
+    if (!p) return;
     const isSel = selectedGraphNode && selectedGraphNode.id === node.id;
     ctx.beginPath();
     ctx.arc(p.x, p.y, isSel ? 16 : 12, 0, Math.PI * 2);
@@ -2172,16 +2210,20 @@ function drawGraph() {
     else if (node.kind === 'decision') ctx.fillStyle = isDark ? '#34d399' : '#059669';
     else ctx.fillStyle = isDark ? '#00d2ff' : '#0284c7';
     ctx.fill();
-    ctx.lineWidth = isSel ? 3 : 1.5;
+    ctx.lineWidth = isSel ? 3 : 1.8;
     ctx.strokeStyle = isSel ? '#fbbf24' : (isDark ? '#f1f5f9' : '#0f172a');
     ctx.stroke();
 
-    ctx.fillStyle = isDark ? '#e2e8f0' : '#0f172a';
     ctx.font = '12px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    const shortLabel = (node.label || node.id).slice(0, 26);
-    ctx.fillText(shortLabel, p.x, p.y + 26);
-  }
+    const shortLabel = (node.label || node.id).slice(0, 22);
+    const ly = p.y + 26;
+    const tw = ctx.measureText(shortLabel).width + 10;
+    ctx.fillStyle = isDark ? 'rgba(11, 16, 29, 0.85)' : 'rgba(255, 255, 255, 0.88)';
+    ctx.fillRect(p.x - tw / 2, ly - 11, tw, 16);
+    ctx.fillStyle = isDark ? '#e2e8f0' : '#0f172a';
+    ctx.fillText(shortLabel, p.x, ly);
+  });
 }
 
 function renderSelectedGraphNode() {

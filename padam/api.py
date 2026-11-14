@@ -365,11 +365,10 @@ class Handler(BaseHTTPRequestHandler):
                     config.KEEP_SECRETS = False
                 if "mcp_trust_writes" in data and not bool(data["mcp_trust_writes"]):
                     config.MCP_TRUST_WRITES = False
-                if "profile" in data and str(data["profile"]) in config.PROFILES:
+                if "profile" in data and str(data["profile"]) in config._PROFILES:
                     config.PROFILE_NAME = str(data["profile"])
-                    prof = config.PROFILES[config.PROFILE_NAME]
-                    config.SEMANTIC_WEIGHT = prof["semantic"]
-                    config.LEXICAL_WEIGHT = prof["lexical"]
+                    config.K_MAX = config._PROFILES[config.PROFILE_NAME]
+                    config.MAX_HI_SHARE = config.K_MAX
                 return self._send(200, {
                     "ok": True,
                     "strict": config.STRICT,

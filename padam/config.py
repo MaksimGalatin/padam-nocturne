@@ -143,6 +143,8 @@ EXPIRED_PENALTY = 0.2   # множитель для записей с истёк
 # помнить лучше, творческому помощнику — слабее. PADAM_PROFILE задаёт готовый уровень, PADAM_SHARP_SHARE —
 # точное число; оба ограничены 0.05–0.5, чтобы ни сон из одних катастроф, ни слепота к ним не настраивались.
 _PROFILES = {"default": 0.25, "ops": 0.40, "creative": 0.10}
+PROFILES = _PROFILES
+PROFILE_NAME = os.environ.get("PADAM_PROFILE", "default") if os.environ.get("PADAM_PROFILE", "default") in _PROFILES else "default"
 
 
 def _sharp_share() -> float:

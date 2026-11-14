@@ -177,7 +177,28 @@ For questions that aggregate across many conversations ("how many…", "how much
 | POST | `/sleep` | run NOCTURNE |
 | POST | `/import` | load an export back |
 
-**Memory in the browser.** `padam viewer` opens a page on this computer only: records on a timeline by day, a filter by text and by kind, the records waiting for your decision with **Approve** and **Reject**, the history, **memory as of a date**, and a **Forget** button with a second confirmation. The link it prints carries a one-time token after `#`, so it never reaches a server log; the page holds no data itself, shows stored text only as text, and its Content-Security-Policy forbids anything external, images included. Checked in a browser on 9 Nov 2026, light and dark, desktop and phone width.
+**Memory in the browser (`padam studio` and `padam viewer`).** `padam studio` opens the full 10-screen local application on this computer only (`127.0.0.1`):
+- **Overview & Doctor** — active/held/superseded/revoked counts, breakdown by kind, last NOCTURNE sleep run, and a traffic-light security check (`padam doctor`) in plain words;
+- **Memory Feed** — day-by-day timeline, filters by kind and text, quick owner write, version history, confirm/refute;
+- **Hybrid Search (`--explain`)** — recalls records and shows the exact score formula (`rrf × imp × conf × decay`) and matched strategies;
+- **Review Queue** — held agent and external writes with human-readable reasons and **Approve** / **Reject** buttons;
+- **Time Machine (`as_of`)** — inspect what your memory knew on any past date, including records replaced later;
+- **Forget & Proof of Deletion** — preview versions and derived conclusions (`--with-derived`), double confirmation, and downloadable cryptographic **Forget Receipts** (JSON and printable HTML);
+- **Lineage Graph** — zero-dependency interactive `<canvas>` graph of `derived_from` conclusions, `supersedes` versions, and conflicting facts;
+- **Eternal Layer L3** — key protection status, anchored snapshots with Solscan and Arweave links, and one-click `l3-verify`;
+- **Settings & Quick Start** — one-switch `PADAM_STRICT`, consolidation profiles, and 1-command onboarding for Claude Code, Cursor, and VS Code (unsafe flags are read-only in the browser).
+
+Try it immediately on a standalone showcase database without touching your real memory:
+
+```bash
+python -m padam demo --studio
+```
+
+Available in **4 languages** (`ru`, `en`, `es`, `zh`, defaulting to your system language) and **2 themes** (dark CODE Eternal and high-contrast light, defaulting to `prefers-color-scheme`). The printed link carries a one-time token after `#` (`history.replaceState` removes it from the address bar immediately); the HTML contains no stored records, renders all content strictly via `textContent` (`0` `innerHTML`), and enforces `Content-Security-Policy: default-src 'none'; script-src 'nonce-…'; style-src 'nonce-…'; connect-src 'self'; img-src 'none'`. The lightweight single-page `padam viewer` remains available as well.
+
+![PADAM Studio — Overview & Security Doctor](docs/images/studio-overview.png)
+
+![PADAM Studio — Interactive Lineage Graph](docs/images/studio-graph.png)
 
 POST bodies must be `application/json` objects of at most 10 MB. When running locally the server accepts only local `Host` and `Origin` headers, so a web page you happen to open cannot read your `/export` through DNS rebinding.
 

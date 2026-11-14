@@ -326,3 +326,28 @@ def test_demo_command_creates_rich_isolated_db(tmp_path):
         assert ver["ok"] is True
     finally:
         mem.close()
+
+
+def test_settings_get_and_safe_toggle(tmp_path):
+    """GET /settings возвращает 200 со всеми переключателями, а POST /settings меняет безопасные режимы."""
+    mem = Memory(user_id="set_user", store=Store(tmp_path / "set.db"))
+    srv, link = api.make_studio_server(mem, port=0)
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+    try:
+        m = re.match(r"^(http://127\.0\.0\.1:\d+)/studio#t=(.+)$", link)
+        assert m
+        base, token = m.group(1), m.group(2)
+
+        code, _, st_get = _http_json(f"{base}/settings", token=token)
+        assert code == 200
+        assert st_get["profile"] in ("default", "ops", "creative")
+        assert "strict" in st_get and "hold_external" in st_get
+
+        code, _, st_post = _http_json(f"{base}/settings", token=token, body={"profile": "ops"})
+        assert code == 200 and st_post["profile"] == "ops"
+        _http_json(f"{base}/settings", token=token, body={"profile": "default"})
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        mem.close()
