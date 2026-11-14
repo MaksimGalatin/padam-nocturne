@@ -1826,3 +1826,357 @@ def test_g3_mcp_prompts_skills_and_fencing(tmp_path, monkeypatch):
         assert err_resp["error"]["code"] == -32602
     finally:
         m.close()
+
+
+def test_g9_quick_add_hotkey_modal_and_user_origin():
+    """Г9: Всплывающее окно быстрой записи по горячей клавише (Ctrl+Shift+M / Alt+M) и сохранение с origin='user'."""
+    from padam import studio
+
+    html, _ = studio.page()
+    assert 'id="quick-add-modal"' in html
+    assert 'id="quick-add-text"' in html
+    assert 'id="quick-add-kind"' in html
+    assert 'id="quick-add-save"' in html
+    assert 'id="btn-quick-add"' in html
+    assert "openQuickAddModal" in html
+    assert "e.ctrlKey && e.shiftKey" in html
+    assert "origin: 'user'" in html
+
+
+def test_g10_ask_memory_with_and_without_ollama_and_settings(tmp_path, monkeypatch):
+    """Г10: «Спроси свою память» — без Ollama возвращает найденные записи с разбором 'почему найдено',
+    а с локальной Ollama (127.0.0.1:11434) передаёт записи внутри ограды safety.fence и возвращает ответ со ссылками [1].
+    """
+    import http.server
+    import json
+    import re
+    import threading
+    from padam import api, config
+    from padam.memory import Memory
+    from padam.store import Store
+
+    fence_open = re.compile(r'<memory-data nonce="([0-9a-f]{32})">')
+    fence_close = re.compile(r'</memory-data nonce="([0-9a-f]{32})">')
+
+    m = Memory(user_id="ask_u", store=Store(tmp_path / "ask.db"))
+    try:
+        m.remember("Основной сервер БД работает на PostgreSQL 16 на порту 5432", kind="fact", origin="user")
+        m.remember("Резервное копирование выполняется каждую ночь в 03:00", kind="decision", origin="user")
+
+        # 1. Без локальной Ollama (недоступен порт) -> честный режим search_explain
+        monkeypatch.setattr(config, "OLLAMA_URL", "http://127.0.0.1:59998")
+        monkeypatch.setattr(config, "ASK_MODEL", "")
+        r_no_ol = m.ask("На каком порту работает PostgreSQL?")
+        assert r_no_ol["mode"] == "search_explain"
+        assert r_no_ol["ollama_available"] is False
+        assert r_no_ol["answer"] is None
+        assert len(r_no_ol["records"]) >= 1
+        assert "5432" in r_no_ol["records"][0]["content"]
+        assert "score=" in r_no_ol["records"][0]["explain"]
+
+        # 2. Запускаем локальный мок-сервер Ollama на 127.0.0.1
+        captured_prompts = []
+
+        class _MockOllama(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+
+            def do_GET(self):
+                if self.path == "/api/tags":
+                    body = json.dumps({"models": [{"name": "qwen2.5:3b"}, {"name": "nomic-embed-text"}]}).encode("utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(body)
+
+            def do_POST(self):
+                if self.path == "/api/generate":
+                    ln = int(self.headers.get("Content-Length", "0"))
+                    payload = json.loads(self.rfile.read(ln).decode("utf-8"))
+                    captured_prompts.append(payload)
+                    body = json.dumps({
+                        "model": payload.get("model"),
+                        "response": "PostgreSQL 16 работает на порту 5432 согласно записи [1].",
+                    }).encode("utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(body)
+
+        ol_srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _MockOllama)
+        ol_port = ol_srv.server_address[1]
+        ol_thread = threading.Thread(target=ol_srv.serve_forever, daemon=True)
+        ol_thread.start()
+        try:
+            monkeypatch.setattr(config, "OLLAMA_URL", f"http://127.0.0.1:{ol_port}")
+            ol_info = m.ollama_models()
+            assert ol_info["available"] is True
+            assert "qwen2.5:3b" in ol_info["models"]
+            assert "nomic-embed-text" not in ol_info["models"]
+
+            r_ol = m.ask("На каком порту работает PostgreSQL?")
+            assert r_ol["mode"] == "ollama"
+            assert r_ol["ollama_available"] is True
+            assert r_ol["model"] == "qwen2.5:3b"
+            assert "[1]" in r_ol["answer"]
+            assert len(captured_prompts) == 1
+            prompt_sent = captured_prompts[0]["prompt"]
+            assert len(fence_open.findall(prompt_sent)) == 1
+            assert fence_open.findall(prompt_sent) == fence_close.findall(prompt_sent)
+
+            # Проверка HTTP-маршрута POST /ask и сохранения ask_model через POST /settings
+            srv, link = api.make_studio_server(m, port=0)
+            t = threading.Thread(target=srv.serve_forever, daemon=True)
+            t.start()
+            try:
+                mt = re.match(r"^(http://127\.0\.0\.1:\d+)/studio#t=(.+)$", link)
+                base, tok = mt.group(1), mt.group(2)
+
+                st_code, _, st_res = _http_json(f"{base}/settings", token=tok, body={"ask_model": "qwen2.5:3b"})
+                assert st_code == 200 and st_res["ask_model"] == "qwen2.5:3b"
+                assert config.ASK_MODEL == "qwen2.5:3b"
+
+                ask_code, _, ask_res = _http_json(f"{base}/ask", token=tok, body={"question": "Порт PostgreSQL?"})
+                assert ask_code == 200
+                assert ask_res["mode"] == "ollama"
+                assert "[1]" in ask_res["answer"]
+            finally:
+                srv.shutdown()
+                srv.server_close()
+        finally:
+            ol_srv.shutdown()
+            ol_srv.server_close()
+    finally:
+        m.close()
+
+
+def test_g11_entities_catalog_and_studio_screen(tmp_path):
+    """Г11: Экран «Сущности» собирает имена, сервисы и субъекты фактов поверх обычных записей без внешней графовой БД."""
+    import re
+    import threading
+    from padam import api
+    from padam.memory import Memory
+    from padam.store import Store
+
+    m = Memory(user_id="ent_u", store=Store(tmp_path / "ent.db"))
+    try:
+        m.remember("Сервер базы данных работает на PostgreSQL и Redis", kind="fact", origin="user")
+        m.remember("Архитектор Максим утвердил переход на Tauri", kind="decision", origin="user")
+        m.remember("Основной язык сервера — Python", kind="preference", origin="user")
+
+        cat = m.entities_catalog()
+        assert cat["total"] >= 3
+        names_low = {e["key"]: e for e in cat["entities"]}
+        assert "postgresql" in names_low
+        assert names_low["postgresql"]["count"] >= 1
+        assert any("PostgreSQL" in r["content"] for r in names_low["postgresql"]["records"])
+
+        # Фильтрация через HTTP GET /entities?q=postgres
+        srv, link = api.make_studio_server(m, port=0)
+        t = threading.Thread(target=srv.serve_forever, daemon=True)
+        t.start()
+        try:
+            mt = re.match(r"^(http://127\.0\.0\.1:\d+)/studio#t=(.+)$", link)
+            base, tok = mt.group(1), mt.group(2)
+
+            c_unauth, _, _ = _http_json(f"{base}/entities", token=None)
+            assert c_unauth == 401
+            c_ok, _, data = _http_json(f"{base}/entities?q=postgres", token=tok)
+            assert c_ok == 200
+            assert data["total"] == 1
+            assert data["entities"][0]["key"] == "postgresql"
+        finally:
+            srv.shutdown()
+            srv.server_close()
+    finally:
+        m.close()
+
+
+def test_g12_pwa_manifest_icons_and_strict_csp(tmp_path):
+    """Г12: PWA-манифест, PNG-иконки 192/512 из единого векторного логотипа CODE и строгий CSP без внешних шрифтов/скриптов."""
+    import re
+    import threading
+    import urllib.request
+    from padam import api
+    from padam.memory import Memory
+    from padam.store import Store
+
+    m = Memory(user_id="pwa_u", store=Store(tmp_path / "pwa.db"))
+    srv, link = api.make_studio_server(m, port=0)
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+    try:
+        mt = re.match(r"^(http://127\.0\.0\.1:\d+)/studio#t=(.+)$", link)
+        base = mt.group(1)
+
+        # 1. Манифест /manifest.webmanifest
+        c_man, _, man = _http_json(f"{base}/manifest.webmanifest")
+        assert c_man == 200
+        assert man["name"] == "PADAM · NOCTURNE Studio"
+        assert man["short_name"] == "PADAM Studio"
+        assert man["display"] == "standalone"
+        icon_srcs = {ic["src"] for ic in man["icons"]}
+        assert {"/favicon.svg", "/icon-192.png", "/icon-512.png"} <= icon_srcs
+
+        # 2. PNG-иконки /icon-192.png и /icon-512.png
+        for path, expected_dim in (("/icon-192.png", 192), ("/icon-512.png", 512)):
+            with urllib.request.urlopen(f"{base}{path}", timeout=5) as r:
+                raw = r.read()
+                assert r.status == 200
+                assert r.headers.get("Content-Type") == "image/png"
+                assert raw[:8] == b"\x89PNG\r\n\x1a\n"
+                w = int.from_bytes(raw[16:20], "big")
+                h = int.from_bytes(raw[20:24], "big")
+                assert (w, h) == (expected_dim, expected_dim)
+
+        # 3. Сервис-воркер /sw.js и строгий CSP на /studio
+        with urllib.request.urlopen(f"{base}/sw.js", timeout=5) as r:
+            sw_js = r.read().decode("utf-8")
+            assert r.status == 200
+            assert "Authorization" in sw_js
+
+        with urllib.request.urlopen(f"{base}/studio", timeout=5) as r:
+            csp = r.headers.get("Content-Security-Policy") or ""
+            html = r.read().decode("utf-8")
+            assert "default-src 'none'" in csp
+            assert "connect-src 'self'" in csp
+            assert 'rel="manifest" href="/manifest.webmanifest"' in html
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        m.close()
+
+
+
+
+def test_g4_mcp_streamable_http_local_and_token_required(tmp_path):
+    """Г4: Транспорт Streamable HTTP для локального MCP (padam serve --http): только 127.0.0.1 и обязательный Bearer-токен."""
+    import json
+    import threading
+    import urllib.error
+    import urllib.request
+    import pytest
+    from padam import mcp_server
+    from padam.memory import Memory
+    from padam.store import Store
+
+    m = Memory(user_id="g4_u", store=Store(tmp_path / "g4.db"))
+    try:
+        # Отказ при попытке слушать внешний адрес 0.0.0.0 или слабый токен
+        with pytest.raises(ValueError):
+            mcp_server.make_mcp_http_server(memory=m, host="0.0.0.0", port=0)
+        with pytest.raises(ValueError):
+            mcp_server.make_mcp_http_server(memory=m, host="127.0.0.1", port=0, token="short")
+
+        srv, url, tok = mcp_server.make_mcp_http_server(memory=m, host="127.0.0.1", port=0)
+        t = threading.Thread(target=srv.serve_forever, daemon=True)
+        t.start()
+        try:
+            # Без токена -> 401
+            req_no_tok = urllib.request.Request(
+                url,
+                data=b'{"jsonrpc":"2.0","id":1,"method":"tools/list"}',
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with pytest.raises(urllib.error.HTTPError) as exc:
+                urllib.request.urlopen(req_no_tok, timeout=5)
+            assert exc.value.code == 401
+
+            # С чужим Origin -> 403
+            req_bad_origin = urllib.request.Request(
+                url,
+                data=b'{"jsonrpc":"2.0","id":1,"method":"tools/list"}',
+                headers={"Content-Type": "application/json", "Authorization": f"Bearer {tok}", "Origin": "https://evil.example"},
+                method="POST",
+            )
+            with pytest.raises(urllib.error.HTTPError) as exc2:
+                urllib.request.urlopen(req_bad_origin, timeout=5)
+            assert exc2.value.code == 403
+
+            # С валидным Bearer-токеном -> 200 OK + Mcp-Session-Id
+            req_ok = urllib.request.Request(
+                url,
+                data=json.dumps({"jsonrpc": "2.0", "id": 7, "method": "tools/list"}).encode("utf-8"),
+                headers={"Content-Type": "application/json", "Authorization": f"Bearer {tok}"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req_ok, timeout=5) as r:
+                assert r.status == 200
+                assert r.headers.get("Mcp-Session-Id")
+                res = json.loads(r.read().decode("utf-8"))
+                assert len(res["result"]["tools"]) == 9
+
+            # Уведомление без id -> 202 Accepted
+            req_notif = urllib.request.Request(
+                url,
+                data=json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}).encode("utf-8"),
+                headers={"Content-Type": "application/json", "Authorization": f"Bearer {tok}"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req_notif, timeout=5) as rn:
+                assert rn.status == 202
+        finally:
+            srv.shutdown()
+            srv.server_close()
+    finally:
+        m.close()
+
+
+def test_g5_padam_recent_tool_and_resource_fenced(tmp_path, monkeypatch):
+    """Г5: padam_recent и padam://recent возвращают последние активные записи по всем каналам внутри safety.fence."""
+    import re
+    from padam import mcp_server
+    from padam.memory import Memory
+    from padam.store import Store
+
+    fence_open = re.compile(r'<memory-data nonce="([0-9a-f]{32})">')
+    fence_close = re.compile(r'</memory-data nonce="([0-9a-f]{32})">')
+
+    m = Memory(user_id="g5_u", store=Store(tmp_path / "g5.db"))
+    monkeypatch.setattr(mcp_server, "_memory", m)
+    try:
+        m.remember("Первая запись из CLI", kind="fact", origin="user")
+        m.remember("Вторая запись от агента", kind="decision", origin="agent", agent_id="cursor-agent")
+
+        res = mcp_server.handle({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {"name": "padam_recent", "arguments": {"limit": 5}},
+        })["result"]
+        assert res["isError"] is False
+        txt = res["content"][0]["text"]
+        assert "Первая запись из CLI" in txt and "Вторая запись от агента" in txt
+        assert "cursor-agent" in txt
+        assert len(fence_open.findall(txt)) == 1 and fence_open.findall(txt) == fence_close.findall(txt)
+
+        res_uri = mcp_server.handle({
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "resources/read",
+            "params": {"uri": "padam://recent"},
+        })["result"]
+        utxt = res_uri["contents"][0]["text"]
+        assert "Вторая запись от агента" in utxt
+        assert len(fence_open.findall(utxt)) == 1 and fence_open.findall(utxt) == fence_close.findall(utxt)
+    finally:
+        m.close()
+
+
+def test_g6_mcp_protocol_compliance_stdio_and_http():
+    """Г6: Полный прогон соответствия протоколу MCP (2024-11-05, 2025-06-18, 2026-07-28) по инструментам, ресурсам и подсказкам."""
+    import sys
+    from pathlib import Path
+    scripts_dir = Path(__file__).resolve().parents[1] / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    import mcp_protocol_check
+
+    report = mcp_protocol_check.run_protocol_audit()
+    assert set(report["protocol_versions_verified"]) == {"2024-11-05", "2025-06-18", "2026-07-28"}
+    assert set(report["transports_verified"]) == {"stdio", "streamable-http"}
+    assert len(report["tools_verified"]) >= 10
+    assert len(report["resources_verified"]) >= 5
+    assert set(report["prompts_verified"]) == {"recall_before_task", "record_decision", "weekly_memory_review"}
+    assert report["elicitation_verified"] is True

@@ -166,7 +166,7 @@ UI_STRINGS = {
         "all_docs": "Выбор языка",
         "footer_left": "PADAM · NOCTURNE 0.4.18 · Локальная память с открытым кодом (AGPL-3.0) · CODE Eternal",
         "footer_right": "Автономная статическая документация · Без внешних скриптов, стилей и CDN",
-        "hero_badge": "Версия 0.4.18 · 1030 автотестов · Python >= 3.10 · Один локальный SQLite",
+        "hero_badge": "Версия 0.4.18 · 1040 автотестов · Python >= 3.10 · Один локальный SQLite",
         "not_stated": "Не указано в README",
         "yes": "Да",
         "overview": {

@@ -99,6 +99,8 @@ SEARCH_FEEDBACK = os.environ.get("PADAM_SEARCH_FEEDBACK", "1") != "0"
 RERANK = os.environ.get("PADAM_RERANK", "0") == "1"
 RERANK_TOP_K = int(os.environ.get("PADAM_RERANK_TOP", "30"))
 RERANK_MODEL = os.environ.get("PADAM_RERANK_MODEL", "").strip()
+# Г10 (14.11.2026): локальная модель Ollama для экрана «Спроси свою память» (выбирается человеком в настройках).
+ASK_MODEL = os.environ.get("PADAM_ASK_MODEL", "").strip()
 
 # 0.4.5: строгий профиль одним выключателем вместо россыпи флагов (внешний разбор 09.11.2026: «каждый флаг
 # охраняется, но единого --strict нет»). PADAM_STRICT=1: каждая запись агента ждёт владельца, внешний текст тоже;

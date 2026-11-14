@@ -871,9 +871,18 @@ def main(argv=None) -> int:
     s.add_argument("--drop", type=float, default=0.3)
     s.set_defaults(fn=cmd_refute)
 
-    s = sub.add_parser("serve", help=t("запустить MCP-сервер (stdio)", "start the MCP server (stdio)"))
-    s.set_defaults(fn=lambda m, a: __import__("padam.mcp_server",
-                                              fromlist=["main"]).main())
+    s = sub.add_parser("serve", help=t("запустить MCP-сервер (stdio или локальный Streamable HTTP с --http)",
+                                       "start the MCP server (stdio or local Streamable HTTP with --http)"))
+    s.add_argument("--http", action="store_true", help=t("локальный Streamable HTTP (127.0.0.1, с токеном)",
+                                                         "local Streamable HTTP (127.0.0.1, token required)"))
+    s.add_argument("--host", default="127.0.0.1")
+    s.add_argument("--port", type=int, default=8079)
+    s.add_argument("--token", default=None)
+    s.set_defaults(fn=lambda m, a: __import__("padam.mcp_server", fromlist=["main"]).main(
+        (["--http", "--host", a.host, "--port", str(a.port)] + (["--token", a.token] if a.token else []))
+        if a.http else [],
+        memory=m,
+    ))
 
     s = sub.add_parser("api", help=t("запустить REST API", "start the REST API"))
     s.add_argument("--host", default="127.0.0.1")

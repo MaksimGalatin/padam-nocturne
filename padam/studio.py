@@ -1018,6 +1018,128 @@ STRINGS: dict[str, dict[str, str]] = {
 }
 
 
+
+_EXTRA_STRINGS_G9_G12: dict[str, dict[str, str]] = {
+    "ru": {
+        "nav_ask": "Спроси память",
+        "nav_entities": "Сущности",
+        "ask_title": "Спроси свою память (локальная модель Ollama)",
+        "ask_subtitle": "Задайте вопрос своими словами. Если запущена локальная модель Ollama, она соберёт ответ по записям (0 $); без неё показываются найденные записи с разбором оценки.",
+        "ask_placeholder": "Например: на каком порту работает база данных и какие мои предпочтения?",
+        "ask_btn": "Спросить память",
+        "ask_ollama_ready": "Локальная модель Ollama готова:",
+        "ask_ollama_off": "Локальная служба Ollama не запущена — показ записей с разбором оценки",
+        "ask_answer_title": "Ответ локальной модели по вашей памяти:",
+        "ask_sources_title": "Найденные записи-источники и почему они выбраны:",
+        "ask_empty": "Введите вопрос выше, чтобы опросить свою память.",
+        "entities_title": "Сущности памяти (люди, проекты, сервисы, факты)",
+        "entities_subtitle": "Кто и что встречается в ваших активных записях, поверх локальной базы без внешнего графа.",
+        "entities_filter_placeholder": "Фильтр по названию сущности, проекту или имени…",
+        "entities_empty": "Сущности пока не выделены. Добавьте записи или создайте демо-базу.",
+        "entities_records_for": "Записи, где встречается сущность:",
+        "ent_cat_subject": "субъект факта",
+        "ent_cat_service": "проект / сервис",
+        "ent_cat_name": "имя / название",
+        "qa_modal_title": "Быстрая запись в память (Ctrl+Shift+M)",
+        "qa_modal_hint": "Запись сохраняется сразу от имени владельца (origin: user). Горячие клавиши: Ctrl+Shift+M или Alt+M.",
+        "qa_modal_save": "Запомнить (Enter)",
+        "qa_modal_cancel": "Отмена (Esc)",
+        "set_ask_model_name": "PADAM_ASK_MODEL — Локальная модель Ollama для ответов",
+        "set_ask_model_desc": "Модель для экрана «Спроси память» (только локальный сервер Ollama, 0 $).",
+        "set_ask_model_placeholder": "Имя модели (например, llama3.2 или qwen2.5)…",
+        "set_ask_model_save": "Сохранить модель",
+    },
+    "en": {
+        "nav_ask": "Ask Memory",
+        "nav_entities": "Entities",
+        "ask_title": "Ask Your Memory (Local Ollama Model)",
+        "ask_subtitle": "Ask a question in plain words. When local Ollama is running, it synthesizes an answer from your records ($0); without Ollama, matching records are shown with 'Why matched' breakdown.",
+        "ask_placeholder": "Example: What database port do we use and what are my preferences?",
+        "ask_btn": "Ask Memory",
+        "ask_ollama_ready": "Local Ollama model active:",
+        "ask_ollama_off": "Local Ollama is not running — showing retrieved records with score breakdown",
+        "ask_answer_title": "Local Model Answer (from your memory):",
+        "ask_sources_title": "Retrieved source records & why they matched:",
+        "ask_empty": "Enter a question above to query your memory.",
+        "entities_title": "Memory Entities (People, Projects, Services, Subjects)",
+        "entities_subtitle": "Who and what appears across your active memory records, built directly on SQLite without an external graph database.",
+        "entities_filter_placeholder": "Filter by entity name, project, or service…",
+        "entities_empty": "No entities extracted yet. Add records or run `padam demo`.",
+        "entities_records_for": "Records mentioning entity:",
+        "ent_cat_subject": "fact subject",
+        "ent_cat_service": "project / service",
+        "ent_cat_name": "name / entity",
+        "qa_modal_title": "Quick Memory Capture (Ctrl+Shift+M)",
+        "qa_modal_hint": "Saved immediately as an owner record (origin: user). Shortcut: Ctrl+Shift+M or Alt+M.",
+        "qa_modal_save": "Remember (Enter)",
+        "qa_modal_cancel": "Cancel (Esc)",
+        "set_ask_model_name": "PADAM_ASK_MODEL — Local Ollama Model for Ask Memory",
+        "set_ask_model_desc": "Select the local Ollama model used on the Ask Memory screen ($0, no paid cloud APIs).",
+        "set_ask_model_placeholder": "Model name (e.g. llama3.2 or qwen2.5)…",
+        "set_ask_model_save": "Save model",
+    },
+    "es": {
+        "nav_ask": "Preguntar",
+        "nav_entities": "Entidades",
+        "ask_title": "Pregunta a tu Memoria (Modelo local Ollama)",
+        "ask_subtitle": "Pregunte con sus propias palabras. Si Ollama local está activo, genera una respuesta desde sus registros ($0); sin Ollama, muestra los registros encontrados y por qué coincidieron.",
+        "ask_placeholder": "Ejemplo: ¿En qué puerto corre la base de datos y cuáles son mis preferencias?",
+        "ask_btn": "Preguntar",
+        "ask_ollama_ready": "Modelo local Ollama activo:",
+        "ask_ollama_off": "Ollama local no está activo — mostrando registros con desglose de puntuación",
+        "ask_answer_title": "Respuesta del modelo local (basada en su memoria):",
+        "ask_sources_title": "Registros fuente encontrados y por qué coincidieron:",
+        "ask_empty": "Escriba una pregunta arriba para consultar su memoria.",
+        "entities_title": "Entidades en Memoria (Personas, Proyectos, Servicios)",
+        "entities_subtitle": "Quién y qué aparece en sus registros activos, directamente sobre SQLite sin base de grafos externa.",
+        "entities_filter_placeholder": "Filtrar por nombre de entidad, proyecto o servicio…",
+        "entities_empty": "Aún no hay entidades extraídas. Añada registros o ejecute `padam demo`.",
+        "entities_records_for": "Registros que mencionan la entidad:",
+        "ent_cat_subject": "sujeto de hecho",
+        "ent_cat_service": "proyecto / servicio",
+        "ent_cat_name": "nombre / entidad",
+        "qa_modal_title": "Captura rápida en memoria (Ctrl+Shift+M)",
+        "qa_modal_hint": "Se guarda inmediatamente como registro del propietario (origin: user). Atajo: Ctrl+Shift+M o Alt+M.",
+        "qa_modal_save": "Recordar (Enter)",
+        "qa_modal_cancel": "Cancelar (Esc)",
+        "set_ask_model_name": "PADAM_ASK_MODEL — Modelo local Ollama para Preguntar",
+        "set_ask_model_desc": "Elija el modelo local de Ollama para la pantalla Preguntar ($0, sin APIs de pago).",
+        "set_ask_model_placeholder": "Nombre del modelo (ej. llama3.2 o qwen2.5)…",
+        "set_ask_model_save": "Guardar modelo",
+    },
+    "zh": {
+        "nav_ask": "向记忆提问",
+        "nav_entities": "实体",
+        "ask_title": "向您的记忆提问（本地 Ollama 模型）",
+        "ask_subtitle": "用自然语言提问。若本地 Ollama 正在运行，将基于记忆生成回答（$0 零成本）；若未运行，则直接展示匹配记录及命中原因。",
+        "ask_placeholder": "例如：数据库运行在哪个端口？我的回答偏好是什么？",
+        "ask_btn": "向记忆提问",
+        "ask_ollama_ready": "本地 Ollama 模型已就绪：",
+        "ask_ollama_off": "本地 Ollama 未运行 — 展示检索记录及评分明细",
+        "ask_answer_title": "本地模型回答（严格基于您的记忆）：",
+        "ask_sources_title": "命中的来源记录及匹配原因：",
+        "ask_empty": "在上方输入问题以查询您的记忆。",
+        "entities_title": "记忆实体（人物、项目、服务、事实主题）",
+        "entities_subtitle": "汇总活跃记忆中出现的人物、项目与服务，直接构建于本地 SQLite 之上，无需外部图数据库。",
+        "entities_filter_placeholder": "按实体名称、项目或服务筛选…",
+        "entities_empty": "暂无提取出的实体。请添加记录或运行 `padam demo`。",
+        "entities_records_for": "提及该实体的记忆记录：",
+        "ent_cat_subject": "事实主题",
+        "ent_cat_service": "项目 / 服务",
+        "ent_cat_name": "名称 / 实体",
+        "qa_modal_title": "快捷键快速记录 (Ctrl+Shift+M)",
+        "qa_modal_hint": "立即以主人身份保存 (origin: user)。快捷键：Ctrl+Shift+M 或 Alt+M。",
+        "qa_modal_save": "记住 (Enter)",
+        "qa_modal_cancel": "取消 (Esc)",
+        "set_ask_model_name": "PADAM_ASK_MODEL — 用于提问的本地 Ollama 模型",
+        "set_ask_model_desc": "选择“向记忆提问”界面使用的本地 Ollama 模型（$0，无任何付费 API）。",
+        "set_ask_model_placeholder": "模型名称（如 llama3.2 或 qwen2.5）…",
+        "set_ask_model_save": "保存模型",
+    },
+}
+for _lg, _extra in _EXTRA_STRINGS_G9_G12.items():
+    STRINGS[_lg].update(_extra)
+
 _CSS = """
 :root, html[data-theme="dark"] {
   --bg: #080b12;
@@ -1517,6 +1639,53 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .msg-ok { color: var(--ok); }
 .msg-err { color: var(--danger); }
 
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 11, 18, 0.76);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  padding: 16px;
+}
+.modal-card {
+  background: var(--bg-elev);
+  border: 1px solid var(--accent);
+  border-radius: 14px;
+  padding: 20px;
+  width: 100%;
+  max-width: 540px;
+  box-shadow: var(--glow);
+}
+.entity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.entity-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.entity-card[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--card-hover);
+}
+.entity-title {
+  font-weight: 700;
+  font-size: 14px;
+  word-break: break-word;
+}
+
 @media (max-width: 860px) {
   .layout {
     grid-template-columns: minmax(0, 1fr);
@@ -1699,7 +1868,7 @@ function say(text, ok = true) {
   box.className = ok ? 'msg-ok' : 'msg-err';
 }
 
-const TABS = ['overview', 'feed', 'search', 'review', 'asof', 'forget', 'graph', 'l3', 'settings', 'quickstart'];
+const TABS = ['overview', 'feed', 'search', 'ask', 'review', 'asof', 'forget', 'graph', 'entities', 'l3', 'settings', 'quickstart'];
 let activeTab = (initialTab && TABS.includes(initialTab)) ? initialTab : 'overview';
 let feedView = 'active', feedOffset = 0, feedKind = null, feedShown = [];
 let lastReceipt = null;
@@ -2132,6 +2301,156 @@ async function runSearch() {
   } catch (e) { say(S.failed + ': ' + e.message, false); }
 }
 
+
+// --- Г10. СПРОСИ СВОЮ ПАМЯТЬ ---
+async function loadAskTab() {
+  try {
+    const s = await api('/settings');
+    const badge = $('ask-ollama-status');
+    if (badge) {
+      const ol = s.ollama || {};
+      const mod = s.ask_model || (ol.models && ol.models[0]) || '';
+      if (ol.available && mod) {
+        badge.className = 'badge badge-ok';
+        badge.textContent = '🟢 ' + S.ask_ollama_ready + ' ' + mod;
+      } else {
+        badge.className = 'badge';
+        badge.textContent = 'ℹ️ ' + S.ask_ollama_off;
+      }
+    }
+  } catch (e) {}
+}
+
+async function runAsk() {
+  const q = ($('ask-input').value || '').trim();
+  const ansBox = $('ask-answer-box');
+  const list = $('ask-results');
+  ansBox.replaceChildren();
+  ansBox.hidden = true;
+  list.replaceChildren();
+  if (!q) {
+    list.append(el('p', 'panel-sub', S.ask_empty));
+    return;
+  }
+  try {
+    const r = await api('/ask', {question: q, limit: 6});
+    const badge = $('ask-ollama-status');
+    if (badge) {
+      if (r.ollama_available && r.model) {
+        badge.className = 'badge badge-ok';
+        badge.textContent = '🟢 ' + S.ask_ollama_ready + ' ' + r.model;
+      } else {
+        badge.className = 'badge';
+        badge.textContent = 'ℹ️ ' + S.ask_ollama_off;
+      }
+    }
+    if (r.answer) {
+      ansBox.hidden = false;
+      ansBox.append(
+        el('div', 'setting-name', '🤖 ' + S.ask_answer_title + (r.model ? (' [' + r.model + ']') : '')),
+        el('div', 'rec-text', r.answer)
+      );
+    }
+    const rows = r.records || [];
+    if (!rows.length) {
+      list.append(el('p', 'panel-sub', S.empty_search || S.empty));
+      return;
+    }
+    list.append(el('h3', 'box-title', S.ask_sources_title));
+    for (const item of rows) {
+      list.append(renderRecordCard(item, {explain: true}));
+    }
+  } catch (e) { say(S.failed + ': ' + e.message, false); }
+}
+
+// --- Г11. ЭКРАН «СУЩНОСТИ» ---
+let entitiesCatalog = [];
+let selectedEntityKey = null;
+
+function renderEntityRecords() {
+  const recBox = $('entities-records');
+  recBox.replaceChildren();
+  const found = entitiesCatalog.find(e => e.key === selectedEntityKey) || entitiesCatalog[0] || null;
+  if (!found) return;
+  selectedEntityKey = found.key;
+  for (const btn of document.querySelectorAll('[data-entity-key]')) {
+    btn.setAttribute('aria-pressed', String(btn.getAttribute('data-entity-key') === selectedEntityKey));
+  }
+  recBox.append(el('h3', 'box-title', S.entities_records_for + ' «' + found.name + '» (' + found.count + ')'));
+  for (const r of (found.records || [])) {
+    recBox.append(renderRecordCard(r));
+  }
+}
+
+async function loadEntities() {
+  const q = ($('entities-filter') ? $('entities-filter').value : '').trim();
+  const grid = $('entities-grid');
+  const recBox = $('entities-records');
+  if (!grid || !recBox) return;
+  try {
+    const r = await api('/entities?limit=120' + (q ? ('&q=' + encodeURIComponent(q)) : ''));
+    grid.replaceChildren();
+    recBox.replaceChildren();
+    entitiesCatalog = r.entities || [];
+    if (!entitiesCatalog.length) {
+      grid.append(el('p', 'panel-sub', S.entities_empty));
+      return;
+    }
+    if (!selectedEntityKey || !entitiesCatalog.some(e => e.key === selectedEntityKey)) {
+      selectedEntityKey = entitiesCatalog[0].key;
+    }
+    for (const ent of entitiesCatalog) {
+      const card = el('button', 'entity-card');
+      card.setAttribute('data-entity-key', ent.key);
+      card.setAttribute('aria-pressed', String(ent.key === selectedEntityKey));
+      const catLabel = S['ent_cat_' + ent.category] || ent.category;
+      const top = el('div', 'entity-title', ent.name);
+      const meta = el('div', 'rec-meta');
+      meta.append(
+        el('span', 'badge', catLabel),
+        el('span', 'badge badge-ok', String(ent.count))
+      );
+      card.append(top, meta);
+      card.onclick = () => {
+        selectedEntityKey = ent.key;
+        renderEntityRecords();
+      };
+      grid.append(card);
+    }
+    renderEntityRecords();
+  } catch (e) { say(S.failed + ': ' + e.message, false); }
+}
+
+// --- Г9. БЫСТРАЯ ЗАПИСЬ ГОРЯЧЕЙ КЛАВИШЕЙ ---
+function openQuickAddModal() {
+  const modal = $('quick-add-modal');
+  if (!modal) return;
+  modal.hidden = false;
+  const inp = $('quick-add-text');
+  if (inp) { inp.focus(); inp.select(); }
+}
+
+function closeQuickAddModal() {
+  const modal = $('quick-add-modal');
+  if (modal) modal.hidden = true;
+}
+
+async function saveQuickAdd() {
+  const inp = $('quick-add-text');
+  const kindSel = $('quick-add-kind');
+  const text = (inp ? inp.value : '').trim();
+  const kind = (kindSel && kindSel.value) ? kindSel.value : 'fact';
+  if (!text) return;
+  try {
+    await api('/write', {content: text, kind, origin: 'user'});
+    if (inp) inp.value = '';
+    closeQuickAddModal();
+    say(S.done, true);
+    loadActiveTab();
+    refreshTopbarStats();
+  } catch (e) { say(S.failed + ': ' + e.message, false); }
+}
+
 // --- 4. НА ПРОВЕРКУ ---
 async function loadReview() {
   const list = $('review-list');
@@ -2553,6 +2872,38 @@ async function loadSettings() {
     profRow.append(profInfo, profCtrl);
     safeBox.append(profRow);
 
+    // Г10: Выбор локальной модели Ollama
+    const askRow = el('div', 'setting-row');
+    const askInfo = el('div', 'setting-info');
+    askInfo.append(el('div', 'setting-name', S.set_ask_model_name), el('div', 'setting-desc', S.set_ask_model_desc));
+    const askCtrl = el('div', 'rec-actions');
+    const askInp = document.createElement('input');
+    askInp.type = 'text';
+    askInp.id = 'set-ask-model-input';
+    askInp.value = s.ask_model || '';
+    askInp.placeholder = S.set_ask_model_placeholder;
+    const askBtn = el('button', 'btn-primary', S.set_ask_model_save);
+    askBtn.id = 'set-ask-model-save-btn';
+    askBtn.onclick = async () => {
+      try {
+        await api('/settings', {ask_model: askInp.value.trim()});
+        say(S.done, true);
+        loadSettings();
+      } catch (e) { say(S.failed + ': ' + e.message, false); }
+    };
+    askCtrl.append(askInp, askBtn);
+    const olModels = (s.ollama && s.ollama.models) ? s.ollama.models : [];
+    for (const mName of olModels.slice(0, 4)) {
+      const mBtn = el('button', s.ask_model === mName ? 'btn-ok' : '', mName);
+      mBtn.onclick = async () => {
+        try { await api('/settings', {ask_model: mName}); say(S.done, true); loadSettings(); }
+        catch (e) { say(S.failed + ': ' + e.message, false); }
+      };
+      askCtrl.append(mBtn);
+    }
+    askRow.append(askInfo, askCtrl);
+    safeBox.append(askRow);
+
     // Только чтение (опасные)
     const roBox = $('settings-readonly-list');
     roBox.replaceChildren();
@@ -2608,10 +2959,12 @@ function loadActiveTab() {
   if (activeTab === 'overview') loadOverview();
   else if (activeTab === 'feed') loadFeed(true);
   else if (activeTab === 'search') runSearch();
+  else if (activeTab === 'ask') loadAskTab();
   else if (activeTab === 'review') loadReview();
   else if (activeTab === 'asof') loadAsOf();
   else if (activeTab === 'forget') loadForgetTab();
   else if (activeTab === 'graph') loadGraph();
+  else if (activeTab === 'entities') loadEntities();
   else if (activeTab === 'l3') loadL3();
   else if (activeTab === 'settings') loadSettings();
 }
@@ -2637,10 +2990,32 @@ $('theme-toggle').onclick = () => {
   applyI18n();
   if (activeTab === 'graph') drawGraph();
 };
-$('btn-quick-add').onclick = () => {
-  switchTab('feed');
-  $('feed-new-text').focus();
-};
+$('btn-quick-add').onclick = () => openQuickAddModal();
+if ($('quick-add-cancel')) $('quick-add-cancel').onclick = () => closeQuickAddModal();
+if ($('quick-add-save')) $('quick-add-save').onclick = () => saveQuickAdd();
+if ($('quick-add-text')) {
+  $('quick-add-text').onkeydown = e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveQuickAdd(); }
+    else if (e.key === 'Escape') { e.preventDefault(); closeQuickAddModal(); }
+  };
+}
+window.addEventListener('keydown', e => {
+  if ((e.ctrlKey && e.shiftKey && (e.key === 'M' || e.key === 'm' || e.key === 'Ь' || e.key === 'ь')) ||
+      (e.altKey && !e.ctrlKey && (e.key === 'm' || e.key === 'M' || e.key === 'ь' || e.key === 'Ь'))) {
+    e.preventDefault();
+    openQuickAddModal();
+  } else if (e.key === 'Escape' && $('quick-add-modal') && !$('quick-add-modal').hidden) {
+    closeQuickAddModal();
+  }
+});
+if ($('ask-btn')) $('ask-btn').onclick = () => runAsk();
+if ($('ask-input')) $('ask-input').onkeydown = e => { if (e.key === 'Enter') runAsk(); };
+if ($('entities-filter')) {
+  $('entities-filter').oninput = () => {
+    clearTimeout(window._entt);
+    window._entt = setTimeout(() => loadEntities(), 200);
+  };
+}
 $('btn-refresh').onclick = () => loadActiveTab();
 
 $('ov-sleep-btn').onclick = async () => {
@@ -2805,6 +3180,9 @@ $('qs-enable-strict-btn').onclick = async () => {
 };
 $('qs-go-overview-btn').onclick = () => switchTab('overview');
 
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
 applyI18n();
 switchTab(activeTab);
 """
@@ -2825,6 +3203,9 @@ def page() -> tuple[str, str]:
 <title>{s['app_title']}</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="theme-color" content="#080b12">
 <style nonce="{nonce}">{_CSS}</style>
 </head>
 <body>
@@ -2848,6 +3229,9 @@ def page() -> tuple[str, str]:
       <button id="tab-search" data-tab="search" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-search">
         <span data-i18n="nav_search">{s['nav_search']}</span>
       </button>
+      <button id="tab-ask" data-tab="ask" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-ask">
+        <span data-i18n="nav_ask">{s['nav_ask']}</span>
+      </button>
       <button id="tab-review" data-tab="review" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-review">
         <span data-i18n="nav_review">{s['nav_review']}</span>
         <span id="review-badge" class="badge">0</span>
@@ -2860,6 +3244,9 @@ def page() -> tuple[str, str]:
       </button>
       <button id="tab-graph" data-tab="graph" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-graph">
         <span data-i18n="nav_graph">{s['nav_graph']}</span>
+      </button>
+      <button id="tab-entities" data-tab="entities" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-entities">
+        <span data-i18n="nav_entities">{s['nav_entities']}</span>
       </button>
       <button id="tab-l3" data-tab="l3" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-l3">
         <span data-i18n="nav_l3">{s['nav_l3']}</span>
@@ -2985,6 +3372,23 @@ def page() -> tuple[str, str]:
         <div id="search-results"></div>
       </section>
 
+      <!-- 3б. СПРОСИ СВОЮ ПАМЯТЬ (Г10) -->
+      <section id="panel-ask" role="tabpanel" aria-labelledby="tab-ask" hidden>
+        <div class="panel-header">
+          <h2 class="panel-title" data-i18n="ask_title">{s['ask_title']}</h2>
+          <p class="panel-sub" data-i18n="ask_subtitle">{s['ask_subtitle']}</p>
+        </div>
+        <div class="rec-meta">
+          <span id="ask-ollama-status" class="badge">ℹ️ {s['ask_ollama_off']}</span>
+        </div>
+        <div class="toolbar">
+          <input id="ask-input" type="search" data-i18n-placeholder="ask_placeholder" data-i18n-aria="ask_placeholder" placeholder="{s['ask_placeholder']}" aria-label="{s['ask_placeholder']}">
+          <button id="ask-btn" class="btn-primary" data-i18n="ask_btn">{s['ask_btn']}</button>
+        </div>
+        <div id="ask-answer-box" class="box" hidden></div>
+        <div id="ask-results"></div>
+      </section>
+
       <!-- 4. НА ПРОВЕРКУ -->
       <section id="panel-review" role="tabpanel" aria-labelledby="tab-review" hidden>
         <div class="panel-header">
@@ -3066,6 +3470,19 @@ def page() -> tuple[str, str]:
           <h3 class="box-title" data-i18n="graph_selected">{s['graph_selected']}</h3>
           <div id="graph-selected-box"></div>
         </div>
+      </section>
+
+      <!-- 7б. СУЩНОСТИ (Г11) -->
+      <section id="panel-entities" role="tabpanel" aria-labelledby="tab-entities" hidden>
+        <div class="panel-header">
+          <h2 class="panel-title" data-i18n="entities_title">{s['entities_title']}</h2>
+          <p class="panel-sub" data-i18n="entities_subtitle">{s['entities_subtitle']}</p>
+        </div>
+        <div class="toolbar">
+          <input id="entities-filter" type="search" data-i18n-placeholder="entities_filter_placeholder" data-i18n-aria="entities_filter_placeholder" placeholder="{s['entities_filter_placeholder']}" aria-label="{s['entities_filter_placeholder']}">
+        </div>
+        <div id="entities-grid" class="entity-grid"></div>
+        <div id="entities-records"></div>
       </section>
 
       <!-- 8. ВЕЧНЫЙ СЛОЙ L3 -->
@@ -3150,6 +3567,28 @@ def page() -> tuple[str, str]:
         </div>
       </section>
     </main>
+  </div>
+</div>
+<div id="quick-add-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="qa-modal-title-el" hidden>
+  <div class="modal-card">
+    <h2 id="qa-modal-title-el" class="box-title" data-i18n="qa_modal_title">{s['qa_modal_title']}</h2>
+    <p class="panel-sub" data-i18n="qa_modal_hint">{s['qa_modal_hint']}</p>
+    <div class="toolbar">
+      <input id="quick-add-text" type="text" data-i18n-placeholder="feed_new_placeholder" data-i18n-aria="feed_new_placeholder" placeholder="{s['feed_new_placeholder']}" aria-label="{s['feed_new_placeholder']}">
+      <select id="quick-add-kind" aria-label="Quick memory kind">
+        <option value="fact">fact</option>
+        <option value="preference">preference</option>
+        <option value="identity">identity</option>
+        <option value="decision">decision</option>
+        <option value="correction">correction</option>
+        <option value="state">state</option>
+        <option value="event">event</option>
+      </select>
+    </div>
+    <div class="rec-actions">
+      <button id="quick-add-save" class="btn-primary" data-i18n="qa_modal_save">{s['qa_modal_save']}</button>
+      <button id="quick-add-cancel" data-i18n="qa_modal_cancel">{s['qa_modal_cancel']}</button>
+    </div>
   </div>
 </div>
 <script id="i18n-data" type="application/json" nonce="{nonce}">{i18n_json}</script>

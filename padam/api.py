@@ -51,8 +51,8 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
 
@@ -212,13 +212,41 @@ class Handler(BaseHTTPRequestHandler):
         if путь.path == "/studio" and _state.get("ui"):
             # Приложение PADAM Studio: строгий CSP, без встроенных данных и токена в HTML.
             return self._send_page(studio.page())
-        if путь.path in ("/favicon.svg", "/favicon.ico") and _state.get("ui"):
+        if путь.path in ("/favicon.svg", "/favicon.ico", "/icon-192.png", "/icon-512.png", "/manifest.webmanifest", "/sw.js") and _state.get("ui"):
             if путь.path == "/favicon.svg":
                 body = logo.CODE_LOGO_SVG.encode("utf-8")
                 ctype = "image/svg+xml; charset=utf-8"
-            else:
+            elif путь.path == "/favicon.ico":
                 body = logo.favicon_ico_bytes()
                 ctype = "image/x-icon"
+            elif путь.path in ("/icon-192.png", "/icon-512.png"):
+                body = logo.pwa_icon_png_bytes(512 if "512" in путь.path else 192)
+                ctype = "image/png"
+            elif путь.path == "/sw.js":
+                body = (
+                    "self.addEventListener('install', () => self.skipWaiting());\n"
+                    "self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));\n"
+                    "self.addEventListener('fetch', e => { if (e.request.headers.get('Authorization')) return; });\n"
+                ).encode("utf-8")
+                ctype = "application/javascript; charset=utf-8"
+            else:
+                manifest_obj = {
+                    "name": "PADAM · NOCTURNE Studio",
+                    "short_name": "PADAM Studio",
+                    "description": "Локальная защищённая память ИИ-агентов · CODE Eternal",
+                    "start_url": "/studio",
+                    "scope": "/",
+                    "display": "standalone",
+                    "background_color": "#080b12",
+                    "theme_color": "#080b12",
+                    "icons": [
+                        {"src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"},
+                        {"src": "/icon-192.png", "sizes": "192x192", "type": "image/png"},
+                        {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png"},
+                    ],
+                }
+                body = json.dumps(manifest_obj, ensure_ascii=False, indent=2).encode("utf-8")
+                ctype = "application/manifest+json; charset=utf-8"
             self.send_response(200)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(body)))
@@ -320,6 +348,13 @@ class Handler(BaseHTTPRequestHandler):
                     center_id=q.get("id", [None])[0] or None,
                     limit=int(q.get("limit", ["200"])[0]),
                 ))
+            if путь.path == "/entities":
+                q = parse_qs(путь.query)
+                return self._send(200, mem().entities_catalog(
+                    scope=q.get("scope", [None])[0] or None,
+                    query=q.get("q", [None])[0] or None,
+                    limit=int(q.get("limit", ["100"])[0]),
+                ))
             if путь.path == "/forget-preview":
                 q = parse_qs(путь.query)
                 rid = q.get("id", [None])[0]
@@ -347,6 +382,8 @@ class Handler(BaseHTTPRequestHandler):
                     "keep_secrets": config.KEEP_SECRETS,
                     "mcp_trust_writes": config.MCP_TRUST_WRITES,
                     "profile": config.PROFILE_NAME,
+                    "ask_model": config.ASK_MODEL,
+                    "ollama": mem().ollama_models(),
                     "autostart": _desktop.get_autostart(),
                     "autostart_supported": _desktop.autostart_supported(),
                 })
@@ -384,6 +421,17 @@ class Handler(BaseHTTPRequestHandler):
             except ValueError as e:
                 return self._send(413 if "too large" in str(e) else 400, {"error": str(e)})
             m = mem()
+
+            if self.path == "/ask":
+                question = str(data.get("question") or data.get("query") or "").strip()
+                if not question:
+                    return self._send(400, {"error": "question is required"})
+                return self._send(200, m.ask(
+                    question,
+                    scope=str(data.get("scope") or "global"),
+                    limit=max(1, min(int(data.get("limit", 6)), 20)),
+                    model=str(data["model"]).strip() if data.get("model") else None,
+                ))
 
             if self.path == "/search":
                 if "query" not in data:
@@ -490,6 +538,8 @@ class Handler(BaseHTTPRequestHandler):
                     config.MAX_HI_SHARE = config.K_MAX
                 from . import desktop as _desktop
 
+                if "ask_model" in data:
+                    config.ASK_MODEL = str(data.get("ask_model") or "").strip()[:120]
                 if "autostart" in data:
                     _desktop.set_autostart(bool(data["autostart"]))
                 return self._send(200, {
@@ -503,6 +553,8 @@ class Handler(BaseHTTPRequestHandler):
                     "keep_secrets": config.KEEP_SECRETS,
                     "mcp_trust_writes": config.MCP_TRUST_WRITES,
                     "profile": config.PROFILE_NAME,
+                    "ask_model": config.ASK_MODEL,
+                    "ollama": mem().ollama_models(),
                     "autostart": _desktop.get_autostart(),
                     "autostart_supported": _desktop.autostart_supported(),
                 })

@@ -281,13 +281,35 @@ for _t in TOOLS:
     _t.setdefault("title", _TITLES[_t["name"]])
 _TOOLS_BY_NAME = {t["name"]: t for t in TOOLS}
 
+RECENT_TOOL_DEF = {
+    "name": "padam_recent",
+    "title": "Recent memories across channels",
+    "description": (
+        "Read-only list of the most recent active memory records across all channels and agents, "
+        "ordered newest first (fenced data)."
+    ),
+    "annotations": _hints(True, False, True),
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "limit": {"type": "integer", "minimum": 1, "maximum": 50, "default": 10},
+            "scope": {"type": "string", "minLength": 1, "maxLength": 64, "default": "global"},
+            "kind": {"type": "string", "enum": list(config.KINDS)},
+            "agent_id": {"type": "string", "minLength": 1, "maxLength": 120},
+        },
+        "additionalProperties": False,
+    },
+}
+_ALL_TOOLS_BY_NAME = {**_TOOLS_BY_NAME, "padam_recent": RECENT_TOOL_DEF}
+
+
 # Заметки цикла сна приходят из ядра по-русски (их же печатает русский CLI); наружу через MCP — по-английски.
 _SLEEP_NOTES_EN = {"буфер пуст": "episode buffer is empty", "нечего выбрать": "nothing to sample"}
 
 
 def missing_arguments(name: str, args: dict) -> list[str]:
     """Обязательные поля из inputSchema, которых нет или которые пусты."""
-    required = _TOOLS_BY_NAME[name]["inputSchema"].get("required", [])
+    required = _ALL_TOOLS_BY_NAME[name]["inputSchema"].get("required", [])
     return [k for k in required if args.get(k) is None or args.get(k) == ""]
 
 
@@ -297,7 +319,7 @@ def invalid_argument(name: str, args: dict) -> str | None:
     Без неё схема оставалась только советом: limit=100000 и drop=-5 проходили, а drop=-5 поднимал
     уверенность выше единицы.
     """
-    свойства = _TOOLS_BY_NAME[name]["inputSchema"].get("properties", {})
+    свойства = _ALL_TOOLS_BY_NAME[name]["inputSchema"].get("properties", {})
     for ключ, значение in args.items():
         схема = свойства.get(ключ)
         if схема is None:
@@ -544,6 +566,21 @@ def read_resource(uri: str) -> dict:
                 lines.append(
                     f"- id={r['id']}  kind={r.get('kind')}  origin={r.get('origin') or 'agent'}  "
                     f"created={(r.get('created_at') or '')[:19]}  reason={reason}"
+                )
+            body = "\n".join(lines)
+        return {"uri": uri, "mimeType": "text/plain", "text": safety.fence(body)}
+
+    if uri == "padam://recent":
+        rows = m.list_records(view="active", limit=15, offset=0).get("records", [])
+        if not rows:
+            body = "No active memory records yet."
+        else:
+            lines = [f"Recent active records ({len(rows)}):"]
+            for r in rows:
+                ag = f"  agent={r['agent_id']}" if r.get("agent_id") else ""
+                lines.append(
+                    f"- [{r['kind']}] {r['content']}\n"
+                    f"  id={r['id']}  origin={r.get('origin') or 'user'}{ag}  saved={(r.get('created_at') or '')[:19]}"
                 )
             body = "\n".join(lines)
         return {"uri": uri, "mimeType": "text/plain", "text": safety.fence(body)}
@@ -919,6 +956,30 @@ def call_tool(name: str, args: dict) -> str:
         prof = m.profile(scope=args.get("scope", "global"))
         return safety.fence(prof["summary"]) + _sleep_hint(m)
 
+    if name == "padam_recent":
+        lim = max(1, min(int(args.get("limit", 10)), 50))
+        scope_val = args.get("scope")
+        rec_data = m.list_records(
+            view="active",
+            limit=lim,
+            offset=0,
+            kind=args.get("kind"),
+            scope=scope_val if scope_val and scope_val != "all" else None,
+            agent_id=args.get("agent_id"),
+        )
+        rows = rec_data.get("records", [])
+        if not rows:
+            return "No recent active memories." + _sleep_hint(m)
+        lines = []
+        for r in rows:
+            ag = f"  agent={r['agent_id']}" if r.get("agent_id") else ""
+            lines.append(
+                f"- {r['content']}\n"
+                f"  id={r['id']}  kind={r['kind']}  origin={r.get('origin') or 'user'}{ag}  "
+                f"saved={(r.get('created_at') or '')[:19]}"
+            )
+        return safety.fence("\n".join(lines)) + _sleep_hint(m)
+
     raise ValueError(f"unknown tool: {name}")
 
 
@@ -1033,7 +1094,7 @@ def _handle_legacy(req: dict) -> dict | None:
         name = params.get("name")
         args = params.get("arguments") or {}
         # Неизвестный инструмент и не-объект в arguments — ошибка протокола (MCP: -32602 Invalid params).
-        if name not in _TOOLS_BY_NAME:
+        if name not in _ALL_TOOLS_BY_NAME:
             return err(-32602, f"unknown tool: {name}")
         if not isinstance(args, dict):
             return err(-32602, "arguments must be an object")
@@ -1114,19 +1175,202 @@ def _handle_legacy(req: dict) -> dict | None:
     return err(-32601, f"method not found: {method}")
 
 
-def main() -> int:
+
+def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
+                         port: int = 8079, token: str | None = None):
+    """Г4: Локальный сервер MCP Streamable HTTP (только 127.0.0.1, обязательный Bearer-токен).
+    Возвращает (ThreadingHTTPServer, url, token).
+    """
+    import hmac
+    import secrets
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from urllib.parse import urlsplit
+
+    host_clean = (host or "127.0.0.1").strip().lower()
+    if host_clean not in ("127.0.0.1", "localhost", "::1") and not host_clean.startswith("127."):
+        raise ValueError("MCP Streamable HTTP is restricted to 127.0.0.1 / localhost only")
+
+    tok = (token or os.environ.get("PADAM_API_TOKEN") or "").strip()
+    if tok and (tok.upper().startswith("REPLACE") or len(tok) < 16):
+        raise ValueError("Token is a placeholder or shorter than 16 characters")
+    if not tok:
+        tok = secrets.token_urlsafe(24)
+
+    session_id = secrets.token_hex(16)
+    if memory is not None:
+        global _memory
+        _memory = memory
+
+    MAX_MCP_BODY = 256 * 1024
+
+    class _McpHttpHandler(BaseHTTPRequestHandler):
+        def log_message(self, format, *args):
+            pass
+
+        def _send_json(self, code: int, payload, extra_headers: dict | None = None) -> None:
+            raw = json.dumps(payload, ensure_ascii=False).encode("utf-8") if payload is not None else b""
+            self.send_response(code)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(raw)))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("Mcp-Session-Id", session_id)
+            if extra_headers:
+                for hk, hv in extra_headers.items():
+                    self.send_header(hk, hv)
+            self.end_headers()
+            if raw:
+                self.wfile.write(raw)
+
+        def _trusted_local(self) -> bool:
+            h = (self.headers.get("Host") or "").strip().lower()
+            h_name = h.rsplit(":", 1)[0] if not h.startswith("[") else h.split("]")[0] + "]"
+            if h_name not in ("127.0.0.1", "localhost", "[::1]") and not h_name.startswith("127."):
+                return False
+            orig = (self.headers.get("Origin") or "").strip().lower()
+            if orig and not re.match(r"^https?://(127\.\d+\.\d+\.\d+|localhost|\[::1\])(:\d+)?$", orig):
+                return False
+            return True
+
+        def _authorized(self) -> bool:
+            auth = self.headers.get("Authorization", "")
+            return hmac.compare_digest(auth.encode("utf-8"), f"Bearer {tok}".encode("utf-8"))
+
+        def do_GET(self):
+            path = urlsplit(self.path).path
+            if path == "/health":
+                return self._send_json(200, {"status": "ok", "transport": "streamable-http", "version": __version__})
+            if not self._trusted_local():
+                return self._send_json(403, {"error": "forbidden origin or host"})
+            if not self._authorized():
+                return self._send_json(401, {"error": "unauthorized: Bearer token required"})
+            if path == "/mcp":
+                notifs = pop_notifications()
+                lines = [f"event: message\ndata: {json.dumps(n, ensure_ascii=False)}\n\n" for n in notifs]
+                if not lines:
+                    lines.append(": keepalive\n\n")
+                raw = "".join(lines).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                self.send_header("Content-Length", str(len(raw)))
+                self.send_header("Cache-Control", "no-cache")
+                self.send_header("Mcp-Session-Id", session_id)
+                self.end_headers()
+                self.wfile.write(raw)
+                return None
+            return self._send_json(404, {"error": "not found"})
+
+        def do_POST(self):
+            path = urlsplit(self.path).path
+            try:
+                ln = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                ln = 0
+            if not self._trusted_local():
+                if 0 < ln <= MAX_MCP_BODY:
+                    self.rfile.read(ln)
+                return self._send_json(403, {"error": "forbidden origin or host"})
+            if not self._authorized():
+                if 0 < ln <= MAX_MCP_BODY:
+                    self.rfile.read(ln)
+                return self._send_json(401, {"error": "unauthorized: Bearer token required"})
+            if path != "/mcp":
+                if 0 < ln <= MAX_MCP_BODY:
+                    self.rfile.read(ln)
+                return self._send_json(404, {"error": "not found"})
+            ctype = (self.headers.get("Content-Type") or "").split(";", 1)[0].strip().lower()
+            if ctype != "application/json":
+                if 0 < ln <= MAX_MCP_BODY:
+                    self.rfile.read(ln)
+                return self._send_json(415, {"error": "Content-Type must be application/json"})
+            if ln <= 0 or ln > MAX_MCP_BODY:
+                return self._send_json(400, {"error": "invalid or oversized body"})
+            raw = self.rfile.read(ln)
+            try:
+                req = json.loads(raw)
+            except json.JSONDecodeError:
+                return self._send_json(200, {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "parse error"}})
+
+            if isinstance(req, list):
+                if not req:
+                    return self._send_json(200, {"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": "invalid request"}})
+                responses = []
+                for item in req:
+                    if not isinstance(item, dict):
+                        responses.append({"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": "invalid request"}})
+                    else:
+                        r = handle(item)
+                        if r is not None:
+                            responses.append(r)
+                if not responses:
+                    self.send_response(202)
+                    self.send_header("Content-Length", "0")
+                    self.send_header("Mcp-Session-Id", session_id)
+                    self.end_headers()
+                    return None
+                return self._send_json(200, responses)
+
+            if not isinstance(req, dict):
+                return self._send_json(200, {"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": "invalid request"}})
+
+            try:
+                resp = handle(req)
+            except Exception:
+                resp = {"jsonrpc": "2.0", "id": req.get("id"), "error": {"code": -32603, "message": "internal error"}}
+
+            if resp is None:
+                self.send_response(202)
+                self.send_header("Content-Length", "0")
+                self.send_header("Mcp-Session-Id", session_id)
+                self.end_headers()
+                return None
+            return self._send_json(200, resp)
+
+    srv = ThreadingHTTPServer((host, port), _McpHttpHandler)
+    actual_port = srv.server_address[1]
+    return srv, f"http://{host}:{actual_port}/mcp", tok
+
+
+def main(argv: list[str] | None = None, memory: Memory | None = None) -> int:
     # MCP stdio — всегда UTF-8. Без этого на Windows (Python 3.10–3.13) поток в трубе получает cp1251/cp1252:
     # кириллица в памяти портится или сервер падает с UnicodeEncodeError на первом же ответе.
     # Команда без этого ветвления молча ждала бы запрос на stdin, и проверка установки выглядела бы как зависание.
-    args = sys.argv[1:]
+    args = list(sys.argv[1:] if argv is None else argv)
+    if memory is not None:
+        global _memory
+        _memory = memory
     if "--version" in args or "-V" in args:
         print(f"padam-nocturne {__version__}")
         return 0
     if "--help" in args or "-h" in args:
-        print("PADAM NOCTURNE MCP server. Speaks JSON-RPC over stdin and stdout; start it from an MCP client.\n"
+        print("PADAM NOCTURNE MCP server. Speaks JSON-RPC over stdin and stdout (or Streamable HTTP with --http).\n"
+              "Usage: padam serve [--http] [--host 127.0.0.1] [--port 8079] [--token TOKEN]\n"
               "Environment: PADAM_DB (database file), PADAM_USER, PADAM_EMBEDDER, OLLAMA_URL, PADAM_HOLD_EXTERNAL,\n"
               "PADAM_MCP_REVIEW_ALL, PADAM_MCP_TRUST_WRITES, PADAM_KEEP_SECRETS, PADAM_STRICT (all guards on).\n"
               "`padam doctor` reports the security state.")
+        return 0
+    if "--http" in args:
+        import argparse as _ap
+        hp = _ap.ArgumentParser(prog="padam serve --http")
+        hp.add_argument("--http", action="store_true")
+        hp.add_argument("--host", default="127.0.0.1")
+        hp.add_argument("--port", type=int, default=8079)
+        hp.add_argument("--token", default=os.environ.get("PADAM_API_TOKEN"))
+        ha = hp.parse_args(args)
+        try:
+            srv, url, tok = make_mcp_http_server(memory=_memory, host=ha.host, port=ha.port, token=ha.token)
+        except ValueError as e:
+            print(f"Refused: {e}", file=sys.stderr)
+            return 2
+        print(f"PADAM MCP Streamable HTTP at {url} (local only, Bearer token required)", flush=True)
+        if not ha.token:
+            print(f"Token for this run: {tok}", flush=True)
+        try:
+            srv.serve_forever()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            srv.server_close()
         return 0
     # 0.4.2: выключенная защита называется при каждом запуске — в stderr, stdout занят протоколом MCP.
     for имя, что in config.unsafe_settings():

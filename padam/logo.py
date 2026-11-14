@@ -99,3 +99,17 @@ def favicon_ico_bytes() -> bytes:
     header = struct.pack("<HHH", 0, 1, 1)
     entry = struct.pack("<BBBBHHII", 32, 32, 0, 0, 1, 32, len(png), 22)
     return header + entry + png
+
+
+def pwa_icon_png_bytes(size: int = 192) -> bytes:
+    """Возвращает PNG-байты иконки логотипа CODE для манифеста PWA (Г12)."""
+    icons_dir = Path(__file__).resolve().parents[1] / "desktop" / "icons"
+    if size >= 512:
+        cand = icons_dir / "code-logo-512.png"
+    elif size == 192 and (icons_dir / "code-logo-192.png").is_file():
+        cand = icons_dir / "code-logo-192.png"
+    else:
+        cand = icons_dir / "code-logo-256.png"
+    if cand.is_file():
+        return cand.read_bytes()
+    return base64.b64decode(_FALLBACK_PNG32_B64)
