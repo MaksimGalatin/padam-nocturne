@@ -2,7 +2,7 @@
 
 ### Память для ИИ-агентов, которая спит, честно забывает и проверяется навсегда
 
-[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%208%20tools-8A2BE2) [![PyPI](https://img.shields.io/pypi/v/padam-nocturne)](https://pypi.org/project/padam-nocturne/)
+[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%209%20tools-8A2BE2) [![PyPI](https://img.shields.io/pypi/v/padam-nocturne)](https://pypi.org/project/padam-nocturne/)
 
 **Ваш агент читает страницу сегодня, а завтра считает её своей памятью.** PADAM хранит эту память в одном локальном файле SQLite и делает так, чтобы её было безопасно читать обратно:
 
@@ -20,7 +20,7 @@
 
 **L3** — необязательный вечный слой. Он закрепляет память в **Arweave** (зашифрованные пакеты) и **Solana** (корень дерева Меркла в заметке Memo): любой может проверить, что закреплённый снимок памяти не меняли после закрепления, и при этом любую одну запись можно забыть навсегда. С 0.4.12 каждый пакет ещё и штампуется в **Bitcoin** через OpenTimestamps (бесплатно, без аккаунта) — второй, независимый свидетель. Файл `.ots` лежит рядом с пакетом, `padam l3-ots-upgrade` получает номер блока, когда он добыт, а `padam l3-verify` его показывает.
 
-Часть проекта [CODE Eternal](https://aifa.works) · Страница проекта: [aifa.works/nocturne](https://aifa.works/nocturne) · Спецификация: [English](https://github.com/MaksimGalatin/padam-nocturne/blob/main/docs/NOCTURNE_SPEC.en.md) · [Русский](https://github.com/MaksimGalatin/padam-nocturne/blob/main/docs/NOCTURNE_SPEC.md) · English README: [README.md](https://github.com/MaksimGalatin/padam-nocturne/blob/main/README.md)
+Часть проекта [CODE Eternal](https://aifa.works) · Страница проекта: [aifa.works/nocturne](https://aifa.works/nocturne) · Спецификация: [English](https://github.com/MaksimGalatin/padam-nocturne/blob/main/docs/NOCTURNE_SPEC.en.md) · [Русский](https://github.com/MaksimGalatin/padam-nocturne/blob/main/docs/NOCTURNE_SPEC.md) · Языки: [English](README.md) · **Русский** · [Español](README.es.md) · [中文](README.zh.md)
 
 ---
 
@@ -67,6 +67,24 @@ NOCTURNE делает ту ночную работу, которую делае�
 | «Забудьте меня» | невозможно или всё разом | одна запись — уничтожением её собственного ключа |
 | Где живёт | в облаке поставщика | в одном файле SQLite у вас |
 | Доказательство, что закреплённый снимок не меняли | — | корень Меркла в Solana, шифротекст в Arweave |
+
+### PADAM против памяти без защиты (сверено по открытым README 10 систем, 14.11.2026)
+
+Каждая строка о сторонней системе ниже ссылается на её открытый README на GitHub по состоянию на 14.11.2026 («не указано в README» означает, что в README репозитория на эту дату функция не описана; закрытые серверные части сторонних систем мы не запускали). Каждое утверждение о PADAM ведёт прямо на тест или замер в этом репозитории.
+
+| Система (открытый README) | Удержание спрятанных приказов на проверку + ограда данных | Маскировка ключей API, кошельков Solana и карт до записи на диск | Забывание одной записи уничтожением её ключа + квитанция об удалении | Проверяемая неизменность снимка (корень Меркла в Solana + Bitcoin OTS) | Две даты у записи (`last_seen_at` и `last_confirmed_at`) | Подпись владельца на записях «кто я» + доли Шамира |
+|---|---|---|---|---|---|---|
+| **PADAM · NOCTURNE** | **Да** — словарь на 13 языках, случайная ограда данных, `PADAM_STRICT=1` ([`tests/test_safety.py`](tests/test_safety.py), [`redteam/`](redteam/)) | **Да** — 20+ видов ключей, ключи Solana, карты по Луну, переключатель `PADAM_MASK_PII=1` ([`tests/test_solana_wallet_keys_0417.py`](tests/test_solana_wallet_keys_0417.py), [`docs/how-we-tested-fake-keys.md`](docs/how-we-tested-fake-keys.md)) | **Да** — свой ключ AES-256-GCM у каждой записи уничтожается локально + квитанция «доказательство удаления» в JSON и HTML ([`tests/test_studio_1411.py`](tests/test_studio_1411.py), [`tests/test_l3_anchor.py`](tests/test_l3_anchor.py)) | **Да** — шифротекст в Arweave, корень Меркла в Solana Memo, метка в Bitcoin OpenTimestamps ([`tests/test_l3_anchor.py`](tests/test_l3_anchor.py)) | **Да** — показ в поиске не омолаживает запись, угасание идёт от последнего подтверждения ([`tests/test_nocturne.py`](tests/test_nocturne.py)) | **Да** — подпись владельца HMAC + разделение пароля по Шамиру `k` из `n` + `panic` ([`tests/test_safety.py`](tests/test_safety.py), [`tests/test_keyvault.py`](tests/test_keyvault.py)) |
+| [mem0](https://github.com/mem0ai/mem0#readme) | Не указано в README | Не указано в README | Не указано в README | Не указано в README | Не указано в README | Не указано в README |
+| [Zep](https://github.com/getzep/zep#readme) / [Graphiti](https://github.com/getzep/graphiti#readme) | В README Graphiti прямо указано, что эталонные серверы не обнаруживают и не блокируют prompt injection | Не указано в README | Не указано в README | Не указано в README | Окна действия фактов в графе; разделения показа и подтверждения в README нет | Не указано в README |
+| [Letta](https://github.com/letta-ai/letta#readme) | Не указано в README | Не указано в README | Не указано в README | Не указано в README | Не указано в README | Не указано в README |
+| [Supermemory](https://github.com/supermemoryai/supermemory#readme) | Не указано в README | Не указано в README | Не указано в README | Не указано в README | Автоматическое забывание устаревшего; двух дат (показ и подтверждение) в README нет | Не указано в README |
+| [Basic Memory](https://github.com/basicmachines-co/basic-memory#readme) | Не указано в README | Не указано в README | Локальные файлы Markdown; уничтожения ключа одной записи и квитанции нет | Не указано в README | Не указано в README | Не указано в README |
+| [mcp-memory-service](https://github.com/doobidoo/mcp-memory-service#readme) | Не указано в README | Не указано в README | Не указано в README | Не указано в README | Управляемое угасание по расписанию; разделения показа и подтверждения в README нет | Не указано в README |
+| [cognee](https://github.com/topoteretes/cognee#readme) | Не указано в README | Не указано в README | Не указано в README | Не указано в README | Не указано в README | Не указано в README |
+| [Caura](https://github.com/caura-ai/caura#readme) | Уровни доверия агентов (`0`–`3`); очереди удержания приказов для владельца в README нет | Помечает личные данные (`contains_pii`); маскировка секретов до диска в README не указана | Не указано в README | Не указано в README | Не указано в README | Не указано в README |
+| [SAIHM](https://github.com/SAIHM-Admin/demo-claude-code#readme) | Не указано в README | Шифрование на клиенте; маскировка секретов до шифрования в README не указана | Заявлено уничтожение ключа в облаке (стирание производных выводов оставлено на клиента; в PADAM это делает `forget --with-derived`) | Заявлен учёт в сети COTI | Не указано в README | Не указано в README |
+| [Mnemoverse](https://github.com/mnemoverse/claude-plugin#readme) | Не указано в README | Не указано в README | Не указано в README | Не указано в README | Не указано в README | Не указано в README |
 
 ---
 
@@ -118,9 +136,9 @@ claude mcp add padam -- uvx padam-nocturne
 
 Из PyPI: `pip install padam-nocturne`. Самый свежий код прямо с GitHub: `uvx --from git+https://github.com/MaksimGalatin/padam-nocturne padam-nocturne`. Если стоит через `pip install -e .`, то просто `claude mcp add padam -- padam-mcp`. Готовые настройки для Claude Desktop, Cursor, VS Code, systemd и cron лежат в [`integrations/`](https://github.com/MaksimGalatin/padam-nocturne/tree/main/integrations/).
 
-**LangChain.** Через [`langchain-mcp-adapters`](https://github.com/langchain-ai/langchain-mcp-adapters) восемь инструментов становятся инструментами LangChain со схемами аргументов. `python integrations/langchain_check.py` запускает `uvx padam-nocturne` с PyPI и без языковой модели проверяет: список инструментов, запись, найденную поиском внутри ограды, внедрённый приказ, задержанный для владельца, и секрет, который не попадает в файл базы (по сырым байтам). 0.4.8 с адаптером 0.3.2 и langchain-core 1.7.7: 6 из 6. Одно отличие: ошибку инструмента (`isError: true`, например `limit must be at most 50`) адаптер отдаёт агенту обычным текстом, а не исключением `ToolException`.
+**LangChain.** Через [`langchain-mcp-adapters`](https://github.com/langchain-ai/langchain-mcp-adapters) девять инструментов становятся инструментами LangChain со схемами аргументов. `python integrations/langchain_check.py` запускает `uvx padam-nocturne` с PyPI и без языковой модели проверяет: список инструментов, запись, найденную поиском внутри ограды, внедрённый приказ, задержанный для владельца, и секрет, который не попадает в файл базы (по сырым байтам). 0.4.8 с адаптером 0.3.2 и langchain-core 1.7.7: 6 из 6. Одно отличие: ошибку инструмента (`isError: true`, например `limit must be at most 50`) адаптер отдаёт агенту обычным текстом, а не исключением `ToolException`.
 
-**CrewAI.** Через `MCPServerAdapter` из [`crewai-tools`](https://pypi.org/project/crewai-tools/) восемь инструментов становятся инструментами CrewAI. `python integrations/crewai_check.py` запускает `uvx padam-nocturne` из PyPI и без языковой модели проверяет то же самое: список инструментов, запись, найденную поиском внутри ограждения, приказ, удержанный для владельца, и секрет, который не попадает в файл базы. 0.4.18 с crewai и crewai-tools 1.15.41, mcp 1.30.0: 5 из 5 (14.11.2026). CrewAI требует Python ниже 3.14.
+**CrewAI.** Через `MCPServerAdapter` из [`crewai-tools`](https://pypi.org/project/crewai-tools/) девять инструментов становятся инструментами CrewAI. `python integrations/crewai_check.py` запускает `uvx padam-nocturne` из PyPI и без языковой модели проверяет то же самое: список инструментов, запись, найденную поиском внутри ограждения, приказ, удержанный для владельца, и секрет, который не попадает в файл базы. 0.4.18 с crewai и crewai-tools 1.15.41, mcp 1.30.0: 5 из 5 (14.11.2026). CrewAI требует Python ниже 3.14.
 
 ---
 
@@ -128,7 +146,7 @@ claude mcp add padam -- uvx padam-nocturne
 
 ### MCP-сервер (stdio)
 
-`padam-mcp` (та же программа ставится и как `padam-nocturne`; работает и `python -m padam.mcp_server`). Сервер говорит на обеих эпохах протокола в одном процессе: **2026-07-28** без рукопожатия (версия и возможности клиента в `_meta` каждого запроса, `server/discover`, `resultType` в каждом ответе, кешируемый `tools/list` с `ttlMs` и `cacheScope`, ошибка `-32022` со списком поддерживаемых версий при несовпадении) и прежние **2025-11-25**, 2025-06-18, 2025-03-26 и 2024-11-05 через `initialize`. Всегда говорит в UTF-8 через stdio — в том числе в консолях Windows с cp1251/cp1252 — и объявляет все четыре подсказки (только чтение, разрушающее, идемпотентное, внешний мир) у каждого из **8 инструментов** и сверяет каждый вызов со схемой инструмента. На неверный ввод (`null`, `[]`, голое число) отвечает ошибкой JSON-RPC `-32600`, а не падением процесса. Проверено от начала до конца официальным клиентом MCP Python SDK 12.10.2026.
+`padam-mcp` (та же программа ставится и как `padam-nocturne`; работает и `python -m padam.mcp_server`). Сервер говорит на обеих эпохах протокола в одном процессе: **2026-07-28** без рукопожатия (версия и возможности клиента в `_meta` каждого запроса, `server/discover`, `resultType` в каждом ответе, кешируемый `tools/list` с `ttlMs` и `cacheScope`, ошибка `-32022` со списком поддерживаемых версий при несовпадении) и прежние **2025-11-25**, 2025-06-18, 2025-03-26 и 2024-11-05 через `initialize`. Всегда говорит в UTF-8 через stdio — в том числе в консолях Windows с cp1251/cp1252 — и объявляет все четыре подсказки (только чтение, разрушающее, идемпотентное, внешний мир) у каждого из **9 инструментов** и сверяет каждый вызов со схемой инструмента. На неверный ввод (`null`, `[]`, голое число) отвечает ошибкой JSON-RPC `-32600`, а не падением процесса. Проверено от начала до конца официальным клиентом MCP Python SDK 12.10.2026.
 
 | Инструмент | Что делает |
 |---|---|
@@ -140,6 +158,7 @@ claude mcp add padam -- uvx padam-nocturne
 | `padam_stats` | состояние памяти: числа по статусам и видам, записи на проверке, пора ли закреплять, текущий способ векторизации, где лежит база |
 | `padam_sleep` | запустить цикл закрепления (обычно по расписанию, не вручную) |
 | `padam_export` | выгрузить всю память в JSON или одну страницу через `limit` и `offset` |
+| `padam_profile` | сводка только для чтения «кто я и что предпочитаю» — строится строго по действующим записям `identity` и `preference` с верной подписью владельца (огорожена как данные; неподписанные записи пропускаются) |
 
 Для вопросов, собирающих сведения по многим разговорам («сколько раз…», «сколько всего…»), вызывайте `padam_search` с `limit` 25–30 и `compact: true`: в каждой записи остаются слова человека и только начало ответа ассистента, поэтому в то же место помещается больше разрозненных фактов. Сами записи не меняются; по умолчанию `compact` выключен.
 

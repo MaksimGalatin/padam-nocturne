@@ -4,7 +4,7 @@
 
 ### Memory for AI agents that sleeps, forgets honestly, and can be verified forever
 
-[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%208%20tools-8A2BE2) [![PyPI](https://img.shields.io/pypi/v/padam-nocturne)](https://pypi.org/project/padam-nocturne/)
+[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%209%20tools-8A2BE2) [![PyPI](https://img.shields.io/pypi/v/padam-nocturne)](https://pypi.org/project/padam-nocturne/)
 
 **Your agent reads a web page today and treats it as memory tomorrow.** PADAM keeps that memory in one local SQLite file and makes it safe to read back:
 
@@ -22,7 +22,7 @@ Measured, not claimed: seven red-team rounds with their results published (the s
 
 **L3** is the optional eternal layer. It anchors memory to **Arweave** (encrypted bundles) and **Solana** (a Merkle root in a Memo), so anyone can check that an anchored snapshot was not changed afterwards — while any single record can still be forgotten for good. Since 0.4.12 each bundle is also timestamped in **Bitcoin** through OpenTimestamps (free, no account): a second, independent witness. The `.ots` file lies next to the bundle, `padam l3-ots-upgrade` fetches the block height once it is mined, and `padam l3-verify` shows it.
 
-Part of [CODE Eternal](https://aifa.works) · Project page: [aifa.works/nocturne](https://aifa.works/nocturne) · Specification: [English](https://github.com/MaksimGalatin/padam-nocturne/blob/main/docs/NOCTURNE_SPEC.en.md) · [Русский](https://github.com/MaksimGalatin/padam-nocturne/blob/main/docs/NOCTURNE_SPEC.md) · Русская версия README: [README.ru.md](https://github.com/MaksimGalatin/padam-nocturne/blob/main/README.ru.md)
+Part of [CODE Eternal](https://aifa.works) · Project page: [aifa.works/nocturne](https://aifa.works/nocturne) · Specification: [English](https://github.com/MaksimGalatin/padam-nocturne/blob/main/docs/NOCTURNE_SPEC.en.md) · [Русский](https://github.com/MaksimGalatin/padam-nocturne/blob/main/docs/NOCTURNE_SPEC.md) · Languages: **English** · [Русский](README.ru.md) · [Español](README.es.md) · [中文](README.zh.md)
 
 <!-- mcp-name: io.github.MaksimGalatin/padam-nocturne -->
 
@@ -71,6 +71,24 @@ NOCTURNE does the night work a brain does: keep what matters, fold repeats into 
 | "Forget me" | impossible or all-or-nothing | one record, by destroying its own key |
 | Where it lives | vendor's cloud | one SQLite file you own |
 | Proof an anchored snapshot was not changed | — | Merkle root on Solana, ciphertext on Arweave |
+
+### PADAM vs. unprotected agent memory (checked against 10 public READMEs, 14 Nov 2026)
+
+Every competitor row below cites its own public GitHub README as of 14 Nov 2026 ("not stated in README" means the feature is not described in that repository's README on that date; we did not run third-party closed backends). Every PADAM claim links directly to the test or benchmark in this repository that verifies it.
+
+| System (public README) | Holds injected orders for owner review + data fence | Masks API keys, Solana wallets & cards before disk | Single-record crypto-shredding + deletion receipt | Public immutability proof (Merkle root + Bitcoin OTS) | Two clocks (`last_seen_at` vs `last_confirmed_at`) | Owner signature on `identity` / `preference` + Shamir legacy |
+|---|---|---|---|---|---|---|
+| **PADAM · NOCTURNE** | **Yes** — 13-language filter, random data fence, `PADAM_STRICT=1` ([`tests/test_safety.py`](tests/test_safety.py), [`redteam/`](redteam/)) | **Yes** — 20+ key shapes, Solana keys, Luhn cards, optional `PADAM_MASK_PII=1` ([`tests/test_solana_wallet_keys_0417.py`](tests/test_solana_wallet_keys_0417.py), [`docs/how-we-tested-fake-keys.md`](docs/how-we-tested-fake-keys.md)) | **Yes** — per-record AES-256-GCM key destroyed locally + JSON/HTML proof of deletion ([`tests/test_studio_1411.py`](tests/test_studio_1411.py), [`tests/test_l3_anchor.py`](tests/test_l3_anchor.py)) | **Yes** — Arweave ciphertext bundle, Solana Memo root, Bitcoin OpenTimestamps ([`tests/test_l3_anchor.py`](tests/test_l3_anchor.py)) | **Yes** — retrieval never refreshes decay; only confirmation does ([`tests/test_nocturne.py`](tests/test_nocturne.py)) | **Yes** — HMAC owner signature + Shamir `k`-of-`n` split + `panic` ([`tests/test_safety.py`](tests/test_safety.py), [`tests/test_keyvault.py`](tests/test_keyvault.py)) |
+| [mem0](https://github.com/mem0ai/mem0#readme) | Not stated in README | Not stated in README | Not stated in README | Not stated in README | Not stated in README | Not stated in README |
+| [Zep](https://github.com/getzep/zep#readme) / [Graphiti](https://github.com/getzep/graphiti#readme) | Graphiti README explicitly notes reference servers do not detect or block prompt injection | Not stated in README | Not stated in README | Not stated in README | Bi-temporal validity windows on graph edges; no confirmation-only decay clock | Not stated in README |
+| [Letta](https://github.com/letta-ai/letta#readme) | Not stated in README | Not stated in README | Not stated in README | Not stated in README | Not stated in README | Not stated in README |
+| [Supermemory](https://github.com/supermemoryai/supermemory#readme) | Not stated in README | Not stated in README | Not stated in README | Not stated in README | Auto-forgetting of outdated facts; no two-clock confirmation split in README | Not stated in README |
+| [Basic Memory](https://github.com/basicmachines-co/basic-memory#readme) | Not stated in README | Not stated in README | Local Markdown files; no per-record key destruction receipt | Not stated in README | Not stated in README | Not stated in README |
+| [mcp-memory-service](https://github.com/doobidoo/mcp-memory-service#readme) | Not stated in README | Not stated in README | Not stated in README | Not stated in README | Autonomous decay consolidation; no two-clock confirmation split in README | Not stated in README |
+| [cognee](https://github.com/topoteretes/cognee#readme) | Not stated in README | Not stated in README | Not stated in README | Not stated in README | Not stated in README | Not stated in README |
+| [Caura](https://github.com/caura-ai/caura#readme) | Agent trust levels (`0`–`3`); no held-write owner queue for prompt injection in README | Flags PII (`contains_pii`); pre-disk secret masking not stated in README | Not stated in README | Not stated in README | Not stated in README | Not stated in README |
+| [SAIHM](https://github.com/SAIHM-Admin/demo-claude-code#readme) | Not stated in README | Client-side encryption; pre-encryption secret masking not stated in README | States crypto-shredding in cloud (notes derived data cleanup is client's responsibility; PADAM `forget --with-derived` automates it) | States accounting in COTI network | Not stated in README | Not stated in README |
+| [Mnemoverse](https://github.com/mnemoverse/claude-plugin#readme) | Not stated in README | Not stated in README | Not stated in README | Not stated in README | Not stated in README | Not stated in README |
 
 ---
 
@@ -122,9 +140,9 @@ One click in Cursor or VS Code (needs [uv](https://docs.astral.sh/uv/)): [![Add 
 
 From PyPI: `pip install padam-nocturne`. The latest code straight from GitHub: `uvx --from git+https://github.com/MaksimGalatin/padam-nocturne padam-nocturne`. Installed with `pip install -e .`? Then simply `claude mcp add padam -- padam-mcp`. Ready-made configs for Claude Desktop, Cursor, VS Code, systemd and cron are in [`integrations/`](https://github.com/MaksimGalatin/padam-nocturne/tree/main/integrations/).
 
-**LangChain.** Through [`langchain-mcp-adapters`](https://github.com/langchain-ai/langchain-mcp-adapters) the eight tools become LangChain tools with their argument schemas. `python integrations/langchain_check.py` starts `uvx padam-nocturne` from PyPI and checks, with no language model: the tool list, a write found by search inside the fence, an injected order held for the owner, a secret that never reaches the database file (read as raw bytes). 0.4.8 with adapters 0.3.2 and langchain-core 1.7.7: 6 of 6. One difference to know: the adapter passes a tool error (`isError: true`, e.g. `limit must be at most 50`) to the agent as ordinary text, not as a `ToolException`.
+**LangChain.** Through [`langchain-mcp-adapters`](https://github.com/langchain-ai/langchain-mcp-adapters) the nine tools become LangChain tools with their argument schemas. `python integrations/langchain_check.py` starts `uvx padam-nocturne` from PyPI and checks, with no language model: the tool list, a write found by search inside the fence, an injected order held for the owner, a secret that never reaches the database file (read as raw bytes). 0.4.8 with adapters 0.3.2 and langchain-core 1.7.7: 6 of 6. One difference to know: the adapter passes a tool error (`isError: true`, e.g. `limit must be at most 50`) to the agent as ordinary text, not as a `ToolException`.
 
-**CrewAI.** Through `MCPServerAdapter` from [`crewai-tools`](https://pypi.org/project/crewai-tools/) the eight tools become CrewAI tools. `python integrations/crewai_check.py` starts `uvx padam-nocturne` from PyPI and runs the same checks with no language model: the tool list, a write found by search inside the fence, an injected order held for the owner, a secret that never reaches the database file. 0.4.18 with crewai and crewai-tools 1.15.41, mcp 1.30.0: 5 of 5 (14 Nov 2026). CrewAI needs Python below 3.14.
+**CrewAI.** Through `MCPServerAdapter` from [`crewai-tools`](https://pypi.org/project/crewai-tools/) the nine tools become CrewAI tools. `python integrations/crewai_check.py` starts `uvx padam-nocturne` from PyPI and runs the same checks with no language model: the tool list, a write found by search inside the fence, an injected order held for the owner, a secret that never reaches the database file. 0.4.18 with crewai and crewai-tools 1.15.41, mcp 1.30.0: 5 of 5 (14 Nov 2026). CrewAI needs Python below 3.14.
 
 ---
 
@@ -132,7 +150,7 @@ From PyPI: `pip install padam-nocturne`. The latest code straight from GitHub: `
 
 ### MCP server (stdio)
 
-`padam-mcp` (the same program is also installed as `padam-nocturne`; `python -m padam.mcp_server` works too). The server speaks both eras of the protocol in one process: **2026-07-28** without a handshake (version and client capabilities in every request's `_meta`, `server/discover`, `resultType` in every result, cacheable `tools/list` with `ttlMs` and `cacheScope`, `-32022` with the supported versions on a mismatch) and the older **2025-11-25**, 2025-06-18, 2025-03-26 and 2024-11-05 through `initialize`. It always speaks UTF-8 over stdio — including Windows consoles in cp1251/cp1252 — and declares all four hints (read-only, destructive, idempotent, open-world) on each of its **8 tools**, and checks every call against the tool's schema. Malformed input (`null`, `[]`, a bare number) gets a JSON-RPC `-32600` error instead of crashing the process. Checked end-to-end with the official MCP Python SDK client on 12 Oct 2026.
+`padam-mcp` (the same program is also installed as `padam-nocturne`; `python -m padam.mcp_server` works too). The server speaks both eras of the protocol in one process: **2026-07-28** without a handshake (version and client capabilities in every request's `_meta`, `server/discover`, `resultType` in every result, cacheable `tools/list` with `ttlMs` and `cacheScope`, `-32022` with the supported versions on a mismatch) and the older **2025-11-25**, 2025-06-18, 2025-03-26 and 2024-11-05 through `initialize`. It always speaks UTF-8 over stdio — including Windows consoles in cp1251/cp1252 — and declares all four hints (read-only, destructive, idempotent, open-world) on each of its **9 tools**, and checks every call against the tool's schema. Malformed input (`null`, `[]`, a bare number) gets a JSON-RPC `-32600` error instead of crashing the process. Checked end-to-end with the official MCP Python SDK client on 12 Oct 2026.
 
 | Tool | What it does |
 |---|---|
@@ -144,6 +162,7 @@ From PyPI: `pip install padam-nocturne`. The latest code straight from GitHub: `
 | `padam_stats` | memory state: counts by status and type, records waiting for review, whether consolidation is due, the active embedding backend, where the database lives |
 | `padam_sleep` | run a consolidation cycle (normally scheduled, not called by hand) |
 | `padam_export` | export the whole memory as JSON, or one page with `limit` and `offset` |
+| `padam_profile` | read-only summary of who you are and what you prefer, built strictly from active `identity` and `preference` records with a valid owner signature (fenced as data; unsigned records are skipped) |
 
 For questions that aggregate across many conversations ("how many…", "how much in total…"), call `padam_search` with `limit` 25–30 and `compact: true`: each record keeps the person's words and only the start of the assistant's reply, so more of the scattered facts fit in the same space. Stored records are not changed; `compact` is off by default.
 

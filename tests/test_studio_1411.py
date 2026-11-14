@@ -1001,3 +1001,58 @@ def test_b2_one_click_plugins_for_claude_cursor_codex_gemini_antigravity():
     assert agy_plugin["name"] == "padam-nocturne"
     assert (root / "plugins" / "antigravity" / "skills" / "padam-memory" / "SKILL.md").exists()
     assert (root / "plugins" / "antigravity" / "rules" / "AGENTS.md").exists()
+
+
+def test_p12_vector_cache_survives_agent_derived_audit_and_duplicate(tmp_path):
+    """Правка 12: запись с agent_id, derived_from, owner_sig и audit_log не сбрасывает векторный кэш при замене и повторе."""
+    mem = Memory(user_id="cache12", store=Store(tmp_path / "cache12.db"))
+    try:
+        _, id_pref = mem.remember("Предпочитаю короткие ответы на русском", kind="preference", origin="user", agent_id="cc")
+        _, id_src = mem.remember("Billing database runs on PostgreSQL", kind="fact", origin="user", agent_id="cc")
+        _, id_drv = mem.remember("Migrations target PostgreSQL schema", kind="fact", origin="user",
+                                derived_from=[id_src], agent_id="cc")
+        # Прогреваем кэш векторов для ("global", "fact", dim)
+        mem.recall("PostgreSQL billing", scope="global", kind="fact")
+        vcache = mem.__dict__.get("_вкэш") or {}
+        fact_keys = [k for k in vcache if k[0] == "global" and k[1] == "fact"]
+        assert fact_keys
+        ids_before = vcache[fact_keys[0]][1]
+
+        # Смена значения по ключу факта + agent_id + audit_log, затем повтор с agent_id + audit_log
+        mem.remember("Capital of Ecuador is Lima", kind="fact", origin="user", agent_id="cc")
+        mem.remember("Capital of Ecuador is Quito", kind="fact", origin="user", agent_id="cc")
+        mem.remember("Migrations target PostgreSQL schema", kind="fact", origin="user", agent_id="cc")
+
+        assert vcache[fact_keys[0]][1] is ids_before
+        assert mem.derived(id_src) == [id_drv]
+        assert len(mem.audit_log(limit=20)) >= 6
+        assert mem.profile()["preferences"]
+    finally:
+        mem.close()
+
+
+def test_b1_and_b23_readme_comparison_and_four_languages():
+    """Б1 + Б23: README на 4 языках (EN, RU, ES, ZH), значок 9 инструментов, padam_profile и сравнение Б1."""
+    root = Path(__file__).resolve().parents[1]
+    for name in ("README.md", "README.ru.md", "README.es.md", "README.zh.md"):
+        txt = (root / name).read_text(encoding="utf-8")
+        assert "9%20tools" in txt, f"{name} missing 9 tools badge"
+        assert "8%20tools" not in txt, f"{name} still has 8 tools badge"
+        assert "padam_profile" in txt, f"{name} missing padam_profile"
+        assert "github.com/mem0ai/mem0" in txt, f"{name} missing competitor table"
+        assert "github.com/getzep/graphiti" in txt, f"{name} missing graphiti row"
+        assert "README.es.md" in txt or "**Español**" in txt
+        assert "README.zh.md" in txt or "**中文**" in txt
+        assert "README.ru.md" in txt or "**Русский**" in txt
+        assert "README.md" in txt or "**English**" in txt
+
+    comp = (root / "docs" / "comparison-nocturne-page.md").read_text(encoding="utf-8")
+    for lang_hdr in ("## 1. Русская версия (RU)", "## 2. English Version (EN)", "## 3. Versión en Español (ES)", "## 4. 中文版 (ZH)"):
+        assert lang_hdr in comp
+    assert "aifa.works/nocturne" in comp
+
+    llms = (root / "llms-install.md").read_text(encoding="utf-8")
+    assert "9 tools" in llms and "padam_profile" in llms
+    for check_py in ("integrations/crewai_check.py", "integrations/langchain_check.py"):
+        assert "len(tools) == 9" in (root / check_py).read_text(encoding="utf-8")
+
