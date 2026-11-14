@@ -523,7 +523,18 @@ _KEY_PROSE_TOKEN = re.compile(r"(?<![^\s\"'«“:：=(])([\"'«“]?)([^\s<>\"'�
 # Формат ключей NowPayments: четыре группы по семь знаков через дефис — бывают и без цифр, strong_secret их не видит.
 _GROUPED_7X4 = re.compile(r"[A-Z0-9]{7}(?:-[A-Z0-9]{7}){3}")
 # Имя, а не ключ: snake_case и camelCase из слов с коротким хвостом («user_profile_settings_v2», «authenticationService»).
-_IDENTIFIER = re.compile(r"[a-z]{2,}(?:_[a-z]{2,})+(?:_v?\d{1,3})?|[a-z]{2,}(?:[A-Z][a-z]{2,})+\d{0,3}")
+_IDENTIFIER = re.compile(r"[a-z]{2,}(?:_[a-z]{2,})+(?:_v?\d{1,3})?|[a-z]{2,}(?:[A-Z][a-z]{2,})+\d{0,3}"
+                         # 0.4.18, перепроверка трекера 13.11.2026: имена, принятые за ключи (11 из 17 срабатываний) —
+                         # имя токена с датой («aifa-ci-2026-10-17»), имя переменной («GEMINI_API_KEY_2»),
+                         # PascalCase («LimitBlankPasswordUse»), тег модели («gemma3:27b-cloud»).
+                         r"|[a-z]{2,}(?:-[a-z]{2,})*-(?:19|20)\d{2}(?:-\d{2}){0,2}"
+                         r"|[A-Z]{2,}(?:_[A-Z]{2,})+(?:_\d{1,3})?"
+                         r"|(?:[A-Z][a-z]{2,}){2,}\d{0,3}"
+                         r"|[a-z][a-z0-9.]*:\d{1,4}(?:\.\d+)?[bm](?:-[a-z0-9]+)*"
+                         # имена файлов ключей SSH через «/»: «id_rsa/id_ed25519».
+                         r"|[a-z]{2,}_[a-z]{2,}\d{0,6}(?:/[a-z]{2,}_[a-z]{2,}\d{0,6})+")
+# Ключ — это ASCII без звёздочек: кириллица (имя файла по-русски) и «*» (маска файлов «*.pem/*.p12») — не значение.
+_НЕ_КЛЮЧ = re.compile(r"[А-Яа-яЁё*]")
 
 
 def _сильное_значение(core: str) -> bool:
@@ -531,7 +542,7 @@ def _сильное_значение(core: str) -> bool:
     if "REDACTED:" in core or _ЗАГЛУШКА.fullmatch(core) or _CODE_LIKE.search(core):
         return False
     # Повтор из двух-трёх знаков («9f9f9f…», «aaaa…») — заглушка или кэш-ключ, а не случайный секрет.
-    if _IDENTIFIER.fullmatch(core) or len(set(core)) < 6:
+    if _IDENTIFIER.fullmatch(core) or len(set(core)) < 6 or _НЕ_КЛЮЧ.search(core):
         return False
     return (strong_secret(core, min_len=16) or bool(_HEX_32.fullmatch(core)) or bool(_GROUPED_7X4.fullmatch(core))
             or _случайный_регистр(core))

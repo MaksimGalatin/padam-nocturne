@@ -315,6 +315,8 @@ All three were verified end-to-end with `l3-verify` against Arweave and the chai
 
 **Solana wallet keys never stay in memory (0.4.17).** An agent that trades, signs or pays sees its wallet key, and whatever it sees can end up in memory, which is read back into prompts, logs and exports. PADAM masks the three shapes a Solana key takes before anything is stored: the `id.json` keypair of the Solana CLI (an array of 64 numbers), the secret key in base58, and the 12- or 24-word BIP-39 recovery phrase, bare or inside a sentence, an `export` line or a table. The public wallet address stays readable, so the agent can still say where to send funds. The test in the repository runs 550 random fake keys (seven wordings for a key, four for a phrase), and no 8-number, 6-word or full-key fragment may survive ([`tests/test_solana_wallet_keys_0417.py`](tests/test_solana_wallet_keys_0417.py)); a wider run of 2,200 fake keys and phrases kept 0 of them (13 Nov 2026).
 
+How the masking is tested on 30,000 fake keys, and what it does not cover: [docs/how-we-tested-fake-keys.md](docs/how-we-tested-fake-keys.md).
+
 **Protect the keys with a passphrase** before the first anchoring. Since 0.4.1 `padam l3` refuses to send anything to Arweave while the keys are unprotected (`--allow-unprotected-keys` overrides it knowingly; `--dry-run` sends nothing and is not held), and `padam stats` shows `record_keys`: whether a passphrase protects them and how many lie in clear.
 
 ```bash

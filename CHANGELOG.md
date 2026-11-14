@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.18 — 13 November 2026
+
+### Names next to the word "key" are no longer taken for keys
+Re-checking our own task tracker (32,000+ lines) with 0.4.17 gave 17 hits; 11 of them were **names**, not values: a token's name with a date (`aifa-ci-2026-10-17`), a variable name (`GOOGLE_AI_PRO_KEY_2`), a Windows policy in PascalCase (`LimitBlankPasswordUse`), a model tag (`gemma3:27b-cloud`), a file name in Cyrillic, file masks (`*.pem/*.p12`) and SSH key file names (`id_rsa/id_ed25519`). A value that looks like one of these, or contains Cyrillic or `*`, is no longer masked as a key. Real keys next to such names are still masked (`tests/test_names_not_keys_0418.py`).
+- Our tracker: 17 hits → 6; none of the remaining six is a name of this kind.
+- Fake keys: 0 of 30,000 kept; Solana wallet keys: 0 of 2,200 kept; 0 of 12 clean phrases masked.
+- LongMemEval-S, 0.4.17 vs 0.4.18: 0 of 189,635 unique chat turns change — no mask lost, none added.
+- 995 tests pass.
+- `llms-install.md`: install steps for AI agents; `docs/how-we-tested-fake-keys.md`: how the masking is tested and what it does not cover.
+
 ## 0.4.17 — 13 November 2026
 
 ### Secrets that stayed open in ordinary notes, found with fake keys
