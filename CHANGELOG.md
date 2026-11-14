@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.0 — 14 November 2026
+
+### PADAM Studio: your memory in a window
+- `padam studio` opens a local app (127.0.0.1, one-time token after `#`) with ten screens: overview and protection status (`padam doctor` in plain words), memory feed, search with "why it was found", the review queue with the reason each write was held, memory as of a date, forget with a receipt, the links graph, the L3 eternal layer, settings, and a first-run guide. Light and dark themes follow the system; English, Russian, Spanish and Chinese; phone and desktop widths. Strict CSP with a per-page nonce, nothing loaded from outside, stored text is always shown as text.
+- `padam desktop`: a small desktop control window (memory status, records waiting for review, recent records, buttons to open Studio, the review queue and a NOCTURNE sleep) with Studio opening in your browser. It runs inside the PADAM process — no separate executable, no hidden child process, the token is never put on a command line.
+- Browser extension for Chrome and Edge (`extensions/chromium/`, Manifest V3, load unpacked): save a selection, a page or a note. The server marks everything coming from an extension as `external`, whatever the extension sends, so it waits for your review.
+
+### Forgetting you can show, and more
+- `padam forget --receipt <file.json|file.html>`: a receipt of what was forgotten, when, and its content hash.
+- Links graph (`GET /graph`): conclusions and their sources, versions and contradictions.
+- `padam demo`: a separate demo memory with made-up facts showing a held order, a masked key, a new version after a contradiction and a forgotten record. Your own memory is not touched.
+- Export to Markdown / Obsidian; import from ChatGPT, Claude, Obsidian and mem0 exports — every imported record is `external`, masked and held for review.
+- Owner-only REST routes for Studio (`/overview`, `/doctor`, `/settings`, `/graph`, `/forget-receipts`, …) refuse requests without the token.
+
+Tested: full suite on Windows, Python 3.14 — 1009 passed, 11 skipped.
+
 ## 0.4.18 — 13 November 2026
 
 ### Names next to the word "key" are no longer taken for keys
