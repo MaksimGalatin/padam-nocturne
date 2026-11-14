@@ -421,7 +421,9 @@ def make_studio_server(memory: Memory | None = None, port: int = 8078) -> tuple[
     return srv, f"http://127.0.0.1:{srv.server_address[1]}/studio#t={_state['token']}"
 
 
-def main(argv=None) -> int:
+def main(argv=None, memory: Memory | None = None) -> int:
+    if memory is not None:
+        _state["memory"] = memory
     p = argparse.ArgumentParser(prog="padam.api")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8077)

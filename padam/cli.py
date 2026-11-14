@@ -804,7 +804,7 @@ def main(argv=None) -> int:
     s.add_argument("--token", default=None)
     s.set_defaults(fn=lambda m, a: __import__("padam.api", fromlist=["main"])
                    .main(["--host", a.host, "--port", str(a.port)]
-                         + (["--token", a.token] if a.token else [])))
+                         + (["--token", a.token] if a.token else []), memory=m))
 
     s = sub.add_parser("l3", help=t("закрепить память: Arweave + корень Меркла в Solana",
                                     "anchor memory: Arweave + Merkle root on Solana"))
