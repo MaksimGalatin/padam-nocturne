@@ -166,7 +166,7 @@ UI_STRINGS = {
         "all_docs": "Выбор языка",
         "footer_left": "PADAM · NOCTURNE 0.4.18 · Локальная память с открытым кодом (AGPL-3.0) · CODE Eternal",
         "footer_right": "Автономная статическая документация · Без внешних скриптов, стилей и CDN",
-        "hero_badge": "Версия 0.4.18 · 1027 автотестов · Python >= 3.10 · Один локальный SQLite",
+        "hero_badge": "Версия 0.4.18 · 1030 автотестов · Python >= 3.10 · Один локальный SQLite",
         "not_stated": "Не указано в README",
         "yes": "Да",
         "overview": {
@@ -204,7 +204,7 @@ UI_STRINGS = {
             "clients": [
                 ("MCP для Claude Code / Cursor / Codex / Gemini CLI / Antigravity", "Готовые манифесты плагинов в репозитории (.claude-plugin/, plugins/cursor, plugins/codex, plugins/gemini-cli, plugins/antigravity) со скиллом и командами /recall, /remember, /profile."),
                 ("LangChain, CrewAI, Vercel AI и Mastra", "Готовые обёртки в integrations/ (Python) и официальный TypeScript SDK packages/padam-client/ с экспортом инструментов для Vercel AI SDK и Mastra."),
-                ("Настольное приложение и расширение браузера", "python -m padam desktop открывает локальный центр памяти без встроенного Chromium (и проект Tauri desktop-tauri/); расширение browser-extension сохраняет выделенный текст как origin=external."),
+                ("Настольное приложение (Tauri v2) и расширение браузера", "Установщик PADAM-Studio-Setup.exe (desktop/tauri/, 20.97 МБ, встроенный Python 3.14.4 runtime/, системный трей, уведомления Windows при удержании записей; без платной подписи кода при первом запуске в SmartScreen выберите «Подробнее -> Выполнить в любом случае») и python -m padam desktop; расширение браузера сохраняет текст как origin=external."),
             ],
             "studio_features_h": "Что внутри 10 экранов PADAM Studio",
             "studio_features": [
@@ -330,7 +330,7 @@ UI_STRINGS = {
             "clients": [
                 ("One-click plugins (Claude Code, Cursor, Codex, Gemini CLI, Antigravity)", "Ready-to-enable manifests in .claude-plugin/, plugins/cursor, plugins/codex, plugins/gemini-cli and plugins/antigravity with /recall, /remember, /profile commands."),
                 ("LangChain, CrewAI, Vercel AI & Mastra", "Python wrappers under integrations/ and TypeScript SDK packages/padam-client/ exporting Vercel AI and Mastra tools."),
-                ("Desktop launcher & browser extension", "python -m padam desktop opens the local memory hub (plus Tauri desktop-tauri/); browser-extension saves selections strictly with Origin chrome-extension:// forced to external."),
+                ("Windows Desktop Installer (Tauri v2) & browser extension", "PADAM-Studio-Setup.exe (desktop/tauri/, 20.97 MB, bundled Python 3.14.4 runtime/, system tray, Windows Toast notifications on held writes; unsigned with paid Authenticode — on first run in SmartScreen click More info -> Run anyway) plus python -m padam desktop; browser-extension forces Origin chrome-extension:// to external."),
             ],
             "studio_features_h": "Inside PADAM Studio (10 screens)",
             "studio_features": [
@@ -456,7 +456,7 @@ UI_STRINGS = {
             "clients": [
                 ("Plugins en un clic (Claude Code, Cursor, Codex, Gemini CLI, Antigravity)", "Manifiestos listos en .claude-plugin/, plugins/cursor, plugins/codex, plugins/gemini-cli y plugins/antigravity con comandos /recall, /remember y /profile."),
                 ("LangChain, CrewAI, Vercel AI y Mastra", "Conectores Python en integrations/ y SDK oficial en TypeScript `packages/padam-client/`."),
-                ("Aplicación de escritorio y extensión", "python -m padam desktop (más proyecto Tauri desktop-tauri/) y extensión Chrome/Edge con origen forzado `external`."),
+                ("Instalador de escritorio (Tauri v2) y extensión", "PADAM-Studio-Setup.exe (desktop/tauri/, 20.97 MB, Python 3.14.4 integrado en runtime/, bandeja del sistema, notificaciones de Windows; en la primera ejecución con SmartScreen pulsa Más información -> Ejecutar de todas formas) más python -m padam desktop y extensión Chrome/Edge."),
             ],
             "studio_features_h": "Qué incluyen las 10 pantallas de PADAM Studio",
             "studio_features": [
@@ -582,7 +582,7 @@ UI_STRINGS = {
             "clients": [
                 ("五大客户端一键插件（Claude Code / Cursor / Codex / Gemini CLI / Antigravity）", "仓库内置 .claude-plugin/、plugins/cursor、plugins/codex、plugins/gemini-cli、plugins/antigravity 配置与 /recall、/remember、/profile 命令。"),
                 ("LangChain、CrewAI、Vercel AI 与 Mastra", "integrations/ 目录提供 Python 适配器，packages/padam-client/ 提供官方 TypeScript SDK。"),
-                ("桌面端与浏览器扩展", "python -m padam desktop（及 Tauri 工程 desktop-tauri/）与 browser-extension（强制 `chrome-extension://` 来源为 external）。"),
+                ("Windows 桌面安装程序 (Tauri v2) 与浏览器扩展", "PADAM-Studio-Setup.exe（desktop/tauri/，20.97 MB，内置 Python 3.14.4 runtime/、系统托盘与拦截通知；首次运行如遇 SmartScreen 请点击“更多信息 -> 仍要运行”）及 python -m padam desktop 与浏览器扩展。"),
             ],
             "studio_features_h": "PADAM Studio 十大界面特性",
             "studio_features": [

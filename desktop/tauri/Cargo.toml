@@ -1,12 +1,19 @@
 [package]
 name = "padam-studio-desktop"
 version = "0.2.0"
-description = "PADAM NOCTURNE Studio — Desktop Shell & System Tray (Windows, macOS, Linux)"
+description = "PADAM · NOCTURNE Studio — Локальная защищённая память ИИ-агентов (CODE Eternal)"
 authors = ["Maksim Galatin <codeofdigitaleternity@gmail.com>"]
 license = "AGPL-3.0-only"
 edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = ["tray-icon"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+getrandom = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+tauri-winrt-notification = "0.5"

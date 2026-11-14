@@ -38,6 +38,7 @@ import json
 import os
 import re
 import secrets
+import threading
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
@@ -311,6 +312,7 @@ class Handler(BaseHTTPRequestHandler):
                         for r in unsigned
                     ],
                     "conflicts": m.conflicts(),
+                    "desktop_cmds": _state.pop("desktop_cmds", []),
                 })
             if путь.path == "/graph":
                 q = parse_qs(путь.query)
@@ -333,6 +335,8 @@ class Handler(BaseHTTPRequestHandler):
             if путь.path == "/l3":
                 return self._send(200, mem().l3_status())
             if путь.path == "/settings":
+                from . import desktop as _desktop
+
                 return self._send(200, {
                     "strict": config.STRICT,
                     "mcp_review_all": config.MCP_REVIEW_ALL,
@@ -343,6 +347,8 @@ class Handler(BaseHTTPRequestHandler):
                     "keep_secrets": config.KEEP_SECRETS,
                     "mcp_trust_writes": config.MCP_TRUST_WRITES,
                     "profile": config.PROFILE_NAME,
+                    "autostart": _desktop.get_autostart(),
+                    "autostart_supported": _desktop.autostart_supported(),
                 })
             if self.path == "/export":
                 return self._send(200, mem().export())
@@ -482,6 +488,10 @@ class Handler(BaseHTTPRequestHandler):
                     config.PROFILE_NAME = str(data["profile"])
                     config.K_MAX = config._PROFILES[config.PROFILE_NAME]
                     config.MAX_HI_SHARE = config.K_MAX
+                from . import desktop as _desktop
+
+                if "autostart" in data:
+                    _desktop.set_autostart(bool(data["autostart"]))
                 return self._send(200, {
                     "ok": True,
                     "strict": config.STRICT,
@@ -493,7 +503,31 @@ class Handler(BaseHTTPRequestHandler):
                     "keep_secrets": config.KEEP_SECRETS,
                     "mcp_trust_writes": config.MCP_TRUST_WRITES,
                     "profile": config.PROFILE_NAME,
+                    "autostart": _desktop.get_autostart(),
+                    "autostart_supported": _desktop.autostart_supported(),
                 })
+
+            if self.path == "/desktop-window" and os.environ.get("PADAM_ALLOW_SHUTDOWN") == "1":
+                if not _state["token"] or not self._authorized():
+                    return self._send(403, {"error": "forbidden"})
+                from . import desktop as _desktop
+                if any(k in data for k in ("tab", "eval", "window_cmd")):
+                    _state.setdefault("desktop_cmds", []).append({
+                        k: data[k] for k in ("tab", "eval", "window_cmd") if k in data
+                    })
+                res = _desktop.control_native_window(
+                    action=str(data.get("action", "inspect")),
+                    out_path=data.get("out_path"),
+                    rect=data.get("rect"),
+                )
+                return self._send(200, res)
+
+            if self.path == "/shutdown" and os.environ.get("PADAM_ALLOW_SHUTDOWN") == "1":
+                if not _state["token"] or not self._authorized():
+                    return self._send(403, {"error": "forbidden"})
+                self._send(200, {"ok": True})
+                threading.Thread(target=self.server.shutdown, daemon=True).start()
+                return None
 
             if self.path == "/sleep":
                 report = Nocturne(m, batch_size=int(data.get("batch", 256)),
@@ -596,10 +630,31 @@ def main(argv=None, memory: Memory | None = None) -> int:
         print(t("Без токена: любая запись ждёт проверки владельцем, действия владельца (approve, forget, export…) "
                 "запрещены.", "No token: every write waits for the owner's review; owner actions (approve, forget, "
                 "export…) are refused."), file=sys.stderr)
+    sess_file = None
+    if os.environ.get("PADAM_ALLOW_SHUTDOWN") == "1":
+        try:
+            from pathlib import Path as _P
+            base_dir = _P(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")) / "PADAM Studio"
+            base_dir.mkdir(parents=True, exist_ok=True)
+            sess_file = base_dir / "session.json"
+            sess_file.write_text(json.dumps({
+                "port": int(srv.server_address[1]),
+                "token": _state["token"],
+                "pid": os.getpid(),
+                "ppid": os.getppid(),
+            }), encoding="utf-8")
+        except Exception:
+            sess_file = None
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
         print(t("\nОстановлен.", "\nStopped."))
+    finally:
+        if sess_file and sess_file.exists():
+            try:
+                sess_file.unlink()
+            except Exception:
+                pass
     return 0
 
 

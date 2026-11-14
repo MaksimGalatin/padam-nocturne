@@ -8,3 +8,6 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+desktop/tauri/target/
+desktop/tauri/runtime/
+desktop/*.exe

@@ -879,8 +879,10 @@ def main(argv=None) -> int:
     s.add_argument("--host", default="127.0.0.1")
     s.add_argument("--port", type=int, default=8077)
     s.add_argument("--token", default=None)
+    s.add_argument("--ui", action="store_true")
     s.set_defaults(fn=lambda m, a: __import__("padam.api", fromlist=["main"])
                    .main(["--host", a.host, "--port", str(a.port)]
+                         + (["--ui"] if a.ui else [])
                          + (["--token", a.token] if a.token else []), memory=m))
 
     s = sub.add_parser("l3", help=t("закрепить память: Arweave + корень Меркла в Solana",

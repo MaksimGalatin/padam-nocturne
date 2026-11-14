@@ -273,6 +273,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "set_mask_pii_desc": "По умолчанию выключено, чтобы не портить ваши контакты. При включении маскирует адреса почты и телефоны до записи на диск.",
         "set_rerank_name": "PADAM_RERANK — Переранжирование кандидатов (опционально)",
         "set_rerank_desc": "По умолчанию выключено. Переупорядочивает верхних кандидатов по покрытию терминов вопроса, компактности окна и биграммам (или локальной ONNX-моделью PADAM_RERANK_MODEL).",
+        "set_autostart_name": "PADAM_AUTOSTART — Автозапуск при входе в Windows",
+        "set_autostart_desc": "По умолчанию выключено. При входе в Windows запускает настольное приложение в трее.",
         "audit_box_title": "Журнал действий с памятью (audit_log)",
         "audit_box_desc": "Кто, когда и какое действие выполнил (запись, одобрение, отклонение, забывание). Текст записей в журнале не хранится.",
         "audit_export_json": "Скачать журнал JSON",
@@ -516,6 +518,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "set_mask_pii_desc": "Off by default so your own contacts stay intact. When enabled, masks email addresses and phone numbers before disk.",
         "set_rerank_name": "PADAM_RERANK — Candidate reranking (optional)",
         "set_rerank_desc": "Off by default. Re-scores top candidates by query term coverage, proximity span and bigrams (or local ONNX model via PADAM_RERANK_MODEL).",
+        "set_autostart_name": "PADAM_AUTOSTART — Start at Windows login",
+        "set_autostart_desc": "Off by default. Launches PADAM Studio minimized to the Windows system tray on sign-in.",
         "audit_box_title": "Memory Action Audit Log (audit_log)",
         "audit_box_desc": "Who performed which action and when (write, approve, reject, forget). Record content is never stored in the audit log.",
         "audit_export_json": "Download Audit JSON",
@@ -759,6 +763,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "set_mask_pii_desc": "Desactivado por defecto para conservar sus contactos. Al activarse, oculta correos y teléfonos antes de guardar en disco.",
         "set_rerank_name": "PADAM_RERANK — Reordenamiento de candidatos (opcional)",
         "set_rerank_desc": "Desactivado por defecto. Reordena candidatos principales por cobertura de términos, proximidad y bigramas (o modelo ONNX local PADAM_RERANK_MODEL).",
+        "set_autostart_name": "PADAM_AUTOSTART — Iniciar al abrir sesión en Windows",
+        "set_autostart_desc": "Desactivado por defecto. Inicia PADAM Studio minimizado en la bandeja del sistema al iniciar sesión.",
         "audit_box_title": "Registro de auditoría de acciones (audit_log)",
         "audit_box_desc": "Quién realizó cada acción y cuándo (escritura, aprobación, rechazo, olvido). El texto nunca se guarda en la auditoría.",
         "audit_export_json": "Descargar auditoría JSON",
@@ -1002,6 +1008,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "set_mask_pii_desc": "默认关闭以保留您的联系人信息。开启后将在落盘前自动掩码电子邮箱与电话号码。",
         "set_rerank_name": "PADAM_RERANK — 候选结果重排序（可选开关）",
         "set_rerank_desc": "默认关闭。按查询词覆盖率、窗口紧凑度与双词组（或本地 ONNX 模型 PADAM_RERANK_MODEL）对前列候选重新排序。",
+        "set_autostart_name": "PADAM_AUTOSTART — Windows 登录时自动启动",
+        "set_autostart_desc": "默认关闭。登录系统后在系统托盘自动后台启动 PADAM Studio。",
         "audit_box_title": "记忆操作审计日志 (audit_log)",
         "audit_box_desc": "记录何人在何时执行了何种操作（写入、批准、拒绝、遗忘）。审计日志绝不存储记忆正文。",
         "audit_export_json": "下载审计 JSON",
@@ -1639,6 +1647,12 @@ try {
   else token = sessionStorage.getItem('padam_t');
 } catch (e) {}
 if (location.hash) history.replaceState(null, '', location.pathname);
+window.addEventListener('hashchange', () => {
+  const hp = new URLSearchParams(location.hash.slice(1));
+  const nextTab = hp.get('tab');
+  if (location.hash) history.replaceState(null, '', location.pathname);
+  if (nextTab && TABS.includes(nextTab)) switchTab(nextTab);
+});
 
 const $ = id => document.getElementById(id);
 function el(tag, cls, text) {
@@ -2121,9 +2135,9 @@ async function runSearch() {
 // --- 4. НА ПРОВЕРКУ ---
 async function loadReview() {
   const list = $('review-list');
-  list.replaceChildren();
   try {
     const r = await api('/records?view=review&limit=100&offset=0');
+    list.replaceChildren();
     const rows = r.records || [];
     if (!rows.length) {
       list.append(el('p', 'panel-sub', S.empty_review || S.ov_attention_clean));
@@ -2498,6 +2512,30 @@ async function loadSettings() {
       makeToggleRow('set_rerank_name', 'set_rerank_desc', Boolean(s.rerank), 'rerank'),
       makeToggleRow('set_mask_pii_name', 'set_mask_pii_desc', Boolean(s.mask_pii), 'mask_pii')
     );
+
+    if (s.autostart_supported) {
+      const autoRow = el('div', 'setting-row');
+      const autoInfo = el('div', 'setting-info');
+      autoInfo.append(el('div', 'setting-name', S.set_autostart_name), el('div', 'setting-desc', S.set_autostart_desc));
+      const autoCtrl = el('div', 'rec-actions');
+      const chkLabel = el('label', 'rec-meta');
+      chkLabel.htmlFor = 'set-autostart-chk';
+      const chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.id = 'set-autostart-chk';
+      chk.checked = Boolean(s.autostart);
+      chk.onchange = async () => {
+        try {
+          await api('/settings', {autostart: chk.checked});
+          say(S.done, true);
+          loadSettings();
+        } catch (e) { say(S.failed + ': ' + e.message, false); }
+      };
+      chkLabel.append(chk, document.createTextNode(' ' + (s.autostart ? S.set_state_on : S.set_state_off)));
+      autoCtrl.append(chkLabel);
+      autoRow.append(autoInfo, autoCtrl);
+      safeBox.append(autoRow);
+    }
 
     // Профиль консолидации
     const profRow = el('div', 'setting-row');

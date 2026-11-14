@@ -219,6 +219,8 @@ Disponible en **4 idiomas** (`ru`, `en`, `es`, `zh`, tomando por defecto el idio
 
 ![PADAM Studio — Grafo interactivo de linaje](docs/images/studio-graph.png)
 
+**Aplicación de escritorio para Windows y bandeja del sistema (`PADAM-Studio-Setup.exe`, véase [`desktop/README.md`](desktop/README.md)).** Instalador autónomo Tauri v2 + NSIS (`20,97 MB`) con el logotipo vectorial CODE, accesos directos en Escritorio y Menú Inicio, ventana nativa WebView2 (recuerda tamaño y posición), menú en la bandeja del sistema (*En revisión: N*, *Abrir PADAM Studio*, *Sueño NOCTURNE*, *Salir*), notificaciones nativas de Windows cuando se retiene una escritura sospechosa, casilla de inicio automático en Ajustes (desactivada por defecto) y Python 3.14.4 integrado (`runtime/python.exe`). *Nota sobre SmartScreen:* el instalador aún no está firmado con un certificado comercial Authenticode; en la primera ejecución pulsa **Más información → Ejecutar de todas formas**.
+
 ### CLI (Línea de comandos)
 
 | Comando | Propósito |

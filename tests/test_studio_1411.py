@@ -1394,8 +1394,183 @@ def test_14_1_code_logo_everywhere_and_favicons():
             srv.server_close()
             mem.close()
 
+def test_desktop_autostart_and_settings_api_14_2():
+    """14.2 (Г7): автозапуск в Настройках (выкл. по умолчанию), реестр HKCU Run и 4 языка в Studio."""
+    import sys
+    import tempfile
+    import threading
+    import urllib.request
+    from padam import api, desktop, studio
+    from padam.memory import Memory
+    from padam.store import Store
+
+    cmd = desktop.autostart_command(r"C:\Program Files\PADAM Studio\padam-studio-desktop.exe")
+    assert "--minimized" in cmd
+    assert "padam-studio-desktop.exe" in cmd
+
+    if sys.platform == "win32":
+        test_reg_key = r"Software\Microsoft\Windows\CurrentVersion\Run"
+        test_val_name = "PADAMStudio_Pytest_Temp_1411"
+        try:
+            desktop.set_autostart(False, reg_path=test_reg_key, value_name=test_val_name)
+            assert desktop.get_autostart(reg_path=test_reg_key, value_name=test_val_name) is False
+            assert desktop.set_autostart(
+                True,
+                exe_path=r"C:\PADAM\padam-studio-desktop.exe",
+                reg_path=test_reg_key,
+                value_name=test_val_name,
+            ) is True
+            assert desktop.get_autostart(reg_path=test_reg_key, value_name=test_val_name) is True
+            assert desktop.set_autostart(False, reg_path=test_reg_key, value_name=test_val_name) is False
+            assert desktop.get_autostart(reg_path=test_reg_key, value_name=test_val_name) is False
+        finally:
+            desktop.set_autostart(False, reg_path=test_reg_key, value_name=test_val_name)
+
+    html, _ = studio.page()
+    assert "set-autostart-chk" in html
+    assert "set_autostart_name" in html
+    assert "set_autostart_desc" in html
+    for phrase in (
+        "PADAM_AUTOSTART — Автозапуск при входе в Windows",
+        "PADAM_AUTOSTART — Start at Windows login",
+        "PADAM_AUTOSTART — Iniciar al abrir sesión en Windows",
+        "PADAM_AUTOSTART — Windows 登录时自动启动",
+    ):
+        assert phrase in html
+
+    with tempfile.TemporaryDirectory() as td:
+        mem = Memory(store=Store(Path(td) / "autostart_api.db"))
+        srv, _ = api.make_studio_server(mem, port=0)
+        port = srv.server_address[1]
+        tk = api._state["token"]
+        th = threading.Thread(target=srv.serve_forever, daemon=True)
+        th.start()
+        try:
+            req = urllib.request.Request(
+                f"http://127.0.0.1:{port}/settings",
+                headers={"Authorization": f"Bearer {tk}"},
+            )
+            with urllib.request.urlopen(req, timeout=3) as r:
+                st = json.loads(r.read().decode("utf-8"))
+                assert "autostart" in st
+                assert "autostart_supported" in st
+                assert st["autostart"] is False
+        finally:
+            srv.shutdown()
+            srv.server_close()
+            mem.close()
 
 
+def test_api_shutdown_security_14_2(monkeypatch):
+    """14.2 (Г7): маршрут POST /shutdown закрыт по умолчанию и требует PADAM_ALLOW_SHUTDOWN=1 + токен владельца."""
+    import tempfile
+    import threading
+    import urllib.error
+    import urllib.request
+    from padam import api
+    from padam.memory import Memory
+    from padam.store import Store
+
+    with tempfile.TemporaryDirectory() as td:
+        mem = Memory(store=Store(Path(td) / "shut.db"))
+        srv, _ = api.make_studio_server(mem, port=0)
+        port = srv.server_address[1]
+        tk = api._state["token"]
+        th = threading.Thread(target=srv.serve_forever, daemon=True)
+        th.start()
+        try:
+            # 1. Без PADAM_ALLOW_SHUTDOWN=1 -> 404
+            monkeypatch.delenv("PADAM_ALLOW_SHUTDOWN", raising=False)
+            req_404 = urllib.request.Request(
+                f"http://127.0.0.1:{port}/shutdown",
+                data=b"{}",
+                headers={"Authorization": f"Bearer {tk}", "Content-Type": "application/json"},
+                method="POST",
+            )
+            try:
+                urllib.request.urlopen(req_404, timeout=3)
+                assert False, "Expected 404 when PADAM_ALLOW_SHUTDOWN is not set"
+            except urllib.error.HTTPError as e:
+                assert e.code == 404
+
+            # 2. С PADAM_ALLOW_SHUTDOWN=1, но без токена -> 403
+            monkeypatch.setenv("PADAM_ALLOW_SHUTDOWN", "1")
+            req_403 = urllib.request.Request(
+                f"http://127.0.0.1:{port}/shutdown",
+                data=b"{}",
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            try:
+                urllib.request.urlopen(req_403, timeout=3)
+                assert False, "Expected 403 without token"
+            except urllib.error.HTTPError as e:
+                assert e.code in (401, 403)
+
+            # 3. С PADAM_ALLOW_SHUTDOWN=1 и токеном владельца -> 200 и остановка сервера
+            req_ok = urllib.request.Request(
+                f"http://127.0.0.1:{port}/shutdown",
+                data=b"{}",
+                headers={"Authorization": f"Bearer {tk}", "Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req_ok, timeout=3) as r:
+                assert r.status == 200
+                body = json.loads(r.read().decode("utf-8"))
+                assert body.get("ok") is True
+            th.join(timeout=3)
+            assert not th.is_alive()
+        finally:
+            try:
+                srv.shutdown()
+                srv.server_close()
+            except Exception:
+                pass
+            mem.close()
 
 
+def test_tauri_installer_bundle_and_smartscreen_docs_14_2_14_3():
+    """14.2 (Г7 + Г8) и 14.3: конфигурация Tauri v2 + NSIS, трей, уведомления Windows, встроенный runtime и честный SmartScreen."""
+    root = Path(__file__).resolve().parents[1]
 
+    tconf = json.loads((root / "desktop" / "tauri" / "tauri.conf.json").read_text("utf-8"))
+    assert tconf["productName"] == "PADAM Studio"
+    assert tconf["identifier"] == "com.codeofdigitaleternity.padam.studio"
+    assert "nsis" in tconf["bundle"]["targets"]
+    assert tconf["bundle"]["resources"] == {"runtime": "runtime"}
+    nsis = tconf["bundle"]["windows"]["nsis"]
+    assert nsis["installMode"] == "currentUser"
+    assert nsis["installerHooks"] == "./windows/hooks.nsh"
+    for lang in ("Russian", "English", "SpanishInternational", "SimpChinese"):
+        assert lang in nsis["languages"]
+
+    hooks_txt = (root / "desktop" / "tauri" / "windows" / "hooks.nsh").read_text("utf-8")
+    assert "NSIS_HOOK_POSTINSTALL" in hooks_txt
+    assert "NSIS_HOOK_POSTUNINSTALL" in hooks_txt
+    assert "PADAM Studio.lnk" in hooks_txt
+
+    main_rs = (root / "desktop" / "tauri" / "src" / "main.rs").read_text("utf-8")
+    for required in (
+        "На проверке:",
+        "Открыть PADAM Studio",
+        "Сон NOCTURNE",
+        "Выход",
+        "Агент хотел записать похожее на приказ — проверь",
+        "tauri_winrt_notification::Toast",
+        "window-state.json",
+        "startup_ready_ms=",
+        "padam.api",
+        "--ui",
+    ):
+        assert required in main_rs, f"Missing {required!r} in main.rs"
+
+    ps1_txt = (root / "desktop" / "build_windows_installer.ps1").read_text("utf-8-sig")
+    assert "python-3.14.4-embed-amd64.zip" in ps1_txt
+    assert "PADAM_SIGN_PFX" in ps1_txt
+    assert "SmartScreen" in ps1_txt
+
+    d_readme = (root / "desktop" / "README.md").read_text("utf-8")
+    assert "SmartScreen" in d_readme
+    assert "Подробнее" in d_readme
+    assert "Выполнить в любом случае" in d_readme
+    assert "PyInstaller --onefile" in d_readme

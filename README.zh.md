@@ -217,6 +217,8 @@ python -m padam demo --studio
 
 ![PADAM Studio — 交互式溯源关系图](docs/images/studio-graph.png)
 
+**Windows 桌面应用与系统托盘（`PADAM-Studio-Setup.exe`，详见 [`desktop/README.md`](desktop/README.md)）。** 独立 Tauri v2 + NSIS 安装程序（`20.97 MB`），带有 CODE 矢量徽标、桌面与开始菜单快捷方式、原生 WebView2 独立窗口（自动记忆窗口大小与位置）、系统托盘菜单（*待审: N*、*打开 PADAM Studio*、*运行 NOCTURNE 睡眠*、*退出*）、拦截可疑指令时的原生 Windows 通知、设置页开机自启复选框（默认关闭）以及内置开放目录的 Python 3.14.4（`runtime/python.exe`，无 `--onefile` 自解压释放器）。*SmartScreen 提示：*安装程序暂未使用付费 Authenticode 证书签名，首次运行时请点击 **更多信息 → 仍要运行**。
+
 ### 命令行（CLI）
 
 | 命令 | 用途 |

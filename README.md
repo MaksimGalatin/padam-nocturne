@@ -221,6 +221,8 @@ Available in **4 languages** (`ru`, `en`, `es`, `zh`, defaulting to your system 
 
 ![PADAM Studio — Interactive Lineage Graph](docs/images/studio-graph.png)
 
+**Windows Desktop App & System Tray (`PADAM-Studio-Setup.exe`, see [`desktop/README.md`](desktop/README.md)).** Standalone Tauri v2 + NSIS installer (`20.97 MB`) with the canonical CODE vector logo, Desktop & Start Menu shortcuts, native WebView2 window (remembers size/position), system tray menu (*Pending review: N*, *Open PADAM Studio*, *Run NOCTURNE Sleep*, *Quit*), native Windows Toast notifications when a suspicious agent write is held for review, optional autostart checkbox in Settings (off by default), and bundled Python 3.14.4 (`runtime/python.exe`) in an open directory (no `--onefile` self-extracting dropper). *SmartScreen note:* the installer is not yet signed with a paid Authenticode certificate — on first run click **More info → Run anyway**.
+
 POST bodies must be `application/json` objects of at most 10 MB. When running locally the server accepts only local `Host` and `Origin` headers, so a web page you happen to open cannot read your `/export` through DNS rebinding.
 
 ### CLI
