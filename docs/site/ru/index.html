@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark" data-copy-label="Копировать" data-copied-label="Скопировано">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'">
+  <title>Обзор · PADAM · NOCTURNE</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img src="../assets/logo.svg" alt="PADAM NOCTURNE">
+      <span>PADAM · NOCTURNE<span class="brand-sub">Локальная защищённая память ИИ-агентов</span></span>
+    </a>
+    <div class="top-actions">
+      <nav class="lang-pills" aria-label="Выбор языка"><a class="pill active" data-set-lang="ru" href="../ru/index.html">Русский</a><a class="pill" data-set-lang="en" href="../en/index.html">English</a><a class="pill" data-set-lang="es" href="../es/index.html">Español</a><a class="pill" data-set-lang="zh" href="../zh/index.html">中文</a></nav>
+      <button id="theme-toggle" class="btn" type="button" data-dark-label="Тёмная" data-light-label="Светлая" aria-pressed="false">Светлая</button>
+      <button id="menu-toggle" class="btn btn-menu" type="button" aria-expanded="false" aria-controls="docs-sidebar">Меню</button>
+    </div>
+  </header>
+  <div class="shell">
+    <aside id="docs-sidebar" class="sidebar" aria-label="Docs navigation">
+      <ul class="nav-list"><li><a class="nav-link" aria-current="page" href="index.html">Обзор</a></li><li><a class="nav-link" href="quickstart.html">Быстрый старт и Studio</a></li><li><a class="nav-link" href="reference.html">Справочник MCP / REST / CLI</a></li><li><a class="nav-link" href="security.html">Безопасность и ограда</a></li><li><a class="nav-link" href="nocturne-l3.html">NOCTURNE и слой L3</a></li><li><a class="nav-link" href="comparison.html">Сравнение с аналогами</a></li></ul>
+    </aside>
+    <main>
+<section class="hero">
+  <span class="badge">Версия 0.4.18 · 1020 автотестов · Python &gt;= 3.10 · Один локальный SQLite</span>
+  <h1>PADAM · NOCTURNE — память, которая сторожит себя сама</h1>
+  <p class="lead">Локальная трёхуровневая память для ИИ-агентов в одном SQLite-файле: маскирует секреты и кошельки до диска, удерживает подозрительные приказы на решение владельца, отделяет подтверждение факта от показа и умеет стирать одну запись криптографическим уничтожением ключа.</p>
+</section>
+<div class="grid"><article class="card"><h3>0 $ и 0 внешних вызовов</h3><p>Базовый поиск объединяет слова (BM25), точные идентификаторы и локальный фоллбэк без платных API и интернета.</p></article><article class="card"><h3>97.0 % / 99.2 % LongMemEval-S</h3><p>470 вопросов с ответом (встроенный метод): any@5 — 97.0 %, any@10 — 99.2 %, all@5 — 86.6 %, all@10 — 93.0 %.</p></article><article class="card"><h3>30 000 фейковых ключей -&gt; 0 утечек</h3><p>До записи на диск маскируются 20+ форматов ключей API, кошельки Solana (id.json, base58, сид-фразы) и карты по Луну.</p></article><article class="card"><h3>Стирание одной записи + квитанция</h3><p>У каждой записи свой ключ AES-256-GCM. Команда forget уничтожает ключ и выдаёт проверяемую квитанцию JSON/HTML.</p></article></div>
+<h2>Три уровня памяти (L1 -&gt; L2 -&gt; L3)</h2>
+<div class="grid-3"><article class="card"><h3>L1 — рабочая память</h3><p>Текущий диалог и буфер эпизодов (padam log). Принимает сырые события без засорения долгосрочных фактов.</p></article><article class="card"><h3>L2 — консолидированный SQLite</h3><p>7 видов записей, два независимых часа (last_seen_at и last_confirmed_at), версионность, очередь проверки и гибридный поиск FTS5 + векторы.</p></article><article class="card"><h3>L3 — вечный проверяемый слой</h3><p>Необязательный слой: шифротекст каждой записи в Arweave (Turbo), корень Меркла в Solana Memo и штамп времени в Bitcoin (OpenTimestamps).</p></article></div>
+<h2>Скорость на одной машине (встроенный метод, 11–12 ноя 2026)</h2>
+<div class="table-wrap"><table><thead><tr><th>Записей</th><th>Запись</th><th>Поиск</th><th>Размер БД</th></tr></thead><tbody><tr><td><strong>1 000 записей</strong></td><td>2.7 мс / запись</td><td>5.4 мс (p95: 6.9 мс)</td><td>4.7 МБ</td></tr><tr><td><strong>10 000 записей</strong></td><td>3.5 мс / запись</td><td>22.1 мс (p95: 25.2 мс)</td><td>45.2 МБ</td></tr><tr><td><strong>100 000 записей</strong></td><td>5.1 мс / запись</td><td>145 мс (p95: 160 мс)</td><td>375.2 МБ</td></tr></tbody></table></div>
+<h2>PADAM Studio — интерфейс в браузере без отправки данных наружу</h2>
+<div class="shot-grid">
+  <figure class="shot">
+    <img src="../assets/images/studio-overview.png" alt="Обзор памяти, доктор безопасности и очередь удержанных записей в PADAM Studio">
+    <figcaption>Обзор памяти, доктор безопасности и очередь удержанных записей в PADAM Studio</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="../assets/images/studio-graph.png" alt="Интерактивный граф причинно-следственных связей (derived_from), версий и противоречий">
+    <figcaption>Интерактивный граф причинно-следственных связей (derived_from), версий и противоречий</figcaption>
+  </figure>
+</div>
+</main>
+  </div>
+  <footer class="footer">
+    <span>PADAM · NOCTURNE 0.4.18 · Локальная память с открытым кодом (AGPL-3.0) · CODE Eternal</span>
+    <span>Автономная статическая документация · Без внешних скриптов, стилей и CDN</span>
+  </footer>
+  <script src="../assets/site.js" defer></script>
+</body>
+</html>

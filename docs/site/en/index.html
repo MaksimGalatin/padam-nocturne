@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-copy-label="Copy" data-copied-label="Copied">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'">
+  <title>Overview · PADAM · NOCTURNE</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img src="../assets/logo.svg" alt="PADAM NOCTURNE">
+      <span>PADAM · NOCTURNE<span class="brand-sub">Self-defending local memory for AI agents</span></span>
+    </a>
+    <div class="top-actions">
+      <nav class="lang-pills" aria-label="Languages"><a class="pill" data-set-lang="ru" href="../ru/index.html">Русский</a><a class="pill active" data-set-lang="en" href="../en/index.html">English</a><a class="pill" data-set-lang="es" href="../es/index.html">Español</a><a class="pill" data-set-lang="zh" href="../zh/index.html">中文</a></nav>
+      <button id="theme-toggle" class="btn" type="button" data-dark-label="Dark" data-light-label="Light" aria-pressed="false">Light</button>
+      <button id="menu-toggle" class="btn btn-menu" type="button" aria-expanded="false" aria-controls="docs-sidebar">Menu</button>
+    </div>
+  </header>
+  <div class="shell">
+    <aside id="docs-sidebar" class="sidebar" aria-label="Docs navigation">
+      <ul class="nav-list"><li><a class="nav-link" aria-current="page" href="index.html">Overview</a></li><li><a class="nav-link" href="quickstart.html">Quick Start &amp; Studio</a></li><li><a class="nav-link" href="reference.html">MCP / REST / CLI Reference</a></li><li><a class="nav-link" href="security.html">Security &amp; Fencing</a></li><li><a class="nav-link" href="nocturne-l3.html">NOCTURNE &amp; L3 Anchor</a></li><li><a class="nav-link" href="comparison.html">Comparison</a></li></ul>
+    </aside>
+    <main>
+<section class="hero">
+  <span class="badge">Version 0.4.18 · 1020 tests · Python &gt;= 3.10 · One local SQLite file</span>
+  <h1>PADAM · NOCTURNE — agent memory that defends itself</h1>
+  <p class="lead">A three-tier local-first memory stored in a single SQLite file: masks API keys and Solana wallets before disk, holds prompt injections for owner review, splits retrieval clock from confirmation clock, and proves single-record deletion via per-record AES-256-GCM key destruction.</p>
+</section>
+<div class="grid"><article class="card"><h3>$0 per write, 0 cloud calls</h3><p>Built-in hybrid search combines BM25, exact identifiers, and local vectors without paid APIs or network traffic.</p></article><article class="card"><h3>97.0% / 99.2% LongMemEval-S</h3><p>470 answerable questions (built-in method): 97.0% any@5, 99.2% any@10, 86.6% all@5, 93.0% all@10.</p></article><article class="card"><h3>0 of 30,000 fake keys leaked</h3><p>20+ secret formats, Solana keypairs/seeds (with readable public address) and Luhn cards are redacted before SQLite.</p></article><article class="card"><h3>Single-record crypto-shredding</h3><p>Each record uses its own AES-256-GCM key. Forgetting wipes the key forever and exports a JSON/HTML receipt.</p></article></div>
+<h2>Three layers, one architecture (L1 -&gt; L2 -&gt; L3)</h2>
+<div class="grid-3"><article class="card"><h3>L1 — working buffer</h3><p>Current dialogue and raw episodes queued via padam log without polluting verified long-term facts.</p></article><article class="card"><h3>L2 — consolidated SQLite</h3><p>7 record kinds, two independent clocks (last_seen_at vs last_confirmed_at), full version history, review queue, and hybrid search.</p></article><article class="card"><h3>L3 — eternal verifiable anchor</h3><p>Optional layer: encrypted Arweave bundles (Turbo), Solana Memo Merkle roots, and Bitcoin OpenTimestamps.</p></article></div>
+<h2>Single-machine throughput (built-in method, 11–12 Nov 2026)</h2>
+<div class="table-wrap"><table><thead><tr><th>Records</th><th>Write</th><th>Search</th><th>SQLite size</th></tr></thead><tbody><tr><td><strong>1,000 records</strong></td><td>2.7 ms / write</td><td>5.4 ms (p95: 6.9 ms)</td><td>4.7 MB</td></tr><tr><td><strong>10,000 records</strong></td><td>3.5 ms / write</td><td>22.1 ms (p95: 25.2 ms)</td><td>45.2 MB</td></tr><tr><td><strong>100,000 records</strong></td><td>5.1 ms / write</td><td>145 ms (p95: 160 ms)</td><td>375.2 MB</td></tr></tbody></table></div>
+<h2>PADAM Studio — 10-screen local browser UI</h2>
+<div class="shot-grid">
+  <figure class="shot">
+    <img src="../assets/images/studio-overview.png" alt="Overview dashboard, Security Doctor traffic light and pending review badge in PADAM Studio">
+    <figcaption>Overview dashboard, Security Doctor traffic light and pending review badge in PADAM Studio</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="../assets/images/studio-graph.png" alt="Interactive zero-dependency canvas Lineage Graph showing derived_from, versions and conflicts">
+    <figcaption>Interactive zero-dependency canvas Lineage Graph showing derived_from, versions and conflicts</figcaption>
+  </figure>
+</div>
+</main>
+  </div>
+  <footer class="footer">
+    <span>PADAM · NOCTURNE 0.4.18 · Open-source local-first memory (AGPL-3.0) · CODE Eternal</span>
+    <span>Self-contained static documentation · Zero external CSS, JS, fonts or CDNs</span>
+  </footer>
+  <script src="../assets/site.js" defer></script>
+</body>
+</html>

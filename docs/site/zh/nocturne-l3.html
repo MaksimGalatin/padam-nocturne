@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh" data-theme="dark" data-copy-label="复制" data-copied-label="已复制">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'">
+  <title>NOCTURNE 与 L3 永恒层 · PADAM · NOCTURNE</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img src="../assets/logo.svg" alt="PADAM NOCTURNE">
+      <span>PADAM · NOCTURNE<span class="brand-sub">具备自我防御能力的本地 AI 智能体记忆层</span></span>
+    </a>
+    <div class="top-actions">
+      <nav class="lang-pills" aria-label="语言切换"><a class="pill" data-set-lang="ru" href="../ru/nocturne-l3.html">Русский</a><a class="pill" data-set-lang="en" href="../en/nocturne-l3.html">English</a><a class="pill" data-set-lang="es" href="../es/nocturne-l3.html">Español</a><a class="pill active" data-set-lang="zh" href="../zh/nocturne-l3.html">中文</a></nav>
+      <button id="theme-toggle" class="btn" type="button" data-dark-label="深色" data-light-label="浅色" aria-pressed="false">浅色</button>
+      <button id="menu-toggle" class="btn btn-menu" type="button" aria-expanded="false" aria-controls="docs-sidebar">菜单</button>
+    </div>
+  </header>
+  <div class="shell">
+    <aside id="docs-sidebar" class="sidebar" aria-label="Docs navigation">
+      <ul class="nav-list"><li><a class="nav-link" href="index.html">概览</a></li><li><a class="nav-link" href="quickstart.html">快速上手与 Studio</a></li><li><a class="nav-link" href="reference.html">MCP / REST / CLI 手册</a></li><li><a class="nav-link" href="security.html">安全模型与围栏</a></li><li><a class="nav-link" aria-current="page" href="nocturne-l3.html">NOCTURNE 与 L3 永恒层</a></li><li><a class="nav-link" href="comparison.html">竞品对比</a></li></ul>
+    </aside>
+    <main>
+<section class="hero">
+  <h1>NOCTURNE 睡眠整合周期与 L3 永恒层</h1>
+  <p class="lead">四重限制器如何防止灾难记忆垄断、双确认时钟的原理以及不可变区块链上的可验证删除。</p>
+</section>
+<h2>抑制「灾难噩梦循环」的四重限制器</h2>
+<p>在合成缓冲测试中（1,000 条日常 + 612 条高优先级灾难），普通优先回放让灾难占 90.7%（约 181/200）。加入四重限制器后稳定控制在 50/200（0.25）：</p>
+<div class="card"><ul><li>优先级下限 <code>P_FLOOR = 0.01 * median(p)</code>，保证日常经验不会被挤出批处理。</li><li>高优先级比例上限 <code>K_MAX = 0.25</code>（支持 <code>ops=0.40</code> 与 <code>creative=0.10</code> 档位）。</li><li>回放后衰减系数 <code>gamma_replay = 0.85</code>，防止极端事件夜夜重复主导。</li><li>重要性采样偏差校正权重 <code>w_i = (1 / (N * P(i)))^beta</code> 与分层抽样。</li></ul></div>
+<h2>七类记忆类型与双时钟机制</h2>
+<p>衰减间隔 Δt 仅从 <code>last_confirmed_at</code> 计算，而检索展示只刷新 <code>last_seen_at</code>，彻底避免错误事实因高频召回而「永葆青春」。</p>
+<div class="table-wrap"><table><thead><tr><th>Kind</th><th>Half-life</th><th>Role</th></tr></thead><tbody><tr><td><code>preference</code></td><td><strong>never</strong></td><td>How the person wants to be answered or worked with</td></tr><tr><td><code>identity</code></td><td><strong>never</strong></td><td>Who the user is (signed by owner key)</td></tr><tr><td><code>decision</code></td><td><strong>365 days</strong></td><td>Engineering or product choices</td></tr><tr><td><code>correction</code></td><td><strong>365 days</strong></td><td>Explicit correction of an earlier statement</td></tr><tr><td><code>fact</code></td><td><strong>180 days</strong></td><td>Stable factual statement about the world or project</td></tr><tr><td><code>state</code></td><td><strong>14 days</strong></td><td>Temporary status of an ongoing task or release</td></tr><tr><td><code>event</code></td><td><strong>2 days</strong></td><td>Short-lived event from a conversation</td></tr></tbody></table></div>
+<h2>L3 永恒上链：Arweave + Solana + Bitcoin OTS</h2>
+<div class="card"><ol><li>单条加密：<code>AES-256-GCM(key_i, nonce(12) || content)</code>。</li><li>默克尔树结构：记录叶 <code>SHA256(0x00 || bytes)</code>，遗忘叶 <code>SHA256(0x02 || &#x27;AIFA-FORGET|id|time&#x27;)</code>，内部节点 <code>SHA256(0x01 || L || R)</code>。</li><li>密文包上传 Arweave（100 KiB 内通过 Turbo 免费），默克尔根写入 Solana Memo（<code>PADAM-NOCTURNE v1 ...</code>）并加盖 Bitcoin OpenTimestamps。</li><li>单条遗忘（<code>padam forget</code>）：本地擦除（<code>secure_delete</code> + <code>VACUUM</code>），销毁记录密钥使链上密文永久失效，并导出 JSON/HTML 证明回执。</li></ol></div>
+<pre><code>python -m padam sleep
+python -m padam l3 --dry-run
+python -m padam l3 --network devnet
+python -m padam l3-verify
+python -m padam forget &lt;record_id&gt; --with-derived --receipt deletion_proof.html</code></pre>
+<h2>Solana 主网实测交易（2026-10-08，l3-verify 3/3 ok: true，总成本 0.000015 SOL）</h2>
+<div class="table-wrap"><table><thead><tr><th>Anchor</th><th>Solana TX</th><th>Arweave ID</th></tr></thead><tbody><tr><td>5 records anchored</td><td><a href="https://solscan.io/tx/2fG2w72f66kneDXENmhHHWscAf7bvdbwShqCfUSH3z15DFwdSLiKQPcQLYKuriF8sDkwwxLmztJXLjZpb11PDWCz" rel="noopener noreferrer"><code>2fG2w72f66kneD…</code></a></td><td><a href="https://arweave.net/zEkOfdCA3vTS6fjGtXl-DvrLH-XERn4Oi28Kbvm7kn4" rel="noopener noreferrer"><code>zEkOfdCA3vTS6f…</code></a></td></tr><tr><td>1 forget receipt (key destroyed)</td><td><a href="https://solscan.io/tx/4B6bcXiF2qsEoRtLgB8goeiCHgPoS8VMrjyu3Dz6Xxkz8j81uKb2hzegi5SESGLV7h7knGrWhP3LqH8e5XFQQAoA" rel="noopener noreferrer"><code>4B6bcXiF2qsEoR…</code></a></td><td><a href="https://arweave.net/Moc3etRd3ju8B-wAFj-2jKTbIdyM_HLu--DO_k5l6lw" rel="noopener noreferrer"><code>Moc3etRd3ju8B-…</code></a></td></tr><tr><td>1 more record</td><td><a href="https://solscan.io/tx/1rEBCpNFh18GqpZeFvDap6mMTgH2ttPDUWZBnWLyQX4WuWLiTZtaKbRLU2AQG6jUThP29CnGHaLYpF4n67mw31D" rel="noopener noreferrer"><code>1rEBCpNFh18Gqp…</code></a></td><td><a href="https://arweave.net/-VlLmjRX2t9uXszzeCvf2E7jx4jPkPxKM9XUdOPPBig" rel="noopener noreferrer"><code>-VlLmjRX2t9uXs…</code></a></td></tr></tbody></table></div>
+</main>
+  </div>
+  <footer class="footer">
+    <span>PADAM · NOCTURNE 0.4.18 · 开源本地优先记忆库 (AGPL-3.0) · CODE Eternal</span>
+    <span>完全离线的静态文档站点 · 零外部脚本、字体或 CDN 依赖</span>
+  </footer>
+  <script src="../assets/site.js" defer></script>
+</body>
+</html>

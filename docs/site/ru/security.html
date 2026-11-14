@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark" data-copy-label="Копировать" data-copied-label="Скопировано">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'">
+  <title>Безопасность и ограда · PADAM · NOCTURNE</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img src="../assets/logo.svg" alt="PADAM NOCTURNE">
+      <span>PADAM · NOCTURNE<span class="brand-sub">Локальная защищённая память ИИ-агентов</span></span>
+    </a>
+    <div class="top-actions">
+      <nav class="lang-pills" aria-label="Выбор языка"><a class="pill active" data-set-lang="ru" href="../ru/security.html">Русский</a><a class="pill" data-set-lang="en" href="../en/security.html">English</a><a class="pill" data-set-lang="es" href="../es/security.html">Español</a><a class="pill" data-set-lang="zh" href="../zh/security.html">中文</a></nav>
+      <button id="theme-toggle" class="btn" type="button" data-dark-label="Тёмная" data-light-label="Светлая" aria-pressed="false">Светлая</button>
+      <button id="menu-toggle" class="btn btn-menu" type="button" aria-expanded="false" aria-controls="docs-sidebar">Меню</button>
+    </div>
+  </header>
+  <div class="shell">
+    <aside id="docs-sidebar" class="sidebar" aria-label="Docs navigation">
+      <ul class="nav-list"><li><a class="nav-link" href="index.html">Обзор</a></li><li><a class="nav-link" href="quickstart.html">Быстрый старт и Studio</a></li><li><a class="nav-link" href="reference.html">Справочник MCP / REST / CLI</a></li><li><a class="nav-link" aria-current="page" href="security.html">Безопасность и ограда</a></li><li><a class="nav-link" href="nocturne-l3.html">NOCTURNE и слой L3</a></li><li><a class="nav-link" href="comparison.html">Сравнение с аналогами</a></li></ul>
+    </aside>
+    <main>
+<section class="hero">
+  <h1>Модель безопасности, ограда данных и аудит</h1>
+  <p class="lead">PADAM исходит из того, что память агента — поверхность атаки и утечек. Ни один внешний текст не должен становиться приказом или уносить секрет.</p>
+</section>
+<h2>Пять линий обороны</h2>
+<div class="grid"><article class="card"><h3>1. До-дисковая маскировка секретов</h3><p>20+ форматов ключей API, токены ботов, приватные ключи и 12/24-словные сид-фразы Solana (при открытом публичном адресе) + номера карт по алгоритму Луна заменяются на [REDACTED:...] до попадания в SQLite.</p></article><article class="card"><h3>2. Фильтр приказов и PADAM_STRICT=1</h3><p>Распознавание prompt injection на 13 языках (с нормализацией гомоглифов и кодировок base64/hex/URL) + принудительное удержание Origin: chrome-extension:// как external. Под PADAM_STRICT=1 на проверку уходит любая запись агента.</p></article><article class="card"><h3>3. 128-битная ограда данных (Data Fence)</h3><p>Каждый ответ поиска и профиля обёрнут в теги с криптографическим случайным 32-hex nonce. Любые попытки подделать закрывающий тег внутри записи нейтрализуются. Исключение — только padam_export (сырой JSON).</p></article><article class="card"><h3>4. Неподделываемый профиль владельца и подписи</h3><p>Записи identity и preference подписываются ключом владельца (HMAC). В padam_profile и GET /profile попадают только действующие записи с валидной подписью владельца.</p></article><article class="card"><h3>5. Крипто-забвение, защита ключей и Шамир</h3><p>protect-keys оборачивает ключи записей (scrypt + AES-256-GCM + VACUUM). legacy split/combine делит фразу по схеме Шамира k-из-n. panic уничтожает ключи экстренно.</p></article></div>
+<h2>Измеренные показатели (без приукрашивания)</h2>
+<div class="table-wrap"><table><thead><tr><th>Benchmark / Test</th><th>Measured result</th></tr></thead><tbody><tr><td><strong>30 000 фейковых API-ключей (10 форматов x 20 контекстов)</strong></td><td>0 утечек в SQLite; 0 из 12 чистых фраз задето</td></tr><tr><td><strong>2 200 фейковых ключей/фраз кошельков Solana</strong></td><td>0 утечек приватного ключа/фразы; публичные адреса оставлены читаемыми</td></tr><tr><td><strong>PADAM_MASK_PII=1 на LongMemEval-S (189 514 уникальных реплик)</strong></td><td>686 email (0 синтаксически битых, 1 имя файла .txt) и 411 телефонов (0 дат/версий/ISBN)</td></tr><tr><td><strong>Red Team раунд 7 (закрытый набор Gemini 4 Hydrogen, SHA-256 до прогона)</strong></td><td>Секреты 16/20, чистые заметки 19/20, команды 12/20, подмена владельца 14/20, ограда 20/20, забывание 20/20</td></tr><tr><td><strong>Опциональный ONNX-детектор [guard] на всех 189 635 репликах</strong></td><td>Проверил 10 768 с упоминанием ИИ, удержал 12: 4 настоящих приказа ИИ и 8 ложных (0.004 %)</td></tr></tbody></table></div>
+<pre><code>export PADAM_STRICT=1
+export PADAM_MASK_PII=1
+python -m padam protect-keys
+python -m padam doctor</code></pre>
+</main>
+  </div>
+  <footer class="footer">
+    <span>PADAM · NOCTURNE 0.4.18 · Локальная память с открытым кодом (AGPL-3.0) · CODE Eternal</span>
+    <span>Автономная статическая документация · Без внешних скриптов, стилей и CDN</span>
+  </footer>
+  <script src="../assets/site.js" defer></script>
+</body>
+</html>

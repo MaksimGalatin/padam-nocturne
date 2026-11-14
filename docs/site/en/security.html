@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-copy-label="Copy" data-copied-label="Copied">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'">
+  <title>Security &amp; Fencing · PADAM · NOCTURNE</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img src="../assets/logo.svg" alt="PADAM NOCTURNE">
+      <span>PADAM · NOCTURNE<span class="brand-sub">Self-defending local memory for AI agents</span></span>
+    </a>
+    <div class="top-actions">
+      <nav class="lang-pills" aria-label="Languages"><a class="pill" data-set-lang="ru" href="../ru/security.html">Русский</a><a class="pill active" data-set-lang="en" href="../en/security.html">English</a><a class="pill" data-set-lang="es" href="../es/security.html">Español</a><a class="pill" data-set-lang="zh" href="../zh/security.html">中文</a></nav>
+      <button id="theme-toggle" class="btn" type="button" data-dark-label="Dark" data-light-label="Light" aria-pressed="false">Light</button>
+      <button id="menu-toggle" class="btn btn-menu" type="button" aria-expanded="false" aria-controls="docs-sidebar">Menu</button>
+    </div>
+  </header>
+  <div class="shell">
+    <aside id="docs-sidebar" class="sidebar" aria-label="Docs navigation">
+      <ul class="nav-list"><li><a class="nav-link" href="index.html">Overview</a></li><li><a class="nav-link" href="quickstart.html">Quick Start &amp; Studio</a></li><li><a class="nav-link" href="reference.html">MCP / REST / CLI Reference</a></li><li><a class="nav-link" aria-current="page" href="security.html">Security &amp; Fencing</a></li><li><a class="nav-link" href="nocturne-l3.html">NOCTURNE &amp; L3 Anchor</a></li><li><a class="nav-link" href="comparison.html">Comparison</a></li></ul>
+    </aside>
+    <main>
+<section class="hero">
+  <h1>Security Model, Fencing &amp; Red Team Measurements</h1>
+  <p class="lead">Memory read back into prompts is both an injection and a leakage vector. Structural boundaries protect even when word filters are bypassed.</p>
+</section>
+<h2>Five structural defences</h2>
+<div class="grid"><article class="card"><h3>1. Pre-disk secret masking</h3><p>20+ API key patterns, Solana id.json / base58 / 12- and 24-word recovery phrases (keeping public addresses intact) and Luhn cards become [REDACTED:...] before reaching SQLite.</p></article><article class="card"><h3>2. Injection hold queue &amp; PADAM_STRICT=1</h3><p>13-language filter (with homoglyph &amp; encoding decoding) + forced origin=&#x27;external&#x27; for Chrome extensions. Under PADAM_STRICT=1 every agent write waits for owner review.</p></article><article class="card"><h3>3. 128-bit random Data Fence</h3><p>All search, timeline and profile replies are wrapped in tags with a fresh 32-hex nonce per call so stored content cannot close the fence. Only padam_export stays raw JSON.</p></article><article class="card"><h3>4. Owner-signed profile</h3><p>Identity and preference records carry an HMAC owner signature. padam_profile and GET /profile ignore tampered/unsigned records.</p></article><article class="card"><h3>5. Per-record keys &amp; Shamir legacy</h3><p>protect-keys wraps per-record keys with scrypt + AES-256-GCM + VACUUM. legacy split/combine splits the passphrase into k-of-n Shamir shares; panic destroys every key.</p></article></div>
+<h2>Measured numbers from this repository</h2>
+<div class="table-wrap"><table><thead><tr><th>Benchmark / Test</th><th>Measured result</th></tr></thead><tbody><tr><td><strong>30,000 fake API keys (10 formats x 20 contexts)</strong></td><td>0 kept in SQLite; 0 of 12 clean phrases touched</td></tr><tr><td><strong>2,200 fake Solana wallet keys &amp; phrases</strong></td><td>0 secret keys/phrases kept; public wallet addresses stay readable</td></tr><tr><td><strong>PADAM_MASK_PII=1 on LongMemEval-S (189,514 unique turns)</strong></td><td>686 emails (0 syntax errors, 1 .txt filename) and 411 phone numbers (0 dates/versions/ISBN)</td></tr><tr><td><strong>Red Team Round 7 (sealed Gemini 4 Hydrogen set, pre-hashed SHA-256)</strong></td><td>Secrets 16/20, ordinary 19/20, commands 12/20, owner 14/20, fence 20/20, forgetting 20/20</td></tr><tr><td><strong>Optional ONNX detector [guard] on all 189,635 unique turns</strong></td><td>Checked 10,768 AI-mentioning turns, held 12: 4 true AI orders and 8 false alarms (0.004%)</td></tr></tbody></table></div>
+<pre><code>export PADAM_STRICT=1
+export PADAM_MASK_PII=1
+python -m padam protect-keys
+python -m padam doctor</code></pre>
+</main>
+  </div>
+  <footer class="footer">
+    <span>PADAM · NOCTURNE 0.4.18 · Open-source local-first memory (AGPL-3.0) · CODE Eternal</span>
+    <span>Self-contained static documentation · Zero external CSS, JS, fonts or CDNs</span>
+  </footer>
+  <script src="../assets/site.js" defer></script>
+</body>
+</html>

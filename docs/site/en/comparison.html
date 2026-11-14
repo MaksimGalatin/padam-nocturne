@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-copy-label="Copy" data-copied-label="Copied">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'">
+  <title>Comparison · PADAM · NOCTURNE</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img src="../assets/logo.svg" alt="PADAM NOCTURNE">
+      <span>PADAM · NOCTURNE<span class="brand-sub">Self-defending local memory for AI agents</span></span>
+    </a>
+    <div class="top-actions">
+      <nav class="lang-pills" aria-label="Languages"><a class="pill" data-set-lang="ru" href="../ru/comparison.html">Русский</a><a class="pill active" data-set-lang="en" href="../en/comparison.html">English</a><a class="pill" data-set-lang="es" href="../es/comparison.html">Español</a><a class="pill" data-set-lang="zh" href="../zh/comparison.html">中文</a></nav>
+      <button id="theme-toggle" class="btn" type="button" data-dark-label="Dark" data-light-label="Light" aria-pressed="false">Light</button>
+      <button id="menu-toggle" class="btn btn-menu" type="button" aria-expanded="false" aria-controls="docs-sidebar">Menu</button>
+    </div>
+  </header>
+  <div class="shell">
+    <aside id="docs-sidebar" class="sidebar" aria-label="Docs navigation">
+      <ul class="nav-list"><li><a class="nav-link" href="index.html">Overview</a></li><li><a class="nav-link" href="quickstart.html">Quick Start &amp; Studio</a></li><li><a class="nav-link" href="reference.html">MCP / REST / CLI Reference</a></li><li><a class="nav-link" href="security.html">Security &amp; Fencing</a></li><li><a class="nav-link" href="nocturne-l3.html">NOCTURNE &amp; L3 Anchor</a></li><li><a class="nav-link" aria-current="page" href="comparison.html">Comparison</a></li></ul>
+    </aside>
+    <main>
+<section class="hero">
+  <h1>Public README Comparison vs. 10 Agent Memory Systems (14 Nov 2026)</h1>
+  <p class="lead">Every competitor cell cites only that project&#x27;s public GitHub README as of 14 November 2026. Every PADAM claim links to verified code and tests in this repository.</p>
+</section>
+<div class="table-wrap"><table><thead><tr><th>System</th><th>Holds injected orders + data fence</th><th>Masks keys &amp; Solana wallets pre-disk</th><th>Single-record crypto-shred + receipt</th><th>Public immutability (Arweave/Solana/OTS)</th><th>Two confirmation clocks</th><th>Owner signature + Shamir</th></tr></thead><tbody><tr><td><a href="https://github.com/MaksimGalatin/padam-nocturne" rel="noopener noreferrer"><strong>PADAM · NOCTURNE</strong></a></td><td><span class="tag-yes">Yes</span> · 13-lang filter + 128-bit fence + PADAM_STRICT=1</td><td><span class="tag-yes">Yes</span> · 20+ keys, Solana wallets, cards, PADAM_MASK_PII=1</td><td><span class="tag-yes">Yes</span> · Per-record AES-256-GCM destroy + JSON/HTML receipt</td><td><span class="tag-yes">Yes</span> · Arweave bundle + Solana Memo + Bitcoin OTS</td><td><span class="tag-yes">Yes</span> · last_seen_at vs last_confirmed_at</td><td><span class="tag-yes">Yes</span> · Owner HMAC signature + Shamir split + panic</td></tr><tr><td><a href="https://github.com/mem0ai/mem0#readme" rel="noopener noreferrer"><strong>mem0</strong></a></td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td></tr><tr><td><a href="https://github.com/getzep/graphiti#readme" rel="noopener noreferrer"><strong>Zep / Graphiti</strong></a></td><td>Graphiti README: reference servers do not detect/block prompt injection</td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td><td>Bi-temporal edges; no confirmation-only clock</td><td>Not stated in README</td></tr><tr><td><a href="https://github.com/letta-ai/letta#readme" rel="noopener noreferrer"><strong>Letta</strong></a></td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td></tr><tr><td><a href="https://github.com/supermemoryai/supermemory#readme" rel="noopener noreferrer"><strong>Supermemory</strong></a></td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td><td>Auto-forgetting; no two-clock confirmation split in README</td><td>Not stated in README</td></tr><tr><td><a href="https://github.com/basicmachines-co/basic-memory#readme" rel="noopener noreferrer"><strong>Basic Memory</strong></a></td><td>Not stated in README</td><td>Not stated in README</td><td>Local Markdown files; no per-record key destruction receipt</td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td></tr><tr><td><a href="https://github.com/doobidoo/mcp-memory-service#readme" rel="noopener noreferrer"><strong>mcp-memory-service</strong></a></td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td><td>Autonomous decay; no two-clock confirmation split in README</td><td>Not stated in README</td></tr><tr><td><a href="https://github.com/topoteretes/cognee#readme" rel="noopener noreferrer"><strong>cognee</strong></a></td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td></tr><tr><td><a href="https://github.com/caura-ai/caura#readme" rel="noopener noreferrer"><strong>Caura</strong></a></td><td>Agent trust levels (0-3); no held-write owner queue in README</td><td>Flags contains_pii; pre-disk masking not in README</td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td></tr><tr><td><a href="https://github.com/SAIHM-Admin/demo-claude-code#readme" rel="noopener noreferrer"><strong>SAIHM</strong></a></td><td>Not stated in README</td><td>Client-side encryption; pre-encryption secret masking not stated</td><td>Cloud crypto-shredding claimed (client handles derived cleanup)</td><td>Accounting in COTI network</td><td>Not stated in README</td><td>Not stated in README</td></tr><tr><td><a href="https://github.com/mnemoverse/claude-plugin#readme" rel="noopener noreferrer"><strong>Mnemoverse</strong></a></td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td><td>Not stated in README</td></tr></tbody></table></div>
+<h2>Head-to-head retrieval benchmark vs. mem0 2.2.1 (BAAI/bge-small-en-v1.5)</h2>
+<p>Measured on 94 answerable LongMemEval-S questions (every fifth question, identical turns, no LLM). Both systems are within 1–3 questions of each other; note these 94 questions were used while tuning PADAM&#x27;s second pass.</p>
+<div class="table-wrap"><table><thead><tr><th>System (BAAI/bge-small-en-v1.5)</th><th>any@5</th><th>any@10</th><th>all@5</th><th>all@10</th></tr></thead><tbody><tr><td><strong>PADAM 0.4.13</strong></td><td>94.7 %</td><td>97.9 %</td><td><strong>86.2 %</strong></td><td><strong>93.6 %</strong></td></tr><tr><td>mem0 2.2.1</td><td>96.8 %</td><td>98.9 %</td><td>85.1 %</td><td>91.5 %</td></tr></tbody></table></div>
+</main>
+  </div>
+  <footer class="footer">
+    <span>PADAM · NOCTURNE 0.4.18 · Open-source local-first memory (AGPL-3.0) · CODE Eternal</span>
+    <span>Self-contained static documentation · Zero external CSS, JS, fonts or CDNs</span>
+  </footer>
+  <script src="../assets/site.js" defer></script>
+</body>
+</html>

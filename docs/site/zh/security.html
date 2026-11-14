@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh" data-theme="dark" data-copy-label="复制" data-copied-label="已复制">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'">
+  <title>安全模型与围栏 · PADAM · NOCTURNE</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img src="../assets/logo.svg" alt="PADAM NOCTURNE">
+      <span>PADAM · NOCTURNE<span class="brand-sub">具备自我防御能力的本地 AI 智能体记忆层</span></span>
+    </a>
+    <div class="top-actions">
+      <nav class="lang-pills" aria-label="语言切换"><a class="pill" data-set-lang="ru" href="../ru/security.html">Русский</a><a class="pill" data-set-lang="en" href="../en/security.html">English</a><a class="pill" data-set-lang="es" href="../es/security.html">Español</a><a class="pill active" data-set-lang="zh" href="../zh/security.html">中文</a></nav>
+      <button id="theme-toggle" class="btn" type="button" data-dark-label="深色" data-light-label="浅色" aria-pressed="false">浅色</button>
+      <button id="menu-toggle" class="btn btn-menu" type="button" aria-expanded="false" aria-controls="docs-sidebar">菜单</button>
+    </div>
+  </header>
+  <div class="shell">
+    <aside id="docs-sidebar" class="sidebar" aria-label="Docs navigation">
+      <ul class="nav-list"><li><a class="nav-link" href="index.html">概览</a></li><li><a class="nav-link" href="quickstart.html">快速上手与 Studio</a></li><li><a class="nav-link" href="reference.html">MCP / REST / CLI 手册</a></li><li><a class="nav-link" aria-current="page" href="security.html">安全模型与围栏</a></li><li><a class="nav-link" href="nocturne-l3.html">NOCTURNE 与 L3 永恒层</a></li><li><a class="nav-link" href="comparison.html">竞品对比</a></li></ul>
+    </aside>
+    <main>
+<section class="hero">
+  <h1>安全模型、数据围栏与红队实测</h1>
+  <p class="lead">智能体写入并重新召回的记忆天然构成注入与泄露攻击面。结构性边界保证即使规则被绕过也守住底线。</p>
+</section>
+<h2>五道结构性防线</h2>
+<div class="grid"><article class="card"><h3>1. 落盘前秘密掩码</h3><p>20+ 种 API 密钥、Solana id.json / base58 / 12 与 24 词助记词（公开钱包地址保留可读）及 Luhn 银行卡在写入 SQLite 前替换为 [REDACTED:...]。</p></article><article class="card"><h3>2. 注入拦截队列与 PADAM_STRICT=1</h3><p>13 种语言提示词注入过滤器 + Chrome 扩展来源强制标为 external。开启 PADAM_STRICT=1 后所有智能体写入都必须经主人放行。</p></article><article class="card"><h3>3. 128 位随机数据围栏</h3><p>每次检索、时间线或画像返回均包裹在随机 32 位十六进制 nonce 标签中，防止内容伪造闭合标签。仅 <code>padam_export</code> 返回原始 JSON。</p></article><article class="card"><h3>4. 主人签名的用户画像</h3><p><code>identity</code> 与 <code>preference</code> 记录携带 HMAC 主人签名；<code>padam_profile</code> 与 <code>/profile</code> 自动跳过未签名或篡改的记录。</p></article><article class="card"><h3>5. 独立记录密钥与 Shamir 继承</h3><p><code>protect-keys</code> 通过 scrypt + AES-256-GCM + VACUUM 封装密钥。<code>legacy split/combine</code> 将口令拆分为 k-of-n 分片；<code>panic</code> 紧急销毁。</p></article></div>
+<h2>仓库内实测安全数据</h2>
+<div class="table-wrap"><table><thead><tr><th>Benchmark / Test</th><th>Measured result</th></tr></thead><tbody><tr><td><strong>30,000 条模拟 API 密钥（10 类 x 20 语境）</strong></td><td>0 条写入 SQLite；12 条正常短语 0 误杀</td></tr><tr><td><strong>2,200 组模拟 Solana 钱包私钥与助记词</strong></td><td>0 组泄露私钥或助记词；公开钱包地址保持可读</td></tr><tr><td><strong>LongMemEval-S 开启 PADAM_MASK_PII=1（189,514 条唯一对话）</strong></td><td>掩码 686 个邮箱（0 语法错误，1 个 .txt 文件名）与 411 个电话（0 误报日期/版本/ISBN）</td></tr><tr><td><strong>第 7 轮盲测红队（Gemini 4 Hydrogen，运行前记录 SHA-256）</strong></td><td>秘密 16/20、正常笔记 19/20、指令 12/20、身份篡改 14/20、围栏 20/20、遗忘 20/20</td></tr><tr><td><strong>可选 ONNX 检测器 [guard] 全量扫描 189,635 条对话</strong></td><td>检查 10,768 条提及 AI 的文本，额外拦截 12 条：4 条真实 AI 指令，8 条误报（0.004%）</td></tr></tbody></table></div>
+<pre><code>export PADAM_STRICT=1
+export PADAM_MASK_PII=1
+python -m padam protect-keys
+python -m padam doctor</code></pre>
+</main>
+  </div>
+  <footer class="footer">
+    <span>PADAM · NOCTURNE 0.4.18 · 开源本地优先记忆库 (AGPL-3.0) · CODE Eternal</span>
+    <span>完全离线的静态文档站点 · 零外部脚本、字体或 CDN 依赖</span>
+  </footer>
+  <script src="../assets/site.js" defer></script>
+</body>
+</html>

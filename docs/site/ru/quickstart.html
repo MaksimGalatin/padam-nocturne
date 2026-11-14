@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark" data-copy-label="Копировать" data-copied-label="Скопировано">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'">
+  <title>Быстрый старт и Studio · PADAM · NOCTURNE</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img src="../assets/logo.svg" alt="PADAM NOCTURNE">
+      <span>PADAM · NOCTURNE<span class="brand-sub">Локальная защищённая память ИИ-агентов</span></span>
+    </a>
+    <div class="top-actions">
+      <nav class="lang-pills" aria-label="Выбор языка"><a class="pill active" data-set-lang="ru" href="../ru/quickstart.html">Русский</a><a class="pill" data-set-lang="en" href="../en/quickstart.html">English</a><a class="pill" data-set-lang="es" href="../es/quickstart.html">Español</a><a class="pill" data-set-lang="zh" href="../zh/quickstart.html">中文</a></nav>
+      <button id="theme-toggle" class="btn" type="button" data-dark-label="Тёмная" data-light-label="Светлая" aria-pressed="false">Светлая</button>
+      <button id="menu-toggle" class="btn btn-menu" type="button" aria-expanded="false" aria-controls="docs-sidebar">Меню</button>
+    </div>
+  </header>
+  <div class="shell">
+    <aside id="docs-sidebar" class="sidebar" aria-label="Docs navigation">
+      <ul class="nav-list"><li><a class="nav-link" href="index.html">Обзор</a></li><li><a class="nav-link" aria-current="page" href="quickstart.html">Быстрый старт и Studio</a></li><li><a class="nav-link" href="reference.html">Справочник MCP / REST / CLI</a></li><li><a class="nav-link" href="security.html">Безопасность и ограда</a></li><li><a class="nav-link" href="nocturne-l3.html">NOCTURNE и слой L3</a></li><li><a class="nav-link" href="comparison.html">Сравнение с аналогами</a></li></ul>
+    </aside>
+    <main>
+<section class="hero">
+  <h1>Быстрый старт и PADAM Studio</h1>
+  <p class="lead">От нулевой установки до живого 10-экранного веб-интерфейса на демо-базе и подключения ко всем основным ИИ-клиентам.</p>
+</section>
+<h2>Установка (выберите нужный набор)</h2>
+<pre><code>pip install padam-nocturne
+# or with local model2vec embeddings (~30 MB):
+pip install &quot;padam-nocturne[embed]&quot;
+# optional L3 anchoring &amp; ONNX injection detector:
+pip install &quot;padam-nocturne[l3,guard]&quot;</code></pre>
+<h2>Первый запуск на демо-памяти (основная база не затрагивается)</h2>
+<p>Команда python -m padam demo --studio создаёт изолированную ~/.padam/demo.db с подписанными предпочтениями, цепочкой версий, графом выводов, удержанной инъекцией, снимком L3 и выданной квитанцией удаления.</p>
+<pre><code>python -m padam demo --studio
+# quick CLI tour:
+python -m padam remember &quot;Answer in Russian, numbers first&quot; --kind preference --importance 1.0
+python -m padam recall &quot;which language to use&quot; --explain
+python -m padam doctor</code></pre>
+<h2>Подключение к ИИ-агентам в один клик и SDK</h2>
+<pre><code>claude mcp add padam -- uvx padam-nocturne
+# Multilingual Russian/Spanish/Chinese memory:
+claude mcp add padam -e PADAM_EMBEDDER=model2vec -e PADAM_LOCAL_EMBED_MODEL=minishlab/potion-multilingual-128M -- uvx --from &quot;padam-nocturne[embed]&quot; padam-nocturne</code></pre>
+<div class="grid-3"><article class="card"><h3>MCP для Claude Code / Cursor / Codex / Gemini CLI / Antigravity</h3><p>Готовые манифесты плагинов в репозитории (.claude-plugin/, plugins/cursor, plugins/codex, plugins/gemini-cli, plugins/antigravity) со скиллом и командами /recall, /remember, /profile.</p></article><article class="card"><h3>LangChain, CrewAI, Vercel AI и Mastra</h3><p>Готовые обёртки в integrations/ (Python) и официальный TypeScript SDK packages/padam-client/ с экспортом инструментов для Vercel AI SDK и Mastra.</p></article><article class="card"><h3>Настольное приложение и расширение браузера</h3><p>python -m padam desktop открывает локальный центр памяти без встроенного Chromium (и проект Tauri desktop-tauri/); расширение browser-extension сохраняет выделенный текст как origin=external.</p></article></div>
+<h2>Что внутри 10 экранов PADAM Studio</h2>
+<div class="card"><ul><li>Обзор + Доктор безопасности (светофор настроек, права файла БД, целостность PRAGMA quick_check).</li><li>Лента памяти, Поиск --explain (разложение баллов rrf x imp x conf x decay) и Машина времени as_of.</li><li>Очередь проверки (Approve / Reject), Забыть + квитанции удаления, Граф связей &lt;canvas&gt;, Вечный слой L3, Настройки и Быстрый старт.</li><li>Строгий CSP с одноразовыми nonce, 0 innerHTML (строго textContent), токен в #t= стирается через history.replaceState, 4 языка и 2 темы.</li></ul></div>
+</main>
+  </div>
+  <footer class="footer">
+    <span>PADAM · NOCTURNE 0.4.18 · Локальная память с открытым кодом (AGPL-3.0) · CODE Eternal</span>
+    <span>Автономная статическая документация · Без внешних скриптов, стилей и CDN</span>
+  </footer>
+  <script src="../assets/site.js" defer></script>
+</body>
+</html>

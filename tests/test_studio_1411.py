@@ -1056,3 +1056,59 @@ def test_b1_and_b23_readme_comparison_and_four_languages():
     for check_py in ("integrations/crewai_check.py", "integrations/langchain_check.py"):
         assert "len(tools) == 9" in (root / check_py).read_text(encoding="utf-8")
 
+
+def test_b15_offline_static_docs_site_four_languages(tmp_path):
+    """Б15: автономный статический сайт документации в docs/site/ на 4 языках без внешних ресурсов и битых ссылок."""
+    import importlib.util
+    import re
+    import sys
+
+    root = Path(__file__).resolve().parents[1]
+    site_dir = root / "docs" / "site"
+    assert (site_dir / "index.html").exists()
+
+    # Импортируем генератор и проверяем воспроизводимую офлайн-сборку в tmp_path
+    docs_dir = str(root / "docs")
+    if docs_dir not in sys.path:
+        sys.path.insert(0, docs_dir)
+    spec = importlib.util.spec_from_file_location("build_site", root / "docs" / "build_site.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    mod.build_site(tmp_path)
+
+    for js_name in ("site.js", "redirect.js"):
+        js = (site_dir / "assets" / js_name).read_text(encoding="utf-8")
+        for forbidden in ("innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "eval("):
+            assert forbidden not in js, f"{js_name} contains {forbidden}"
+
+    for lang in ("ru", "en", "es", "zh"):
+        for page in ("index.html", "quickstart.html", "reference.html", "security.html", "nocturne-l3.html", "comparison.html"):
+            p = site_dir / lang / page
+            assert p.exists(), f"Missing {p}"
+            assert p.read_text(encoding="utf-8") == (tmp_path / lang / page).read_text(encoding="utf-8")
+
+    # Проверяем все HTML-файлы: CSP, отсутствие внешних ресурсов, целостность всех локальных ссылок и 9 инструментов
+    ref_pat = re.compile(r'(?:href|src)="([^"]+)"')
+    html_files = list(site_dir.rglob("*.html"))
+    assert len(html_files) == 25
+    for html_file in html_files:
+        txt = html_file.read_text(encoding="utf-8")
+        assert "`" not in txt, f"Raw backtick left in {html_file}"
+        assert "Content-Security-Policy" in txt
+        assert "default-src 'self'" in txt
+        assert "<style" not in txt.lower()
+        for target in ref_pat.findall(txt):
+            if target.startswith(("http://", "https://", "#")):
+                # Внешние ссылки допускаются только в <a href="...">, но не в script/link/img
+                assert f'src="{target}"' not in txt and f'<link rel="stylesheet" href="{target}"' not in txt
+                continue
+            resolved = (html_file.parent / target.split("#")[0].split("?")[0]).resolve()
+            assert resolved.exists(), f"Broken local ref {target} in {html_file}"
+
+    for lang in ("ru", "en", "es", "zh"):
+        ref_txt = (site_dir / lang / "reference.html").read_text(encoding="utf-8")
+        for tool_name in ("padam_search", "padam_write", "padam_confirm", "padam_refute",
+                          "padam_timeline", "padam_stats", "padam_sleep", "padam_export", "padam_profile"):
+            assert tool_name in ref_txt
+
+

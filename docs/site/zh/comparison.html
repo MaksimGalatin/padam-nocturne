@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh" data-theme="dark" data-copy-label="复制" data-copied-label="已复制">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'">
+  <title>竞品对比 · PADAM · NOCTURNE</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img src="../assets/logo.svg" alt="PADAM NOCTURNE">
+      <span>PADAM · NOCTURNE<span class="brand-sub">具备自我防御能力的本地 AI 智能体记忆层</span></span>
+    </a>
+    <div class="top-actions">
+      <nav class="lang-pills" aria-label="语言切换"><a class="pill" data-set-lang="ru" href="../ru/comparison.html">Русский</a><a class="pill" data-set-lang="en" href="../en/comparison.html">English</a><a class="pill" data-set-lang="es" href="../es/comparison.html">Español</a><a class="pill active" data-set-lang="zh" href="../zh/comparison.html">中文</a></nav>
+      <button id="theme-toggle" class="btn" type="button" data-dark-label="深色" data-light-label="浅色" aria-pressed="false">浅色</button>
+      <button id="menu-toggle" class="btn btn-menu" type="button" aria-expanded="false" aria-controls="docs-sidebar">菜单</button>
+    </div>
+  </header>
+  <div class="shell">
+    <aside id="docs-sidebar" class="sidebar" aria-label="Docs navigation">
+      <ul class="nav-list"><li><a class="nav-link" href="index.html">概览</a></li><li><a class="nav-link" href="quickstart.html">快速上手与 Studio</a></li><li><a class="nav-link" href="reference.html">MCP / REST / CLI 手册</a></li><li><a class="nav-link" href="security.html">安全模型与围栏</a></li><li><a class="nav-link" href="nocturne-l3.html">NOCTURNE 与 L3 永恒层</a></li><li><a class="nav-link" aria-current="page" href="comparison.html">竞品对比</a></li></ul>
+    </aside>
+    <main>
+<section class="hero">
+  <h1>与 10 个开源智能体记忆系统的公开对比（2026-11-14）</h1>
+  <p class="lead">每个竞品行均严格依据截至 2026 年 11 月 14 日其 GitHub 公开 README；PADAM 的每一项能力均直接链接至本仓库中的实测代码与测试集。</p>
+</section>
+<div class="table-wrap"><table><thead><tr><th>系统</th><th>拦截隐藏指令 + 数据围栏</th><th>落盘前掩码密钥与钱包</th><th>单条密钥销毁 + 删除回执</th><th>公开不可篡改证明</th><th>双确认时钟</th><th>主人签名 + Shamir</th></tr></thead><tbody><tr><td><a href="https://github.com/MaksimGalatin/padam-nocturne" rel="noopener noreferrer"><strong>PADAM · NOCTURNE</strong></a></td><td><span class="tag-yes">支持</span> · 13-lang filter + 128-bit fence + PADAM_STRICT=1</td><td><span class="tag-yes">支持</span> · 20+ keys, Solana wallets, cards, PADAM_MASK_PII=1</td><td><span class="tag-yes">支持</span> · Per-record AES-256-GCM destroy + JSON/HTML receipt</td><td><span class="tag-yes">支持</span> · Arweave bundle + Solana Memo + Bitcoin OTS</td><td><span class="tag-yes">支持</span> · last_seen_at vs last_confirmed_at</td><td><span class="tag-yes">支持</span> · Owner HMAC signature + Shamir split + panic</td></tr><tr><td><a href="https://github.com/mem0ai/mem0#readme" rel="noopener noreferrer"><strong>mem0</strong></a></td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td></tr><tr><td><a href="https://github.com/getzep/graphiti#readme" rel="noopener noreferrer"><strong>Zep / Graphiti</strong></a></td><td>Graphiti README: reference servers do not detect/block prompt injection</td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td><td>Bi-temporal edges; no confirmation-only clock</td><td>README 未提及</td></tr><tr><td><a href="https://github.com/letta-ai/letta#readme" rel="noopener noreferrer"><strong>Letta</strong></a></td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td></tr><tr><td><a href="https://github.com/supermemoryai/supermemory#readme" rel="noopener noreferrer"><strong>Supermemory</strong></a></td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td><td>Auto-forgetting; no two-clock confirmation split in README</td><td>README 未提及</td></tr><tr><td><a href="https://github.com/basicmachines-co/basic-memory#readme" rel="noopener noreferrer"><strong>Basic Memory</strong></a></td><td>README 未提及</td><td>README 未提及</td><td>Local Markdown files; no per-record key destruction receipt</td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td></tr><tr><td><a href="https://github.com/doobidoo/mcp-memory-service#readme" rel="noopener noreferrer"><strong>mcp-memory-service</strong></a></td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td><td>Autonomous decay; no two-clock confirmation split in README</td><td>README 未提及</td></tr><tr><td><a href="https://github.com/topoteretes/cognee#readme" rel="noopener noreferrer"><strong>cognee</strong></a></td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td></tr><tr><td><a href="https://github.com/caura-ai/caura#readme" rel="noopener noreferrer"><strong>Caura</strong></a></td><td>Agent trust levels (0-3); no held-write owner queue in README</td><td>Flags contains_pii; pre-disk masking not in README</td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td></tr><tr><td><a href="https://github.com/SAIHM-Admin/demo-claude-code#readme" rel="noopener noreferrer"><strong>SAIHM</strong></a></td><td>README 未提及</td><td>Client-side encryption; pre-encryption secret masking not stated</td><td>Cloud crypto-shredding claimed (client handles derived cleanup)</td><td>Accounting in COTI network</td><td>README 未提及</td><td>README 未提及</td></tr><tr><td><a href="https://github.com/mnemoverse/claude-plugin#readme" rel="noopener noreferrer"><strong>Mnemoverse</strong></a></td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td><td>README 未提及</td></tr></tbody></table></div>
+<h2>同模型 BAAI/bge-small-en-v1.5 检索基准实测对比（vs mem0 2.2.1）</h2>
+<p>94 道有答案的 LongMemEval-S 问题（每隔 5 题抽取，无 LLM 介入，同等切片与评分）。两者差距仅 1 至 3 题（注：这 94 题曾用于调节 PADAM 0.4.13 二次检索）。</p>
+<div class="table-wrap"><table><thead><tr><th>System (BAAI/bge-small-en-v1.5)</th><th>any@5</th><th>any@10</th><th>all@5</th><th>all@10</th></tr></thead><tbody><tr><td><strong>PADAM 0.4.13</strong></td><td>94.7 %</td><td>97.9 %</td><td><strong>86.2 %</strong></td><td><strong>93.6 %</strong></td></tr><tr><td>mem0 2.2.1</td><td>96.8 %</td><td>98.9 %</td><td>85.1 %</td><td>91.5 %</td></tr></tbody></table></div>
+</main>
+  </div>
+  <footer class="footer">
+    <span>PADAM · NOCTURNE 0.4.18 · 开源本地优先记忆库 (AGPL-3.0) · CODE Eternal</span>
+    <span>完全离线的静态文档站点 · 零外部脚本、字体或 CDN 依赖</span>
+  </footer>
+  <script src="../assets/site.js" defer></script>
+</body>
+</html>

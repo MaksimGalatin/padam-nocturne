@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark" data-copy-label="Copiar" data-copied-label="Copiado">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'">
+  <title>Comparativa · PADAM · NOCTURNE</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img src="../assets/logo.svg" alt="PADAM NOCTURNE">
+      <span>PADAM · NOCTURNE<span class="brand-sub">Memoria local autodefensiva para agentes de IA</span></span>
+    </a>
+    <div class="top-actions">
+      <nav class="lang-pills" aria-label="Idiomas"><a class="pill" data-set-lang="ru" href="../ru/comparison.html">Русский</a><a class="pill" data-set-lang="en" href="../en/comparison.html">English</a><a class="pill active" data-set-lang="es" href="../es/comparison.html">Español</a><a class="pill" data-set-lang="zh" href="../zh/comparison.html">中文</a></nav>
+      <button id="theme-toggle" class="btn" type="button" data-dark-label="Oscuro" data-light-label="Claro" aria-pressed="false">Claro</button>
+      <button id="menu-toggle" class="btn btn-menu" type="button" aria-expanded="false" aria-controls="docs-sidebar">Menú</button>
+    </div>
+  </header>
+  <div class="shell">
+    <aside id="docs-sidebar" class="sidebar" aria-label="Docs navigation">
+      <ul class="nav-list"><li><a class="nav-link" href="index.html">Resumen</a></li><li><a class="nav-link" href="quickstart.html">Inicio rápido y Studio</a></li><li><a class="nav-link" href="reference.html">Referencia MCP / REST / CLI</a></li><li><a class="nav-link" href="security.html">Seguridad y cerco</a></li><li><a class="nav-link" href="nocturne-l3.html">NOCTURNE y capa L3</a></li><li><a class="nav-link" aria-current="page" href="comparison.html">Comparativa</a></li></ul>
+    </aside>
+    <main>
+<section class="hero">
+  <h1>Comparativa verificada frente a 10 sistemas (14.11.2026)</h1>
+  <p class="lead">Cada fila de la competencia refleja exactamente su README público en GitHub al 14 de noviembre de 2026. Cada afirmación de PADAM enlaza con pruebas reales de este repositorio.</p>
+</section>
+<div class="table-wrap"><table><thead><tr><th>Sistema</th><th>Retención de órdenes + cerco</th><th>Enmascarado previo al disco</th><th>Olvido por registro + recibo</th><th>Inmutabilidad pública</th><th>Dos relojes de confirmación</th><th>Firma del dueño + Shamir</th></tr></thead><tbody><tr><td><a href="https://github.com/MaksimGalatin/padam-nocturne" rel="noopener noreferrer"><strong>PADAM · NOCTURNE</strong></a></td><td><span class="tag-yes">Sí</span> · 13-lang filter + 128-bit fence + PADAM_STRICT=1</td><td><span class="tag-yes">Sí</span> · 20+ keys, Solana wallets, cards, PADAM_MASK_PII=1</td><td><span class="tag-yes">Sí</span> · Per-record AES-256-GCM destroy + JSON/HTML receipt</td><td><span class="tag-yes">Sí</span> · Arweave bundle + Solana Memo + Bitcoin OTS</td><td><span class="tag-yes">Sí</span> · last_seen_at vs last_confirmed_at</td><td><span class="tag-yes">Sí</span> · Owner HMAC signature + Shamir split + panic</td></tr><tr><td><a href="https://github.com/mem0ai/mem0#readme" rel="noopener noreferrer"><strong>mem0</strong></a></td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td></tr><tr><td><a href="https://github.com/getzep/graphiti#readme" rel="noopener noreferrer"><strong>Zep / Graphiti</strong></a></td><td>Graphiti README: reference servers do not detect/block prompt injection</td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td><td>Bi-temporal edges; no confirmation-only clock</td><td>No indicado en README</td></tr><tr><td><a href="https://github.com/letta-ai/letta#readme" rel="noopener noreferrer"><strong>Letta</strong></a></td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td></tr><tr><td><a href="https://github.com/supermemoryai/supermemory#readme" rel="noopener noreferrer"><strong>Supermemory</strong></a></td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td><td>Auto-forgetting; no two-clock confirmation split in README</td><td>No indicado en README</td></tr><tr><td><a href="https://github.com/basicmachines-co/basic-memory#readme" rel="noopener noreferrer"><strong>Basic Memory</strong></a></td><td>No indicado en README</td><td>No indicado en README</td><td>Local Markdown files; no per-record key destruction receipt</td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td></tr><tr><td><a href="https://github.com/doobidoo/mcp-memory-service#readme" rel="noopener noreferrer"><strong>mcp-memory-service</strong></a></td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td><td>Autonomous decay; no two-clock confirmation split in README</td><td>No indicado en README</td></tr><tr><td><a href="https://github.com/topoteretes/cognee#readme" rel="noopener noreferrer"><strong>cognee</strong></a></td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td></tr><tr><td><a href="https://github.com/caura-ai/caura#readme" rel="noopener noreferrer"><strong>Caura</strong></a></td><td>Agent trust levels (0-3); no held-write owner queue in README</td><td>Flags contains_pii; pre-disk masking not in README</td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td></tr><tr><td><a href="https://github.com/SAIHM-Admin/demo-claude-code#readme" rel="noopener noreferrer"><strong>SAIHM</strong></a></td><td>No indicado en README</td><td>Client-side encryption; pre-encryption secret masking not stated</td><td>Cloud crypto-shredding claimed (client handles derived cleanup)</td><td>Accounting in COTI network</td><td>No indicado en README</td><td>No indicado en README</td></tr><tr><td><a href="https://github.com/mnemoverse/claude-plugin#readme" rel="noopener noreferrer"><strong>Mnemoverse</strong></a></td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td><td>No indicado en README</td></tr></tbody></table></div>
+<h2>Comparativa directa de recuperación frente a mem0 2.2.1 (BAAI/bge-small-en-v1.5)</h2>
+<p>94 preguntas con respuesta de LongMemEval-S (una de cada cinco, sin LLM). Resultados equivalentes dentro de 1–3 preguntas; estas 94 preguntas se usaron para ajustar el segundo pase de PADAM 0.4.13.</p>
+<div class="table-wrap"><table><thead><tr><th>System (BAAI/bge-small-en-v1.5)</th><th>any@5</th><th>any@10</th><th>all@5</th><th>all@10</th></tr></thead><tbody><tr><td><strong>PADAM 0.4.13</strong></td><td>94.7 %</td><td>97.9 %</td><td><strong>86.2 %</strong></td><td><strong>93.6 %</strong></td></tr><tr><td>mem0 2.2.1</td><td>96.8 %</td><td>98.9 %</td><td>85.1 %</td><td>91.5 %</td></tr></tbody></table></div>
+</main>
+  </div>
+  <footer class="footer">
+    <span>PADAM · NOCTURNE 0.4.18 · Memoria local de código abierto (AGPL-3.0) · CODE Eternal</span>
+    <span>Documentación estática autónoma · Cero scripts, fuentes o CDN externos</span>
+  </footer>
+  <script src="../assets/site.js" defer></script>
+</body>
+</html>

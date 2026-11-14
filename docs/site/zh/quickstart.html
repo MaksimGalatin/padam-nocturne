@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh" data-theme="dark" data-copy-label="复制" data-copied-label="已复制">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'">
+  <title>快速上手与 Studio · PADAM · NOCTURNE</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img src="../assets/logo.svg" alt="PADAM NOCTURNE">
+      <span>PADAM · NOCTURNE<span class="brand-sub">具备自我防御能力的本地 AI 智能体记忆层</span></span>
+    </a>
+    <div class="top-actions">
+      <nav class="lang-pills" aria-label="语言切换"><a class="pill" data-set-lang="ru" href="../ru/quickstart.html">Русский</a><a class="pill" data-set-lang="en" href="../en/quickstart.html">English</a><a class="pill" data-set-lang="es" href="../es/quickstart.html">Español</a><a class="pill active" data-set-lang="zh" href="../zh/quickstart.html">中文</a></nav>
+      <button id="theme-toggle" class="btn" type="button" data-dark-label="深色" data-light-label="浅色" aria-pressed="false">浅色</button>
+      <button id="menu-toggle" class="btn btn-menu" type="button" aria-expanded="false" aria-controls="docs-sidebar">菜单</button>
+    </div>
+  </header>
+  <div class="shell">
+    <aside id="docs-sidebar" class="sidebar" aria-label="Docs navigation">
+      <ul class="nav-list"><li><a class="nav-link" href="index.html">概览</a></li><li><a class="nav-link" aria-current="page" href="quickstart.html">快速上手与 Studio</a></li><li><a class="nav-link" href="reference.html">MCP / REST / CLI 手册</a></li><li><a class="nav-link" href="security.html">安全模型与围栏</a></li><li><a class="nav-link" href="nocturne-l3.html">NOCTURNE 与 L3 永恒层</a></li><li><a class="nav-link" href="comparison.html">竞品对比</a></li></ul>
+    </aside>
+    <main>
+<section class="hero">
+  <h1>快速上手与 PADAM Studio</h1>
+  <p class="lead">从零安装到使用独立演示库启动 10 屏可视化工作台，并一键接入主流 AI 客户端。</p>
+</section>
+<h2>安装方式</h2>
+<pre><code>pip install padam-nocturne
+# or with local model2vec embeddings (~30 MB):
+pip install &quot;padam-nocturne[embed]&quot;
+# optional L3 anchoring &amp; ONNX injection detector:
+pip install &quot;padam-nocturne[l3,guard]&quot;</code></pre>
+<h2>在独立演示库中立即体验（绝不触碰主库 memory.db）</h2>
+<p>运行 python -m padam demo --studio 会新建 ~/.padam/demo.db，包含主人签名偏好、版本演进链、因果图谱、被拦截的注入指令、本地 L3 快照与删除证明回执。</p>
+<pre><code>python -m padam demo --studio
+# quick CLI tour:
+python -m padam remember &quot;Answer in Russian, numbers first&quot; --kind preference --importance 1.0
+python -m padam recall &quot;which language to use&quot; --explain
+python -m padam doctor</code></pre>
+<h2>AI 客户端一键插件与 SDK</h2>
+<pre><code>claude mcp add padam -- uvx padam-nocturne
+# Multilingual Russian/Spanish/Chinese memory:
+claude mcp add padam -e PADAM_EMBEDDER=model2vec -e PADAM_LOCAL_EMBED_MODEL=minishlab/potion-multilingual-128M -- uvx --from &quot;padam-nocturne[embed]&quot; padam-nocturne</code></pre>
+<div class="grid-3"><article class="card"><h3>五大客户端一键插件（Claude Code / Cursor / Codex / Gemini CLI / Antigravity）</h3><p>仓库内置 .claude-plugin/、plugins/cursor、plugins/codex、plugins/gemini-cli、plugins/antigravity 配置与 /recall、/remember、/profile 命令。</p></article><article class="card"><h3>LangChain、CrewAI、Vercel AI 与 Mastra</h3><p>integrations/ 目录提供 Python 适配器，packages/padam-client/ 提供官方 TypeScript SDK。</p></article><article class="card"><h3>桌面端与浏览器扩展</h3><p>python -m padam desktop（及 Tauri 工程 desktop-tauri/）与 browser-extension（强制 <code>chrome-extension://</code> 来源为 external）。</p></article></div>
+<h2>PADAM Studio 十大界面特性</h2>
+<div class="card"><ul><li>概览 + 安全体检医生（弱开关告警、<code>PRAGMA quick_check</code>、密钥保护状态、REST 令牌校验）。</li><li>记忆时间线、可解释检索（<code>--explain</code> 拆分得分）与时光机（<code>as_of</code> 按历史日期查询）。</li><li>审核队列（通过/拒绝）、单条遗忘与 JSON/HTML 删除回执、Canvas 关系图谱、L3 永恒层与设置。</li><li>严格随机 nonce CSP，零 <code>innerHTML</code>（仅使用 <code>textContent</code>），地址栏一次性令牌 <code>#t=</code> 即刻擦除，支持 4 种语言与双主题。</li></ul></div>
+</main>
+  </div>
+  <footer class="footer">
+    <span>PADAM · NOCTURNE 0.4.18 · 开源本地优先记忆库 (AGPL-3.0) · CODE Eternal</span>
+    <span>完全离线的静态文档站点 · 零外部脚本、字体或 CDN 依赖</span>
+  </footer>
+  <script src="../assets/site.js" defer></script>
+</body>
+</html>

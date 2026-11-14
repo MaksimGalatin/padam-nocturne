@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark" data-copy-label="Copiar" data-copied-label="Copiado">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'">
+  <title>Seguridad y cerco · PADAM · NOCTURNE</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img src="../assets/logo.svg" alt="PADAM NOCTURNE">
+      <span>PADAM · NOCTURNE<span class="brand-sub">Memoria local autodefensiva para agentes de IA</span></span>
+    </a>
+    <div class="top-actions">
+      <nav class="lang-pills" aria-label="Idiomas"><a class="pill" data-set-lang="ru" href="../ru/security.html">Русский</a><a class="pill" data-set-lang="en" href="../en/security.html">English</a><a class="pill active" data-set-lang="es" href="../es/security.html">Español</a><a class="pill" data-set-lang="zh" href="../zh/security.html">中文</a></nav>
+      <button id="theme-toggle" class="btn" type="button" data-dark-label="Oscuro" data-light-label="Claro" aria-pressed="false">Claro</button>
+      <button id="menu-toggle" class="btn btn-menu" type="button" aria-expanded="false" aria-controls="docs-sidebar">Menú</button>
+    </div>
+  </header>
+  <div class="shell">
+    <aside id="docs-sidebar" class="sidebar" aria-label="Docs navigation">
+      <ul class="nav-list"><li><a class="nav-link" href="index.html">Resumen</a></li><li><a class="nav-link" href="quickstart.html">Inicio rápido y Studio</a></li><li><a class="nav-link" href="reference.html">Referencia MCP / REST / CLI</a></li><li><a class="nav-link" aria-current="page" href="security.html">Seguridad y cerco</a></li><li><a class="nav-link" href="nocturne-l3.html">NOCTURNE y capa L3</a></li><li><a class="nav-link" href="comparison.html">Comparativa</a></li></ul>
+    </aside>
+    <main>
+<section class="hero">
+  <h1>Modelo de seguridad, cerco de datos y auditoría</h1>
+  <p class="lead">Todo texto que vuelve al contexto del agente es una superficie potencial de inyección o fuga. Las barreras estructurales protegen incluso ante frases inéditas.</p>
+</section>
+<h2>Cinco defensas estructurales</h2>
+<div class="grid"><article class="card"><h3>1. Enmascarado de secretos previo al disco</h3><p>Más de 20 formatos de claves, llaves/semillas Solana (dejando legible la dirección pública) y tarjetas Luhn pasan a [REDACTED:...] antes de SQLite.</p></article><article class="card"><h3>2. Cola de retención y PADAM_STRICT=1</h3><p>Filtro en 13 idiomas + origen forzado <code>external</code> para extensiones <code>chrome-extension://</code>. Con <code>PADAM_STRICT=1</code>, toda escritura de agente espera aprobación.</p></article><article class="card"><h3>3. Cerco aleatorio de 128 bits</h3><p>Cada respuesta de búsqueda, historial o perfil lleva un nonce hexadecimal único para impedir el cierre falso de etiquetas. Solo <code>padam_export</code> devuelve JSON sin cerco.</p></article><article class="card"><h3>4. Perfil firmado por el propietario</h3><p><code>identity</code> y <code>preference</code> llevan firma HMAC del propietario; <code>padam_profile</code> y <code>/profile</code> omiten registros sin firma válida.</p></article><article class="card"><h3>5. Claves por registro y herencia Shamir</h3><p><code>protect-keys</code> cifra claves con scrypt + AES-256-GCM + VACUUM. <code>legacy split/combine</code> divide la frase en partes Shamir k-de-n; <code>panic</code> destruye todo.</p></article></div>
+<h2>Mediciones verificadas en el repositorio</h2>
+<div class="table-wrap"><table><thead><tr><th>Benchmark / Test</th><th>Measured result</th></tr></thead><tbody><tr><td><strong>30 000 claves API falsas (10 formatos x 20 contextos)</strong></td><td>0 filtraciones en SQLite; 0 de 12 frases limpias tocadas</td></tr><tr><td><strong>2 200 claves/frases falsas de Solana</strong></td><td>0 claves secretas retenidas; direcciones públicas conservadas</td></tr><tr><td><strong>PADAM_MASK_PII=1 en LongMemEval-S (189 514 turnos únicos)</strong></td><td>686 correos (0 errores de sintaxis, 1 archivo .txt) y 411 teléfonos (0 fechas/versiones/ISBN)</td></tr><tr><td><strong>Red Team Ronda 7 (conjunto sellado Gemini 4 Hydrogen)</strong></td><td>Secretos 16/20, notas 19/20, órdenes 12/20, propietario 14/20, cerco 20/20, olvido 20/20</td></tr><tr><td><strong>Detector ONNX opcional [guard] en 189 635 turnos</strong></td><td>Revisó 10 768 menciones de IA; retuvo 12: 4 órdenes reales y 8 falsas alarmas (0.004 %)</td></tr></tbody></table></div>
+<pre><code>export PADAM_STRICT=1
+export PADAM_MASK_PII=1
+python -m padam protect-keys
+python -m padam doctor</code></pre>
+</main>
+  </div>
+  <footer class="footer">
+    <span>PADAM · NOCTURNE 0.4.18 · Memoria local de código abierto (AGPL-3.0) · CODE Eternal</span>
+    <span>Documentación estática autónoma · Cero scripts, fuentes o CDN externos</span>
+  </footer>
+  <script src="../assets/site.js" defer></script>
+</body>
+</html>
