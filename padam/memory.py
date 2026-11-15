@@ -907,7 +907,7 @@ class Memory:
 
     # -- смена модели эмбеддингов --------------------------------------
 
-    def reindex(self, limit: int | None = None) -> dict:
+    def reindex(self, limit: int | None = None, *, cancel_event=None, progress_cb=None) -> dict:
         """Пересчитывает векторы записей, посчитанные другой моделью.
 
         После смены модели старые векторы несравнимы с новыми, и поиск по смыслу молча перестаёт
@@ -921,10 +921,22 @@ class Memory:
         всего = len(rows)
         if limit is not None:
             rows = rows[:limit]
-        for r in rows:
+        total_work = len(rows)
+        if progress_cb is not None:
+            progress_cb(0, max(1, total_work), "reindex started")
+        step = max(1, total_work // 10) if total_work else 1
+        done = 0
+        for idx, r in enumerate(rows, 1):
+            if cancel_event is not None and cancel_event.is_set():
+                return {"model": текущая, "reindexed": done, "left": всего - done, "cancelled": True}
             self.store.execute(
                 "UPDATE memory SET embedding = ?, embedding_model = ? WHERE id = ?",
                 (pack(embeddings.embed(r["content"])), текущая, r["id"]))
+            done = idx
+            if progress_cb is not None and (idx % step == 0 or idx == total_work):
+                progress_cb(idx, max(1, total_work), f"reindexed {idx}/{total_work}")
+        if progress_cb is not None and total_work == 0:
+            progress_cb(1, 1, "reindex completed")
         return {"model": текущая, "reindexed": len(rows), "left": всего - len(rows)}
 
     def связи_от(self, сущность: str, scope: str = "global",
@@ -1725,7 +1737,8 @@ class Memory:
     def export(self, include_superseded: bool = True,
                scope: str | None = None, limit: int | None = None,
                offset: int = 0, include_held: bool = True,
-               actor: roles.ActorContext | None = None) -> dict:
+               actor: roles.ActorContext | None = None,
+               *, cancel_event=None, progress_cb=None) -> dict:
         """Полная выгрузка памяти. Доступна всегда, без окна и без условий.
 
         Формат самодостаточен: по нему можно восстановить состояние в
@@ -1753,8 +1766,18 @@ class Memory:
             sql += " LIMIT ? OFFSET ?"
             params += [int(limit), int(offset)]
 
+        if cancel_event is not None and cancel_event.is_set():
+            raise InterruptedError("export cancelled")
+        rows_exp = self.store.query(sql, tuple(params))
+        exp_total = max(1, len(rows_exp))
+        if progress_cb is not None:
+            progress_cb(0, exp_total, "export started")
+        exp_step = max(1, len(rows_exp) // 10) if rows_exp else 1
+
         records = []
-        for r in self.store.query(sql, tuple(params)):
+        for idx_exp, r in enumerate(rows_exp, 1):
+            if cancel_event is not None and cancel_event.is_set():
+                raise InterruptedError("export cancelled")
             d = dict(r)
             d.pop("embedding", None)          # бинарь в выгрузке бесполезен
             d.pop("owner_sig", None)          # подпись имеет смысл только с ключом этой машины
@@ -1765,6 +1788,10 @@ class Memory:
             if "факт_ключ" in d:
                 d["fact_key"] = d.pop("факт_ключ")
             records.append(d)
+            if progress_cb is not None and (idx_exp % exp_step == 0 or idx_exp == len(rows_exp)):
+                progress_cb(idx_exp, exp_total, f"exported {idx_exp}/{len(rows_exp)}")
+        if progress_cb is not None and not rows_exp:
+            progress_cb(1, 1, "export completed")
 
         sessions = [dict(r) for r in self.store.query(
             "SELECT id, started_at, last_active_at, episode_count "

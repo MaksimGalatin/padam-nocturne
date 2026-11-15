@@ -377,3 +377,87 @@ def test_mcp_ideal_2_3_resource_annotations(tmp_path):
     finally:
         mcp_server._memory = old_mem
         mem.close()
+def test_mcp_ideal_2_6_cancellation_and_progress_notifications(tmp_path):
+    """Пункт 2.6: progressToken шлёт notifications/progress, а notifications/cancelled отменяет операцию с кодом -32800."""
+    import threading
+
+    mem = Memory(user_id="ideal-2-6", store=Store(tmp_path / "m26.db"))
+    for i in range(6):
+        mem.remember(f"Deployment step note #{i} for benchmark rollout", kind="fact", scope="ops", origin="user")
+    for idx_ep in (1, 2):
+        mem.store.execute(
+            "INSERT INTO episode (id, user_id, session_id, scope, role, content, priority, replay_count, processed, created_at) "
+            "VALUES (?, 'ideal-2-6', 's26', 'ops', 'user', ?, 1.0, 0, 0, '2026-11-15T01:00:00Z')",
+            (f"ep_26_{idx_ep}", f"Nocturne episode rollout policy #{idx_ep} stays deterministic"),
+        )
+    old_mem = mcp_server._memory
+    mcp_server._memory = mem
+    mcp_server.pop_notifications()
+    try:
+        # 1. Экспорт с progressToken генерирует notifications/progress
+        ex = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 101, "method": "tools/call",
+            "params": {
+                "name": "padam_export",
+                "arguments": {"scope": "ops"},
+                "_meta": {"progressToken": "exp-prog-1"},
+            },
+        })
+        assert ex["result"]["isError"] is False
+        notes = [n for n in mcp_server.pop_notifications() if n.get("method") == "notifications/progress"]
+        assert len(notes) >= 2
+        assert all(n["params"]["progressToken"] == "exp-prog-1" for n in notes)
+        assert notes[-1]["params"]["progress"] == notes[-1]["params"]["total"] >= 1
+
+        # 2. Пред-отменённый requestId сразу возвращает -32800 без запуска операции
+        assert mcp_server.handle({
+            "jsonrpc": "2.0", "method": "notifications/cancelled",
+            "params": {"requestId": "pre-cancel-99", "reason": "user aborted"},
+        }) is None
+        pre_res = mcp_server.handle({
+            "jsonrpc": "2.0", "id": "pre-cancel-99", "method": "tools/call",
+            "params": {"name": "padam_export", "arguments": {}},
+        })
+        assert pre_res["error"]["code"] == mcp_server.ERROR_CODES["REQUEST_CANCELLED"] == -32800
+
+        # 3. Живая отмена во время выполнения padam_sleep через параллельный notifications/cancelled
+        orig_emit = mcp_server._emit_progress
+        started_ev = threading.Event()
+        gate_ev = threading.Event()
+
+        def _slow_emit(done, total, msg=""):
+            orig_emit(done, total, msg)
+            started_ev.set()
+            gate_ev.wait(timeout=3.0)
+
+        mcp_server._emit_progress = _slow_emit
+        holder = {}
+        try:
+            def _run_sleep():
+                holder["resp"] = mcp_server.handle({
+                    "jsonrpc": "2.0", "id": "live-sleep-77", "method": "tools/call",
+                    "params": {
+                        "name": "padam_sleep",
+                        "arguments": {"dry_run": False},
+                        "_meta": {"progressToken": 77},
+                    },
+                })
+
+            th = threading.Thread(target=_run_sleep, daemon=True)
+            th.start()
+            assert started_ev.wait(timeout=3.0)
+            mcp_server.handle({
+                "jsonrpc": "2.0", "method": "notifications/cancelled",
+                "params": {"requestId": "live-sleep-77", "reason": "timeout"},
+            })
+            gate_ev.set()
+            th.join(timeout=5.0)
+        finally:
+            mcp_server._emit_progress = orig_emit
+
+        assert "resp" in holder and "error" in holder["resp"]
+        assert holder["resp"]["error"]["code"] == -32800
+    finally:
+        mcp_server._memory = old_mem
+        mcp_server.pop_notifications()
+        mem.close()
