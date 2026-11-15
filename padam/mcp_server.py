@@ -3667,9 +3667,9 @@ def main(argv: list[str] | None = None, memory: Memory | None = None) -> int:
         return 0
     if "--help" in args or "-h" in args:
         print("PADAM NOCTURNE MCP server. Speaks JSON-RPC over stdin and stdout (or Streamable HTTP with --http).\n"
-              "Usage: padam serve [--http] [--host 127.0.0.1] [--port 8079] [--token TOKEN]\n"
+              "Usage: padam serve [--async-stdio] [--http] [--host 127.0.0.1] [--port 8079] [--token TOKEN]\n"
               "Environment: PADAM_DB (database file), PADAM_USER, PADAM_EMBEDDER, OLLAMA_URL, PADAM_HOLD_EXTERNAL,\n"
-              "PADAM_MCP_REVIEW_ALL, PADAM_MCP_TRUST_WRITES, PADAM_KEEP_SECRETS, PADAM_STRICT (all guards on).\n"
+              "PADAM_MCP_REVIEW_ALL, PADAM_MCP_TRUST_WRITES, PADAM_KEEP_SECRETS, PADAM_MCP_ASYNC_STDIO, PADAM_STRICT.\n"
               "`padam doctor` reports the security state.")
         return 0
     if "--http" in args:
@@ -3702,6 +3702,7 @@ def main(argv: list[str] | None = None, memory: Memory | None = None) -> int:
         finally:
             srv.server_close()
         return 0
+    async_stdio = True if "--async-stdio" in args else None
     # 0.4.2: выключенная защита называется при каждом запуске — в stderr, stdout занят протоколом MCP.
     for имя, что in config.unsafe_settings():
         print(f"[padam] WARNING {имя}: {что}", file=sys.stderr)
@@ -3711,77 +3712,183 @@ def main(argv: list[str] | None = None, memory: Memory | None = None) -> int:
         if hasattr(_поток, "reconfigure"):
             # Битые байты на входе не должны ронять сервер, поэтому у входа errors="replace".
             _поток.reconfigure(encoding="utf-8", errors="replace" if _поток is sys.stdin else "strict")
-    def _stdio_elicit(elicit_req: dict) -> dict | None:
-        sys.stdout.write(json.dumps(elicit_req, ensure_ascii=False) + "\n")
-        sys.stdout.flush()
-        while True:
-            reply_line = sys.stdin.readline()
-            if not reply_line:
-                return None
-            reply_line = reply_line.strip()
-            if not reply_line:
-                continue
-            try:
-                return json.loads(reply_line)
-            except json.JSONDecodeError:
-                return None
+    return _run_stdio_loop(sys.stdin, sys.stdout, async_mode=async_stdio)
 
-    _stdout_lock = threading.Lock()
+
+def _handle_stdio_rpc_item(req: dict):
+    try:
+        return handle(req)
+    except Exception:
+        traceback.print_exc(file=sys.stderr)
+        return build_jsonrpc_error(req.get("id"), -32603, "internal error", key="internal_error", req=req)
+
+
+def _run_stdio_loop(stdin_stream, stdout_stream, *, async_mode: bool | None = None,
+                    max_workers: int = 4, server_req_timeout: float = 30.0) -> int:
+    """Читает JSON-RPC сообщения из stdin_stream и пишет ответы в stdout_stream.
+
+    В синхронном режиме (async_mode=False, по умолчанию) сохраняет 100% прежнее поведение.
+    В асинхронном режиме (--async-stdio / PADAM_MCP_ASYNC_STDIO=1):
+      - notifications/cancelled обрабатываются немедленно прямо в потоке чтения stdin;
+      - поддерживаются JSON-RPC batch-массивы (1..64 запросов);
+      - ответы клиента на серверные запросы (elicitation/sampling/roots) маршрутизируются по id.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    use_async = config.mcp_async_stdio_enabled() if async_mode is None else bool(async_mode)
+    stdout_lock = threading.Lock()
+    pending_lock = threading.Lock()
+    pending_client_replies: dict = {}
+
+    def _write_json_line(payload) -> None:
+        raw = json.dumps(payload, ensure_ascii=False) + "\n"
+        with stdout_lock:
+            stdout_stream.write(raw)
+            stdout_stream.flush()
 
     def _stdio_live_notify(note: dict) -> None:
-        with _stdout_lock:
-            sys.stdout.write(json.dumps(note, ensure_ascii=False) + "\n")
-            sys.stdout.flush()
+        _write_json_line(note)
 
-    set_elicitation_callback(_stdio_elicit)
+    def _stdio_server_request(srv_req: dict) -> dict | None:
+        if not use_async:
+            _write_json_line(srv_req)
+            while True:
+                reply_line = stdin_stream.readline()
+                if not reply_line:
+                    return None
+                reply_line = reply_line.strip()
+                if not reply_line:
+                    continue
+                try:
+                    return json.loads(reply_line)
+                except json.JSONDecodeError:
+                    return None
+        req_id = srv_req.get("id")
+        if req_id is None:
+            _write_json_line(srv_req)
+            return None
+        ev = threading.Event()
+        holder: dict = {}
+        with pending_lock:
+            pending_client_replies[req_id] = (ev, holder)
+        try:
+            _write_json_line(srv_req)
+            if not ev.wait(timeout=server_req_timeout):
+                return None
+            return holder.get("reply")
+        finally:
+            with pending_lock:
+                pending_client_replies.pop(req_id, None)
+
+    def _is_client_reply(msg) -> bool:
+        return (
+            isinstance(msg, dict)
+            and "method" not in msg
+            and msg.get("id") is not None
+            and ("result" in msg or "error" in msg)
+        )
+
+    def _flush_notifs_and_write(resp) -> None:
+        notes = pop_notifications()
+        if not notes and resp is None:
+            return
+        with stdout_lock:
+            for notif in notes:
+                stdout_stream.write(json.dumps(notif, ensure_ascii=False) + "\n")
+            if resp is not None:
+                stdout_stream.write(json.dumps(resp, ensure_ascii=False) + "\n")
+            stdout_stream.flush()
+
+    def _process_async_payload(payload) -> None:
+        if isinstance(payload, list):
+            if not payload:
+                _write_json_line(build_jsonrpc_error(None, -32600, "invalid request", key="invalid_request"))
+                return
+            if len(payload) > 64:
+                _write_json_line(build_jsonrpc_error(
+                    None, -32600, "JSON-RPC batch too large (max 64)", key="invalid_request"
+                ))
+                return
+            responses = []
+            for item in payload:
+                if not isinstance(item, dict):
+                    responses.append(build_jsonrpc_error(None, -32600, "invalid request", key="invalid_request"))
+                else:
+                    r = _handle_stdio_rpc_item(item)
+                    if r is not None:
+                        responses.append(r)
+            _flush_notifs_and_write(responses if responses else None)
+            return
+        resp = _handle_stdio_rpc_item(payload)
+        _flush_notifs_and_write(resp)
+
+    set_elicitation_callback(_stdio_server_request)
+    set_sampling_callback(_stdio_server_request)
     set_live_notification_callback(_stdio_live_notify)
-    while True:
-        line = sys.stdin.readline()
-        if not line:
-            break
-        line = line.strip()
-        if not line:
-            continue
-        if len(line.encode("utf-8", "replace")) > config.MAX_MCP_MESSAGE_BYTES:
-            err_msg = build_jsonrpc_error(
-                None, -32600,
-                f"request exceeds {config.MAX_MCP_MESSAGE_BYTES} bytes",
-                key="message_too_large",
-                detail=f">{config.MAX_MCP_MESSAGE_BYTES} bytes",
-            )
-            with _stdout_lock:
-                sys.stdout.write(json.dumps(err_msg, ensure_ascii=False) + "\n")
-                sys.stdout.flush()
-            continue
-        try:
-            req = json.loads(line)
-        except json.JSONDecodeError:
-            # JSON-RPC 2.0: на неразбираемый запрос — ошибка разбора с id = null, а не молчание.
-            sys.stdout.write(json.dumps(build_jsonrpc_error(None, -32700, "parse error", key="parse_error"), ensure_ascii=False) + "\n")
-            sys.stdout.flush()
-            continue
-        # 16.10.2026: валидный JSON, но не объект ([], null, 5, "x") — handle падал на req.get,
-        # а обработчик ошибки снова звал req.get и ронял весь процесс MCP-сервера.
-        if not isinstance(req, dict):
-            sys.stdout.write(json.dumps(build_jsonrpc_error(None, -32600, "invalid request", key="invalid_request"), ensure_ascii=False) + "\n")
-            sys.stdout.flush()
-            continue
-        try:
-            resp = handle(req)
-        except Exception:
-            traceback.print_exc(file=sys.stderr)
-            resp = build_jsonrpc_error(req.get("id"), -32603, "internal error", key="internal_error", req=req)
-        for notif in pop_notifications():
-            with _stdout_lock:
-                sys.stdout.write(json.dumps(notif, ensure_ascii=False) + "\n")
-        if resp is not None:
-            with _stdout_lock:
-                sys.stdout.write(json.dumps(resp, ensure_ascii=False) + "\n")
-                sys.stdout.flush()
-        else:
-            with _stdout_lock:
-                sys.stdout.flush()
-    set_live_notification_callback(None)
+
+    pool = ThreadPoolExecutor(max_workers=max(1, int(max_workers))) if use_async else None
+    futures = []
+    try:
+        while True:
+            line = stdin_stream.readline()
+            if not line:
+                break
+            line = line.strip()
+            if not line:
+                continue
+            if len(line.encode("utf-8", "replace")) > config.MAX_MCP_MESSAGE_BYTES:
+                _write_json_line(build_jsonrpc_error(
+                    None, -32600,
+                    f"request exceeds {config.MAX_MCP_MESSAGE_BYTES} bytes",
+                    key="message_too_large",
+                    detail=f">{config.MAX_MCP_MESSAGE_BYTES} bytes",
+                ))
+                continue
+            try:
+                req = json.loads(line)
+            except json.JSONDecodeError:
+                # JSON-RPC 2.0: на неразбираемый запрос — ошибка разбора с id = null, а не молчание.
+                _write_json_line(build_jsonrpc_error(None, -32700, "parse error", key="parse_error"))
+                continue
+
+            if not use_async:
+                # 16.10.2026: валидный JSON, но не объект ([], null, 5, "x") — handle падал на req.get.
+                if not isinstance(req, dict):
+                    _write_json_line(build_jsonrpc_error(None, -32600, "invalid request", key="invalid_request"))
+                    continue
+                resp = _handle_stdio_rpc_item(req)
+                _flush_notifs_and_write(resp)
+                continue
+
+            # Асинхронная ветка stdio:
+            if _is_client_reply(req):
+                rid = req.get("id")
+                with pending_lock:
+                    waiter = pending_client_replies.get(rid)
+                if waiter is not None:
+                    ev, holder = waiter
+                    holder["reply"] = req
+                    ev.set()
+                continue
+
+            if isinstance(req, dict) and req.get("method") == "notifications/cancelled":
+                params = req.get("params") or {}
+                if isinstance(params, dict):
+                    cancel_request(params.get("requestId"))
+                continue
+
+            if not isinstance(req, (dict, list)):
+                _write_json_line(build_jsonrpc_error(None, -32600, "invalid request", key="invalid_request"))
+                continue
+
+            futures = [f for f in futures if not f.done()]
+            futures.append(pool.submit(_process_async_payload, req))
+    finally:
+        if pool is not None:
+            pool.shutdown(wait=True)
+        set_live_notification_callback(None)
+        set_elicitation_callback(None)
+        set_sampling_callback(None)
     return 0
 
 

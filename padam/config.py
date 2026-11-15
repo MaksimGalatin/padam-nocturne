@@ -236,3 +236,9 @@ def mcp_graph_hops_default() -> int:
         return min(2, max(0, int(raw)))
     except ValueError:
         return 0
+
+
+# --- ТОП-10 Пункт 2: Асинхронный stdio-мультиплексор (выключено по умолчанию) ---
+def mcp_async_stdio_enabled() -> bool:
+    """Включает пул воркеров и живую отмену/batch/sampling по stdio (PADAM_MCP_ASYNC_STDIO=1 или --async-stdio)."""
+    return os.environ.get("PADAM_MCP_ASYNC_STDIO", "0").strip() == "1"
