@@ -1166,6 +1166,17 @@ _pending_notifications: list[dict] = []
 _pending_audiences: list[dict] = []
 _stream_events: list[tuple[int, dict, dict]] = []
 _event_seq: int = 0
+_swarm_hub: Any = None
+
+
+def get_swarm_hub():
+    """Возвращает ленивый синглтон локальной синаптической шины агентов (SwarmSynapseHub)."""
+    global _swarm_hub
+    with _state_lock:
+        if _swarm_hub is None:
+            from .swarm_synapse import SwarmSynapseHub
+            _swarm_hub = SwarmSynapseHub()
+        return _swarm_hub
 
 
 def _alloc_event_seq() -> int:
@@ -1194,9 +1205,15 @@ def _event_allowed_for_actor(audience: dict | None, actor) -> bool:
     return True
 
 
-def _uri_matches_scope_filter(uri: str, scopes: list[str] | None) -> bool:
+def _uri_matches_scope_filter(uri: str, scopes: list[str] | None, aud: dict | None = None) -> bool:
     if not scopes:
         return True
+    if uri == "padam://swarm/feed":
+        sig_scope = str((aud or {}).get("scope") or "global")
+        if "all" in scopes:
+            return True
+        from . import mcp_daemon as _daemon
+        return any(_daemon.scope_matches_pin(sig_scope, sf) for sf in scopes)
     if "all" in scopes:
         return uri.startswith("padam://scope/")
     return uri in {f"padam://scope/{s}" for s in scopes}
@@ -1732,7 +1749,7 @@ def pop_notifications(actor=None, scopes: list[str] | None = None) -> list[dict]
     for idx, note in enumerate(notes):
         aud = auds[idx] if idx < len(auds) else {}
         uri = str((note.get("params") or {}).get("uri") or "")
-        if uri and not _uri_matches_scope_filter(uri, scopes):
+        if uri and not _uri_matches_scope_filter(uri, scopes, aud):
             continue
         if _event_allowed_for_actor(aud, actor):
             out.append(note)
@@ -2051,6 +2068,15 @@ def _list_resources_annotated() -> list[dict]:
             "mimeType": "application/json",
             "annotations": _make_annotations(["user", "assistant"], 0.7, by_uri.get("padam://stats")),
         })
+    if config.mcp_swarm_enabled():
+        out.append({
+            "uri": "padam://swarm/feed",
+            "name": "swarm_synapse_feed",
+            "title": "P2P Swarm Synapse Feed",
+            "description": "Real-time cross-agent memory signal feed within the session sandbox scope (fenced data).",
+            "mimeType": "application/json",
+            "annotations": _make_annotations(["assistant", "user"], 0.85, by_uri.get("padam://stats")),
+        })
     if config.mcp_icons_enabled():
         icons = _padam_icons("resource")
         for item in out:
@@ -2133,6 +2159,30 @@ def read_resource(uri: str) -> dict:
             "mimeType": "application/json",
             "text": json.dumps({"snapshots": snaps, "count": len(snaps)}, ensure_ascii=False, indent=2),
             "annotations": _make_annotations(["user", "assistant"], 0.7, None),
+        }
+
+    if uri == "padam://swarm/feed" or uri.startswith("padam://swarm/feed?"):
+        if not config.mcp_swarm_enabled():
+            raise KeyError(f"Resource not found: {uri}")
+        from urllib.parse import parse_qs as _pqs, urlsplit as _usplit
+        qs_sw = _pqs(_usplit(uri).query)
+        try:
+            after_seq = max(0, int((qs_sw.get("after_seq") or ["0"])[0]))
+        except ValueError:
+            after_seq = 0
+        ex_ag = ((qs_sw.get("exclude_agent") or [""])[0] or "").strip() or None
+        is_owner_sw = actor is None or bool(actor.is_owner)
+        feed = get_swarm_hub().build_feed(
+            pinned_scope=_session_scope_ctx.get(),
+            after_seq=after_seq,
+            exclude_agent=ex_ag,
+            is_owner=is_owner_sw,
+        )
+        return {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps(feed, ensure_ascii=False, indent=2),
+            "annotations": _make_annotations(["assistant", "user"], 0.85, None),
         }
 
     if uri == "ui://padam/review-queue":
@@ -3081,6 +3131,28 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
         if outcome not in ("duplicate", "rejected_via_elicitation"):
             _emit_resource_updated("padam://stats", owner_only=(outcome == "quarantined"), **rm_kw)
             _emit_resource_updated("padam://recent", owner_only=(outcome == "quarantined"), **rm_kw)
+        if config.mcp_swarm_enabled() and outcome != "rejected_via_elicitation":
+            sw_scope = rm_kw.get("scope") or eff_write_scope or "global"
+            get_swarm_hub().publish_signal(
+                "memory_write",
+                memory_id=mid,
+                kind=rm_kw.get("kind"),
+                scope=sw_scope,
+                origin=origin,
+                agent_id=agent_id,
+                summary=write_content,
+                outcome=outcome,
+                quarantined=(outcome == "quarantined"),
+                owner_only=(outcome == "quarantined"),
+            )
+            _emit_resource_updated(
+                "padam://swarm/feed",
+                scope=sw_scope,
+                visibility=rm_kw.get("visibility"),
+                workspace_id=rm_kw.get("workspace_id"),
+                kind=rm_kw.get("kind"),
+                owner_only=(outcome == "quarantined"),
+            )
         поднята = origin == "user" and config.MCP_TRUST_WRITES
         notes = {
             "created": "stored as a new record",
@@ -3181,6 +3253,19 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
             )
             rm_kw = dict(row_meta) if row_meta else {}
             _emit_resource_updated("padam://stats", **rm_kw)
+            if config.mcp_swarm_enabled():
+                sw_scope_c = rm_kw.get("scope") or "global"
+                get_swarm_hub().publish_signal(
+                    "memory_confirm",
+                    memory_id=args["id"],
+                    kind=rm_kw.get("kind"),
+                    scope=sw_scope_c,
+                    origin="owner" if (actor is None or actor.is_owner) else "agent",
+                    agent_id=os.environ.get("PADAM_AGENT_ID") or None,
+                    summary=f"confirmed memory {args['id']}",
+                    outcome="confirmed",
+                )
+                _emit_resource_updated("padam://swarm/feed", **rm_kw)
         return ("Record confirmed and refreshed." if ok else "Record not found."), {
             "id": args["id"],
             "confirmed": bool(ok),
@@ -3430,6 +3515,17 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
                 _emit_resource_updated("padam://stats", owner_only=True)
                 _emit_resource_updated("padam://recent", owner_only=True)
                 _emit_resource_updated("padam://snapshots", owner_only=True)
+                if config.mcp_swarm_enabled():
+                    sw_scope_rb = eff_rb_scope or "global"
+                    get_swarm_hub().publish_signal(
+                        "cognitive_rollback",
+                        scope=sw_scope_rb,
+                        origin="owner",
+                        summary=f"rolled back forgotten={len(rb_res.get('forgotten_ids', []))} restored={len(rb_res.get('restored_ids', []))}",
+                        outcome=rb_res.get("status"),
+                        owner_only=True,
+                    )
+                    _emit_resource_updated("padam://swarm/feed", scope=sw_scope_rb, owner_only=True)
             emit_mcp_log(
                 "info",
                 "padam.rollback",
@@ -4263,7 +4359,7 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                 self.send_header("Access-Control-Allow-Origin", orig)
                 self.send_header("Vary", "Origin")
             self.send_header("Access-Control-Allow-Headers",
-                             "Authorization, Content-Type, Mcp-Session-Id, MCP-Protocol-Version, X-Padam-Actor-Token, X-Padam-Session-Scope, Last-Event-ID")
+                             "Authorization, Content-Type, Mcp-Session-Id, MCP-Protocol-Version, X-Padam-Actor-Token, X-Padam-Session-Scope, X-Padam-Agent-Id, Last-Event-ID")
             self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
             self.send_header("Content-Length", "0")
             self.end_headers()
@@ -4323,6 +4419,8 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                 payload = {"status": "ok", "transport": "streamable-http", "version": __version__}
                 if rem_worker is not None:
                     payload["rem_sleep"] = rem_worker.status()
+                if config.mcp_swarm_enabled():
+                    payload["swarm"] = get_swarm_hub().status()
                 return self._send_json(200, payload)
             if not self._trusted_local():
                 return self._send_json(403, {"error": "forbidden origin or host"})
@@ -4346,6 +4444,60 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
             scopes = self._authorize_scopes()
             if scopes is None:
                 return self._send_unauth()
+            if path == "/swarm/feed" and config.mcp_swarm_enabled():
+                if "padam:read" not in scopes:
+                    return self._send_forbidden_scope("padam:read")
+                m_sw = mem()
+                actor_hdr_sw = (self.headers.get("X-Padam-Actor-Token") or "").strip() or os.environ.get("PADAM_ACTOR_TOKEN", "").strip()
+                actor_sw = None
+                if actor_hdr_sw:
+                    from . import roles as _roles
+                    actor_sw = m_sw.authenticate_token(actor_hdr_sw) or _roles.ActorContext(
+                        role="guest", subject="guest", workspace_id=None, via_token=False
+                    )
+                req_sid_sw = (self.headers.get("Mcp-Session-Id") or session_id).strip() or session_id
+                hdr_scope_sw = (self.headers.get("X-Padam-Session-Scope") or "").strip() or None
+                with session_lock:
+                    pinned_sw = session_pinned_scopes.get(req_sid_sw)
+                    if hdr_scope_sw:
+                        if pinned_sw and pinned_sw != hdr_scope_sw:
+                            return self._send_json(403, {"error": "session scope mismatch: cannot switch sandbox"})
+                        session_pinned_scopes.setdefault(req_sid_sw, hdr_scope_sw)
+                        pinned_sw = session_pinned_scopes[req_sid_sw]
+                req_q_scope = ((qs.get("scope") or [""])[0] or "").strip() or None
+                if pinned_sw and req_q_scope:
+                    from . import mcp_daemon as _daemon
+                    if not _daemon.scope_matches_pin(req_q_scope, pinned_sw):
+                        return self._send_json(403, {"error": "session scope isolation: forbidden swarm scope filter"})
+                eff_sw_pin = pinned_sw or req_q_scope
+                ag_hdr = (self.headers.get("X-Padam-Agent-Id") or "").strip() or None
+                if ag_hdr:
+                    get_swarm_hub().register_agent(ag_hdr, session_id=req_sid_sw, pinned_scope=eff_sw_pin)
+                try:
+                    after_q = max(0, int((qs.get("after_seq") or ["0"])[0]))
+                except ValueError:
+                    after_q = 0
+                try:
+                    wait_q = min(5.0, max(0.0, float((qs.get("wait") or ["0"])[0])))
+                except ValueError:
+                    wait_q = 0.0
+                ex_q = ((qs.get("exclude_agent") or [""])[0] or "").strip() or None
+                is_owner_sw = actor_sw is None or bool(actor_sw.is_owner)
+                if wait_q > 0:
+                    get_swarm_hub().poll_signals(
+                        pinned_scope=eff_sw_pin,
+                        after_seq=after_q,
+                        exclude_agent=ex_q,
+                        is_owner=is_owner_sw,
+                        wait_timeout=wait_q,
+                    )
+                feed_sw = get_swarm_hub().build_feed(
+                    pinned_scope=eff_sw_pin,
+                    after_seq=after_q,
+                    exclude_agent=ex_q,
+                    is_owner=is_owner_sw,
+                )
+                return self._send_json(200, feed_sw)
             if path == "/mcp":
                 if "padam:read" not in scopes:
                     return self._send_forbidden_scope("padam:read")
@@ -4386,7 +4538,7 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                     uri = str((note_obj.get("params") or {}).get("uri") or "")
                     meth = str(note_obj.get("method") or "")
                     if scope_filter:
-                        if not _uri_matches_scope_filter(uri, scope_filter):
+                        if not _uri_matches_scope_filter(uri, scope_filter, aud_obj):
                             return False
                     elif uri or meth == "notifications/resources/updated":
                         with _state_lock:
@@ -4592,6 +4744,22 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                     active_pin = derived_pin
             if active_pin and config.mcp_predictive_cache_enabled():
                 warm_scope_cache(active_pin, m=mem(), sync=False)
+            if config.mcp_swarm_enabled():
+                ag_post = (self.headers.get("X-Padam-Agent-Id") or "").strip()
+                cl_name = None
+                if isinstance(req, dict):
+                    prm_sw = req.get("params") if isinstance(req.get("params"), dict) else {}
+                    cinfo = prm_sw.get("clientInfo") if isinstance(prm_sw.get("clientInfo"), dict) else {}
+                    cl_name = (cinfo.get("name") or "").strip() or None
+                    if not ag_post and isinstance(prm_sw.get("arguments"), dict):
+                        ag_post = str(prm_sw["arguments"].get("agent_id") or "").strip()
+                if ag_post or cl_name:
+                    get_swarm_hub().register_agent(
+                        ag_post or cl_name or req_sid_post,
+                        session_id=req_sid_post,
+                        pinned_scope=active_pin,
+                        client_name=cl_name,
+                    )
 
             actor_hdr = (self.headers.get("X-Padam-Actor-Token") or "").strip() or None
             tok_ctx = _actor_token_ctx.set(actor_hdr) if actor_hdr is not None else None

@@ -355,3 +355,9 @@ def mcp_dlp_shield_enabled() -> bool:
 def mcp_dlp_upstream_url() -> str:
     """Необязательный upstream URL для локального DLP-прокси-шлюза (пусто по умолчанию)."""
     return os.environ.get("PADAM_DLP_UPSTREAM_URL", "").strip()
+
+
+# --- Легенда Шаг 4: Локальный Меж-Агентский Синдикат (P2P Swarm Synapse, выключено по умолчанию) ---
+def mcp_swarm_enabled() -> bool:
+    """Включает локальную синаптическую шину агентов padam://swarm/feed и GET /swarm/feed (PADAM_MCP_SWARM=1)."""
+    return os.environ.get("PADAM_MCP_SWARM", "0").strip() == "1"
