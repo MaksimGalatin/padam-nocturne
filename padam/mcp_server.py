@@ -3082,8 +3082,40 @@ def _handle_legacy(req: dict) -> dict | None:
 
 
 
+class _SessionRateLimiter:
+    """Потокобезопасное скользящее окно частоты запросов на сессию MCP HTTP."""
+
+    def __init__(self, limit: int, window_s: float = 60.0) -> None:
+        self.limit = max(0, int(limit))
+        self.window_s = max(0.1, float(window_s))
+        self._lock = threading.Lock()
+        self._hits: dict[str, list[float]] = {}
+
+    def allow(self, key: str, cost: int = 1) -> tuple[bool, int]:
+        if self.limit <= 0:
+            return True, 0
+        import time as _time
+        now = _time.monotonic()
+        cutoff = now - self.window_s
+        with self._lock:
+            bucket = [ts for ts in self._hits.get(key, []) if ts > cutoff]
+            if len(bucket) + max(1, int(cost)) > self.limit:
+                oldest = bucket[0] if bucket else now
+                retry_after = max(1, int((oldest + self.window_s - now) + 0.999))
+                self._hits[key] = bucket
+                return False, retry_after
+            bucket.extend([now] * max(1, int(cost)))
+            self._hits[key] = bucket
+            if len(self._hits) > 1024:
+                stale = [k for k, v in self._hits.items() if not v or v[-1] <= cutoff]
+                for k in stale:
+                    self._hits.pop(k, None)
+            return True, 0
+
+
 def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
-                         port: int = 8079, token: str | None = None, oauth: bool | None = None):
+                         port: int = 8079, token: str | None = None, oauth: bool | None = None,
+                         rate_limit: int | None = None, rate_window_s: float | None = None):
     """Г4 + 1.2: Локальный сервер MCP Streamable HTTP (только 127.0.0.1, Bearer-токен или OAuth 2.1 + RFC 9728).
     Возвращает (ThreadingHTTPServer, url, token).
     """
@@ -3116,6 +3148,9 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
         _memory = memory
 
     MAX_MCP_BODY = 256 * 1024
+    eff_rate_limit = config.mcp_rate_limit() if rate_limit is None else max(0, int(rate_limit))
+    eff_rate_window = float(config.MCP_RATE_WINDOW_S if rate_window_s is None else rate_window_s)
+    rate_limiter = _SessionRateLimiter(eff_rate_limit, eff_rate_window) if eff_rate_limit > 0 else None
 
     class _McpHttpHandler(BaseHTTPRequestHandler):
         def log_message(self, format, *args):
@@ -3403,6 +3438,37 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
             tok_ctx = _actor_token_ctx.set(actor_hdr) if actor_hdr is not None else None
             lang_hdr = _normalize_lang(self.headers.get("X-Padam-Lang") or self.headers.get("Accept-Language"))
             lang_ctx = _error_lang_ctx.set(lang_hdr) if lang_hdr is not None else None
+            if rate_limiter is not None:
+                import hashlib as _hl
+                sess_key_raw = "|".join([
+                    (self.headers.get("Mcp-Session-Id") or session_id).strip(),
+                    actor_hdr or "",
+                    (self.headers.get("Authorization") or "")[-16:],
+                ])
+                sess_key = _hl.sha256(sess_key_raw.encode("utf-8")).hexdigest()[:24]
+                cost = len(req) if isinstance(req, list) and req else 1
+                allowed, retry_after = rate_limiter.allow(sess_key, cost=cost)
+                if not allowed:
+                    req_id_for_err = req.get("id") if isinstance(req, dict) else None
+                    req_for_err = req if isinstance(req, dict) else None
+                    if lang_ctx is not None:
+                        _error_lang_ctx.reset(lang_ctx)
+                    if tok_ctx is not None:
+                        _actor_token_ctx.reset(tok_ctx)
+                    return self._send_json(
+                        429,
+                        build_jsonrpc_error(
+                            req_id_for_err,
+                            -32001,
+                            f"rate limit exceeded: retry after {retry_after}s",
+                            key="rate_limited",
+                            detail=f"retry after {retry_after}s",
+                            data={"retryAfterSeconds": retry_after},
+                            req=req_for_err,
+                            lang=lang_hdr,
+                        ),
+                        extra_headers={"Retry-After": str(retry_after)},
+                    )
             try:
                 if isinstance(req, list):
                     if not req:
@@ -3498,11 +3564,14 @@ def main(argv: list[str] | None = None, memory: Memory | None = None) -> int:
         hp.add_argument("--port", type=int, default=8079)
         hp.add_argument("--token", default=os.environ.get("PADAM_API_TOKEN"))
         hp.add_argument("--oauth", action="store_true", default=None)
+        hp.add_argument("--rate-limit", type=int, default=None)
+        hp.add_argument("--rate-window", type=float, default=None)
         ha = hp.parse_args(args)
         try:
             srv, url, tok = make_mcp_http_server(
                 memory=_memory, host=ha.host, port=ha.port, token=ha.token,
                 oauth=(True if ha.oauth else None),
+                rate_limit=ha.rate_limit, rate_window_s=ha.rate_window,
             )
         except ValueError as e:
             print(f"Refused: {e}", file=sys.stderr)

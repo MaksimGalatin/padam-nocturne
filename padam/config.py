@@ -211,3 +211,18 @@ MAX_EXPORT_OFFSET = int(os.environ.get("PADAM_MAX_EXPORT_OFFSET", "1000000"))
 MAX_JSON_DEPTH = int(os.environ.get("PADAM_MAX_JSON_DEPTH", "32"))
 MAX_JSON_NODES = int(os.environ.get("PADAM_MAX_JSON_NODES", "4096"))
 MAX_MCP_MESSAGE_BYTES = int(os.environ.get("PADAM_MAX_MCP_BYTES", str(512 * 1024)))
+
+# --- Пункт 4.3: Ограничение частоты вызовов на сессию в HTTP-режиме ---
+# По умолчанию 0 (выключено); включается через PADAM_MCP_RATE_LIMIT=<N> запросов за окно.
+MCP_RATE_LIMIT = int(os.environ.get("PADAM_MCP_RATE_LIMIT", "0"))
+MCP_RATE_WINDOW_S = float(os.environ.get("PADAM_MCP_RATE_WINDOW_S", "60.0"))
+
+
+def mcp_rate_limit() -> int:
+    raw = os.environ.get("PADAM_MCP_RATE_LIMIT")
+    if raw is not None and raw.strip():
+        try:
+            return max(0, int(raw))
+        except ValueError:
+            return 0
+    return max(0, int(MCP_RATE_LIMIT))

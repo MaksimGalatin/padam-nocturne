@@ -613,3 +613,56 @@ def test_mcp_ideal_4_1_fuzz_stability():
     assert rep["exceptions"] == 0
     assert rep["invalid_responses"] == 0
     assert rep["ok_calls"] > 50 and rep["tool_errors"] > 50
+def test_mcp_ideal_4_3_http_session_rate_limit(tmp_path):
+    """Пункт 4.3: ограничение частоты в HTTP-режиме (выключено по умолчанию; при включении даёт 429 + Retry-After)."""
+    import json
+    import threading
+    import urllib.error
+    import urllib.request
+
+    from padam import config
+
+    assert config.mcp_rate_limit() == 0
+
+    mem = Memory(user_id="ideal-4-3", store=Store(tmp_path / "m43.db"))
+    srv, url, tok = mcp_server.make_mcp_http_server(
+        memory=mem, host="127.0.0.1", port=0, token="rate-limit-test-token-1234",
+        rate_limit=3, rate_window_s=30.0,
+    )
+    th = threading.Thread(target=srv.serve_forever, daemon=True)
+    th.start()
+    try:
+        def _post(sess_id: str, rpc_id: int, lang: str | None = None):
+            body = json.dumps({"jsonrpc": "2.0", "id": rpc_id, "method": "ping"}).encode("utf-8")
+            hdrs = {
+                "Authorization": f"Bearer {tok}",
+                "Content-Type": "application/json",
+                "Mcp-Session-Id": sess_id,
+            }
+            if lang:
+                hdrs["X-Padam-Lang"] = lang
+            req = urllib.request.Request(url, data=body, headers=hdrs, method="POST")
+            try:
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    return resp.status, dict(resp.headers), json.loads(resp.read().decode("utf-8"))
+            except urllib.error.HTTPError as e:
+                return e.code, dict(e.headers), json.loads(e.read().decode("utf-8"))
+
+        # Сессия A: первые 3 запроса проходят, 4-й получает 429 + Retry-After + -32001
+        for idx in (1, 2, 3):
+            st, _, payload = _post("sess-A", idx)
+            assert st == 200 and payload["result"] == {}
+
+        st4, hdr4, payload4 = _post("sess-A", 4, lang="ru")
+        assert st4 == 429
+        assert int(hdr4.get("Retry-After", "0")) >= 1
+        assert payload4["error"]["code"] == mcp_server.ERROR_CODES["RATE_LIMITED"] == -32001
+        assert "Превышен лимит" in payload4["error"]["message"]
+
+        # Сессия B имеет независимую квоту и проходит
+        st_b, _, payload_b = _post("sess-B", 10)
+        assert st_b == 200 and payload_b["result"] == {}
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        mem.close()
