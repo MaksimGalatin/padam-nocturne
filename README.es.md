@@ -385,7 +385,7 @@ python -m pytest tests/ -q        # 968 passed, 10 skipped with [embed] and [l3]
 | model2vec `potion-base-8M` | 10, completos | 67.6 % | 66.2 % | 90.0 % |
 | model2vec `potion-base-8M` | 20, completos | **71.4 %** | 70.2 % | 90.0 % |
 
-**Escala en una máquina** (`benchmarks/scale/results_builtin_0413.json`, 12 Nov 2026): 10,000 registros — 6.3 ms por escritura, mediana de búsqueda 15 ms; 100,000 registros — 5.7 ms por escritura, mediana de búsqueda 97 ms (percentil 95: 162 ms), 375 MB.
+**Escala en una máquina** (`benchmarks/scale/results_builtin_0413.json`, 12 Nov 2026): 10,000 registros — 6.3 ms por escritura, mediana de búsqueda 15 ms; 100,000 registros — 5.7 ms por escritura, mediana de búsqueda 97 ms (percentil 95: 162 ms), 375 MB. Ejecución en frío el 15 Nov 2026 (`padam_version` 0.5.1, `benchmarks/scale/scale.py --embedder builtin --sizes 100000`, notas sintéticas densas de 44 palabras, `benchmarks/scale/results_100k_1511.json`): 100,000 registros — 1,132.5 s de escritura (11.33 ms/registro), `recall` en frío 5,820.8 ms, mediana en caliente 915.2 ms (percentil 95: 1,425.8 ms), base 467.4 MB, RSS del proceso 62.1 MB antes → 987.54 MB después (pico 1,322.98 MB).
 
 ### LoCoMo — 10 conversaciones completas (1,982 preguntas)
 

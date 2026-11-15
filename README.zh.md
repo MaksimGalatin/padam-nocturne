@@ -383,7 +383,7 @@ python -m pytest tests/ -q        # 968 passed, 10 skipped with [embed] and [l3]
 | model2vec `potion-base-8M` | 10 条，完整视图 | 67.6 % | 66.2 % | 90.0 % |
 | model2vec `potion-base-8M` | 20 条，完整视图 | **71.4 %** | 70.2 % | 90.0 % |
 
-**单机性能规模实测**（`benchmarks/scale/results_builtin_0413.json`，2026-11-12）：10,000 条记录 —— 单次写入 6.3 ms，搜索中位数 15 ms；100,000 条记录 —— 单次写入 5.7 ms，搜索中位数 97 ms（P95 为 162 ms），数据库文件 375 MB。
+**单机性能规模实测**（`benchmarks/scale/results_builtin_0413.json`，2026-11-12）：10,000 条记录 —— 单次写入 6.3 ms，搜索中位数 15 ms；100,000 条记录 —— 单次写入 5.7 ms，搜索中位数 97 ms（P95 为 162 ms），数据库文件 375 MB。2026-11-15 冷启动实测（`padam_version` 0.5.1，`benchmarks/scale/scale.py --embedder builtin --sizes 100000`，44 词高密度合成笔记，`benchmarks/scale/results_100k_1511.json`）：100,000 条记录 —— 总写入 1,132.5 s（11.33 ms/条），冷查询 `recall` 5,820.8 ms，热查询中位数 915.2 ms（P95 为 1,425.8 ms），数据库 467.4 MB，进程 RSS 内存 62.1 MB → 987.54 MB（峰值 1,322.98 MB）。
 
 ### LoCoMo —— 10 段完整对话基准（1,982 题）
 

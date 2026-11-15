@@ -1,0 +1,20 @@
+{
+  "padam_version": "0.5.1",
+  "embedding": "builtin",
+  "python": "3.14.4",
+  "texts": "synthetic notes, 8\u201340 words",
+  "rows": [
+    {
+      "records": 100000,
+      "write_seconds": 1132.5,
+      "write_ms_per_record": 11.33,
+      "cold_search_ms": 5820.8,
+      "search_ms_median": 915.2,
+      "search_ms_p95": 1425.8,
+      "db_mb": 467.4,
+      "rss_mb_before": 62.1,
+      "rss_mb_after": 987.54,
+      "peak_rss_mb": 1322.98
+    }
+  ]
+}

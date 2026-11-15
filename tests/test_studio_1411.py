@@ -3958,5 +3958,38 @@ def test_step_2_10_lockfile_audit_and_sbom_ci():
     assert "sbom-cyclonedx" in publish_yml
 
 
+def test_step_2_8_scale_benchmark_script(tmp_path):
+    """Пункт 2.8: скрипт масштаба измеряет cold_search_ms и RSS памяти; 100k замер зафиксирован во всех 4 README."""
+    import json
+    import subprocess
+    import sys
+
+    repo_root = Path(__file__).resolve().parent.parent
+    res_100k = repo_root / "benchmarks" / "scale" / "results_100k_1511.json"
+    assert res_100k.is_file()
+    data = json.loads(res_100k.read_text(encoding="utf-8"))
+    row = data["rows"][0]
+    assert row["records"] == 100000
+    for key in ("write_seconds", "cold_search_ms", "search_ms_median", "search_ms_p95", "db_mb", "rss_mb_before", "rss_mb_after", "peak_rss_mb"):
+        assert key in row and row[key] > 0
+
+    for name in ("README.md", "README.ru.md", "README.es.md", "README.zh.md"):
+        txt = (repo_root / name).read_text(encoding="utf-8")
+        assert "results_100k_1511.json" in txt, f"Missing 100k benchmark link in {name}"
+        assert ("987.54" in txt or "987,54" in txt) and ("1,322.98" in txt or "1 322,98" in txt), f"Missing measured RSS in {name}"
+
+    out_mini = tmp_path / "mini_scale.json"
+    proc = subprocess.run(
+        [sys.executable, "-I", "-X", "utf8", str(repo_root / "benchmarks" / "scale" / "scale.py"), str(out_mini), "--embedder", "builtin", "--sizes", "20"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert proc.returncode == 0, proc.stderr
+    mini = json.loads(out_mini.read_text(encoding="utf-8"))
+    assert mini["rows"][0]["records"] == 20
+    assert mini["rows"][0]["peak_rss_mb"] >= mini["rows"][0]["rss_mb_before"] > 0
+
+
 
 
