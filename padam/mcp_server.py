@@ -1934,6 +1934,9 @@ def _list_resources_annotated() -> list[dict]:
         ann["lastModified"] = by_uri.get(res["uri"], _now_iso_utc())
         item["annotations"] = ann
         out.append(item)
+    if config.mcp_apps_enabled():
+        from . import mcp_apps as _mcp_apps
+        out.extend(_mcp_apps.list_ui_resources(ts=by_uri.get("padam://review-queue")))
     return out
 
 
@@ -1953,6 +1956,9 @@ def _list_resource_templates_annotated() -> list[dict]:
         ann["lastModified"] = ts_all
         item["annotations"] = ann
         out.append(item)
+    if config.mcp_apps_enabled():
+        from . import mcp_apps as _mcp_apps
+        out.extend(_mcp_apps.list_ui_templates(ts=ts_all))
     return out
 
 
@@ -1994,6 +2000,48 @@ def read_resource(uri: str) -> dict:
 
     m = mem()
     actor = _current_actor(m)
+
+    if uri == "ui://padam/review-queue":
+        if not config.mcp_apps_enabled():
+            raise KeyError(f"Resource not found: {uri}")
+        if actor is not None and not actor.is_owner:
+            raise PermissionError("review queue UI requires the owner role")
+        from . import mcp_apps as _mcp_apps
+        held = m.quarantined(actor=actor)
+        enriched = []
+        for r in held:
+            item_r = dict(r)
+            item_r["reason"] = _describe_hold_reason(r, r.get("content") or "", r.get("origin") or "agent")
+            enriched.append(item_r)
+        ts = max((r.get("created_at") or "" for r in held), default="") or None
+        return {
+            "uri": uri,
+            "mimeType": _mcp_apps.MCP_APP_MIME,
+            "text": _mcp_apps.render_review_queue_html(enriched),
+            "annotations": _make_annotations(["user"], 0.88, ts),
+            "_meta": _mcp_apps.UI_CSP_META,
+        }
+
+    if uri.startswith("ui://padam/graph/"):
+        if not config.mcp_apps_enabled():
+            raise KeyError(f"Resource not found: {uri}")
+        from . import mcp_apps as _mcp_apps
+        gid = uri.split("ui://padam/graph/", 1)[1].strip()
+        if not gid:
+            raise KeyError(f"Resource not found: {uri}")
+        g = m.graph(center_id=gid, limit=50, actor=actor)
+        nodes = g.get("nodes", [])
+        if not nodes:
+            raise KeyError(f"Resource not found: {uri}")
+        safe_nodes = _safe_graph_nodes(nodes)
+        ts = max((n.get("created_at") or "" for n in nodes), default="") or None
+        return {
+            "uri": uri,
+            "mimeType": _mcp_apps.MCP_APP_MIME,
+            "text": _mcp_apps.render_graph_html(gid, safe_nodes, g.get("edges", [])),
+            "annotations": _make_annotations(["user"], 0.82, ts),
+            "_meta": _mcp_apps.UI_CSP_META,
+        }
 
     if uri == "padam://profile":
         if actor is not None and not actor.is_owner:
@@ -2535,6 +2583,9 @@ def complete_argument(ref: dict, argument: dict, context: dict | None = None) ->
         uri = str(ref.get("uri") or "")
         if arg_name == "uri":
             candidates = [r["uri"] for r in RESOURCES] + [t["uriTemplate"] for t in RESOURCE_TEMPLATES]
+            if config.mcp_apps_enabled():
+                from . import mcp_apps as _mcp_apps
+                candidates.extend([r["uri"] for r in _mcp_apps.UI_RESOURCES] + [t["uriTemplate"] for t in _mcp_apps.UI_RESOURCE_TEMPLATES])
         elif arg_name == "name":
             candidates = [p["name"] for p in PROMPTS] + [r["name"] for r in RESOURCES]
         elif arg_name == "kind":
@@ -2543,7 +2594,7 @@ def complete_argument(ref: dict, argument: dict, context: dict | None = None) ->
             candidates = ["user", "agent", "external", "tool"]
         elif arg_name == "agent_id":
             candidates = _db_agents()
-        elif arg_name == "id" or (arg_name not in ("scope", "provider", "date") and uri in ("padam://record/{id}", "padam://timeline/{id}", "padam://graph/{id}")):
+        elif arg_name == "id" or (arg_name not in ("scope", "provider", "date") and uri in ("padam://record/{id}", "padam://timeline/{id}", "padam://graph/{id}", "ui://padam/graph/{id}")):
             candidates = _db_ids(include_superseded=True)
         elif arg_name == "scope" or (arg_name not in ("id", "provider", "date") and uri in ("padam://scope/{scope}", "padam://conflicts/{scope}")):
             candidates = ["all", "global"] + [s for s in _db_scopes() if s not in ("all", "global")]
@@ -3250,6 +3301,7 @@ def _handle_modern(req: dict, meta: dict) -> dict | None:
                 "prompts": {},
                 "completions": {},
                 **({"tasks": {"list": {}, "cancel": {}, "requests": {"tools": {"call": {}}}}} if _tasks_enabled() else {}),
+                **({"experimental": {"io.modelcontextprotocol/ui": {}}} if config.mcp_apps_enabled() else {}),
             },
             "instructions": INSTRUCTIONS,
             "ttlMs": _LIST_TTL_MS,
@@ -3315,6 +3367,7 @@ def _handle_legacy(req: dict) -> dict | None:
                 "completions": {},
                 "logging": {},
                 **({"tasks": {"list": {}, "cancel": {}, "requests": {"tools": {"call": {}}}}} if _tasks_enabled() else {}),
+                **({"experimental": {"io.modelcontextprotocol/ui": {}}} if config.mcp_apps_enabled() else {}),
             },
             "serverInfo": _server_info(),
             "instructions": INSTRUCTIONS,

@@ -279,3 +279,8 @@ def mcp_atomic_merge_default() -> bool:
 def mcp_http_sse_post_enabled() -> bool:
     """SSE-стриминг POST /mcp и возобновление GET /mcp по Last-Event-ID (PADAM_MCP_HTTP_SSE_POST=1)."""
     return os.environ.get("PADAM_MCP_HTTP_SSE_POST", "0").strip() == "1"
+
+# --- ТОП-10 Пункт 6: MCP Apps интерактивные HTML-интерфейсы (выключено по умолчанию) ---
+def mcp_apps_enabled() -> bool:
+    """Включает ресурсы ui://padam/* с MIME text/html;profile=mcp-app (PADAM_MCP_APPS=1)."""
+    return os.environ.get("PADAM_MCP_APPS", "0").strip() == "1"

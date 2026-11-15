@@ -800,3 +800,101 @@ def test_top5_streamable_http_v2_sse_post_resume_and_delete_cleanup(tmp_path, mo
     finally:
         mcp_server._memory = old_mem
         m.close()
+
+
+def test_top6_mcp_apps_review_queue_and_graph_ui(tmp_path, monkeypatch):
+    """Пункт 6 ТОП-10: opt-in MCP Apps ui://padam/review-queue и ui://padam/graph/{id}."""
+    from padam import config, mcp_apps, mcp_server
+    from padam.memory import Memory
+    from padam.store import Store
+
+    monkeypatch.delenv("PADAM_MCP_APPS", raising=False)
+    assert config.mcp_apps_enabled() is False
+
+    m = Memory(user_id="top6_u", store=Store(tmp_path / "m_top6.db"))
+    ws = m.create_workspace("UI Team")
+    tok_contrib = m.add_member(ws["id"], subject="bob", role="contributor")["token"]
+
+    _, id_root = m.remember("PostgreSQL 16 primary database node", kind="fact", scope="infra", origin="user")
+    _, id_child = m.remember(
+        "Read replica lag alert threshold 200ms",
+        kind="decision",
+        scope="infra",
+        origin="user",
+        links=[{"target": id_root, "relation": "cause"}],
+    )
+    _, id_held = m.remember(
+        "Suspicious <script>alert(1)</script> injection quarantined",
+        kind="fact",
+        scope="infra",
+        origin="external",
+        guarded=True,
+        links=[{"target": id_root, "relation": "derived"}],
+    )
+
+    old_mem = mcp_server._memory
+    mcp_server._memory = m
+    try:
+        # 1. При выключенном PADAM_MCP_APPS: ui:// отсутствует в списках и read_resource возвращает -32002
+        res_off = mcp_server.handle({"jsonrpc": "2.0", "id": "t6-1", "method": "resources/list"})["result"]["resources"]
+        assert all(not r["uri"].startswith("ui://") for r in res_off)
+        read_off = mcp_server.handle({
+            "jsonrpc": "2.0", "id": "t6-2", "method": "resources/read",
+            "params": {"uri": "ui://padam/review-queue"},
+        })
+        assert read_off["error"]["code"] == mcp_server.ERROR_CODES["RESOURCE_NOT_FOUND"]
+
+        # 2. Включаем PADAM_MCP_APPS=1
+        monkeypatch.setenv("PADAM_MCP_APPS", "1")
+        assert config.mcp_apps_enabled() is True
+
+        init_res = mcp_server.handle({"jsonrpc": "2.0", "id": "t6-init", "method": "initialize", "params": {}})["result"]
+        assert "io.modelcontextprotocol/ui" in init_res["capabilities"].get("experimental", {})
+
+        res_on = mcp_server.handle({"jsonrpc": "2.0", "id": "t6-3", "method": "resources/list"})["result"]["resources"]
+        ui_res = [r for r in res_on if r["uri"] == "ui://padam/review-queue"]
+        assert len(ui_res) == 1
+        assert ui_res[0]["mimeType"] == mcp_apps.MCP_APP_MIME
+        assert ui_res[0]["_meta"]["ui"]["csp"]["connectDomains"] == []
+
+        tpl_on = mcp_server.handle({"jsonrpc": "2.0", "id": "t6-4", "method": "resources/templates/list"})["result"]["resourceTemplates"]
+        ui_tpl = [t for t in tpl_on if t["uriTemplate"] == "ui://padam/graph/{id}"]
+        assert len(ui_tpl) == 1
+        assert ui_tpl[0]["mimeType"] == mcp_apps.MCP_APP_MIME
+
+        # 3. Чтение ui://padam/review-queue: HTML с MCP-bridge и защитой от XSS (<script> экранирован в JSON)
+        rq = mcp_server.handle({
+            "jsonrpc": "2.0", "id": "t6-5", "method": "resources/read",
+            "params": {"uri": "ui://padam/review-queue"},
+        })["result"]["contents"][0]
+        assert rq["mimeType"] == mcp_apps.MCP_APP_MIME
+        assert "window.parent.postMessage" in rq["text"]
+        assert "padam_review" in rq["text"]
+        assert "<script>alert(1)</script>" not in rq["text"]
+        assert "\\u003cscript\\u003ealert(1)\\u003c/script\\u003e" in rq["text"]
+
+        # 4. Чтение ui://padam/graph/{id}: SVG-граф, карантинный узел скрыт, активные видны
+        gr = mcp_server.handle({
+            "jsonrpc": "2.0", "id": "t6-6", "method": "resources/read",
+            "params": {"uri": f"ui://padam/graph/{id_root}"},
+        })["result"]["contents"][0]
+        assert gr["mimeType"] == mcp_apps.MCP_APP_MIME
+        assert "<svg id=\"canvas\"" in gr["text"]
+        assert id_child in gr["text"]
+        assert "cause" in gr["text"]
+        assert "alert(1)" not in gr["text"]
+        assert "(waiting for the owner's decision)" in gr["text"]
+
+        # 5. RBAC: contributor не может читать ui://padam/review-queue (-32003 Forbidden)
+        tok = mcp_server._actor_token_ctx.set(tok_contrib)
+        try:
+            rq_denied = mcp_server.handle({
+                "jsonrpc": "2.0", "id": "t6-7", "method": "resources/read",
+                "params": {"uri": "ui://padam/review-queue"},
+            })
+            assert rq_denied["error"]["code"] == mcp_server.ERROR_CODES["FORBIDDEN"]
+        finally:
+            mcp_server._actor_token_ctx.reset(tok)
+    finally:
+        mcp_server._memory = old_mem
+        m.close()
