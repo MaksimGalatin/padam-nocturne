@@ -671,6 +671,7 @@ def test_mcp_ideal_4_3_http_session_rate_limit(tmp_path):
 def test_mcp_ideal_3_1_all_eight_client_configs():
     """Пункт 3.1: все 8 MCP-конфигов клиентов корректны и проходят живой stdio roundtrip."""
     import importlib.util
+    import json
     from pathlib import Path
 
     root = Path(__file__).resolve().parent.parent
@@ -689,4 +690,70 @@ def test_mcp_ideal_3_1_all_eight_client_configs():
 
     rc = mod.main(["--allow-module-fallback"])
     assert rc == 0
+
+
+def test_mcp_ideal_3_2_inspector_ci_and_script(tmp_path):
+    """Пункт 3.2: workflow CI содержит job mcp-inspector, а скрипт mcp_inspector_check валиден."""
+    import importlib.util
+    import json
+    from pathlib import Path
+    import secrets
+    import threading
+    import urllib.request
+
+    root = Path(__file__).resolve().parent.parent
+    wf_path = root / ".github" / "workflows" / "tests.yml"
+    wf_text = wf_path.read_text(encoding="utf-8")
+    assert "mcp-inspector:" in wf_text
+    assert "scripts/mcp_inspector_check.py" in wf_text
+    assert "@modelcontextprotocol/inspector@2.13.0" in wf_text
+    assert "scripts/check_integrations.py" in wf_text
+
+    # Если доступен PyYAML, убеждаемся в синтаксической валидности workflow
+    try:
+        import yaml  # type: ignore
+        parsed = yaml.safe_load(wf_text)
+        assert "mcp-inspector" in parsed["jobs"]
+    except ImportError:
+        pass
+
+    script_path = root / "scripts" / "mcp_inspector_check.py"
+    spec = importlib.util.spec_from_file_location("mcp_inspector_check", script_path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec is not None and spec.loader is not None
+    spec.loader.exec_module(mod)
+
+    # Проверяем локальную совместимость Streamable HTTP с маршрутами, которые вызывает MCP Inspector
+    mem = Memory(user_id="ideal-3-2", store=Store(tmp_path / "m32.db"))
+    tok = secrets.token_hex(16)
+    srv, url, token = mcp_server.make_mcp_http_server(memory=mem, host="127.0.0.1", port=0, token=tok)
+    th = threading.Thread(target=srv.serve_forever, daemon=True)
+    th.start()
+    try:
+        def _rpc(rpc_id: int, method: str, params: dict | None = None) -> dict:
+            payload = {"jsonrpc": "2.0", "id": rpc_id, "method": method}
+            if params is not None:
+                payload["params"] = params
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+
+        init_r = _rpc(1, "initialize", {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "insp", "version": "2.13"}})
+        assert init_r["result"]["serverInfo"]["name"] == "padam"
+        tools_r = _rpc(2, "tools/list", {})
+        assert len(tools_r["result"]["tools"]) == 9
+        res_r = _rpc(3, "resources/list", {})
+        assert len(res_r["result"]["resources"]) >= 3
+        prompts_r = _rpc(4, "prompts/list", {})
+        assert len(prompts_r["result"]["prompts"]) >= 1
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        mem.close()
+
 
