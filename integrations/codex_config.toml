@@ -1,0 +1,7 @@
+[mcp_servers.padam]
+command = "padam-mcp"
+args = []
+
+[mcp_servers.padam.env]
+PADAM_DB = "REPLACE_WITH_HOME/.padam/memory.db"
+PADAM_USER = "default"

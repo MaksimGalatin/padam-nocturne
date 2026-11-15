@@ -1,0 +1,13 @@
+{
+  "context_servers": {
+    "padam": {
+      "source": "custom",
+      "command": "padam-mcp",
+      "args": [],
+      "env": {
+        "PADAM_DB": "REPLACE_WITH_HOME/.padam/memory.db",
+        "PADAM_USER": "default"
+      }
+    }
+  }
+}

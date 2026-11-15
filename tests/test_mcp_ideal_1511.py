@@ -666,3 +666,27 @@ def test_mcp_ideal_4_3_http_session_rate_limit(tmp_path):
         srv.shutdown()
         srv.server_close()
         mem.close()
+
+
+def test_mcp_ideal_3_1_all_eight_client_configs():
+    """Пункт 3.1: все 8 MCP-конфигов клиентов корректны и проходят живой stdio roundtrip."""
+    import importlib.util
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    script_path = root / "scripts" / "check_integrations.py"
+    spec = importlib.util.spec_from_file_location("check_integrations", script_path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec is not None and spec.loader is not None
+    spec.loader.exec_module(mod)
+
+    assert len(mod.CLIENT_SPECS) == 8
+    for _cid, _label, fname, extractor in mod.CLIENT_SPECS:
+        cfg_path = root / "integrations" / fname
+        assert cfg_path.is_file(), f"Missing {cfg_path}"
+        entry = mod.load_client_entry(cfg_path, extractor)
+        assert entry["command"] == "padam-mcp"
+
+    rc = mod.main(["--allow-module-fallback"])
+    assert rc == 0
+
