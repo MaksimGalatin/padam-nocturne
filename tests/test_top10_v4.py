@@ -225,3 +225,35 @@ def test_top10v4_6_zero_install_npm_homebrew_winget_manifests():
     winget_txt = winget_path.read_text(encoding="utf-8")
     assert "PackageIdentifier: CODEternal.PADAMStudio" in winget_txt
     assert "ManifestType: singleton" in winget_txt
+
+
+
+def test_top10v4_7_browser_extension_local_only_manifest_and_popup():
+    import shutil
+    import subprocess
+
+    root = Path(__file__).resolve().parents[1]
+    ext_dir = root / "extensions" / "browser-padam"
+    manifest_path = ext_dir / "manifest.json"
+    popup_html = ext_dir / "popup.html"
+    popup_js = ext_dir / "popup.js"
+    bg_js = ext_dir / "background.js"
+
+    for p in (manifest_path, popup_html, popup_js, bg_js):
+        assert p.exists(), f"missing {p}"
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert manifest["manifest_version"] == 3
+    assert manifest["host_permissions"] == ["http://127.0.0.1/*"]
+    assert "activeTab" in manifest["permissions"]
+    assert "storage" in manifest["permissions"]
+
+    js_txt = popup_js.read_text(encoding="utf-8")
+    assert "assertLocalUrl" in js_txt
+    assert "<padam_context" in js_txt
+
+    node = shutil.which("node")
+    if node:
+        for script in (popup_js, bg_js):
+            proc = subprocess.run([node, "--check", str(script)], capture_output=True, text=True, check=False)
+            assert proc.returncode == 0, proc.stderr

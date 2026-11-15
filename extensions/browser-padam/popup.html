@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PADAM Nocturne</title>
+  <style>
+    body { font-family: system-ui, sans-serif; width: 340px; margin: 12px; background: #0f1117; color: #e6edf3; }
+    h3 { margin: 0 0 8px; font-size: 15px; }
+    label { display: block; font-size: 12px; color: #9da7b3; margin-top: 8px; }
+    input, textarea { width: 100%; box-sizing: border-box; margin-top: 4px; padding: 6px; border-radius: 6px; border: 1px solid #30363d; background: #161b22; color: #e6edf3; font-size: 12px; }
+    .row { display: flex; gap: 6px; margin-top: 10px; }
+    button { flex: 1; padding: 7px 8px; border: 0; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; background: #238636; color: #fff; }
+    button.secondary { background: #1f6feb; }
+    pre { margin-top: 10px; padding: 8px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; max-height: 160px; overflow: auto; font-size: 11px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h3>PADAM Nocturne (Local Only)</h3>
+  <label>Local API URL (127.0.0.1 only)</label>
+  <input id="apiUrl" type="text" value="http://127.0.0.1:8787" />
+  <label>Bearer Token</label>
+  <input id="token" type="password" placeholder="PADAM local token" />
+  <label>Query or Fact</label>
+  <textarea id="inputText" rows="3" placeholder="Ask memory or save a fact..."></textarea>
+  <div class="row">
+    <button id="askBtn" class="secondary">Get Context</button>
+    <button id="saveBtn">Save Note</button>
+    <button id="copyBtn" class="secondary">Copy</button>
+  </div>
+  <pre id="output">Ready (127.0.0.1 local bridge).</pre>
+  <script src="popup.js"></script>
+</body>
+</html>
