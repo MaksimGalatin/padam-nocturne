@@ -377,6 +377,52 @@ def cmd_profile(m: Memory, a) -> int:
     return 0
 
 
+def cmd_hooks(m, a) -> int:
+    """ТОП-10 v2 Пункт 1: управление хуками жизненного цикла (install/run/status)."""
+    from pathlib import Path
+    from . import hooks
+    sub_cmd = getattr(a, "hooks_cmd", "status")
+    if sub_cmd == "install":
+        res = hooks.install_hooks(
+            a.client,
+            project_dir=Path(a.project_dir),
+            scope=a.scope,
+            token_budget=a.budget,
+            dry_run=a.dry_run,
+        )
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+        return 0
+    if sub_cmd == "status":
+        res = hooks.hooks_status(Path(a.project_dir))
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+        return 0
+    if sub_cmd == "run":
+        query = a.query or ""
+        tool_name = a.tool_name or ""
+        if not query and not sys.stdin.isatty():
+            try:
+                raw_in = sys.stdin.read().strip()
+                if raw_in.startswith("{"):
+                    payload = json.loads(raw_in)
+                    query = str(payload.get("prompt") or payload.get("query") or "")
+                    tool_name = tool_name or str(payload.get("tool_name") or "")
+                elif raw_in:
+                    query = raw_in
+            except Exception:
+                pass
+        res = hooks.render_hook_context(
+            m,
+            event=a.event,
+            query=query,
+            scope=a.scope,
+            token_budget=a.budget,
+            tool_name=tool_name,
+        )
+        print(json.dumps({"hookSpecificOutput": res["hookSpecificOutput"]}, ensure_ascii=False))
+        return 0
+    return 1
+
+
 def cmd_seal_status(m, a) -> int:
     """Шаг 5 Легенды: статус аппаратных возможностей и печати PADAMHW1."""
     from pathlib import Path
@@ -1267,8 +1313,33 @@ def main(argv=None) -> int:
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_unseal)
 
+    sh = sub.add_parser("hooks", help=t("хуки жизненного цикла (Claude Code, Codex, Gemini CLI)",
+                                       "lifecycle hooks (Claude Code, Codex, Gemini CLI)"))
+    hsub = sh.add_subparsers(dest="hooks_cmd", required=True)
+
+    hi = hsub.add_parser("install", help=t("установить хуки в проект", "install lifecycle hooks into project"))
+    hi.add_argument("client", choices=("claude", "codex", "gemini", "all"))
+    hi.add_argument("--project-dir", default=".")
+    hi.add_argument("--scope", default=None)
+    hi.add_argument("--budget", type=int, default=800)
+    hi.add_argument("--dry-run", action="store_true")
+    hi.set_defaults(fn=cmd_hooks)
+
+    hs = hsub.add_parser("status", help=t("статус установленных хуков", "installed lifecycle hooks status"))
+    hs.add_argument("--project-dir", default=".")
+    hs.set_defaults(fn=cmd_hooks)
+
+    hr = hsub.add_parser("run", help=t("выполнить хук и вернуть безопасный контекст", "execute hook and emit safe context"))
+    hr.add_argument("--client", default="claude")
+    hr.add_argument("--event", default="SessionStart")
+    hr.add_argument("--scope", default=None)
+    hr.add_argument("--query", default="")
+    hr.add_argument("--tool-name", default="")
+    hr.add_argument("--budget", type=int, default=800)
+    hr.set_defaults(fn=cmd_hooks)
+
     a = p.parse_args(argv)
-    if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal):
+    if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):
         return a.fn(None, a)
     from .store import Store
     mem = Memory(user_id=a.user, store=Store(a.db) if a.db else None)

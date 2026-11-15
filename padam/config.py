@@ -367,3 +367,9 @@ def mcp_swarm_enabled() -> bool:
 def mcp_hw_seal_enabled() -> bool:
     """Включает аппаратное запечатывание БД (PADAMHW1: FIDO2 + OS DPAPI/Keystore, PADAM_HW_SEAL=1)."""
     return os.environ.get("PADAM_HW_SEAL", "0").strip() == "1"
+
+
+# --- ТОП-10 v2 Пункт 1: Хуки жизненного цикла (выключено по умолчанию) ---
+def mcp_hooks_enabled() -> bool:
+    """Включает подсистему хуков жизненного цикла Claude/Codex/Gemini (PADAM_HOOKS=1)."""
+    return os.environ.get("PADAM_HOOKS", "0").strip() == "1"
