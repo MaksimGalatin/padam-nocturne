@@ -1700,6 +1700,34 @@ def call_tool(name: str, args: dict) -> str:
     return text
 
 
+def _build_search_resource_links(structured: dict | None) -> list[dict]:
+    """Сформировать MCP resource_link для найденных записей без утечки сырого текста."""
+    if not isinstance(structured, dict):
+        return []
+    links: list[dict] = []
+    for rec in structured.get("records") or ():
+        rid = rec.get("id")
+        if not rid:
+            continue
+        score = float(rec.get("score") or 0.0)
+        prio = round(min(1.0, max(0.0, score)), 4)
+        conf = float(rec.get("confidence") or 0.0)
+        kind = rec.get("kind") or "memory"
+        scope = rec.get("scope") or "global"
+        links.append({
+            "type": "resource_link",
+            "uri": f"padam://record/{rid}",
+            "name": f"{kind}: {rid}",
+            "description": f"scope={scope} score={score:.4f} confidence={conf:.2f}",
+            "mimeType": "text/plain",
+            "annotations": {
+                "audience": ["assistant"],
+                "priority": prio,
+            },
+        })
+    return links
+
+
 def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
     m = mem()
     actor = _current_actor(m)
@@ -2181,7 +2209,10 @@ def _handle_legacy(req: dict) -> dict | None:
             text, structured = _call_tool_full(name, args)
             if structured is None:
                 return ok({"content": [{"type": "text", "text": text}], "isError": True})
-            payload = {"content": [{"type": "text", "text": text}], "isError": False, "structuredContent": structured}
+            content = [{"type": "text", "text": text}]
+            if name == "padam_search":
+                content.extend(_build_search_resource_links(structured))
+            payload = {"content": content, "isError": False, "structuredContent": structured}
             return ok(payload)
         except Exception as e:
             return ok({"content": [{"type": "text",

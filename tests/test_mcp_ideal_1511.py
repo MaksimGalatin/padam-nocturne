@@ -154,3 +154,59 @@ def test_mcp_ideal_2_1_all_tools_output_schema_and_structured_content(tmp_path):
     finally:
         mcp_server._memory = old_mem
         mem.close()
+def test_mcp_ideal_2_2_search_resource_links(tmp_path):
+    """Результаты padam_search отдают resource_link без раскрытия текста, а URI читаются через resources/read."""
+    mem = Memory(user_id="ideal-2-2", store=Store(tmp_path / "m22.db"))
+    old_mem = mcp_server._memory
+    mcp_server._memory = mem
+    try:
+        secret_phrase = "telemetry-routing-check"
+        wr = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+            "params": {"name": "padam_write", "arguments": {
+                "content": f"The gateway service uses {secret_phrase} for health monitoring",
+                "kind": "fact",
+                "scope": "arch",
+                "origin": "user",
+            }},
+        })["result"]
+        assert wr["isError"] is False
+        assert wr["structuredContent"]["outcome"] == "created"
+        rid = wr["structuredContent"]["id"]
+
+        sr = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 2, "method": "tools/call",
+            "params": {"name": "padam_search", "arguments": {"query": "gateway service telemetry health", "scope": "arch"}},
+        })["result"]
+        assert sr["isError"] is False
+        content = sr["content"]
+        assert len(content) >= 2
+        assert content[0]["type"] == "text"
+        links = [c for c in content[1:] if c.get("type") == "resource_link"]
+        assert len(links) == sr["structuredContent"]["count"] >= 1
+        target_link = next(lk for lk in links if lk["uri"] == f"padam://record/{rid}")
+        assert target_link["mimeType"] == "text/plain"
+        assert secret_phrase not in target_link["name"]
+        assert secret_phrase not in target_link["description"]
+        assert "health" not in target_link["name"]
+        assert "health" not in target_link["description"]
+        assert target_link["annotations"]["audience"] == ["assistant"]
+        assert 0.0 <= target_link["annotations"]["priority"] <= 1.0
+
+        rr = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 3, "method": "resources/read",
+            "params": {"uri": target_link["uri"]},
+        })["result"]
+        assert len(rr["contents"]) == 1
+        assert rr["contents"][0]["uri"] == target_link["uri"]
+        assert secret_phrase in rr["contents"][0]["text"]
+        assert "<memory-data nonce=" in rr["contents"][0]["text"]
+
+        empty = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 4, "method": "tools/call",
+            "params": {"name": "padam_search", "arguments": {"query": "zzzyyyxxxnonexistent987654", "scope": "arch"}},
+        })["result"]
+        assert len(empty["content"]) == 1 and empty["content"][0]["type"] == "text"
+    finally:
+        mcp_server._memory = old_mem
+        mem.close()
