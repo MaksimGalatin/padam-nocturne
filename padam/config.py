@@ -226,3 +226,13 @@ def mcp_rate_limit() -> int:
         except ValueError:
             return 0
     return max(0, int(MCP_RATE_LIMIT))
+
+
+# --- ТОП-10 Пункт 1: Multi-hop графовое расширение поиска (выключено по умолчанию) ---
+def mcp_graph_hops_default() -> int:
+    """Глубина обхода графа по умолчанию в padam_search (0 = выключено)."""
+    raw = os.environ.get("PADAM_MCP_GRAPH_HOPS", "0").strip()
+    try:
+        return min(2, max(0, int(raw)))
+    except ValueError:
+        return 0

@@ -2184,6 +2184,136 @@ class Memory:
             "checks": проверки,
         }
 
+    def expand_graph(self, seed_ids: list[str], *, hops: int = 1,
+                     max_neighbors: int = 20, as_of: str | datetime | None = None,
+                     actor: roles.ActorContext | None = None) -> dict:
+        """Быстрый BFS на 1-2 шага от найденных записей по memory_link и версиям (RBAC + as_of)."""
+        hops_n = min(2, max(0, int(hops)))
+        limit_n = min(50, max(1, int(max_neighbors)))
+        seeds = [str(s).strip() for s in (seed_ids or []) if str(s).strip()]
+        if hops_n <= 0 or not seeds:
+            return {"nodes": [], "edges": []}
+
+        момент = parse_as_of(as_of) if as_of is not None and str(as_of).strip() else None
+        vis_sql, vis_params, _ = roles.visibility_sql(actor)
+        vis_sql_dst, _, _ = roles.visibility_sql(actor, alias="m")
+        vis_sql_src, _, _ = roles.visibility_sql(actor, alias="s")
+
+        visited: set[str] = set(seeds)
+        frontier: list[str] = list(dict.fromkeys(seeds))
+        edges_out: list[dict] = []
+        seen_edges: set[tuple[str, str, str]] = set()
+        neighbor_meta: dict[str, dict] = {}
+        neighbor_order: list[str] = []
+
+        def _row_valid_at(row) -> bool:
+            if момент is None:
+                return True
+            vf = parse_ts(row["valid_from"] or row["created_at"])
+            vt = parse_ts(row["valid_to"]) if row["valid_to"] else None
+            return vf <= момент and (vt is None or vt > момент)
+
+        for hop in range(1, hops_n + 1):
+            if not frontier or len(neighbor_order) >= limit_n:
+                break
+            ph = ",".join("?" * len(frontier))
+            rows_links = self.store.query(
+                f"""SELECT l.src, l.dst, COALESCE(l.relation, 'derived') AS relation, l.created_at
+                    FROM memory_link l
+                    JOIN memory s ON s.id = l.src
+                    JOIN memory m ON m.id = l.dst
+                    WHERE (l.src IN ({ph}) OR l.dst IN ({ph}))
+                      AND s.user_id = ? AND m.user_id = ?
+                      AND s.status NOT IN ('quarantined', 'rejected', 'revoked')
+                      AND m.status NOT IN ('quarantined', 'rejected', 'revoked')
+                      {vis_sql_src}{vis_sql_dst}""",
+                (*frontier, *frontier, self.user_id, self.user_id, *vis_params, *vis_params),
+            )
+            rows_vers = self.store.query(
+                f"""SELECT id, supersedes, created_at FROM memory
+                    WHERE user_id = ? AND supersedes IS NOT NULL
+                      AND (id IN ({ph}) OR supersedes IN ({ph}))
+                      AND status NOT IN ('quarantined', 'rejected', 'revoked')
+                      {vis_sql}""",
+                (self.user_id, *frontier, *frontier, *vis_params),
+            )
+
+            cand_edges: list[tuple[str, str, str, str | None]] = []
+            for r in rows_links:
+                rel = r["relation"] if r["relation"] in LINK_RELATIONS else "derived"
+                cand_edges.append((r["src"], r["dst"], rel, r["created_at"]))
+            for r in rows_vers:
+                cand_edges.append((r["supersedes"], r["id"], "version", r["created_at"]))
+
+            next_frontier: list[str] = []
+            cand_nodes_for_hop: dict[str, tuple[str, str, str]] = {}
+            frontier_set = set(frontier)
+            for src_id, dst_id, rel, created_at in cand_edges:
+                if момент is not None and created_at and parse_ts(created_at) > момент:
+                    continue
+                ek = (src_id, dst_id, rel)
+                if ek not in seen_edges:
+                    seen_edges.add(ek)
+                    edges_out.append({"source": src_id, "target": dst_id, "relation": rel, "hop": hop})
+                if src_id in frontier_set and dst_id not in visited and dst_id not in cand_nodes_for_hop:
+                    cand_nodes_for_hop[dst_id] = (src_id, rel, "outgoing")
+                if dst_id in frontier_set and src_id not in visited and src_id not in cand_nodes_for_hop:
+                    cand_nodes_for_hop[src_id] = (dst_id, rel, "incoming")
+
+            if cand_nodes_for_hop:
+                need_ids = list(cand_nodes_for_hop.keys())[: max(1, limit_n - len(neighbor_order)) * 2]
+                ph_n = ",".join("?" * len(need_ids))
+                node_rows = self.store.query(
+                    f"""SELECT id, kind, scope, content, status, origin, confidence,
+                               created_at, valid_from, valid_to, owner_sig
+                        FROM memory
+                        WHERE user_id = ? AND id IN ({ph_n})
+                          AND status NOT IN ('quarantined', 'rejected', 'revoked')
+                          {vis_sql}""",
+                    (self.user_id, *need_ids, *vis_params),
+                )
+                by_id = {r["id"]: r for r in node_rows if _row_valid_at(r)}
+                ключ = self._ключ_подписи() if any(integrity.protected(r["kind"]) for r in by_id.values()) else None
+                for nid, (from_id, rel, direction) in cand_nodes_for_hop.items():
+                    row = by_id.get(nid)
+                    if row is None or nid in visited:
+                        continue
+                    visited.add(nid)
+                    next_frontier.append(nid)
+                    signed_val: bool | None = None
+                    if ключ is not None and integrity.protected(row["kind"]) and row["status"] == "active":
+                        signed_val = integrity.valid(ключ, row)
+                    neighbor_meta[nid] = {
+                        "id": row["id"],
+                        "kind": row["kind"],
+                        "scope": row["scope"],
+                        "status": row["status"],
+                        "origin": row["origin"] or "unknown",
+                        "confidence": round(float(row["confidence"]), 4),
+                        "created_at": row["created_at"],
+                        "valid_from": row["valid_from"],
+                        "valid_to": row["valid_to"],
+                        "signed": signed_val,
+                        "hop": hop,
+                        "relation": rel,
+                        "from_id": from_id,
+                        "direction": direction,
+                        "content": row["content"] or "",
+                    }
+                    neighbor_order.append(nid)
+                    if len(neighbor_order) >= limit_n:
+                        break
+            frontier = next_frontier
+
+        valid_ids = set(seeds) | set(neighbor_order)
+        filtered_edges = [
+            e for e in edges_out if e["source"] in valid_ids and e["target"] in valid_ids
+        ]
+        return {
+            "nodes": [neighbor_meta[nid] for nid in neighbor_order],
+            "edges": filtered_edges,
+        }
+
     def graph(self, center_id: str | None = None, limit: int = 200,
               as_of: str | datetime | None = None,
               actor: roles.ActorContext | None = None) -> dict:
