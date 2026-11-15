@@ -3872,3 +3872,21 @@ def test_step_2_6_ci_restore_roundtrip(tmp_path):
     assert "python scripts/ci_restore_check.py" in wf
 
 
+def test_step_2_7_mcp_protocol_check_ci():
+    """Пункт 2.7: проверка соответствия MCP в CI (scripts/mcp_protocol_check.py — stdio + HTTP + SSE)."""
+    import scripts.mcp_protocol_check as mpc
+
+    res = mpc.run_protocol_audit()
+    assert set(res["transports_verified"]) >= {"stdio", "streamable-http"}
+    assert set(res["protocol_versions_verified"]) >= {"2024-11-05", "2025-06-18", "2026-07-28"}
+    assert "padam://asof-graph/2099-01-01" in res["resources_verified"]
+    assert res["elicitation_verified"] is True
+    assert res["checks_passed"] >= 23
+
+    repo_root = Path(__file__).resolve().parent.parent
+    wf = (repo_root / ".github" / "workflows" / "tests.yml").read_text(encoding="utf-8")
+    assert "mcp-protocol:" in wf
+    assert "python scripts/mcp_protocol_check.py" in wf
+
+
+

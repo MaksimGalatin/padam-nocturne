@@ -115,7 +115,7 @@ def run_protocol_audit() -> dict:
                 assert "name" in t_obj and "description" in t_obj and "inputSchema" in t_obj and "annotations" in t_obj
             report["checks_passed"] += 1
 
-            # Вызов всех 9 канонических инструментов + padam_recent
+            # Вызов всех 9 канонических инструментов (+ обратная совместимость padam_recent и links из 1.1)
             r_write = stdio_rpc({
                 "jsonrpc": "2.0",
                 "id": 3,
@@ -128,6 +128,26 @@ def run_protocol_audit() -> dict:
             assert r_write["isError"] is False
             m_id = re.search(r"id=([0-9a-f-]{36})", r_write["content"][0]["text"]).group(1)
             report["tools_verified"].append("padam_write")
+
+            # Типизированное ребро из 1.1
+            r_link = stdio_rpc({
+                "jsonrpc": "2.0",
+                "id": 301,
+                "method": "tools/call",
+                "params": {
+                    "name": "padam_write",
+                    "arguments": {
+                        "content": "Connection pool set to port 5432",
+                        "kind": "decision",
+                        "origin": "user",
+                        "links": [{"target": m_id, "relation": "cause"}],
+                    },
+                },
+            })["result"]
+            assert r_link["isError"] is False
+            m_link_id = re.search(r"id=([0-9a-f-]{36})", r_link["content"][0]["text"]).group(1)
+            assert m_link_id
+            report["checks_passed"] += 1
 
             # Запись с внешним источником -> проверяет живой цикл elicitation/create по stdio!
             r_elicit = stdio_rpc({
@@ -171,7 +191,10 @@ def run_protocol_audit() -> dict:
             # Проверка всех ресурсов и шаблонов ресурсов
             res_list = stdio_rpc({"jsonrpc": "2.0", "id": 30, "method": "resources/list"})["result"]["resources"]
             tpl_list = stdio_rpc({"jsonrpc": "2.0", "id": 31, "method": "resources/templates/list"})["result"]["resourceTemplates"]
-            assert len(res_list) >= 3 and tpl_list[0]["uriTemplate"] == "padam://record/{id}"
+            tpl_uris = {t["uriTemplate"] for t in tpl_list}
+            assert len(res_list) >= 3
+            assert "padam://record/{id}" in tpl_uris
+            assert "padam://asof-graph/{date}" in tpl_uris
 
             for idx, uri in enumerate([
                 "padam://profile",
@@ -179,10 +202,13 @@ def run_protocol_audit() -> dict:
                 "padam://stats",
                 "padam://recent",
                 f"padam://record/{m_id}",
+                "padam://asof-graph/2099-01-01",
             ], start=40):
                 rr = stdio_rpc({"jsonrpc": "2.0", "id": idx, "method": "resources/read", "params": {"uri": uri}})["result"]
                 c_txt = rr["contents"][0]["text"]
                 _assert_single_fence(c_txt, f"resource:{uri}")
+                if uri.startswith("padam://asof-graph/"):
+                    assert "cause" in c_txt and m_link_id in c_txt
                 report["resources_verified"].append(uri)
                 report["checks_passed"] += 1
 
@@ -258,6 +284,29 @@ def run_protocol_audit() -> dict:
                     assert resp.headers.get("Mcp-Session-Id")
                     body = json.loads(resp.read().decode("utf-8"))
                     assert body["result"]["protocolVersion"] == "2024-11-05"
+
+                # HTTP tools/list (9 инструментов) и постоянный SSE-канал GET /mcp?stream=1 (1.4)
+                req_tools = urllib.request.Request(
+                    url,
+                    data=json.dumps({"jsonrpc": "2.0", "id": 102, "method": "tools/list"}).encode("utf-8"),
+                    headers={"Content-Type": "application/json", "Authorization": f"Bearer {tok}"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(req_tools, timeout=5) as resp_t:
+                    tbody = json.loads(resp_t.read().decode("utf-8"))
+                    assert len(tbody["result"]["tools"]) == 9
+
+                req_sse = urllib.request.Request(
+                    f"{url}?stream=1",
+                    headers={"Authorization": f"Bearer {tok}", "Accept": "text/event-stream"},
+                    method="GET",
+                )
+                with urllib.request.urlopen(req_sse, timeout=5) as sse_resp:
+                    assert sse_resp.status == 200
+                    assert "text/event-stream" in (sse_resp.headers.get("Content-Type") or "")
+                    first_line = sse_resp.readline().decode("utf-8")
+                    assert "stream open" in first_line
+
                 report["protocol_versions_verified"].append("2024-11-05")
                 report["transports_verified"].append("streamable-http")
                 report["checks_passed"] += 1
