@@ -70,16 +70,26 @@ impl Drop for ServerGuard {
     }
 }
 
+fn env_lang_override(cli_lang: Option<&str>) -> Option<String> {
+    let raw = cli_lang
+        .map(|s| s.to_string())
+        .or_else(|| env::var("PADAM_LANG").ok())?;
+    let low = raw.trim().to_ascii_lowercase();
+    if low.is_empty() || low == "system" {
+        return None;
+    }
+    for code in ["ru", "en", "es", "zh"] {
+        if low.starts_with(code) {
+            return Some(code.to_string());
+        }
+    }
+    None
+}
+
 #[cfg(windows)]
-fn is_russian_ui() -> bool {
-    if let Ok(val) = env::var("PADAM_LANG") {
-        let low = val.trim().to_ascii_lowercase();
-        if low.starts_with("ru") {
-            return true;
-        }
-        if !low.is_empty() && low != "system" {
-            return false;
-        }
+fn is_russian_ui(cli_lang: Option<&str>) -> bool {
+    if let Some(code) = env_lang_override(cli_lang) {
+        return code == "ru";
     }
     #[link(name = "kernel32")]
     extern "system" {
@@ -90,9 +100,11 @@ fn is_russian_ui() -> bool {
 }
 
 #[cfg(not(windows))]
-fn is_russian_ui() -> bool {
-    env::var("PADAM_LANG")
-        .or_else(|_| env::var("LANG"))
+fn is_russian_ui(cli_lang: Option<&str>) -> bool {
+    if let Some(code) = env_lang_override(cli_lang) {
+        return code == "ru";
+    }
+    env::var("LANG")
         .map(|v| v.to_ascii_lowercase().starts_with("ru"))
         .unwrap_or(false)
 }
@@ -343,24 +355,47 @@ fn extract_quarantined_count(body: &[u8]) -> Option<u64> {
     val.get("stats")?.get("quarantined")?.as_u64()
 }
 
-fn parse_cli_args() -> (bool, Option<String>) {
-    let mut minimized = false;
-    let mut db: Option<String> = None;
+struct CliArgs {
+    minimized: bool,
+    db: Option<String>,
+    lang: Option<String>,
+    tab: Option<String>,
+    theme: Option<String>,
+}
+
+fn parse_cli_args() -> CliArgs {
+    let mut args = CliArgs {
+        minimized: false,
+        db: None,
+        lang: None,
+        tab: None,
+        theme: None,
+    };
     let mut it = env::args().skip(1);
     while let Some(arg) = it.next() {
-        if arg == "--minimized" || arg == "--tray" {
-            minimized = true;
-        } else if arg == "--db" {
-            db = it.next();
+        match arg.as_str() {
+            "--minimized" | "--tray" => args.minimized = true,
+            "--db" => args.db = it.next(),
+            "--lang" => args.lang = it.next(),
+            "--tab" => args.tab = it.next(),
+            "--theme" => args.theme = it.next(),
+            _ => {}
         }
     }
-    (minimized, db)
+    args
 }
 
 fn main() {
     let t0 = Instant::now();
-    let (start_minimized, db_arg) = parse_cli_args();
-    let ru = is_russian_ui();
+    let cli = parse_cli_args();
+    let start_minimized = cli.minimized;
+    let db_arg = cli.db;
+    let lang_override = env_lang_override(cli.lang.as_deref());
+    let tab_override = cli.tab.filter(|s| {
+        !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    });
+    let theme_override = cli.theme.filter(|s| s == "light" || s == "dark");
+    let ru = is_russian_ui(cli.lang.as_deref());
     let port = pick_free_port();
     let token = generate_token();
 
@@ -480,7 +515,16 @@ fn main() {
                     let ready_ms = t0.elapsed().as_millis();
                     log_line(&format!("startup_ready_ms={ready_ms} port={port}"));
                     if let Some(win) = app_bg.get_webview_window("main") {
-                        let url_str = format!("http://127.0.0.1:{port}/studio#t={token_bg}");
+                        let mut url_str = format!("http://127.0.0.1:{port}/studio#t={token_bg}");
+                        if let Some(ref lg) = lang_override {
+                            url_str.push_str(&format!("&lang={lg}"));
+                        }
+                        if let Some(ref tb) = tab_override {
+                            url_str.push_str(&format!("&tab={tb}"));
+                        }
+                        if let Some(ref th) = theme_override {
+                            url_str.push_str(&format!("&theme={th}"));
+                        }
                         if let Ok(url) = Url::parse(&url_str) {
                             let _ = win.navigate(url);
                         }

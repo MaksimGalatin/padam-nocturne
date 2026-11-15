@@ -1562,6 +1562,7 @@ def test_tauri_installer_bundle_and_smartscreen_docs_14_2_14_3():
     assert tconf["version"] == padam.__version__
     assert tconf["identifier"] == "com.codeofdigitaleternity.padam.studio"
     assert tconf["bundle"]["publisher"] == "CODE Eternal LLC"
+    assert "CODE Eternal LLC" in tconf["bundle"].get("copyright", "")
     assert "nsis" in tconf["bundle"]["targets"]
     assert tconf["bundle"]["resources"] == {"runtime": "runtime"}
 
@@ -1586,6 +1587,7 @@ def test_tauri_installer_bundle_and_smartscreen_docs_14_2_14_3():
     assert "NSIS_HOOK_POSTINSTALL" in hooks_txt
     assert "NSIS_HOOK_POSTUNINSTALL" in hooks_txt
     assert "PADAM Studio.lnk" in hooks_txt
+    assert 'VIAddVersionKey "CompanyName" "CODE Eternal LLC"' in hooks_txt
 
     main_rs = (root / "desktop" / "tauri" / "src" / "main.rs").read_text("utf-8")
     for required in (

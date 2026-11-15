@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.1 — 14 November 2026
+
+### Native desktop application (Windows installer + system tray)
+- **Standalone Windows installer (`desktop/PADAM-Studio-Setup.exe`)**: Tauri v2 + NSIS setup bundling Python 3.14.4 (`numpy`, `requests`, `cryptography` and `padam`) with zero external browser chrome, tray icon (`Pending review` / `На проверке`, `Open PADAM Studio`, `Run NOCTURNE Sleep`, `Quit`), Windows WinRT toast alerts when an agent write enters quarantine, `PADAM_AUTOSTART` opt-in toggle (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`), CLI flags `--lang`, `--tab`, `--theme`, `--db`, `--minimized`, and CODE Eternal vector icons.
+- **Version and publisher metadata**: single source of truth from `padam/__init__.py` (`0.5.1`) across the app window title, Windows Add/Remove Programs (`DisplayVersion: 0.5.1`, `Publisher: CODE Eternal LLC`), and PE file properties (`ProductVersion` / `FileVersion: 0.5.1`, `CompanyName: CODE Eternal LLC`, `LegalCopyright: © 2026 CODE Eternal LLC`).
+- **Cross-platform CI workflow**: `.github/workflows/desktop-build.yml` (`workflow_dispatch`) for macOS `.dmg` and Linux `.AppImage` / `.deb`.
+
+### Studio, local Ollama Q&A, MCP protocol & extensions
+- **"Ask your memory" with local Ollama + measured improvement**: new `padam_ask` / `POST /ask` screen and RAG pipeline (`classify_qa_intent`, `check_qa_sufficiency`, chronological ordering for temporal queries, derived lineage context, fenced `<memory-data>` prompts). Measured on LongMemEval-S `--stride 5` (100 questions, local Ollama `gemma3:4b-it-qat`, `$0`): overall accuracy `38.00 %` → `57.00 %` (`+19.00` pp), excluding abstention `34.04 %` → `58.51 %` (`+24.47` pp).
+- **MCP protocol features**: opt-in `elicitation/create` interactive review for held writes, read-only fenced resources (`padam://profile`, `padam://review-queue`, `padam://stats`, `padam://recent`, `padam://record/{id}`), built-in prompts (`recall_before_task`, `record_decision`, `weekly_memory_review`), local Streamable HTTP transport (`padam serve --http`, `127.0.0.1` only with Bearer auth and strict `Origin` validation), `padam_profile` (9th core tool) and `padam_recent`.
+- **Studio additions**: Entities catalog screen (`GET /entities`), Quick Add modal (`Ctrl+Shift+M` / `Alt+M`), PWA manifest & service worker under strict CSP, owner `audit_log`, `agent_id` filtering, optional `PADAM_MASK_PII=1` and `PADAM_RERANK=1`, SSE `/events` and HMAC-SHA256 webhooks (`PADAM_WEBHOOK_URL`).
+- **Browser extensions (Chrome/Edge & Firefox)**: Firefox MV3 package with `browser_specific_settings.gecko`, 4 locales (`en`, `ru`, `es`, `zh`), `extensions/PRIVACY.md`, store archives in `extensions/dist/`, and server-side forced `origin=external` for both `chrome-extension://` and `moz-extension://`.
+- **Docs & benchmarks**: 4-language README (`EN`/`RU`/`ES`/`ZH`), offline 4-language static docs site (`docs/site/`), TypeScript SDK (`sdk/padam-client/`), one-click plugins, and LoCoMo retrieval benchmark (`benchmarks/locomo/`).
+
 ## 0.5.0 — 14 November 2026
 
 ### PADAM Studio: your memory in a window
