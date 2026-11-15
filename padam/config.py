@@ -258,3 +258,19 @@ def mcp_predictive_cache_enabled() -> bool:
     if raw == "1":
         return True
     return mcp_roots_enabled()
+
+
+# --- ТОП-10 Пункт 4: Бюджет токенов и атомарное слияние (выключено по умолчанию) ---
+def mcp_default_max_tokens() -> int:
+    """Бюджет токенов по умолчанию для padam_search (0 = не ограничен)."""
+    raw = os.environ.get("PADAM_MCP_MAX_TOKENS", "0").strip()
+    try:
+        val = int(raw)
+        return val if val >= 50 else 0
+    except ValueError:
+        return 0
+
+
+def mcp_atomic_merge_default() -> bool:
+    """Режим dedup_mode='atomic_merge' по умолчанию в padam_write (выключен по умолчанию)."""
+    return os.environ.get("PADAM_MCP_ATOMIC_MERGE", "0").strip() == "1"

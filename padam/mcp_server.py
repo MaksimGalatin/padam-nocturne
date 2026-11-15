@@ -128,6 +128,8 @@ TOOLS = [
                              "description": "Filter records written by a specific agent"},
                 "graph_hops": {"type": "integer", "default": 0, "minimum": 0, "maximum": 2,
                                "description": "Optional multi-hop graph expansion around hits (0=off, 1..2 hops across cause/correction/contradiction/source/version links)"},
+                "max_tokens": {"type": "integer", "minimum": 50, "maximum": 32000,
+                               "description": "Optional token budget for returned fenced memory context; prioritizes conflicts and high-signal facts without cutting fence markers."},
             },
             "required": ["query"],
             "additionalProperties": False,
@@ -188,6 +190,8 @@ TOOLS = [
                         "additionalProperties": False,
                     },
                 },
+                "dedup_mode": {"type": "string", "enum": ["default", "atomic_merge"], "default": "default",
+                               "description": "Optional deduplication strategy: atomic_merge detects close active facts in the same scope and links refinements cleanly while preserving quarantine guards."},
             },
             "required": ["content"],
             "additionalProperties": False,
@@ -377,6 +381,9 @@ _OUTPUT_SCHEMAS = {
                     "required": ["source", "target", "relation", "hop"],
                 },
             },
+            "tokenBudget": {"type": "integer"},
+            "estimatedTokens": {"type": "integer"},
+            "omittedByBudget": {"type": "integer"},
         },
         "required": ["query", "count", "fencedInContent", "records"],
     },
@@ -387,6 +394,7 @@ _OUTPUT_SCHEMAS = {
             "outcome": {"type": "string"},
             "maskedSecrets": {"type": "integer"},
             "holdReason": {"type": ["string", "null"]},
+            "mergedWithId": {"type": ["string", "null"]},
         },
         "required": ["id", "outcome", "maskedSecrets"],
     },
@@ -640,6 +648,26 @@ def _почти_те_же(a: str, b: str) -> bool:
     return len(слова_а & слова_б) / len(слова_а | слова_б) >= 0.9
 
 
+def _estimate_tokens(text: str) -> int:
+    """Детерминированная оценка числа токенов (работает для EN/RU/ES/ZH без внешних зависимостей)."""
+    if not text:
+        return 0
+    words = len(text.split())
+    chars = len(text)
+    return max(1, max(int(words * 1.3), (chars + 2) // 3))
+
+
+def _trim_to_token_budget(text: str, max_tok: int) -> str:
+    """Аккуратно укорачивает текст записи до заданного бюджета токенов, сохраняя начало."""
+    if max_tok <= 0:
+        return ""
+    if _estimate_tokens(text) <= max_tok:
+        return text
+    approx_chars = max(24, int(max_tok * 2.5) - 12)
+    cut = (text or "")[:approx_chars].rstrip()
+    return f"{cut}... [budget]"
+
+
 def _sleep_hint(m: Memory) -> str:
     """Усталость памяти: несведённых эпизодов накопилось столько, что поиск по ним тяжелеет."""
     ждут = m.pending_episodes()
@@ -766,7 +794,7 @@ def cancel_request(request_id) -> bool:
         if ev is not None:
             ev.set()
             found = True
-        if request_id not in _cancelled_request_ids:
+        if not found and request_id not in _cancelled_request_ids:
             _cancelled_request_ids.append(request_id)
             if len(_cancelled_request_ids) > 256:
                 del _cancelled_request_ids[:-256]
@@ -2618,12 +2646,12 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
                 tuple(ids),
             )
             valid_map = {vr["id"]: (vr["valid_from"], vr["valid_to"]) for vr in vrows}
-        lines = []
-        structured_recs = []
+        token_budget = int(args["max_tokens"]) if "max_tokens" in args else config.mcp_default_max_tokens()
+        cand_items: list[tuple[bool, int, str, str, dict, object]] = []
         показано: list[str] = []
         убрано = 0
         with safety.одна_запись():
-            for r in found:
+            for idx_r, r in enumerate(found):
                 # Лучшая запись идёт первой; её близкие повторы только съедают контекст агента.
                 if any(_почти_те_же(r.content or "", х) for х in показано):
                     убрано += 1
@@ -2648,13 +2676,15 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
                 text = (retrieval.compact_text(r.content) if args.get("compact")
                         else r.content)
                 # Отступ у каждой строки записи: многострочный текст не притворится соседней записью.
-                text = (text or "").replace("\n", "\n  ")
-                lines.append(
-                    f"- {text}\n"
+                text_ind = (text or "").replace("\n", "\n  ")
+                meta_line = (
                     f"  id={r.id}  kind={r.kind}  score={r.score:.4f}  confidence={r.confidence:.2f}"
                     f"  origin={r.origin or 'unknown'}" + (f"  scope={r.scope}" if args.get("scopes") else "")
-                    + f"  saved={(r.created_at or '')[:10]}{vw}{suffix}")
-                structured_recs.append({
+                    + f"  saved={(r.created_at or '')[:10]}{vw}{suffix}"
+                )
+                line_full = f"- {text_ind}\n{meta_line}"
+                is_high_prio = bool(r.conflict or r.kind in ("identity", "preference", "correction", "decision"))
+                rec_dict = {
                     "id": r.id,
                     "kind": r.kind,
                     "scope": r.scope,
@@ -2668,7 +2698,38 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
                     "signed": r.signed,
                     "valid_from": vf,
                     "valid_to": vt,
-                })
+                }
+                cand_items.append((is_high_prio, idx_r, line_full, meta_line, rec_dict, r))
+
+        lines: list[str] = []
+        structured_recs: list[dict] = []
+        omitted_by_budget = 0
+        used_tokens = 32 if token_budget > 0 else 0  # резерв на заголовок и теги ограды <memory-data>
+        if token_budget > 0:
+            ordered = sorted(cand_items, key=lambda x: (0 if x[0] else 1, x[1]))
+            for _, _, line_full, meta_line, rec_dict, r in ordered:
+                tok_need = _estimate_tokens(line_full)
+                rem = token_budget - used_tokens
+                if tok_need <= rem:
+                    lines.append(line_full)
+                    structured_recs.append(rec_dict)
+                    used_tokens += tok_need
+                elif not structured_recs and token_budget >= 50:
+                    # Минимум первая приоритетная запись помещается в усечённом виде без потери метаданных и ограды.
+                    meta_tok = _estimate_tokens(meta_line) + 4
+                    body_tok = max(8, rem - meta_tok)
+                    short_body = _trim_to_token_budget(retrieval.compact_text(r.content or ""), body_tok).replace("\n", "\n  ")
+                    short_line = f"- {short_body}\n{meta_line}"
+                    lines.append(short_line)
+                    structured_recs.append(rec_dict)
+                    used_tokens += _estimate_tokens(short_line)
+                else:
+                    omitted_by_budget += 1
+        else:
+            for _, _, line_full, _, rec_dict, _ in cand_items:
+                lines.append(line_full)
+                structured_recs.append(rec_dict)
+
         graph_hops = int(args["graph_hops"]) if "graph_hops" in args else config.mcp_graph_hops_default()
         graph_neighbors_struct: list[dict] = []
         graph_edges_struct: list[dict] = []
@@ -2682,7 +2743,8 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
             )
             graph_edges_struct = g_exp["edges"]
             if g_exp["nodes"]:
-                lines.append(f"\n[graph neighbors ({graph_hops}-hop)]:")
+                nb_header = f"\n[graph neighbors ({graph_hops}-hop)]:"
+                nb_lines_added: list[str] = []
                 for nb in g_exp["nodes"]:
                     nflags = []
                     if nb.get("status") == "superseded":
@@ -2696,12 +2758,22 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
                     ntext = (retrieval.compact_text(nb.get("content") or "") if args.get("compact")
                              else (nb.get("content") or ""))
                     ntext = ntext.replace("\n", "\n  ")
-                    lines.append(
+                    nb_line = (
                         f"- {ntext}\n"
                         f"  id={nb['id']}  kind={nb['kind']}  hop={nb['hop']}  relation={nb['relation']}"
                         f"  from={nb['from_id']}  origin={nb['origin']}  scope={nb['scope']}"
                         f"  saved={(nb.get('created_at') or '')[:10]}{nvw}{nsuf}"
                     )
+                    if token_budget > 0:
+                        need_nb = _estimate_tokens(nb_line) + (0 if nb_lines_added else _estimate_tokens(nb_header))
+                        if used_tokens + need_nb > token_budget:
+                            omitted_by_budget += 1
+                            continue
+                        used_tokens += need_nb
+                    if not nb_lines_added:
+                        lines.append(nb_header)
+                    nb_lines_added.append(nb_line)
+                    lines.append(nb_line)
                     graph_neighbors_struct.append({
                         "id": nb["id"],
                         "kind": nb["kind"],
@@ -2719,8 +2791,11 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
                         "signed": nb.get("signed"),
                     })
         хвост = f"\n({убрано} near-identical record(s) omitted)" if убрано else ""
+        if omitted_by_budget:
+            хвост += f"\n({omitted_by_budget} record(s) omitted by max_tokens={token_budget} budget)"
+        fenced_block = safety.fence("\n".join(lines))
         txt = ("Found in memory (use padam_confirm if a record proved "
-               "correct, padam_refute if it did not).\n" + safety.fence("\n".join(lines)) + хвост + _sleep_hint(m))
+               "correct, padam_refute if it did not).\n" + fenced_block + хвост + _sleep_hint(m))
         structured_payload = {
             "query": args["query"],
             "count": len(structured_recs),
@@ -2728,6 +2803,10 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
             "fencedInContent": True,
             "records": structured_recs,
         }
+        if token_budget > 0:
+            structured_payload["tokenBudget"] = token_budget
+            structured_payload["estimatedTokens"] = _estimate_tokens(fenced_block)
+            structured_payload["omittedByBudget"] = omitted_by_budget
         if graph_hops > 0:
             structured_payload["graphHops"] = graph_hops
             structured_payload["graphNeighbors"] = graph_neighbors_struct
@@ -2738,11 +2817,13 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
         _, masked = safety.redact(safety.strip_invisible(args["content"]))
         origin = args.get("origin", "agent")
         agent_id = args.get("agent_id") or os.environ.get("PADAM_AGENT_ID") or None
+        eff_write_scope = args.get("scope") or resolve_default_scope()
+        dedup_mode = args.get("dedup_mode") or ("atomic_merge" if config.mcp_atomic_merge_default() else "default")
         try:
             outcome, mid = m.remember(
                 args["content"], kind=args.get("kind"),
                 importance=float(args.get("importance", 0.5)),
-                scope=args.get("scope") or resolve_default_scope(), origin=origin, guarded=True,
+                scope=eff_write_scope, origin=origin, guarded=True,
                 derived_from=args.get("derived_from"),
                 agent_id=agent_id,
                 valid_from=args.get("valid_from"),
@@ -2805,12 +2886,50 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
             emit_mcp_log("notice", "padam.guard", {"event": "record_quarantined", "id": mid}, owner_only=True)
         else:
             emit_mcp_log("info", "padam.memory", {"event": "record_written", "id": mid, "outcome": outcome, "scope": rm_kw.get("scope")}, owner_only=False)
-        return f"{note}  id={mid}" + _sleep_hint(m), {
+        merged_with_id: str | None = None
+        if dedup_mode == "atomic_merge" and outcome in ("created", "coexists"):
+            # Никогда не обходим карантин: слияние запускается только для уже разрешённых активных записей.
+            try:
+                cur_words = {
+                    w for w in re.findall(r"\w+", (args["content"] or "").lower())
+                    if len(w) >= 3
+                }
+                if len(cur_words) >= 3:
+                    near_hits = m.recall(
+                        args["content"],
+                        scope=eff_write_scope,
+                        kind=rm_kw.get("kind"),
+                        limit=5,
+                        actor=actor,
+                    )
+                    best_id = None
+                    best_ratio = 0.0
+                    for cand in near_hits:
+                        if cand.id == mid or cand.status != "active":
+                            continue
+                        cw = {w for w in re.findall(r"\w+", (cand.content or "").lower()) if len(w) >= 3}
+                        if not cw:
+                            continue
+                        inter = cur_words & cw
+                        ratio = len(inter) / max(1, min(len(cur_words), len(cw)))
+                        if len(inter) >= 3 and ratio >= 0.5 and ratio > best_ratio:
+                            best_ratio = ratio
+                            best_id = cand.id
+                    if best_id is not None:
+                        m._связать([best_id], mid, relation="correction", actor=actor)
+                        merged_with_id = best_id
+                        note += f" (linked atomic refinement to {best_id})"
+            except Exception:
+                merged_with_id = None
+        w_payload = {
             "id": mid,
             "outcome": outcome,
             "maskedSecrets": int(masked_total),
             "holdReason": reason_str or None,
         }
+        if dedup_mode == "atomic_merge":
+            w_payload["mergedWithId"] = merged_with_id
+        return f"{note}  id={mid}" + _sleep_hint(m), w_payload
 
     if name == "padam_confirm":
         try:
@@ -3175,6 +3294,8 @@ def _handle_legacy(req: dict) -> dict | None:
     if method == "initialize":
         params = req.get("params") or {}
         asked = params.get("protocolVersion")
+        with _state_lock:
+            _cancelled_request_ids.clear()
         set_client_capabilities(params.get("capabilities") if isinstance(params, dict) else None)
         if config.mcp_roots_enabled() and isinstance(params, dict) and isinstance(params.get("roots"), list):
             set_client_roots(params["roots"])
@@ -3693,11 +3814,11 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                 self.send_header("Mcp-Session-Id", session_id)
                 self.end_headers()
                 try:
-                    self.wfile.write(b": stream open\n\n")
-                    self.wfile.flush()
                     with _state_lock:
                         cursor = _event_seq
                     initial = pop_notifications(actor=actor, scopes=scope_filter or None)
+                    self.wfile.write(b": stream open\n\n")
+                    self.wfile.flush()
                     for n in initial:
                         frame = f"event: message\ndata: {json.dumps(n, ensure_ascii=False)}\n\n".encode("utf-8")
                         self.wfile.write(frame)
