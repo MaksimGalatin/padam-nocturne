@@ -460,6 +460,21 @@ def cmd_access(m, a) -> int:
     return 1
 
 
+def cmd_compact(m, a) -> int:
+    """ТОП-10 v3 Пункт 5: локальная иерархическая компакция старых событий."""
+    from . import compaction
+    res = compaction.compact_events(
+        m,
+        scope=a.scope,
+        min_age_days=a.min_age_days,
+        batch_size=a.batch_size,
+        dry_run=a.dry_run,
+        force=bool(getattr(a, "force", False)),
+    )
+    print(json.dumps(res, ensure_ascii=False, indent=2))
+    return 0
+
+
 def cmd_hooks(m, a) -> int:
     """ТОП-10 v2 Пункт 1: управление хуками жизненного цикла (install/run/status)."""
     from pathlib import Path
@@ -1477,6 +1492,15 @@ def main(argv=None) -> int:
     hr.add_argument("--budget", type=int, default=800)
     hr.add_argument("--briefing", action="store_true")
     hr.set_defaults(fn=cmd_hooks)
+
+    scmp = sub.add_parser("compact", help=t("иерархическая компакция старых событий",
+                                            "hierarchical compaction of old events"))
+    scmp.add_argument("--scope", default=None)
+    scmp.add_argument("--min-age-days", type=int, default=7)
+    scmp.add_argument("--batch-size", type=int, default=20)
+    scmp.add_argument("--dry-run", action="store_true")
+    scmp.add_argument("--force", action="store_true")
+    scmp.set_defaults(fn=cmd_compact)
 
     a = p.parse_args(argv)
     if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):

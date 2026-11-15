@@ -439,3 +439,9 @@ def mcp_quant_index_enabled() -> bool:
 def mcp_briefing_enabled() -> bool:
     """Включает ресурс padam://briefing/{scope} и режим --briefing (PADAM_BRIEFING=1)."""
     return os.environ.get("PADAM_BRIEFING", "0").strip() == "1"
+
+
+# --- ТОП-10 v3 Пункт 5: Иерархическая компакция старых эпизодов (выключено по умолчанию) ---
+def mcp_compaction_enabled() -> bool:
+    """Включает локальную компакцию старых event-записей в fact (PADAM_COMPACTION=1)."""
+    return os.environ.get("PADAM_COMPACTION", "0").strip() == "1"

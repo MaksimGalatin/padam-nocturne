@@ -175,3 +175,45 @@ def test_top10v3_4_memcube_xwing_asymmetric_seal_and_open(tmp_path, monkeypatch)
 
     src_mem.close()
     dst_mem.close()
+
+
+def test_top10v3_5_hierarchical_episode_compaction(tmp_path, monkeypatch):
+    from datetime import datetime, timedelta, timezone
+    from padam import compaction, config
+    from padam.memory import Memory
+    from padam.store import Store
+
+    mem = Memory(user_id="arch", store=Store(tmp_path / "compact.sqlite"))
+    monkeypatch.delenv("PADAM_COMPACTION", raising=False)
+    assert config.mcp_compaction_enabled() is False
+    assert compaction.compact_events(mem)["enabled"] is False
+
+    old_ts = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
+    _, id1 = mem.remember("Checked PR #101 tests passed", kind="event", scope="eng")
+    _, id2 = mem.remember("Built wheel package v0.5.2", kind="event", scope="eng")
+    _, id3 = mem.remember("Quarantined prompt injection event", kind="event", scope="eng")
+    _, fresh_id = mem.remember("Fresh today event", kind="event", scope="eng")
+    mem.store.execute("UPDATE memory SET created_at = ? WHERE id IN (?, ?, ?)", (old_ts, id1, id2, id3))
+    mem.store.execute("UPDATE memory SET status = 'quarantined', quarantine_reason = 'test' WHERE id = ?", (id3,))
+
+    monkeypatch.setenv("PADAM_COMPACTION", "1")
+    res = compaction.compact_events(mem, scope="eng", min_age_days=7, batch_size=10)
+    assert res["enabled"] is True
+    assert res["compacted_groups"] == 1
+    assert res["events_superseded"] == 2
+    assert len(res["summary_ids"]) == 1
+
+    sum_id = res["summary_ids"][0]
+    row_sum = mem.store.one("SELECT kind, status, content FROM memory WHERE id = ?", (sum_id,))
+    assert row_sum["kind"] == "fact"
+    assert row_sum["status"] == "active"
+
+    # Исходники переведены в superseded, а свежая и карантинная не затронуты
+    assert mem.store.one("SELECT status FROM memory WHERE id = ?", (id1,))["status"] == "superseded"
+    assert mem.store.one("SELECT status FROM memory WHERE id = ?", (id2,))["status"] == "superseded"
+    assert mem.store.one("SELECT status FROM memory WHERE id = ?", (id3,))["status"] == "quarantined"
+    assert mem.store.one("SELECT status FROM memory WHERE id = ?", (fresh_id,))["status"] == "active"
+
+    links = mem.store.query("SELECT src, dst, relation FROM memory_link WHERE dst = ? AND relation = 'derived'", (sum_id,))
+    assert {r["src"] for r in links} == {id1, id2}
+    mem.close()
