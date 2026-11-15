@@ -20,6 +20,7 @@ PAGES = (
     "index.html",
     "quickstart.html",
     "reference.html",
+    "mcp.html",
     "security.html",
     "nocturne-l3.html",
     "comparison.html",
@@ -152,6 +153,7 @@ UI_STRINGS = {
             "index.html": "Обзор",
             "quickstart.html": "Быстрый старт и Studio",
             "reference.html": "Справочник MCP / REST / CLI",
+            "mcp.html": "Справочник MCP",
             "security.html": "Безопасность и ограда",
             "nocturne-l3.html": "NOCTURNE и слой L3",
             "comparison.html": "Сравнение с аналогами",
@@ -278,6 +280,7 @@ UI_STRINGS = {
             "index.html": "Overview",
             "quickstart.html": "Quick Start & Studio",
             "reference.html": "MCP / REST / CLI Reference",
+            "mcp.html": "MCP Reference",
             "security.html": "Security & Fencing",
             "nocturne-l3.html": "NOCTURNE & L3 Anchor",
             "comparison.html": "Comparison",
@@ -404,6 +407,7 @@ UI_STRINGS = {
             "index.html": "Resumen",
             "quickstart.html": "Inicio rápido y Studio",
             "reference.html": "Referencia MCP / REST / CLI",
+            "mcp.html": "Referencia MCP",
             "security.html": "Seguridad y cerco",
             "nocturne-l3.html": "NOCTURNE y capa L3",
             "comparison.html": "Comparativa",
@@ -530,6 +534,7 @@ UI_STRINGS = {
             "index.html": "概览",
             "quickstart.html": "快速上手与 Studio",
             "reference.html": "MCP / REST / CLI 手册",
+            "mcp.html": "MCP 手册",
             "security.html": "安全模型与围栏",
             "nocturne-l3.html": "NOCTURNE 与 L3 永恒层",
             "comparison.html": "竞品对比",
@@ -651,3 +656,198 @@ UI_STRINGS = {
         },
     },
 }
+
+# --- Пункт 6: расширенный справочник MCP (инструменты, ресурсы, prompts, ошибки, 8 клиентов) ---
+
+MCP_TOOLS_DETAIL = [
+    (
+        "padam_search",
+        "query (str*, 1..2000), scope (str), scopes (str[]), kind (enum), limit (int 1..50), compact (bool), as_of (str), agent_id (str), include_neighbors (bool)",
+        "query, count, omittedNearDuplicates, fencedInContent, records[{id, kind, scope, score, confidence, origin, status, created_at, expired, conflict, signed, valid_from, valid_to}] + resource_link (padam://record/{id})",
+        "readOnlyHint=true, idempotentHint=true",
+    ),
+    (
+        "padam_write",
+        "content (str*, 1..50000), kind (enum), importance (num 0..1), scope (str), origin (user|agent|external), agent_id (str), derived_from (str[]), valid_from (str), valid_to (str), links (array), visibility (private|team_read|team_write), workspace_id (str)",
+        "id, outcome (created|duplicate|merged|superseded|coexists|quarantined|approved_via_elicitation|rejected_via_elicitation), maskedSecrets, holdReason",
+        "destructiveHint=false, idempotentHint=false",
+    ),
+    (
+        "padam_confirm",
+        "id (str*)",
+        "id, confirmed (bool)",
+        "idempotentHint=true",
+    ),
+    (
+        "padam_refute",
+        "id (str*), drop (num 0.05..1.0)",
+        "id, refuted (bool), protected (bool)",
+        "idempotentHint=false",
+    ),
+    (
+        "padam_timeline",
+        "id (str*)",
+        "id, count, entries[{id, status, confidence, created_at, valid_from, valid_to, content}]",
+        "readOnlyHint=true, idempotentHint=true",
+    ),
+    (
+        "padam_stats",
+        "(no required args; scope-aware)",
+        "records, episodesPending, conflicts, unsignedProtected, searches, emptyShare, actorRole, lastRun",
+        "readOnlyHint=true, idempotentHint=true",
+    ),
+    (
+        "padam_sleep",
+        "batch (int 1..200), dry_run (bool) · supports _meta.progressToken & tasks",
+        "dryRun, sampledEpisodes, highPriorityShare, recordsCreated, recordsMerged, recordsSuperseded, notes",
+        "destructiveHint=false, idempotentHint=false",
+    ),
+    (
+        "padam_export",
+        "scope (str), active_only (bool), format (json|markdown), limit (int 1..5000), offset (int >=0) · supports _meta.progressToken",
+        "format, count, total, truncated, offset, limit, records (requires HOL Guard / owner policy)",
+        "readOnlyHint=true, idempotentHint=true",
+    ),
+    (
+        "padam_profile",
+        "scope (str) · owner-signed identity & preference only",
+        "scope, count, fencedInContent, entries[{id, kind, confidence, created_at, content}]",
+        "readOnlyHint=true, idempotentHint=true",
+    ),
+]
+
+MCP_RESOURCES_DETAIL = [
+    ("resource", "padam://profile", "text/plain", "audience=assistant, priority=0.95", "Owner-signed identity and preference profile inside data fence"),
+    ("resource", "padam://review-queue", "application/json", "audience=user, priority=0.90", "Quarantined writes awaiting owner approve/reject (owner-only)"),
+    ("resource", "padam://stats", "application/json", "audience=user+assistant, priority=0.70", "Active record counts, pending episodes, conflicts, search stats"),
+    ("template", "padam://record/{id}", "text/plain", "audience=assistant, priority=0.75", "Single memory record content wrapped in 128-bit data fence"),
+    ("template", "padam://timeline/{id}", "text/plain", "audience=user+assistant, priority=0.70", "Version and supersession chain of one record"),
+    ("template", "padam://scope/{scope}", "text/plain", "audience=assistant, priority=0.65", "Recent active records within one scope"),
+    ("template", "padam://asof/{date}", "text/plain", "audience=assistant, priority=0.70", "Time-travel snapshot valid at YYYY-MM-DD"),
+    ("template", "padam://conflicts/{scope}", "text/plain", "audience=user+assistant, priority=0.80", "Active competing claims sharing the same (scope, key)"),
+    ("template", "padam://graph/{id}", "application/json", "audience=assistant, priority=0.70", "1-hop causal/explicit neighborhood around record id"),
+    ("template", "padam://asof-graph/{date}", "application/json", "audience=assistant, priority=0.65", "Causal graph edges active on YYYY-MM-DD"),
+    ("template", "padam://connectors/{provider}", "application/json", "audience=user, priority=0.50", "Connector sync status (github, notion, gdrive, slack; owner-only)"),
+]
+
+MCP_PROMPTS_DETAIL = [
+    ("recall_before_task", "task*, scope (default: global)", "Instructs agent to check padam_profile and padam_search before starting a task"),
+    ("record_decision", "decision*, derived_from, scope", "Guides safe storage of architectural/product decision with provenance links"),
+    ("weekly_memory_review", "scope (default: global), days (default: 7)", "Reviews recent facts, conflicts, and review-queue items for owner verification"),
+]
+
+MCP_ERRORS_DETAIL = [
+    ("-32700", "PARSE_ERROR", "Malformed JSON line in stdio or HTTP body"),
+    ("-32600", "INVALID_REQUEST", "Non-object JSON-RPC frame, missing method, or depth/node limit exceeded"),
+    ("-32601", "METHOD_NOT_FOUND", "Unknown JSON-RPC method or unsupported protocol-era method"),
+    ("-32602", "INVALID_PARAMS", "Missing/invalid tool arguments, resource URI, limit, or completion arg"),
+    ("-32603", "INTERNAL_ERROR", "Unexpected server error (sanitized; never leaks secrets)"),
+    ("-32000", "SERVER_ERROR", "Transport/runtime server failure"),
+    ("-32001", "RATE_LIMITED", "Per-session HTTP rate limit exceeded (HTTP 429 + Retry-After header; opt-in)"),
+    ("-32002", "RESOURCE_NOT_FOUND", "Unknown record id, prompt name, or resource URI"),
+    ("-32003", "FORBIDDEN", "Insufficient role/scope permission or owner-only resource denied"),
+    ("-32022", "UNSUPPORTED_VERSION", "Unsupported _meta.protocolVersion in 2026-07-28 mode"),
+    ("-32800", "REQUEST_CANCELLED", "Cancelled by client via notifications/cancelled (partial batch rolled back/stopped)"),
+]
+
+MCP_EXAMPLES = [
+    (
+        "initialize + tools/call (padam_write)",
+        '--> {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"cursor","version":"1.0"}}}\n'
+        '<-- {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{"listChanged":false},"resources":{"subscribe":true,"listChanged":false},"prompts":{"listChanged":false},"completions":{},"logging":{}},"serverInfo":{"name":"padam","version":"0.5.2"}}}\n\n'
+        '--> {"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"padam_write","arguments":{"content":"Architecture uses SQLite WAL and local embeddings.","kind":"decision","scope":"infra","origin":"user"}}}\n'
+        '<-- {"jsonrpc":"2.0","id":2,"result":{"content":[{"type":"text","text":"stored as a new record  id=7f3c..."}],"isError":false,"structuredContent":{"id":"7f3c...","outcome":"created","maskedSecrets":0,"holdReason":null}}}',
+    ),
+    (
+        "tools/call (padam_search -> fenced text + resource_link + structuredContent)",
+        '--> {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"padam_search","arguments":{"query":"SQLite embeddings","scope":"infra","limit":5}}}\n'
+        '<-- {"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"Found in memory...\\n<memory-data nonce=\\"...\\">\\n- Architecture uses SQLite WAL and local embeddings.\\n  id=7f3c... kind=decision score=0.0225 confidence=1.00 origin=user saved=2026-11-15\\n</memory-data nonce=\\"...\\">"},{"type":"resource_link","uri":"padam://record/7f3c...","name":"decision: 7f3c...","description":"scope=infra score=0.0225 confidence=1.00","mimeType":"text/plain","annotations":{"audience":["assistant"],"priority":0.0225}}],"isError":false,"structuredContent":{"query":"SQLite embeddings","count":1,"omittedNearDuplicates":0,"fencedInContent":true,"records":[{"id":"7f3c...","kind":"decision","scope":"infra","score":0.0225,"confidence":1.0,"origin":"user","status":"active","created_at":"2026-11-15T...","expired":false,"conflict":false,"signed":null,"valid_from":"2026-11-15T...","valid_to":null}]}}}',
+    ),
+    (
+        "completion/complete + logging/setLevel + notifications/cancelled",
+        '--> {"jsonrpc":"2.0","id":4,"method":"completion/complete","params":{"ref":{"type":"ref/resource","uri":"padam://scope/{scope}"},"argument":{"name":"scope","value":"inf"}}}\n'
+        '<-- {"jsonrpc":"2.0","id":4,"result":{"completion":{"values":["infra"],"total":1,"hasMore":false}}}\n\n'
+        '--> {"jsonrpc":"2.0","id":5,"method":"logging/setLevel","params":{"level":"warning"}}\n'
+        '<-- {"jsonrpc":"2.0","id":5,"result":{}}\n\n'
+        '--> {"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":"long-export-9","reason":"user aborted"}}',
+    ),
+]
+
+MCP_CLIENT_CONFIGS_DETAIL = [
+    ("Claude Desktop", "integrations/claude_desktop_config.json", "mcpServers.padam -> command: padam-mcp"),
+    ("Claude Code", "integrations/claude_code_mcp.json", "mcpServers.padam (type: stdio) -> command: padam-mcp"),
+    ("Cursor", "integrations/cursor_mcp.json", "mcpServers.padam -> command: padam-mcp"),
+    ("VS Code", "integrations/vscode_mcp.json", "servers.padam (type: stdio) -> command: padam-mcp"),
+    ("Codex", "integrations/codex_config.toml", "[mcp_servers.padam] -> command = padam-mcp"),
+    ("Gemini CLI", "integrations/gemini_cli_settings.json", "mcpServers.padam -> command: padam-mcp"),
+    ("Windsurf", "integrations/windsurf_mcp_config.json", "mcpServers.padam -> command: padam-mcp"),
+    ("Zed", "integrations/zed_settings.json", "context_servers.padam (source: custom) -> command: padam-mcp"),
+]
+
+MCP_PAGE_TEXT = {
+    "ru": {
+        "title": "Справочник протокола MCP",
+        "lead": "Полная спецификация MCP-сервера PADAM · NOCTURNE 0.5.2: все 9 инструментов с outputSchema, resource_link, 11 ресурсов и шаблонов с аннотациями, completion, отмена и прогресс, логирование, коды ошибок на 4 языках и готовые конфиги для 8 клиентов.",
+        "tools_h": "1. Девять инструментов MCP (inputSchema, outputSchema, подсказки)",
+        "tools_cols": ["Инструмент", "Входные параметры (* обязателен)", "structuredContent (outputSchema)", "Подсказки"],
+        "resources_h": "2. Ресурсы, шаблоны URI и аннотации (audience, priority, lastModified)",
+        "res_cols": ["Тип", "URI / Шаблон", "MIME", "Аннотации", "Назначение"],
+        "prompts_h": "3. Подсказки MCP (prompts/list) и completion/complete",
+        "prompts_cols": ["Имя prompt", "Аргументы", "Назначение"],
+        "errors_h": "4. Единый каталог кодов ошибок (ru / en / es / zh через PADAM_LANG, _meta.lang, X-Padam-Lang)",
+        "err_cols": ["Код", "Константа ERROR_CODES", "Значение"],
+        "examples_h": "5. Примеры JSON-RPC запросов и ответов",
+        "clients_h": "6. Подключение 8 MCP-клиентов (stdio и @modelcontextprotocol/inspector)",
+        "clients_cols": ["Клиент", "Готовый конфиг", "Ключевая секция"],
+        "verify_note": "Автоматическая проверка всех 8 конфигов по stdio: `python scripts/check_integrations.py`. Проверка официальным MCP Inspector по stdio и Streamable HTTP (`--strict`): `python scripts/mcp_inspector_check.py --json`.",
+    },
+    "en": {
+        "title": "MCP Protocol Reference",
+        "lead": "Complete specification of the PADAM · NOCTURNE 0.5.2 MCP server: all 9 tools with outputSchema, resource_link, 11 resources & templates with annotations, completion, cancellation & progress, RFC 5424 logging, 4-language error codes, and configs for 8 clients.",
+        "tools_h": "1. Nine MCP Tools (inputSchema, outputSchema, hints)",
+        "tools_cols": ["Tool", "Input arguments (* required)", "structuredContent (outputSchema)", "Hints"],
+        "resources_h": "2. Resources, URI Templates & Annotations (audience, priority, lastModified)",
+        "res_cols": ["Kind", "URI / Template", "MIME", "Annotations", "Purpose"],
+        "prompts_h": "3. MCP Prompts & completion/complete",
+        "prompts_cols": ["Prompt name", "Arguments", "Purpose"],
+        "errors_h": "4. Unified Error Catalog (en / ru / es / zh via PADAM_LANG, _meta.lang, X-Padam-Lang)",
+        "err_cols": ["Code", "ERROR_CODES key", "Meaning"],
+        "examples_h": "5. JSON-RPC Request & Response Examples",
+        "clients_h": "6. Configs for 8 MCP Clients (stdio & @modelcontextprotocol/inspector)",
+        "clients_cols": ["Client", "Config file", "Entry schema"],
+        "verify_note": "Verify all 8 client configs over stdio: `python scripts/check_integrations.py`. Verify stdio and Streamable HTTP (`--strict`) with the official MCP Inspector: `python scripts/mcp_inspector_check.py --json`.",
+    },
+    "es": {
+        "title": "Referencia del protocolo MCP",
+        "lead": "Especificación completa del servidor MCP PADAM · NOCTURNE 0.5.2: las 9 herramientas con outputSchema, resource_link, 11 recursos y plantillas con anotaciones, completion, cancelación y progreso, registro RFC 5424, errores en 4 idiomas y configuraciones para 8 clientes.",
+        "tools_h": "1. Nueve herramientas MCP (inputSchema, outputSchema, indicaciones)",
+        "tools_cols": ["Herramienta", "Parámetros (* obligatorio)", "structuredContent (outputSchema)", "Indicaciones"],
+        "resources_h": "2. Recursos, plantillas URI y anotaciones (audience, priority, lastModified)",
+        "res_cols": ["Tipo", "URI / Plantilla", "MIME", "Anotaciones", "Uso"],
+        "prompts_h": "3. Prompts MCP y completion/complete",
+        "prompts_cols": ["Nombre", "Argumentos", "Propósito"],
+        "errors_h": "4. Catálogo unificado de errores (es / en / ru / zh vía PADAM_LANG, _meta.lang, X-Padam-Lang)",
+        "err_cols": ["Código", "Constante ERROR_CODES", "Significado"],
+        "examples_h": "5. Ejemplos JSON-RPC de petición y respuesta",
+        "clients_h": "6. Configuraciones para 8 clientes MCP (stdio y @modelcontextprotocol/inspector)",
+        "clients_cols": ["Cliente", "Archivo de configuración", "Sección clave"],
+        "verify_note": "Verificación automática de los 8 clientes por stdio: `python scripts/check_integrations.py`. Verificación con MCP Inspector oficial por stdio y Streamable HTTP (`--strict`): `python scripts/mcp_inspector_check.py --json`.",
+    },
+    "zh": {
+        "title": "MCP 协议开发手册",
+        "lead": "PADAM · NOCTURNE 0.5.2 MCP 服务器完整规范：全部 9 个工具与 outputSchema、resource_link、11 个带注解的资源与模板、completion 自动补全、取消与进度通知、RFC 5424 日志、4 语言错误码及 8 个客户端配置。",
+        "tools_h": "1. 九个 MCP 工具（inputSchema、outputSchema、行为提示）",
+        "tools_cols": ["工具", "输入参数（* 为必填）", "structuredContent（outputSchema）", "注解提示"],
+        "resources_h": "2. 资源、URI 模板与注解（audience、priority、lastModified）",
+        "res_cols": ["类型", "URI / 模板", "MIME", "注解", "用途"],
+        "prompts_h": "3. MCP 提示词（Prompts）与 completion/complete",
+        "prompts_cols": ["Prompt 名称", "参数", "用途"],
+        "errors_h": "4. 统一错误码目录（支持 zh / en / ru / es：PADAM_LANG、_meta.lang、X-Padam-Lang）",
+        "err_cols": ["错误码", "ERROR_CODES 常量", "说明"],
+        "examples_h": "5. JSON-RPC 请求与响应示例",
+        "clients_h": "6. 8 个主流 MCP 客户端配置（stdio 与 @modelcontextprotocol/inspector）",
+        "clients_cols": ["客户端", "配置文件", "核心配置结构"],
+        "verify_note": "自动校验全部 8 个客户端 stdio 连通性：`python scripts/check_integrations.py`。使用官方 MCP Inspector 校验 stdio 与 Streamable HTTP（含 `--strict` 模式校验）：`python scripts/mcp_inspector_check.py --json`。",
+    },
+}
+

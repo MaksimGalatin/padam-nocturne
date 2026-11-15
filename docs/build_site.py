@@ -26,7 +26,14 @@ from site_locales import (
     L3_MAINNET_ROWS,
     LANG_NAMES,
     LANGUAGES,
+    MCP_CLIENT_CONFIGS_DETAIL,
+    MCP_ERRORS_DETAIL,
+    MCP_EXAMPLES,
+    MCP_PAGE_TEXT,
+    MCP_PROMPTS_DETAIL,
+    MCP_RESOURCES_DETAIL,
     MCP_TOOLS,
+    MCP_TOOLS_DETAIL,
     PAGES,
     REST_ENDPOINTS,
     UI_STRINGS,
@@ -705,10 +712,74 @@ def _render_comparison(lang: str, s: dict) -> str:
 """
 
 
+
+
+def _render_mcp(lang: str, s: dict) -> str:
+    d = MCP_PAGE_TEXT[lang]
+    tools_tbl = _table(
+        d["tools_cols"],
+        [
+            (f"<code>{_esc(name)}</code>", _inline_code(args), f"<code>{_esc(out)}</code>", f"<code>{_esc(hints)}</code>")
+            for name, args, out, hints in MCP_TOOLS_DETAIL
+        ],
+    )
+    res_tbl = _table(
+        d["res_cols"],
+        [
+            (_esc(kind), f"<code>{_esc(uri)}</code>", f"<code>{_esc(mime)}</code>", f"<code>{_esc(ann)}</code>", _esc(desc))
+            for kind, uri, mime, ann, desc in MCP_RESOURCES_DETAIL
+        ],
+    )
+    prompts_tbl = _table(
+        d["prompts_cols"],
+        [
+            (f"<code>{_esc(name)}</code>", f"<code>{_esc(pargs)}</code>", _esc(desc))
+            for name, pargs, desc in MCP_PROMPTS_DETAIL
+        ],
+    )
+    err_tbl = _table(
+        d["err_cols"],
+        [
+            (f"<code>{_esc(code)}</code>", f"<code>{_esc(key)}</code>", _esc(desc))
+            for code, key, desc in MCP_ERRORS_DETAIL
+        ],
+    )
+    clients_tbl = _table(
+        d["clients_cols"],
+        [
+            (f"<strong>{_esc(cl)}</strong>", f"<code>{_esc(cfg)}</code>", f"<code>{_esc(sec)}</code>")
+            for cl, cfg, sec in MCP_CLIENT_CONFIGS_DETAIL
+        ],
+    )
+    examples_html = "".join(
+        f"<h3>{_esc(title)}</h3>{_code_block(snippet)}"
+        for title, snippet in MCP_EXAMPLES
+    )
+    return f"""
+<section class="hero">
+  <h1>{_esc(d["title"])}</h1>
+  <p class="lead">{_esc(d["lead"])}</p>
+</section>
+<h2>{_esc(d["tools_h"])}</h2>
+{tools_tbl}
+<h2>{_esc(d["resources_h"])}</h2>
+{res_tbl}
+<h2>{_esc(d["prompts_h"])}</h2>
+{prompts_tbl}
+<h2>{_esc(d["errors_h"])}</h2>
+{err_tbl}
+<h2>{_esc(d["examples_h"])}</h2>
+{examples_html}
+<h2>{_esc(d["clients_h"])}</h2>
+<p>{_inline_code(d["verify_note"])}</p>
+{clients_tbl}
+"""
+
 PAGE_RENDERERS = {
     "index.html": _render_overview,
     "quickstart.html": _render_quickstart,
     "reference.html": _render_reference,
+    "mcp.html": _render_mcp,
     "security.html": _render_security,
     "nocturne-l3.html": _render_nocturne,
     "comparison.html": _render_comparison,

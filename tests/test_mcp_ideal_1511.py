@@ -803,3 +803,33 @@ def test_mcp_ideal_5_perf_and_two_step_fts_equivalence(tmp_path):
         mem.close()
 
 
+def test_mcp_ideal_6_site_mcp_reference_4_langs():
+    """Пункт 6: страница mcp.html собрана на 4 языках и содержит инструменты, ресурсы, ошибки и 8 клиентов."""
+    from pathlib import Path
+
+    site_dir = Path(__file__).resolve().parent.parent / "docs" / "site"
+    required_tools = [t["name"] for t in mcp_server.TOOLS]
+    assert len(required_tools) == 9
+    required_resources = [r["uri"] for r in mcp_server.RESOURCES]
+    required_templates = [t["uriTemplate"] for t in mcp_server.RESOURCE_TEMPLATES]
+    required_clients = [
+        "Claude Desktop", "Claude Code", "Cursor", "VS Code",
+        "Codex", "Gemini CLI", "Windsurf", "Zed",
+    ]
+    for lang in ("ru", "en", "es", "zh"):
+        p = site_dir / lang / "mcp.html"
+        assert p.is_file(), f"Missing {p}"
+        txt = p.read_text(encoding="utf-8")
+        assert "`" not in txt
+        for tool in required_tools:
+            assert tool in txt, f"{tool} missing in {p}"
+        for uri in required_resources + required_templates:
+            assert uri in txt, f"{uri} missing in {p}"
+        for err_key in mcp_server.ERROR_CODES:
+            assert err_key in txt, f"{err_key} missing in {p}"
+        for client in required_clients:
+            assert client in txt, f"{client} missing in {p}"
+        assert "jsonrpc" in txt and "resource_link" in txt
+
+
+

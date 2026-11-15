@@ -1105,7 +1105,7 @@ def test_b15_offline_static_docs_site_four_languages(tmp_path):
             assert forbidden not in js, f"{js_name} contains {forbidden}"
 
     for lang in ("ru", "en", "es", "zh"):
-        for page in ("index.html", "quickstart.html", "reference.html", "security.html", "nocturne-l3.html", "comparison.html"):
+        for page in ("index.html", "quickstart.html", "reference.html", "mcp.html", "security.html", "nocturne-l3.html", "comparison.html"):
             p = site_dir / lang / page
             assert p.exists(), f"Missing {p}"
             assert p.read_text(encoding="utf-8") == (tmp_path / lang / page).read_text(encoding="utf-8")
@@ -1113,7 +1113,7 @@ def test_b15_offline_static_docs_site_four_languages(tmp_path):
     # Проверяем все HTML-файлы: CSP, отсутствие внешних ресурсов, целостность всех локальных ссылок и 9 инструментов
     ref_pat = re.compile(r'(?:href|src)="([^"]+)"')
     html_files = list(site_dir.rglob("*.html"))
-    assert len(html_files) == 25
+    assert len(html_files) == 29
     for html_file in html_files:
         txt = html_file.read_text(encoding="utf-8")
         assert "`" not in txt, f"Raw backtick left in {html_file}"
