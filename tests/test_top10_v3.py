@@ -407,3 +407,22 @@ def test_top10v3_9_local_otel_telemetry_and_metrics_resource(tmp_path, monkeypat
     assert "resourceSpans" in lines[0]
     telemetry.get_telemetry().reset()
     mem.close()
+
+
+def test_top10v3_10_bilingual_100_benchmark_strict_pass():
+    import json
+    from pathlib import Path
+    from benchmarks.quality import mcp_quality_bench
+
+    ds_path = Path(__file__).resolve().parents[1] / "benchmarks" / "quality" / "dataset_100_bilingual.json"
+    data = json.loads(ds_path.read_text(encoding="utf-8"))
+    total = sum(len(data[k]) for k in ("single_hop", "multi_hop", "temporal_asof", "injections", "secrets", "web3_sovereignty"))
+    assert total == 100
+
+    rep = mcp_quality_bench.run_benchmark(ds_path)
+    errs = mcp_quality_bench.check_strict_thresholds(rep)
+    assert errs == []
+    assert rep["overall"]["recall_at_5"] >= 0.95
+    assert rep["security_guard"]["injection_quarantine_rate"] == 1.0
+    assert rep["security_guard"]["secret_redaction_rate"] == 1.0
+    assert rep["web3_sovereignty"]["verified_forgetting_rate"] == 1.0
