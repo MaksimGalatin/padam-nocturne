@@ -789,7 +789,31 @@ def cmd_doctor(m: Memory, a) -> int:
     токен = os.environ.get("PADAM_API_TOKEN")
     print(t("  info  REST API: ", "  info  REST API: ") + (t("постоянный токен задан", "a fixed token is set") if токен
           else t("токен создаётся при каждом запуске", "a token is created on every start")))
+    from . import doctor as _doctor
+    deep = _doctor.run_doctor(m, fix=bool(getattr(a, "fix", False)))
+    checks = deep["checks"]
+    строка(checks["sqlite_integrity"]["ok"],
+           f"глубокая проверка SQLite: {checks['sqlite_integrity']['result']}",
+           f"deep SQLite integrity: {checks['sqlite_integrity']['result']}")
+    строка(checks["fts5"]["ok"],
+           f"индекс FTS5: {checks['fts5']['detail']}",
+           f"FTS5 index: {checks['fts5']['detail']}")
+    строка(bool(checks["app_access_audit_chain"].get("valid", checks["app_access_audit_chain"].get("ok", True))),
+           f"SHA-256 цепь app_access_event: проверено {checks['app_access_audit_chain'].get('count', checks['app_access_audit_chain'].get('checked', 0))}",
+           f"app_access_event SHA-256 chain: checked {checks['app_access_audit_chain'].get('count', checks['app_access_audit_chain'].get('checked', 0))}")
+    строка(checks["dangling_links"] == 0,
+           f"висячих рёбер memory_link: {checks['dangling_links']}",
+           f"dangling memory_link edges: {checks['dangling_links']}")
+    print(t(f"  info  записей без learned_at: {checks['missing_learned_at']}",
+            f"  info  records missing learned_at: {checks['missing_learned_at']}"))
+    if deep["fix_applied"]:
+        print(t(f"  info  снапшот перед лечением: {deep['snapshot_id']}; действия: {', '.join(deep['actions'])}",
+                f"  info  pre-fix snapshot: {deep['snapshot_id']}; actions: {', '.join(deep['actions'])}"))
+
     s = m.stats()
+    if getattr(a, "json", False):
+        print(json.dumps({"warnings": предупреждений, "deep": deep, "stats": s}, ensure_ascii=False, indent=2))
+        return 1 if (предупреждений or not deep["ok"]) else 0
     print(t(f"  info  векторы: {s['backend']}; ждут проверки: {s['quarantined']}; другой модели: {s['stale_vectors']}",
             f"  info  vectors: {s['backend']}; waiting for review: {s['quarantined']}; of another model: {s['stale_vectors']}"))
     print(t(f"Предупреждений: {предупреждений}", f"Warnings: {предупреждений}"))
@@ -1134,8 +1158,11 @@ def main(argv=None) -> int:
 
 
 
-    s = sub.add_parser("doctor", help=t("состояние безопасности одним отчётом (ничего не меняет)",
-                                        "security state in one report (changes nothing)"))
+    s = sub.add_parser("doctor", help=t("состояние безопасности и целостности одним отчётом",
+                                        "security and integrity state in one report"))
+    s.add_argument("--fix", action="store_true", help=t("создать снапшот и безопасно исправить дефекты",
+                                                      "create snapshot and safely repair defects"))
+    s.add_argument("--json", action="store_true", help=t("вывести глубокий аудит в JSON", "print deep audit as JSON"))
     s.set_defaults(fn=cmd_doctor)
 
     s = sub.add_parser("timeline", help=t("история версий записи", "version history of a record"))

@@ -217,3 +217,39 @@ def test_top10v3_5_hierarchical_episode_compaction(tmp_path, monkeypatch):
     links = mem.store.query("SELECT src, dst, relation FROM memory_link WHERE dst = ? AND relation = 'derived'", (sum_id,))
     assert {r["src"] for r in links} == {id1, id2}
     mem.close()
+
+
+def test_top10v3_6_doctor_deep_audit_and_safe_fix(tmp_path, monkeypatch):
+    from padam import doctor
+    from padam.memory import Memory
+    from padam.store import Store
+
+    monkeypatch.setenv("PADAM_BITEMPORAL", "1")
+    mem = Memory(user_id="arch", store=Store(tmp_path / "doctor.sqlite"))
+    _, rec_id = mem.remember("Healthy fact for doctor audit", kind="fact", scope="ops")
+
+    clean = doctor.run_doctor(mem, fix=False)
+    assert clean["ok"] is True
+    assert clean["checks"]["sqlite_integrity"]["ok"] is True
+    assert clean["checks"]["fts5"]["ok"] is True
+
+    # Вносим два контролируемых дефекта: висячее ребро и пустой learned_at
+    mem.store.execute(
+        "INSERT INTO memory_link (src, dst, relation, created_at) VALUES (?, ?, 'derived', '2026-01-01T00:00:00+00:00')",
+        (rec_id, "missing-node-404"),
+    )
+    mem.store.execute("UPDATE memory SET learned_at = NULL WHERE id = ?", (rec_id,))
+
+    before = doctor.run_doctor(mem, fix=False)
+    assert before["ok"] is False
+    assert before["checks"]["dangling_links"] == 1
+    assert before["checks"]["missing_learned_at"] == 1
+    assert before["snapshot_id"] is None
+
+    fixed = doctor.run_doctor(mem, fix=True)
+    assert fixed["fix_applied"] is True
+    assert fixed["snapshot_id"] is not None
+    assert fixed["ok"] is True
+    assert fixed["checks"]["dangling_links"] == 0
+    assert fixed["checks"]["missing_learned_at"] == 0
+    mem.close()
