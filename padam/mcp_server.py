@@ -623,6 +623,86 @@ _active_requests: dict = {}
 _cancelled_request_ids: list = []
 _live_notify_cb = None
 
+MCP_LOG_LEVELS: tuple[str, ...] = (
+    "debug",
+    "info",
+    "notice",
+    "warning",
+    "error",
+    "critical",
+    "alert",
+    "emergency",
+)
+_LOG_LEVEL_RANK: dict[str, int] = {lvl: idx for idx, lvl in enumerate(MCP_LOG_LEVELS)}
+_mcp_log_level: str = "warning"
+
+
+def set_log_level(level: str) -> str:
+    """Устанавливает минимальный порог RFC 5424 для уведомлений notifications/message."""
+    global _mcp_log_level
+    if not isinstance(level, str):
+        raise ValueError("level must be a string")
+    norm = level.strip().lower()
+    if norm not in _LOG_LEVEL_RANK:
+        raise ValueError(f"invalid log level: {level!r}; expected one of {', '.join(MCP_LOG_LEVELS)}")
+    with _state_lock:
+        _mcp_log_level = norm
+    return norm
+
+
+def _sanitize_log_data(data):
+    if isinstance(data, dict):
+        return {str(k): _sanitize_log_data(v) for k, v in data.items() if str(k).lower() != "content"}
+    if isinstance(data, list):
+        return [_sanitize_log_data(v) for v in data]
+    if isinstance(data, str):
+        redacted, _ = safety.redact(safety.strip_invisible(data))
+        return redacted[:240]
+    return data
+
+
+def emit_mcp_log(level: str, logger: str, data, *, owner_only: bool = False) -> dict | None:
+    """Отправляет уведомление notifications/message, если уровень >= текущего порога (без секретов)."""
+    global _event_seq
+    norm = (level or "info").strip().lower()
+    if norm not in _LOG_LEVEL_RANK:
+        norm = "info"
+    with _state_lock:
+        threshold = _LOG_LEVEL_RANK.get(_mcp_log_level, _LOG_LEVEL_RANK["warning"])
+        if _LOG_LEVEL_RANK[norm] < threshold:
+            return None
+        safe_data = _sanitize_log_data(data)
+        note = {
+            "jsonrpc": "2.0",
+            "method": "notifications/message",
+            "params": {
+                "level": norm,
+                "logger": str(logger or "padam"),
+                "data": safe_data,
+            },
+        }
+        audience = {
+            "scope": None,
+            "visibility": "public_notification",
+            "owner_only": bool(owner_only),
+            "public": not bool(owner_only),
+        }
+        _event_seq += 1
+        _stream_events.append((_event_seq, note, audience))
+        if len(_stream_events) > 512:
+            del _stream_events[: len(_stream_events) - 512]
+        live_cb = _live_notify_cb
+        if live_cb is None:
+            _pending_notifications.append(note)
+            _pending_audiences.append(audience)
+        _notify_cond.notify_all()
+    if live_cb is not None:
+        try:
+            live_cb(note)
+        except Exception:
+            pass
+    return note
+
 
 class RequestCancelledError(Exception):
     """Запрос был отменён клиентом через notifications/cancelled."""
@@ -2360,6 +2440,11 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
         masked_total = sum(masked.values()) if masked else 0
         if masked_total:
             note += f" (masked {masked_total} secret-looking value(s) before storing)"
+            emit_mcp_log("warning", "padam.safety", {"event": "secrets_masked", "id": mid, "maskedSecrets": int(masked_total)}, owner_only=True)
+        elif outcome == "quarantined":
+            emit_mcp_log("notice", "padam.guard", {"event": "record_quarantined", "id": mid}, owner_only=True)
+        else:
+            emit_mcp_log("info", "padam.memory", {"event": "record_written", "id": mid, "outcome": outcome, "scope": rm_kw.get("scope")}, owner_only=False)
         return f"{note}  id={mid}" + _sleep_hint(m), {
             "id": mid,
             "outcome": outcome,
@@ -2467,6 +2552,12 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
         if not dry:
             _emit_resource_updated("padam://stats", owner_only=True)
             _emit_resource_updated("padam://recent", owner_only=True)
+        emit_mcp_log(
+            "info",
+            "padam.nocturne",
+            {"event": "sleep_completed", "episodes_sampled": report.get("episodes_sampled", 0), "dry_run": dry},
+            owner_only=True,
+        )
         return json.dumps(report, ensure_ascii=False, indent=2), report
 
     if name == "padam_export":
@@ -2688,6 +2779,7 @@ def _handle_legacy(req: dict) -> dict | None:
                 "resources": {"subscribe": True, "listChanged": False},
                 "prompts": {"listChanged": False},
                 "completions": {},
+                "logging": {},
                 **({"tasks": {"list": {}, "cancel": {}, "requests": {"tools": {"call": {}}}}} if _tasks_enabled() else {}),
             },
             "serverInfo": _server_info(),
@@ -2925,6 +3017,18 @@ def _handle_legacy(req: dict) -> dict | None:
             if t_obj["status"] != "completed":
                 return err(-32000, f"task still {t_obj['status']}")
             return ok(t_obj["result"])
+
+    if method == "logging/setLevel":
+        params = req.get("params") or {}
+        if not isinstance(params, dict):
+            return err(-32602, "params must be an object", key="invalid_params", detail="params must be an object")
+        lvl = params.get("level")
+        try:
+            chosen = set_log_level(lvl)
+        except ValueError as exc:
+            return err(-32602, str(exc), key="invalid_params", detail=str(exc))
+        emit_mcp_log("info", "padam.mcp", {"event": "log_level_changed", "level": chosen})
+        return ok({})
 
     if method == "ping":
         return ok({})

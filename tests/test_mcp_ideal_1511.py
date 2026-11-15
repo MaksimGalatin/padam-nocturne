@@ -461,3 +461,60 @@ def test_mcp_ideal_2_6_cancellation_and_progress_notifications(tmp_path):
         mcp_server._memory = old_mem
         mcp_server.pop_notifications()
         mem.close()
+def test_mcp_ideal_2_7_ping_and_logging_set_level(tmp_path):
+    """Пункт 2.7: capabilities.logging, ping, logging/setLevel (RFC 5424) и notifications/message без секретов."""
+    import json
+
+    mem = Memory(user_id="ideal-2-7", store=Store(tmp_path / "m27.db"))
+    old_mem = mcp_server._memory
+    old_lvl = mcp_server._mcp_log_level
+    mcp_server._memory = mem
+    mcp_server.pop_notifications()
+    try:
+        init = mcp_server.handle({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})["result"]
+        assert "logging" in init["capabilities"]
+        assert mcp_server.handle({"jsonrpc": "2.0", "id": 2, "method": "ping"})["result"] == {}
+
+        bad_lvl = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 3, "method": "logging/setLevel",
+            "params": {"level": "verbose_invalid"},
+        })
+        assert bad_lvl["error"]["code"] == -32602
+
+        ok_lvl = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 4, "method": "logging/setLevel",
+            "params": {"level": "info"},
+        })
+        assert ok_lvl["result"] == {}
+        notes = [n for n in mcp_server.pop_notifications() if n.get("method") == "notifications/message"]
+        assert any(n["params"]["level"] == "info" and n["params"]["data"]["level"] == "info" for n in notes)
+
+        fake_secret = "sk-ant-api03-TESTSECRETVALUE999999999999"
+        mcp_server.handle({
+            "jsonrpc": "2.0", "id": 5, "method": "tools/call",
+            "params": {"name": "padam_write", "arguments": {
+                "content": f"Staging credential token is {fake_secret} for local check",
+                "origin": "user",
+            }},
+        })
+        log_notes = [n for n in mcp_server.pop_notifications() if n.get("method") == "notifications/message"]
+        assert any(n["params"]["level"] == "warning" and n["params"]["data"]["event"] == "secrets_masked" for n in log_notes)
+        serialized = json.dumps(log_notes, ensure_ascii=False)
+        assert fake_secret not in serialized
+        assert "Staging credential" not in serialized
+
+        # При повышении порога до error info/warning больше не отправляются
+        assert mcp_server.handle({
+            "jsonrpc": "2.0", "id": 6, "method": "logging/setLevel",
+            "params": {"level": "error"},
+        })["result"] == {}
+        mcp_server.pop_notifications()
+        assert mcp_server.emit_mcp_log("warning", "padam.test", {"msg": "ignored"}) is None
+        err_note = mcp_server.emit_mcp_log("error", "padam.test", {"msg": f"boom {fake_secret}"})
+        assert err_note is not None
+        assert fake_secret not in json.dumps(err_note)
+    finally:
+        mcp_server.set_log_level(old_lvl)
+        mcp_server._memory = old_mem
+        mcp_server.pop_notifications()
+        mem.close()
