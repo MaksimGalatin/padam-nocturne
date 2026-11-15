@@ -44,3 +44,24 @@ def test_top10v4_1_setup_clients_and_catalog_manifests(tmp_path):
     assert (root / "smithery.yaml").exists()
     glama = json.loads((root / "glama.json").read_text(encoding="utf-8"))
     assert glama["toolsCount"] == 9
+
+
+def test_top10v4_2_mcpb_desktop_extension_and_vscode_extension(tmp_path):
+    import zipfile
+    from padam import pack_extension
+
+    bundle_path = tmp_path / "padam.mcpb"
+    rep = pack_extension.build_mcpb_bundle(bundle_path, user_id="arch")
+    assert rep["status"] == "packed"
+    assert bundle_path.exists() and rep["size_bytes"] > 200
+
+    with zipfile.ZipFile(bundle_path, "r") as zf:
+        assert "manifest.json" in zf.namelist()
+        manifest = json.loads(zf.read("manifest.json").decode("utf-8"))
+        assert manifest["dxt_version"] == "0.2"
+        assert manifest["server"]["mcp_config"]["command"] == "padam-mcp"
+
+    root = Path(__file__).resolve().parents[1]
+    vs_pkg = json.loads((root / "extensions" / "vscode-padam" / "package.json").read_text(encoding="utf-8"))
+    assert "mcpServerDefinitionProviders" in vs_pkg["contributes"]
+    assert (root / "extensions" / "vscode-padam" / "extension.js").exists()

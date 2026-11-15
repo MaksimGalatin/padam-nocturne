@@ -475,6 +475,15 @@ def cmd_compact(m, a) -> int:
     return 0
 
 
+def cmd_pack_extension(m, a) -> int:
+    """ТОП-10 v4 Пункт 2: сборка .mcpb (.dxt) пакета для Claude Desktop."""
+    from pathlib import Path
+    from . import pack_extension
+    res = pack_extension.build_mcpb_bundle(Path(a.out), user_id=getattr(a, "user", "default") or "default")
+    print(json.dumps(res, ensure_ascii=False, indent=2))
+    return 0
+
+
 def cmd_setup(m, a) -> int:
     """ТОП-10 v4 Пункт 1: авто-установка PADAM MCP в IDE и AI-клиенты."""
     from pathlib import Path
@@ -1555,8 +1564,13 @@ def main(argv=None) -> int:
     sset.add_argument("--verify", action="store_true")
     sset.set_defaults(fn=cmd_setup)
 
+    spack = sub.add_parser("pack-extension", help=t("собрать .mcpb пакет для Claude Desktop",
+                                                    "build .mcpb Desktop Extension bundle"))
+    spack.add_argument("--out", default="padam-nocturne.mcpb")
+    spack.set_defaults(fn=cmd_pack_extension)
+
     a = p.parse_args(argv)
-    if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):
+    if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup, cmd_pack_extension) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):
         return a.fn(None, a)
     from .store import Store
     mem = Memory(user_id=a.user, store=Store(a.db) if a.db else None)
