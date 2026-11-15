@@ -385,3 +385,9 @@ def mcp_app_acl_enabled() -> bool:
 def mcp_obsidian_sync_enabled() -> bool:
     """Включает двустороннюю синхронизацию папки Obsidian/Markdown с графом памяти (PADAM_OBSIDIAN_SYNC=1)."""
     return os.environ.get("PADAM_OBSIDIAN_SYNC", "0").strip() == "1"
+
+
+# --- ТОП-10 v2 Пункт 4: Полная двухвременная модель (Bi-temporal, выключено по умолчанию) ---
+def mcp_bitemporal_enabled() -> bool:
+    """Включает системное время learned_at/invalidated_at и двойной срез (valid_at, known_at) (PADAM_BITEMPORAL=1)."""
+    return os.environ.get("PADAM_BITEMPORAL", "0").strip() == "1"

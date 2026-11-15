@@ -2920,7 +2920,8 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
             eff_scope = _check_session_scope(args.get("scope"))
             found = m.recall(args["query"], scope=eff_scope,
                              kind=args.get("kind"), limit=int(args.get("limit", 5)),
-                             as_of=args.get("as_of"), agent_id=args.get("agent_id"), actor=actor)
+                             as_of=args.get("as_of"), agent_id=args.get("agent_id"), actor=actor,
+                             known_at=args.get("known_at") if config.mcp_bitemporal_enabled() else None)
         if not found:
             return ("Nothing found in memory for this query." + _sleep_hint(m), {
                 "query": args["query"],

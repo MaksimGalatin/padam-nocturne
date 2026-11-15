@@ -1182,7 +1182,8 @@ class Memory:
                session_id: str | None = None,
                as_of: str | datetime | None = None,
                agent_id: str | None = None,
-               actor: roles.ActorContext | None = None) -> list[Record]:
+               actor: roles.ActorContext | None = None,
+               known_at: str | datetime | None = None) -> list[Record]:
         """Поиск в одной области памяти. Подробности — в `_recall`.
 
         Запрос дополняется синонимами терминов (`add_alias`); каждая найденная запись получает
@@ -1191,7 +1192,7 @@ class Memory:
         self.__dict__["_показы"] = []
         запрос = self._расширить(query)
         внутр_лимит = max(limit, config.RERANK_TOP_K) if config.RERANK else limit
-        найдено = self._recall(запрос, scope, kind, внутр_лимит, session_id, as_of, agent_id=agent_id, actor=actor)
+        найдено = self._recall(запрос, scope, kind, внутр_лимит, session_id, as_of, agent_id=agent_id, actor=actor, known_at=known_at)
         if config.SEARCH_FEEDBACK and найдено and not agent_id:
             найдено = self._второй_проход(запрос, найдено, scope, kind, внутр_лимит, session_id, as_of, actor=actor)
         if config.RERANK and len(найдено) > 1:
@@ -1283,7 +1284,8 @@ class Memory:
                 session_id: str | None = None,
                 as_of: str | datetime | None = None,
                 agent_id: str | None = None,
-                actor: roles.ActorContext | None = None) -> list[Record]:
+                actor: roles.ActorContext | None = None,
+                known_at: str | datetime | None = None) -> list[Record]:
         """Гибридный поиск: вектор + BM25 + точные идентификаторы, RRF.
 
         Итог: rrf × важность × уверенность × затухание × свежесть сессии.
@@ -1295,10 +1297,11 @@ class Memory:
         Записи на проверке, отклонённые, отозванные и архивные в такой поиск не входят.
         """
         момент = parse_as_of(as_of) if as_of is not None else None
-        statuses = ("active", "superseded") if момент else ("active",)
+        момент_знания = parse_as_of(known_at) if (known_at is not None and config.mcp_bitemporal_enabled()) else None
+        statuses = ("active", "superseded") if (момент or момент_знания) else ("active",)
         sql = f"""SELECT id, kind, content, embedding, importance, confidence,
                         last_confirmed_at, expires_at, session_id, origin, created_at,
-                        status, valid_from, valid_to
+                        status, valid_from, valid_to, learned_at, invalidated_at
                  FROM memory
                  WHERE user_id = ? AND scope = ? AND status IN ({",".join("?" * len(statuses))})"""
         # Порядок строк задан явно (0.4.4): от него зависит, какая из равных записей выше.
@@ -1315,7 +1318,7 @@ class Memory:
             params.extend(vis_params)
         sql += " ORDER BY rowid"
 
-        if not момент:
+        if not момент and not момент_знания:
             rows, статусы = self._кандидаты(sql, tuple(params), cache_tag=vis_key)
             if not rows:
                 return []
@@ -1326,6 +1329,10 @@ class Memory:
             raw = [r for r in raw
                    if parse_ts(r["valid_from"] or r["created_at"]) <= момент
                    and (r["valid_to"] is None or parse_ts(r["valid_to"]) > момент)]
+        if момент_знания:
+            raw = [r for r in raw
+                   if parse_ts(r["learned_at"] or r["created_at"]) <= момент_знания
+                   and (r["invalidated_at"] is None or parse_ts(r["invalidated_at"]) > момент_знания)]
         if not raw:
             return []
         статусы = {r["id"]: r["status"] for r in raw}
@@ -1488,6 +1495,38 @@ class Memory:
                     "workspace_id": r["workspace_id"],
                 })
         return cur.rowcount > 0
+
+    def invalidate(self, memory_id: str, *, invalidated_at: str | datetime | None = None,
+                   reason: str = "") -> dict:
+        """Двухвременное устаревание записи (invalidated_at) с записью листа в Merkle-журнал."""
+        import hashlib, json as _json
+        row = self.store.one(
+            "SELECT id, scope, kind, status, learned_at, created_at FROM memory WHERE id = ? AND user_id = ?",
+            (memory_id, self.user_id),
+        )
+        if row is None:
+            raise KeyError(f"Memory not found: {memory_id}")
+        inv_ts = _norm_valid_ts(invalidated_at) or now_iso()
+        learned = row["learned_at"] or row["created_at"]
+        leaf_hex = hashlib.sha256(
+            f"padam-bitemporal-invalidate|{memory_id}|{learned}|{inv_ts}|{reason}".encode("utf-8")
+        ).hexdigest()
+        self.store.atomic([
+            ("UPDATE memory SET invalidated_at = ?, learned_at = COALESCE(learned_at, created_at), status = 'superseded' WHERE id = ?",
+             (inv_ts, memory_id)),
+            ("UPDATE memory_link SET invalidated_at = ? WHERE (src = ? OR dst = ?) AND invalidated_at IS NULL",
+             (inv_ts, memory_id, memory_id)),
+        ])
+        self.__dict__.pop("_ккэш", None)
+        self._log_audit(
+            "invalidate",
+            memory_id,
+            actor="owner",
+            scope=row["scope"],
+            kind=row["kind"],
+            detail=_json.dumps({"invalidated_at": inv_ts, "merkle_leaf": leaf_hex, "reason": reason}, ensure_ascii=False),
+        )
+        return {"id": memory_id, "learned_at": learned, "invalidated_at": inv_ts, "merkle_leaf": leaf_hex}
 
     def refute(self, memory_id: str, drop: float = 0.3,
                floor: float = 0.0, actor: roles.ActorContext | None = None) -> bool:

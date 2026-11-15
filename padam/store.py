@@ -418,8 +418,10 @@ class Store:
         """
         НУЖНЫЕ = {"memory": {"embedding_model": "TEXT", "факт_ключ": "TEXT",
                              "origin": "TEXT", "quarantine_reason": "TEXT", "owner_sig": "TEXT",
-                             "agent_id": "TEXT", "visibility": "TEXT DEFAULT 'private'", "workspace_id": "TEXT"},
-                  "memory_link": {"relation": "TEXT DEFAULT 'derived'"}}
+                             "agent_id": "TEXT", "visibility": "TEXT DEFAULT 'private'", "workspace_id": "TEXT",
+                             "learned_at": "TEXT", "invalidated_at": "TEXT"},
+                  "memory_link": {"relation": "TEXT DEFAULT 'derived'",
+                                  "learned_at": "TEXT", "invalidated_at": "TEXT"}}
         for таблица, колонки in НУЖНЫЕ.items():
             try:
                 есть = {r["name"] for r in

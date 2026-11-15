@@ -215,3 +215,44 @@ def test_top10v2_3_obsidian_bidirectional_sync(tmp_path: Path, monkeypatch, caps
     assert any(d["id"] == id_fact for d in res3["pending_delete_confirmation"])
     assert m.store.one("SELECT status FROM memory WHERE id = ?", (id_fact,))["status"] == "active"
     m.close()
+
+
+def test_top10v2_4_bitemporal_valid_and_known_at_and_merkle_invalidate(tmp_path: Path, monkeypatch) -> None:
+    """Пункт 4: Двухвременная модель (valid_from/valid_to + learned_at/invalidated_at) и лист Merkle при устаревании."""
+    monkeypatch.delenv("PADAM_BITEMPORAL", raising=False)
+    assert config.mcp_bitemporal_enabled() is False
+
+    db_path = tmp_path / "bit.db"
+    m = Memory(user_id="bit-u", store=Store(db_path))
+    _, id_a = m.remember(
+        "Сервер работает на порту 8443",
+        kind="fact",
+        scope="proj:bit",
+        valid_from="2026-01-01T00:00:00+00:00",
+        agent_id="owner",
+    )
+    m.store.execute("UPDATE memory SET learned_at = ? WHERE id = ?", ("2026-03-01T00:00:00+00:00", id_a))
+
+    monkeypatch.setenv("PADAM_BITEMPORAL", "1")
+    assert config.mcp_bitemporal_enabled() is True
+
+    # В феврале факт уже действовал в мире, но система узнала о нём только 1 марта
+    assert m.recall("8443", scope="proj:bit", as_of="2026-02-01", known_at="2026-02-15") == []
+    hits_apr = m.recall("8443", scope="proj:bit", as_of="2026-02-01", known_at="2026-04-01")
+    assert len(hits_apr) == 1 and hits_apr[0].id == id_a
+
+    # Устаревание с фиксацией merkle_leaf в журнале
+    inv = m.invalidate(id_a, invalidated_at="2026-05-01T00:00:00+00:00", reason="migrated to 9443")
+    assert len(inv["merkle_leaf"]) == 64
+
+    # Срез знаний на апрель всё ещё видит, на июнь — уже нет
+    assert len(m.recall("8443", scope="proj:bit", as_of="2026-02-01", known_at="2026-04-01")) == 1
+    assert m.recall("8443", scope="proj:bit", as_of="2026-02-01", known_at="2026-06-01") == []
+
+    audit_row = m.store.one(
+        "SELECT action, detail FROM audit_log WHERE memory_id = ? AND action = 'invalidate'",
+        (id_a,),
+    )
+    assert audit_row is not None
+    assert inv["merkle_leaf"] in audit_row["detail"]
+    m.close()
