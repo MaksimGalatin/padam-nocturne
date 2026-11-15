@@ -148,3 +148,70 @@ def test_top10v2_2_app_access_control_and_hash_chain(tmp_path: Path, monkeypatch
     finally:
         mcp_server._memory = old_mem
         m.close()
+
+
+def test_top10v2_3_obsidian_bidirectional_sync(tmp_path: Path, monkeypatch, capsys) -> None:
+    """Пункт 3: Двусторонняя синхронизация с Obsidian/Markdown (wikilinks, карантин для protected kind, без тихого удаления)."""
+    from padam import obsidian_sync
+
+    monkeypatch.delenv("PADAM_OBSIDIAN_SYNC", raising=False)
+    assert config.mcp_obsidian_sync_enabled() is False
+
+    db_path = tmp_path / "obs.db"
+    vault = tmp_path / "vault"
+    m = Memory(user_id="obs-u", store=Store(db_path))
+    _, id_fact = m.remember("Архитектура базы: локальный SQLite", kind="fact", scope="proj:obs", agent_id="owner")
+    _, id_ident = m.remember("Я — Максим Галатин", kind="identity", scope="proj:obs", agent_id="owner")
+
+    off = obsidian_sync.sync_obsidian(m, vault, scope="proj:obs")
+    assert off["enabled"] is False
+
+    monkeypatch.setenv("PADAM_OBSIDIAN_SYNC", "1")
+    assert config.mcp_obsidian_sync_enabled() is True
+
+    # 1. Экспорт
+    res1 = obsidian_sync.sync_obsidian(m, vault, scope="proj:obs", direction="export")
+    assert res1["enabled"] is True
+    assert res1["exported"] == 2
+    md_files = list(vault.glob("*.md"))
+    assert len(md_files) == 2
+
+    # 2. Добавляем новую заметку со ссылкой [[padam:<id_fact>]] и правим факт
+    new_note = vault / "Кеш_Redis.md"
+    new_note.write_text(
+        f"---\nkind: fact\nscope: proj:obs\n---\n\nЛокальный кеш рядом с [[padam:{id_fact}]].\n",
+        encoding="utf-8",
+    )
+    fact_file = next(p for p in md_files if id_fact[:8] in p.name)
+    fact_file.write_text(
+        f"---\nid: {id_fact}\nkind: fact\nscope: proj:obs\n---\n\nАрхитектура базы: локальный SQLite + WAL\n",
+        encoding="utf-8",
+    )
+
+    # 3. Попытка подменить identity без флага владельца -> карантин, оригинал цел
+    ident_file = next(p for p in md_files if id_ident[:8] in p.name)
+    ident_file.write_text(
+        f"---\nid: {id_ident}\nkind: identity\nscope: proj:obs\n---\n\nПодмена личности\n",
+        encoding="utf-8",
+    )
+
+    res2 = obsidian_sync.sync_obsidian(m, vault, scope="proj:obs", direction="import", trusted_owner=False)
+    assert res2["imported"] == 1
+    assert res2["updated"] == 1
+    assert res2["quarantined_protected"] == 1
+    assert res2["links_added"] >= 1
+
+    ident_row = m.store.one("SELECT content, status FROM memory WHERE id = ?", (id_ident,))
+    assert "Максим Галатин" in ident_row["content"]
+    assert ident_row["status"] == "active"
+
+    fact_row = m.store.one("SELECT content FROM memory WHERE id = ?", (id_fact,))
+    assert "WAL" in fact_row["content"]
+
+    # 4. Удаление файла на диске НЕ удаляет запись из БД
+    fact_file.unlink()
+    assert cli.main(["--db", str(db_path), "--user", "obs-u", "sync-obsidian", str(vault), "--scope", "proj:obs", "--direction", "import"]) == 0
+    res3 = json.loads(capsys.readouterr().out)
+    assert any(d["id"] == id_fact for d in res3["pending_delete_confirmation"])
+    assert m.store.one("SELECT status FROM memory WHERE id = ?", (id_fact,))["status"] == "active"
+    m.close()

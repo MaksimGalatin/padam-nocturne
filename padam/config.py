@@ -379,3 +379,9 @@ def mcp_hooks_enabled() -> bool:
 def mcp_app_acl_enabled() -> bool:
     """Включает контроль доступа по клиенту/agent_id, паузу/отзыв и ресурс padam://access-control (PADAM_APP_ACL=1)."""
     return os.environ.get("PADAM_APP_ACL", "0").strip() == "1"
+
+
+# --- ТОП-10 v2 Пункт 3: Двусторонняя синхронизация с Markdown / Obsidian (выключено по умолчанию) ---
+def mcp_obsidian_sync_enabled() -> bool:
+    """Включает двустороннюю синхронизацию папки Obsidian/Markdown с графом памяти (PADAM_OBSIDIAN_SYNC=1)."""
+    return os.environ.get("PADAM_OBSIDIAN_SYNC", "0").strip() == "1"

@@ -377,6 +377,21 @@ def cmd_profile(m: Memory, a) -> int:
     return 0
 
 
+def cmd_sync_obsidian(m, a) -> int:
+    """ТОП-10 v2 Пункт 3: двусторонняя синхронизация с Obsidian/Markdown."""
+    from pathlib import Path
+    from . import obsidian_sync
+    res = obsidian_sync.sync_obsidian(
+        m,
+        Path(a.vault_dir),
+        scope=a.scope,
+        direction=a.direction,
+        trusted_owner=bool(a.owner),
+    )
+    print(json.dumps(res, ensure_ascii=False, indent=2))
+    return 0
+
+
 def cmd_access(m, a) -> int:
     """ТОП-10 v2 Пункт 2: панель прав приложений и хешируемый журнал доступа."""
     from . import app_acl
@@ -1338,6 +1353,15 @@ def main(argv=None) -> int:
     s.add_argument("--webauthn", action="store_true")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_unseal)
+
+    so = sub.add_parser("sync-obsidian", help=t("двусторонняя синхронизация с Markdown / Obsidian",
+                                              "two-way sync with Markdown / Obsidian vault"))
+    so.add_argument("vault_dir")
+    so.add_argument("--scope", default=None)
+    so.add_argument("--direction", default="both", choices=("both", "export", "import"))
+    so.add_argument("--owner", action="store_true")
+    so.add_argument("--json", action="store_true")
+    so.set_defaults(fn=cmd_sync_obsidian)
 
     sa = sub.add_parser("access", help=t("права приложений/агентов и журнал доступа",
                                          "app/agent access control and audit log"))
