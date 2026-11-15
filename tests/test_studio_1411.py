@@ -3728,3 +3728,112 @@ def test_step_1_3_mcp_tasks_and_sampling(tmp_path, monkeypatch):
         mcp_server.set_client_capabilities({})
         m.close()
 
+
+def test_step_2_5_encrypted_backup_restore_and_studio_ui(tmp_path):
+    """Пункт 2.5: зашифрованный backup/restore со сверкой SHA-256 + экран Резервная копия в Studio (4 языка)."""
+    import base64
+    import urllib.error
+    import urllib.request
+    from types import SimpleNamespace
+    from padam import backup as padam_backup, cli
+
+    db1 = tmp_path / "src.db"
+    m1 = Memory(user_id="bak_u", store=Store(db1))
+    secret_text = "Encrypted backup verification record omega-991"
+    m1.remember(secret_text, kind="fact", scope="vault", origin="user")
+    m1.remember("Architect prefers encrypted archive checks", kind="preference", scope="global", origin="user")
+
+    bak_path = tmp_path / "vault.padambak"
+    # CLI backup с паролем
+    rc_bak = cli.cmd_backup(m1, SimpleNamespace(path=str(bak_path), passphrase="correct-horse-battery", encrypt=True))
+    assert rc_bak == 0
+    raw_bak = bak_path.read_bytes()
+    assert raw_bak.startswith(b"PADAMBAK1")
+    assert b"SQLite format 3" not in raw_bak
+    assert secret_text.encode("utf-8") not in raw_bak
+
+    # Неверный пароль -> отказ
+    with pytest.raises(ValueError):
+        padam_backup.restore_backup_file(m1, bak_path, passphrase="wrong-password")
+
+    # Порча 1 байта шифротекста -> отказ
+    corrupted = bytearray(raw_bak)
+    corrupted[-5] ^= 0xFF
+    bad_path = tmp_path / "bad.padambak"
+    bad_path.write_bytes(bytes(corrupted))
+    with pytest.raises(ValueError):
+        padam_backup.restore_backup_file(m1, bad_path, passphrase="correct-horse-battery")
+
+    # Восстановление в пустую/новую БД через CLI restore и сверка SHA-256 до/после
+    db2 = tmp_path / "restored.db"
+    m2 = Memory(user_id="bak_u", store=Store(db2))
+    assert m2.stats()["active"] == 0
+    rc_res = cli.cmd_restore_backup(m2, SimpleNamespace(path=str(bak_path), passphrase="correct-horse-battery", to=None))
+    assert rc_res == 0
+    assert m2.stats()["active"] == 2
+    found = m2.recall("omega-991", scope="vault", limit=3)
+    assert any("omega-991" in r.content for r in found)
+
+    # HTTP Studio API /backup и /backup/restore + UI 4 языка
+    srv, url = api.make_studio_server(m1, port=0)
+    th = threading.Thread(target=srv.serve_forever, daemon=True)
+    th.start()
+    try:
+        mt = re.match(r"^(http://127\.0\.0\.1:\d+)/studio#t=(.+)$", url)
+        base, tok = mt.group(1), mt.group(2)
+
+        with urllib.request.urlopen(f"{base}/studio", timeout=5) as rp:
+            html = rp.read().decode("utf-8")
+        assert 'id="panel-backup"' in html
+        assert 'id="backup-create-btn"' in html
+        assert 'id="backup-restore-btn"' in html
+        i18n_match = re.search(r'<script id="i18n-data"[^>]*>(.*?)</script>', html, re.S)
+        assert i18n_match
+        i18n_dict = json.loads(i18n_match.group(1))
+        for lang in ("ru", "en", "es", "zh"):
+            assert i18n_dict[lang]["nav_backup"]
+            assert i18n_dict[lang]["bak_create_btn"]
+            assert i18n_dict[lang]["bak_restore_btn"]
+
+        # POST /backup
+        req_b = urllib.request.Request(
+            f"{base}/backup",
+            data=json.dumps({"passphrase": "ui-pass-123"}).encode("utf-8"),
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {tok}"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req_b, timeout=5) as rb:
+            bdata = json.loads(rb.read().decode("utf-8"))
+        assert bdata["ok"] is True and bdata["db_sha256"] and bdata["backup_b64"]
+
+        # POST /backup/restore с неверным паролем -> 400
+        req_bad = urllib.request.Request(
+            f"{base}/backup/restore",
+            data=json.dumps({"backup_b64": bdata["backup_b64"], "passphrase": "wrong"}).encode("utf-8"),
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {tok}"},
+            method="POST",
+        )
+        with pytest.raises(urllib.error.HTTPError) as e_http:
+            urllib.request.urlopen(req_bad, timeout=5)
+        assert e_http.value.code == 400
+
+        # Успешное восстановление по /backup/restore после удаления записи в m1
+        recs = m1.list_records(view="active", limit=10)["records"]
+        m1.revoke(recs[0]["id"])
+        assert m1.stats()["active"] == 1
+        req_ok = urllib.request.Request(
+            f"{base}/backup/restore",
+            data=json.dumps({"backup_b64": bdata["backup_b64"], "passphrase": "ui-pass-123"}).encode("utf-8"),
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {tok}"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req_ok, timeout=5) as ro:
+            rdata = json.loads(ro.read().decode("utf-8"))
+        assert rdata["ok"] is True and rdata["checksum_match"] is True
+        assert m1.stats()["active"] == 2
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        m1.close()
+        m2.close()
+

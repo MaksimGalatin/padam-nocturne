@@ -276,6 +276,20 @@ STRINGS: dict[str, dict[str, str]] = {
         "set_state_on": "ВКЛЮЧЕНО",
         "set_state_off": "ВЫКЛЮЧЕНО",
         "set_locked_safe": "Защищено (только чтение)",
+        "nav_backup": "Резервная копия",
+        "bak_title": "Резервная копия и восстановление",
+        "bak_subtitle": "Зашифрованный архив AES-256-GCM с автоматической проверкой SHA-256 до и после восстановления.",
+        "bak_pass_label": "Пароль шифрования (необязательно — иначе ключ владельца):",
+        "bak_pass_ph": "Введите пароль архива…",
+        "bak_create_btn": "Создать резервную копию",
+        "bak_file_label": "Выберите файл резервной копии (.padambak):",
+        "bak_restore_btn": "Восстановить из копии",
+        "bak_need_file": "Сначала выберите файл .padambak.",
+        "bak_sha_before": "SHA-256 до:",
+        "bak_sha_after": "SHA-256 после:",
+        "bak_verified": "Контрольная сумма SHA-256 совпала.",
+        "bak_creating": "Создаём зашифрованную копию…",
+        "bak_restoring": "Проверяем SHA-256 и восстанавливаем…",
         # 10. Первый запуск
         "qs_title": "Мастер первого запуска — 3 шага к защищённой памяти",
         "qs_step1_title": "Шаг 1. Как устроен PADAM NOCTURNE",
@@ -566,6 +580,20 @@ STRINGS: dict[str, dict[str, str]] = {
         "set_state_on": "ENABLED",
         "set_state_off": "DISABLED",
         "set_locked_safe": "Protected (Read-Only)",
+        "nav_backup": "Backup",
+        "bak_title": "Backup & Restore",
+        "bak_subtitle": "AES-256-GCM encrypted archive with automatic SHA-256 verification before and after restore.",
+        "bak_pass_label": "Encryption passphrase (optional — falls back to owner key):",
+        "bak_pass_ph": "Enter archive passphrase…",
+        "bak_create_btn": "Create backup",
+        "bak_file_label": "Choose backup archive (.padambak):",
+        "bak_restore_btn": "Restore from backup",
+        "bak_need_file": "Select a .padambak file first.",
+        "bak_sha_before": "SHA-256 before:",
+        "bak_sha_after": "SHA-256 after:",
+        "bak_verified": "SHA-256 checksum verified.",
+        "bak_creating": "Creating encrypted backup…",
+        "bak_restoring": "Verifying SHA-256 and restoring…",
         "qs_title": "Quick Start Wizard — 3 Steps to Protected Agent Memory",
         "qs_step1_title": "Step 1. How PADAM NOCTURNE protects your memory",
         "qs_step1_body": "PADAM keeps your agent's memory in one local SQLite file. Orders hidden in web pages are held for your review, API keys and wallet seeds are masked before reaching the disk, and NOCTURNE sleep consolidates episodes without drifting into disasters.",
@@ -855,6 +883,20 @@ STRINGS: dict[str, dict[str, str]] = {
         "set_state_on": "ACTIVO",
         "set_state_off": "INACTIVO",
         "set_locked_safe": "Protegido (Solo lectura)",
+        "nav_backup": "Copia de seguridad",
+        "bak_title": "Copia de seguridad y restauración",
+        "bak_subtitle": "Archivo cifrado AES-256-GCM con verificación SHA-256 antes y después de restaurar.",
+        "bak_pass_label": "Contraseña de cifrado (opcional — usa clave del propietario):",
+        "bak_pass_ph": "Escriba la contraseña…",
+        "bak_create_btn": "Crear copia de seguridad",
+        "bak_file_label": "Seleccione un archivo (.padambak):",
+        "bak_restore_btn": "Restaurar desde copia",
+        "bak_need_file": "Seleccione primero un archivo .padambak.",
+        "bak_sha_before": "SHA-256 antes:",
+        "bak_sha_after": "SHA-256 después:",
+        "bak_verified": "Suma SHA-256 verificada.",
+        "bak_creating": "Creando copia cifrada…",
+        "bak_restoring": "Verificando SHA-256 y restaurando…",
         "qs_title": "Asistente de inicio rápido — 3 pasos para proteger su memoria",
         "qs_step1_title": "Paso 1. Cómo funciona PADAM NOCTURNE",
         "qs_step1_body": "PADAM guarda la memoria del agente en un archivo SQLite en su equipo. Las órdenes ocultas en páginas web se retienen para su revisión, las claves y semillas se enmascaran antes de tocar el disco y el sueño NOCTURNE consolida recuerdos sin sesgo catastrófico.",
@@ -1144,6 +1186,20 @@ STRINGS: dict[str, dict[str, str]] = {
         "set_state_on": "已开启",
         "set_state_off": "已关闭",
         "set_locked_safe": "安全锁定（只读）",
+        "nav_backup": "备份与恢复",
+        "bak_title": "加密备份与恢复",
+        "bak_subtitle": "AES-256-GCM 加密归档，恢复前后自动校验 SHA-256 完整性。",
+        "bak_pass_label": "加密密码（可选，留空则使用本地所有者密钥）：",
+        "bak_pass_ph": "输入备份密码…",
+        "bak_create_btn": "创建加密备份",
+        "bak_file_label": "选择备份文件 (.padambak)：",
+        "bak_restore_btn": "从备份恢复",
+        "bak_need_file": "请先选择 .padambak 文件。",
+        "bak_sha_before": "恢复前 SHA-256：",
+        "bak_sha_after": "恢复后 SHA-256：",
+        "bak_verified": "SHA-256 校验一致。",
+        "bak_creating": "正在生成加密备份…",
+        "bak_restoring": "正在校验 SHA-256 并恢复…",
         "qs_title": "快速开始向导 — 3 步构建安全智能体记忆",
         "qs_step1_title": "第 1 步：了解 PADAM NOCTURNE",
         "qs_step1_body": "PADAM 将智能体记忆保存在您本地的一个 SQLite 文件中。网页中隐藏的提示注入指令会被暂扣待审，API 密钥与钱包助记词在写入磁盘前自动掩码，NOCTURNE 睡眠周期在整合记忆时防止灾难事件淹没日常记忆。",
@@ -2044,7 +2100,7 @@ function say(text, ok = true) {
   box.className = ok ? 'msg-ok' : 'msg-err';
 }
 
-const TABS = ['overview', 'feed', 'search', 'ask', 'review', 'asof', 'forget', 'graph', 'entities', 'l3', 'team', 'settings', 'quickstart'];
+const TABS = ['overview', 'feed', 'search', 'ask', 'review', 'asof', 'forget', 'graph', 'entities', 'l3', 'team', 'backup', 'settings', 'quickstart'];
 window._padamWorkspaces = [];
 let activeTab = (initialTab && TABS.includes(initialTab)) ? initialTab : 'overview';
 let feedView = 'active', feedOffset = 0, feedKind = null, feedShown = [];
@@ -3658,6 +3714,66 @@ $('l3-verify-latest-btn').onclick = async () => {
   } catch (e) { say(S.failed + ': ' + e.message, false); }
 };
 
+// Резервная копия (2.5): создание и восстановление со сверкой SHA-256
+if ($('backup-create-btn')) {
+  $('backup-create-btn').onclick = async () => {
+    const out = $('backup-result');
+    const pass = $('backup-passphrase').value || null;
+    if (out) out.textContent = S.bak_creating;
+    try {
+      const res = await api('/backup', {passphrase: pass});
+      const raw = atob(res.backup_b64);
+      const bytes = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+      const blob = new Blob([bytes], {type: 'application/octet-stream'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = res.filename || 'padam-backup.padambak';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      if (out) {
+        out.textContent = `${S.done} (${res.size_bytes} B) | DB SHA-256: ${res.db_sha256} | Archive SHA-256: ${res.archive_sha256}`;
+      }
+      say(S.done, true);
+    } catch (e) {
+      if (out) out.textContent = e.message;
+      say(S.failed + ': ' + e.message, false);
+    }
+  };
+}
+if ($('backup-restore-btn')) {
+  $('backup-restore-btn').onclick = async () => {
+    const inp = $('backup-file-input');
+    const out = $('backup-result');
+    const file = inp && inp.files && inp.files[0];
+    if (!file) {
+      say(S.bak_need_file, false);
+      return;
+    }
+    if (out) out.textContent = S.bak_restoring;
+    try {
+      const buf = await file.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let bin = '';
+      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      const b64 = btoa(bin);
+      const pass = $('backup-passphrase').value || null;
+      const res = await api('/backup/restore', {backup_b64: b64, passphrase: pass});
+      if (out) {
+        out.textContent = `${S.bak_verified} ${S.bak_sha_before} ${res.checksum_before} | ${S.bak_sha_after} ${res.checksum_after} (${res.records_total})`;
+      }
+      say(S.bak_verified, true);
+      if (typeof loadOverview === 'function') loadOverview();
+    } catch (e) {
+      if (out) out.textContent = e.message;
+      say(S.failed + ': ' + e.message, false);
+    }
+  };
+}
+
 // Первый запуск: кнопки копирования и включения строгого режима
 for (const btn of document.querySelectorAll('[data-copy-target]')) {
   btn.onclick = async () => {
@@ -3751,6 +3867,9 @@ def page() -> tuple[str, str]:
       </button>
       <button id="tab-team" data-tab="team" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-team">
         <span data-i18n="nav_team">{s['nav_team']}</span>
+      </button>
+      <button id="tab-backup" data-tab="backup" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-backup">
+        <span data-i18n="nav_backup">{s['nav_backup']}</span>
       </button>
       <button id="tab-settings" data-tab="settings" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-settings">
         <span data-i18n="nav_settings">{s['nav_settings']}</span>
@@ -4041,6 +4160,27 @@ def page() -> tuple[str, str]:
             <code id="team-issued-token"></code>
           </div>
           <div id="team-members-list"></div>
+        </div>
+      </section>
+
+      <!-- 8b. РЕЗЕРВНАЯ КОПИЯ -->
+      <section id="panel-backup" role="tabpanel" aria-labelledby="tab-backup" hidden>
+        <div class="panel-header">
+          <h2 class="panel-title" data-i18n="bak_title">{s['bak_title']}</h2>
+          <p class="panel-sub" data-i18n="bak_subtitle">{s['bak_subtitle']}</p>
+        </div>
+        <div class="box">
+          <div class="toolbar">
+            <label for="backup-passphrase" data-i18n="bak_pass_label">{s['bak_pass_label']}</label>
+            <input id="backup-passphrase" type="password" placeholder="{s['bak_pass_ph']}" data-i18n-placeholder="bak_pass_ph" autocomplete="off">
+            <button id="backup-create-btn" class="btn-primary" data-i18n="bak_create_btn">{s['bak_create_btn']}</button>
+          </div>
+          <div class="toolbar">
+            <label for="backup-file-input" data-i18n="bak_file_label">{s['bak_file_label']}</label>
+            <input id="backup-file-input" type="file" accept=".padambak">
+            <button id="backup-restore-btn" data-i18n="bak_restore_btn">{s['bak_restore_btn']}</button>
+          </div>
+          <div id="backup-result" class="panel-sub" aria-live="polite"></div>
         </div>
       </section>
 

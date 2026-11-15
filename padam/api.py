@@ -51,7 +51,7 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore"}
 OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
@@ -740,6 +740,33 @@ class Handler(BaseHTTPRequestHandler):
                 roles.require_owner(actor, "import")
                 added = m.import_(data, overwrite=bool(data.get("overwrite")))
                 return self._send(200, {"imported": added})
+
+            if self.path == "/backup":
+                import base64
+                from . import backup as _backup
+                roles.require_owner(actor, "backup")
+                passphrase = data.get("passphrase") if isinstance(data, dict) else None
+                container, info = _backup.create_backup_bytes(m, passphrase=passphrase)
+                stamp = info["created_at"][:19].replace(":", "-")
+                return self._send(200, {
+                    **info,
+                    "filename": f"padam-backup-{stamp}.padambak",
+                    "backup_b64": base64.b64encode(container).decode("ascii"),
+                })
+
+            if self.path == "/backup/restore":
+                import base64
+                from . import backup as _backup
+                roles.require_owner(actor, "backup_restore")
+                raw_b64 = data.get("backup_b64")
+                if not isinstance(raw_b64, str) or not raw_b64.strip():
+                    return self._send(400, {"error": "backup_b64 is required"})
+                try:
+                    raw_bytes = base64.b64decode(raw_b64.encode("ascii"), validate=True)
+                    res = _backup.restore_backup_bytes(m, raw_bytes, passphrase=data.get("passphrase"))
+                    return self._send(200, res)
+                except ValueError as e:
+                    return self._send(400, {"error": str(e)})
 
             return self._send(404, {"error": "unknown route"})
         except PermissionError as e:

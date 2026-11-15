@@ -512,37 +512,56 @@ def cmd_doctor(m: Memory, a) -> int:
 
 
 def cmd_backup(m: Memory, a) -> int:
-    """0.4.4 (досье Antigravity 09.11.2026): копия памяти встроенным механизмом SQLite — целая и согласованная
-    даже под нагрузкой (sqlite3 backup API), в отличие от копирования файла. Существующий файл не перезаписывает."""
-    import shutil
-    from pathlib import Path
-    from . import integrity, keyvault
-    куда = Path(a.path).expanduser()
-    if куда.exists():
-        print(t(f"Отказ: {куда} уже есть — копия не перезаписывает файлы.", f"Refused: {куда} exists — a backup never overwrites."))
+    """Создаёт согласованную (и по желанию зашифрованную AES-256-GCM) резервную копию с проверкой SHA-256."""
+    from . import backup as _backup, keyvault
+
+    passphrase = getattr(a, "passphrase", None)
+    want_encrypt = bool(getattr(a, "encrypt", False) or passphrase or str(a.path).lower().endswith(".padambak"))
+    try:
+        info = _backup.create_backup_file(m, a.path, passphrase=passphrase, encrypt=want_encrypt, overwrite=False)
+    except FileExistsError as exc:
+        print(str(exc))
         return 2
-    куда.parent.mkdir(parents=True, exist_ok=True)
-    import sqlite3
-    цель = sqlite3.connect(str(куда))
-    with m.store._lock:
-        m.store.conn.backup(цель)
-    цель.close()
-    if os.name == "posix":
-        os.chmod(куда, 0o600)
-    ключ = integrity.key_path(m.store)
-    if ключ is not None and ключ.exists():
-        shutil.copyfile(ключ, str(куда) + ".owner.key")
-        if os.name == "posix":
-            os.chmod(str(куда) + ".owner.key", 0o600)
-    провер = sqlite3.connect(str(куда)).execute("PRAGMA quick_check").fetchone()[0]
-    print(t(f"Копия: {куда} ({куда.stat().st_size} байт), целостность: {провер}",
-            f"Backup: {куда} ({куда.stat().st_size} bytes), integrity: {провер}"))
-    if not keyvault.is_enabled(m):
-        print(t("Внимание: ключи записей не защищены паролем — в копии они тоже открыты (padam protect-keys).",
-                "Note: record keys are not protected by a passphrase — they are in clear in the backup too (padam protect-keys)."))
-    print(t("Забывание (padam forget) до этой копии не дотянется: забытое останется в ней, пока вы её не удалите.",
-            "Forgetting (padam forget) cannot reach this copy: what you forget stays in it until you delete it."))
-    return 0 if провер == "ok" else 1
+    if want_encrypt:
+        print(t(
+            f"{GREEN}Зашифрованная копия:{RESET} {info['path']} ({info['size_bytes']} байт, "
+            f"SHA-256 БД={info['db_sha256']}, SHA-256 архива={info['archive_sha256']})",
+            f"{GREEN}Encrypted backup:{RESET} {info['path']} ({info['size_bytes']} bytes, "
+            f"DB SHA-256={info['db_sha256']}, Archive SHA-256={info['archive_sha256']})",
+        ))
+    else:
+        print(t(
+            f"Копия: {info['path']} ({info['size_bytes']} байт), целостность: {info['integrity']}, SHA-256={info['db_sha256']}",
+            f"Backup: {info['path']} ({info['size_bytes']} bytes), integrity: {info['integrity']}, SHA-256={info['db_sha256']}",
+        ))
+        if not keyvault.is_enabled(m):
+            print(t("Внимание: ключи записей не защищены паролем — используйте --encrypt/--passphrase или padam protect-keys.",
+                    "Note: record keys are not protected by a passphrase — use --encrypt/--passphrase or padam protect-keys."))
+    return 0 if info.get("ok") else 1
+
+
+def cmd_restore_backup(m: Memory, a) -> int:
+    """Восстанавливает память из зашифрованной резервной копии .padambak со сверкой SHA-256 до и после."""
+    from . import backup as _backup
+
+    target = getattr(a, "path", None) or getattr(a, "id", "")
+    try:
+        res = _backup.restore_backup_file(
+            m,
+            target,
+            passphrase=getattr(a, "passphrase", None),
+            target_db_path=getattr(a, "to", None),
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"{RED}{exc}{RESET}")
+        return 2
+    print(t(
+        f"{GREEN}Восстановлено:{RESET} {res['restored_to']} (записей: {res['records_total']}, "
+        f"SHA-256 до={res['checksum_before'][:16]}…, после={res['records_sha256_after'][:16]}…, сверка={res['checksum_match']})",
+        f"{GREEN}Restored:{RESET} {res['restored_to']} (records: {res['records_total']}, "
+        f"SHA-256 before={res['checksum_before'][:16]}…, verified={res['checksum_match']})",
+    ))
+    return 0 if res.get("checksum_match") else 1
 
 
 def cmd_l3(m: Memory, a) -> int:
@@ -821,10 +840,14 @@ def main(argv=None) -> int:
     s = sub.add_parser("stats", help=t("состояние памяти", "memory state"))
     s.set_defaults(fn=cmd_stats)
 
-    s = sub.add_parser("backup", help=t("согласованная копия памяти (SQLite backup API)",
-                                        "a consistent copy of the memory (SQLite backup API)"))
+    s = sub.add_parser("backup", help=t("согласованная резервная копия памяти (с шифрованием и SHA-256)",
+                                        "consistent backup of memory (with optional encryption and SHA-256)"))
     s.add_argument("path")
+    s.add_argument("-p", "--passphrase", default=None, help=t("пароль для шифрования AES-256-GCM", "passphrase for AES-256-GCM archive"))
+    s.add_argument("--encrypt", action="store_true", help=t("создать зашифрованный архив", "create encrypted archive"))
     s.set_defaults(fn=cmd_backup)
+
+
 
     s = sub.add_parser("doctor", help=t("состояние безопасности одним отчётом (ничего не меняет)",
                                         "security state in one report (changes nothing)"))
@@ -974,9 +997,26 @@ def main(argv=None) -> int:
     s.add_argument("id")
     s.set_defaults(fn=cmd_reject)
 
-    s = sub.add_parser("restore", help=t("вернуть запись из архива", "bring a record back from the archive"))
+    def _dispatch_restore(m: Memory, a) -> int:
+        from pathlib import Path as _P
+        target = getattr(a, "id", "")
+        if (
+            getattr(a, "backup", False)
+            or getattr(a, "passphrase", None) is not None
+            or getattr(a, "to", None) is not None
+            or target.lower().endswith(".padambak")
+            or _P(target).is_file()
+        ):
+            return cmd_restore_backup(m, a)
+        return cmd_restore(m, a)
+
+    s = sub.add_parser("restore", help=t("вернуть запись из архива или восстановить из .padambak",
+                                         "restore a record from archive or a .padambak backup"))
     s.add_argument("id")
-    s.set_defaults(fn=cmd_restore)
+    s.add_argument("-p", "--passphrase", default=None, help=t("пароль от резервной копии .padambak", "backup decryption passphrase"))
+    s.add_argument("--to", default=None, help=t("путь целевой базы (по умолчанию текущая)", "target DB path (default: current DB)"))
+    s.add_argument("--backup", action="store_true", help=t("принудительно считать аргумент файлом копии", "treat argument as backup file"))
+    s.set_defaults(fn=_dispatch_restore)
 
     s = sub.add_parser("viewer", help=t("память в браузере: шкала, «забыть», решения, память на дату",
                                         "memory in the browser: timeline, forget, review, memory as of a date"))
