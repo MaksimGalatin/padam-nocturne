@@ -460,6 +460,14 @@ def cmd_access(m, a) -> int:
     return 1
 
 
+def cmd_playground(m, a) -> int:
+    """ТОП-10 v4 Пункт 8: 60-секундный интерактивный вау-тур в :memory:."""
+    from . import playground
+    res = playground.run_60s_tour()
+    print(json.dumps(res, ensure_ascii=False, indent=2))
+    return 0 if res.get("status") == "ok" else 1
+
+
 def cmd_team(m, a) -> int:
     """ТОП-10 v4 Пункт 4: командная память проекта в Git (.padam/team.memcube)."""
     from pathlib import Path
@@ -1636,8 +1644,12 @@ def main(argv=None) -> int:
     ts.add_argument("--trust-author", default="")
     ts.set_defaults(fn=cmd_team)
 
+    spg = sub.add_parser("playground", help=t("60-секундный интерактивный вау-тур в памяти (:memory:)",
+                                              "60-second interactive wow-tour in :memory:"))
+    spg.set_defaults(fn=cmd_playground)
+
     a = p.parse_args(argv)
-    if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup, cmd_pack_extension) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):
+    if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup, cmd_pack_extension, cmd_playground) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):
         return a.fn(None, a)
     from .store import Store
     mem = Memory(user_id=a.user, store=Store(a.db) if a.db else None)

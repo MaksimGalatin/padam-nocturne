@@ -257,3 +257,25 @@ def test_top10v4_7_browser_extension_local_only_manifest_and_popup():
         for script in (popup_js, bg_js):
             proc = subprocess.run([node, "--check", str(script)], capture_output=True, text=True, check=False)
             assert proc.returncode == 0, proc.stderr
+
+
+
+def test_top10v4_8_playground_60s_tour_in_memory(monkeypatch, capsys):
+    from padam import cli, config, playground
+
+    monkeypatch.delenv("PADAM_PLAYGROUND", raising=False)
+    assert config.mcp_playground_enabled() is False
+    monkeypatch.setenv("PADAM_PLAYGROUND", "1")
+    assert config.mcp_playground_enabled() is True
+
+    rep = playground.run_60s_tour()
+    assert rep["status"] == "ok"
+    assert rep["in_memory"] is True
+    assert len(rep["steps"]) == 4
+    assert all(s["ok"] for s in rep["steps"])
+
+    rc = cli.main(["playground"])
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["status"] == "ok"
+    assert out["in_memory"] is True

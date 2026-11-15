@@ -462,3 +462,9 @@ def mcp_otel_enabled() -> bool:
 def mcp_otel_path() -> str:
     """Путь к локальному JSONL-файлу для записи OTLP-спанов (опционально, PADAM_OTEL_PATH)."""
     return os.environ.get("PADAM_OTEL_PATH", "").strip()
+
+
+# --- ТОП-10 v4 Пункт 8: Интерактивный 60-секундный вау-тур (выключено по умолчанию) ---
+def mcp_playground_enabled() -> bool:
+    """Включает API-маршрут /api/v2/playground/demo (PADAM_PLAYGROUND=1)."""
+    return os.environ.get("PADAM_PLAYGROUND", "0").strip() == "1"
