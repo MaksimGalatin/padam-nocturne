@@ -155,6 +155,7 @@ def test_legend1_active_rem_sleep_offline_ollama_and_daemon_idle(tmp_path, monke
             ollama_srv.server_close()
     finally:
         mcp_server._memory = old_mem
+        mcp_server.pop_notifications()
         m.close()
 
     from padam import cli as _cli
@@ -291,9 +292,233 @@ def test_legend2_cognitive_snapshots_and_rollback_time_machine(tmp_path, monkeyp
         assert "clean-evening" in res_snap["text"]
     finally:
         mcp_server._memory = old_mem
+        mcp_server.pop_notifications()
         m.close()
 
     capsys.readouterr()
     assert _cli.main(["--db", str(db_path), "--user", "rb-u", "snapshot", "--list", "--json"]) == 0
     cli_snaps = json.loads(capsys.readouterr().out)
     assert len(cli_snaps) >= 1 and cli_snaps[0]["name"] == "clean-evening"
+
+
+
+def test_legend3_dlp_zero_leak_shield_and_http_proxy(tmp_path, monkeypatch, capsys):
+    """Шаг 3: Превентивный Семантический Фаервол (DLP Zero-Leak Shield, сейф [PADAM_SECRET_ID_N], прокси и sampling)."""
+    import http.server as _http_srv
+    import urllib.request as _ureq
+    from padam import cli as _cli
+    from padam.dlp_shield import DlpShield, make_dlp_proxy_server
+
+    monkeypatch.delenv("PADAM_MCP_DLP_SHIELD", raising=False)
+    monkeypatch.delenv("PADAM_DLP_KEY", raising=False)
+    assert config.mcp_dlp_shield_enabled() is False
+
+    db_path = tmp_path / "dlp.db"
+    m = Memory(user_id="dlp-u", store=Store(db_path))
+    old_mem = mcp_server._memory
+    mcp_server._memory = m
+
+    secret_openai = "sk-proj-TestSecretKey9876543210abcdef"
+    secret_gh = "ghp_1234567890abcdef1234567890abcdef1234"
+    secret_aws = "AKIAIOSFODNN7EXAMPLE"
+
+    try:
+        # 1. По умолчанию DLP выключен и не меняет padam_stats
+        st_off = mcp_server.handle({
+            "jsonrpc": "2.0", "id": "dlp-st-off", "method": "tools/call",
+            "params": {"name": "padam_stats", "arguments": {}},
+        })["result"]["structuredContent"]
+        assert "dlpShield" not in st_off
+
+        # 2. Включаем DLP-щит и проверяем стабильность псевдонимов и детокенизацию
+        monkeypatch.setenv("PADAM_MCP_DLP_SHIELD", "1")
+        shield = DlpShield(m)
+        txt1 = f"Use key {secret_openai} and token {secret_gh} for staging"
+        san1, info1 = shield.sanitize_text(txt1, scope="proj:sec")
+        assert secret_openai not in san1 and secret_gh not in san1
+        assert info1["intercepted"] == 2
+        assert "[PADAM_SECRET_ID_1]" in san1 and "[PADAM_SECRET_ID_2]" in san1
+
+        # Повторное упоминание secret_openai должно дать ТОТ ЖЕ псевдоним [PADAM_SECRET_ID_1]
+        san_again, info_again = shield.sanitize_text(f"Rotate {secret_openai} with {secret_aws}", scope="proj:sec")
+        assert "[PADAM_SECRET_ID_1]" in san_again
+        assert "[PADAM_SECRET_ID_3]" in san_again
+        assert secret_openai not in san_again and secret_aws not in san_again
+        assert info_again["intercepted"] == 2
+
+        # В SQLite нет открытого текста секретов
+        raw_rows = m.store.query("SELECT alias, sealed_hex FROM dlp_vault WHERE user_id = ?", ("dlp-u",))
+        assert len(raw_rows) == 3
+        for r in raw_rows:
+            assert secret_openai not in r["sealed_hex"]
+            assert secret_gh not in r["sealed_hex"]
+
+        # Разворачивание запрещено без явной авторизации владельца и работает локально с ней
+        with pytest.raises(PermissionError):
+            shield.detokenize_local(san1, owner_authorized=False)
+        assert shield.detokenize_local(san1, owner_authorized=True) == txt1
+
+        # 3. MCP padam_write при включённом DLP кладёт [PADAM_SECRET_ID_N] вместо открытого ключа
+        wr = mcp_server.handle({
+            "jsonrpc": "2.0", "id": "dlp-wr", "method": "tools/call",
+            "params": {
+                "name": "padam_write",
+                "arguments": {
+                    "content": f"Deploy script uses OpenAI {secret_openai} for build",
+                    "kind": "fact",
+                    "scope": "proj:sec",
+                    "origin": "user",
+                },
+            },
+        })["result"]
+        assert not wr.get("isError")
+        wr_sc = wr["structuredContent"]
+        assert "[PADAM_SECRET_ID_1]" in wr_sc["dlpAliases"]
+        rec_id = wr_sc["id"]
+        stored_row = m.store.one("SELECT content FROM memory WHERE id = ?", (rec_id,))
+        assert stored_row is not None
+        assert secret_openai not in stored_row["content"]
+        assert "[PADAM_SECRET_ID_1]" in stored_row["content"]
+
+        # 4. padam_stats отражает статистику dlpShield
+        st_on = mcp_server.handle({
+            "jsonrpc": "2.0", "id": "dlp-st-on", "method": "tools/call",
+            "params": {"name": "padam_stats", "arguments": {}},
+        })["result"]["structuredContent"]
+        assert st_on["dlpShield"]["unique_aliases"] == 3
+        assert st_on["dlpShield"]["total_interceptions"] >= 5
+
+        # 5. _build_sampling_fn очищает параметры перед отправкой наружу
+        captured_sampling: list[dict] = []
+        old_sampling_flag = config.MCP_SAMPLING_ENABLED
+        old_cb = mcp_server._sampling_callback
+        old_caps = dict(mcp_server._client_capabilities)
+        try:
+            config.MCP_SAMPLING_ENABLED = True
+            mcp_server._client_capabilities = {"sampling": {}}
+            mcp_server._sampling_callback = lambda req: (
+                captured_sampling.append(req) or {"content": {"type": "text", "text": "Cluster summary"}}
+            )
+            sfn = mcp_server._build_sampling_fn(m)
+            assert sfn is not None
+            out_s = sfn([f"Rotate {secret_openai} urgently", f"Keep {secret_gh} separate"], "fact", "proj:sec")
+            assert out_s == "Cluster summary"
+            assert len(captured_sampling) == 1
+            sent_text = captured_sampling[0]["params"]["messages"][0]["content"]["text"]
+            assert secret_openai not in sent_text and secret_gh not in sent_text
+            assert "[PADAM_SECRET_ID_1]" in sent_text and "[PADAM_SECRET_ID_2]" in sent_text
+        finally:
+            config.MCP_SAMPLING_ENABLED = old_sampling_flag
+            mcp_server._sampling_callback = old_cb
+            mcp_server._client_capabilities = old_caps
+
+        # 6. Сквозной тест локального DLP HTTP-прокси против Mock Cloud LLM
+        upstream_seen: list[dict] = []
+
+        class _MockCloudHandler(_http_srv.BaseHTTPRequestHandler):
+            def do_POST(self):
+                ln = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(ln).decode("utf-8"))
+                upstream_seen.append(body)
+                msg = body["messages"][0]["content"]
+                resp = json.dumps({
+                    "choices": [{"message": {"content": f"Verified config using {msg}"}}]
+                }).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp)))
+                self.end_headers()
+                self.wfile.write(resp)
+
+            def log_message(self, format, *args):
+                pass
+
+        up_srv = _http_srv.ThreadingHTTPServer(("127.0.0.1", 0), _MockCloudHandler)
+        up_port = up_srv.server_address[1]
+        up_th = threading.Thread(target=up_srv.serve_forever, daemon=True)
+        up_th.start()
+
+        dlp_srv, dlp_url, dlp_tok = make_dlp_proxy_server(
+            m, upstream_url=f"http://127.0.0.1:{up_port}/v1/chat/completions"
+        )
+        dlp_th = threading.Thread(target=dlp_srv.serve_forever, daemon=True)
+        dlp_th.start()
+        try:
+            req_body = json.dumps({
+                "model": "gpt-mock",
+                "messages": [{"role": "user", "content": f"Check {secret_openai} and {secret_gh}"}],
+            }).encode("utf-8")
+            # Без локального разворота: возвращаются только псевдонимы
+            req1 = _ureq.Request(
+                f"{dlp_url}/v1/chat/completions",
+                data=req_body,
+                headers={"Authorization": f"Bearer {dlp_tok}", "Content-Type": "application/json"},
+                method="POST",
+            )
+            with _ureq.urlopen(req1, timeout=5) as resp1:
+                body1 = json.loads(resp1.read().decode("utf-8"))
+            assert "[PADAM_SECRET_ID_1]" in body1["upstream"]["choices"][0]["message"]["content"]
+            assert secret_openai not in body1["upstream"]["choices"][0]["message"]["content"]
+            assert body1["dlp"]["detokenized_locally"] is False
+            # Upstream cloud LLM НИКОГДА не видел ни одного секрета!
+            assert len(upstream_seen) == 1
+            up_msg = upstream_seen[0]["messages"][0]["content"]
+            assert secret_openai not in up_msg and secret_gh not in up_msg
+            assert "[PADAM_SECRET_ID_1]" in up_msg and "[PADAM_SECRET_ID_2]" in up_msg
+
+            # С X-Padam-Local-Detokenize: 1 локальный клиент получает ответ с реальными ключами
+            req2 = _ureq.Request(
+                f"{dlp_url}/v1/chat/completions",
+                data=req_body,
+                headers={
+                    "Authorization": f"Bearer {dlp_tok}",
+                    "Content-Type": "application/json",
+                    "X-Padam-Local-Detokenize": "1",
+                },
+                method="POST",
+            )
+            with _ureq.urlopen(req2, timeout=5) as resp2:
+                body2 = json.loads(resp2.read().decode("utf-8"))
+            assert body2["dlp"]["detokenized_locally"] is True
+            assert secret_openai in body2["upstream"]["choices"][0]["message"]["content"]
+            assert secret_gh in body2["upstream"]["choices"][0]["message"]["content"]
+            assert secret_openai not in upstream_seen[1]["messages"][0]["content"]
+        finally:
+            dlp_srv.shutdown()
+            dlp_srv.server_close()
+            up_srv.shutdown()
+            up_srv.server_close()
+
+        # 7. Маршрут POST /dlp/proxy-sanitize на make_mcp_http_server
+        mcp_srv, mcp_url, mcp_tok = mcp_server.make_mcp_http_server(
+            memory=m, host="127.0.0.1", port=0
+        )
+        mcp_base = mcp_url.rsplit("/mcp", 1)[0]
+        mcp_th = threading.Thread(target=mcp_srv.serve_forever, daemon=True)
+        mcp_th.start()
+        try:
+            s_req = _ureq.Request(
+                f"{mcp_base}/dlp/proxy-sanitize",
+                data=json.dumps({"prompt": f"Secret {secret_aws}"}).encode("utf-8"),
+                headers={"Authorization": f"Bearer {mcp_tok}", "Content-Type": "application/json"},
+                method="POST",
+            )
+            with _ureq.urlopen(s_req, timeout=5) as s_resp:
+                s_data = json.loads(s_resp.read().decode("utf-8"))
+            assert secret_aws not in s_data["payload"]["prompt"]
+            assert "[PADAM_SECRET_ID_3]" in s_data["payload"]["prompt"]
+            assert s_data["dlp"]["intercepted"] == 1
+        finally:
+            mcp_srv.shutdown()
+            mcp_srv.server_close()
+    finally:
+        mcp_server._memory = old_mem
+        mcp_server.pop_notifications()
+        m.close()
+
+    # 8. CLI padam dlp-stats --json
+    capsys.readouterr()
+    assert _cli.main(["--db", str(db_path), "--user", "dlp-u", "dlp-stats", "--json"]) == 0
+    cli_dlp = json.loads(capsys.readouterr().out)
+    assert cli_dlp["unique_aliases"] == 3
+    assert cli_dlp["total_interceptions"] >= 7

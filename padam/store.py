@@ -298,6 +298,20 @@ CREATE TABLE IF NOT EXISTS cognitive_snapshot_item (
     content_hash  BLOB,
     PRIMARY KEY (snapshot_id, memory_id)
 );
+
+-- Легенда Шаг 3: Зашифрованное локальное хранилище псевдонимов DLP (AES-256-GCM)
+CREATE TABLE IF NOT EXISTS dlp_vault (
+    user_id     TEXT NOT NULL,
+    alias       TEXT NOT NULL,
+    kind        TEXT NOT NULL,
+    secret_hash TEXT NOT NULL,
+    sealed_hex  TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    hit_count   INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (user_id, alias)
+);
+CREATE INDEX IF NOT EXISTS dlp_vault_hash
+    ON dlp_vault (user_id, secret_hash);
 """
 
 

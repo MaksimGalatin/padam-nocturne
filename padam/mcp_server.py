@@ -401,6 +401,7 @@ _OUTPUT_SCHEMAS = {
             "maskedSecrets": {"type": "integer"},
             "holdReason": {"type": ["string", "null"]},
             "mergedWithId": {"type": ["string", "null"]},
+            "dlpAliases": {"type": "array", "items": {"type": "string"}},
         },
         "required": ["id", "outcome", "maskedSecrets"],
     },
@@ -459,6 +460,7 @@ _OUTPUT_SCHEMAS = {
             "last_sleep": {"type": ["object", "null"]},
             "activeRootScope": {"type": "string"},
             "predictiveCache": {"type": "object"},
+            "dlpShield": {"type": "object"},
         },
         "required": [
             "backend", "db", "active", "superseded", "revoked", "quarantined",
@@ -1500,7 +1502,7 @@ def _client_supports_sampling() -> bool:
     return isinstance(sp, dict) or bool(sp)
 
 
-def _build_sampling_fn():
+def _build_sampling_fn(m: Memory | None = None):
     """Возвращает callback для сжатия кластера эпизодов клиентом через sampling/createMessage (0 облачных вызовов)."""
     if not _sampling_enabled() or not _client_supports_sampling():
         return None
@@ -1538,6 +1540,12 @@ def _build_sampling_fn():
                 "includeContext": "none",
             },
         }
+        if m is not None and config.mcp_dlp_shield_enabled():
+            from .dlp_shield import DlpShield as _DlpShield
+            clean_params, _ = _DlpShield(m).sanitize_payload(
+                req["params"], scope=scope or "global", record_audit=True
+            )
+            req["params"] = clean_params
         try:
             resp = cb(req)
         except Exception:
@@ -1645,7 +1653,7 @@ def _register_bg_task(kind: str, ttl: int, worker_fn, *, initial_msg: str = "que
 def _start_sleep_task(m: Memory, args: dict, ttl: int = 60000) -> dict:
     dry = bool(args.get("dry_run", False))
     batch = int(args.get("batch", 256))
-    sampling_fn = _build_sampling_fn()
+    sampling_fn = _build_sampling_fn(m)
 
     def _worker(cancel_ev: threading.Event, progress_cb):
         report = Nocturne(
@@ -3017,17 +3025,25 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
         return txt, structured_payload
 
     if name == "padam_write":
-        _, masked = safety.redact(safety.strip_invisible(args["content"]))
+        raw_content = safety.strip_invisible(args["content"])
+        _, masked = safety.redact(raw_content)
         origin = args.get("origin", "agent")
         agent_id = args.get("agent_id") or os.environ.get("PADAM_AGENT_ID") or None
         try:
             eff_write_scope = _check_session_scope(args.get("scope"))
         except PermissionError as e:
             return f"Permission denied: {e}", None
+        dlp_info = {"intercepted": 0, "aliases": [], "kinds": []}
+        write_content = args["content"]
+        if config.mcp_dlp_shield_enabled():
+            from .dlp_shield import DlpShield as _DlpShield
+            write_content, dlp_info = _DlpShield(m).sanitize_text(
+                raw_content, scope=eff_write_scope, record_audit=True
+            )
         dedup_mode = args.get("dedup_mode") or ("atomic_merge" if config.mcp_atomic_merge_default() else "default")
         try:
             outcome, mid = m.remember(
-                args["content"], kind=args.get("kind"),
+                write_content, kind=args.get("kind"),
                 importance=float(args.get("importance", 0.5)),
                 scope=eff_write_scope, origin=origin, guarded=True,
                 derived_from=args.get("derived_from"),
@@ -3084,8 +3100,22 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
             ),
         }
         note = notes.get(outcome, outcome)
-        masked_total = sum(masked.values()) if masked else 0
-        if masked_total:
+        masked_total = max(
+            sum(masked.values()) if masked else 0,
+            int(dlp_info.get("intercepted", 0)),
+        )
+        if dlp_info.get("intercepted", 0) > 0:
+            note += (
+                f" (DLP shielded {dlp_info['intercepted']} secret(s) -> "
+                f"{', '.join(dlp_info['aliases'])})"
+            )
+            emit_mcp_log(
+                "warning",
+                "padam.dlp",
+                {"event": "dlp_secrets_shielded", "id": mid, "aliases": dlp_info["aliases"]},
+                owner_only=True,
+            )
+        elif masked_total:
             note += f" (masked {masked_total} secret-looking value(s) before storing)"
             emit_mcp_log("warning", "padam.safety", {"event": "secrets_masked", "id": mid, "maskedSecrets": int(masked_total)}, owner_only=True)
         elif outcome == "quarantined":
@@ -3133,6 +3163,8 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
             "maskedSecrets": int(masked_total),
             "holdReason": reason_str or None,
         }
+        if dlp_info.get("aliases"):
+            w_payload["dlpAliases"] = dlp_info["aliases"]
         if dedup_mode == "atomic_merge":
             w_payload["mergedWithId"] = merged_with_id
         return f"{note}  id={mid}" + _sleep_hint(m), w_payload
@@ -3226,13 +3258,17 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
                     "neighborCount": warm["neighborCount"],
                     "edgeCount": warm["edgeCount"],
                 }
+        if config.mcp_dlp_shield_enabled():
+            from .dlp_shield import DlpShield as _DlpShield
+            st = dict(st)
+            st["dlpShield"] = _DlpShield(m).stats()
         return json.dumps(st, ensure_ascii=False, indent=2), st
 
     if name == "padam_sleep":
         if actor is not None and not actor.is_owner:
             return "Permission denied: sleep consolidation requires the owner role.", None
         dry = bool(args.get("dry_run", False))
-        sampling_fn = _build_sampling_fn()
+        sampling_fn = _build_sampling_fn(m)
         c_ev = _cancel_event_ctx.get()
         p_cb = _emit_progress if _progress_token_ctx.get() is not None else None
         report = Nocturne(
@@ -4489,6 +4525,29 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                 if 0 < ln <= MAX_MCP_BODY:
                     self.rfile.read(ln)
                 return self._send_unauth()
+            if path == "/dlp/proxy-sanitize" and config.mcp_dlp_shield_enabled():
+                if "padam:read" not in scopes:
+                    if 0 < ln <= MAX_MCP_BODY:
+                        self.rfile.read(ln)
+                    return self._send_forbidden_scope("padam:read")
+                ctype_dlp = (self.headers.get("Content-Type") or "").split(";", 1)[0].strip().lower()
+                if ctype_dlp != "application/json":
+                    if 0 < ln <= MAX_MCP_BODY:
+                        self.rfile.read(ln)
+                    return self._send_json(415, {"error": "Content-Type must be application/json"})
+                if ln <= 0 or ln > MAX_MCP_BODY:
+                    return self._send_json(400, {"error": "invalid or oversized body"})
+                raw_dlp = self.rfile.read(ln)
+                try:
+                    dlp_req = json.loads(raw_dlp)
+                except json.JSONDecodeError:
+                    return self._send_json(400, {"error": "invalid json"})
+                from .dlp_shield import DlpShield as _DlpShield
+                pin_scope = (self.headers.get("X-Padam-Session-Scope") or "").strip() or "global"
+                cleaned_dlp, info_dlp = _DlpShield(mem()).sanitize_payload(
+                    dlp_req, scope=pin_scope, record_audit=True
+                )
+                return self._send_json(200, {"payload": cleaned_dlp, "dlp": info_dlp})
             if not self._valid_proto_header():
                 if 0 < ln <= MAX_MCP_BODY:
                     self.rfile.read(ln)

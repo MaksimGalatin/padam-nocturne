@@ -377,6 +377,21 @@ def cmd_profile(m: Memory, a) -> int:
     return 0
 
 
+def cmd_dlp_stats(m: Memory, a) -> int:
+    """Шаг 3 Легенды: статистика локального DLP-сейфа секретов."""
+    from .dlp_shield import DlpShield
+    st = DlpShield(m).stats()
+    st["enabled"] = bool(config.mcp_dlp_shield_enabled())
+    if a.json:
+        print(json.dumps(st, ensure_ascii=False, indent=2))
+    else:
+        print(
+            f"DLP Shield enabled={st['enabled']} unique_aliases={st['unique_aliases']} "
+            f"total_interceptions={st['total_interceptions']}"
+        )
+    return 0
+
+
 def cmd_snapshot(m: Memory, a) -> int:
     """Шаг 2 Легенды: создать или вывести список когнитивных снапшотов."""
     if a.list_only:
@@ -1161,6 +1176,11 @@ def main(argv=None) -> int:
     s.add_argument("--soft", action="store_true")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_rollback)
+
+    s = sub.add_parser("dlp-stats", help=t("статистика локального DLP-сейфа секретов",
+                                           "local DLP Zero-Leak vault statistics"))
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_dlp_stats)
 
     a = p.parse_args(argv)
     if a.fn is cmd_demo:
