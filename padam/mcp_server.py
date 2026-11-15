@@ -1871,7 +1871,7 @@ def _current_actor(m: Memory):
     return m.authenticate_token(tok) or roles.ActorContext(role="guest", subject="guest", workspace_id=None, via_token=False)
 
 
-def complete_argument(ref: dict, argument: dict) -> dict:
+def complete_argument(ref: dict, argument: dict, context: dict | None = None) -> dict:
     """MCP completion/complete: автодополнение аргументов подсказок и шаблонов ресурсов с изоляцией ролей."""
     from datetime import datetime, timedelta, timezone
     from . import connectors, roles
@@ -1884,52 +1884,94 @@ def complete_argument(ref: dict, argument: dict) -> dict:
     if ref_type not in ("ref/prompt", "ref/resource") or not arg_name:
         raise ValueError("invalid completion reference or argument name")
 
+    ctx_args = context.get("arguments") if isinstance(context, dict) and isinstance(context.get("arguments"), dict) else {}
+    ctx_scope = str(ctx_args.get("scope") or "").strip()
+
     m = mem()
     actor = _current_actor(m)
     vis_sql, vis_params, _ = roles.visibility_sql(actor)
     candidates: list[str] = []
 
+    def _db_scopes() -> list[str]:
+        rows = m.store.query(
+            f"SELECT DISTINCT scope FROM memory WHERE user_id = ? AND status = 'active'{vis_sql} ORDER BY scope LIMIT 120",
+            (m.user_id, *vis_params),
+        )
+        return [r["scope"] for r in rows if r["scope"]]
+
+    def _db_kinds() -> list[str]:
+        rows = m.store.query(
+            f"SELECT DISTINCT kind FROM memory WHERE user_id = ? AND status = 'active'{vis_sql} ORDER BY kind LIMIT 50",
+            (m.user_id, *vis_params),
+        )
+        return list(dict.fromkeys([*config.KINDS, *(r["kind"] for r in rows if r["kind"])]))
+
+    def _db_ids(*, include_superseded: bool = False) -> list[str]:
+        st_sql = "status IN ('active', 'superseded')" if include_superseded else "status = 'active'"
+        sc_sql = " AND scope = ?" if ctx_scope and ctx_scope != "all" else ""
+        sc_params = (ctx_scope,) if sc_sql else ()
+        rows = m.store.query(
+            f"SELECT id FROM memory WHERE user_id = ? AND {st_sql}{sc_sql}{vis_sql} ORDER BY created_at DESC LIMIT 50",
+            (m.user_id, *sc_params, *vis_params),
+        )
+        return [r["id"] for r in rows]
+
+    def _db_agents() -> list[str]:
+        rows = m.store.query(
+            f"SELECT DISTINCT agent_id FROM memory WHERE user_id = ? AND status = 'active' AND agent_id IS NOT NULL AND agent_id != ''{vis_sql} ORDER BY agent_id LIMIT 50",
+            (m.user_id, *vis_params),
+        )
+        return [r["agent_id"] for r in rows]
+
     if ref_type == "ref/prompt":
         pname = str(ref.get("name") or "")
-        if pname not in _PROMPTS_BY_NAME:
+        if pname and pname not in _PROMPTS_BY_NAME:
             raise KeyError(f"unknown prompt: {pname}")
-        if arg_name == "scope":
-            rows = m.store.query(
-                f"SELECT DISTINCT scope FROM memory WHERE user_id = ? AND status = 'active'{vis_sql} ORDER BY scope LIMIT 120",
-                (m.user_id, *vis_params),
-            )
-            candidates = ["global"] + [r["scope"] for r in rows if r["scope"] != "global"]
+        if not pname and arg_name != "name":
+            raise KeyError(f"unknown prompt: {pname}")
+        if arg_name == "name":
+            candidates = [p["name"] for p in PROMPTS]
+        elif arg_name == "scope":
+            candidates = ["global"] + [s for s in _db_scopes() if s != "global"]
+        elif arg_name == "kind":
+            candidates = _db_kinds()
         elif arg_name == "days":
             candidates = ["7", "14", "30", "90"]
         elif arg_name == "derived_from":
-            rows = m.store.query(
-                f"SELECT id FROM memory WHERE user_id = ? AND status = 'active'{vis_sql} ORDER BY created_at DESC LIMIT 30",
-                (m.user_id, *vis_params),
-            )
-            candidates = [r["id"] for r in rows]
+            candidates = _db_ids(include_superseded=False)
+        elif arg_name == "agent_id":
+            candidates = _db_agents()
+        elif arg_name == "origin":
+            candidates = ["user", "agent", "external", "tool"]
     else:
         uri = str(ref.get("uri") or "")
-        if arg_name == "id" or uri in ("padam://record/{id}", "padam://timeline/{id}", "padam://graph/{id}"):
-            rows = m.store.query(
-                f"""SELECT id FROM memory WHERE user_id = ? AND status IN ('active', 'superseded'){vis_sql}
-                   ORDER BY created_at DESC LIMIT 50""",
-                (m.user_id, *vis_params),
-            )
-            candidates = [r["id"] for r in rows]
-        elif arg_name == "scope" or uri in ("padam://scope/{scope}", "padam://conflicts/{scope}"):
-            rows = m.store.query(
-                f"SELECT DISTINCT scope FROM memory WHERE user_id = ? AND status = 'active'{vis_sql} ORDER BY scope LIMIT 120",
-                (m.user_id, *vis_params),
-            )
-            candidates = ["all", "global"] + [r["scope"] for r in rows if r["scope"] not in ("all", "global")]
-        elif arg_name == "provider" or uri == "padam://connectors/{provider}":
+        if arg_name == "uri":
+            candidates = [r["uri"] for r in RESOURCES] + [t["uriTemplate"] for t in RESOURCE_TEMPLATES]
+        elif arg_name == "name":
+            candidates = [p["name"] for p in PROMPTS] + [r["name"] for r in RESOURCES]
+        elif arg_name == "kind":
+            candidates = _db_kinds()
+        elif arg_name == "origin":
+            candidates = ["user", "agent", "external", "tool"]
+        elif arg_name == "agent_id":
+            candidates = _db_agents()
+        elif arg_name == "id" or (arg_name not in ("scope", "provider", "date") and uri in ("padam://record/{id}", "padam://timeline/{id}", "padam://graph/{id}")):
+            candidates = _db_ids(include_superseded=True)
+        elif arg_name == "scope" or (arg_name not in ("id", "provider", "date") and uri in ("padam://scope/{scope}", "padam://conflicts/{scope}")):
+            candidates = ["all", "global"] + [s for s in _db_scopes() if s not in ("all", "global")]
+        elif arg_name == "provider" or (arg_name not in ("id", "scope", "date") and uri == "padam://connectors/{provider}"):
             candidates = ["all", *connectors.PROVIDERS]
-        elif arg_name == "date" or uri in ("padam://asof/{date}", "padam://asof-graph/{date}"):
+        elif arg_name == "date" or (arg_name not in ("id", "scope", "provider") and uri in ("padam://asof/{date}", "padam://asof-graph/{date}")):
             now = datetime.now(timezone.utc)
+            date_rows = m.store.query(
+                f"SELECT DISTINCT substr(created_at, 1, 10) AS d FROM memory WHERE user_id = ? AND status IN ('active', 'superseded'){vis_sql} ORDER BY d DESC LIMIT 20",
+                (m.user_id, *vis_params),
+            )
             candidates = [
                 now.strftime("%Y-%m-%d"),
                 (now - timedelta(days=7)).strftime("%Y-%m-%d"),
                 (now - timedelta(days=30)).strftime("%Y-%m-%d"),
+                *[r["d"] for r in date_rows if r["d"]],
             ]
 
     low_prefix = prefix.lower()
@@ -2532,7 +2574,7 @@ def _handle_legacy(req: dict) -> dict | None:
         if not isinstance(params, dict):
             return err(-32602, "params must be an object")
         try:
-            return ok(complete_argument(params.get("ref"), params.get("argument")))
+            return ok(complete_argument(params.get("ref"), params.get("argument"), context=params.get("context")))
         except KeyError as e:
             return err(-32602, str(e))
         except ValueError as e:

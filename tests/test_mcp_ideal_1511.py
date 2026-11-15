@@ -261,3 +261,71 @@ def test_mcp_ideal_2_5_unified_errors_four_languages(tmp_path, monkeypatch):
     finally:
         mcp_server._memory = old_mem
         mem.close()
+def test_mcp_ideal_2_4_completions_for_all_arguments(tmp_path):
+    """Пункт 2.4: completion/complete для scope, kind, name, uri, id, days, provider, date и учёт ролевой видимости."""
+    mem = Memory(user_id="ideal-2-4", store=Store(tmp_path / "m24.db"))
+    ws = mem.create_workspace("alpha-team")
+    mem.remember("Owner billing scope note", kind="fact", scope="billing-secret", origin="user", visibility="private")
+    mid_shared = mem.remember("Shared architecture rule", kind="decision", scope="team-alpha", origin="user", visibility="team_read", workspace_id=ws["id"])[1]
+    contrib_tok = mem.add_member(ws["id"], "alice24", "contributor")["token"]
+    old_mem = mcp_server._memory
+    mcp_server._memory = mem
+    try:
+        # 1. scope для подсказки (владелец видит billing-secret и team-alpha)
+        c_scope = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 1, "method": "completion/complete",
+            "params": {"ref": {"type": "ref/prompt", "name": "recall_before_task"}, "argument": {"name": "scope", "value": "team"}},
+        })["result"]["completion"]["values"]
+        assert "team-alpha" in c_scope
+
+        # contributor НЕ видит приватную область billing-secret, но видит team-alpha
+        tok_ctx = mcp_server._actor_token_ctx.set(contrib_tok)
+        try:
+            c_priv = mcp_server.handle({
+                "jsonrpc": "2.0", "id": 2, "method": "completion/complete",
+                "params": {"ref": {"type": "ref/resource", "uri": "padam://scope/{scope}"}, "argument": {"name": "scope", "value": ""}},
+            })["result"]["completion"]["values"]
+            assert "team-alpha" in c_priv
+            assert "billing-secret" not in c_priv
+        finally:
+            mcp_server._actor_token_ctx.reset(tok_ctx)
+
+        # 2. kind (допустимые типы с фильтрацией по префиксу)
+        c_kind = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 3, "method": "completion/complete",
+            "params": {"ref": {"type": "ref/prompt", "name": "record_decision"}, "argument": {"name": "kind", "value": "de"}},
+        })["result"]["completion"]["values"]
+        assert "decision" in c_kind
+
+        # 3. name и uri
+        c_name = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 4, "method": "completion/complete",
+            "params": {"ref": {"type": "ref/prompt", "name": ""}, "argument": {"name": "name", "value": "weekly"}},
+        })["result"]["completion"]["values"]
+        assert c_name == ["weekly_memory_review"]
+
+        c_uri = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 5, "method": "completion/complete",
+            "params": {"ref": {"type": "ref/resource", "uri": ""}, "argument": {"name": "uri", "value": "padam://asof"}},
+        })["result"]["completion"]["values"]
+        assert "padam://asof/{date}" in c_uri and "padam://asof-graph/{date}" in c_uri
+
+        # 4. derived_from с контекстом scope, days, provider, date
+        c_df = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 6, "method": "completion/complete",
+            "params": {
+                "ref": {"type": "ref/prompt", "name": "record_decision"},
+                "argument": {"name": "derived_from", "value": ""},
+                "context": {"arguments": {"scope": "team-alpha"}},
+            },
+        })["result"]["completion"]["values"]
+        assert c_df == [mid_shared]
+
+        c_prov = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 7, "method": "completion/complete",
+            "params": {"ref": {"type": "ref/resource", "uri": "padam://connectors/{provider}"}, "argument": {"name": "provider", "value": "g"}},
+        })["result"]["completion"]["values"]
+        assert "github" in c_prov and "gdrive" in c_prov
+    finally:
+        mcp_server._memory = old_mem
+        mem.close()
