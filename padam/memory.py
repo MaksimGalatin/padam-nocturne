@@ -412,10 +412,12 @@ class Memory:
                         origin=origin, status="quarantined", reason=причина_защиты,
                         agent_id=agent_id, valid_from=valid_from, valid_to=valid_to,
                         visibility=visibility, workspace_id=workspace_id)
-                return "created", self._insert(content, kind, vec, importance,
-                                               scope, source_episode_id, origin=origin, agent_id=agent_id,
-                                               valid_from=valid_from, valid_to=valid_to,
-                                               visibility=visibility, workspace_id=workspace_id)
+                new_cid = self._insert(content, kind, vec, importance,
+                                       scope, source_episode_id, origin=origin, agent_id=agent_id,
+                                       valid_from=valid_from, valid_to=valid_to,
+                                       visibility=visibility, workspace_id=workspace_id)
+                self._autolink_on_write(new_cid, content, vec, scope, actor=actor)
+                return "created", new_cid
 
             old_id, old_content, _ = near
         verdict = classify.resolve(content, old_content)
@@ -446,10 +448,12 @@ class Memory:
                     origin=origin, status="quarantined", reason=причина_защиты, agent_id=agent_id,
                     valid_from=valid_from, valid_to=valid_to,
                     visibility=visibility, workspace_id=workspace_id)
-            return "coexists", self._insert(content, kind, vec, importance,
-                                            scope, source_episode_id, origin=origin, agent_id=agent_id,
-                                            valid_from=valid_from, valid_to=valid_to,
-                                            visibility=visibility, workspace_id=workspace_id)
+            new_xid = self._insert(content, kind, vec, importance,
+                                   scope, source_episode_id, origin=origin, agent_id=agent_id,
+                                   valid_from=valid_from, valid_to=valid_to,
+                                   visibility=visibility, workspace_id=workspace_id)
+            self._autolink_on_write(new_xid, content, vec, scope, actor=actor)
+            return "coexists", new_xid
 
         old_vis_row = self.store.one("SELECT visibility FROM memory WHERE id = ?", (old_id,))
         if actor is not None and not actor.is_owner and actor.role == "contributor":
@@ -488,9 +492,54 @@ class Memory:
                 VALUES (?,?,?,?)""", (old_id, new_mid, rel_type, now_iso())),
         ])
         self._векторы_после(отметка_до, убрать=old_id, scope=scope, kind=kind)   # 0.4.11
+        self._autolink_on_write(new_mid, content, vec, scope, actor=actor)
         return ("merged" if verdict == "refinement" else "superseded"), new_mid
 
     # -- связи выводов и подпись владельца ------------------------------
+
+    def _autolink_on_write(
+        self,
+        new_id: str,
+        content: str,
+        vec: Any,
+        scope: str,
+        *,
+        actor: roles.ActorContext | None = None,
+        top_k: int = 3,
+    ) -> list[str]:
+        """Пункт 10 (A-MEM): быстрое автосвязывание при записи без LLM-вызова, внутри одного scope и без карантина."""
+        if not config.mcp_write_autolink_enabled() or not new_id:
+            return []
+        import re as _re
+        toks_new = {w for w in _re.findall(r"[a-zA-Zа-яА-ЯёЁ0-9_]{3,}", (content or "").lower())}
+        vis_sql, vis_params, _ = roles.visibility_sql(actor)
+        rows = self.store.query(
+            f"""SELECT id, content, embedding FROM memory
+                WHERE user_id = ? AND scope = ? AND id != ?
+                  AND status = 'active' AND (quarantine_reason IS NULL OR quarantine_reason = '')
+                  {vis_sql}
+                ORDER BY created_at DESC LIMIT 80""",
+            (self.user_id, scope, new_id, *vis_params),
+        )
+        scored: list[tuple[float, str]] = []
+        for r in rows:
+            cand_toks = {w for w in _re.findall(r"[a-zA-Zа-яА-ЯёЁ0-9_]{3,}", (r["content"] or "").lower())}
+            jac = (len(toks_new & cand_toks) / len(toks_new | cand_toks)) if (toks_new and cand_toks) else 0.0
+            cos = 0.0
+            if vec is not None and r["embedding"] is not None:
+                try:
+                    cos = max(0.0, float(embeddings.cosine(vec, unpack(r["embedding"]))))
+                except Exception:
+                    cos = 0.0
+            sim = 0.65 * cos + 0.35 * jac
+            if sim >= 0.25 or len(toks_new & cand_toks) >= 2:
+                scored.append((sim, r["id"]))
+        scored.sort(key=lambda x: (-x[0], x[1]))
+        linked: list[str] = []
+        for _, dst_id in scored[:top_k]:
+            if self._связать_пару(new_id, dst_id, relation="derived", actor=actor):
+                linked.append(dst_id)
+        return linked
 
     def _связать_пару(self, src: str, dst: str, relation: str = "derived",
                       actor: roles.ActorContext | None = None) -> bool:

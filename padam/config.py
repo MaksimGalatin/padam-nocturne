@@ -421,3 +421,9 @@ def mcp_communities_enabled() -> bool:
 def mcp_memcube_enabled() -> bool:
     """Включает экспорт/импорт подписанных шифрованных контейнеров памяти MemCube (PADAM_MEMCUBE=1)."""
     return os.environ.get("PADAM_MEMCUBE", "0").strip() == "1"
+
+
+# --- ТОП-10 v2 Пункт 10: Автосвязывание прямо при записи (как A-MEM, выключено по умолчанию) ---
+def mcp_write_autolink_enabled() -> bool:
+    """Включает автоматическое создание связей при записи (без LLM-вызова, PADAM_WRITE_AUTOLINK=1)."""
+    return os.environ.get("PADAM_WRITE_AUTOLINK", "0").strip() == "1"
