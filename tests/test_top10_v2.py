@@ -410,3 +410,44 @@ def test_top10v2_7_claude_memory_tool_fs_and_forget(tmp_path: Path, monkeypatch)
     finally:
         mcp_server._memory = old_mem
         m.close()
+
+
+def test_top10v2_8_graph_communities_label_propagation(tmp_path: Path, monkeypatch) -> None:
+    """Пункт 8: Сообщества графа (Label Propagation) и ресурс padam://communities/{scope} без утечки карантина/scope."""
+    import pytest
+
+    monkeypatch.delenv("PADAM_COMMUNITIES", raising=False)
+    assert config.mcp_communities_enabled() is False
+    assert len(mcp_server.TOOLS) == 9
+
+    db_path = tmp_path / "comm.db"
+    m = Memory(user_id="comm-u", store=Store(db_path))
+    _, id1 = m.remember("Квантовый протокол X-Wing защищает обмен ключами", kind="fact", scope="proj:comm", agent_id="owner")
+    _, id2 = m.remember("X-Wing сочетает ML-KEM-768 и X25519", kind="fact", scope="proj:comm", derived_from=[id1], agent_id="owner")
+    _, id3 = m.remember("Обмен ключами X-Wing работает офлайн", kind="fact", scope="proj:comm", derived_from=[id1, id2], agent_id="owner")
+    _, id_other = m.remember("Запись из чужого scope", kind="fact", scope="proj:other", agent_id="owner")
+    _, id_q = m.remember("Карантинная запись", kind="fact", scope="proj:comm", derived_from=[id1], agent_id="external")
+    m.store.execute("UPDATE memory SET status='quarantined', quarantine_reason='test' WHERE id=?", (id_q,))
+
+    old_mem = mcp_server._memory
+    mcp_server._memory = m
+    try:
+        with pytest.raises(KeyError):
+            mcp_server.read_resource("padam://communities/proj:comm")
+
+        monkeypatch.setenv("PADAM_COMMUNITIES", "1")
+        assert config.mcp_communities_enabled() is True
+        assert any(r["uri"] == "padam://communities" for r in mcp_server._list_resources_annotated())
+
+        res = mcp_server.read_resource("padam://communities/proj:comm")
+        data = json.loads(res["text"])
+        assert data["count"] == 1
+        c = data["communities"][0]
+        assert c["size"] == 3
+        assert set(c["member_ids"]) == {id1, id2, id3}
+        assert id_q not in c["member_ids"]
+        assert id_other not in c["member_ids"]
+        assert safety.DATA_NOTICE in c["summary"] or "<memory" in c["summary"]
+    finally:
+        mcp_server._memory = old_mem
+        m.close()

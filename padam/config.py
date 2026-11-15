@@ -409,3 +409,9 @@ def mcp_reflect_enabled() -> bool:
 def mcp_claude_memory_fs_enabled() -> bool:
     """Включает виртуальную ФС /memories (view/create/str_replace/insert/delete/rename) и ресурс padam://memories (PADAM_CLAUDE_MEMORY_FS=1)."""
     return os.environ.get("PADAM_CLAUDE_MEMORY_FS", "0").strip() == "1"
+
+
+# --- ТОП-10 v2 Пункт 8: Сообщества графа со сводками (Label Propagation, выключено по умолчанию) ---
+def mcp_communities_enabled() -> bool:
+    """Включает кластеризацию графа label propagation и ресурс padam://communities/{scope} (PADAM_COMMUNITIES=1)."""
+    return os.environ.get("PADAM_COMMUNITIES", "0").strip() == "1"

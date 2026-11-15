@@ -2069,6 +2069,15 @@ def _list_resources_annotated() -> list[dict]:
             "mimeType": "application/json",
             "annotations": _make_annotations(["user", "assistant"], 0.7, by_uri.get("padam://stats")),
         })
+    if config.mcp_communities_enabled():
+        out.append({
+            "uri": "padam://communities",
+            "name": "graph_communities",
+            "title": "Graph Communities & Summaries",
+            "description": "Label-propagation graph clusters and fenced local summaries per scope.",
+            "mimeType": "application/json",
+            "annotations": _make_annotations(["assistant", "user"], 0.8, by_uri.get("padam://stats")),
+        })
     if config.mcp_claude_memory_fs_enabled():
         out.append({
             "uri": "padam://memories",
@@ -2176,6 +2185,20 @@ def read_resource(uri: str) -> dict:
 
     m = mem()
     actor = _current_actor(m)
+
+    if uri == "padam://communities" or uri.startswith("padam://communities/"):
+        if not config.mcp_communities_enabled():
+            raise KeyError(f"Resource not found: {uri}")
+        from . import communities
+        req_scope = uri[len("padam://communities/"):].strip() if uri.startswith("padam://communities/") else None
+        eff_sc = _check_session_scope(req_scope or None)
+        payload = communities.get_communities(m, scope=eff_sc, refresh=True)
+        return {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps(payload, ensure_ascii=False, indent=2),
+            "annotations": _make_annotations(["assistant", "user"], 0.8, None),
+        }
 
     if uri == "padam://memories" or uri.startswith("padam://memories/"):
         if not config.mcp_claude_memory_fs_enabled():
