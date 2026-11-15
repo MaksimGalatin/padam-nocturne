@@ -616,6 +616,250 @@ _notify_cond = threading.Condition(_state_lock)
 _client_capabilities: dict = {}
 _caps_ctx: contextvars.ContextVar[dict | None] = contextvars.ContextVar("padam_mcp_caps", default=None)
 _actor_token_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar("padam_mcp_actor_token", default=None)
+_error_lang_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar("padam_mcp_error_lang", default=None)
+
+SUPPORTED_ERROR_LANGS: tuple[str, ...] = ("en", "ru", "es", "zh")
+
+ERROR_CODES: dict[str, int] = {
+    "PARSE_ERROR": -32700,
+    "INVALID_REQUEST": -32600,
+    "METHOD_NOT_FOUND": -32601,
+    "INVALID_PARAMS": -32602,
+    "INTERNAL_ERROR": -32603,
+    "SERVER_ERROR": -32000,
+    "RATE_LIMITED": -32001,
+    "RESOURCE_NOT_FOUND": -32002,
+    "FORBIDDEN": -32003,
+    "UNSUPPORTED_VERSION": -32022,
+    "REQUEST_CANCELLED": -32800,
+}
+
+_CODE_TO_NAME: dict[int, str] = {v: k for k, v in ERROR_CODES.items()}
+
+_ERROR_MESSAGES: dict[str, dict[str, str]] = {
+    "parse_error": {
+        "en": "parse error",
+        "ru": "Ошибка разбора JSON-запроса",
+        "es": "Error de análisis JSON",
+        "zh": "JSON 解析错误",
+    },
+    "invalid_request": {
+        "en": "invalid request",
+        "ru": "Некорректный JSON-RPC запрос",
+        "es": "Solicitud JSON-RPC no válida",
+        "zh": "无效的 JSON-RPC 请求",
+    },
+    "method_not_found": {
+        "en": "method not found",
+        "ru": "Метод MCP не найден",
+        "es": "Método MCP no encontrado",
+        "zh": "未找到 MCP 方法",
+    },
+    "unknown_tool": {
+        "en": "unknown tool",
+        "ru": "Неизвестный инструмент PADAM",
+        "es": "Herramienta PADAM desconocida",
+        "zh": "未知的 PADAM 工具",
+    },
+    "missing_arguments": {
+        "en": "missing required argument(s)",
+        "ru": "Не переданы обязательные аргументы",
+        "es": "Faltan argumentos obligatorios",
+        "zh": "缺少必需参数",
+    },
+    "invalid_argument": {
+        "en": "invalid argument",
+        "ru": "Некорректное значение аргумента",
+        "es": "Valor de argumento no válido",
+        "zh": "参数值无效",
+    },
+    "invalid_params": {
+        "en": "invalid parameters",
+        "ru": "Неверные параметры запроса",
+        "es": "Parámetros de solicitud no válidos",
+        "zh": "无效的请求参数",
+    },
+    "resource_not_found": {
+        "en": "resource not found",
+        "ru": "Запрошенный ресурс не найден",
+        "es": "Recurso solicitado no encontrado",
+        "zh": "未找到请求的资源",
+    },
+    "permission_denied": {
+        "en": "permission denied",
+        "ru": "Доступ запрещён для текущей роли",
+        "es": "Permiso denegado para el rol actual",
+        "zh": "当前角色无权执行此操作",
+    },
+    "insufficient_scope": {
+        "en": "insufficient scope",
+        "ru": "Недостаточно прав токена (scope)",
+        "es": "Alcance (scope) del token insuficiente",
+        "zh": "令牌权限范围不足",
+    },
+    "rate_limited": {
+        "en": "rate limit exceeded",
+        "ru": "Превышен лимит частоты запросов",
+        "es": "Límite de frecuencia de solicitudes excedido",
+        "zh": "请求频率超出限制",
+    },
+    "request_cancelled": {
+        "en": "request cancelled",
+        "ru": "Запрос отменён клиентом",
+        "es": "Solicitud cancelada por el cliente",
+        "zh": "请求已被客户端取消",
+    },
+    "unsupported_version": {
+        "en": "Unsupported protocol version",
+        "ru": "Неподдерживаемая версия протокола MCP",
+        "es": "Versión del protocolo MCP no compatible",
+        "zh": "不支持的 MCP 协议版本",
+    },
+    "tasks_disabled": {
+        "en": "MCP tasks are disabled by default (set PADAM_MCP_TASKS=1)",
+        "ru": "Фоновые задачи MCP выключены по умолчанию (установите PADAM_MCP_TASKS=1)",
+        "es": "Las tareas MCP están desactivadas por defecto (establezca PADAM_MCP_TASKS=1)",
+        "zh": "MCP 任务默认禁用（请设置 PADAM_MCP_TASKS=1）",
+    },
+    "unknown_prompt": {
+        "en": "unknown prompt",
+        "ru": "Неизвестный шаблон подсказки",
+        "es": "Plantilla de prompt desconocida",
+        "zh": "未知的提示模板",
+    },
+    "internal_error": {
+        "en": "internal error",
+        "ru": "Внутренняя ошибка сервера PADAM",
+        "es": "Error interno del servidor PADAM",
+        "zh": "PADAM 服务器内部错误",
+    },
+}
+
+
+def _normalize_lang(val: str | None) -> str | None:
+    if not isinstance(val, str):
+        return None
+    low = val.strip().lower().replace("_", "-")
+    if not low:
+        return None
+    short = low.split("-", 1)[0]
+    return short if short in SUPPORTED_ERROR_LANGS else None
+
+
+def resolve_error_lang(req: dict | None = None, explicit: str | None = None) -> tuple[str, bool]:
+    """Определить язык ошибки и был ли он задан явно (PADAM_LANG / _meta.lang / контекст)."""
+    for cand in (explicit, _error_lang_ctx.get()):
+        norm = _normalize_lang(cand)
+        if norm:
+            return norm, True
+    if isinstance(req, dict):
+        meta = req.get("_meta")
+        if isinstance(meta, dict):
+            norm = _normalize_lang(meta.get("lang"))
+            if norm:
+                return norm, True
+        params = req.get("params")
+        if isinstance(params, dict) and isinstance(params.get("_meta"), dict):
+            norm = _normalize_lang(params["_meta"].get("lang"))
+            if norm:
+                return norm, True
+    env_lang = _normalize_lang(os.environ.get("PADAM_LANG"))
+    if env_lang:
+        return env_lang, True
+    return "en", False
+
+
+def _infer_error_key(code: int, message: str) -> tuple[str, str]:
+    low = (message or "").lower()
+    if code == -32700:
+        return "parse_error", ""
+    if code == -32600:
+        return "invalid_request", ""
+    if code == -32022:
+        return "unsupported_version", ""
+    if code == -32800:
+        return "request_cancelled", ""
+    if code == -32001 or "rate limit" in low:
+        return "rate_limited", message
+    if code == -32002 or "resource not found" in low:
+        return "resource_not_found", message.split(":", 1)[1].strip() if ":" in message else ""
+    if code == -32003:
+        if "insufficient scope" in low:
+            return "insufficient_scope", message.split(":", 1)[1].strip() if ":" in message else ""
+        return "permission_denied", message
+    if code == -32601:
+        if "mcp tasks are disabled" in low:
+            return "tasks_disabled", ""
+        if low.startswith("method not found:"):
+            return "method_not_found", message.split(":", 1)[1].strip()
+        return "method_not_found", message
+    if code == -32603:
+        return "internal_error", "" if low == "internal error" else message
+    if code == -32602:
+        if low.startswith("unknown prompt:"):
+            return "unknown_prompt", message.split(":", 1)[1].strip()
+        if low.startswith("unknown tool:"):
+            return "unknown_tool", message.split(":", 1)[1].strip()
+        return "invalid_params", message
+    return "internal_error", message
+
+
+def format_error_message(key: str, lang: str = "en", detail: str = "") -> str:
+    table = _ERROR_MESSAGES.get(key) or _ERROR_MESSAGES["internal_error"]
+    base = table.get(lang) or table["en"]
+    det = (detail or "").strip()
+    if not det or det.lower() == base.lower():
+        return base
+    return f"{base}: {det}"
+
+
+def build_jsonrpc_error(
+    req_id,
+    code: int,
+    message: str,
+    *,
+    key: str | None = None,
+    detail: str = "",
+    data: dict | None = None,
+    req: dict | None = None,
+    lang: str | None = None,
+) -> dict:
+    resolved_lang, explicit = resolve_error_lang(req=req, explicit=lang)
+    inferred_key, inferred_det = _infer_error_key(code, message)
+    ekey = key or inferred_key
+    edet = detail if detail else inferred_det
+    if explicit:
+        # Для en сохраняем точный канонический текст при совпадении с detail, иначе формат key: detail
+        localized = format_error_message(ekey, resolved_lang, edet)
+        if resolved_lang == "en" and message:
+            localized = message
+    else:
+        localized = message
+    err_obj: dict = {"code": int(code), "message": localized}
+    out_data = dict(data) if isinstance(data, dict) else {}
+    if explicit or out_data:
+        if explicit:
+            out_data.setdefault("codeName", _CODE_TO_NAME.get(int(code), "SERVER_ERROR"))
+            out_data.setdefault("errorKey", ekey)
+            out_data.setdefault("lang", resolved_lang)
+            out_data.setdefault(
+                "messages",
+                {lg: format_error_message(ekey, lg, edet) for lg in SUPPORTED_ERROR_LANGS},
+            )
+        if out_data:
+            err_obj["data"] = out_data
+    return {"jsonrpc": "2.0", "id": req_id, "error": err_obj}
+
+
+def _format_tool_error_text(key: str, detail: str = "", req: dict | None = None) -> str:
+    lang, explicit = resolve_error_lang(req=req)
+    if not explicit or lang == "en":
+        if key == "unknown_tool":
+            return f"PADAM error: unknown tool: {detail}"
+        if key == "missing_arguments":
+            return f"PADAM error: missing required argument(s): {detail}"
+        return f"PADAM error: {detail}" if detail else f"PADAM error: {format_error_message(key, 'en')}"
+    return f"PADAM error: {format_error_message(key, lang, detail)}"
 _elicitation_callback = None
 _sampling_callback = None
 _tasks: dict[str, dict] = {}
@@ -2076,11 +2320,8 @@ def _handle_modern(req: dict, meta: dict) -> dict | None:
     method = req.get("method")
     req_id = req.get("id")
 
-    def err(code, message, data=None):
-        ошибка = {"code": code, "message": message}
-        if data is not None:
-            ошибка["data"] = data
-        return {"jsonrpc": "2.0", "id": req_id, "error": ошибка}
+    def err(code, message, data=None, *, key=None, detail=""):
+        return build_jsonrpc_error(req_id, code, message, key=key, detail=detail, data=data, req=req)
 
     def done(result: dict) -> dict:
         return {"jsonrpc": "2.0", "id": req_id,
@@ -2119,11 +2360,17 @@ def _handle_modern(req: dict, meta: dict) -> dict | None:
                   "resources/subscribe", "resources/unsubscribe", "prompts/list", "prompts/get",
                   "completion/complete", "tasks/get", "tasks/list", "tasks/cancel", "tasks/result", "tasks/create"):
         tok_caps = None
+        tok_lang = None
         if isinstance(meta.get(_META_CAPS), dict) and meta[_META_CAPS]:
             tok_caps = _caps_ctx.set(dict(meta[_META_CAPS]))
+        rlang, rexpl = resolve_error_lang(req=req)
+        if rexpl:
+            tok_lang = _error_lang_ctx.set(rlang)
         try:
             ответ = _handle_legacy(req)
         finally:
+            if tok_lang is not None:
+                _error_lang_ctx.reset(tok_lang)
             if tok_caps is not None:
                 _caps_ctx.reset(tok_caps)
         if ответ is not None and "result" in ответ:
@@ -2140,9 +2387,8 @@ def _handle_legacy(req: dict) -> dict | None:
     def ok(result):
         return {"jsonrpc": "2.0", "id": req_id, "result": result}
 
-    def err(code, message):
-        return {"jsonrpc": "2.0", "id": req_id,
-                "error": {"code": code, "message": message}}
+    def err(code, message, data=None, *, key=None, detail=""):
+        return build_jsonrpc_error(req_id, code, message, key=key, detail=detail, data=data, req=req)
 
     # Объект без строки method — не запрос вовсе (JSON-RPC 2.0: -32600 Invalid Request), а не «метод не найден».
     if not isinstance(method, str):
@@ -2176,21 +2422,20 @@ def _handle_legacy(req: dict) -> dict | None:
         name = params.get("name")
         args = params.get("arguments") or {}
         # Неизвестный инструмент и не-объект в arguments — ошибка протокола (MCP: -32602 Invalid params).
-        if name not in _ALL_TOOLS_BY_NAME:
-            return err(-32602, f"unknown tool: {name}")
+        if not isinstance(name, str) or name not in _ALL_TOOLS_BY_NAME:
+            return err(-32602, f"unknown tool: {name}", key="unknown_tool", detail=str(name))
         if not isinstance(args, dict):
-            return err(-32602, "arguments must be an object")
+            return err(-32602, "arguments must be an object", key="invalid_argument", detail="arguments must be an object")
         # Часть клиентов шлёт null вместо пропущенного необязательного поля: это то же, что поля нет.
         args = {к: з for к, з in args.items() if з is not None}
         # Пропущенное обязательное поле — ошибка выполнения с понятным текстом (раньше: «PADAM error: 'content'»).
         missing = missing_arguments(name, args)
         if missing:
-            return ok({"content": [{"type": "text", "text":
-                                    f"PADAM error: missing required argument(s): {', '.join(missing)}"}],
+            return ok({"content": [{"type": "text", "text": _format_tool_error_text("missing_arguments", ", ".join(missing), req)}],
                        "isError": True})
         неверно = invalid_argument(name, args)
         if неверно:
-            return ok({"content": [{"type": "text", "text": f"PADAM error: {неверно}"}], "isError": True})
+            return ok({"content": [{"type": "text", "text": _format_tool_error_text("invalid_argument", неверно, req)}], "isError": True})
         task_req = params.get("task")
         if task_req is not None:
             if not _tasks_enabled():
@@ -2208,6 +2453,12 @@ def _handle_legacy(req: dict) -> dict | None:
         try:
             text, structured = _call_tool_full(name, args)
             if structured is None:
+                lang_res, explicit_res = resolve_error_lang(req=req)
+                if explicit_res and lang_res != "en":
+                    if text.startswith("Permission denied:"):
+                        text = _format_tool_error_text("permission_denied", text.split(":", 1)[1].strip(), req)
+                    elif text.startswith("Invalid write argument:"):
+                        text = _format_tool_error_text("invalid_argument", text.split(":", 1)[1].strip(), req)
                 return ok({"content": [{"type": "text", "text": text}], "isError": True})
             content = [{"type": "text", "text": text}]
             if name == "padam_search":
@@ -2238,7 +2489,7 @@ def _handle_legacy(req: dict) -> dict | None:
         except ValueError as e:
             return err(-32602, str(e))
         except KeyError as e:
-            return err(-32002, str(e))
+            return err(-32002, str(e.args[0]) if e.args else str(e))
 
     if method == "resources/subscribe":
         params = req.get("params") or {}
@@ -2714,26 +2965,27 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
             try:
                 req = json.loads(raw)
             except json.JSONDecodeError:
-                return self._send_json(200, {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "parse error"}})
+                return self._send_json(200, build_jsonrpc_error(None, -32700, "parse error", key="parse_error"))
 
             actor_hdr = (self.headers.get("X-Padam-Actor-Token") or "").strip() or None
             tok_ctx = _actor_token_ctx.set(actor_hdr) if actor_hdr is not None else None
+            lang_hdr = _normalize_lang(self.headers.get("X-Padam-Lang") or self.headers.get("Accept-Language"))
+            lang_ctx = _error_lang_ctx.set(lang_hdr) if lang_hdr is not None else None
             try:
                 if isinstance(req, list):
                     if not req:
-                        return self._send_json(200, {"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": "invalid request"}})
+                        return self._send_json(200, build_jsonrpc_error(None, -32600, "invalid request", key="invalid_request"))
                     if len(req) > 64:
                         return self._send_json(400, {"error": "JSON-RPC batch too large (max 64)"})
                     responses = []
                     for item in req:
                         if not isinstance(item, dict):
-                            responses.append({"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": "invalid request"}})
+                            responses.append(build_jsonrpc_error(None, -32600, "invalid request", key="invalid_request"))
                         else:
                             need = _oauth.required_scope_for_rpc(item)
                             if need and need not in scopes:
                                 if item.get("id") is not None:
-                                    responses.append({"jsonrpc": "2.0", "id": item.get("id"),
-                                                      "error": {"code": -32003, "message": f"insufficient scope: requires {need}"}})
+                                    responses.append(build_jsonrpc_error(item.get("id"), -32003, f"insufficient scope: requires {need}", key="insufficient_scope", detail=f"requires {need}", req=item))
                                 continue
                             r = handle(item)
                             if r is not None:
@@ -2747,7 +2999,7 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                     return self._send_json(200, responses)
 
                 if not isinstance(req, dict):
-                    return self._send_json(200, {"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": "invalid request"}})
+                    return self._send_json(200, build_jsonrpc_error(None, -32600, "invalid request", key="invalid_request"))
 
                 need = _oauth.required_scope_for_rpc(req)
                 if need and need not in scopes:
@@ -2756,8 +3008,10 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                 try:
                     resp = handle(req)
                 except Exception:
-                    resp = {"jsonrpc": "2.0", "id": req.get("id"), "error": {"code": -32603, "message": "internal error"}}
+                    resp = build_jsonrpc_error(req.get("id"), -32603, "internal error", key="internal_error", req=req)
             finally:
+                if lang_ctx is not None:
+                    _error_lang_ctx.reset(lang_ctx)
                 if tok_ctx is not None:
                     _actor_token_ctx.reset(tok_ctx)
 
@@ -2867,23 +3121,20 @@ def main(argv: list[str] | None = None, memory: Memory | None = None) -> int:
             req = json.loads(line)
         except json.JSONDecodeError:
             # JSON-RPC 2.0: на неразбираемый запрос — ошибка разбора с id = null, а не молчание.
-            sys.stdout.write(json.dumps({"jsonrpc": "2.0", "id": None,
-                                         "error": {"code": -32700, "message": "parse error"}}) + "\n")
+            sys.stdout.write(json.dumps(build_jsonrpc_error(None, -32700, "parse error", key="parse_error"), ensure_ascii=False) + "\n")
             sys.stdout.flush()
             continue
         # 16.10.2026: валидный JSON, но не объект ([], null, 5, "x") — handle падал на req.get,
         # а обработчик ошибки снова звал req.get и ронял весь процесс MCP-сервера.
         if not isinstance(req, dict):
-            sys.stdout.write(json.dumps({"jsonrpc": "2.0", "id": None,
-                                         "error": {"code": -32600, "message": "invalid request"}}) + "\n")
+            sys.stdout.write(json.dumps(build_jsonrpc_error(None, -32600, "invalid request", key="invalid_request"), ensure_ascii=False) + "\n")
             sys.stdout.flush()
             continue
         try:
             resp = handle(req)
         except Exception:
             traceback.print_exc(file=sys.stderr)
-            resp = {"jsonrpc": "2.0", "id": req.get("id"),
-                    "error": {"code": -32603, "message": "internal error"}}
+            resp = build_jsonrpc_error(req.get("id"), -32603, "internal error", key="internal_error", req=req)
         for notif in pop_notifications():
             sys.stdout.write(json.dumps(notif, ensure_ascii=False) + "\n")
         if resp is not None:

@@ -210,3 +210,54 @@ def test_mcp_ideal_2_2_search_resource_links(tmp_path):
     finally:
         mcp_server._memory = old_mem
         mem.close()
+def test_mcp_ideal_2_5_unified_errors_four_languages(tmp_path, monkeypatch):
+    """Пункт 2.5: единые коды JSON-RPC и локализация ошибок на 4 языках (en, ru, es, zh)."""
+    mem = Memory(user_id="ideal-2-5", store=Store(tmp_path / "m25.db"))
+    old_mem = mcp_server._memory
+    mcp_server._memory = mem
+    try:
+        # По умолчанию (без PADAM_LANG) — обратная совместимость en и отсутствие лишнего data
+        monkeypatch.delenv("PADAM_LANG", raising=False)
+        parse_en = mcp_server.build_jsonrpc_error(None, -32700, "parse error", key="parse_error")
+        assert parse_en == {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "parse error"}}
+
+        for lang, expected_words in (
+            ("en", {"method": "method not found", "missing": "resource", "unknown_tool": "unknown tool", "missing_arg": "missing required argument"}),
+            ("ru", {"method": "Метод MCP не найден", "missing": "Запрошенный ресурс не найден", "unknown_tool": "Неизвестный инструмент", "missing_arg": "Не переданы обязательные аргументы"}),
+            ("es", {"method": "Método MCP no encontrado", "missing": "Recurso solicitado no encontrado", "unknown_tool": "Herramienta PADAM desconocida", "missing_arg": "Faltan argumentos obligatorios"}),
+            ("zh", {"method": "未找到 MCP 方法", "missing": "未找到请求的资源", "unknown_tool": "未知的 PADAM 工具", "missing_arg": "缺少必需参数"}),
+        ):
+            monkeypatch.setenv("PADAM_LANG", lang)
+
+            r_meth = mcp_server.handle({"jsonrpc": "2.0", "id": 1, "method": "no/suchMethod"})
+            assert r_meth["error"]["code"] == mcp_server.ERROR_CODES["METHOD_NOT_FOUND"]
+            assert expected_words["method"] in r_meth["error"]["message"]
+            assert set(r_meth["error"]["data"]["messages"].keys()) == {"en", "ru", "es", "zh"}
+
+            r_res = mcp_server.handle({
+                "jsonrpc": "2.0", "id": 2, "method": "resources/read",
+                "params": {"uri": "padam://record/nonexistent-999"},
+            })
+            assert r_res["error"]["code"] == mcp_server.ERROR_CODES["RESOURCE_NOT_FOUND"]
+            assert expected_words["missing"].lower() in r_res["error"]["message"].lower()
+
+            r_bad_p = mcp_server.handle({"jsonrpc": "2.0", "id": 3, "method": "prompts/get", "params": {"name": "bad_prompt"}})
+            assert r_bad_p["error"]["code"] == mcp_server.ERROR_CODES["INVALID_PARAMS"]
+            assert r_bad_p["error"]["data"]["lang"] == lang
+
+            r_ut = mcp_server.handle({
+                "jsonrpc": "2.0", "id": 4, "method": "tools/call",
+                "params": {"name": "no_such_tool", "arguments": {}},
+            })
+            assert r_ut["error"]["code"] == mcp_server.ERROR_CODES["INVALID_PARAMS"]
+            assert expected_words["unknown_tool"] in r_ut["error"]["message"]
+
+            r_tool = mcp_server.handle({
+                "jsonrpc": "2.0", "id": 5, "method": "tools/call",
+                "params": {"name": "padam_write", "arguments": {}},
+            })["result"]
+            assert r_tool["isError"] is True
+            assert expected_words["missing_arg"] in r_tool["content"][0]["text"]
+    finally:
+        mcp_server._memory = old_mem
+        mem.close()
