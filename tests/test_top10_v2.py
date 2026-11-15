@@ -355,3 +355,58 @@ def test_top10v2_6_reflect_facts_experience_opinions(tmp_path: Path, monkeypatch
     finally:
         mcp_server._memory = old_mem
         m.close()
+
+
+def test_top10v2_7_claude_memory_tool_fs_and_forget(tmp_path: Path, monkeypatch) -> None:
+    """Пункт 7: Бэкенд /memories (view/create/str_replace/insert/rename/delete -> криптографическое забвение)."""
+    import pytest
+    from padam import claude_mem_fs
+
+    monkeypatch.delenv("PADAM_CLAUDE_MEMORY_FS", raising=False)
+    assert config.mcp_claude_memory_fs_enabled() is False
+    assert len(mcp_server.TOOLS) == 9
+
+    db_path = tmp_path / "memfs.db"
+    m = Memory(user_id="fs-u", store=Store(db_path))
+    old_mem = mcp_server._memory
+    mcp_server._memory = m
+    try:
+        with pytest.raises(KeyError):
+            mcp_server.read_resource("padam://memories")
+
+        monkeypatch.setenv("PADAM_CLAUDE_MEMORY_FS", "1")
+        assert config.mcp_claude_memory_fs_enabled() is True
+
+        # Защита от path traversal
+        with pytest.raises(ValueError):
+            claude_mem_fs.execute_memory_command(m, {"command": "view", "path": "/memories/../etc/passwd"})
+
+        # create -> view -> str_replace -> insert -> rename
+        c1 = claude_mem_fs.execute_memory_command(
+            m, {"command": "create", "path": "/memories/proj/arch.md", "file_text": "DB: SQLite\nCache: None"}
+        )
+        assert c1["status"] == "ok" and c1["version"] == 1
+
+        claude_mem_fs.execute_memory_command(
+            m, {"command": "str_replace", "path": "/memories/proj/arch.md", "old_str": "Cache: None", "new_str": "Cache: LocalLRU"}
+        )
+        claude_mem_fs.execute_memory_command(
+            m, {"command": "insert", "path": "/memories/proj/arch.md", "insert_line": 2, "insert_text": "Sync: Disabled"}
+        )
+        v = mcp_server.read_resource("padam://memories/proj/arch.md")
+        assert "LocalLRU" in v["text"] and "Sync: Disabled" in v["text"]
+        assert safety.DATA_NOTICE in v["text"] or "<memory" in v["text"]
+
+        claude_mem_fs.execute_memory_command(
+            m, {"command": "rename", "old_path": "/memories/proj/arch.md", "new_path": "/memories/proj/design.md"}
+        )
+
+        # delete -> криптографическое забвение (content=NULL, status='revoked')
+        d = claude_mem_fs.execute_memory_command(m, {"command": "delete", "path": "/memories/proj/design.md"})
+        assert d["status"] == "deleted" and len(d["forgotten"]) == 1
+        mid = d["forgotten"][0]["memory_id"]
+        row = m.store.one("SELECT status, content FROM memory WHERE id = ?", (mid,))
+        assert row["status"] == "revoked" and row["content"] is None
+    finally:
+        mcp_server._memory = old_mem
+        m.close()

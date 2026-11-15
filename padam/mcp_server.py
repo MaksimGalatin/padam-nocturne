@@ -2069,6 +2069,15 @@ def _list_resources_annotated() -> list[dict]:
             "mimeType": "application/json",
             "annotations": _make_annotations(["user", "assistant"], 0.7, by_uri.get("padam://stats")),
         })
+    if config.mcp_claude_memory_fs_enabled():
+        out.append({
+            "uri": "padam://memories",
+            "name": "claude_memories_root",
+            "title": "Claude /memories Virtual FS",
+            "description": "Hierarchical /memories filesystem backed by encrypted/verifiable PADAM SQLite records.",
+            "mimeType": "text/plain",
+            "annotations": _make_annotations(["assistant", "user"], 0.85, by_uri.get("padam://stats")),
+        })
     if config.mcp_reflect_enabled():
         out.append({
             "uri": "padam://reflect",
@@ -2167,6 +2176,20 @@ def read_resource(uri: str) -> dict:
 
     m = mem()
     actor = _current_actor(m)
+
+    if uri == "padam://memories" or uri.startswith("padam://memories/"):
+        if not config.mcp_claude_memory_fs_enabled():
+            raise KeyError(f"Resource not found: {uri}")
+        from . import claude_mem_fs
+        rel = uri[len("padam://memories"):]
+        vpath = "/memories" + (rel if rel.startswith("/") else ("/" + rel if rel else ""))
+        res = claude_mem_fs.execute_memory_command(m, {"command": "view", "path": vpath})
+        return {
+            "uri": uri,
+            "mimeType": "text/plain",
+            "text": res["content"],
+            "annotations": _make_annotations(["assistant", "user"], 0.85, None),
+        }
 
     if uri == "padam://reflect" or uri.startswith("padam://reflect?"):
         if not config.mcp_reflect_enabled():

@@ -403,3 +403,9 @@ def mcp_procedural_memory_enabled() -> bool:
 def mcp_reflect_enabled() -> bool:
     """Включает эпистемическое разделение world_fact / agent_experience / opinion и ресурс padam://reflect (PADAM_REFLECT=1)."""
     return os.environ.get("PADAM_REFLECT", "0").strip() == "1"
+
+
+# --- ТОП-10 v2 Пункт 7: Бэкенд для нативного Memory Tool Claude (/memories, выключено по умолчанию) ---
+def mcp_claude_memory_fs_enabled() -> bool:
+    """Включает виртуальную ФС /memories (view/create/str_replace/insert/delete/rename) и ресурс padam://memories (PADAM_CLAUDE_MEMORY_FS=1)."""
+    return os.environ.get("PADAM_CLAUDE_MEMORY_FS", "0").strip() == "1"
