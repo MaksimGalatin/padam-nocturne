@@ -2684,6 +2684,8 @@ def _check_json_limits(obj, *, max_depth: int | None = None, max_nodes: int | No
 
 
 def handle(req: dict) -> dict | None:
+    if not isinstance(req, dict):
+        return build_jsonrpc_error(None, -32600, "invalid request", key="invalid_request")
     limit_err = _check_json_limits(req)
     if limit_err is not None:
         ekey, edet = limit_err
@@ -2806,6 +2808,8 @@ def _handle_legacy(req: dict) -> dict | None:
     # Объект без строки method — не запрос вовсе (JSON-RPC 2.0: -32600 Invalid Request), а не «метод не найден».
     if not isinstance(method, str):
         return err(-32600, "invalid request")
+    if "params" in req and req["params"] is not None and not isinstance(req["params"], dict):
+        return err(-32602, "params must be an object", key="invalid_params", detail="params must be an object")
 
     if method == "initialize":
         params = req.get("params") or {}

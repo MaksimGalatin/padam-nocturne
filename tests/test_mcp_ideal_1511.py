@@ -595,3 +595,21 @@ def test_mcp_ideal_4_2_input_and_record_limits(tmp_path):
     finally:
         mcp_server._memory = old_mem
         mem.close()
+def test_mcp_ideal_4_1_fuzz_stability():
+    """Пункт 4.1: fuzz-проверка 400 случайных вызовов (полный 10k прогон — scripts/mcp_fuzz_check.py) без падений."""
+    import sys
+    from pathlib import Path
+
+    scripts_dir = str(Path(__file__).resolve().parent.parent / "scripts")
+    if scripts_dir not in sys.path:
+        sys.path.insert(0, scripts_dir)
+    import mcp_fuzz_check
+
+    # Явная проверка не-dict req и не-dict params (ошибка, найденная fuzz-генератором)
+    assert mcp_server.handle("not-an-object")["error"]["code"] == -32600
+    assert mcp_server.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": "bad"})["error"]["code"] == -32602
+
+    rep = mcp_fuzz_check.run_fuzz(count=400, seed=41)
+    assert rep["exceptions"] == 0
+    assert rep["invalid_responses"] == 0
+    assert rep["ok_calls"] > 50 and rep["tool_errors"] > 50
