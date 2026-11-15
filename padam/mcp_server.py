@@ -3252,6 +3252,51 @@ def _list_prompts_payload() -> list[dict]:
     return [{**p, "icons": icons} for p in PROMPTS]
 
 
+def _encode_list_cursor(offset: int) -> str:
+    import base64 as _b64
+    raw = json.dumps({"o": int(offset)}, separators=(",", ":")).encode("utf-8")
+    return "p1:" + _b64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+
+def _decode_list_cursor(cursor: object) -> int:
+    import base64 as _b64
+    if not isinstance(cursor, str) or not cursor.startswith("p1:") or len(cursor) > 128:
+        raise ValueError("invalid pagination cursor")
+    b64 = cursor[3:]
+    pad = "=" * (-len(b64) % 4)
+    try:
+        obj = json.loads(_b64.urlsafe_b64decode((b64 + pad).encode("ascii")).decode("utf-8"))
+    except Exception:
+        raise ValueError("invalid pagination cursor")
+    if not isinstance(obj, dict) or not isinstance(obj.get("o"), int) or isinstance(obj.get("o"), bool) or obj["o"] < 0:
+        raise ValueError("invalid pagination cursor")
+    return int(obj["o"])
+
+
+def _paginate_list(items: list, params: object, field_name: str, *, extra: dict | None = None) -> dict:
+    """Единая курсорная пагинация для всех */list в соответствии со спецификацией MCP."""
+    if params is not None and not isinstance(params, dict):
+        raise ValueError("params must be an object")
+    cursor = params.get("cursor") if isinstance(params, dict) else None
+    offset = 0
+    if cursor is not None:
+        offset = _decode_list_cursor(cursor)
+    page_size = config.mcp_page_size()
+    if page_size > 0:
+        page = items[offset:offset + page_size]
+        has_more = (offset + page_size) < len(items)
+        next_cursor = _encode_list_cursor(offset + page_size) if has_more else None
+    else:
+        page = items[offset:] if offset > 0 else items
+        next_cursor = None
+    out: dict = {field_name: page}
+    if next_cursor is not None:
+        out["nextCursor"] = next_cursor
+    if extra:
+        out.update(extra)
+    return out
+
+
 def build_server_card(*, base_url: str | None = None, oauth_enabled: bool = False) -> dict:
     """Формирует публичную мета-карточку /.well-known/mcp/server-card.json без секретов и путей."""
     caps = {
@@ -3407,7 +3452,16 @@ def _handle_modern(req: dict, meta: dict) -> dict | None:
         })
     if method == "tools/list":
         # Порядок TOOLS задан в коде и не меняется от вызова к вызову: клиент и кэш подсказок модели это используют.
-        return done({"tools": _list_tools_payload(), "ttlMs": _LIST_TTL_MS, "cacheScope": "public"})
+        try:
+            paged = _paginate_list(
+                _list_tools_payload(),
+                req.get("params"),
+                "tools",
+                extra={"ttlMs": _LIST_TTL_MS, "cacheScope": "public"},
+            )
+        except ValueError as exc:
+            return build_jsonrpc_error(req.get("id"), -32602, str(exc), key="invalid_params", detail=str(exc), req=req)
+        return done(paged)
     if method in ("tools/call", "resources/list", "resources/templates/list", "resources/read",
                   "resources/subscribe", "resources/unsubscribe", "prompts/list", "prompts/get",
                   "completion/complete", "tasks/get", "tasks/list", "tasks/cancel", "tasks/result", "tasks/create"):
@@ -3490,7 +3544,10 @@ def _handle_legacy(req: dict) -> dict | None:
         return None
 
     if method == "tools/list":
-        return ok({"tools": _list_tools_payload()})
+        try:
+            return ok(_paginate_list(_list_tools_payload(), req.get("params"), "tools"))
+        except ValueError as exc:
+            return err(-32602, str(exc), key="invalid_params", detail=str(exc))
 
     if method == "tools/call":
         params = req.get("params") or {}
@@ -3548,10 +3605,16 @@ def _handle_legacy(req: dict) -> dict | None:
                        "isError": True})
 
     if method == "resources/list":
-        return ok({"resources": _list_resources_annotated()})
+        try:
+            return ok(_paginate_list(_list_resources_annotated(), req.get("params"), "resources"))
+        except ValueError as exc:
+            return err(-32602, str(exc), key="invalid_params", detail=str(exc))
 
     if method == "resources/templates/list":
-        return ok({"resourceTemplates": _list_resource_templates_annotated()})
+        try:
+            return ok(_paginate_list(_list_resource_templates_annotated(), req.get("params"), "resourceTemplates"))
+        except ValueError as exc:
+            return err(-32602, str(exc), key="invalid_params", detail=str(exc))
 
     if method == "resources/read":
         params = req.get("params") or {}
@@ -3587,7 +3650,10 @@ def _handle_legacy(req: dict) -> dict | None:
         return ok({})
 
     if method == "prompts/list":
-        return ok({"prompts": _list_prompts_payload()})
+        try:
+            return ok(_paginate_list(_list_prompts_payload(), req.get("params"), "prompts"))
+        except ValueError as exc:
+            return err(-32602, str(exc), key="invalid_params", detail=str(exc))
 
     if method == "prompts/get":
         params = req.get("params") or {}
@@ -3651,7 +3717,10 @@ def _handle_legacy(req: dict) -> dict | None:
             return err(-32003, str(exc))
         with _tasks_lock:
             items = [_task_snapshot(t_obj) for t_obj in _tasks.values()]
-        return ok({"tasks": items})
+        try:
+            return ok(_paginate_list(items, req.get("params"), "tasks"))
+        except ValueError as exc:
+            return err(-32602, str(exc), key="invalid_params", detail=str(exc))
 
     if method == "tasks/get":
         if not _tasks_enabled():

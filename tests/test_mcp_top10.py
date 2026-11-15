@@ -978,3 +978,82 @@ def test_top7_sep973_icons_and_server_card(tmp_path, monkeypatch):
     finally:
         mcp_server._memory = old_mem
         m.close()
+
+
+def test_top8_cursor_pagination_across_all_lists(tmp_path, monkeypatch):
+    """Пункт 8 ТОП-10: opt-in курсорная пагинация во всех */list (tools, resources, templates, prompts, tasks)."""
+    from padam import config, mcp_server
+    from padam.memory import Memory
+    from padam.store import Store
+
+    monkeypatch.delenv("PADAM_MCP_PAGE_SIZE", raising=False)
+    assert config.mcp_page_size() == 0
+
+    m = Memory(user_id="top8_u", store=Store(tmp_path / "m_top8.db"))
+    old_mem = mcp_server._memory
+    mcp_server._memory = m
+    try:
+        # 1. Без PADAM_MCP_PAGE_SIZE: пагинация выключена, nextCursor отсутствует
+        t_all = mcp_server.handle({"jsonrpc": "2.0", "id": "t8-0", "method": "tools/list"})["result"]
+        assert len(t_all["tools"]) == 9
+        assert "nextCursor" not in t_all
+
+        # 2. Включаем размер страницы = 2 и создаем 3 задачи
+        monkeypatch.setenv("PADAM_MCP_PAGE_SIZE", "2")
+        monkeypatch.setenv("PADAM_MCP_TASKS", "1")
+        assert config.mcp_page_size() == 2
+        with mcp_server._tasks_lock:
+            mcp_server._tasks.clear()
+        created_task_ids = []
+        for idx in range(3):
+            ct = mcp_server.handle({
+                "jsonrpc": "2.0", "id": f"t8-tc-{idx}", "method": "tasks/create",
+                "params": {"kind": "sleep", "arguments": {"dry_run": True}},
+            })
+            assert "result" in ct
+            created_task_ids.append(ct["result"]["task"]["taskId"])
+
+        expected_totals = {
+            ("tools/list", "tools"): 9,
+            ("resources/list", "resources"): len(mcp_server.RESOURCES),
+            ("resources/templates/list", "resourceTemplates"): len(mcp_server.RESOURCE_TEMPLATES),
+            ("prompts/list", "prompts"): len(mcp_server.PROMPTS),
+            ("tasks/list", "tasks"): 3,
+        }
+        for (meth, field), total_expected in expected_totals.items():
+            collected = []
+            cursor = None
+            pages = 0
+            while True:
+                params = {"cursor": cursor} if cursor is not None else {}
+                res = mcp_server.handle({"jsonrpc": "2.0", "id": f"t8-{meth}-{pages}", "method": meth, "params": params})["result"]
+                pages += 1
+                assert len(res[field]) <= 2
+                collected.extend(res[field])
+                cursor = res.get("nextCursor")
+                if cursor is None:
+                    break
+            assert len(collected) == total_expected
+            assert pages >= 2
+
+        # 3. Также работает в современной редакции (_meta с версией протокола)
+        mod_p1 = mcp_server.handle({
+            "jsonrpc": "2.0", "id": "t8-mod", "method": "tools/list",
+            "params": {"_meta": {mcp_server._META_VERSION: mcp_server.MODERN_PROTOCOL_VERSIONS[0], mcp_server._META_CAPS: {}}},
+        })["result"]
+        assert len(mod_p1["tools"]) == 2
+        assert isinstance(mod_p1.get("nextCursor"), str)
+
+        # 4. Битый курсор -> -32602
+        bad = mcp_server.handle({
+            "jsonrpc": "2.0", "id": "t8-bad", "method": "tools/list",
+            "params": {"cursor": "bad-cursor"},
+        })
+        assert bad["error"]["code"] == mcp_server.ERROR_CODES["INVALID_PARAMS"]
+    finally:
+        for tid in created_task_ids:
+            mcp_server.handle({"jsonrpc": "2.0", "id": f"t8-wait-{tid}", "method": "tasks/result", "params": {"taskId": tid}})
+        with mcp_server._tasks_lock:
+            mcp_server._tasks.clear()
+        mcp_server._memory = old_mem
+        m.close()

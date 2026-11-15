@@ -294,3 +294,12 @@ def mcp_icons_enabled() -> bool:
 def mcp_server_card_enabled() -> bool:
     """Открывает GET /.well-known/mcp/server-card.json (PADAM_MCP_SERVER_CARD=1)."""
     return os.environ.get("PADAM_MCP_SERVER_CARD", "0").strip() == "1"
+
+# --- ТОП-10 Пункт 8: Курсорная пагинация */list (выключено по умолчанию) ---
+def mcp_page_size() -> int:
+    """Размер страницы для tools/resources/prompts/tasks/list (PADAM_MCP_PAGE_SIZE=0 — без разбивки)."""
+    raw = os.environ.get("PADAM_MCP_PAGE_SIZE", "0").strip()
+    try:
+        return max(0, min(1000, int(raw)))
+    except ValueError:
+        return 0
