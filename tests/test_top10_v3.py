@@ -93,3 +93,34 @@ def test_top10v3_2_project_briefing_and_hooks_and_resource(tmp_path, monkeypatch
     assert h_res["briefing"] is True
     assert "Prefer strict Russian comments" in h_res["hookSpecificOutput"]["additionalContext"]
     mem.close()
+
+
+def test_top10v3_3_rem_sleep_integrates_communities_procedures_and_reflect(tmp_path, monkeypatch):
+    from padam import communities, procedural, rem_sleep
+    from padam.memory import Memory
+    from padam.store import Store
+
+    db_path = tmp_path / "rem_v3.sqlite"
+    mem = Memory(user_id="arch", store=Store(db_path))
+    mem.remember("Deploy step 1: run pytest tests/ -q before building release", kind="event", scope="ops")
+    mem.remember("Deploy step 2: run pytest tests/ -q and verify mcp_inspector_check", kind="event", scope="ops")
+    mem.remember("Deploy step 3: always keep 9 default MCP tools", kind="fact", scope="ops")
+
+    monkeypatch.setenv("PADAM_COMMUNITIES", "1")
+    monkeypatch.setenv("PADAM_PROCEDURAL_MEMORY", "1")
+    monkeypatch.setenv("PADAM_REFLECT", "1")
+
+    res = rem_sleep.run_rem_cycle(mem, scope="ops")
+    assert res["status"] == "completed"
+    assert res["communities_updated"] >= 0
+    assert len(res["procedure_drafts"]) >= 1
+    # Черновик процедуры от REM Sleep обязан попадать строго в карантин (без автоактивации)
+    for d in res["procedure_drafts"]:
+        assert d["status"] == "quarantined"
+    procs_active = procedural.list_procedures(mem, scope="ops", include_quarantined=False)
+    assert len(procs_active) == 0
+    assert res["epistemic_summary"] is not None
+    assert "world_facts" in res["epistemic_summary"]
+    comm = communities.get_communities(mem, scope="ops", refresh=False)
+    assert comm["enabled"] is True
+    mem.close()

@@ -393,6 +393,42 @@ def run_rem_cycle(
             for mid in member_ids:
                 derived_links.add((mid, insight_id))
 
+    communities_updated = 0
+    if config.mcp_communities_enabled() and not dry_run:
+        from . import communities
+        comm_res = communities.detect_communities(mem, scope=scope)
+        communities_updated = int(comm_res.get("communities_count", 0))
+
+    procedure_drafts: list[dict] = []
+    if config.mcp_procedural_memory_enabled() and not dry_run:
+        from . import procedural
+        for sc, sc_items in by_scope.items():
+            if len(sc_items) < 2:
+                continue
+            existing_procs = procedural.list_procedures(mem, scope=sc, include_quarantined=True)
+            title = f"rem-{sc}-{sc_items[0]['id'][:8]}"
+            if any(title in str(ep.get("skill_name") or ep.get("content") or "") for ep in existing_procs):
+                continue
+            draft = procedural.extract_procedure_from_episodes(
+                mem,
+                title=title,
+                episode_texts=[str(it.get("content") or "") for it in sc_items[:4]],
+                scope=sc,
+                agent_id="padam-rem-sleep",
+            )
+            if draft.get("id"):
+                procedure_drafts.append(draft)
+
+    epistemic_summary: dict | None = None
+    if config.mcp_reflect_enabled():
+        from . import reflect
+        rv = reflect.build_reflect_view(mem, query="", scope=scope, limit=12)
+        epistemic_summary = {
+            "world_facts": len(rv.get("world_facts") or []),
+            "agent_experiences": len(rv.get("agent_experiences") or []),
+            "opinions": len(rv.get("opinions") or []),
+        }
+
     if not dry_run:
         mem._log_audit(
             "rem_dream",
@@ -401,7 +437,7 @@ def run_rem_cycle(
             agent_id="padam-rem-sleep",
             scope=scope or "all",
             outcome="ok",
-            detail=f"links={len(discovered_links)} compressed={len(compressed_list)} insights={len(created_insights)}",
+            detail=f"links={len(discovered_links)} compressed={len(compressed_list)} insights={len(created_insights)} communities={communities_updated} proc_drafts={len(procedure_drafts)}",
         )
 
     return {
@@ -412,6 +448,9 @@ def run_rem_cycle(
         "links_discovered": len(discovered_links),
         "duplicates_compressed": len(compressed_list),
         "insights_created": len(created_insights),
+        "communities_updated": communities_updated,
+        "procedure_drafts": procedure_drafts,
+        "epistemic_summary": epistemic_summary,
         "llm_used": llm_used,
         "insights": created_insights,
         "links": discovered_links,
