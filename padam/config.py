@@ -415,3 +415,9 @@ def mcp_claude_memory_fs_enabled() -> bool:
 def mcp_communities_enabled() -> bool:
     """Включает кластеризацию графа label propagation и ресурс padam://communities/{scope} (PADAM_COMMUNITIES=1)."""
     return os.environ.get("PADAM_COMMUNITIES", "0").strip() == "1"
+
+
+# --- ТОП-10 v2 Пункт 9: Переносимый подписанный пакет памяти MemCube (выключено по умолчанию) ---
+def mcp_memcube_enabled() -> bool:
+    """Включает экспорт/импорт подписанных шифрованных контейнеров памяти MemCube (PADAM_MEMCUBE=1)."""
+    return os.environ.get("PADAM_MEMCUBE", "0").strip() == "1"

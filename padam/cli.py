@@ -377,6 +377,25 @@ def cmd_profile(m: Memory, a) -> int:
     return 0
 
 
+def cmd_cube(m, a) -> int:
+    """ТОП-10 v2 Пункт 9: экспорт/импорт подписанных пакетов MemCube."""
+    from pathlib import Path
+    from . import memcube
+    sub_cmd = getattr(a, "cube_cmd", "export")
+    if sub_cmd == "export":
+        cube = memcube.export_memcube(m, scope=a.scope, passphrase=a.passphrase, ttl_seconds=a.ttl)
+        Path(a.out).write_text(json.dumps(cube, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(json.dumps({"exported": a.out, "author_pub_hex": (cube.get("header") or {}).get("author_pub_hex")}, ensure_ascii=False))
+        return 0
+    if sub_cmd == "import":
+        raw_cube = Path(a.file).read_text(encoding="utf-8")
+        trusted = {x.strip() for x in a.trust_author.split(",") if x.strip()} if a.trust_author else set()
+        res = memcube.import_memcube(m, raw_cube, passphrase=a.passphrase, trusted_authors=trusted, target_scope=a.scope)
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+        return 0
+    return 1
+
+
 def cmd_skills(m, a) -> int:
     """ТОП-10 v2 Пункт 5: экспорт одобренных процедур (kind='procedure') в SKILL.md / CLAUDE.md."""
     from . import procedural
@@ -1368,6 +1387,22 @@ def main(argv=None) -> int:
     s.add_argument("--webauthn", action="store_true")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_unseal)
+
+    scb = sub.add_parser("cube", help=t("переносимый подписанный пакет памяти MemCube",
+                                        "portable signed encrypted MemCube package"))
+    cbsub = scb.add_subparsers(dest="cube_cmd", required=True)
+    cbe = cbsub.add_parser("export", help=t("экспортировать scope в MemCube", "export scope to MemCube"))
+    cbe.add_argument("scope")
+    cbe.add_argument("--out", required=True)
+    cbe.add_argument("--passphrase", default=None)
+    cbe.add_argument("--ttl", type=int, default=None)
+    cbe.set_defaults(fn=cmd_cube)
+    cbi = cbsub.add_parser("import", help=t("импортировать MemCube", "import MemCube"))
+    cbi.add_argument("file")
+    cbi.add_argument("--passphrase", default=None)
+    cbi.add_argument("--trust-author", default="")
+    cbi.add_argument("--scope", default=None)
+    cbi.set_defaults(fn=cmd_cube)
 
     ssk = sub.add_parser("skills", help=t("процедурная память (экспорт в SKILL.md / CLAUDE.md)",
                                           "procedural memory (export to SKILL.md / CLAUDE.md)"))

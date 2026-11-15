@@ -451,3 +451,58 @@ def test_top10v2_8_graph_communities_label_propagation(tmp_path: Path, monkeypat
     finally:
         mcp_server._memory = old_mem
         m.close()
+
+
+def test_top10v2_9_memcube_signed_encrypted_and_untrusted_quarantine(tmp_path: Path, monkeypatch, capsys) -> None:
+    """Пункт 9: Переносимый подписанный шифрованный MemCube (проверка Ed25519, TTL и карантин чужого автора)."""
+    import pytest
+    from padam import memcube
+
+    monkeypatch.delenv("PADAM_MEMCUBE", raising=False)
+    assert config.mcp_memcube_enabled() is False
+
+    db1 = tmp_path / "src.db"
+    db2 = tmp_path / "dst.db"
+    m1 = Memory(user_id="cube-src", store=Store(db1))
+    _, r1 = m1.remember("Секретный протокол синхронизации MemCube", kind="fact", scope="proj:cube", agent_id="owner")
+    _, r2 = m1.remember("Связанный узел MemCube", kind="fact", scope="proj:cube", derived_from=[r1], agent_id="owner")
+
+    off = memcube.export_memcube(m1, scope="proj:cube", passphrase="p1")
+    assert off["enabled"] is False
+
+    monkeypatch.setenv("PADAM_MEMCUBE", "1")
+    assert config.mcp_memcube_enabled() is True
+
+    cube_file = tmp_path / "export.cube.json"
+    assert cli.main(["--db", str(db1), "--user", "cube-src", "cube", "export", "proj:cube", "--out", str(cube_file), "--passphrase", "secret123", "--ttl", "3600"]) == 0
+    exp_out = json.loads(capsys.readouterr().out)
+    author_hex = exp_out["author_pub_hex"]
+
+    # Подмена байта в шифротексте -> отказ Ed25519
+    tampered = json.loads(cube_file.read_text(encoding="utf-8"))
+    tampered["ciphertext"] = ("A" if tampered["ciphertext"][0] != "A" else "B") + tampered["ciphertext"][1:]
+    m2 = Memory(user_id="cube-dst", store=Store(db2))
+    with pytest.raises(ValueError, match="Ed25519"):
+        memcube.import_memcube(m2, tampered, passphrase="secret123", trusted_authors={author_hex})
+
+    # Импорт БЕЗ доверия к автору -> все записи в карантин
+    assert cli.main(["--db", str(db2), "--user", "cube-dst", "cube", "import", str(cube_file), "--passphrase", "secret123", "--scope", "proj:untrusted"]) == 0
+    res_untrusted = json.loads(capsys.readouterr().out)
+    assert res_untrusted["trusted_author"] is False
+    assert res_untrusted["quarantined"] == 2
+    assert res_untrusted["imported"] == 0
+
+    # Импорт С доверием к автору -> active + восстановлены связи
+    assert cli.main(["--db", str(db2), "--user", "cube-dst", "cube", "import", str(cube_file), "--passphrase", "secret123", "--trust-author", author_hex, "--scope", "proj:trusted"]) == 0
+    res_trusted = json.loads(capsys.readouterr().out)
+    assert res_trusted["trusted_author"] is True
+    assert res_trusted["imported"] == 2
+    assert res_trusted["links_restored"] == 1
+
+    # Истёкший TTL отклоняется
+    expired_cube = memcube.export_memcube(m1, scope="proj:cube", passphrase="secret123", ttl_seconds=-10)
+    with pytest.raises(ValueError, match="TTL expired"):
+        memcube.import_memcube(m2, expired_cube, passphrase="secret123", trusted_authors={expired_cube["header"]["author_pub_hex"]})
+
+    m1.close()
+    m2.close()
