@@ -329,3 +329,51 @@ def test_mcp_ideal_2_4_completions_for_all_arguments(tmp_path):
     finally:
         mcp_server._memory = old_mem
         mem.close()
+def test_mcp_ideal_2_3_resource_annotations(tmp_path):
+    """Пункт 2.3: у всех ресурсов, шаблонов и ответов resources/read есть audience, priority и ISO lastModified."""
+    from datetime import datetime
+
+    mem = Memory(user_id="ideal-2-3", store=Store(tmp_path / "m23.db"))
+    mid = mem.remember("Backend service listens on port 8090", kind="fact", scope="infra", origin="user")[1]
+    old_mem = mcp_server._memory
+    mcp_server._memory = mem
+    try:
+        def _check_ann(ann):
+            assert isinstance(ann, dict)
+            assert isinstance(ann.get("audience"), list) and ann["audience"]
+            assert set(ann["audience"]).issubset({"user", "assistant"})
+            assert isinstance(ann.get("priority"), (int, float)) and 0.0 <= ann["priority"] <= 1.0
+            lm = ann.get("lastModified")
+            assert isinstance(lm, str) and "T" in lm
+            datetime.fromisoformat(lm.replace("Z", "+00:00"))
+
+        rlist = mcp_server.handle({"jsonrpc": "2.0", "id": 1, "method": "resources/list"})["result"]["resources"]
+        assert len(rlist) == 3
+        for item in rlist:
+            _check_ann(item.get("annotations"))
+
+        tlist = mcp_server.handle({"jsonrpc": "2.0", "id": 2, "method": "resources/templates/list"})["result"]["resourceTemplates"]
+        assert len(tlist) >= 8
+        for tpl in tlist:
+            _check_ann(tpl.get("annotations"))
+
+        for uri in (
+            "padam://profile",
+            "padam://review-queue",
+            "padam://stats",
+            "padam://recent",
+            f"padam://record/{mid}",
+            f"padam://timeline/{mid}",
+            "padam://scope/infra",
+            "padam://asof/2026-11-15",
+            "padam://conflicts/all",
+            f"padam://graph/{mid}",
+            "padam://asof-graph/2026-11-15",
+            "padam://connectors/all",
+        ):
+            res = mcp_server.handle({"jsonrpc": "2.0", "id": 10, "method": "resources/read", "params": {"uri": uri}})["result"]
+            assert len(res["contents"]) == 1
+            _check_ann(res["contents"][0].get("annotations"))
+    finally:
+        mcp_server._memory = old_mem
+        mem.close()

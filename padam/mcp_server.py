@@ -1318,6 +1318,7 @@ RESOURCES = [
         "title": "Профиль владельца / User profile",
         "description": "Read-only summary of owner-signed identity and preference records (fenced data).",
         "mimeType": "text/plain",
+        "annotations": {"audience": ["assistant"], "priority": 0.9, "lastModified": "2026-11-15T00:00:00Z"},
     },
     {
         "uri": "padam://review-queue",
@@ -1325,6 +1326,7 @@ RESOURCES = [
         "title": "Очередь проверки / Review queue",
         "description": "Records currently held in quarantine waiting for the owner's decision (fenced data).",
         "mimeType": "text/plain",
+        "annotations": {"audience": ["user"], "priority": 0.85, "lastModified": "2026-11-15T00:00:00Z"},
     },
     {
         "uri": "padam://stats",
@@ -1332,6 +1334,7 @@ RESOURCES = [
         "title": "Статистика памяти / Memory statistics",
         "description": "Counts by status and kind, pending episodes, embedding backend and key state (fenced data).",
         "mimeType": "text/plain",
+        "annotations": {"audience": ["user", "assistant"], "priority": 0.5, "lastModified": "2026-11-15T00:00:00Z"},
     },
 ]
 
@@ -1342,6 +1345,7 @@ RESOURCE_TEMPLATES = [
         "title": "Запись памяти по ID / Memory record",
         "description": "Read a single memory record by its ID (fenced data; quarantined/rejected content stays hidden).",
         "mimeType": "text/plain",
+        "annotations": {"audience": ["assistant", "user"], "priority": 0.8, "lastModified": "2026-11-15T00:00:00Z"},
     },
     {
         "uriTemplate": "padam://timeline/{id}",
@@ -1349,6 +1353,7 @@ RESOURCE_TEMPLATES = [
         "title": "История версий записи / Record timeline",
         "description": "Read the version chain of a record by its ID (fenced data; respects role isolation).",
         "mimeType": "text/plain",
+        "annotations": {"audience": ["assistant", "user"], "priority": 0.65, "lastModified": "2026-11-15T00:00:00Z"},
     },
     {
         "uriTemplate": "padam://scope/{scope}",
@@ -1356,6 +1361,7 @@ RESOURCE_TEMPLATES = [
         "title": "Записи области памяти / Scope memories",
         "description": "List active memory records for a specific scope or 'all' (fenced data; respects role isolation).",
         "mimeType": "text/plain",
+        "annotations": {"audience": ["assistant"], "priority": 0.75, "lastModified": "2026-11-15T00:00:00Z"},
     },
     {
         "uriTemplate": "padam://asof/{date}",
@@ -1363,6 +1369,7 @@ RESOURCE_TEMPLATES = [
         "title": "Срез памяти на дату / Snapshot as of date",
         "description": "List records valid at an ISO date or UTC timestamp (e.g. 2026-10-01) inside safety fence.",
         "mimeType": "text/plain",
+        "annotations": {"audience": ["assistant", "user"], "priority": 0.6, "lastModified": "2026-11-15T00:00:00Z"},
     },
     {
         "uriTemplate": "padam://conflicts/{scope}",
@@ -1370,6 +1377,7 @@ RESOURCE_TEMPLATES = [
         "title": "Спорящие факты / Conflicting records",
         "description": "List competing active facts by key within a scope or 'all' (fenced data).",
         "mimeType": "text/plain",
+        "annotations": {"audience": ["user", "assistant"], "priority": 0.75, "lastModified": "2026-11-15T00:00:00Z"},
     },
     {
         "uriTemplate": "padam://graph/{id}",
@@ -1377,6 +1385,7 @@ RESOURCE_TEMPLATES = [
         "title": "Подграф связей вокруг записи / Memory graph",
         "description": "Read nodes and typed edges (derived, cause, correction, contradiction, version, conflict) around an ID.",
         "mimeType": "text/plain",
+        "annotations": {"audience": ["assistant", "user"], "priority": 0.7, "lastModified": "2026-11-15T00:00:00Z"},
     },
     {
         "uriTemplate": "padam://asof-graph/{date}",
@@ -1384,6 +1393,7 @@ RESOURCE_TEMPLATES = [
         "title": "Граф памяти на дату / Graph as of date",
         "description": "Read nodes, typed edges and counts valid at an ISO date or UTC timestamp inside safety fence.",
         "mimeType": "text/plain",
+        "annotations": {"audience": ["assistant", "user"], "priority": 0.6, "lastModified": "2026-11-15T00:00:00Z"},
     },
     {
         "uriTemplate": "padam://connectors/{provider}",
@@ -1391,8 +1401,83 @@ RESOURCE_TEMPLATES = [
         "title": "Статус коннекторов / Connector status",
         "description": "Read-only sync status for connectors ('all', github, notion, gdrive, slack) without secrets (owner only).",
         "mimeType": "text/plain",
+        "annotations": {"audience": ["user"], "priority": 0.55, "lastModified": "2026-11-15T00:00:00Z"},
     },
 ]
+
+
+def _norm_last_modified(ts: str | None) -> str:
+    if isinstance(ts, str) and ts.strip():
+        val = ts.strip()
+        if val.endswith("+00:00"):
+            return val[:-6] + "Z"
+        if "T" in val and (val.endswith("Z") or "+" in val[10:]):
+            return val
+        if "T" in val:
+            return val + "Z"
+        return val + "T00:00:00Z"
+    return _now_iso_utc()
+
+
+def _latest_memory_ts(m: Memory, vis_sql: str = "", vis_params: tuple = (), *, where_extra: str = "", extra_params: tuple = ()) -> str:
+    try:
+        row = m.store.one(
+            f"SELECT MAX(COALESCE(last_confirmed_at, created_at)) AS ts FROM memory WHERE user_id = ?{where_extra}{vis_sql}",
+            (m.user_id, *extra_params, *vis_params),
+        )
+        return _norm_last_modified(row["ts"] if row else None)
+    except Exception:
+        return _now_iso_utc()
+
+
+def _make_annotations(audience: list[str], priority: float, last_modified: str | None = None) -> dict:
+    return {
+        "audience": list(audience),
+        "priority": round(min(1.0, max(0.0, float(priority))), 4),
+        "lastModified": _norm_last_modified(last_modified),
+    }
+
+
+def _list_resources_annotated() -> list[dict]:
+    from . import roles
+    try:
+        m = mem()
+        actor = _current_actor(m)
+        vis_sql, vis_params, _ = roles.visibility_sql(actor)
+        ts_all = _latest_memory_ts(m, vis_sql, vis_params)
+        ts_prof = _latest_memory_ts(m, vis_sql, vis_params, where_extra=" AND kind IN ('identity', 'preference', 'rule')")
+        ts_q = _latest_memory_ts(m, vis_sql, vis_params, where_extra=" AND status = 'quarantined'")
+        by_uri = {"padam://profile": ts_prof, "padam://review-queue": ts_q, "padam://stats": ts_all}
+    except Exception:
+        now = _now_iso_utc()
+        by_uri = {"padam://profile": now, "padam://review-queue": now, "padam://stats": now}
+    out = []
+    for res in RESOURCES:
+        item = dict(res)
+        ann = dict(res.get("annotations") or {})
+        ann["lastModified"] = by_uri.get(res["uri"], _now_iso_utc())
+        item["annotations"] = ann
+        out.append(item)
+    return out
+
+
+def _list_resource_templates_annotated() -> list[dict]:
+    from . import roles
+    try:
+        m = mem()
+        actor = _current_actor(m)
+        vis_sql, vis_params, _ = roles.visibility_sql(actor)
+        ts_all = _latest_memory_ts(m, vis_sql, vis_params)
+    except Exception:
+        ts_all = _now_iso_utc()
+    out = []
+    for tpl in RESOURCE_TEMPLATES:
+        item = dict(tpl)
+        ann = dict(tpl.get("annotations") or {})
+        ann["lastModified"] = ts_all
+        item["annotations"] = ann
+        out.append(item)
+    return out
 
 
 def _format_valid_window(valid_from: str | None, valid_to: str | None) -> str:
@@ -1439,16 +1524,22 @@ def read_resource(uri: str) -> dict:
             raise PermissionError("owner identity/preference profile is private")
         prof = m.profile(scope="global")
         body = prof.get("summary") or "No owner-signed identity or preference records yet."
-        return {"uri": uri, "mimeType": "text/plain", "text": safety.fence(body)}
+        ts = _latest_memory_ts(m, where_extra=" AND kind IN ('identity', 'preference', 'rule')")
+        return {"uri": uri, "mimeType": "text/plain", "text": safety.fence(body),
+                "annotations": _make_annotations(["assistant"], 0.9, ts)}
 
     if uri == "padam://stats":
+        vis_sql, vis_params, _ = roles.visibility_sql(actor)
         body = json.dumps(m.stats(actor=actor), ensure_ascii=False, indent=2)
-        return {"uri": uri, "mimeType": "text/plain", "text": safety.fence(body)}
+        ts = _latest_memory_ts(m, vis_sql, vis_params)
+        return {"uri": uri, "mimeType": "text/plain", "text": safety.fence(body),
+                "annotations": _make_annotations(["user", "assistant"], 0.5, ts)}
 
     if uri == "padam://review-queue":
         held = m.quarantined(actor=actor)
         if not held:
             body = "Review queue is empty (0 held records)."
+            ts = _now_iso_utc()
         else:
             lines = [f"Review queue: {len(held)} record(s) waiting for owner approval."]
             for r in held:
@@ -1458,7 +1549,9 @@ def read_resource(uri: str) -> dict:
                     f"created={(r.get('created_at') or '')[:19]}  reason={reason}"
                 )
             body = "\n".join(lines)
-        return {"uri": uri, "mimeType": "text/plain", "text": safety.fence(body)}
+            ts = max((r.get("created_at") or "" for r in held), default="") or None
+        return {"uri": uri, "mimeType": "text/plain", "text": safety.fence(body),
+                "annotations": _make_annotations(["user"], 0.85, ts)}
 
     if uri == "padam://recent":
         rows = m.list_records(view="active", limit=15, offset=0, actor=actor).get("records", [])
@@ -1475,7 +1568,9 @@ def read_resource(uri: str) -> dict:
                     f"saved={(r.get('created_at') or '')[:19]}{vw}"
                 )
             body = "\n".join(lines)
-        return {"uri": uri, "mimeType": "text/plain", "text": safety.fence(body)}
+        ts = max((r.get("created_at") or "" for r in rows), default="") or None
+        return {"uri": uri, "mimeType": "text/plain", "text": safety.fence(body),
+                "annotations": _make_annotations(["assistant", "user"], 0.7, ts)}
 
     if uri.startswith("padam://record/"):
         rid = uri.split("padam://record/", 1)[1].strip()
@@ -1514,7 +1609,9 @@ def read_resource(uri: str) -> dict:
         if row["valid_to"]:
             lines.append(f"valid_to: {row['valid_to']}")
         lines.append(f"content: {content_str}")
-        return {"uri": uri, "mimeType": "text/plain", "text": safety.fence("\n".join(lines))}
+        ts = row["last_confirmed_at"] or row["created_at"]
+        return {"uri": uri, "mimeType": "text/plain", "text": safety.fence("\n".join(lines)),
+                "annotations": _make_annotations(["assistant", "user"], 0.8, ts)}
 
     if uri.startswith("padam://timeline/"):
         rid = uri.split("padam://timeline/", 1)[1].strip()
@@ -1532,7 +1629,9 @@ def read_resource(uri: str) -> dict:
                 cbody = (row["content"] or "(content wiped by revoke)").replace("\n", "\n  ")
             vw = _format_valid_window(row.get("valid_from"), row.get("valid_to"))
             out.append(f"{(row.get('created_at') or '')[:19]}{state}{vw}\n  {cbody}")
-        return {"uri": uri, "mimeType": "text/plain", "text": safety.fence("\n  ↓\n".join(out))}
+        ts = max((row.get("created_at") or "" for row in chain), default="") or None
+        return {"uri": uri, "mimeType": "text/plain", "text": safety.fence("\n  ↓\n".join(out)),
+                "annotations": _make_annotations(["assistant", "user"], 0.65, ts)}
 
     if uri.startswith("padam://scope/"):
         scope_val = uri.split("padam://scope/", 1)[1].strip()
@@ -1557,7 +1656,9 @@ def read_resource(uri: str) -> dict:
                     f"saved={(r.get('created_at') or '')[:19]}{vw}"
                 )
             body = "\n".join(lines)
-        return {"uri": uri, "mimeType": "text/plain", "text": safety.fence(body)}
+        ts = max((r.get("created_at") or "" for r in rows), default="") or None
+        return {"uri": uri, "mimeType": "text/plain", "text": safety.fence(body),
+                "annotations": _make_annotations(["assistant"], 0.75, ts)}
 
     if uri.startswith("padam://asof/"):
         date_val = uri.split("padam://asof/", 1)[1].strip()
@@ -1577,7 +1678,9 @@ def read_resource(uri: str) -> dict:
                     f"saved={(r.get('created_at') or '')[:19]}{vw}"
                 )
             body = "\n".join(lines)
-        return {"uri": uri, "mimeType": "text/plain", "text": safety.fence(body)}
+        ts = max((r.get("created_at") or "" for r in rows), default="") or None
+        return {"uri": uri, "mimeType": "text/plain", "text": safety.fence(body),
+                "annotations": _make_annotations(["assistant", "user"], 0.6, ts)}
 
     if uri.startswith("padam://conflicts/"):
         scope_val = uri.split("padam://conflicts/", 1)[1].strip()
@@ -1598,7 +1701,9 @@ def read_resource(uri: str) -> dict:
                         f"origin={rec.get('origin') or 'unknown'}: {rec.get('content')}"
                     )
             body = "\n".join(lines)
-        return {"uri": uri, "mimeType": "text/plain", "text": safety.fence(body)}
+        ts = max((rec.get("created_at") or "" for c in conflicts for rec in c.get("records", [])), default="") or None
+        return {"uri": uri, "mimeType": "text/plain", "text": safety.fence(body),
+                "annotations": _make_annotations(["user", "assistant"], 0.75, ts)}
 
     if uri.startswith("padam://graph/"):
         gid = uri.split("padam://graph/", 1)[1].strip()
@@ -1613,10 +1718,12 @@ def read_resource(uri: str) -> dict:
             "nodes": _safe_graph_nodes(nodes),
             "edges": g.get("edges", []),
         }
+        ts = max((n.get("created_at") or "" for n in nodes), default="") or None
         return {
             "uri": uri,
             "mimeType": "text/plain",
             "text": safety.fence(json.dumps(payload, ensure_ascii=False, indent=2)),
+            "annotations": _make_annotations(["assistant", "user"], 0.7, ts),
         }
 
     if uri.startswith("padam://asof-graph/"):
@@ -1632,10 +1739,12 @@ def read_resource(uri: str) -> dict:
             "nodes": _safe_graph_nodes(g.get("nodes", [])),
             "edges": g.get("edges", []),
         }
+        ts = max((n.get("created_at") or "" for n in g.get("nodes", [])), default="") or None
         return {
             "uri": uri,
             "mimeType": "text/plain",
             "text": safety.fence(json.dumps(payload, ensure_ascii=False, indent=2)),
+            "annotations": _make_annotations(["assistant", "user"], 0.6, ts),
         }
 
     if uri.startswith("padam://connectors/"):
@@ -1652,10 +1761,13 @@ def read_resource(uri: str) -> dict:
             if not matches:
                 raise KeyError(f"Resource not found: {uri}")
             body_obj = matches[0]
+        ts_list = [c.get("last_sync_at") or "" for c in all_states if isinstance(c, dict)]
+        ts = max(ts_list, default="") or None
         return {
             "uri": uri,
             "mimeType": "text/plain",
             "text": safety.fence(json.dumps(body_obj, ensure_ascii=False, indent=2)),
+            "annotations": _make_annotations(["user"], 0.55, ts),
         }
 
     raise KeyError(f"Resource not found: {uri}")
@@ -2513,10 +2625,10 @@ def _handle_legacy(req: dict) -> dict | None:
                        "isError": True})
 
     if method == "resources/list":
-        return ok({"resources": RESOURCES})
+        return ok({"resources": _list_resources_annotated()})
 
     if method == "resources/templates/list":
-        return ok({"resourceTemplates": RESOURCE_TEMPLATES})
+        return ok({"resourceTemplates": _list_resource_templates_annotated()})
 
     if method == "resources/read":
         params = req.get("params") or {}
