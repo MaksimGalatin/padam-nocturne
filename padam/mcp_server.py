@@ -371,13 +371,79 @@ _OUTPUT_SCHEMAS = {
             "id": {"type": "string"},
             "count": {"type": "integer"},
             "fencedInContent": {"type": "boolean"},
-            "versions": {"type": "array", "items": {"type": "object"}},
+            "versions": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string"},
+                        "status": {"type": "string"},
+                        "created_at": {"type": ["string", "null"]},
+                        "valid_from": {"type": ["string", "null"]},
+                        "valid_to": {"type": ["string", "null"]},
+                    },
+                    "required": ["id", "status"],
+                },
+            },
         },
         "required": ["id", "count", "fencedInContent", "versions"],
     },
-    "padam_stats": {"type": "object", "additionalProperties": True},
-    "padam_sleep": {"type": "object", "additionalProperties": True},
-    "padam_export": {"type": "object", "additionalProperties": True},
+    "padam_stats": {
+        "type": "object",
+        "properties": {
+            "backend": {"type": "string"},
+            "db": {"type": "string"},
+            "active": {"type": "integer"},
+            "superseded": {"type": "integer"},
+            "revoked": {"type": "integer"},
+            "quarantined": {"type": "integer"},
+            "episodes_pending": {"type": "integer"},
+            "consolidation_due": {"type": "boolean"},
+            "stale_vectors": {"type": "integer"},
+            "by_kind": {"type": "object"},
+            "record_keys": {"type": "object"},
+            "self": {"type": "object"},
+            "last_sleep": {"type": ["object", "null"]},
+        },
+        "required": [
+            "backend", "db", "active", "superseded", "revoked", "quarantined",
+            "episodes_pending", "consolidation_due", "stale_vectors",
+            "by_kind", "record_keys", "self", "last_sleep",
+        ],
+    },
+    "padam_sleep": {
+        "type": "object",
+        "properties": {
+            "episodes_sampled": {"type": "integer"},
+            "note": {"type": "string"},
+            "high_priority_share": {"type": "number"},
+            "kind_entropy_ratio": {"type": "number"},
+            "overreplay_share": {"type": "number"},
+            "beta": {"type": "number"},
+            "outcomes": {"type": "object"},
+            "kinds": {"type": "object"},
+            "sampling_clusters": {"type": "integer"},
+            "cancelled": {"type": "boolean"},
+            "rolled_back": {"type": "boolean"},
+        },
+        "required": ["episodes_sampled"],
+    },
+    "padam_export": {
+        "type": "object",
+        "properties": {
+            "notice": {"type": "string"},
+            "format": {"type": "string"},
+            "exported_at": {"type": "string"},
+            "user_id": {"type": "string"},
+            "counts": {"type": "object"},
+            "memory": {"type": "array", "items": {"type": "object"}},
+            "links": {"type": "array", "items": {"type": "object"}},
+            "typed_links": {"type": "array", "items": {"type": "object"}},
+            "sessions": {"type": "array", "items": {"type": "object"}},
+            "nocturne_runs": {"type": "array", "items": {"type": "object"}},
+        },
+        "required": ["notice", "format", "counts", "memory"],
+    },
     "padam_profile": {
         "type": "object",
         "properties": {
@@ -392,7 +458,21 @@ _OUTPUT_SCHEMAS = {
         "properties": {
             "count": {"type": "integer"},
             "fencedInContent": {"type": "boolean"},
-            "records": {"type": "array", "items": {"type": "object"}},
+            "records": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string"},
+                        "kind": {"type": "string"},
+                        "scope": {"type": "string"},
+                        "origin": {"type": "string"},
+                        "agent_id": {"type": ["string", "null"]},
+                        "created_at": {"type": ["string", "null"]},
+                    },
+                    "required": ["id", "kind", "scope", "origin"],
+                },
+            },
         },
         "required": ["count", "fencedInContent", "records"],
     },
@@ -2099,9 +2179,9 @@ def _handle_legacy(req: dict) -> dict | None:
             return ok({"task": _start_sleep_task(m_cur, args, ttl=int(task_req.get("ttl") or 60000))})
         try:
             text, structured = _call_tool_full(name, args)
-            payload = {"content": [{"type": "text", "text": text}], "isError": False}
-            if structured is not None:
-                payload["structuredContent"] = structured
+            if structured is None:
+                return ok({"content": [{"type": "text", "text": text}], "isError": True})
+            payload = {"content": [{"type": "text", "text": text}], "isError": False, "structuredContent": structured}
             return ok(payload)
         except Exception as e:
             return ok({"content": [{"type": "text",
