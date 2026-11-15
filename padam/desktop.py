@@ -168,6 +168,8 @@ def control_native_window(
     candidates: list[dict] = []
     WNDENUMPROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
 
+    all_visible_wins: list[dict] = []
+
     def _cb(hwnd, lparam):
         w_pid = wintypes.DWORD()
         user32.GetWindowThreadProcessId(hwnd, ctypes.byref(w_pid))
@@ -177,24 +179,30 @@ def control_native_window(
             buf = ctypes.create_unicode_buffer(length + 1)
             user32.GetWindowTextW(hwnd, buf, length + 1)
             title = buf.value
+        cls_buf = ctypes.create_unicode_buffer(256)
+        user32.GetClassNameW(hwnd, cls_buf, 256)
+        rc = RECT()
+        user32.GetWindowRect(hwnd, ctypes.byref(rc))
+        w = rc.right - rc.left
+        h = rc.bottom - rc.top
+        vis = bool(user32.IsWindowVisible(hwnd))
+        info = {
+            "hwnd": int(hwnd),
+            "pid": int(w_pid.value),
+            "visible": vis,
+            "title": title,
+            "class": cls_buf.value,
+            "rect": [int(rc.left), int(rc.top), int(w), int(h)],
+        }
+        if vis and w > 0 and h > 0:
+            all_visible_wins.append(info)
         if w_pid.value == target_pid or ("PADAM" in title and "Studio" in title):
-            cls_buf = ctypes.create_unicode_buffer(256)
-            user32.GetClassNameW(hwnd, cls_buf, 256)
-            rc = RECT()
-            user32.GetWindowRect(hwnd, ctypes.byref(rc))
-            w = rc.right - rc.left
-            h = rc.bottom - rc.top
-            candidates.append({
-                "hwnd": int(hwnd),
-                "pid": int(w_pid.value),
-                "visible": bool(user32.IsWindowVisible(hwnd)),
-                "title": title,
-                "class": cls_buf.value,
-                "rect": [int(rc.left), int(rc.top), int(w), int(h)],
-            })
+            candidates.append(info)
         return True
 
     user32.EnumWindows(WNDENUMPROC(_cb), 0)
+    if action == "list_all_windows":
+        return {"ok": True, "visible_windows": all_visible_wins, "candidates": candidates}
     main_wins = [
         c for c in candidates
         if ("PADAM" in c["title"] or c["rect"][2] >= 350) and c["rect"][3] >= 350
@@ -223,6 +231,204 @@ def control_native_window(
         user32.ShowWindow(hwnd, 5)  # SW_SHOW
         user32.SetForegroundWindow(hwnd)
         return {"ok": True, "window": win}
+
+    def _capture_hwnd_rgba(target_hwnd: int, w: int, h: int) -> bytes | None:
+        if w <= 0 or h <= 0:
+            return None
+        hdc = user32.GetWindowDC(wintypes.HWND(target_hwnd))
+        if not hdc:
+            return None
+        mdc = gdi32.CreateCompatibleDC(hdc)
+        bmp = gdi32.CreateCompatibleBitmap(hdc, w, h)
+        old = gdi32.SelectObject(mdc, bmp)
+        ok = user32.PrintWindow(wintypes.HWND(target_hwnd), mdc, 2)
+        if not ok:
+            user32.PrintWindow(wintypes.HWND(target_hwnd), mdc, 0)
+        bmi = BITMAPINFOHEADER()
+        bmi.biSize = ctypes.sizeof(BITMAPINFOHEADER)
+        bmi.biWidth = w
+        bmi.biHeight = -h
+        bmi.biPlanes = 1
+        bmi.biBitCount = 32
+        bmi.biCompression = 0
+        buf = ctypes.create_string_buffer(w * h * 4)
+        gdi32.GetDIBits(mdc, bmp, 0, h, buf, ctypes.byref(bmi), 0)
+        gdi32.SelectObject(mdc, old)
+        gdi32.DeleteObject(bmp)
+        gdi32.DeleteDC(mdc)
+        user32.ReleaseDC(wintypes.HWND(target_hwnd), hdc)
+        return buf.raw
+
+    def _composite_desktop_screen(extra_hwnds: list[int] | None = None) -> tuple[int, int, bytes, list[dict]]:
+        sw = int(user32.GetSystemMetrics(0))
+        sh = int(user32.GetSystemMetrics(1))
+        # Холст рабочего стола Windows (BGRA)
+        canvas = bytearray(sw * sh * 4)
+        for i in range(0, len(canvas), 4):
+            canvas[i] = 0x28      # B
+            canvas[i + 1] = 0x1A  # G
+            canvas[i + 2] = 0x11  # R
+            canvas[i + 3] = 255
+
+        def _blit(src_bgra: bytes, x0: int, y0: int, w: int, h: int) -> None:
+            if not src_bgra:
+                return
+            # Проверим, что буфер не полностью чёрный/пустой
+            non_zero = any(src_bgra[k] != 0 or src_bgra[k + 1] != 0 or src_bgra[k + 2] != 0 for k in range(0, min(len(src_bgra), 4096), 16))
+            if not non_zero and all(b == 0 for b in src_bgra[:1024]):
+                return
+            for row in range(h):
+                dy = y0 + row
+                if dy < 0 or dy >= sh:
+                    continue
+                x_start = max(0, x0)
+                x_end = min(sw, x0 + w)
+                if x_end <= x_start:
+                    continue
+                src_off = (row * w + (x_start - x0)) * 4
+                dst_off = (dy * sw + x_start) * 4
+                length = (x_end - x_start) * 4
+                canvas[dst_off : dst_off + length] = src_bgra[src_off : src_off + length]
+
+        drawn: list[dict] = []
+        # 1. Обои / рабочий стол Progman, если доступен
+        progman = user32.FindWindowW("Progman", None)
+        if progman:
+            raw_pm = _capture_hwnd_rgba(int(progman), sw, sh)
+            if raw_pm:
+                _blit(raw_pm, 0, 0, sw, sh)
+
+        # 2. Главное окно PADAM Studio
+        if win["visible"]:
+            wx, wy, ww, wh = win["rect"]
+            raw_w = _capture_hwnd_rgba(win["hwnd"], ww, wh)
+            if raw_w:
+                _blit(raw_w, wx, wy, ww, wh)
+                drawn.append(win)
+
+        # 3. Дополнительные целевые окна (например, Программы и компоненты / Установщик / Меню / Уведомление)
+        for eh in (extra_hwnds or []):
+            if not eh or not user32.IsWindow(wintypes.HWND(eh)):
+                continue
+            erc = RECT()
+            if user32.GetWindowRect(wintypes.HWND(eh), ctypes.byref(erc)):
+                ew = int(erc.right - erc.left)
+                eh_h = int(erc.bottom - erc.top)
+                raw_e = _capture_hwnd_rgba(int(eh), ew, eh_h)
+                if raw_e:
+                    _blit(raw_e, int(erc.left), int(erc.top), ew, eh_h)
+                    cls_b = ctypes.create_unicode_buffer(256)
+                    user32.GetClassNameW(wintypes.HWND(eh), cls_b, 256)
+                    drawn.append({"hwnd": int(eh), "class": cls_b.value, "rect": [int(erc.left), int(erc.top), ew, eh_h]})
+
+        # 4. Панель задач Windows (Shell_TrayWnd)
+        taskbar = user32.FindWindowW("Shell_TrayWnd", None)
+        if taskbar:
+            trc = RECT()
+            if user32.GetWindowRect(wintypes.HWND(taskbar), ctypes.byref(trc)):
+                tw = int(trc.right - trc.left)
+                th = int(trc.bottom - trc.top)
+                raw_tb = _capture_hwnd_rgba(int(taskbar), tw, th)
+                if raw_tb:
+                    _blit(raw_tb, int(trc.left), int(trc.top), tw, th)
+                    drawn.append({"hwnd": int(taskbar), "class": "Shell_TrayWnd", "rect": [int(trc.left), int(trc.top), tw, th]})
+
+        # 5. Всплывающие системные окна поверх панели задач (#32768 меню трея, Windows.UI.Core.CoreWindow уведомление, TopLevelWindowForOverflowXamlIsland)
+        for v in reversed(all_visible_wins):
+            if v["class"] in ("#32768", "Windows.UI.Core.CoreWindow", "TopLevelWindowForOverflowXamlIsland", "NotifyIconOverflowWindow"):
+                vx, vy, vw, vh = v["rect"]
+                if vw <= sw and vh <= sh and (v["class"] != "Windows.UI.Core.CoreWindow" or ( vw < 600 and vh < 400)):
+                    raw_v = _capture_hwnd_rgba(v["hwnd"], vw, vh)
+                    if raw_v:
+                        _blit(raw_v, vx, vy, vw, vh)
+                        drawn.append(v)
+
+        return sw, sh, bytes(canvas), drawn
+
+    if action == "capture_screen" and out_path:
+        extra = [int(x) for x in (rect or []) if x]
+        sw, sh, raw_canvas, drawn = _composite_desktop_screen(extra_hwnds=extra)
+        dst = Path(out_path)
+        _save_bgra_png(sw, sh, raw_canvas, dst)
+        return {"ok": True, "window": win, "drawn": drawn, "width": sw, "height": sh, "bytes": dst.stat().st_size, "path": str(dst)}
+
+    if action == "capture_tray_menu" and out_path:
+        import time as _time
+
+        class POINT(ctypes.Structure):
+            _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long)]
+
+        tray_wins = [c for c in candidates if c["class"] == "tray_icon_app"]
+        if not tray_wins:
+            return {"ok": False, "error": "tray_icon_app window not found", "candidates": candidates}
+        tray_hwnd = wintypes.HWND(tray_wins[0]["hwnd"])
+
+        # Найдём область системного трея на панели задач (Shell_TrayWnd -> TrayNotifyWnd)
+        taskbar_hwnd = user32.FindWindowW("Shell_TrayWnd", None)
+        notify_hwnd = user32.FindWindowExW(taskbar_hwnd, None, "TrayNotifyWnd", None) if taskbar_hwnd else None
+        rc_tray = RECT()
+        if notify_hwnd and user32.GetWindowRect(notify_hwnd, ctypes.byref(rc_tray)):
+            tx = int(rc_tray.left + 24)
+            ty = int(rc_tray.top + 12)
+        else:
+            sw = int(user32.GetSystemMetrics(0))
+            sh = int(user32.GetSystemMetrics(1))
+            tx, ty = sw - 180, sh - 24
+
+        old_pt = POINT()
+        user32.GetCursorPos(ctypes.byref(old_pt))
+        user32.SetForegroundWindow(hwnd)
+        user32.SetCursorPos(tx, ty)
+        # Отправляем WM_USER_TRAYICON (6002) с lParam = WM_RBUTTONUP (0x0205)
+        user32.PostMessageW(tray_hwnd, 6002, 0, 0x0205)
+        _time.sleep(0.55)
+
+        # Проверим, появилось ли системное окно контекстного меню #32768
+        menu_hwnd = user32.FindWindowW("#32768", None)
+        menu_rect = None
+        if menu_hwnd:
+            mrc = RECT()
+            if user32.GetWindowRect(menu_hwnd, ctypes.byref(mrc)):
+                menu_rect = [int(mrc.left), int(mrc.top), int(mrc.right - mrc.left), int(mrc.bottom - mrc.top)]
+
+        sw = int(user32.GetSystemMetrics(0))
+        sh = int(user32.GetSystemMetrics(1))
+        scr_dc = user32.GetDC(0)
+        mem_dc = gdi32.CreateCompatibleDC(scr_dc)
+        bmp = gdi32.CreateCompatibleBitmap(scr_dc, sw, sh)
+        old = gdi32.SelectObject(mem_dc, bmp)
+        gdi32.BitBlt(mem_dc, 0, 0, sw, sh, scr_dc, 0, 0, 0x40CC0020)
+        bmi = BITMAPINFOHEADER()
+        bmi.biSize = ctypes.sizeof(BITMAPINFOHEADER)
+        bmi.biWidth = sw
+        bmi.biHeight = -sh
+        bmi.biPlanes = 1
+        bmi.biBitCount = 32
+        bmi.biCompression = 0
+        buf = ctypes.create_string_buffer(sw * sh * 4)
+        gdi32.GetDIBits(mem_dc, bmp, 0, sh, buf, ctypes.byref(bmi), 0)
+        gdi32.SelectObject(mem_dc, old)
+        gdi32.DeleteObject(bmp)
+        gdi32.DeleteDC(mem_dc)
+        user32.ReleaseDC(0, scr_dc)
+
+        # Закрываем контекстное меню и возвращаем курсор на место
+        user32.PostMessageW(tray_hwnd, 0x001F, 0, 0)  # WM_CANCELMODE
+        user32.SetCursorPos(old_pt.x, old_pt.y)
+
+        dst = Path(out_path)
+        _save_bgra_png(sw, sh, buf.raw, dst)
+        return {
+            "ok": True,
+            "window": win,
+            "tray_hwnd": int(tray_wins[0]["hwnd"]),
+            "menu_hwnd": int(menu_hwnd or 0),
+            "menu_rect": menu_rect,
+            "width": sw,
+            "height": sh,
+            "bytes": dst.stat().st_size,
+            "path": str(dst),
+        }
 
     if action == "capture" and out_path:
         if not win["visible"]:

@@ -1,0 +1,138 @@
+name: desktop-build
+on:
+  workflow_dispatch:
+    inputs:
+      target_os:
+        description: "Целевая платформа сборки (all, macos, linux)"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - macos
+          - linux
+
+permissions:
+  contents: read
+
+jobs:
+  build-macos:
+    if: ${{ inputs.target_os == 'all' || inputs.target_os == 'macos' || inputs.target_os == '' }}
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Rust stable toolchain and Tauri CLI
+        run: |
+          rustup default stable
+          cargo install tauri-cli --version "^2.0.0" --locked
+
+      - name: Sync version from padam/__init__.py and stage embedded runtime
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, re, shutil
+          root = pathlib.Path(".")
+          init_txt = (root / "padam" / "__init__.py").read_text(encoding="utf-8")
+          ver = re.search(r'^__version__\s*=\s*"([^"]+)"', init_txt, re.M).group(1)
+          tconf_path = root / "desktop" / "tauri" / "tauri.conf.json"
+          tconf = json.loads(tconf_path.read_text(encoding="utf-8"))
+          tconf["version"] = ver
+          tconf["bundle"]["targets"] = ["dmg", "app"]
+          tconf_path.write_text(json.dumps(tconf, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          cargo_path = root / "desktop" / "tauri" / "Cargo.toml"
+          cargo_txt = cargo_path.read_text(encoding="utf-8")
+          cargo_txt = re.sub(r'(?m)^version\s*=\s*"[^"]+"', f'version = "{ver}"', cargo_txt, count=1)
+          cargo_path.write_text(cargo_txt, encoding="utf-8")
+          rt = root / "desktop" / "tauri" / "runtime"
+          if rt.exists():
+              shutil.rmtree(rt)
+          (rt / "app").mkdir(parents=True, exist_ok=True)
+          shutil.copytree(root / "padam", rt / "app" / "padam")
+          print(f"Synced macOS Tauri version -> {ver}")
+          PY
+
+      - name: Build macOS .dmg bundle
+        working-directory: desktop/tauri
+        run: cargo tauri build --bundles dmg
+
+      - name: Upload macOS .dmg artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PADAM-Studio-macOS-dmg
+          path: desktop/tauri/target/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+
+  build-linux:
+    if: ${{ inputs.target_os == 'all' || inputs.target_os == 'linux' || inputs.target_os == '' }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install Linux WebKitGTK and AppImage dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Rust stable toolchain and Tauri CLI
+        run: |
+          rustup default stable
+          cargo install tauri-cli --version "^2.0.0" --locked
+
+      - name: Sync version from padam/__init__.py and stage embedded runtime
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, re, shutil
+          root = pathlib.Path(".")
+          init_txt = (root / "padam" / "__init__.py").read_text(encoding="utf-8")
+          ver = re.search(r'^__version__\s*=\s*"([^"]+)"', init_txt, re.M).group(1)
+          tconf_path = root / "desktop" / "tauri" / "tauri.conf.json"
+          tconf = json.loads(tconf_path.read_text(encoding="utf-8"))
+          tconf["version"] = ver
+          tconf["bundle"]["targets"] = ["deb", "appimage"]
+          tconf_path.write_text(json.dumps(tconf, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          cargo_path = root / "desktop" / "tauri" / "Cargo.toml"
+          cargo_txt = cargo_path.read_text(encoding="utf-8")
+          cargo_txt = re.sub(r'(?m)^version\s*=\s*"[^"]+"', f'version = "{ver}"', cargo_txt, count=1)
+          cargo_path.write_text(cargo_txt, encoding="utf-8")
+          rt = root / "desktop" / "tauri" / "runtime"
+          if rt.exists():
+              shutil.rmtree(rt)
+          (rt / "app").mkdir(parents=True, exist_ok=True)
+          shutil.copytree(root / "padam", rt / "app" / "padam")
+          print(f"Synced Linux Tauri version -> {ver}")
+          PY
+
+      - name: Build Linux .deb and .AppImage bundles
+        working-directory: desktop/tauri
+        run: cargo tauri build --bundles deb,appimage
+
+      - name: Upload Linux .deb and .AppImage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: PADAM-Studio-Linux-bundles
+          path: |
+            desktop/tauri/target/release/bundle/deb/*.deb
+            desktop/tauri/target/release/bundle/appimage/*.AppImage
+          if-no-files-found: error

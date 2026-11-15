@@ -1,5 +1,6 @@
-﻿# Сборка автономного установщика Windows для PADAM · NOCTURNE Studio (14.2 Г7 + 14.3).
+﻿# Сборка автономного установщика Windows для PADAM · NOCTURNE Studio (14.2 Г7 + 14.3 + п. 1.1–1.4).
 # Запускает бесплатный локальный тулчейн из E:\Tools (без установки VS на C:),
+# синхронизирует версию из единственной точки правды padam/__init__.py,
 # собирает встроенный Python 3.14 runtime в desktop\tauri\runtime и NSIS-установщик.
 # Шаг подписи кода выключен по умолчанию (14.3): активируется только при наличии PADAM_SIGN_PFX.
 
@@ -13,6 +14,25 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $TauriDir = Join-Path $RepoRoot "desktop\tauri"
 $RuntimeDir = Join-Path $TauriDir "runtime"
+
+# 1.1: Синхронизация версии приложения из единственной точки правды padam/__init__.py
+$InitPy = Get-Content (Join-Path $RepoRoot "padam\__init__.py") -Raw -Encoding UTF8
+if ($InitPy -match '(?m)^__version__\s*=\s*"([^"]+)"') {
+    $PadamVersion = $Matches[1]
+} else {
+    throw "Не удалось прочитать __version__ из padam/__init__.py"
+}
+Write-Output "[VERSION] Синхронизация версии из padam/__init__.py -> $PadamVersion"
+
+$TauriConfPath = Join-Path $TauriDir "tauri.conf.json"
+$TauriConfRaw = Get-Content $TauriConfPath -Raw -Encoding UTF8
+$TauriConfUpdated = [regex]::Replace($TauriConfRaw, '"version"\s*:\s*"[^"]+"', ('"version": "{0}"' -f $PadamVersion), 1)
+[System.IO.File]::WriteAllText($TauriConfPath, $TauriConfUpdated, [System.Text.UTF8Encoding]::new($false))
+
+$CargoTomlPath = Join-Path $TauriDir "Cargo.toml"
+$CargoTomlRaw = Get-Content $CargoTomlPath -Raw -Encoding UTF8
+$CargoTomlUpdated = [regex]::Replace($CargoTomlRaw, '(?m)^version\s*=\s*"[^"]+"', ('version = "{0}"' -f $PadamVersion), 1)
+[System.IO.File]::WriteAllText($CargoTomlPath, $CargoTomlUpdated, [System.Text.UTF8Encoding]::new($false))
 
 $env:RUSTUP_HOME = Join-Path $ToolsRoot "rustup"
 $env:CARGO_HOME = Join-Path $ToolsRoot "cargo"
@@ -51,10 +71,18 @@ if (-not $SkipRuntime) {
     $PadamDst = Join-Path $RuntimeDir "app\padam"
     Copy-Item -Recurse -Force (Join-Path $RepoRoot "padam") $PadamDst
     Get-ChildItem -Path $PadamDst -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force
+} else {
+    # Даже при -SkipRuntime обновляем копию пакета padam в runtime\app\padam
+    $PadamDst = Join-Path $RuntimeDir "app\padam"
+    if (Test-Path $PadamDst) {
+        Remove-Item -Recurse -Force $PadamDst
+    }
+    Copy-Item -Recurse -Force (Join-Path $RepoRoot "padam") $PadamDst
+    Get-ChildItem -Path $PadamDst -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force
 }
 
-Write-Output "[BUILD] Компиляция PADAM Studio (Tauri v2 + cargo-xwin, --jobs 8)..."
-$env:CARGO_BUILD_JOBS = "8"
+Write-Output "[BUILD] Компиляция PADAM Studio $PadamVersion (Tauri v2 + cargo-xwin, --jobs 6)..."
+$env:CARGO_BUILD_JOBS = "6"
 Push-Location $TauriDir
 try {
     cargo tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc
@@ -63,7 +91,7 @@ try {
     Pop-Location
 }
 
-$NsisOut = Get-ChildItem (Join-Path $TauriDir "target\x86_64-pc-windows-msvc\release\bundle\nsis") -Filter "*-setup.exe" | Select-Object -First 1
+$NsisOut = Get-ChildItem (Join-Path $TauriDir "target\x86_64-pc-windows-msvc\release\bundle\nsis") -Filter "*-setup.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 if (-not $NsisOut) {
     throw "Установщик NSIS *-setup.exe не найден!"
 }
@@ -80,4 +108,4 @@ if ($env:PADAM_SIGN_PFX -and (Test-Path $env:PADAM_SIGN_PFX)) {
 }
 
 $SizeMB = [math]::Round($NsisOut.Length / 1MB, 2)
-Write-Output "BUILD_SUCCESS=$($OutCopy) SIZE_BYTES=$($NsisOut.Length) SIZE_MB=$SizeMB"
+Write-Output "BUILD_SUCCESS=$($OutCopy) VERSION=$PadamVersion SIZE_BYTES=$($NsisOut.Length) SIZE_MB=$SizeMB"

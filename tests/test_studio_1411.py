@@ -1533,11 +1533,26 @@ def test_tauri_installer_bundle_and_smartscreen_docs_14_2_14_3():
     """14.2 (Г7 + Г8) и 14.3: конфигурация Tauri v2 + NSIS, трей, уведомления Windows, встроенный runtime и честный SmartScreen."""
     root = Path(__file__).resolve().parents[1]
 
+    import padam
     tconf = json.loads((root / "desktop" / "tauri" / "tauri.conf.json").read_text("utf-8"))
     assert tconf["productName"] == "PADAM Studio"
+    assert tconf["version"] == padam.__version__
     assert tconf["identifier"] == "com.codeofdigitaleternity.padam.studio"
+    assert tconf["bundle"]["publisher"] == "CODE Eternal LLC"
     assert "nsis" in tconf["bundle"]["targets"]
     assert tconf["bundle"]["resources"] == {"runtime": "runtime"}
+
+    cargo_toml = (root / "desktop" / "tauri" / "Cargo.toml").read_text("utf-8")
+    assert re.search(r'^version\s*=\s*"([^"]+)"', cargo_toml, re.M).group(1) == padam.__version__
+
+    build_rs = (root / "desktop" / "tauri" / "build.rs").read_text("utf-8")
+    assert "../../padam/__init__.py" in build_rs
+    assert "PADAM_VERSION" in build_rs
+
+    wf_txt = (root / ".github" / "workflows" / "desktop-build.yml").read_text("utf-8")
+    assert "workflow_dispatch:" in wf_txt
+    assert "macos-latest" in wf_txt and ".dmg" in wf_txt
+    assert "ubuntu-22.04" in wf_txt and ".AppImage" in wf_txt and ".deb" in wf_txt
     nsis = tconf["bundle"]["windows"]["nsis"]
     assert nsis["installMode"] == "currentUser"
     assert nsis["installerHooks"] == "./windows/hooks.nsh"

@@ -563,9 +563,9 @@ class Handler(BaseHTTPRequestHandler):
                 if not _state["token"] or not self._authorized():
                     return self._send(403, {"error": "forbidden"})
                 from . import desktop as _desktop
-                if any(k in data for k in ("tab", "eval", "window_cmd")):
+                if any(k in data for k in ("tab", "eval", "window_cmd", "count")):
                     _state.setdefault("desktop_cmds", []).append({
-                        k: data[k] for k in ("tab", "eval", "window_cmd") if k in data
+                        k: data[k] for k in ("tab", "eval", "window_cmd", "count") if k in data
                     })
                 res = _desktop.control_native_window(
                     action=str(data.get("action", "inspect")),

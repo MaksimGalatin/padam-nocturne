@@ -9,5 +9,6 @@
 
 !macro NSIS_HOOK_POSTUNINSTALL
   Delete "$DESKTOP\PADAM Studio.lnk"
+  Delete "$SMPROGRAMS\PADAM Studio.lnk"
   DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "PADAMStudio"
 !macroend

@@ -21,6 +21,7 @@ use std::os::windows::process::CommandExt;
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 const APP_IDENTIFIER: &str = "com.codeofdigitaleternity.padam.studio";
+const PADAM_VERSION: &str = env!("PADAM_VERSION");
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct WindowGeom {
@@ -319,12 +320,16 @@ fn send_quarantine_toast(count: u64, ru: bool) {
     } else {
         format!("Agent write looked like a command — check review queue (held: {count})")
     };
-    if let Err(err) = tauri_winrt_notification::Toast::new(APP_IDENTIFIER)
+    let primary = tauri_winrt_notification::Toast::new(APP_IDENTIFIER)
         .title("PADAM · NOCTURNE Studio")
         .text1(&body)
-        .show()
-    {
-        log_line(&format!("toast_error={err:?}"));
+        .show();
+    if let Err(err) = primary {
+        log_line(&format!("toast_primary_error={err:?}"));
+        let _ = tauri_winrt_notification::Toast::new(tauri_winrt_notification::Toast::POWERSHELL_APP_ID)
+            .title("PADAM · NOCTURNE Studio")
+            .text1(&body)
+            .show();
     } else {
         log_line(&format!("toast_sent quarantined={count}"));
     }
@@ -400,7 +405,7 @@ fn main() {
             let review_for_sleep = review_item.clone();
             let tray = TrayIconBuilder::with_id("padam-tray")
                 .icon(icon)
-                .tooltip("PADAM · NOCTURNE Studio")
+                .tooltip(format!("PADAM · NOCTURNE Studio {PADAM_VERSION}"))
                 .menu(&tray_menu)
                 .show_menu_on_left_click(false)
                 .on_tray_icon_event(|tray_icon, event| {
@@ -445,6 +450,7 @@ fn main() {
                 .build(app)?;
 
             if let Some(win) = app.get_webview_window("main") {
+                let _ = win.set_title(&format!("PADAM · NOCTURNE Studio {PADAM_VERSION}"));
                 apply_saved_geometry(&win);
                 if !start_minimized {
                     let _ = win.show();
@@ -508,6 +514,10 @@ fn main() {
                                                 }
                                             }
                                             "restore" => show_studio_window(&app_bg, None),
+                                            "toast" => {
+                                                let q_val = cmd.get("count").and_then(|v| v.as_u64()).unwrap_or(1);
+                                                send_quarantine_toast(q_val, ru);
+                                            }
                                             "quit" => {
                                                 guard_bg.shutdown();
                                                 app_bg.exit(0);
