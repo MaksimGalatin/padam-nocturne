@@ -460,6 +460,21 @@ def cmd_access(m, a) -> int:
     return 1
 
 
+def cmd_migrate(m, a) -> int:
+    """ТОП-10 v4 Пункт 3: импорт памяти из ChatGPT, Claude, Mem0, Zep, Obsidian, Notion."""
+    from . import migrate
+    res = migrate.migrate_from_source(
+        m,
+        source=a.source,
+        input_path=a.path,
+        scope=a.scope,
+        dry_run=bool(a.dry_run),
+        guarded=not bool(getattr(a, "trusted", False)),
+    )
+    print(json.dumps(res, ensure_ascii=False, indent=2))
+    return 0
+
+
 def cmd_compact(m, a) -> int:
     """ТОП-10 v3 Пункт 5: локальная иерархическая компакция старых событий."""
     from . import compaction
@@ -1568,6 +1583,15 @@ def main(argv=None) -> int:
                                                     "build .mcpb Desktop Extension bundle"))
     spack.add_argument("--out", default="padam-nocturne.mcpb")
     spack.set_defaults(fn=cmd_pack_extension)
+
+    smig = sub.add_parser("migrate", help=t("импорт из ChatGPT/Claude/Mem0/Zep/Obsidian/Notion",
+                                          "migrate memory from ChatGPT/Claude/Mem0/Zep/Obsidian/Notion"))
+    smig.add_argument("--from", dest="source", required=True, choices=("chatgpt", "claude", "mem0", "zep", "obsidian", "notion"))
+    smig.add_argument("path")
+    smig.add_argument("--scope", default="imported")
+    smig.add_argument("--dry-run", action="store_true")
+    smig.add_argument("--trusted", action="store_true")
+    smig.set_defaults(fn=cmd_migrate)
 
     a = p.parse_args(argv)
     if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup, cmd_pack_extension) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):
