@@ -196,3 +196,11 @@ OVERREPLAY_COUNT = 5
 # По умолчанию выключены: включаются явным флагом и согласием клиента.
 MCP_TASKS_ENABLED = os.environ.get("PADAM_MCP_TASKS", "0") == "1"
 MCP_SAMPLING_ENABLED = os.environ.get("PADAM_MCP_SAMPLING", "0") == "1"
+
+# --- Пункт 1.2: OAuth 2.1 + RFC 9728 для локального MCP HTTP-сервера ---
+MCP_OAUTH_ENABLED = os.environ.get("PADAM_MCP_OAUTH", "0") == "1"
+
+
+def mcp_oauth_enabled() -> bool:
+    """Включается только явно через PADAM_MCP_OAUTH=1; по умолчанию выключено."""
+    return os.environ.get("PADAM_MCP_OAUTH", "0") == "1"

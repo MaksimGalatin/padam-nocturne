@@ -2289,8 +2289,8 @@ def _handle_legacy(req: dict) -> dict | None:
 
 
 def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
-                         port: int = 8079, token: str | None = None):
-    """Г4: Локальный сервер MCP Streamable HTTP (только 127.0.0.1, обязательный Bearer-токен).
+                         port: int = 8079, token: str | None = None, oauth: bool | None = None):
+    """Г4 + 1.2: Локальный сервер MCP Streamable HTTP (только 127.0.0.1, Bearer-токен или OAuth 2.1 + RFC 9728).
     Возвращает (ThreadingHTTPServer, url, token).
     """
     import hmac
@@ -2298,6 +2298,8 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
     import time
     from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
     from urllib.parse import parse_qs, urlsplit
+
+    from . import oauth as _oauth
 
     sse_stop_event = threading.Event()
 
@@ -2310,6 +2312,9 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
         raise ValueError("Token is a placeholder or shorter than 16 characters")
     if not tok:
         tok = secrets.token_urlsafe(24)
+
+    oauth_enabled = config.mcp_oauth_enabled() if oauth is None else bool(oauth)
+    oauth_srv = _oauth.LocalOAuth21Server(f"http://{host}:{port}", tok) if oauth_enabled else None
 
     session_id = secrets.token_hex(16)
     if memory is not None:
@@ -2347,9 +2352,47 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                 return False
             return True
 
-        def _authorized(self) -> bool:
+        def _authorize_scopes(self) -> set[str] | None:
             auth = self.headers.get("Authorization", "")
-            return hmac.compare_digest(auth.encode("utf-8"), f"Bearer {tok}".encode("utf-8"))
+            if hmac.compare_digest(auth.encode("utf-8"), f"Bearer {tok}".encode("utf-8")):
+                return set(_oauth.ALL_SCOPES)
+            if oauth_srv is not None and auth.startswith("Bearer "):
+                return oauth_srv.verify_bearer(auth[7:].strip())
+            return None
+
+        def _authorized(self) -> bool:
+            return self._authorize_scopes() is not None
+
+        def _send_unauth(self) -> None:
+            hdrs = {"WWW-Authenticate": oauth_srv.www_authenticate_header()} if oauth_srv is not None else None
+            self._send_json(401, {"error": "unauthorized: Bearer token required"}, extra_headers=hdrs)
+
+        def _send_forbidden_scope(self, scope: str) -> None:
+            hdrs = (
+                {"WWW-Authenticate": oauth_srv.www_authenticate_header(error="insufficient_scope", scope=scope)}
+                if oauth_srv is not None else None
+            )
+            self._send_json(403, {"error": "insufficient_scope", "scope": scope}, extra_headers=hdrs)
+
+        def _send_html(self, code: int, html_text: str) -> None:
+            raw_html = html_text.encode("utf-8")
+            self.send_response(code)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(raw_html)))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.end_headers()
+            self.wfile.write(raw_html)
+
+        def _parse_oauth_params(self, raw_bytes: bytes) -> dict:
+            ctype_full = (self.headers.get("Content-Type") or "").split(";", 1)[0].strip().lower()
+            if ctype_full == "application/json":
+                obj = json.loads(raw_bytes.decode("utf-8"))
+                if not isinstance(obj, dict):
+                    raise ValueError("JSON object expected")
+                return obj
+            qs_map = parse_qs(raw_bytes.decode("utf-8"), keep_blank_values=True)
+            return {k: (v[0] if v else "") for k, v in qs_map.items()}
 
         def _valid_proto_header(self) -> bool:
             pv = (self.headers.get("MCP-Protocol-Version") or "").strip()
@@ -2376,7 +2419,7 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
             if not self._trusted_local():
                 return self._send_json(403, {"error": "forbidden origin or host"})
             if not self._authorized():
-                return self._send_json(401, {"error": "unauthorized: Bearer token required"})
+                return self._send_unauth()
             if path != "/mcp":
                 return self._send_json(404, {"error": "not found"})
             return self._send_json(200, {"closed": True, "sessionId": session_id})
@@ -2389,9 +2432,24 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                 return self._send_json(200, {"status": "ok", "transport": "streamable-http", "version": __version__})
             if not self._trusted_local():
                 return self._send_json(403, {"error": "forbidden origin or host"})
-            if not self._authorized():
-                return self._send_json(401, {"error": "unauthorized: Bearer token required"})
+            if oauth_srv is not None:
+                if path == "/.well-known/oauth-protected-resource":
+                    return self._send_json(200, oauth_srv.protected_resource_metadata())
+                if path == "/.well-known/oauth-authorization-server":
+                    return self._send_json(200, oauth_srv.authorization_server_metadata())
+                if path == "/oauth/authorize":
+                    flat = {k: (v[0] if v else "") for k, v in qs.items()}
+                    try:
+                        auth_req = oauth_srv.validate_authorize_request(flat)
+                    except ValueError as exc:
+                        return self._send_json(400, {"error": "invalid_request", "error_description": str(exc)})
+                    return self._send_html(200, oauth_srv.render_consent_html(auth_req))
+            scopes = self._authorize_scopes()
+            if scopes is None:
+                return self._send_unauth()
             if path == "/mcp":
+                if "padam:read" not in scopes:
+                    return self._send_forbidden_scope("padam:read")
                 m_cur = mem()
                 actor_hdr = (self.headers.get("X-Padam-Actor-Token") or "").strip() or os.environ.get("PADAM_ACTOR_TOKEN", "").strip()
                 actor = None
@@ -2487,10 +2545,45 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                 if 0 < ln <= MAX_MCP_BODY:
                     self.rfile.read(ln)
                 return self._send_json(403, {"error": "forbidden origin or host"})
-            if not self._authorized():
+            if oauth_srv is not None and path in ("/oauth/register", "/oauth/authorize", "/oauth/token"):
+                if ln <= 0 or ln > MAX_MCP_BODY:
+                    return self._send_json(400, {"error": "invalid_request"})
+                raw_oa = self.rfile.read(ln)
+                try:
+                    oa_params = self._parse_oauth_params(raw_oa)
+                except Exception as exc:
+                    return self._send_json(400, {"error": "invalid_request", "error_description": str(exc)})
+                if path == "/oauth/register":
+                    try:
+                        return self._send_json(201, oauth_srv.register_client(oa_params))
+                    except ValueError as exc:
+                        return self._send_json(400, {"error": "invalid_client_metadata", "error_description": str(exc)})
+                if path == "/oauth/authorize":
+                    auth_hdr = self.headers.get("Authorization", "")
+                    if not oa_params.get("owner_token") and auth_hdr.startswith("Bearer "):
+                        oa_params["owner_token"] = auth_hdr[7:].strip()
+                    try:
+                        redir = oauth_srv.approve_or_deny(oa_params)
+                    except PermissionError as exc:
+                        return self._send_json(403, {"error": "access_denied", "error_description": str(exc)})
+                    except ValueError as exc:
+                        return self._send_json(400, {"error": "invalid_request", "error_description": str(exc)})
+                    self.send_response(302)
+                    self.send_header("Location", redir)
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return None
+                if path == "/oauth/token":
+                    try:
+                        return self._send_json(200, oauth_srv.exchange_code(oa_params))
+                    except ValueError as exc:
+                        return self._send_json(400, {"error": "invalid_grant", "error_description": str(exc)})
+            scopes = self._authorize_scopes()
+            if scopes is None:
                 if 0 < ln <= MAX_MCP_BODY:
                     self.rfile.read(ln)
-                return self._send_json(401, {"error": "unauthorized: Bearer token required"})
+                return self._send_unauth()
             if not self._valid_proto_header():
                 if 0 < ln <= MAX_MCP_BODY:
                     self.rfile.read(ln)
@@ -2525,6 +2618,12 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                         if not isinstance(item, dict):
                             responses.append({"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": "invalid request"}})
                         else:
+                            need = _oauth.required_scope_for_rpc(item)
+                            if need and need not in scopes:
+                                if item.get("id") is not None:
+                                    responses.append({"jsonrpc": "2.0", "id": item.get("id"),
+                                                      "error": {"code": -32003, "message": f"insufficient scope: requires {need}"}})
+                                continue
                             r = handle(item)
                             if r is not None:
                                 responses.append(r)
@@ -2538,6 +2637,10 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
 
                 if not isinstance(req, dict):
                     return self._send_json(200, {"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": "invalid request"}})
+
+                need = _oauth.required_scope_for_rpc(req)
+                if need and need not in scopes:
+                    return self._send_forbidden_scope(need)
 
                 try:
                     resp = handle(req)
@@ -2567,6 +2670,8 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
 
     srv.shutdown = _shutdown_with_sse
     actual_port = srv.server_address[1]
+    if oauth_srv is not None:
+        oauth_srv.base_url = f"http://{host}:{actual_port}"
     return srv, f"http://{host}:{actual_port}/mcp", tok
 
 
@@ -2595,9 +2700,13 @@ def main(argv: list[str] | None = None, memory: Memory | None = None) -> int:
         hp.add_argument("--host", default="127.0.0.1")
         hp.add_argument("--port", type=int, default=8079)
         hp.add_argument("--token", default=os.environ.get("PADAM_API_TOKEN"))
+        hp.add_argument("--oauth", action="store_true", default=None)
         ha = hp.parse_args(args)
         try:
-            srv, url, tok = make_mcp_http_server(memory=_memory, host=ha.host, port=ha.port, token=ha.token)
+            srv, url, tok = make_mcp_http_server(
+                memory=_memory, host=ha.host, port=ha.port, token=ha.token,
+                oauth=(True if ha.oauth else None),
+            )
         except ValueError as e:
             print(f"Refused: {e}", file=sys.stderr)
             return 2

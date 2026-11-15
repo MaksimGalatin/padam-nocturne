@@ -4038,5 +4038,267 @@ def test_step_2_4_tauri_updater_signed_and_no_privkey_in_repo():
         assert not tracked.endswith(".key"), f"Tracked .key file in git: {tracked}"
 
 
+def test_step_1_2_oauth21_pkce_rfc9728_and_scopes(tmp_path, monkeypatch):
+    """Пункт 1.2: OAuth 2.1 (PKCE S256) + RFC 9728 / RFC 8414 / RFC 7591 + scopes, выключен по умолчанию."""
+    import base64
+    import hashlib
+    import json
+    import secrets
+    import threading
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+    from padam.memory import Memory
+    from padam.store import Store
+    from padam import config, mcp_server
+
+    monkeypatch.delenv("PADAM_MCP_OAUTH", raising=False)
+    assert config.mcp_oauth_enabled() is False
+
+    mem = Memory(user_id="oauth-test", store=Store(tmp_path / "oauth.db"))
+    # 1. По умолчанию oauth выключен: RFC 9728 недоступен, tools/list = 9 инструментов
+    srv_off, url_off, tok_off = mcp_server.make_mcp_http_server(memory=mem, host="127.0.0.1", port=0)
+    t_off = threading.Thread(target=srv_off.serve_forever, daemon=True)
+    t_off.start()
+    try:
+        base_off = url_off.rsplit("/mcp", 1)[0]
+        with pytest.raises(urllib.error.HTTPError) as e_off:
+            urllib.request.urlopen(f"{base_off}/.well-known/oauth-protected-resource", timeout=5)
+        assert e_off.value.code == 401
+        assert "resource_metadata" not in (e_off.value.headers.get("WWW-Authenticate") or "")
+        req_tok = urllib.request.Request(
+            f"{base_off}/.well-known/oauth-protected-resource",
+            headers={"Authorization": f"Bearer {tok_off}"},
+        )
+        with pytest.raises(urllib.error.HTTPError) as e_off2:
+            urllib.request.urlopen(req_tok, timeout=5)
+        assert e_off2.value.code == 404
+    finally:
+        srv_off.shutdown()
+        srv_off.server_close()
+
+    # 2. Включенный режим oauth=True: полный цикл OAuth 2.1 + PKCE S256 + scopes
+    srv, url, owner_tok = mcp_server.make_mcp_http_server(memory=mem, host="127.0.0.1", port=0, oauth=True)
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+
+    class _NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            return None
+
+    no_redir_opener = urllib.request.build_opener(_NoRedirect)
+
+    def _post_json(u, obj, headers=None):
+        req = urllib.request.Request(
+            u,
+            data=json.dumps(obj).encode("utf-8"),
+            headers={"Content-Type": "application/json", **(headers or {})},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=5) as r:
+            return r.status, json.loads(r.read().decode("utf-8"))
+
+    def _get_code(base, client_id, redirect_uri, challenge, scope, owner_secret):
+        body = urllib.parse.urlencode({
+            "response_type": "code",
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
+            "scope": scope,
+            "state": "st42",
+            "decision": "approve",
+            "owner_token": owner_secret,
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            f"{base}/oauth/authorize",
+            data=body,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            method="POST",
+        )
+        try:
+            no_redir_opener.open(req, timeout=5)
+        except urllib.error.HTTPError as err:
+            assert err.code == 302
+            loc = err.headers["Location"]
+            parsed = urllib.parse.urlsplit(loc)
+            qs = urllib.parse.parse_qs(parsed.query)
+            assert qs.get("state") == ["st42"]
+            return qs["code"][0]
+        raise AssertionError("Expected 302 redirect from /oauth/authorize")
+
+    try:
+        base = url.rsplit("/mcp", 1)[0]
+        # 2a. 401 на /mcp отдаёт WWW-Authenticate с resource_metadata (RFC 9728)
+        with pytest.raises(urllib.error.HTTPError) as e401:
+            _post_json(url, {"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
+        assert e401.value.code == 401
+        www = e401.value.headers.get("WWW-Authenticate") or ""
+        assert f'resource_metadata="{base}/.well-known/oauth-protected-resource"' in www
+
+        # 2b. RFC 9728 & RFC 8414 метаданные без авторизации
+        with urllib.request.urlopen(f"{base}/.well-known/oauth-protected-resource", timeout=5) as r:
+            prm = json.loads(r.read().decode("utf-8"))
+        assert prm["resource"] == url
+        assert base in prm["authorization_servers"]
+        assert set(prm["scopes_supported"]) == {"padam:read", "padam:write", "padam:sleep"}
+
+        with urllib.request.urlopen(f"{base}/.well-known/oauth-authorization-server", timeout=5) as r:
+            asm = json.loads(r.read().decode("utf-8"))
+        assert asm["code_challenge_methods_supported"] == ["S256"]
+        assert asm["token_endpoint"] == f"{base}/oauth/token"
+
+        # 2c. RFC 7591 регистрация (внешний redirect_uri отклоняется, локальный принимается)
+        with pytest.raises(urllib.error.HTTPError) as e_bad_reg:
+            _post_json(f"{base}/oauth/register", {"redirect_uris": ["https://evil.example/cb"]})
+        assert e_bad_reg.value.code == 400
+
+        redirect_uri = "http://127.0.0.1:9999/callback"
+        st_reg, reg = _post_json(f"{base}/oauth/register", {
+            "client_name": "Test OAuth MCP",
+            "redirect_uris": [redirect_uri],
+        })
+        assert st_reg == 201
+        client_id = reg["client_id"]
+
+        verifier = secrets.token_urlsafe(48)
+        challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode("ascii")).digest()).rstrip(b"=").decode("ascii")
+
+        # 2d. plain вместо S256 на /oauth/authorize отклоняется
+        with pytest.raises(urllib.error.HTTPError) as e_plain:
+            urllib.request.urlopen(
+                f"{base}/oauth/authorize?" + urllib.parse.urlencode({
+                    "response_type": "code",
+                    "client_id": client_id,
+                    "redirect_uri": redirect_uri,
+                    "code_challenge": challenge,
+                    "code_challenge_method": "plain",
+                }),
+                timeout=5,
+            )
+        assert e_plain.value.code == 400
+
+        # GET /oauth/authorize возвращает страницу согласия
+        with urllib.request.urlopen(
+            f"{base}/oauth/authorize?" + urllib.parse.urlencode({
+                "response_type": "code",
+                "client_id": client_id,
+                "redirect_uri": redirect_uri,
+                "code_challenge": challenge,
+                "code_challenge_method": "S256",
+                "scope": "padam:read",
+            }),
+            timeout=5,
+        ) as r:
+            assert "Test OAuth MCP" in r.read().decode("utf-8")
+
+        # 2e. Неверный owner_token на POST /oauth/authorize -> 403
+        with pytest.raises(urllib.error.HTTPError) as e_wrong_own:
+            _post_json(f"{base}/oauth/authorize", {
+                "response_type": "code",
+                "client_id": client_id,
+                "redirect_uri": redirect_uri,
+                "code_challenge": challenge,
+                "code_challenge_method": "S256",
+                "scope": "padam:read",
+                "decision": "approve",
+                "owner_token": "wrong-owner-token-12345",
+            })
+        assert e_wrong_own.value.code == 403
+
+        # 2f. Неверный PKCE verifier отклоняется, верный выдаёт токен с padam:read; код одноразовый
+        bad_code = _get_code(base, client_id, redirect_uri, challenge, "padam:read", owner_tok)
+        with pytest.raises(urllib.error.HTTPError) as e_pkce:
+            _post_json(f"{base}/oauth/token", {
+                "grant_type": "authorization_code",
+                "code": bad_code,
+                "redirect_uri": redirect_uri,
+                "client_id": client_id,
+                "code_verifier": "wrong-" + verifier,
+            })
+        assert e_pkce.value.code == 400
+
+        good_code = _get_code(base, client_id, redirect_uri, challenge, "padam:read", owner_tok)
+        st_tok, tok_res = _post_json(f"{base}/oauth/token", {
+            "grant_type": "authorization_code",
+            "code": good_code,
+            "redirect_uri": redirect_uri,
+            "client_id": client_id,
+            "code_verifier": verifier,
+        })
+        assert st_tok == 200
+        read_access = tok_res["access_token"]
+        assert tok_res["scope"] == "padam:read"
+
+        # Повторное использование одноразового кода запрещено
+        with pytest.raises(urllib.error.HTTPError) as e_replay:
+            _post_json(f"{base}/oauth/token", {
+                "grant_type": "authorization_code",
+                "code": good_code,
+                "redirect_uri": redirect_uri,
+                "client_id": client_id,
+                "code_verifier": verifier,
+            })
+        assert e_replay.value.code == 400
+
+        # 2g. Проверка прав токена padam:read: 9 инструментов, padam_stats ok, write/sleep -> 403 insufficient_scope
+        st_list, list_res = _post_json(
+            url,
+            {"jsonrpc": "2.0", "id": 10, "method": "tools/list"},
+            headers={"Authorization": f"Bearer {read_access}"},
+        )
+        assert st_list == 200
+        assert len(list_res["result"]["tools"]) == 9
+
+        st_stats, stats_res = _post_json(
+            url,
+            {"jsonrpc": "2.0", "id": 11, "method": "tools/call", "params": {"name": "padam_stats", "arguments": {}}},
+            headers={"Authorization": f"Bearer {read_access}"},
+        )
+        assert st_stats == 200 and stats_res["result"]["isError"] is False
+
+        with pytest.raises(urllib.error.HTTPError) as e_write:
+            _post_json(
+                url,
+                {"jsonrpc": "2.0", "id": 12, "method": "tools/call",
+                 "params": {"name": "padam_write", "arguments": {"content": "test write scope"}}},
+                headers={"Authorization": f"Bearer {read_access}"},
+            )
+        assert e_write.value.code == 403
+        assert "insufficient_scope" in (e_write.value.headers.get("WWW-Authenticate") or "")
+        assert "padam:write" in (e_write.value.headers.get("WWW-Authenticate") or "")
+
+        # 2h. Токен с padam:read padam:write разрешает padam_write, но запрещает padam_sleep
+        rw_code = _get_code(base, client_id, redirect_uri, challenge, "padam:read padam:write", owner_tok)
+        _, rw_res = _post_json(f"{base}/oauth/token", {
+            "grant_type": "authorization_code",
+            "code": rw_code,
+            "redirect_uri": redirect_uri,
+            "client_id": client_id,
+            "code_verifier": verifier,
+        })
+        rw_access = rw_res["access_token"]
+        st_w, w_res = _post_json(
+            url,
+            {"jsonrpc": "2.0", "id": 13, "method": "tools/call",
+             "params": {"name": "padam_write", "arguments": {"content": "OAuth write works", "origin": "user"}}},
+            headers={"Authorization": f"Bearer {rw_access}"},
+        )
+        assert st_w == 200 and w_res["result"]["isError"] is False
+
+        with pytest.raises(urllib.error.HTTPError) as e_sleep:
+            _post_json(
+                url,
+                {"jsonrpc": "2.0", "id": 14, "method": "tools/call", "params": {"name": "padam_sleep", "arguments": {}}},
+                headers={"Authorization": f"Bearer {rw_access}"},
+            )
+        assert e_sleep.value.code == 403
+        assert "padam:sleep" in (e_sleep.value.headers.get("WWW-Authenticate") or "")
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        mem.close()
+
+
 
 
