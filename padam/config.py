@@ -468,3 +468,9 @@ def mcp_otel_path() -> str:
 def mcp_playground_enabled() -> bool:
     """Включает API-маршрут /api/v2/playground/demo (PADAM_PLAYGROUND=1)."""
     return os.environ.get("PADAM_PLAYGROUND", "0").strip() == "1"
+
+
+# --- ТОП-10 v4 Пункт 10: Локальный мост для мессенджеров и self-hosted автоматизаций (выключено по умолчанию) ---
+def mcp_bridge_enabled() -> bool:
+    """Включает API-маршрут /api/v2/bridge/ingest (PADAM_BRIDGE=1)."""
+    return os.environ.get("PADAM_BRIDGE", "0").strip() == "1"

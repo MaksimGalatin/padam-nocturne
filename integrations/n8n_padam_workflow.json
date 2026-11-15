@@ -1,0 +1,54 @@
+{
+  "name": "PADAM Nocturne Local Memory Bridge (n8n)",
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "parameters": {
+        "path": "padam-bridge-in",
+        "httpMethod": "POST"
+      }
+    },
+    {
+      "id": "2",
+      "name": "Send to Local PADAM Bridge",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [520, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8787/api/v2/bridge/ingest",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.PADAM_API_TOKEN}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "jsonParameters": true,
+        "bodyParametersJson": "={\"platform\": \"n8n\", \"channel_id\": $json.channel_id, \"sender_id\": $json.sender_id, \"text\": $json.text}"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Send to Local PADAM Bridge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {}
+}
