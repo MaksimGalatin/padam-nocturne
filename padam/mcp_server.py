@@ -155,6 +155,10 @@ TOOLS = [
                                                  "forgets a source, its conclusions can be forgotten with it.")},
                 "agent_id": {"type": "string", "minLength": 1, "maxLength": 64,
                              "description": "Identifier of the agent storing the record (e.g. claude-code, cursor)"},
+                "valid_from": {"type": "string", "maxLength": 40, "pattern": _AS_OF_PATTERN,
+                               "description": "Optional start of validity window (ISO date or UTC timestamp)"},
+                "valid_to": {"type": "string", "maxLength": 40, "pattern": _AS_OF_PATTERN,
+                             "description": "Optional end of validity window (ISO date or UTC timestamp)"},
             },
             "required": ["content"],
             "additionalProperties": False,
@@ -861,12 +865,17 @@ def call_tool(name: str, args: dict) -> str:
         _, masked = safety.redact(safety.strip_invisible(args["content"]))
         origin = args.get("origin", "agent")
         agent_id = args.get("agent_id") or os.environ.get("PADAM_AGENT_ID") or None
-        outcome, mid = m.remember(
-            args["content"], kind=args.get("kind"),
-            importance=float(args.get("importance", 0.5)),
-            scope=args.get("scope", "global"), origin=origin, guarded=True,
-            derived_from=args.get("derived_from"),
-            agent_id=agent_id)
+        try:
+            outcome, mid = m.remember(
+                args["content"], kind=args.get("kind"),
+                importance=float(args.get("importance", 0.5)),
+                scope=args.get("scope", "global"), origin=origin, guarded=True,
+                derived_from=args.get("derived_from"),
+                agent_id=agent_id,
+                valid_from=args.get("valid_from"),
+                valid_to=args.get("valid_to"))
+        except ValueError as e:
+            return f"Invalid temporal validity window: {e}"
         reason_str = ""
         if outcome == "quarantined":
             _emit_resource_updated("padam://review-queue")

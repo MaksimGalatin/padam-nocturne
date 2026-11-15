@@ -51,7 +51,7 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link"}
 OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
@@ -350,10 +350,14 @@ class Handler(BaseHTTPRequestHandler):
                 })
             if путь.path == "/graph":
                 q = parse_qs(путь.query)
-                return self._send(200, mem().graph(
-                    center_id=q.get("id", [None])[0] or None,
-                    limit=int(q.get("limit", ["200"])[0]),
-                ))
+                try:
+                    return self._send(200, mem().graph(
+                        center_id=q.get("id", [None])[0] or None,
+                        limit=int(q.get("limit", ["200"])[0]),
+                        as_of=q.get("as_of", [None])[0] or None,
+                    ))
+                except ValueError as e:
+                    return self._send(400, {"error": str(e)})
             if путь.path == "/entities":
                 q = parse_qs(путь.query)
                 return self._send(200, mem().entities_catalog(
@@ -478,14 +482,30 @@ class Handler(BaseHTTPRequestHandler):
                 if req_origin.startswith(("chrome-extension://", "moz-extension://")):
                     origin = "external"
                 agent_id = data.get("agent_id") or (self.headers.get("X-Agent-ID") or "").strip() or None
-                outcome, mid = m.remember(
-                    data["content"], kind=data.get("kind"),
-                    importance=float(data.get("importance", 0.5)),
-                    scope=data.get("scope", "global"),
-                    # Без токена владельца не отличить от любого процесса, дотянувшегося до порта.
-                    origin=origin, guarded=origin != "user" or not _state["token"],
-                    agent_id=agent_id)
+                try:
+                    outcome, mid = m.remember(
+                        data["content"], kind=data.get("kind"),
+                        importance=float(data.get("importance", 0.5)),
+                        scope=data.get("scope", "global"),
+                        # Без токена владельца не отличить от любого процесса, дотянувшегося до порта.
+                        origin=origin, guarded=origin != "user" or not _state["token"],
+                        derived_from=data.get("derived_from") if _state["token"] else None,
+                        agent_id=agent_id,
+                        valid_from=data.get("valid_from") or None,
+                        valid_to=data.get("valid_to") or None,
+                        links=data.get("links") if _state["token"] else None)
+                except ValueError as e:
+                    return self._send(400, {"error": str(e)})
                 return self._send(200, {"outcome": outcome, "id": mid, "agent_id": agent_id})
+
+            if self.path == "/link":
+                src = str(data.get("source") or data.get("src") or "").strip()
+                dst = str(data.get("target") or data.get("dst") or "").strip()
+                rel = str(data.get("relation") or data.get("type") or "derived").strip()
+                try:
+                    return self._send(200, m.link(src, dst, relation=rel))
+                except ValueError as e:
+                    return self._send(400, {"error": str(e)})
 
             if self.path == "/confirm":
                 return self._send(200, {"ok": m.confirm(data["id"])})

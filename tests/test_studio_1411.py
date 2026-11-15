@@ -2271,3 +2271,177 @@ def test_item3_qa_pipeline_intent_sufficiency_and_chronology(tmp_path, monkeypat
     assert base_sum["spent_usd_this_run"] == 0.0 and imp_sum["spent_usd_this_run"] == 0.0
     assert imp_sum["accuracy_overall"] > base_sum["accuracy_overall"]
     assert imp_sum["accuracy_without_abstention"] > base_sum["accuracy_without_abstention"]
+
+
+def test_item4_temporal_graph_edges_asof_and_cascade_forget(tmp_path):
+    """Пункт 4: граф во времени (valid_from/valid_to, 4 типа рёбер, as_of-граф и удаление источника с выводами)."""
+    import sqlite3
+    import pytest
+    from padam import mcp_server, studio
+
+    # 1. Обратная совместимость: старая SQLite БД без колонки relation в memory_link
+    legacy_db = tmp_path / "legacy_item4.db"
+    conn = sqlite3.connect(legacy_db)
+    conn.executescript(
+        """
+        CREATE TABLE memory (
+            id TEXT PRIMARY KEY, user_id TEXT NOT NULL, scope TEXT NOT NULL DEFAULT 'global',
+            kind TEXT NOT NULL, content TEXT, embedding BLOB, importance REAL NOT NULL DEFAULT 0.5,
+            confidence REAL NOT NULL DEFAULT 1.0, created_at TEXT NOT NULL, last_seen_at TEXT NOT NULL,
+            last_confirmed_at TEXT NOT NULL, valid_from TEXT, valid_to TEXT, expires_at TEXT,
+            status TEXT NOT NULL DEFAULT 'active', supersedes TEXT, superseded_by TEXT,
+            access_count INTEGER NOT NULL DEFAULT 0, refuted_count INTEGER NOT NULL DEFAULT 0,
+            source_episode_id TEXT, content_hash BLOB, anchor_tx TEXT, anchor_slot INTEGER
+        );
+        CREATE TABLE memory_link (
+            src TEXT NOT NULL,
+            dst TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (src, dst)
+        );
+        INSERT INTO memory (id, user_id, scope, kind, content, created_at, last_seen_at, last_confirmed_at, status)
+        VALUES ('old1', 'u4', 'global', 'fact', 'Старый источник', '2026-01-01T00:00:00+00:00', '2026-01-01T00:00:00+00:00', '2026-01-01T00:00:00+00:00', 'active'),
+               ('old2', 'u4', 'global', 'decision', 'Старый вывод', '2026-01-02T00:00:00+00:00', '2026-01-02T00:00:00+00:00', '2026-01-02T00:00:00+00:00', 'active');
+        INSERT INTO memory_link (src, dst, created_at) VALUES ('old1', 'old2', '2026-01-02T00:00:00+00:00');
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    st_old = Store(legacy_db)
+    try:
+        cols = {r["name"] for r in st_old.query("PRAGMA table_info(memory_link)")}
+        assert "relation" in cols
+        m_old = Memory(user_id="u4", store=st_old)
+        g_old = m_old.graph()
+        assert any(e["source"] == "old1" and e["target"] == "old2" and e["type"] == "derived" for e in g_old["edges"])
+    finally:
+        st_old.close()
+
+    # 2. Окна действия valid_from/valid_to, автоматическое закрытие окна при противоречии, 4 типа рёбер и as_of-граф
+    db_path = tmp_path / "item4.db"
+    m = Memory(user_id="u_graph4", store=Store(db_path))
+    try:
+        with pytest.raises(ValueError):
+            m.remember("Некорректное окно", valid_from="2026-03-10", valid_to="2026-03-01")
+
+        out1, id_v1 = m.remember(
+            "Основной порт шлюза Вега — 8080.", kind="fact", origin="user", valid_from="2026-01-10"
+        )
+        assert out1 == "created"
+
+        # Противоречащая запись от 2026-02-01 закрывает окно старой, но не стирает её и ставит ребро contradiction
+        out2, id_v2 = m.remember(
+            "Основной порт шлюза Вега — 9090.", kind="fact", origin="user", valid_from="2026-02-01"
+        )
+        assert out2 in ("superseded", "merged")
+        row_v1 = m.store.one("SELECT status, valid_from, valid_to, content FROM memory WHERE id = ?", (id_v1,))
+        assert row_v1["status"] == "superseded"
+        assert row_v1["content"] == "Основной порт шлюза Вега — 8080."
+        assert row_v1["valid_to"].startswith("2026-02-01")
+
+        # Причина, исправление, противоречие и источник (4 типа рёбер)
+        _, id_cause = m.remember(
+            "Увеличился внешний трафик в два раза.", kind="event", origin="user", valid_from="2026-01-05"
+        )
+        _, id_derived = m.remember(
+            "Вывод: настройка фаервола разрешает порт Вега.", kind="decision", origin="user",
+            derived_from=[id_v1], valid_from="2026-01-12"
+        )
+        res_cause = m.link(id_cause, id_v2, relation="причина")
+        res_corr = m.link(id_v1, id_derived, relation="исправление")
+        assert res_cause["relation"] == "cause"
+        assert res_corr["relation"] == "correction"
+
+        # Полный граф содержит все типы рёбер и корректные счётчики
+        g_now = m.graph()
+        edge_types = {e["type"] for e in g_now["edges"]}
+        assert {"derived", "cause", "correction", "contradiction", "version"}.issubset(edge_types)
+        assert g_now["counts"]["derived_edges"] >= 1
+        assert g_now["counts"]["cause_edges"] >= 1
+        assert g_now["counts"]["correction_edges"] >= 1
+        assert g_now["counts"]["contradiction_edges"] >= 1
+
+        # Память на дату показывает граф на 2026-01-20 (виден id_v1, не виден id_v2) и на 2026-02-05 (наоборот)
+        g_jan = m.graph(as_of="2026-01-20")
+        jan_ids = {n["id"] for n in g_jan["nodes"]}
+        assert id_v1 in jan_ids and id_derived in jan_ids and id_cause in jan_ids
+        assert id_v2 not in jan_ids
+
+        g_feb = m.graph(as_of="2026-02-05")
+        feb_ids = {n["id"] for n in g_feb["nodes"]}
+        assert id_v2 in feb_ids and id_cause in feb_ids
+        assert id_v1 not in feb_ids
+
+        # Каскадное забвение по derived (id_v1 -> id_derived) НЕ стирает id_v2 (связь contradiction) и id_cause
+        assert id_derived in m.derived(id_v1)
+        assert id_v2 not in m.derived(id_v1)
+
+        # HTTP API: /link (под токеном), /graph?as_of=..., /forget-preview и /forget?with_derived
+        tok = "item4tok_0123456789abcdef01234567"
+        prev_mem, prev_tok, prev_local, prev_ui = api._state.get("memory"), api._state.get("token"), api._state.get("local", True), api._state.get("ui")
+        api._state["memory"] = m
+        api._state["token"] = tok
+        api._state["local"] = True
+        api._state["ui"] = True
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), api.Handler)
+        t = threading.Thread(target=srv.serve_forever, daemon=True)
+        t.start()
+        try:
+            base = f"http://127.0.0.1:{srv.server_address[1]}"
+            code, _, body = _http_json(f"{base}/graph?as_of=2026-01-20", token=tok)
+            assert code == 200
+            assert id_v1 in {n["id"] for n in body["nodes"]}
+            assert id_v2 not in {n["id"] for n in body["nodes"]}
+
+            code_bad, _, _ = _http_json(f"{base}/graph?as_of=not-a-date", token=tok)
+            assert code_bad == 400
+
+            code_link_no, _, _ = _http_json(f"{base}/link", token=None, body={"source": id_cause, "target": id_v2, "relation": "cause"})
+            assert code_link_no == 401
+
+            # Удаление источника id_v1 вместе с выводом id_derived через API (как в экране «Связи» 4.3)
+            code_prev, _, prev_body = _http_json(f"{base}/forget-preview?id={id_v1}", token=tok)
+            assert code_prev == 200 and prev_body["derived_count"] >= 1
+
+            code_fg, _, fg_body = _http_json(f"{base}/forget", token=tok, body={"id": id_v1, "with_derived": True})
+            assert code_fg == 200 and fg_body["ok"] is True
+            assert fg_body["receipt"]["format"] == "padam-forget-receipt/1"
+            assert fg_body["receipt"]["with_derived"] is True
+            assert id_derived in fg_body["receipt"]["wiped_ids"]
+
+            # Оба (id_v1 и id_derived) затёрты, а не-derived id_cause остался
+            assert m.store.one("SELECT status, content FROM memory WHERE id = ?", (id_derived,))["status"] == "revoked"
+            assert m.store.one("SELECT status FROM memory WHERE id = ?", (id_cause,))["status"] == "active"
+
+            # Проверка MCP padam_write с valid_from (остаётся ровно 9 инструментов в списке)
+            assert len(mcp_server.TOOLS) == 9
+            assert "valid_from" in mcp_server._TOOLS_BY_NAME["padam_write"]["inputSchema"]["properties"]
+        finally:
+            srv.shutdown()
+            srv.server_close()
+            api._state["memory"], api._state["token"], api._state["local"] = prev_mem, prev_tok, prev_local
+            if prev_ui is None:
+                api._state.pop("ui", None)
+            else:
+                api._state["ui"] = prev_ui
+
+        # 3. Studio UI: наличие элементов «Граф на дату», 4 типов рёбер и кнопки каскадного удаления в 4 языках
+        html, _ = studio.page()
+        assert 'id="asof-graph-btn"' in html
+        assert 'id="graph-asof-input"' in html
+        assert 'id="graph-now-btn"' in html
+        for lang_code in ("ru", "en", "es", "zh"):
+            ld = studio.STRINGS[lang_code]
+            for key in (
+                "asof_btn_graph",
+                "graph_asof_label",
+                "graph_legend_cause",
+                "graph_legend_correction",
+                "graph_legend_contradiction",
+                "graph_forget_derived_btn",
+                "graph_link_btn",
+            ):
+                assert key in ld and ld[key]
+    finally:
+        m.close()

@@ -126,8 +126,9 @@ CREATE TABLE IF NOT EXISTS nocturne_run (
 CREATE TABLE IF NOT EXISTS memory_link (
     src         TEXT NOT NULL,          -- запись-источник
     dst         TEXT NOT NULL,          -- вывод из неё
+    relation    TEXT NOT NULL DEFAULT 'derived',
     created_at  TEXT NOT NULL,
-    PRIMARY KEY (src, dst)
+    PRIMARY KEY (src, dst, relation)
 );
 CREATE INDEX IF NOT EXISTS memory_link_dst ON memory_link (dst);
 
@@ -280,7 +281,8 @@ class Store:
         Только ДОБАВЛЯЕТ. Ничего не удаляет и не переписывает (раздел 19).
         """
         НУЖНЫЕ = {"memory": {"embedding_model": "TEXT", "факт_ключ": "TEXT",
-                             "origin": "TEXT", "quarantine_reason": "TEXT", "owner_sig": "TEXT", "agent_id": "TEXT"}}
+                             "origin": "TEXT", "quarantine_reason": "TEXT", "owner_sig": "TEXT", "agent_id": "TEXT"},
+                  "memory_link": {"relation": "TEXT DEFAULT 'derived'"}}
         for таблица, колонки in НУЖНЫЕ.items():
             try:
                 есть = {r["name"] for r in
@@ -306,6 +308,9 @@ class Store:
         self.conn.execute(
             """CREATE INDEX IF NOT EXISTS memory_agent_id
                ON memory (user_id, agent_id, status)""")
+        self.conn.execute(
+            """CREATE INDEX IF NOT EXISTS memory_link_relation
+               ON memory_link (relation, src, dst)""")
 
     def close(self) -> None:
         self.conn.close()

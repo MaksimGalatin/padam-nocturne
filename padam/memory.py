@@ -45,6 +45,51 @@ class Record:
                 f"= {self.score:.4f}   [{found_by}]{stale}")
 
 
+LINK_RELATIONS = ("derived", "cause", "correction", "contradiction")
+_LINK_ALIASES = {
+    "derived": "derived",
+    "derived_from": "derived",
+    "источник": "derived",
+    "source": "derived",
+    "cause": "cause",
+    "причина": "cause",
+    "correction": "correction",
+    "исправление": "correction",
+    "refinement": "correction",
+    "contradiction": "contradiction",
+    "противоречие": "contradiction",
+}
+
+
+def normalize_link_relation(relation: str | None) -> str:
+    """Нормализует тип ребра графа (источник/причина/исправление/противоречие)."""
+    key = (relation or "derived").strip().lower()
+    norm = _LINK_ALIASES.get(key)
+    if norm is None:
+        raise ValueError(f"unknown link relation {relation!r}; expected one of {LINK_RELATIONS}")
+    return norm
+
+
+def _norm_valid_ts(value: str | datetime | None) -> str | None:
+    """Нормализует границу окна действия (valid_from / valid_to) в ISO UTC."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        dt = value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).isoformat()
+    текст = str(value).strip()
+    if not текст:
+        return None
+    if len(текст) == 10:
+        return datetime.fromisoformat(текст).replace(tzinfo=timezone.utc).isoformat()
+    if текст.endswith(("Z", "z")):
+        текст = текст[:-1] + "+00:00"
+    dt = datetime.fromisoformat(текст)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).isoformat()
+
+
 def parse_as_of(value: str | datetime) -> datetime:
     """Момент для поиска «на дату»: дата без времени — конец дня по UTC, время без зоны — UTC."""
     if isinstance(value, datetime):
@@ -154,7 +199,10 @@ class Memory:
                  source_episode_id: str | None = None,
                  origin: str = "user", guarded: bool = False,
                  derived_from: list[str] | None = None,
-                 agent_id: str | None = None) -> tuple[str, str]:
+                 agent_id: str | None = None,
+                 valid_from: str | datetime | None = None,
+                 valid_to: str | datetime | None = None,
+                 links: list | None = None) -> tuple[str, str]:
         """Возвращает (исход, id записи).
 
         Исходы: created | duplicate | merged | superseded | coexists | quarantined
@@ -166,14 +214,37 @@ class Memory:
 
         derived_from — id записей, из которых сделан этот вывод. По этим связям забвение
         источника доходит и до выводов (`forget --with-derived`).
+        valid_from / valid_to — окно действия факта; links — явные рёбра графа
+        (source, relation) или dict {id/source/target, relation, direction}.
         """
+        vf_str = _norm_valid_ts(valid_from)
+        vt_str = _norm_valid_ts(valid_to)
+        if vf_str and vt_str and parse_ts(vt_str) <= parse_ts(vf_str):
+            raise ValueError("valid_to must be after valid_from")
         norm_agent = (str(agent_id).strip()[:64] if agent_id else None) or None
         with safety.одна_запись():          # виды текста строятся один раз на запись и не переживают её
-            исход, mid = self._remember(content, kind, importance, scope, source_episode_id, origin, guarded, norm_agent)
+            исход, mid = self._remember(content, kind, importance, scope, source_episode_id, origin, guarded, norm_agent, vf_str, vt_str)
         # При повторе mid — это уже существующая запись, возможно владельца. Связать её «выводом» из
         # чужой записи значило бы дать агенту способ стереть её каскадом при забвении источника.
         if derived_from and исход != "duplicate":
-            self._связать(derived_from, mid)
+            self._связать(derived_from, mid, relation="derived")
+        if links and исход != "duplicate":
+            for item in list(links)[:20]:
+                if isinstance(item, dict):
+                    other = str(item.get("id") or item.get("source") or item.get("target") or "").strip()
+                    rel = normalize_link_relation(item.get("relation") or item.get("type"))
+                    direction = str(item.get("direction") or ("out" if item.get("target") else "in")).lower()
+                elif isinstance(item, (list, tuple)) and len(item) >= 2:
+                    other, rel = str(item[0]).strip(), normalize_link_relation(item[1])
+                    direction = str(item[2]).lower() if len(item) >= 3 else "in"
+                else:
+                    continue
+                if not other or other == mid:
+                    continue
+                if direction == "out":
+                    self._связать_пару(mid, other, relation=rel)
+                else:
+                    self._связать([other], mid, relation=rel)
         if исход in ("created", "merged", "superseded", "coexists") and not (guarded and not config.MCP_TRUST_WRITES):
             self._подписать(mid)
         self._log_audit("write", mid, actor=origin or "user", agent_id=norm_agent,
@@ -182,7 +253,9 @@ class Memory:
 
     def _remember(self, content: str, kind: str | None, importance: float, scope: str,
                   source_episode_id: str | None, origin: str, guarded: bool,
-                  agent_id: str | None = None) -> tuple[str, str]:
+                  agent_id: str | None = None,
+                  valid_from: str | None = None,
+                  valid_to: str | None = None) -> tuple[str, str]:
         # Команда проверяется и по исходному тексту: маскирование секретов закрывает длинные случайные строки,
         # а base64 с командой внутри выглядит именно так — после маски раскодировать было бы нечего (аудит 09.11.2026).
         исходный = content
@@ -198,23 +271,27 @@ class Memory:
         if guarded and (safety.looks_like_instruction(content) or safety.looks_like_instruction(исходный)):
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
-                origin=origin, status="quarantined", reason="looks like an instruction", agent_id=agent_id)
+                origin=origin, status="quarantined", reason="looks like an instruction",
+                agent_id=agent_id, valid_from=valid_from, valid_to=valid_to)
         # 0.4.13: необязательный второй слой — локальная модель-детектор (padam/guard.py), только для текста, где упомянут ИИ.
         # Выключен, пока не задан PADAM_GUARD_MODEL и не стоят пакеты [guard].
         if guarded and guard.flags(исходный):
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
-                origin=origin, status="quarantined", reason="looks like an instruction (classifier)", agent_id=agent_id)
+                origin=origin, status="quarantined", reason="looks like an instruction (classifier)",
+                agent_id=agent_id, valid_from=valid_from, valid_to=valid_to)
         if guarded and origin == "external" and config.HOLD_EXTERNAL:
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
-                origin=origin, status="quarantined", reason="external source held for the owner (PADAM_HOLD_EXTERNAL, on by default)", agent_id=agent_id)
+                origin=origin, status="quarantined", reason="external source held for the owner (PADAM_HOLD_EXTERNAL, on by default)",
+                agent_id=agent_id, valid_from=valid_from, valid_to=valid_to)
         # 0.4.1: граница, которая не зависит от пометки источника вовсе. Пометку ставит агент, а MCP не даёт серверу
         # способа проверить, откуда агент взял текст; с PADAM_MCP_REVIEW_ALL=1 ждёт владельца каждая запись агента.
         if guarded and config.MCP_REVIEW_ALL:
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
-                origin=origin, status="quarantined", reason="every agent write waits for the owner (PADAM_MCP_REVIEW_ALL)", agent_id=agent_id)
+                origin=origin, status="quarantined", reason="every agent write waits for the owner (PADAM_MCP_REVIEW_ALL)",
+                agent_id=agent_id, valid_from=valid_from, valid_to=valid_to)
 
         # Кто человек и как с ним работать, решает только он сам. Через MCP пометку origin
         # проверить нечем, поэтому запись о личности или предпочтении от агента или чужого
@@ -251,9 +328,11 @@ class Memory:
                 if причина_защиты:
                     return "quarantined", self._insert(
                         content, kind, vec, importance, scope, source_episode_id,
-                        origin=origin, status="quarantined", reason=причина_защиты, agent_id=agent_id)
+                        origin=origin, status="quarantined", reason=причина_защиты,
+                        agent_id=agent_id, valid_from=valid_from, valid_to=valid_to)
                 return "created", self._insert(content, kind, vec, importance,
-                                               scope, source_episode_id, origin=origin, agent_id=agent_id)
+                                               scope, source_episode_id, origin=origin, agent_id=agent_id,
+                                               valid_from=valid_from, valid_to=valid_to)
 
             old_id, old_content, _ = near
         verdict = classify.resolve(content, old_content)
@@ -283,7 +362,8 @@ class Memory:
                     content, kind, vec, importance, scope, source_episode_id,
                     origin=origin, status="quarantined", reason=причина_защиты, agent_id=agent_id)
             return "coexists", self._insert(content, kind, vec, importance,
-                                            scope, source_episode_id, origin=origin, agent_id=agent_id)
+                                            scope, source_episode_id, origin=origin, agent_id=agent_id,
+                                            valid_from=valid_from, valid_to=valid_to)
 
         if guarded:
             старая = self.store.one("SELECT kind, origin FROM memory WHERE id = ?", (old_id,))
@@ -295,44 +375,104 @@ class Memory:
             if причина:
                 return "quarantined", self._insert(
                     content, kind, vec, importance, scope, source_episode_id,
-                    supersedes=old_id, origin=origin, status="quarantined", reason=причина, agent_id=agent_id)
+                    supersedes=old_id, origin=origin, status="quarantined", reason=причина,
+                    agent_id=agent_id, valid_from=valid_from, valid_to=valid_to)
 
-        # refinement и contradiction создают новую версию
+        # refinement и contradiction создают новую версию, закрывая окно старой и оставляя ребро графа
         new_mid = self._insert(content, kind, vec, importance, scope,
-                               source_episode_id, supersedes=old_id, origin=origin, agent_id=agent_id)
+                               source_episode_id, supersedes=old_id, origin=origin,
+                               agent_id=agent_id, valid_from=valid_from, valid_to=valid_to)
+        close_at = valid_from or now_iso()
+        rel_type = "correction" if verdict == "refinement" else "contradiction"
         отметка_до = self.store.stamp()
-        self.store.execute(
-            """UPDATE memory SET status = 'superseded', superseded_by = ?,
-               valid_to = ? WHERE id = ?""",
-            (new_mid, now_iso(), old_id))
+        self.store.atomic([
+            ("""UPDATE memory SET status = 'superseded', superseded_by = ?,
+                valid_to = ? WHERE id = ?""", (new_mid, close_at, old_id)),
+            ("""INSERT OR IGNORE INTO memory_link (src, dst, relation, created_at)
+                VALUES (?,?,?,?)""", (old_id, new_mid, rel_type, now_iso())),
+        ])
         self._векторы_после(отметка_до, убрать=old_id, scope=scope, kind=kind)   # 0.4.11
         return ("merged" if verdict == "refinement" else "superseded"), new_mid
 
     # -- связи выводов и подпись владельца ------------------------------
 
-    def _связать(self, источники: list[str], вывод: str) -> int:
-        """Связи «вывод сделан из записи». Только записи этого же человека; не больше 20 за раз."""
+    def _связать_пару(self, src: str, dst: str, relation: str = "derived") -> bool:
+        """Создаёт одно направленное ребро графа между записями этого же пользователя."""
+        rel = normalize_link_relation(relation)
+        if not src or not dst or src == dst:
+            return False
+        s_row = self.store.one(
+            "SELECT 1 FROM memory WHERE id = ? AND user_id = ? AND status != 'revoked'", (src, self.user_id))
+        d_row = self.store.one(
+            "SELECT 1 FROM memory WHERE id = ? AND user_id = ? AND status != 'revoked'", (dst, self.user_id))
+        if not s_row or not d_row:
+            return False
+        self.store.counters([
+            ("INSERT OR IGNORE INTO memory_link (src, dst, relation, created_at) VALUES (?,?,?,?)",
+             (src, dst, rel, now_iso()))
+        ])
+        return True
+
+    def _связать(self, источники: list[str], вывод: str, relation: str = "derived") -> int:
+        """Связи графа («вывод сделан из записи» и другие типы рёбер). Не больше 20 за раз."""
+        rel = normalize_link_relation(relation)
         ops = []
         ts = now_iso()
         for src in list(dict.fromkeys(источники))[:20]:
             if src == вывод or not self.store.one(
                     "SELECT 1 FROM memory WHERE id = ? AND user_id = ?", (src, self.user_id)):
                 continue
-            ops.append(("INSERT OR IGNORE INTO memory_link (src, dst, created_at) VALUES (?,?,?)",
-                        (src, вывод, ts)))
+            ops.append(("INSERT OR IGNORE INTO memory_link (src, dst, relation, created_at) VALUES (?,?,?,?)",
+                        (src, вывод, rel, ts)))
         if ops:
             # Связи не влияют на векторы и ранжирование, поэтому пишем через counters без сброса кэша.
             self.store.counters(ops)
         return len(ops)
 
+    def link(self, src_id: str, dst_id: str, relation: str = "derived") -> dict:
+        """Явно связывает две записи памяти ребром типа derived | cause | correction | contradiction."""
+        rel = normalize_link_relation(relation)
+        if not src_id or not dst_id or src_id == dst_id:
+            raise ValueError("source and target must be different non-empty record ids")
+        s_row = self.store.one(
+            "SELECT 1 FROM memory WHERE id = ? AND user_id = ? AND status != 'revoked'", (src_id, self.user_id))
+        d_row = self.store.one(
+            "SELECT 1 FROM memory WHERE id = ? AND user_id = ? AND status != 'revoked'", (dst_id, self.user_id))
+        if not s_row or not d_row:
+            raise ValueError("source or target record not found")
+        ts = now_iso()
+        self.store.counters([
+            ("INSERT OR IGNORE INTO memory_link (src, dst, relation, created_at) VALUES (?,?,?,?)",
+             (src_id, dst_id, rel, ts))
+        ])
+        self._log_audit("link", dst_id, actor="owner", outcome=rel, detail=f"{src_id}->{dst_id}")
+        return {"ok": True, "source": src_id, "target": dst_id, "relation": rel, "created_at": ts}
+
+    def links_of(self, memory_id: str) -> dict:
+        """Все входящие и исходящие смысловые связи записи с текстами соседей."""
+        incoming = [dict(r) for r in self.store.query(
+            """SELECT l.src AS id, COALESCE(l.relation, 'derived') AS relation, l.created_at,
+                      m.kind, m.content, m.status, m.valid_from, m.valid_to
+               FROM memory_link l JOIN memory m ON m.id = l.src
+               WHERE l.dst = ? AND m.user_id = ? AND m.status != 'revoked'
+               ORDER BY l.created_at DESC""", (memory_id, self.user_id))]
+        outgoing = [dict(r) for r in self.store.query(
+            """SELECT l.dst AS id, COALESCE(l.relation, 'derived') AS relation, l.created_at,
+                      m.kind, m.content, m.status, m.valid_from, m.valid_to
+               FROM memory_link l JOIN memory m ON m.id = l.dst
+               WHERE l.src = ? AND m.user_id = ? AND m.status != 'revoked'
+               ORDER BY l.created_at DESC""", (memory_id, self.user_id))]
+        return {"incoming": incoming, "outgoing": outgoing}
+
     def derived(self, memory_id: str) -> list[str]:
-        """Все выводы из записи, по цепочке: вывод из вывода тоже считается."""
+        """Все выводы из записи (strictly relation='derived'), по цепочке: вывод из вывода тоже считается."""
         найдено, очередь = [], [memory_id]
         while очередь:
             src = очередь.pop()
             for r in self.store.query(
                     """SELECT l.dst FROM memory_link l JOIN memory m ON m.id = l.dst
-                       WHERE l.src = ? AND m.user_id = ?""", (src, self.user_id)):
+                       WHERE l.src = ? AND m.user_id = ? AND COALESCE(l.relation, 'derived') = 'derived'""",
+                    (src, self.user_id)):
                 if r["dst"] not in найдено and r["dst"] != memory_id:
                     найдено.append(r["dst"])
                     очередь.append(r["dst"])
@@ -513,21 +653,24 @@ class Memory:
                 source_episode_id=None, supersedes=None,
                 expires_at: str | None = None, origin: str = "user",
                 status: str = "active", reason: str | None = None,
-                agent_id: str | None = None) -> str:
+                agent_id: str | None = None,
+                valid_from: str | None = None,
+                valid_to: str | None = None) -> str:
         mid = new_id()
         ts = now_iso()
+        vf = valid_from or ts
         отметка_до = self.store.stamp()
         self.store.execute(
             """INSERT INTO memory
                (id, user_id, scope, kind, content, embedding, importance,
                 confidence, created_at, last_seen_at, last_confirmed_at,
-                valid_from, expires_at, status, supersedes,
+                valid_from, valid_to, expires_at, status, supersedes,
                 source_episode_id, content_hash, embedding_model, факт_ключ,
                 origin, quarantine_reason, agent_id)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (mid, self.user_id, scope, kind, content, pack(vec),
              max(0.0, min(1.0, importance)), config.ORIGIN_CONFIDENCE.get(origin, 1.0),
-             ts, ts, ts, ts, expires_at, status,
+             ts, ts, ts, vf, valid_to, expires_at, status,
              supersedes, source_episode_id, content_hash(content),
              embeddings.метка_модели(), classify.разобрать_факт(content)[0],
              origin, reason, agent_id))
@@ -546,7 +689,7 @@ class Memory:
     def approve(self, memory_id: str) -> bool:
         """Владелец принял запись: она становится действующей и, если нужно, заменяет прежнюю."""
         row = self.store.one(
-            """SELECT supersedes FROM memory
+            """SELECT supersedes, valid_from, content FROM memory
                WHERE id = ? AND user_id = ? AND status = 'quarantined'""",
             (memory_id, self.user_id))
         if not row:
@@ -556,9 +699,21 @@ class Memory:
                    last_confirmed_at = ?, quarantine_reason = NULL WHERE id = ?""",
                 (ts, memory_id))]
         if row["supersedes"]:
+            old_row = self.store.one(
+                "SELECT content FROM memory WHERE id = ? AND user_id = ?",
+                (row["supersedes"], self.user_id))
+            close_at = row["valid_from"] or ts
+            rel_type = "correction"
+            if old_row and row["content"] and old_row["content"]:
+                v = classify.resolve(row["content"], old_row["content"])
+                if v == "contradiction":
+                    rel_type = "contradiction"
             ops.append(("""UPDATE memory SET status = 'superseded', superseded_by = ?, valid_to = ?
                            WHERE id = ? AND user_id = ? AND status = 'active'""",
-                        (memory_id, ts, row["supersedes"], self.user_id)))
+                        (memory_id, close_at, row["supersedes"], self.user_id)))
+            ops.append(("""INSERT OR IGNORE INTO memory_link (src, dst, relation, created_at)
+                           VALUES (?,?,?,?)""",
+                        (row["supersedes"], memory_id, rel_type, ts)))
         self.store.atomic(ops)
         self._подписать(memory_id)       # принял владелец — значит запись его
         self._log_audit("approve", memory_id, actor="owner", outcome="active")
@@ -1359,7 +1514,8 @@ class Memory:
         ids = {r["id"] for r in records}
         links = [dict(r) for r in self.store.query(
             """SELECT l.src, l.dst, l.created_at FROM memory_link l JOIN memory m ON m.id = l.dst
-               WHERE m.user_id = ? ORDER BY l.created_at""", (self.user_id,))
+               WHERE m.user_id = ? AND COALESCE(l.relation, 'derived') = 'derived'
+               ORDER BY l.created_at""", (self.user_id,))
                  if r["src"] in ids and r["dst"] in ids]
 
         return {
@@ -1531,6 +1687,7 @@ class Memory:
             "version_ids": [з["id"] for з in связанные],
             "derived_count": len(выводы),
             "derived": выводы,
+            "links": self.links_of(memory_id),
         }
 
     def forget_receipts(self, limit: int = 50) -> list[dict]:
@@ -1710,32 +1867,40 @@ class Memory:
             "checks": проверки,
         }
 
-    def graph(self, center_id: str | None = None, limit: int = 200) -> dict:
-        """Граф связей для Studio и API (/graph?id=):
-        - derived: вывод сделан из источника (таблица memory_link)
+    def graph(self, center_id: str | None = None, limit: int = 200,
+              as_of: str | datetime | None = None) -> dict:
+        """Граф связей для Studio и API (/graph?id=&as_of=):
+        - derived (источник): вывод сделан из источника (таблица memory_link)
+        - cause (причина): причинно-следственная связь (таблица memory_link)
+        - correction (исправление): уточнение/исправление прежнего факта (таблица memory_link)
+        - contradiction (противоречие): противоречащая запись, закрывшая окно прежней (таблица memory_link)
         - version: новая версия заменила старую (supersedes)
         - conflict: активные записи спорят по факт_ключ
+        При as_of показывает граф, действовавший на указанную дату/время.
         """
         предел = max(10, min(int(limit), 500))
+        момент = parse_as_of(as_of) if as_of is not None and str(as_of).strip() else None
+
         все_ссылки = self.store.query(
-            """SELECT l.src, l.dst, l.created_at
+            """SELECT l.src, l.dst, COALESCE(l.relation, 'derived') AS relation, l.created_at
                FROM memory_link l JOIN memory m ON m.id = l.dst
-               WHERE m.user_id = ?""", (self.user_id,))
+               WHERE m.user_id = ? AND m.status != 'revoked'""", (self.user_id,))
         версии_строки = self.store.query(
             """SELECT id, supersedes, created_at FROM memory
-               WHERE user_id = ? AND supersedes IS NOT NULL""", (self.user_id,))
+               WHERE user_id = ? AND supersedes IS NOT NULL AND status != 'revoked'""", (self.user_id,))
         споры = self.conflicts()
 
         edges = []
         связанные_ids = set()
         for r in все_ссылки:
-            edges.append({"source": r["src"], "target": r["dst"], "type": "derived",
-                          "created_at": r["created_at"]})
+            rel = r["relation"] if r["relation"] in LINK_RELATIONS else "derived"
+            edges.append({"source": r["src"], "target": r["dst"], "type": rel,
+                          "relation": rel, "created_at": r["created_at"]})
             связанные_ids.add(r["src"])
             связанные_ids.add(r["dst"])
         for r in версии_строки:
             edges.append({"source": r["supersedes"], "target": r["id"], "type": "version",
-                          "created_at": r["created_at"]})
+                          "relation": "version", "created_at": r["created_at"]})
             связанные_ids.add(r["supersedes"])
             связанные_ids.add(r["id"])
         for с in споры:
@@ -1743,33 +1908,61 @@ class Memory:
             for i in range(len(recs)):
                 for j in range(i + 1, len(recs)):
                     edges.append({"source": recs[i]["id"], "target": recs[j]["id"],
-                                  "type": "conflict", "key": с["key"]})
+                                  "type": "conflict", "relation": "conflict", "key": с["key"]})
                     связанные_ids.add(recs[i]["id"])
                     связанные_ids.add(recs[j]["id"])
 
+        допустимые_на_дату: set[str] | None = None
+        if момент is not None:
+            все_записи = self.store.query(
+                """SELECT id, created_at, valid_from, valid_to, status
+                   FROM memory WHERE user_id = ?
+                   AND status NOT IN ('quarantined', 'rejected', 'revoked')""",
+                (self.user_id,))
+            допустимые_на_дату = {
+                r["id"] for r in все_записи
+                if parse_ts(r["valid_from"] or r["created_at"]) <= момент
+                and (r["valid_to"] is None or parse_ts(r["valid_to"]) > момент)
+            }
+            edges = [
+                e for e in edges
+                if e["source"] in допустимые_на_дату and e["target"] in допустимые_на_дату
+                and (not e.get("created_at") or parse_ts(e["created_at"]) <= момент)
+            ]
+            связанные_ids = {nid for nid in связанные_ids if nid in допустимые_на_дату}
+
         if center_id:
-            соседи = {center_id}
-            очередь = [center_id]
-            while очередь and len(соседи) < предел:
-                cur = очередь.pop(0)
-                for e in edges:
-                    if e["source"] == cur and e["target"] not in соседи:
-                        соседи.add(e["target"])
-                        очередь.append(e["target"])
-                    elif e["target"] == cur and e["source"] not in соседи:
-                        соседи.add(e["source"])
-                        очередь.append(e["source"])
-            узлы_ids = соседи
-            edges = [e for e in edges if e["source"] in узлы_ids and e["target"] in узлы_ids]
+            if допустимые_на_дату is not None and center_id not in допустимые_на_дату:
+                узлы_ids = set()
+                edges = []
+            else:
+                соседи = {center_id}
+                очередь = [center_id]
+                while очередь and len(соседи) < предел:
+                    cur = очередь.pop(0)
+                    for e in edges:
+                        if e["source"] == cur and e["target"] not in соседи:
+                            соседи.add(e["target"])
+                            очередь.append(e["target"])
+                        elif e["target"] == cur and e["source"] not in соседи:
+                            соседи.add(e["source"])
+                            очередь.append(e["source"])
+                узлы_ids = соседи
+                edges = [e for e in edges if e["source"] in узлы_ids and e["target"] in узлы_ids]
         else:
             узлы_ids = set(list(связанные_ids)[:предел])
             if len(узлы_ids) < min(30, предел):
-                доп = self.store.query(
-                    """SELECT id FROM memory WHERE user_id = ? AND status = 'active'
-                       ORDER BY created_at DESC LIMIT ?""",
-                    (self.user_id, min(30, предел) - len(узлы_ids)))
-                for r in доп:
-                    узлы_ids.add(r["id"])
+                if допустимые_на_дату is not None:
+                    для_добавки = [nid for nid in допустимые_на_дату if nid not in узлы_ids]
+                    for nid in для_добавки[: max(0, min(30, предел) - len(узлы_ids))]:
+                        узлы_ids.add(nid)
+                else:
+                    доп = self.store.query(
+                        """SELECT id FROM memory WHERE user_id = ? AND status = 'active'
+                           ORDER BY created_at DESC LIMIT ?""",
+                        (self.user_id, min(30, предел) - len(узлы_ids)))
+                    for r in доп:
+                        узлы_ids.add(r["id"])
             edges = [e for e in edges if e["source"] in узлы_ids and e["target"] in узлы_ids]
 
         nodes = []
@@ -1777,7 +1970,8 @@ class Memory:
             список_ids = list(узлы_ids)
             rows = self.store.query(
                 f"""SELECT id, kind, scope, content, status, origin, confidence, importance,
-                           created_at, last_confirmed_at, supersedes, superseded_by, факт_ключ
+                           created_at, last_confirmed_at, valid_from, valid_to,
+                           supersedes, superseded_by, факт_ключ
                     FROM memory WHERE user_id = ? AND id IN ({','.join('?' * len(список_ids))})""",
                 (self.user_id, *список_ids))
             for r in rows:
@@ -1794,33 +1988,53 @@ class Memory:
                     "importance": r["importance"],
                     "created_at": r["created_at"],
                     "last_confirmed_at": r["last_confirmed_at"],
+                    "valid_from": r["valid_from"] or r["created_at"],
+                    "valid_to": r["valid_to"],
+                    "supersedes": r["supersedes"],
+                    "superseded_by": r["superseded_by"],
                     "fact_key": r["факт_ключ"],
                 })
 
         прямые_источники = []
         выводы_цепочкой = []
-        if center_id:
+        связи_узла = {"incoming": [], "outgoing": []}
+        if center_id and center_id in узлы_ids:
             выводы_цепочкой = self.derived(center_id)
             оч = [center_id]
             while оч:
                 cur = оч.pop()
                 for r in self.store.query(
                         """SELECT l.src FROM memory_link l JOIN memory m ON m.id = l.src
-                           WHERE l.dst = ? AND m.user_id = ?""", (cur, self.user_id)):
+                           WHERE l.dst = ? AND m.user_id = ? AND COALESCE(l.relation, 'derived') = 'derived'""",
+                        (cur, self.user_id)):
                     if r["src"] not in прямые_источники and r["src"] != center_id:
                         прямые_источники.append(r["src"])
                         оч.append(r["src"])
+            связи_узла = self.links_of(center_id)
+            if допустимые_на_дату is not None:
+                выводы_цепочкой = [wid for wid in выводы_цепочкой if wid in допустимые_на_дату]
+                прямые_источники = [sid for sid in прямые_источники if sid in допустимые_на_дату]
+                связи_узла = {
+                    "incoming": [x for x in связи_узла["incoming"] if x["id"] in допустимые_на_дату],
+                    "outgoing": [x for x in связи_узла["outgoing"] if x["id"] in допустимые_на_дату],
+                }
 
         return {
             "center_id": center_id,
+            "as_of": момент.isoformat() if момент is not None else None,
+            "relations": list(LINK_RELATIONS),
             "nodes": nodes,
             "edges": edges,
             "derived": выводы_цепочкой,
             "sources": прямые_источники,
+            "selected_links": связи_узла,
             "counts": {
                 "nodes": len(nodes),
                 "edges": len(edges),
                 "derived_edges": sum(1 for e in edges if e["type"] == "derived"),
+                "cause_edges": sum(1 for e in edges if e["type"] == "cause"),
+                "correction_edges": sum(1 for e in edges if e["type"] == "correction"),
+                "contradiction_edges": sum(1 for e in edges if e["type"] == "contradiction"),
                 "version_edges": sum(1 for e in edges if e["type"] == "version"),
                 "conflict_edges": sum(1 for e in edges if e["type"] == "conflict"),
             },

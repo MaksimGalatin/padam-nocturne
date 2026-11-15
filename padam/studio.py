@@ -163,6 +163,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "asof_quick_week": "7 дней назад",
         "asof_quick_month": "30 дней назад",
         "asof_replaced_badge": "Было верно тогда · позже заменено новой версией",
+        "asof_btn_graph": "Граф на эту дату",
         # 6. Забыть и квитанции
         "forget_title": "Честное забывание и квитанции об удалении",
         "forget_subtitle": "Физическое затирание текста, версий, эпизодов и уничтожение криптографического ключа записи (AES-256-GCM).",
@@ -195,12 +196,25 @@ STRINGS: dict[str, dict[str, str]] = {
         "graph_filter_placeholder": "ID записи для фокуса (оставьте пустым для всего графа)…",
         "graph_btn_focus": "Показать связи",
         "graph_btn_reset": "Весь граф",
-        "graph_legend_derived": "Вывод из источника (derived_from)",
+        "graph_asof_label": "На дату:",
+        "graph_btn_now": "Сейчас",
+        "graph_legend_derived": "Источник (derived)",
+        "graph_legend_cause": "Причина (cause)",
+        "graph_legend_correction": "Исправление (correction)",
+        "graph_legend_contradiction": "Противоречие (contradiction)",
         "graph_legend_version": "Смена версии (supersedes)",
-        "graph_legend_conflict": "Противоречие (тот же ключ факта)",
+        "graph_legend_conflict": "Спор (fact_key)",
         "graph_selected": "Выбранная запись графа",
         "graph_sources": "Источники этой записи:",
         "graph_derived": "Выводы из этой записи:",
+        "graph_valid_window": "Окно действия:",
+        "graph_valid_open": "действует",
+        "graph_edges_list_title": "Связи выбранного узла",
+        "graph_forget_derived_btn": "Удалить источник вместе с выводами",
+        "graph_forget_confirm_warn": "Удалить источник, его версии и зависимые выводы навсегда? Выдаётся квитанция удаления.",
+        "graph_link_add_title": "Добавить связь:",
+        "graph_link_btn": "Связать",
+        "graph_link_target_placeholder": "ID целевой записи…",
         # 8. Вечный слой L3
         "l3_title": "Вечный слой L3: Arweave, Solana и штамп Bitcoin",
         "l3_subtitle": "Каждая запись шифруется своим ключом AES-256-GCM. В Arweave уходит только шифротекст, в Solana Memo — корень Меркла.",
@@ -413,6 +427,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "asof_quick_week": "7 days ago",
         "asof_quick_month": "30 days ago",
         "asof_replaced_badge": "True on that date · replaced by a newer version later",
+        "asof_btn_graph": "Graph as of date",
         "forget_title": "Honest Forgetting & Proof of Erasure Receipts",
         "forget_subtitle": "Physical wiping of text, versions, source episodes, and destruction of the record's AES-256-GCM key.",
         "forget_id_label": "Record ID to forget",
@@ -443,12 +458,25 @@ STRINGS: dict[str, dict[str, str]] = {
         "graph_filter_placeholder": "Focus on record ID (leave empty for full graph)…",
         "graph_btn_focus": "Focus lineage",
         "graph_btn_reset": "Full graph",
-        "graph_legend_derived": "Derived conclusion (derived_from)",
+        "graph_asof_label": "As of date:",
+        "graph_btn_now": "Now",
+        "graph_legend_derived": "Source / Derived (derived)",
+        "graph_legend_cause": "Cause (cause)",
+        "graph_legend_correction": "Correction (correction)",
+        "graph_legend_contradiction": "Contradiction (contradiction)",
         "graph_legend_version": "Version chain (supersedes)",
         "graph_legend_conflict": "Conflict (same fact_key)",
         "graph_selected": "Selected Graph Node",
         "graph_sources": "Sources of this record:",
         "graph_derived": "Conclusions drawn from this record:",
+        "graph_valid_window": "Valid window:",
+        "graph_valid_open": "ongoing",
+        "graph_edges_list_title": "Relations of selected node",
+        "graph_forget_derived_btn": "Forget source + derived conclusions",
+        "graph_forget_confirm_warn": "Permanently erase this source, its versions, and all derived conclusions? Issues an erasure receipt.",
+        "graph_link_add_title": "Add relation:",
+        "graph_link_btn": "Link",
+        "graph_link_target_placeholder": "Target record ID…",
         "l3_title": "Eternal Layer L3: Arweave + Solana + Bitcoin OpenTimestamps",
         "l3_subtitle": "Each record is encrypted with its own AES-256-GCM key. Only ciphertext goes to Arweave; the Merkle root goes to Solana Memo.",
         "l3_unanchored": "Unanchored active records:",
@@ -658,6 +686,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "asof_quick_week": "Hace 7 días",
         "asof_quick_month": "Hace 30 días",
         "asof_replaced_badge": "Cierto entonces · reemplazado por una versión posterior",
+        "asof_btn_graph": "Grafo en esta fecha",
         "forget_title": "Olvido real y recibos de prueba de borrado",
         "forget_subtitle": "Borrado físico del texto, versiones, episodios y destrucción de la clave AES-256-GCM del registro.",
         "forget_id_label": "ID del registro a olvidar",
@@ -688,12 +717,25 @@ STRINGS: dict[str, dict[str, str]] = {
         "graph_filter_placeholder": "ID de registro para enfocar (vacío para grafo completo)…",
         "graph_btn_focus": "Enfocar vínculos",
         "graph_btn_reset": "Grafo completo",
-        "graph_legend_derived": "Conclusión derivada (derived_from)",
+        "graph_asof_label": "En fecha:",
+        "graph_btn_now": "Ahora",
+        "graph_legend_derived": "Fuente / Derivado (derived)",
+        "graph_legend_cause": "Causa (cause)",
+        "graph_legend_correction": "Corrección (correction)",
+        "graph_legend_contradiction": "Contradicción (contradiction)",
         "graph_legend_version": "Cambio de versión (supersedes)",
         "graph_legend_conflict": "Conflicto (mismo fact_key)",
         "graph_selected": "Nodo seleccionado",
         "graph_sources": "Fuentes de este registro:",
         "graph_derived": "Conclusiones derivadas de este registro:",
+        "graph_valid_window": "Ventana de validez:",
+        "graph_valid_open": "vigente",
+        "graph_edges_list_title": "Relaciones del nodo",
+        "graph_forget_derived_btn": "Olvidar fuente y conclusiones derivadas",
+        "graph_forget_confirm_warn": "¿Borrar permanentemente esta fuente, sus versiones y conclusiones derivadas? Emite recibo de borrado.",
+        "graph_link_add_title": "Añadir vínculo:",
+        "graph_link_btn": "Vincular",
+        "graph_link_target_placeholder": "ID del registro destino…",
         "l3_title": "Capa eterna L3: Arweave + Solana + Bitcoin OpenTimestamps",
         "l3_subtitle": "Cada registro se cifra con su propia clave AES-256-GCM. A Arweave va solo texto cifrado; a Solana Memo, la raíz Merkle.",
         "l3_unanchored": "Registros activos sin anclar:",
@@ -903,6 +945,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "asof_quick_week": "7 天前",
         "asof_quick_month": "30 天前",
         "asof_replaced_badge": "当时有效 · 后被新版本替换",
+        "asof_btn_graph": "查看该日图谱",
         "forget_title": "真实遗忘与擦除证明凭证",
         "forget_subtitle": "物理擦除正文、全部历史版本与原始片段，并销毁该记录专属的 AES-256-GCM 密钥。",
         "forget_id_label": "要遗忘的记录 ID",
@@ -933,12 +976,25 @@ STRINGS: dict[str, dict[str, str]] = {
         "graph_filter_placeholder": "输入记录 ID 聚焦子图（留空显示全图）…",
         "graph_btn_focus": "聚焦关联",
         "graph_btn_reset": "显示全图",
-        "graph_legend_derived": "衍生结论 (derived_from)",
+        "graph_asof_label": "截止日期：",
+        "graph_btn_now": "当前",
+        "graph_legend_derived": "来源/衍生 (derived)",
+        "graph_legend_cause": "因果原因 (cause)",
+        "graph_legend_correction": "修正完善 (correction)",
+        "graph_legend_contradiction": "前后矛盾 (contradiction)",
         "graph_legend_version": "版本演进 (supersedes)",
         "graph_legend_conflict": "事实冲突 (相同 fact_key)",
         "graph_selected": "当前选中节点",
         "graph_sources": "该记录的信息来源：",
         "graph_derived": "由该记录得出的结论：",
+        "graph_valid_window": "有效期窗口：",
+        "graph_valid_open": "持续有效",
+        "graph_edges_list_title": "节点关联列表",
+        "graph_forget_derived_btn": "删除源头及全部衍生结论",
+        "graph_forget_confirm_warn": "永久销毁此源记录、所有历史版本及其衍生结论？系统将签发删除凭证。",
+        "graph_link_add_title": "添加关联：",
+        "graph_link_btn": "关联",
+        "graph_link_target_placeholder": "目标记录 ID…",
         "l3_title": "永恒层 L3：Arweave + Solana + Bitcoin OpenTimestamps",
         "l3_subtitle": "每条记录使用独立 AES-256-GCM 密钥加密。Arweave 仅存密文，Solana Memo 锚定 Merkle 根。",
         "l3_unanchored": "待锚定的有效记录：",
@@ -2022,6 +2078,11 @@ function renderRecordCard(r, opts = {}) {
   if (r.created_at) clocks.append(el('span', '', '🕒 ' + fmtTime(r.created_at, true)));
   if (r.last_seen_at) clocks.append(el('span', '', S.card_seen + ': ' + fmtTime(r.last_seen_at, false)));
   if (r.last_confirmed_at) clocks.append(el('span', '', S.card_confirmed + ': ' + fmtTime(r.last_confirmed_at, false)));
+  if (r.valid_from || r.valid_to) {
+    const vf = fmtTime(r.valid_from || r.created_at, false);
+    const vt = r.valid_to ? fmtTime(r.valid_to, false) : (S.graph_valid_open || 'ongoing');
+    clocks.append(el('span', '', '⏱ ' + (S.graph_valid_window || 'Valid:') + ' ' + vf + ' → ' + vt));
+  }
   card.append(clocks);
 
   const acts = el('div', 'rec-actions');
@@ -2673,12 +2734,16 @@ function drawGraph() {
     if (!a || !b) continue;
     ctx.beginPath();
     ctx.lineWidth = 2.2;
-    if (e.type === 'derived') ctx.strokeStyle = isDark ? '#00d2ff' : '#0284c7';
-    else if (e.type === 'version') ctx.strokeStyle = isDark ? '#a78bfa' : '#4f46e5';
-    else ctx.strokeStyle = isDark ? '#f87171' : '#dc2626';
+    if (e.type === 'derived') { ctx.strokeStyle = isDark ? '#00d2ff' : '#0284c7'; ctx.setLineDash([]); }
+    else if (e.type === 'cause') { ctx.strokeStyle = isDark ? '#34d399' : '#059669'; ctx.setLineDash([]); }
+    else if (e.type === 'correction') { ctx.strokeStyle = isDark ? '#fbbf24' : '#d97706'; ctx.setLineDash([]); }
+    else if (e.type === 'contradiction') { ctx.strokeStyle = isDark ? '#f87171' : '#dc2626'; ctx.setLineDash([6, 4]); }
+    else if (e.type === 'version') { ctx.strokeStyle = isDark ? '#a78bfa' : '#4f46e5'; ctx.setLineDash([4, 4]); }
+    else { ctx.strokeStyle = isDark ? '#fb7185' : '#e11d48'; ctx.setLineDash([2, 4]); }
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x, b.y);
     ctx.stroke();
+    ctx.setLineDash([]);
 
     // Стрелка направления
     const angle = Math.atan2(b.y - a.y, b.x - a.x);
@@ -2719,20 +2784,132 @@ function drawGraph() {
   });
 }
 
+let graphLastReceipt = null;
+
+function relLabel(t) {
+  if (t === 'derived') return S.graph_legend_derived || 'derived';
+  if (t === 'cause') return S.graph_legend_cause || 'cause';
+  if (t === 'correction') return S.graph_legend_correction || 'correction';
+  if (t === 'contradiction') return S.graph_legend_contradiction || 'contradiction';
+  if (t === 'version') return S.graph_legend_version || 'version';
+  return S.graph_legend_conflict || t;
+}
+
 function renderSelectedGraphNode() {
   const box = $('graph-selected-box');
   box.replaceChildren();
+  if (graphLastReceipt) {
+    box.append(renderReceiptCard(graphLastReceipt));
+  }
   if (!selectedGraphNode) {
     box.append(el('p', 'panel-sub', S.graph_subtitle));
     return;
   }
   box.append(renderRecordCard(selectedGraphNode));
+
+  const nodesMap = {};
+  for (const n of (graphData.nodes || [])) nodesMap[n.id] = n;
+  const incident = (graphData.edges || []).filter(e => e.source === selectedGraphNode.id || e.target === selectedGraphNode.id);
+  if (incident.length) {
+    const relBox = el('div', 'versions-box');
+    relBox.append(el('div', 'setting-name', S.graph_edges_list_title || 'Node relations'));
+    for (const e of incident) {
+      const otherId = e.source === selectedGraphNode.id ? e.target : e.source;
+      const arrow = e.source === selectedGraphNode.id ? ' → ' : ' ← ';
+      const otherNode = nodesMap[otherId];
+      const row = el('div', 'ver-row rec-actions');
+      const lbl = el('span', 'badge', relLabel(e.type || e.relation));
+      const bJump = el('button', '', arrow + truncateAtWord((otherNode && otherNode.content) || otherId, 48));
+      bJump.onclick = () => {
+        $('graph-id-input').value = otherId;
+        loadGraph();
+      };
+      row.append(lbl, bJump);
+      relBox.append(row);
+    }
+    box.append(relBox);
+  }
+
+  // Добавление явного ребра графа (источник / причина / исправление / противоречие)
+  const linkRow = el('div', 'toolbar');
+  const selRel = document.createElement('select');
+  selRel.id = 'graph-link-rel';
+  for (const rKey of ['derived', 'cause', 'correction', 'contradiction']) {
+    const opt = document.createElement('option');
+    opt.value = rKey;
+    opt.textContent = relLabel(rKey);
+    selRel.append(opt);
+  }
+  const inpDst = document.createElement('input');
+  inpDst.type = 'text';
+  inpDst.placeholder = S.graph_link_target_placeholder || 'Target record ID…';
+  const bLink = el('button', '', S.graph_link_btn || 'Link');
+  bLink.onclick = async () => {
+    const targetId = inpDst.value.trim();
+    if (!targetId) return;
+    try {
+      await api('/link', {source: selectedGraphNode.id, target: targetId, relation: selRel.value});
+      say(S.done, true);
+      loadGraph();
+    } catch (e) { say(S.failed + ': ' + e.message, false); }
+  };
+  linkRow.append(el('span', 'panel-sub', S.graph_link_add_title || 'Add relation:'), selRel, inpDst, bLink);
+  box.append(linkRow);
+
+  // 4.3: Удаление источника вместе с выводами прямо со вкладки «Связи» с подтверждением и квитанцией
+  if (selectedGraphNode.status !== 'revoked') {
+    const delWrap = el('div', 'rec-actions');
+    const bAsk = el('button', 'btn-danger', S.graph_forget_derived_btn || 'Forget source + derived');
+    const confBox = el('div', 'versions-box');
+    confBox.hidden = true;
+    bAsk.onclick = async () => {
+      try {
+        const p = await api('/forget-preview?id=' + encodeURIComponent(selectedGraphNode.id));
+        confBox.replaceChildren();
+        confBox.append(
+          el('p', 'msg-err', S.graph_forget_confirm_warn || 'Confirm erasure?'),
+          el('div', 'check-item', (S.forget_preview_versions || 'Versions:') + ' ' + p.versions_count + ' · ' + (S.forget_preview_derived || 'Derived:') + ' ' + p.derived_count)
+        );
+        if (p.derived && p.derived.length) {
+          for (const d of p.derived.slice(0, 8)) {
+            confBox.append(el('div', 'ver-row', '↳ ' + truncateAtWord(d.content || d.id, 90)));
+          }
+        }
+        const acts2 = el('div', 'rec-actions');
+        const bYes = el('button', 'btn-danger', S.forget_step2_btn || 'Confirm');
+        bYes.onclick = async () => {
+          try {
+            const res = await api('/forget', {id: selectedGraphNode.id, with_derived: true});
+            if (res.receipt) {
+              graphLastReceipt = res.receipt;
+              lastReceipt = res.receipt;
+            }
+            if ($('graph-id-input').value.trim() === selectedGraphNode.id) $('graph-id-input').value = '';
+            say(S.done, true);
+            await loadGraph();
+            refreshTopbarStats();
+          } catch (e) { say(S.failed + ': ' + e.message, false); }
+        };
+        const bNo = el('button', '', S.forget_cancel || 'Cancel');
+        bNo.onclick = () => { confBox.hidden = true; };
+        acts2.append(bYes, bNo);
+        confBox.append(acts2);
+        confBox.hidden = false;
+      } catch (e) { say(S.failed + ': ' + e.message, false); }
+    };
+    delWrap.append(bAsk);
+    box.append(delWrap, confBox);
+  }
 }
 
 async function loadGraph() {
   const focusId = ($('graph-id-input').value || '').trim();
+  const asOfDate = ($('graph-asof-input') && $('graph-asof-input').value || '').trim();
   try {
-    const path = '/graph' + (focusId ? ('?id=' + encodeURIComponent(focusId)) : '');
+    const params = [];
+    if (focusId) params.push('id=' + encodeURIComponent(focusId));
+    if (asOfDate) params.push('as_of=' + encodeURIComponent(asOfDate));
+    const path = '/graph' + (params.length ? ('?' + params.join('&')) : '');
     graphData = await api(path);
     const canvas = $('graph-canvas');
     graphPositions = layoutGraph(graphData.nodes || [], graphData.edges || [], canvas.width, canvas.height);
@@ -3090,6 +3267,10 @@ function setDaysAgo(days) {
 $('asof-yesterday').onclick = () => setDaysAgo(1);
 $('asof-week').onclick = () => setDaysAgo(7);
 $('asof-month').onclick = () => setDaysAgo(30);
+$('asof-graph-btn').onclick = () => {
+  if ($('graph-asof-input')) $('graph-asof-input').value = $('asof-date').value || '';
+  switchTab('graph');
+};
 
 // Забыть
 $('forget-preview-btn').onclick = () => previewForget();
@@ -3119,8 +3300,10 @@ $('forget-step2-btn').onclick = async () => {
 };
 
 // Граф
-$('graph-focus-btn').onclick = () => loadGraph();
-$('graph-reset-btn').onclick = () => { $('graph-id-input').value = ''; loadGraph(); };
+$('graph-focus-btn').onclick = () => { graphLastReceipt = null; loadGraph(); };
+$('graph-reset-btn').onclick = () => { graphLastReceipt = null; $('graph-id-input').value = ''; if ($('graph-asof-input')) $('graph-asof-input').value = ''; loadGraph(); };
+if ($('graph-now-btn')) $('graph-now-btn').onclick = () => { $('graph-asof-input').value = ''; loadGraph(); };
+if ($('graph-asof-input')) $('graph-asof-input').onchange = () => { graphLastReceipt = null; loadGraph(); };
 $('graph-canvas').onmousemove = e => {
   const rect = $('graph-canvas').getBoundingClientRect();
   const scaleX = $('graph-canvas').width / rect.width;
@@ -3411,6 +3594,7 @@ def page() -> tuple[str, str]:
           <button id="asof-yesterday" data-i18n="asof_quick_yesterday">{s['asof_quick_yesterday']}</button>
           <button id="asof-week" data-i18n="asof_quick_week">{s['asof_quick_week']}</button>
           <button id="asof-month" data-i18n="asof_quick_month">{s['asof_quick_month']}</button>
+          <button id="asof-graph-btn" data-i18n="asof_btn_graph">{s['asof_btn_graph']}</button>
         </div>
         <div id="asof-results"></div>
       </section>
@@ -3455,6 +3639,8 @@ def page() -> tuple[str, str]:
         </div>
         <div class="toolbar">
           <input id="graph-id-input" type="text" data-i18n-placeholder="graph_filter_placeholder" data-i18n-aria="graph_filter_placeholder" placeholder="{s['graph_filter_placeholder']}" aria-label="{s['graph_filter_placeholder']}">
+          <label class="rec-meta"><span data-i18n="graph_asof_label">{s['graph_asof_label']}</span> <input id="graph-asof-input" type="date" data-i18n-aria="graph_asof_label" aria-label="{s['graph_asof_label']}"></label>
+          <button id="graph-now-btn" data-i18n="graph_btn_now">{s['graph_btn_now']}</button>
           <button id="graph-focus-btn" class="btn-primary" data-i18n="graph_btn_focus">{s['graph_btn_focus']}</button>
           <button id="graph-reset-btn" data-i18n="graph_btn_reset">{s['graph_btn_reset']}</button>
         </div>
@@ -3462,6 +3648,9 @@ def page() -> tuple[str, str]:
           <canvas id="graph-canvas" width="900" height="420" aria-label="Memory lineage graph"></canvas>
           <div class="legend-row">
             <span>🔵 <span data-i18n="graph_legend_derived">{s['graph_legend_derived']}</span></span>
+            <span>🟢 <span data-i18n="graph_legend_cause">{s['graph_legend_cause']}</span></span>
+            <span>🟡 <span data-i18n="graph_legend_correction">{s['graph_legend_correction']}</span></span>
+            <span>🟠 <span data-i18n="graph_legend_contradiction">{s['graph_legend_contradiction']}</span></span>
             <span>🟣 <span data-i18n="graph_legend_version">{s['graph_legend_version']}</span></span>
             <span>🔴 <span data-i18n="graph_legend_conflict">{s['graph_legend_conflict']}</span></span>
           </div>
