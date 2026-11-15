@@ -1057,3 +1057,135 @@ def test_top8_cursor_pagination_across_all_lists(tmp_path, monkeypatch):
             mcp_server._tasks.clear()
         mcp_server._memory = old_mem
         m.close()
+
+
+def test_top9_auto_daemon_pool_and_session_isolation(tmp_path, monkeypatch):
+    """Пункт 9 ТОП-10: opt-in общий локальный пул-сервер + жёсткая изоляция проектов (дополнение Сестры)."""
+    import io
+    import json
+    import os
+    import signal
+    import threading
+    import urllib.error
+    import urllib.request
+
+    from padam import config, mcp_daemon, mcp_server
+    from padam.memory import Memory
+    from padam.store import Store
+
+    # По умолчанию выключено
+    monkeypatch.delenv("PADAM_MCP_AUTO_DAEMON", raising=False)
+    monkeypatch.delenv("PADAM_MCP_SESSION_ISOLATION", raising=False)
+    assert config.mcp_auto_daemon_enabled() is False
+    assert config.mcp_session_isolation_enabled() is False
+
+    # 1. Изоляция двух разных IDE-сессий поверх одного локального пула
+    m = Memory(user_id="top9_u", store=Store(tmp_path / "m_top9.db"))
+    _, id_beta = m.remember("Windsurf secret deploy key beta-42", kind="fact", scope="project:beta", origin="user")
+    _, id_alpha = m.remember(
+        "Claude architecture design doc alpha-7",
+        kind="fact",
+        scope="project:alpha",
+        origin="user",
+        links=[{"target": id_beta, "relation": "derived"}],
+    )
+
+    monkeypatch.setenv("PADAM_MCP_SESSION_ISOLATION", "1")
+    monkeypatch.setenv("PADAM_MCP_ROOTS", "1")
+    old_mem = mcp_server._memory
+    try:
+        srv, url, tok = mcp_server.make_mcp_http_server(
+            memory=m, host="127.0.0.1", port=0, token="top9-secret-token-1234"
+        )
+        t_srv = threading.Thread(target=srv.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True)
+        t_srv.start()
+        try:
+            # Два независимых stdio-прокси: Claude Code (workspace alpha) и Windsurf (workspace beta)
+            in_claude = io.StringIO(
+                json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"roots": [{"uri": "file:///workspace/alpha", "name": "alpha"}]}}) + "\n"
+                + json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "padam_search", "arguments": {"query": "architecture design", "graph_hops": 1}}}) + "\n"
+                + json.dumps({"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "padam_search", "arguments": {"query": "Windsurf secret", "scope": "project:beta"}}}) + "\n"
+                + json.dumps({"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "padam_search", "arguments": {"query": "Windsurf secret", "scope": "all"}}}) + "\n"
+                + json.dumps({"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "padam_write", "arguments": {"content": "Attempt cross write", "scope": "project:beta"}}}) + "\n"
+                + json.dumps({"jsonrpc": "2.0", "id": 6, "method": "resources/read", "params": {"uri": "padam://scope/project:beta"}}) + "\n"
+                + json.dumps({"jsonrpc": "2.0", "id": 7, "method": "resources/read", "params": {"uri": f"padam://record/{id_beta}"}}) + "\n"
+            )
+            out_claude = io.StringIO()
+            rc_c = mcp_daemon.run_stdio_proxy(
+                in_claude, out_claude, url=url, token=tok, derive_scope_fn=mcp_server.derive_scope_from_roots
+            )
+            assert rc_c == 0
+            c_resps = {obj["id"]: obj for obj in (json.loads(ln) for ln in out_claude.getvalue().splitlines() if ln.strip())}
+
+            # Поиск внутри своего project:alpha находит alpha-7, но НЕ просачивает соседа id_beta через graph_hops=1
+            ok_search = c_resps[2]["result"]
+            assert ok_search["isError"] is False
+            assert ok_search["structuredContent"]["count"] == 1
+            assert ok_search["structuredContent"]["graphNeighbors"] == []
+            assert "Windsurf secret" not in ok_search["content"][0]["text"]
+
+            # Кросс-проектный поиск, поиск по scope="all" и запись в чужой проект -> Permission denied
+            assert c_resps[3]["result"]["isError"] is True
+            assert "session scope isolation" in c_resps[3]["result"]["content"][0]["text"]
+            assert c_resps[4]["result"]["isError"] is True
+            assert c_resps[5]["result"]["isError"] is True
+
+            # Ресурсы чужого проекта -> -32003 Forbidden
+            assert c_resps[6]["error"]["code"] == mcp_server.ERROR_CODES["FORBIDDEN"]
+            assert c_resps[7]["error"]["code"] == mcp_server.ERROR_CODES["FORBIDDEN"]
+
+            # Windsurf видит свой project:beta, но не project:alpha
+            in_wind = io.StringIO(
+                json.dumps({"jsonrpc": "2.0", "id": 10, "method": "initialize", "params": {"roots": [{"uri": "file:///workspace/beta", "name": "beta"}]}}) + "\n"
+                + json.dumps({"jsonrpc": "2.0", "id": 11, "method": "tools/call", "params": {"name": "padam_search", "arguments": {"query": "Windsurf secret"}}}) + "\n"
+                + json.dumps({"jsonrpc": "2.0", "id": 12, "method": "resources/read", "params": {"uri": "padam://scope/project:alpha"}}) + "\n"
+            )
+            out_wind = io.StringIO()
+            mcp_daemon.run_stdio_proxy(
+                in_wind, out_wind, url=url, token=tok, derive_scope_fn=mcp_server.derive_scope_from_roots
+            )
+            w_resps = {obj["id"]: obj for obj in (json.loads(ln) for ln in out_wind.getvalue().splitlines() if ln.strip())}
+            assert w_resps[11]["result"]["structuredContent"]["count"] == 1
+            assert w_resps[12]["error"]["code"] == mcp_server.ERROR_CODES["FORBIDDEN"]
+
+            # Попытка переключить X-Padam-Session-Scope для уже привязанной HTTP-сессии -> HTTP 403
+            st_first, _ = mcp_daemon.forward_rpc(
+                url, tok, {"jsonrpc": "2.0", "id": 20, "method": "ping"},
+                session_id="pinned-sid-test", session_scope="project:alpha",
+            )
+            assert st_first == 200
+            st_switch, err_switch = mcp_daemon.forward_rpc(
+                url, tok, {"jsonrpc": "2.0", "id": 21, "method": "ping"},
+                session_id="pinned-sid-test", session_scope="project:beta",
+            )
+            assert st_switch == 403
+            assert "mismatch" in str(err_switch)
+        finally:
+            mcp_server.pop_notifications()
+            srv.shutdown()
+            srv.server_close()
+
+        # 2. Реальный общий фоновый демон: два подключения переиспользуют один PID/порт
+        db_pool = tmp_path / "pool.db"
+        state_dir = tmp_path / "pool_state"
+        monkeypatch.setenv("PADAM_DAEMON_STATE_DIR", str(state_dir))
+        info1 = mcp_daemon.spawn_or_attach_daemon(db_path=db_pool, user_id="pool_u")
+        info2 = mcp_daemon.spawn_or_attach_daemon(db_path=db_pool, user_id="pool_u")
+        try:
+            assert info1["pid"] == info2["pid"]
+            assert info1["port"] == info2["port"]
+            assert info1["url"] == info2["url"]
+            st_ping, res_ping = mcp_daemon.forward_rpc(
+                info2["url"], info2["token"], {"jsonrpc": "2.0", "id": "dp-1", "method": "ping"},
+                session_id="pool-sess-1", session_scope="project:pool",
+            )
+            assert st_ping == 200 and res_ping["result"] == {}
+        finally:
+            pid = int(info1["pid"])
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except Exception:
+                pass
+    finally:
+        mcp_server._memory = old_mem
+        m.close()

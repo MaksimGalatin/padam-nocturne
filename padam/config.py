@@ -303,3 +303,13 @@ def mcp_page_size() -> int:
         return max(0, min(1000, int(raw)))
     except ValueError:
         return 0
+
+# --- ТОП-10 Пункт 9: Общий локальный пул-сервер (--auto-daemon) и жёсткая изоляция сессий (выключено по умолчанию) ---
+def mcp_auto_daemon_enabled() -> bool:
+    """Авто-подключение к общему локальному пулу вместо изолированных SQLite-инстансов (PADAM_MCP_AUTO_DAEMON=1)."""
+    return os.environ.get("PADAM_MCP_AUTO_DAEMON", "0").strip() == "1"
+
+
+def mcp_session_isolation_enabled() -> bool:
+    """Жёсткая песочная изоляция проектов на уровне MCP-сессий в общем пуле (PADAM_MCP_SESSION_ISOLATION=1)."""
+    return os.environ.get("PADAM_MCP_SESSION_ISOLATION", "0").strip() == "1" or mcp_auto_daemon_enabled()

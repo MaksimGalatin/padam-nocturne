@@ -397,8 +397,8 @@ def render_graph_html(center_id: str, safe_nodes: list[dict], edges: list[dict])
     ]
     edges_clean = [
         {
-            "src": str(e.get("src") or ""),
-            "dst": str(e.get("dst") or ""),
+            "src": str(e.get("src") or e.get("source") or ""),
+            "dst": str(e.get("dst") or e.get("target") or ""),
             "relation": str(e.get("relation") or "related"),
         }
         for e in edges

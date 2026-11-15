@@ -685,6 +685,7 @@ _notify_cond = threading.Condition(_state_lock)
 _client_capabilities: dict = {}
 _caps_ctx: contextvars.ContextVar[dict | None] = contextvars.ContextVar("padam_mcp_caps", default=None)
 _actor_token_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar("padam_mcp_actor_token", default=None)
+_session_scope_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar("padam_mcp_session_scope", default=None)
 _error_lang_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar("padam_mcp_error_lang", default=None)
 _cancel_event_ctx: contextvars.ContextVar[threading.Event | None] = contextvars.ContextVar("padam_mcp_cancel_event", default=None)
 _progress_token_ctx: contextvars.ContextVar[str | int | None] = contextvars.ContextVar("padam_mcp_progress_token", default=None)
@@ -1357,11 +1358,52 @@ def _reset_client_roots() -> None:
 
 
 def resolve_default_scope() -> str:
-    """Эффективный scope по умолчанию: при PADAM_MCP_ROOTS=1 берётся из корней клиента, иначе 'global'."""
+    """Эффективный scope по умолчанию: сначала изоляция сессии пула, затем Roots, иначе 'global'."""
+    pinned = _session_scope_ctx.get()
+    if pinned:
+        return pinned
     if not config.mcp_roots_enabled():
         return "global"
     with _state_lock:
         return _active_root_scope or "global"
+
+
+def _check_session_scope(requested_scope: str | None) -> str:
+    """Проверяет, что requested_scope не выходит за пределы песочницы текущей сессии."""
+    pinned = _session_scope_ctx.get()
+    if not pinned:
+        return requested_scope or resolve_default_scope()
+    req_s = (requested_scope or "").strip()
+    if not req_s:
+        return pinned
+    from . import mcp_daemon as _daemon
+    if not _daemon.scope_matches_pin(req_s, pinned):
+        raise PermissionError(
+            f"session scope isolation: access to scope {req_s!r} is forbidden (pinned to {pinned!r})"
+        )
+    return req_s
+
+
+def _filter_rows_by_session_scope(rows: list[dict]) -> list[dict]:
+    pinned = _session_scope_ctx.get()
+    if not pinned:
+        return rows
+    from . import mcp_daemon as _daemon
+    return [r for r in rows if _daemon.scope_matches_pin(r.get("scope"), pinned)]
+
+
+def _assert_record_in_session_scope(m: Memory, record_id: str, actor=None) -> None:
+    pinned = _session_scope_ctx.get()
+    if not pinned or not record_id:
+        return
+    row = m.store.one("SELECT scope FROM memory WHERE id = ? AND user_id = ?", (record_id, m.user_id))
+    if row is None:
+        return
+    from . import mcp_daemon as _daemon
+    if not _daemon.scope_matches_pin(row["scope"], pinned):
+        raise PermissionError(
+            f"session scope isolation: record {record_id!r} is outside pinned scope {pinned!r}"
+        )
 
 
 def refresh_client_roots(*, warm_sync: bool = False) -> str | None:
@@ -2015,7 +2057,7 @@ def read_resource(uri: str) -> dict:
         if actor is not None and not actor.is_owner:
             raise PermissionError("review queue UI requires the owner role")
         from . import mcp_apps as _mcp_apps
-        held = m.quarantined(actor=actor)
+        held = _filter_rows_by_session_scope(m.quarantined(actor=actor))
         enriched = []
         for r in held:
             item_r = dict(r)
@@ -2037,16 +2079,19 @@ def read_resource(uri: str) -> dict:
         gid = uri.split("ui://padam/graph/", 1)[1].strip()
         if not gid:
             raise KeyError(f"Resource not found: {uri}")
+        _assert_record_in_session_scope(m, gid, actor)
         g = m.graph(center_id=gid, limit=50, actor=actor)
-        nodes = g.get("nodes", [])
+        nodes = _filter_rows_by_session_scope(g.get("nodes", []))
         if not nodes:
             raise KeyError(f"Resource not found: {uri}")
+        allowed_gids = {n["id"] for n in nodes}
         safe_nodes = _safe_graph_nodes(nodes)
+        edges = [e for e in g.get("edges", []) if (e.get("src") or e.get("source")) in allowed_gids and (e.get("dst") or e.get("target")) in allowed_gids]
         ts = max((n.get("created_at") or "" for n in nodes), default="") or None
         return {
             "uri": uri,
             "mimeType": _mcp_apps.MCP_APP_MIME,
-            "text": _mcp_apps.render_graph_html(gid, safe_nodes, g.get("edges", [])),
+            "text": _mcp_apps.render_graph_html(gid, safe_nodes, edges),
             "annotations": _make_annotations(["user"], 0.82, ts),
             "_meta": _mcp_apps.UI_CSP_META,
         }
@@ -2054,7 +2099,7 @@ def read_resource(uri: str) -> dict:
     if uri == "padam://profile":
         if actor is not None and not actor.is_owner:
             raise PermissionError("owner identity/preference profile is private")
-        prof = m.profile(scope="global")
+        prof = m.profile(scope=_session_scope_ctx.get() or "global")
         body = prof.get("summary") or "No owner-signed identity or preference records yet."
         ts = _latest_memory_ts(m, where_extra=" AND kind IN ('identity', 'preference', 'rule')")
         return {"uri": uri, "mimeType": "text/plain", "text": safety.fence(body),
@@ -2068,7 +2113,7 @@ def read_resource(uri: str) -> dict:
                 "annotations": _make_annotations(["user", "assistant"], 0.5, ts)}
 
     if uri == "padam://review-queue":
-        held = m.quarantined(actor=actor)
+        held = _filter_rows_by_session_scope(m.quarantined(actor=actor))
         if not held:
             body = "Review queue is empty (0 held records)."
             ts = _now_iso_utc()
@@ -2086,7 +2131,7 @@ def read_resource(uri: str) -> dict:
                 "annotations": _make_annotations(["user"], 0.85, ts)}
 
     if uri == "padam://recent":
-        rows = m.list_records(view="active", limit=15, offset=0, actor=actor).get("records", [])
+        rows = m.list_records(view="active", scope=_session_scope_ctx.get() or None, limit=15, offset=0, actor=actor).get("records", [])
         if not rows:
             body = "No active memory records yet."
         else:
@@ -2118,6 +2163,7 @@ def read_resource(uri: str) -> dict:
         )
         if not row:
             raise KeyError(f"Resource not found: {uri}")
+        _assert_record_in_session_scope(m, rid, actor)
         if row["status"] in ("quarantined", "rejected"):
             content_str = (
                 "(waiting for the owner's decision)"
@@ -2149,7 +2195,8 @@ def read_resource(uri: str) -> dict:
         rid = uri.split("padam://timeline/", 1)[1].strip()
         if not rid:
             raise KeyError(f"Resource not found: {uri}")
-        chain = m.timeline(rid, actor=actor)
+        _assert_record_in_session_scope(m, rid, actor)
+        chain = _filter_rows_by_session_scope(m.timeline(rid, actor=actor))
         if not chain:
             raise KeyError(f"Resource not found: {uri}")
         out = []
@@ -2169,6 +2216,7 @@ def read_resource(uri: str) -> dict:
         scope_val = uri.split("padam://scope/", 1)[1].strip()
         if not scope_val:
             raise KeyError(f"Resource not found: {uri}")
+        scope_val = _check_session_scope(scope_val)
         rows = m.list_records(
             view="active",
             scope=None if scope_val == "all" else scope_val,
@@ -2197,7 +2245,7 @@ def read_resource(uri: str) -> dict:
         if not date_val:
             raise KeyError(f"Resource not found: {uri}")
         parse_as_of(date_val)
-        rows = m.list_records(view="active", as_of=date_val, limit=30, offset=0, actor=actor).get("records", [])
+        rows = m.list_records(view="active", scope=_session_scope_ctx.get() or None, as_of=date_val, limit=30, offset=0, actor=actor).get("records", [])
         if not rows:
             body = f"No records were valid as of {date_val}."
         else:
@@ -2218,6 +2266,7 @@ def read_resource(uri: str) -> dict:
         scope_val = uri.split("padam://conflicts/", 1)[1].strip()
         if not scope_val:
             raise KeyError(f"Resource not found: {uri}")
+        scope_val = _check_session_scope(scope_val)
         conflicts = m.conflicts(actor=actor)
         if scope_val != "all":
             conflicts = [c for c in conflicts if c.get("scope", "global") == scope_val]
@@ -2241,14 +2290,17 @@ def read_resource(uri: str) -> dict:
         gid = uri.split("padam://graph/", 1)[1].strip()
         if not gid:
             raise KeyError(f"Resource not found: {uri}")
+        _assert_record_in_session_scope(m, gid, actor)
         g = m.graph(center_id=gid, limit=50, actor=actor)
-        nodes = g.get("nodes", [])
+        nodes = _filter_rows_by_session_scope(g.get("nodes", []))
         if not nodes:
             raise KeyError(f"Resource not found: {uri}")
+        allowed_gids = {n["id"] for n in nodes}
+        edges = [e for e in g.get("edges", []) if (e.get("src") or e.get("source")) in allowed_gids and (e.get("dst") or e.get("target")) in allowed_gids]
         payload = {
             "center_id": gid,
             "nodes": _safe_graph_nodes(nodes),
-            "edges": g.get("edges", []),
+            "edges": edges,
         }
         ts = max((n.get("created_at") or "" for n in nodes), default="") or None
         return {
@@ -2264,12 +2316,15 @@ def read_resource(uri: str) -> dict:
             raise KeyError(f"Resource not found: {uri}")
         parse_as_of(date_val)
         g = m.graph(as_of=date_val, limit=100, actor=actor)
+        nodes = _filter_rows_by_session_scope(g.get("nodes", []))
+        allowed_gids = {n["id"] for n in nodes}
+        edges = [e for e in g.get("edges", []) if (e.get("src") or e.get("source")) in allowed_gids and (e.get("dst") or e.get("target")) in allowed_gids]
         payload = {
             "as_of": g.get("as_of"),
             "relations": g.get("relations", []),
             "counts": g.get("counts", {}),
-            "nodes": _safe_graph_nodes(g.get("nodes", [])),
-            "edges": g.get("edges", []),
+            "nodes": _safe_graph_nodes(nodes),
+            "edges": edges,
         }
         ts = max((n.get("created_at") or "" for n in g.get("nodes", [])), default="") or None
         return {
@@ -2689,10 +2744,11 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
 
     if name == "padam_search":
         if args.get("scopes"):
-            found = m.recall_many(args["query"], args["scopes"], kind=args.get("kind"),
+            checked_scopes = [_check_session_scope(s) for s in args["scopes"]]
+            found = m.recall_many(args["query"], checked_scopes, kind=args.get("kind"),
                                   limit=int(args.get("limit", 5)), as_of=args.get("as_of"), actor=actor)
         else:
-            eff_scope = args.get("scope") or resolve_default_scope()
+            eff_scope = _check_session_scope(args.get("scope"))
             found = m.recall(args["query"], scope=eff_scope,
                              kind=args.get("kind"), limit=int(args.get("limit", 5)),
                              as_of=args.get("as_of"), agent_id=args.get("agent_id"), actor=actor)
@@ -2800,13 +2856,18 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
         graph_neighbors_struct: list[dict] = []
         graph_edges_struct: list[dict] = []
         if graph_hops > 0 and structured_recs:
+            seed_ids = [r["id"] for r in structured_recs]
             g_exp = m.expand_graph(
-                [r["id"] for r in structured_recs],
+                seed_ids,
                 hops=graph_hops,
                 max_neighbors=20,
                 as_of=args.get("as_of"),
                 actor=actor,
             )
+            g_exp["nodes"] = _filter_rows_by_session_scope(g_exp.get("nodes", []))
+            if _session_scope_ctx.get():
+                allowed_exp = set(seed_ids) | {nb["id"] for nb in g_exp["nodes"]}
+                g_exp["edges"] = [e for e in g_exp.get("edges", []) if e.get("src") in allowed_exp and e.get("dst") in allowed_exp]
             graph_edges_struct = g_exp["edges"]
             if g_exp["nodes"]:
                 nb_header = f"\n[graph neighbors ({graph_hops}-hop)]:"
@@ -2883,7 +2944,10 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
         _, masked = safety.redact(safety.strip_invisible(args["content"]))
         origin = args.get("origin", "agent")
         agent_id = args.get("agent_id") or os.environ.get("PADAM_AGENT_ID") or None
-        eff_write_scope = args.get("scope") or resolve_default_scope()
+        try:
+            eff_write_scope = _check_session_scope(args.get("scope"))
+        except PermissionError as e:
+            return f"Permission denied: {e}", None
         dedup_mode = args.get("dedup_mode") or ("atomic_merge" if config.mcp_atomic_merge_default() else "default")
         try:
             outcome, mid = m.remember(
@@ -3042,7 +3106,8 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
         return текст, {"id": args["id"], "refuted": True, "protected": bool(защищена)}
 
     if name == "padam_timeline":
-        chain = m.timeline(args["id"], actor=actor)
+        _assert_record_in_session_scope(m, args["id"], actor)
+        chain = _filter_rows_by_session_scope(m.timeline(args["id"], actor=actor))
         if not chain:
             return "Record not found.", {"id": args["id"], "count": 0, "fencedInContent": False, "versions": []}
         out = []
@@ -3119,12 +3184,13 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
         return json.dumps(report, ensure_ascii=False, indent=2), report
 
     if name == "padam_export":
+        eff_export_scope = _check_session_scope(args.get("scope")) if (_session_scope_ctx.get() or args.get("scope")) else args.get("scope")
         c_ev = _cancel_event_ctx.get()
         p_cb = _emit_progress if _progress_token_ctx.get() is not None else None
         try:
             payload = m.export(
                 include_superseded=args.get("include_superseded", True),
-                scope=args.get("scope"), limit=args.get("limit"),
+                scope=eff_export_scope, limit=args.get("limit"),
                 offset=int(args.get("offset", 0)), include_held=False, actor=actor,
                 cancel_event=c_ev, progress_cb=p_cb)
         except InterruptedError as exc:
@@ -3139,7 +3205,7 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
     if name == "padam_profile":
         if actor is not None and not actor.is_owner:
             return "Permission denied: owner identity/preference profile is private.", None
-        scope_val = args.get("scope") or resolve_default_scope()
+        scope_val = _check_session_scope(args.get("scope"))
         prof = m.profile(scope=scope_val)
         return safety.fence(prof["summary"]) + _sleep_hint(m), {
             "scope": scope_val,
@@ -3149,7 +3215,7 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
 
     if name == "padam_recent":
         lim = max(1, min(int(args.get("limit", 10)), 50))
-        scope_val = args.get("scope")
+        scope_val = _check_session_scope(args.get("scope")) if (_session_scope_ctx.get() or args.get("scope")) else args.get("scope")
         rec_data = m.list_records(
             view="active",
             limit=lim,
@@ -3599,6 +3665,9 @@ def _handle_legacy(req: dict) -> dict | None:
             return ok(payload)
         except RequestCancelledError:
             return err(-32800, "request cancelled", key="request_cancelled")
+        except PermissionError as e:
+            msg_p = _format_tool_error_text("permission_denied", str(e), req)
+            return ok({"content": [{"type": "text", "text": msg_p}], "isError": True})
         except Exception as e:
             return ok({"content": [{"type": "text",
                                     "text": f"PADAM error: {e}"}],
@@ -3868,6 +3937,7 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
     session_sse_stops: dict[str, threading.Event] = {}
     session_subs: dict[str, set[str]] = {}
     session_rate_keys: dict[str, set[str]] = {}
+    session_pinned_scopes: dict[str, str] = {}
 
     def _session_stop_event(sid: str) -> threading.Event:
         with session_lock:
@@ -3985,7 +4055,7 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                 self.send_header("Access-Control-Allow-Origin", orig)
                 self.send_header("Vary", "Origin")
             self.send_header("Access-Control-Allow-Headers",
-                             "Authorization, Content-Type, Mcp-Session-Id, MCP-Protocol-Version, X-Padam-Actor-Token, Last-Event-ID")
+                             "Authorization, Content-Type, Mcp-Session-Id, MCP-Protocol-Version, X-Padam-Actor-Token, X-Padam-Session-Scope, Last-Event-ID")
             self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
             self.send_header("Content-Length", "0")
             self.end_headers()
@@ -4010,6 +4080,7 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                     streams_closed += 1
                 tracked_subs = session_subs.pop(target_sid, set())
                 tracked_rl = session_rate_keys.pop(target_sid, set())
+                session_pinned_scopes.pop(target_sid, None)
             with _state_lock:
                 if tracked_subs:
                     for sub_uri in tracked_subs:
@@ -4076,7 +4147,21 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                         role="guest", subject="guest", workspace_id=None, via_token=False
                     )
                 req_sid = (self.headers.get("Mcp-Session-Id") or session_id).strip() or session_id
+                hdr_scope_get = (self.headers.get("X-Padam-Session-Scope") or "").strip() or None
+                with session_lock:
+                    pinned_get = session_pinned_scopes.get(req_sid)
+                    if hdr_scope_get:
+                        if pinned_get and pinned_get != hdr_scope_get:
+                            return self._send_json(403, {"error": "session scope mismatch: cannot switch sandbox"})
+                        session_pinned_scopes.setdefault(req_sid, hdr_scope_get)
+                        pinned_get = session_pinned_scopes[req_sid]
                 scope_filter = [s.strip() for s in qs.get("scope", []) if s.strip()]
+                if pinned_get:
+                    from . import mcp_daemon as _daemon
+                    if scope_filter and any(not _daemon.scope_matches_pin(sf, pinned_get) for sf in scope_filter):
+                        return self._send_json(403, {"error": "session scope isolation: forbidden SSE scope filter"})
+                    if not scope_filter:
+                        scope_filter = [pinned_get]
                 accept_hdr = (self.headers.get("Accept") or "").lower()
                 wants_stream = ("text/event-stream" in accept_hdr) or (qs.get("stream", [""])[0] == "1")
                 last_ev_raw = (self.headers.get("Last-Event-ID") or "").strip()
@@ -4250,8 +4335,32 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
             except json.JSONDecodeError:
                 return self._send_json(200, build_jsonrpc_error(None, -32700, "parse error", key="parse_error"))
 
+            req_sid_post = (self.headers.get("Mcp-Session-Id") or session_id).strip() or session_id
+            hdr_scope_post = (self.headers.get("X-Padam-Session-Scope") or "").strip() or None
+            active_pin: str | None = None
+            with session_lock:
+                existing_pin = session_pinned_scopes.get(req_sid_post)
+                if hdr_scope_post:
+                    if existing_pin and existing_pin != hdr_scope_post:
+                        return self._send_json(403, {"error": "session scope mismatch: cannot switch sandbox"})
+                    session_pinned_scopes[req_sid_post] = hdr_scope_post
+                    active_pin = hdr_scope_post
+                elif existing_pin:
+                    active_pin = existing_pin
+            if active_pin is None and config.mcp_session_isolation_enabled() and isinstance(req, dict):
+                r_meth = req.get("method")
+                r_prm = req.get("params") if isinstance(req.get("params"), dict) else {}
+                if r_meth in ("initialize", "notifications/roots/list_changed") and isinstance(r_prm.get("roots"), list):
+                    derived_pin = derive_scope_from_roots(r_prm["roots"])
+                    with session_lock:
+                        session_pinned_scopes[req_sid_post] = derived_pin
+                    active_pin = derived_pin
+            if active_pin and config.mcp_predictive_cache_enabled():
+                warm_scope_cache(active_pin, m=mem(), sync=False)
+
             actor_hdr = (self.headers.get("X-Padam-Actor-Token") or "").strip() or None
             tok_ctx = _actor_token_ctx.set(actor_hdr) if actor_hdr is not None else None
+            scope_ctx_tok = _session_scope_ctx.set(active_pin) if active_pin is not None else None
             lang_hdr = _normalize_lang(self.headers.get("X-Padam-Lang") or self.headers.get("Accept-Language"))
             lang_ctx = _error_lang_ctx.set(lang_hdr) if lang_hdr is not None else None
             if rate_limiter is not None:
@@ -4430,6 +4539,8 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
             finally:
                 if lang_ctx is not None:
                     _error_lang_ctx.reset(lang_ctx)
+                if scope_ctx_tok is not None:
+                    _session_scope_ctx.reset(scope_ctx_tok)
                 if tok_ctx is not None:
                     _actor_token_ctx.reset(tok_ctx)
 
@@ -4471,9 +4582,9 @@ def main(argv: list[str] | None = None, memory: Memory | None = None) -> int:
         return 0
     if "--help" in args or "-h" in args:
         print("PADAM NOCTURNE MCP server. Speaks JSON-RPC over stdin and stdout (or Streamable HTTP with --http).\n"
-              "Usage: padam serve [--async-stdio] [--http] [--host 127.0.0.1] [--port 8079] [--token TOKEN]\n"
+              "Usage: padam serve [--async-stdio] [--auto-daemon] [--http] [--host 127.0.0.1] [--port 8079] [--token TOKEN]\n"
               "Environment: PADAM_DB (database file), PADAM_USER, PADAM_EMBEDDER, OLLAMA_URL, PADAM_HOLD_EXTERNAL,\n"
-              "PADAM_MCP_REVIEW_ALL, PADAM_MCP_TRUST_WRITES, PADAM_KEEP_SECRETS, PADAM_MCP_ASYNC_STDIO, PADAM_STRICT.\n"
+              "PADAM_MCP_REVIEW_ALL, PADAM_MCP_TRUST_WRITES, PADAM_KEEP_SECRETS, PADAM_MCP_ASYNC_STDIO, PADAM_MCP_AUTO_DAEMON, PADAM_STRICT.\n"
               "`padam doctor` reports the security state.")
         return 0
     if "--http" in args:
@@ -4486,6 +4597,7 @@ def main(argv: list[str] | None = None, memory: Memory | None = None) -> int:
         hp.add_argument("--oauth", action="store_true", default=None)
         hp.add_argument("--rate-limit", type=int, default=None)
         hp.add_argument("--rate-window", type=float, default=None)
+        hp.add_argument("--daemon-state", default=None)
         ha = hp.parse_args(args)
         try:
             srv, url, tok = make_mcp_http_server(
@@ -4496,6 +4608,20 @@ def main(argv: list[str] | None = None, memory: Memory | None = None) -> int:
         except ValueError as e:
             print(f"Refused: {e}", file=sys.stderr)
             return 2
+        if ha.daemon_state:
+            from pathlib import Path as _Path
+            from . import mcp_daemon as _daemon
+            _daemon.write_daemon_state(
+                _Path(ha.daemon_state),
+                {
+                    "pid": os.getpid(),
+                    "port": int(srv.server_address[1]),
+                    "url": url,
+                    "token": tok,
+                    "db_path": str(os.environ.get("PADAM_DB") or config.DB_PATH),
+                    "user_id": str(os.environ.get("PADAM_USER", "default")),
+                },
+            )
         print(f"PADAM MCP Streamable HTTP at {url} (local only, Bearer token required)", flush=True)
         if not ha.token:
             print(f"Token for this run: {tok}", flush=True)
@@ -4504,8 +4630,34 @@ def main(argv: list[str] | None = None, memory: Memory | None = None) -> int:
         except KeyboardInterrupt:
             pass
         finally:
+            if ha.daemon_state:
+                from pathlib import Path as _Path
+                try:
+                    sp = _Path(ha.daemon_state)
+                    if sp.exists():
+                        cur = json.loads(sp.read_text(encoding="utf-8"))
+                        if cur.get("pid") == os.getpid():
+                            sp.unlink()
+                except Exception:
+                    pass
             srv.server_close()
         return 0
+    if "--auto-daemon" in args or config.mcp_auto_daemon_enabled():
+        from . import mcp_daemon as _daemon
+        for _поток in (sys.stdin, sys.stdout):
+            if hasattr(_поток, "reconfigure"):
+                _поток.reconfigure(encoding="utf-8", errors="replace" if _поток is sys.stdin else "strict")
+        info = _daemon.spawn_or_attach_daemon(
+            db_path=os.environ.get("PADAM_DB") or None,
+            user_id=os.environ.get("PADAM_USER", "default"),
+        )
+        return _daemon.run_stdio_proxy(
+            sys.stdin,
+            sys.stdout,
+            url=info["url"],
+            token=info["token"],
+            derive_scope_fn=derive_scope_from_roots,
+        )
     async_stdio = True if "--async-stdio" in args else None
     # 0.4.2: выключенная защита называется при каждом запуске — в stderr, stdout занят протоколом MCP.
     for имя, что in config.unsafe_settings():
