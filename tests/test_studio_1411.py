@@ -3384,3 +3384,44 @@ def test_step_2_1_nsis_installer_header_and_sidebar_images():
         # Проверяем, что картинка не однотонная (логотип действительно нарисован)
         pixel_data = raw[54:]
         assert len(set(pixel_data[i:i+3] for i in range(0, len(pixel_data), 9))) > 15
+
+
+def test_step_2_2_build_extensions_script_and_ci(tmp_path):
+    """Пункт 2.2: скрипт сборки расширений, .gitignore для extensions/dist/*.zip и шаг web-ext lint в CI."""
+    import subprocess
+    import zipfile
+
+    root = Path(__file__).resolve().parents[1]
+    script = root / "scripts" / "build_extensions.py"
+    assert script.is_file()
+
+    # Проверяем правило .gitignore и шаг CI
+    gitignore = (root / ".gitignore").read_text(encoding="utf-8")
+    assert "extensions/dist/*.zip" in gitignore
+
+    ci_yml = (root / ".github" / "workflows" / "tests.yml").read_text(encoding="utf-8")
+    assert "scripts/build_extensions.py" in ci_yml
+    assert "web-ext" in ci_yml and "extensions/firefox" in ci_yml
+
+    # Запускаем скрипт сборки в отдельную папку дважды и проверяем детерминизм + содержимое
+    out1 = tmp_path / "dist1"
+    out2 = tmp_path / "dist2"
+    r1 = subprocess.run([sys.executable, str(script), "--out-dir", str(out1), "--json"], capture_output=True, text=True)
+    r2 = subprocess.run([sys.executable, str(script), "--out-dir", str(out2), "--json"], capture_output=True, text=True)
+    assert r1.returncode == 0, r1.stderr
+    assert r2.returncode == 0, r2.stderr
+    data1 = json.loads(r1.stdout)
+    data2 = json.loads(r2.stdout)
+
+    from padam import __version__
+    for browser in ("chromium", "firefox"):
+        assert data1[browser]["version"] == __version__
+        assert data1[browser]["sha256"] == data2[browser]["sha256"]
+        zpath = Path(data1[browser]["path"])
+        assert zpath.is_file()
+        with zipfile.ZipFile(zpath) as zf:
+            names = set(zf.namelist())
+            assert {"manifest.json", "background.js", "popup.html", "popup.js", "popup.css"}.issubset(names)
+            m = json.loads(zf.read("manifest.json").decode("utf-8"))
+            assert m["version"] == __version__
+
