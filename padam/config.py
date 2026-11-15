@@ -373,3 +373,9 @@ def mcp_hw_seal_enabled() -> bool:
 def mcp_hooks_enabled() -> bool:
     """Включает подсистему хуков жизненного цикла Claude/Codex/Gemini (PADAM_HOOKS=1)."""
     return os.environ.get("PADAM_HOOKS", "0").strip() == "1"
+
+
+# --- ТОП-10 v2 Пункт 2: Панель прав приложений и хешируемый журнал доступа (выключено по умолчанию) ---
+def mcp_app_acl_enabled() -> bool:
+    """Включает контроль доступа по клиенту/agent_id, паузу/отзыв и ресурс padam://access-control (PADAM_APP_ACL=1)."""
+    return os.environ.get("PADAM_APP_ACL", "0").strip() == "1"

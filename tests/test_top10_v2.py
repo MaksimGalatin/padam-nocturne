@@ -84,3 +84,67 @@ def test_top10v2_1_hooks_opt_in_install_isolation_and_dlp(tmp_path: Path, monkey
     st_out = json.loads(capsys.readouterr().out)
     assert set(st_out["clients"]["claude"]["padam_events"]) == {"SessionStart", "UserPromptSubmit", "PreToolUse"}
     m.close()
+
+
+def test_top10v2_2_app_access_control_and_hash_chain(tmp_path: Path, monkeypatch, capsys) -> None:
+    """Пункт 2: Панель прав приложений (allow/pause/revoke, scope-ограничения) и хешируемая цепь аудита."""
+    import pytest
+    from padam import app_acl
+
+    monkeypatch.delenv("PADAM_APP_ACL", raising=False)
+    assert config.mcp_app_acl_enabled() is False
+    assert len(mcp_server.TOOLS) == 9
+
+    db_path = tmp_path / "acl.db"
+    m = Memory(user_id="acl-u", store=Store(db_path))
+    m.remember("Проект Alpha факт", kind="fact", scope="proj:alpha", agent_id="cursor")
+    old_mem = mcp_server._memory
+    mcp_server._memory = m
+    try:
+        assert all(r["uri"] != "padam://access-control" for r in mcp_server._list_resources_annotated())
+        with pytest.raises(KeyError):
+            mcp_server.read_resource("padam://access-control")
+
+        monkeypatch.setenv("PADAM_APP_ACL", "1")
+        assert config.mcp_app_acl_enabled() is True
+        assert any(r["uri"] == "padam://access-control" for r in mcp_server._list_resources_annotated())
+
+        # Разрешено по умолчанию
+        out_ok = mcp_server.call_tool("padam_search", {"query": "Alpha", "scope": "proj:alpha", "agent_id": "cursor"})
+        assert "Alpha" in out_ok
+
+        # Пауза клиента cursor -> PermissionError
+        app_acl.set_policy(m.store, "cursor", status="pause", note="временная пауза")
+        with pytest.raises(PermissionError, match="client_status:pause"):
+            mcp_server.call_tool("padam_search", {"query": "Alpha", "scope": "proj:alpha", "agent_id": "cursor"})
+
+        # Отзыв клиента -> PermissionError
+        app_acl.set_policy(m.store, "cursor", status="revoke")
+        with pytest.raises(PermissionError, match="client_status:revoke"):
+            mcp_server.call_tool("padam_search", {"query": "Alpha", "scope": "proj:alpha", "agent_id": "cursor"})
+
+        # Разрешение только для proj:alpha
+        app_acl.set_policy(m.store, "cursor", status="allow", allowed_scopes=["proj:alpha"])
+        mcp_server.call_tool("padam_search", {"query": "Alpha", "scope": "proj:alpha", "agent_id": "cursor"})
+        with pytest.raises(PermissionError, match="scope_denied:proj:beta"):
+            mcp_server.call_tool("padam_search", {"query": "Beta", "scope": "proj:beta", "agent_id": "cursor"})
+
+        # Проверка ресурса и целостности цепочки
+        res_item = mcp_server.read_resource("padam://access-control")
+        payload = json.loads(res_item["text"])
+        assert payload["chain"]["valid"] is True
+        assert payload["chain"]["count"] >= 5
+
+        # CLI команды
+        assert cli.main(["--db", str(db_path), "access", "verify"]) == 0
+        v_out = json.loads(capsys.readouterr().out)
+        assert v_out["valid"] is True
+
+        # Подмена записи ломает цепочку
+        m.store.execute("UPDATE app_access_event SET decision='allow' WHERE seq=2")
+        tampered = app_acl.verify_audit_chain(m.store)
+        assert tampered["valid"] is False
+        assert tampered["broken_seq"] == 2
+    finally:
+        mcp_server._memory = old_mem
+        m.close()

@@ -377,6 +377,32 @@ def cmd_profile(m: Memory, a) -> int:
     return 0
 
 
+def cmd_access(m, a) -> int:
+    """ТОП-10 v2 Пункт 2: панель прав приложений и хешируемый журнал доступа."""
+    from . import app_acl
+    sub_cmd = getattr(a, "access_cmd", "list")
+    if sub_cmd == "list":
+        print(json.dumps({"policies": app_acl.list_policies(m.store)}, ensure_ascii=False, indent=2))
+        return 0
+    if sub_cmd == "set":
+        scopes = [s.strip() for s in a.scopes.split(",") if s.strip()] if a.scopes else None
+        tools = [t.strip() for t in a.tools.split(",") if t.strip()] if a.tools else None
+        pol = app_acl.set_policy(
+            m.store, a.client_id, status=a.status, allowed_scopes=scopes, allowed_tools=tools, note=a.note
+        )
+        print(json.dumps(pol, ensure_ascii=False, indent=2))
+        return 0
+    if sub_cmd == "events":
+        evs = app_acl.list_events(m.store, client_id=a.client_id, limit=a.limit)
+        print(json.dumps({"events": evs}, ensure_ascii=False, indent=2))
+        return 0
+    if sub_cmd == "verify":
+        res = app_acl.verify_audit_chain(m.store)
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+        return 0 if res.get("valid") else 2
+    return 1
+
+
 def cmd_hooks(m, a) -> int:
     """ТОП-10 v2 Пункт 1: управление хуками жизненного цикла (install/run/status)."""
     from pathlib import Path
@@ -1312,6 +1338,25 @@ def main(argv=None) -> int:
     s.add_argument("--webauthn", action="store_true")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_unseal)
+
+    sa = sub.add_parser("access", help=t("права приложений/агентов и журнал доступа",
+                                         "app/agent access control and audit log"))
+    asub = sa.add_subparsers(dest="access_cmd", required=True)
+    al = asub.add_parser("list", help=t("список политик", "list access policies"))
+    al.set_defaults(fn=cmd_access)
+    aset = asub.add_parser("set", help=t("задать статус/ограничения клиента", "set client status/limits"))
+    aset.add_argument("client_id")
+    aset.add_argument("--status", default="allow", choices=("allow", "pause", "revoke"))
+    aset.add_argument("--scopes", default=None)
+    aset.add_argument("--tools", default=None)
+    aset.add_argument("--note", default="")
+    aset.set_defaults(fn=cmd_access)
+    aev = asub.add_parser("events", help=t("журнал решений доступа", "access decision log"))
+    aev.add_argument("--client-id", default=None)
+    aev.add_argument("--limit", type=int, default=50)
+    aev.set_defaults(fn=cmd_access)
+    av = asub.add_parser("verify", help=t("проверить целостность цепочки журнала", "verify audit hash chain"))
+    av.set_defaults(fn=cmd_access)
 
     sh = sub.add_parser("hooks", help=t("хуки жизненного цикла (Claude Code, Codex, Gemini CLI)",
                                        "lifecycle hooks (Claude Code, Codex, Gemini CLI)"))

@@ -451,6 +451,29 @@ class Store:
         self.conn.execute(
             """CREATE INDEX IF NOT EXISTS memory_vis
                ON memory (user_id, workspace_id, visibility, status)""")
+        self.conn.execute(
+            """CREATE TABLE IF NOT EXISTS app_access_policy (
+                   client_id TEXT PRIMARY KEY,
+                   status TEXT NOT NULL DEFAULT 'allow',
+                   allowed_scopes_json TEXT,
+                   allowed_tools_json TEXT,
+                   note TEXT DEFAULT '',
+                   updated_at TEXT NOT NULL
+               )"""
+        )
+        self.conn.execute(
+            """CREATE TABLE IF NOT EXISTS app_access_event (
+                   seq INTEGER PRIMARY KEY AUTOINCREMENT,
+                   ts TEXT NOT NULL,
+                   client_id TEXT NOT NULL,
+                   tool_name TEXT NOT NULL,
+                   scope TEXT,
+                   decision TEXT NOT NULL,
+                   reason TEXT DEFAULT '',
+                   prev_hash TEXT NOT NULL,
+                   entry_hash TEXT NOT NULL
+               )"""
+        )
 
     def close(self) -> None:
         self.conn.close()

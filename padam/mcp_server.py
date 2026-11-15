@@ -2069,6 +2069,15 @@ def _list_resources_annotated() -> list[dict]:
             "mimeType": "application/json",
             "annotations": _make_annotations(["user", "assistant"], 0.7, by_uri.get("padam://stats")),
         })
+    if config.mcp_app_acl_enabled():
+        out.append({
+            "uri": "padam://access-control",
+            "name": "app_access_control",
+            "title": "App Access Control & Audit Chain",
+            "description": "Per-client/agent permissions (allow/pause/revoke) and SHA-256 hash-chained access log.",
+            "mimeType": "application/json",
+            "annotations": _make_annotations(["user"], 0.9, by_uri.get("padam://stats")),
+        })
     if config.mcp_swarm_enabled():
         out.append({
             "uri": "padam://swarm/feed",
@@ -2149,6 +2158,22 @@ def read_resource(uri: str) -> dict:
 
     m = mem()
     actor = _current_actor(m)
+
+    if uri == "padam://access-control":
+        if not config.mcp_app_acl_enabled():
+            raise KeyError(f"Resource not found: {uri}")
+        from . import app_acl
+        payload = {
+            "policies": app_acl.list_policies(m.store),
+            "events": app_acl.list_events(m.store, limit=50),
+            "chain": app_acl.verify_audit_chain(m.store),
+        }
+        return {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps(payload, ensure_ascii=False, indent=2),
+            "annotations": _make_annotations(["user"], 0.9, None),
+        }
 
     if uri == "padam://snapshots":
         if not config.mcp_rollback_tool_enabled():
@@ -2876,6 +2901,15 @@ def _build_search_resource_links(structured: dict | None) -> list[dict]:
 def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
     m = mem()
     actor = _current_actor(m)
+    if config.mcp_app_acl_enabled():
+        from . import app_acl
+        acl_client = str((args or {}).get("agent_id") or getattr(actor, "agent_id", None) or "default")
+        acl_scope = (args or {}).get("scope") if isinstance(args, dict) else None
+        allowed, reason = app_acl.check_and_log(
+            m.store, client_id=acl_client, tool_name=name, scope=acl_scope
+        )
+        if not allowed:
+            raise PermissionError(f"App access denied for {acl_client}: {reason}")
 
     if name == "padam_search":
         if args.get("scopes"):
