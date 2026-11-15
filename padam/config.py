@@ -242,3 +242,19 @@ def mcp_graph_hops_default() -> int:
 def mcp_async_stdio_enabled() -> bool:
     """Включает пул воркеров и живую отмену/batch/sampling по stdio (PADAM_MCP_ASYNC_STDIO=1 или --async-stdio)."""
     return os.environ.get("PADAM_MCP_ASYNC_STDIO", "0").strip() == "1"
+
+
+# --- ТОП-10 Пункт 3: MCP Roots + предиктивный когнитивный кэш (выключено по умолчанию) ---
+def mcp_roots_enabled() -> bool:
+    """Авто-выбор scope проекта по roots/list клиента (PADAM_MCP_ROOTS=1)."""
+    return os.environ.get("PADAM_MCP_ROOTS", "0").strip() == "1"
+
+
+def mcp_predictive_cache_enabled() -> bool:
+    """Предиктивный прогрев ядра графа проекта в RAM при смене roots (включается вместе с PADAM_MCP_ROOTS=1 или PADAM_MCP_PREDICTIVE_CACHE=1)."""
+    raw = os.environ.get("PADAM_MCP_PREDICTIVE_CACHE", "").strip()
+    if raw == "0":
+        return False
+    if raw == "1":
+        return True
+    return mcp_roots_enabled()

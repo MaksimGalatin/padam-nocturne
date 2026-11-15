@@ -443,6 +443,8 @@ _OUTPUT_SCHEMAS = {
             "record_keys": {"type": "object"},
             "self": {"type": "object"},
             "last_sleep": {"type": ["object", "null"]},
+            "activeRootScope": {"type": "string"},
+            "predictiveCache": {"type": "object"},
         },
         "required": [
             "backend", "db", "active", "superseded", "revoked", "quarantined",
@@ -1066,6 +1068,11 @@ def _format_tool_error_text(key: str, detail: str = "", req: dict | None = None)
     return f"PADAM error: {format_error_message(key, lang, detail)}"
 _elicitation_callback = None
 _sampling_callback = None
+_roots_callback = None
+_client_roots: list[dict] = []
+_active_root_scope: str = "global"
+_predictive_cache: dict[tuple, dict] = {}
+_predictive_events: dict[tuple, threading.Event] = {}
 _tasks: dict[str, dict] = {}
 _tasks_lock = threading.RLock()
 _subscribed_resources: set[str] = {"padam://review-queue"}
@@ -1121,6 +1128,228 @@ def set_sampling_callback(fn) -> None:
     global _sampling_callback
     with _state_lock:
         _sampling_callback = fn
+
+
+def set_roots_callback(fn) -> None:
+    """Устанавливает функцию обратного вызова для запроса roots/list у MCP-клиента (ТОП-10 #3)."""
+    global _roots_callback
+    with _state_lock:
+        _roots_callback = fn
+
+
+def _client_supports_roots() -> bool:
+    ctx_caps = _caps_ctx.get()
+    with _state_lock:
+        caps = ctx_caps if ctx_caps is not None else _client_capabilities
+    rp = caps.get("roots")
+    return isinstance(rp, dict) or bool(rp)
+
+
+def derive_scope_from_roots(roots: list[dict] | None) -> str:
+    """Преобразует первый валидный MCP root URI/name в безопасный project:<slug> или 'global'."""
+    if not isinstance(roots, list) or not roots:
+        return "global"
+    from urllib.parse import unquote, urlsplit
+    for item in roots:
+        if not isinstance(item, dict):
+            continue
+        raw_name = str(item.get("name") or "").strip()
+        raw_uri = str(item.get("uri") or "").strip()
+        candidate = ""
+        if raw_uri:
+            parsed = urlsplit(raw_uri)
+            path_part = unquote(parsed.path or "").rstrip("/\\")
+            if path_part:
+                candidate = path_part.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+        if not candidate and raw_name:
+            candidate = raw_name
+        if candidate:
+            slug = re.sub(r"[^a-zA-Z0-9._-]+", "-", candidate.lower()).strip("-.")
+            if slug and slug not in (".", ".."):
+                return f"project:{slug[:180]}"
+    return "global"
+
+
+def _actor_cache_key(actor) -> tuple:
+    if actor is None:
+        return ("owner", "", "")
+    return (
+        str(getattr(actor, "role", "guest")),
+        str(getattr(actor, "subject", "") or ""),
+        str(getattr(actor, "workspace_id", "") or ""),
+    )
+
+
+def invalidate_scope_cache(scope: str | None = None, *, user_id: str | None = None) -> None:
+    """Сбрасывает предиктивный когнитивный кэш для заданной области (или всей БД)."""
+    with _state_lock:
+        for key in list(_predictive_cache.keys()):
+            k_uid, k_scope, _ = key
+            if (user_id is None or k_uid == user_id) and (scope is None or k_scope == scope):
+                _predictive_cache.pop(key, None)
+                _predictive_events.pop(key, None)
+
+
+def warm_scope_cache(
+    scope: str,
+    *,
+    m: Memory | None = None,
+    actor=None,
+    sync: bool = False,
+) -> dict | None:
+    """Асинхронно или синхронно поднимает ядро графа и горячие записи проекта в RAM поверх SQLite."""
+    if not config.mcp_predictive_cache_enabled():
+        return None
+    target_scope = str(scope or "").strip() or "global"
+    if m is None:
+        m = mem()
+    if actor is None:
+        actor = _current_actor(m)
+    key = (m.user_id, target_scope, _actor_cache_key(actor))
+    with _state_lock:
+        ev = _predictive_events.get(key)
+        if ev is None:
+            ev = threading.Event()
+            _predictive_events[key] = ev
+        else:
+            ev.clear()
+
+    def _do_warm() -> dict:
+        from . import roles as _roles
+        try:
+            vis_sql, vis_params, _ = _roles.visibility_sql(actor)
+            rows = m.store.query(
+                f"""SELECT id, kind, scope, content, importance, confidence, origin,
+                           created_at, valid_from, valid_to
+                    FROM memory
+                    WHERE user_id = ? AND scope = ? AND status = 'active'
+                    {vis_sql}
+                    ORDER BY importance DESC, COALESCE(last_confirmed_at, created_at) DESC
+                    LIMIT 64""",
+                (m.user_id, target_scope, *vis_params),
+            )
+            seed_ids = [r["id"] for r in rows]
+            g_exp = (
+                m.expand_graph(seed_ids[:24], hops=1, max_neighbors=32, actor=actor)
+                if seed_ids
+                else {"nodes": [], "edges": []}
+            )
+            entry = {
+                "scope": target_scope,
+                "warmedAt": _now_iso_utc(),
+                "seedIds": seed_ids,
+                "nodeCount": len(seed_ids),
+                "neighborCount": len(g_exp["nodes"]),
+                "edgeCount": len(g_exp["edges"]),
+                "topRecords": [
+                    {
+                        "id": r["id"],
+                        "kind": r["kind"],
+                        "scope": r["scope"],
+                        "importance": round(float(r["importance"] or 0.0), 4),
+                        "confidence": round(float(r["confidence"] or 0.0), 4),
+                        "created_at": r["created_at"],
+                    }
+                    for r in rows
+                ],
+                "graph": g_exp,
+            }
+            with _state_lock:
+                _predictive_cache[key] = entry
+                _notify_cond.notify_all()
+            return entry
+        finally:
+            with _state_lock:
+                _notify_cond.notify_all()
+            ev.set()
+
+    if sync:
+        return _do_warm()
+    t = threading.Thread(target=_do_warm, name=f"padam-warm-{target_scope[:24]}", daemon=True)
+    t.start()
+    return None
+
+
+def get_warm_scope_cache(
+    scope: str,
+    *,
+    m: Memory | None = None,
+    actor=None,
+    wait_timeout: float = 0.0,
+) -> dict | None:
+    """Возвращает прогретый снимок когнитивного кэша для проекта (при wait_timeout > 0 ждёт завершения прогрева)."""
+    if m is None:
+        m = mem()
+    if actor is None:
+        actor = _current_actor(m)
+    import time as _t
+    key = (m.user_id, str(scope or "global"), _actor_cache_key(actor))
+    deadline = _t.monotonic() + max(0.0, float(wait_timeout))
+    with _state_lock:
+        while key not in _predictive_cache and wait_timeout > 0:
+            rem = deadline - _t.monotonic()
+            if rem <= 0:
+                break
+            _notify_cond.wait(timeout=min(0.1, rem))
+        return _predictive_cache.get(key)
+
+
+def set_client_roots(
+    roots: list[dict] | None,
+    *,
+    m: Memory | None = None,
+    actor=None,
+    warm_sync: bool = False,
+) -> str:
+    """Сохраняет корни проекта клиента и (при opt-in) прогревает когнитивный кэш выбранного проекта."""
+    global _client_roots, _active_root_scope
+    clean_roots = [dict(r) for r in (roots or []) if isinstance(r, dict)]
+    scope = derive_scope_from_roots(clean_roots)
+    with _state_lock:
+        _client_roots = clean_roots
+        _active_root_scope = scope
+    if config.mcp_roots_enabled() and config.mcp_predictive_cache_enabled():
+        warm_scope_cache(scope, m=m, actor=actor, sync=warm_sync)
+    return scope
+
+
+def _reset_client_roots() -> None:
+    """Сбрасывает корни клиента при закрытии stdio-сессии."""
+    global _active_root_scope
+    with _state_lock:
+        _client_roots.clear()
+        _active_root_scope = "global"
+
+
+def resolve_default_scope() -> str:
+    """Эффективный scope по умолчанию: при PADAM_MCP_ROOTS=1 берётся из корней клиента, иначе 'global'."""
+    if not config.mcp_roots_enabled():
+        return "global"
+    with _state_lock:
+        return _active_root_scope or "global"
+
+
+def refresh_client_roots(*, warm_sync: bool = False) -> str | None:
+    """Запрашивает roots/list через зарегистрированный callback и прогревает кэш нового проекта."""
+    if not config.mcp_roots_enabled():
+        return None
+    with _state_lock:
+        cb = _roots_callback
+    if cb is None or not _client_supports_roots():
+        return None
+    import secrets as _sec
+    req = {"jsonrpc": "2.0", "id": f"roots_{_sec.token_hex(6)}", "method": "roots/list"}
+    try:
+        resp = cb(req)
+    except Exception:
+        return None
+    if not isinstance(resp, dict):
+        return None
+    res_obj = resp.get("result") if isinstance(resp.get("result"), dict) else resp
+    roots = res_obj.get("roots")
+    if isinstance(roots, list):
+        return set_client_roots(roots, warm_sync=warm_sync)
+    return None
 
 
 def _tasks_enabled() -> bool:
@@ -1408,6 +1637,8 @@ def _on_memory_change(ev: dict) -> None:
     """Слушатель изменений Memory: отправляет уведомления по padam://scope/{scope} без утечки чужих/приватных данных."""
     if not isinstance(ev, dict):
         return
+    scope_inv = str(ev.get("scope") or "").strip() or None
+    invalidate_scope_cache(scope_inv)
     if ev.get("status") == "quarantined":
         return
     scope = str(ev.get("scope") or "global").strip() or "global"
@@ -2367,7 +2598,8 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
             found = m.recall_many(args["query"], args["scopes"], kind=args.get("kind"),
                                   limit=int(args.get("limit", 5)), as_of=args.get("as_of"), actor=actor)
         else:
-            found = m.recall(args["query"], scope=args.get("scope", "global"),
+            eff_scope = args.get("scope") or resolve_default_scope()
+            found = m.recall(args["query"], scope=eff_scope,
                              kind=args.get("kind"), limit=int(args.get("limit", 5)),
                              as_of=args.get("as_of"), agent_id=args.get("agent_id"), actor=actor)
         if not found:
@@ -2510,7 +2742,7 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
             outcome, mid = m.remember(
                 args["content"], kind=args.get("kind"),
                 importance=float(args.get("importance", 0.5)),
-                scope=args.get("scope", "global"), origin=origin, guarded=True,
+                scope=args.get("scope") or resolve_default_scope(), origin=origin, guarded=True,
                 derived_from=args.get("derived_from"),
                 agent_id=agent_id,
                 valid_from=args.get("valid_from"),
@@ -2655,6 +2887,19 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
 
     if name == "padam_stats":
         st = m.stats(actor=actor)
+        if config.mcp_roots_enabled():
+            eff_scope = resolve_default_scope()
+            st = dict(st)
+            st["activeRootScope"] = eff_scope
+            warm = get_warm_scope_cache(eff_scope, m=m, actor=actor, wait_timeout=0.05)
+            if warm is not None:
+                st["predictiveCache"] = {
+                    "scope": warm["scope"],
+                    "warmedAt": warm["warmedAt"],
+                    "nodeCount": warm["nodeCount"],
+                    "neighborCount": warm["neighborCount"],
+                    "edgeCount": warm["edgeCount"],
+                }
         return json.dumps(st, ensure_ascii=False, indent=2), st
 
     if name == "padam_sleep":
@@ -2709,7 +2954,7 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
     if name == "padam_profile":
         if actor is not None and not actor.is_owner:
             return "Permission denied: owner identity/preference profile is private.", None
-        scope_val = args.get("scope", "global")
+        scope_val = args.get("scope") or resolve_default_scope()
         prof = m.profile(scope=scope_val)
         return safety.fence(prof["summary"]) + _sleep_hint(m), {
             "scope": scope_val,
@@ -2931,6 +3176,8 @@ def _handle_legacy(req: dict) -> dict | None:
         params = req.get("params") or {}
         asked = params.get("protocolVersion")
         set_client_capabilities(params.get("capabilities") if isinstance(params, dict) else None)
+        if config.mcp_roots_enabled() and isinstance(params, dict) and isinstance(params.get("roots"), list):
+            set_client_roots(params["roots"])
         return ok({
             "protocolVersion": asked if asked in SUPPORTED_PROTOCOL_VERSIONS else PROTOCOL_VERSION,
             "capabilities": {
@@ -2946,7 +3193,22 @@ def _handle_legacy(req: dict) -> dict | None:
         })
 
     if method in ("notifications/initialized", "initialized"):
+        if config.mcp_roots_enabled() and _client_supports_roots():
+            with _state_lock:
+                has_roots = bool(_client_roots)
+                has_cb = _roots_callback is not None
+            if has_cb and not has_roots:
+                refresh_client_roots()
         return None                      # уведомление, ответа не требует
+
+    if method == "notifications/roots/list_changed":
+        if config.mcp_roots_enabled():
+            params = req.get("params") or {}
+            if isinstance(params, dict) and isinstance(params.get("roots"), list):
+                set_client_roots(params["roots"])
+            else:
+                refresh_client_roots()
+        return None
 
     if method == "tools/list":
         return ok({"tools": TOOLS})
@@ -3824,6 +4086,7 @@ def _run_stdio_loop(stdin_stream, stdout_stream, *, async_mode: bool | None = No
 
     set_elicitation_callback(_stdio_server_request)
     set_sampling_callback(_stdio_server_request)
+    set_roots_callback(_stdio_server_request)
     set_live_notification_callback(_stdio_live_notify)
 
     pool = ThreadPoolExecutor(max_workers=max(1, int(max_workers))) if use_async else None
@@ -3889,6 +4152,8 @@ def _run_stdio_loop(stdin_stream, stdout_stream, *, async_mode: bool | None = No
         set_live_notification_callback(None)
         set_elicitation_callback(None)
         set_sampling_callback(None)
+        set_roots_callback(None)
+        _reset_client_roots()
     return 0
 
 
