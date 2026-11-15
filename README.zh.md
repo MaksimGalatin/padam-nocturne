@@ -389,6 +389,8 @@ python -m pytest tests/ -q        # 968 passed, 10 skipped with [embed] and [l3]
 
 在 [LoCoMo](https://github.com/snap-research/locomo) 公开基准上（`benchmarks/locomo/`，全部 10 段对话、5,882 条对话轮次，内置检索、零大模型，2026-11-14）：1,536 道 1–4 类问题中，会话召回 `sess_any@5` = **90.10 %**、`sess_any@10` = **95.51 %**、单轮精确召回 `turn_any@5` = **56.12 %**；开启可选重排 `PADAM_RERANK=1` 后升至 `sess_any@5` = **91.08 %**、`sess_any@10` = **95.77 %**、`turn_any@5` = **57.68 %**（多跳推理 multi-hop：`sess_any@5` 从 84.04 % 提升至 **87.94 %**）。
 
+**离线 MCP 质量与 Web3 主权基准套件**（`benchmarks/quality/mcp_quality_bench.py --out benchmarks/quality/results_1511.json --strict --json`，内置 `$0` 离线模式，2026-11-15）：在 24 条检索查询中，`Recall@5` = **87.5 %**（`MRR` **0.75**，检索延迟 `p50` **2.973 ms** / `p95` **4.905 ms**），多跳推理 `multi_hop`（`graph_hops=0` → `2`）从 **0.0 % 跃升至 75.0 %**，时间点检索 `temporal_asof` **100 %**（`0` 未来泄露），提示词注入隔离 **5/5**（`0` 检索泄露），密钥脱敏 **4/4**（`0` 泄露）；Web3 主权基准（8 条记录、40 次迭代）测得 Ed25519 锚定证明签名 `sign` p50 **0.036 ms**（p95 **0.04 ms**）、验签 `verify` p50 **0.211 ms**（p95 **0.227 ms**），以及 **100 %** 可验证遗忘（**8/8** 密钥销毁、遗忘回执与 `0x02` Merkle 遗忘叶子验证通过，`0` 泄露）。
+
 ---
 
 ## 红队挑战 Red Team Challenge

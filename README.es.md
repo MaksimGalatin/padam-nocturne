@@ -391,6 +391,8 @@ python -m pytest tests/ -q        # 968 passed, 10 skipped with [embed] and [l3]
 
 En [LoCoMo](https://github.com/snap-research/locomo) (`benchmarks/locomo/`, 10 conversaciones, 5,882 turnos, búsqueda integrada sin LLM, 14 Nov 2026): en 1,536 preguntas de categorías 1–4, `sess_any@5` = **90.10 %**, `sess_any@10` = **95.51 %**, `turn_any@5` = **56.12 %**; activando el reordenamiento opcional `PADAM_RERANK=1` sube a `sess_any@5` = **91.08 %**, `sess_any@10` = **95.77 %**, `turn_any@5` = **57.68 %** (en multi-hop: `sess_any@5` de 84.04 % a **87.94 %**).
 
+**Suite offline de calidad MCP y soberanía Web3** (`benchmarks/quality/mcp_quality_bench.py --out benchmarks/quality/results_1511.json --strict --json`, modo integrado a `$0`, 15 Nov 2026): en 24 consultas `Recall@5` = **87.5 %** (`MRR` **0.75**, búsqueda `p50` **2.973 ms** / `p95` **4.905 ms**), `multi_hop` (`graph_hops=0` → `2`) sube **0.0 % → 75.0 %**, `temporal_asof` **100 %** (`0` fugas futuras), cuarentena de inyecciones **5/5** (`0` fugas), redacción de secretos **4/4** (`0` fugas), y en soberanía Web3 (8 registros, 40 iteraciones) la atestación Ed25519 logra `sign` p50 **0.036 ms** (p95 **0.04 ms**), `verify` p50 **0.211 ms** (p95 **0.227 ms**) y **100 %** de olvido verificado (**8/8** claves destruidas, recibos y hojas Merkle `0x02` verificadas, `0` fugas).
+
 ---
 
 ## Red Team Challenge

@@ -1189,3 +1189,37 @@ def test_top9_auto_daemon_pool_and_session_isolation(tmp_path, monkeypatch):
     finally:
         mcp_server._memory = old_mem
         m.close()
+
+
+def test_top10_quality_and_web3_sovereignty_benchmark():
+    """Пункт 10 ТОП-10: офлайн-бенчмарк качества памяти + Web3-суверенность и верифицированное забвение."""
+    import importlib.util
+    import json
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    bench_py = root / "benchmarks" / "quality" / "mcp_quality_bench.py"
+    dataset_json = root / "benchmarks" / "quality" / "dataset_sample.json"
+    saved_json = root / "benchmarks" / "quality" / "results_1511.json"
+
+    assert bench_py.is_file()
+    assert dataset_json.is_file()
+    assert saved_json.is_file()
+
+    spec = importlib.util.spec_from_file_location("mcp_quality_bench", bench_py)
+    assert spec is not None and spec.loader is not None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    report = mod.run_benchmark(dataset_json)
+    assert report["benchmark"] == "padam-mcp-quality-web3/1"
+    assert mod.check_strict_thresholds(report) == []
+    assert report["multi_hop"]["graph_hops2"]["recall_at_5"] > report["multi_hop"]["baseline_hops0"]["recall_at_5"]
+    assert report["web3_sovereignty"]["verified_forgetting_rate"] == 1.0
+    assert report["web3_sovereignty"]["forgetting_leak_count"] == 0
+    assert report["web3_sovereignty"]["attestation_valid_rate"] == 1.0
+    assert mod.main(["--strict"]) == 0
+
+    saved = json.loads(saved_json.read_text(encoding="utf-8"))
+    assert saved["benchmark"] == "padam-mcp-quality-web3/1"
+    assert mod.check_strict_thresholds(saved) == []

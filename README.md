@@ -494,6 +494,8 @@ Read these numbers with their conditions:
 
 On [LoCoMo](https://github.com/snap-research/locomo) (`benchmarks/locomo/`, all 10 conversations, 5,882 turns, built-in search, no LLM, 14 Nov 2026): across 1,536 answerable questions (categories 1–4), `sess_any@5` = **90.10 %**, `sess_any@10` = **95.51 %**, `turn_any@5` = **56.12 %**; enabling optional second-stage reranking (`PADAM_RERANK=1`) lifts `sess_any@5` to **91.08 %**, `sess_any@10` to **95.77 %**, and `turn_any@5` to **57.68 %** (multi-hop `sess_any@5`: 84.04 → **87.94 %**).
 
+**Offline MCP Quality + Web3 Sovereignty Suite** (`benchmarks/quality/mcp_quality_bench.py --out benchmarks/quality/results_1511.json --strict --json`, builtin `$0` offline, 15 Nov 2026): across 24 retrieval queries `Recall@5` = **87.5 %** (`MRR` **0.75**, search `p50` **2.973 ms** / `p95` **4.905 ms**), `multi_hop` (`graph_hops=0` → `2`) jumps **0.0 % → 75.0 %**, `temporal_asof` **100 %** (`0` future leaks), injection quarantine **5/5** (`0` search leaks), secret redaction **4/4** (`0` leaks), and offline Web3 sovereignty across 8 records / 40 runs reaches Ed25519 anchor attestation `sign` p50 **0.036 ms** (p95 **0.04 ms**), `verify` p50 **0.211 ms** (p95 **0.227 ms**), and **100 %** verified forgetting (**8/8** destroyed keys, forget receipts, and verified `0x02` Merkle forget leaves, `0` leaks).
+
 ---
 
 ## Red Team Challenge

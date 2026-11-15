@@ -55,6 +55,8 @@ jobs:
         run: pip install -e .
       - name: Run MCP protocol audit (stdio + Streamable HTTP + SSE)
         run: python scripts/mcp_protocol_check.py
+      - name: Run MCP quality & Web3 sovereignty benchmark
+        run: python benchmarks/quality/mcp_quality_bench.py --strict --json
 
   accessibility:
     runs-on: ubuntu-latest
