@@ -391,3 +391,9 @@ def mcp_obsidian_sync_enabled() -> bool:
 def mcp_bitemporal_enabled() -> bool:
     """Включает системное время learned_at/invalidated_at и двойной срез (valid_at, known_at) (PADAM_BITEMPORAL=1)."""
     return os.environ.get("PADAM_BITEMPORAL", "0").strip() == "1"
+
+
+# --- ТОП-10 v2 Пункт 5: Процедурная память — навыки (kind="procedure", выключено по умолчанию) ---
+def mcp_procedural_memory_enabled() -> bool:
+    """Включает версионируемые навыки kind='procedure' и экспорт в SKILL.md/CLAUDE.md (PADAM_PROCEDURAL_MEMORY=1)."""
+    return os.environ.get("PADAM_PROCEDURAL_MEMORY", "0").strip() == "1"

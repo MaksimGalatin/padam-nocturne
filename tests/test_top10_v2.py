@@ -256,3 +256,58 @@ def test_top10v2_4_bitemporal_valid_and_known_at_and_merkle_invalidate(tmp_path:
     assert audit_row is not None
     assert inv["merkle_leaf"] in audit_row["detail"]
     m.close()
+
+
+def test_top10v2_5_procedural_memory_skills_and_quarantine(tmp_path: Path, monkeypatch, capsys) -> None:
+    """Пункт 5: Процедурная память (kind='procedure', версионирование, обязательный карантин для агента, экспорт SKILL.md)."""
+    from padam import procedural
+
+    monkeypatch.delenv("PADAM_PROCEDURAL_MEMORY", raising=False)
+    assert config.mcp_procedural_memory_enabled() is False
+
+    db_path = tmp_path / "proc.db"
+    m = Memory(user_id="proc-u", store=Store(db_path))
+
+    # При выключенном флаге save_procedure отключён
+    off = procedural.save_procedure(m, name="Deploy", steps=["Build", "Test"])
+    assert off["enabled"] is False
+
+    monkeypatch.setenv("PADAM_PROCEDURAL_MEMORY", "1")
+    assert config.mcp_procedural_memory_enabled() is True
+
+    # 1. Агентская процедура или guarded=True -> обязательный карантин
+    st_g, q_direct = m.remember("Run pytest before commit", kind="procedure", scope="proj:dev", guarded=True, agent_id="claude")
+    assert st_g == "quarantined"
+    draft = procedural.save_procedure(m, name="Release Flow", steps=["Run pytest", "Build wheel"], scope="proj:dev", owner_approved=False)
+    assert draft["status"] == "quarantined"
+    assert draft["version"] == 1
+    assert "Release Flow" not in procedural.export_skill_markdown(m, scope="proj:dev", fmt="skill")
+
+    # 2. Одобрение владельца переводит в active и открывает экспорт
+    procedural.approve_procedure(m, draft["id"])
+    v2 = procedural.save_procedure(
+        m,
+        name="Release Flow",
+        steps=["Run pytest -q", "Check git status", "Build wheel"],
+        scope="proj:dev",
+        owner_approved=True,
+    )
+    assert v2["version"] == 2
+    assert v2["status"] == "active"
+
+    # Старая версия стала superseded
+    assert m.store.one("SELECT status FROM memory WHERE id = ?", (draft["id"],))["status"] == "superseded"
+
+    # Экспорт SKILL.md через CLI
+    out_skill = tmp_path / "SKILL.md"
+    assert cli.main(["--db", str(db_path), "--user", "proc-u", "skills", "export", "--scope", "proj:dev", "--format", "skill", "--out", str(out_skill)]) == 0
+    capsys.readouterr()
+    md = out_skill.read_text(encoding="utf-8")
+    assert "name: release-flow" in md
+    assert "v2" in md
+    assert "Run pytest before commit" not in md  # карантинная не утекла
+
+    # Извлечение из эпизодов без LLM -> черновик в карантине
+    ext = procedural.extract_procedure_from_episodes(m, title="Debug DB", episode_texts=["Check WAL mode\nVerify pragma integrity_check"], scope="proj:dev")
+    assert ext["status"] == "quarantined"
+    m.close()

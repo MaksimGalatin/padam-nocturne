@@ -377,6 +377,21 @@ def cmd_profile(m: Memory, a) -> int:
     return 0
 
 
+def cmd_skills(m, a) -> int:
+    """ТОП-10 v2 Пункт 5: экспорт одобренных процедур (kind='procedure') в SKILL.md / CLAUDE.md."""
+    from . import procedural
+    if getattr(a, "skills_cmd", "export") == "export":
+        md = procedural.export_skill_markdown(m, scope=a.scope, fmt=a.format)
+        if a.out:
+            from pathlib import Path
+            Path(a.out).write_text(md, encoding="utf-8")
+            print(json.dumps({"exported_to": a.out, "format": a.format}, ensure_ascii=False))
+        else:
+            print(md, end="")
+        return 0
+    return 1
+
+
 def cmd_sync_obsidian(m, a) -> int:
     """ТОП-10 v2 Пункт 3: двусторонняя синхронизация с Obsidian/Markdown."""
     from pathlib import Path
@@ -1353,6 +1368,15 @@ def main(argv=None) -> int:
     s.add_argument("--webauthn", action="store_true")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_unseal)
+
+    ssk = sub.add_parser("skills", help=t("процедурная память (экспорт в SKILL.md / CLAUDE.md)",
+                                          "procedural memory (export to SKILL.md / CLAUDE.md)"))
+    sksub = ssk.add_subparsers(dest="skills_cmd", required=True)
+    ske = sksub.add_parser("export", help=t("экспортировать одобренные навыки", "export approved skills"))
+    ske.add_argument("--scope", default=None)
+    ske.add_argument("--format", default="skill", choices=("skill", "claude"))
+    ske.add_argument("--out", default=None)
+    ske.set_defaults(fn=cmd_skills)
 
     so = sub.add_parser("sync-obsidian", help=t("двусторонняя синхронизация с Markdown / Obsidian",
                                               "two-way sync with Markdown / Obsidian vault"))

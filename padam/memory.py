@@ -324,7 +324,7 @@ class Memory:
             origin = "agent" if guarded else "user"
         guarded = guarded and not config.MCP_TRUST_WRITES
         kind = kind or classify.infer_kind(content)
-        if kind not in config.KINDS:
+        if kind not in config.KINDS and not (kind == "procedure" and config.mcp_procedural_memory_enabled()):
             kind = "fact"
         вид_по_тексту = classify.infer_kind_rules(content)
         if visibility in roles.TEAM_VISIBILITIES and (
@@ -339,6 +339,12 @@ class Memory:
         vec = embeddings.embed(content)
 
         same_raw = (исходный == content)
+        if guarded and kind == "procedure":
+            return "quarantined", self._insert(
+                content, kind, vec, importance, scope, source_episode_id,
+                origin=origin, status="quarantined", reason="procedure requires owner approval",
+                agent_id=agent_id, valid_from=valid_from, valid_to=valid_to,
+                visibility=visibility, workspace_id=workspace_id)
         if guarded and (safety.looks_like_instruction(content) or (not same_raw and safety.looks_like_instruction(исходный))):
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
