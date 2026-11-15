@@ -313,3 +313,28 @@ def mcp_auto_daemon_enabled() -> bool:
 def mcp_session_isolation_enabled() -> bool:
     """Жёсткая песочная изоляция проектов на уровне MCP-сессий в общем пуле (PADAM_MCP_SESSION_ISOLATION=1)."""
     return os.environ.get("PADAM_MCP_SESSION_ISOLATION", "0").strip() == "1" or mcp_auto_daemon_enabled()
+
+
+# --- Легенда Шаг 1: Автономный Движок Сновидений Active REM Sleep (выключено по умолчанию) ---
+def mcp_rem_sleep_enabled() -> bool:
+    """Включает фоновый REM-сон в локальном демоне при простое (PADAM_REM_SLEEP=1)."""
+    return os.environ.get("PADAM_REM_SLEEP", "0").strip() == "1"
+
+
+def mcp_rem_idle_seconds() -> float:
+    """Порог простоя (сек) перед автозапуском цикла REM-сновидений."""
+    raw = os.environ.get("PADAM_REM_IDLE_S", "300").strip()
+    try:
+        return max(0.05, float(raw))
+    except ValueError:
+        return 300.0
+
+
+def mcp_rem_ollama_url() -> str:
+    """Адрес локальной Ollama для REM-сна (допускается только localhost/127.0.0.1)."""
+    return os.environ.get("PADAM_REM_OLLAMA_URL", "").strip()
+
+
+def mcp_rem_model() -> str:
+    """Модель локальной Ollama для синтеза инсайтов во сне."""
+    return (os.environ.get("PADAM_REM_MODEL", "llama3.2:3b") or "llama3.2:3b").strip()

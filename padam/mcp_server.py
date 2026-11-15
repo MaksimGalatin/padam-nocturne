@@ -262,6 +262,12 @@ TOOLS = [
             "properties": {
                 "batch": {"type": "integer", "default": 256, "minimum": 1, "maximum": 4096},
                 "dry_run": {"type": "boolean", "default": False},
+                "rem": {"type": "boolean", "default": False,
+                        "description": "Also run Active REM Sleep graph consolidation, duplicate compression, and local insight synthesis"},
+                "max_insights": {"type": "integer", "default": 4, "minimum": 1, "maximum": 20,
+                                 "description": "Maximum number of new REM insights synthesized per cycle"},
+                "scope": {"type": "string", "minLength": 1, "maxLength": 200,
+                          "description": "Optional scope restriction for REM graph dreaming"},
             },
             "additionalProperties": False,
         },
@@ -474,6 +480,7 @@ _OUTPUT_SCHEMAS = {
             "sampling_clusters": {"type": "integer"},
             "cancelled": {"type": "boolean"},
             "rolled_back": {"type": "boolean"},
+            "rem": {"type": "object"},
         },
         "required": ["episodes_sampled"],
     },
@@ -3172,6 +3179,20 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
         report.pop("checks", None)
         if "note" in report:
             report["note"] = _SLEEP_NOTES_EN.get(report["note"], report["note"])
+        if bool(args.get("rem", False)):
+            from . import rem_sleep as _rem_sleep
+            eff_rem_scope = (
+                _check_session_scope(args.get("scope"))
+                if (_session_scope_ctx.get() or args.get("scope"))
+                else args.get("scope")
+            )
+            rem_rep = _rem_sleep.run_rem_cycle(
+                m,
+                scope=eff_rem_scope,
+                dry_run=dry,
+                max_insights=int(args.get("max_insights", 4)),
+            )
+            report["rem"] = rem_rep
         if not dry:
             _emit_resource_updated("padam://stats", owner_only=True)
             _emit_resource_updated("padam://recent", owner_only=True)
@@ -3970,6 +3991,22 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
     eff_rate_window = float(config.MCP_RATE_WINDOW_S if rate_window_s is None else rate_window_s)
     rate_limiter = _SessionRateLimiter(eff_rate_limit, eff_rate_window) if eff_rate_limit > 0 else None
 
+    last_activity_ts = [time.monotonic()]
+    rem_worker = None
+    if config.mcp_rem_sleep_enabled():
+        from . import rem_sleep as _rem_sleep
+        _idle_thr = config.mcp_rem_idle_seconds()
+        _poll_s = min(1.0, max(0.03, _idle_thr / 2.0))
+        rem_worker = _rem_sleep.RemIdleWorker(
+            get_memory_fn=mem,
+            get_last_activity_fn=lambda: last_activity_ts[0],
+            stop_event=sse_stop_event,
+            idle_seconds=_idle_thr,
+            poll_interval_s=_poll_s,
+            on_cycle_cb=lambda rep: _emit_resource_updated("padam://stats", owner_only=True) if rep.get("insights_created") else None,
+        )
+        rem_worker.start()
+
     class _McpHttpHandler(BaseHTTPRequestHandler):
         def log_message(self, format, *args):
             pass
@@ -4112,7 +4149,10 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
             path = parsed.path
             qs = parse_qs(parsed.query)
             if path == "/health":
-                return self._send_json(200, {"status": "ok", "transport": "streamable-http", "version": __version__})
+                payload = {"status": "ok", "transport": "streamable-http", "version": __version__}
+                if rem_worker is not None:
+                    payload["rem_sleep"] = rem_worker.status()
+                return self._send_json(200, payload)
             if not self._trusted_local():
                 return self._send_json(403, {"error": "forbidden origin or host"})
             if path == "/.well-known/mcp/server-card.json":
@@ -4334,6 +4374,7 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                 req = json.loads(raw)
             except json.JSONDecodeError:
                 return self._send_json(200, build_jsonrpc_error(None, -32700, "parse error", key="parse_error"))
+            last_activity_ts[0] = time.monotonic()
 
             req_sid_post = (self.headers.get("Mcp-Session-Id") or session_id).strip() or session_id
             hdr_scope_post = (self.headers.get("X-Padam-Session-Scope") or "").strip() or None
@@ -4560,6 +4601,8 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
         sse_stop_event.set()
         with _state_lock:
             _notify_cond.notify_all()
+        if rem_worker is not None and rem_worker._thread is not None and rem_worker._thread.is_alive():
+            rem_worker._thread.join(timeout=2.0)
         return _orig_shutdown()
 
     srv.shutdown = _shutdown_with_sse

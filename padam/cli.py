@@ -377,6 +377,29 @@ def cmd_profile(m: Memory, a) -> int:
     return 0
 
 
+def cmd_rem(m: Memory, a) -> int:
+    """Шаг 1 Легенды: цикл активного REM-сна (связи, сжатие дубликатов, локальные инсайты)."""
+    from . import rem_sleep
+    rep = rem_sleep.run_rem_cycle(
+        m,
+        scope=a.scope,
+        dry_run=a.dry_run,
+        max_insights=a.max_insights,
+        ollama_url=a.ollama_url,
+        model=a.model,
+    )
+    if a.json:
+        print(json.dumps(rep, ensure_ascii=False, indent=2))
+    else:
+        print(
+            t(
+                f"REM-сон ({rep['status']}): связей={rep['links_discovered']}, "                f"сжато дубликатов={rep['duplicates_compressed']}, инсайтов={rep['insights_created']}.",
+                f"REM sleep ({rep['status']}): links={rep['links_discovered']}, "                f"compressed={rep['duplicates_compressed']}, insights={rep['insights_created']}.",
+            )
+        )
+    return 0
+
+
 def cmd_audit(m: Memory, a) -> int:
     """Б12: журнал действий (audit_log)."""
     entries = m.audit_log(limit=a.limit, action=a.action, agent_id=a.agent)
@@ -1072,6 +1095,16 @@ def main(argv=None) -> int:
     s.add_argument("--agent", default=None)
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_audit)
+
+    s = sub.add_parser("rem", help=t("запустить цикл активного REM-сна (связи, дубликаты, локальные инсайты)",
+                                     "run Active REM Sleep consolidation (links, duplicates, local insights)"))
+    s.add_argument("--scope", default=None)
+    s.add_argument("--dry-run", action="store_true")
+    s.add_argument("--max-insights", type=int, default=4)
+    s.add_argument("--ollama-url", default=None)
+    s.add_argument("--model", default=None)
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_rem)
 
     a = p.parse_args(argv)
     if a.fn is cmd_demo:
