@@ -1,0 +1,40 @@
+{
+  "dataset": "LongMemEval-S",
+  "stride": 5,
+  "questions": 100,
+  "pipeline": "baseline",
+  "reader_and_judge": "gemma3:4b-it-qat (local Ollama 127.0.0.1, $0)",
+  "cpu_threads_cap": 10,
+  "spent_usd_this_run": 0.0,
+  "budget_usd": 0.0,
+  "retrieval": "PADAM 0.4.18, embedding builtin, recall limit 10, baseline compact view",
+  "accuracy_overall": 0.38,
+  "accuracy_without_abstention": 0.3404,
+  "abstention_accuracy": 1.0,
+  "by_type": {
+    "knowledge-update": {
+      "n": 14,
+      "accuracy": 0.6429
+    },
+    "multi-session": {
+      "n": 25,
+      "accuracy": 0.16
+    },
+    "single-session-assistant": {
+      "n": 11,
+      "accuracy": 0.2727
+    },
+    "single-session-preference": {
+      "n": 6,
+      "accuracy": 0.0
+    },
+    "single-session-user": {
+      "n": 13,
+      "accuracy": 0.7692
+    },
+    "temporal-reasoning": {
+      "n": 25,
+      "accuracy": 0.24
+    }
+  }
+}

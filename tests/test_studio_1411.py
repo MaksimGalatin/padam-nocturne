@@ -2218,3 +2218,54 @@ def test_g6_mcp_protocol_compliance_stdio_and_http():
     assert len(report["resources_verified"]) >= 5
     assert set(report["prompts_verified"]) == {"recall_before_task", "record_decision", "weekly_memory_review"}
     assert report["elicitation_verified"] is True
+
+
+def test_item3_qa_pipeline_intent_sufficiency_and_chronology(tmp_path, monkeypatch):
+    """Пункт 3: улучшенный конвейер ответа (больше контекста, упорядочивание по времени для временных вопросов,
+    отказ при недостатке данных и замер на LongMemEval-S --stride 5 до/после с локальной моделью Ollama)."""
+    from padam import config
+    from padam.memory import Memory
+    from padam.store import Store
+
+    # 1. Классификация намерений вопроса
+    assert Memory.classify_qa_intent("How many days between the two appointments?")["temporal"] is True
+    assert Memory.classify_qa_intent("What is my current server port right now?")["knowledge_update"] is True
+    assert Memory.classify_qa_intent("Когда был запущен первый кластер?")["chronological_sort"] is True
+
+    # 2. Отказ при недостатке данных (0 совпадений ключевых сущностей и низкий rrf)
+    suff_empty = Memory.check_qa_sufficiency(
+        "What telescope model did I use at the Atacama observatory?",
+        [{"content": "Я предпочитаю пить зелёный чай утром.", "rrf": 0.01, "score": 0.01}],
+    )
+    assert suff_empty["sufficient"] is False
+    assert suff_empty["reason"] == "zero_term_overlap"
+
+    # 3. Проверка Memory.ask: подтягивание связанных записей, сортировка по времени и отказ при отсутствии данных
+    monkeypatch.setattr(config, "OLLAMA_URL", "http://127.0.0.1:59997")
+    m = Memory(user_id="qa3_u", store=Store(tmp_path / "qa3.db"))
+    try:
+        _, id_src = m.remember("10 марта 2026 года запущен сервис аналитики Вега на порту 9100.", kind="event", origin="user")
+        _, id_dst = m.remember("Сервис Вега использует резервный диск /mnt/vega_backup.", kind="fact", origin="user", derived_from=[id_src])
+
+        res_temporal = m.ask("Когда был запущен сервис Вега и какой у него диск?")
+        ids_returned = [r["id"] for r in res_temporal["records"]]
+        assert id_src in ids_returned and id_dst in ids_returned
+        assert res_temporal["intent"]["chronological_sort"] is True
+
+        # Вопрос о сущности, которой нет в памяти -> честный отказ (insufficient_evidence is True)
+        res_abs = m.ask("Какой телескоп установлен в обсерватории Атакама?")
+        assert res_abs["mode"] in ("abstention", "empty")
+        assert res_abs["insufficient_evidence"] is True
+        assert res_abs["sufficiency"]["sufficient"] is False
+    finally:
+        m.close()
+
+    # 4. Сводки замера LongMemEval-S --stride 5 до и после на одной и той же локальной модели Ollama
+    root = Path(__file__).resolve().parents[1]
+    base_sum = json.loads((root / "benchmarks" / "longmemeval" / "results_local_stride5_baseline" / "summary.json").read_text(encoding="utf-8"))
+    imp_sum = json.loads((root / "benchmarks" / "longmemeval" / "results_local_stride5_improved" / "summary.json").read_text(encoding="utf-8"))
+    assert base_sum["questions"] == 100 and imp_sum["questions"] == 100
+    assert base_sum["reader_and_judge"] == imp_sum["reader_and_judge"]
+    assert base_sum["spent_usd_this_run"] == 0.0 and imp_sum["spent_usd_this_run"] == 0.0
+    assert imp_sum["accuracy_overall"] > base_sum["accuracy_overall"]
+    assert imp_sum["accuracy_without_abstention"] > base_sum["accuracy_without_abstention"]
