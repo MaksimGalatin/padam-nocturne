@@ -79,7 +79,9 @@ CREATE TABLE IF NOT EXISTS memory (
     -- Франции — Рим» имеют один ключ и разные значения, значит спорят.
     -- Замер того дня показал цену отсутствия ключа: из 142 настоящих
     -- конфликтов поиск по вектору находил около 51.
-    факт_ключ         TEXT
+    факт_ключ         TEXT,
+    visibility        TEXT NOT NULL DEFAULT 'private',
+    workspace_id      TEXT
 );
 CREATE INDEX IF NOT EXISTS memory_active
     ON memory (user_id, scope, kind, status);
@@ -193,6 +195,27 @@ CREATE TABLE IF NOT EXISTS audit_log (
     detail      TEXT
 );
 CREATE INDEX IF NOT EXISTS audit_log_user ON audit_log (user_id, created_at DESC);
+
+-- В1: командные пространства и роли с солёными SHA-256 токенами
+CREATE TABLE IF NOT EXISTS workspace (
+    id            TEXT PRIMARY KEY,
+    name          TEXT NOT NULL,
+    owner_user_id TEXT NOT NULL,
+    created_at    TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS workspace_member (
+    workspace_id  TEXT NOT NULL,
+    subject       TEXT NOT NULL,
+    role          TEXT NOT NULL CHECK (role IN ('owner', 'maintainer', 'contributor', 'auditor')),
+    token_hash    TEXT NOT NULL,
+    token_salt    TEXT NOT NULL,
+    token_prefix  TEXT NOT NULL,
+    created_at    TEXT NOT NULL,
+    revoked_at    TEXT,
+    PRIMARY KEY (workspace_id, subject)
+);
+CREATE INDEX IF NOT EXISTS workspace_member_token ON workspace_member (token_hash);
 """
 
 
@@ -281,7 +304,8 @@ class Store:
         Только ДОБАВЛЯЕТ. Ничего не удаляет и не переписывает (раздел 19).
         """
         НУЖНЫЕ = {"memory": {"embedding_model": "TEXT", "факт_ключ": "TEXT",
-                             "origin": "TEXT", "quarantine_reason": "TEXT", "owner_sig": "TEXT", "agent_id": "TEXT"},
+                             "origin": "TEXT", "quarantine_reason": "TEXT", "owner_sig": "TEXT",
+                             "agent_id": "TEXT", "visibility": "TEXT DEFAULT 'private'", "workspace_id": "TEXT"},
                   "memory_link": {"relation": "TEXT DEFAULT 'derived'"}}
         for таблица, колонки in НУЖНЫЕ.items():
             try:
@@ -311,6 +335,9 @@ class Store:
         self.conn.execute(
             """CREATE INDEX IF NOT EXISTS memory_link_relation
                ON memory_link (relation, src, dst)""")
+        self.conn.execute(
+            """CREATE INDEX IF NOT EXISTS memory_vis
+               ON memory (user_id, workspace_id, visibility, status)""")
 
     def close(self) -> None:
         self.conn.close()

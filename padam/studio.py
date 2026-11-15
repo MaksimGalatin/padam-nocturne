@@ -209,6 +209,27 @@ STRINGS: dict[str, dict[str, str]] = {
         "graph_derived": "Выводы из этой записи:",
         "graph_valid_window": "Окно действия:",
         "graph_valid_open": "действует",
+        "nav_team": "Команда",
+        "vis_private": "личная (private)",
+        "vis_team_read": "команде (чтение)",
+        "vis_team_write": "команде (общая)",
+        "team_title": "Команда и роли",
+        "team_subtitle": "Общие пространства с солёными токенами и разграничением прав (owner, maintainer, contributor, auditor).",
+        "team_create_label": "Новая команда:",
+        "team_create_ph": "Название команды (например, Инженеры)",
+        "team_create_btn": "Создать команду",
+        "team_empty": "Команд пока нет — PADAM работает в личном режиме (всё private).",
+        "team_members_title": "Участники и токены",
+        "team_subj_ph": "Имя участника / агента (например, ci-bot)",
+        "team_add_btn": "Выдать токен",
+        "team_token_once": "Одноразовый Bearer-токен (сохраните сейчас — в базе хранится только солёный SHA-256):",
+        "team_revoke_btn": "Отозвать",
+        "team_revoked_badge": "отозван",
+        "team_role_maintainer": "maintainer (модератор)",
+        "team_role_contributor": "contributor (пишет общее)",
+        "team_role_auditor": "auditor (только чтение и аудит)",
+        "team_protected_note": "Записи identity и preference никогда не попадают в командную область.",
+        "team_vis_label": "Видимость:",
         "graph_edges_list_title": "Связи выбранного узла",
         "graph_forget_derived_btn": "Удалить источник вместе с выводами",
         "graph_forget_confirm_warn": "Удалить источник, его версии и зависимые выводы навсегда? Выдаётся квитанция удаления.",
@@ -471,6 +492,27 @@ STRINGS: dict[str, dict[str, str]] = {
         "graph_derived": "Conclusions drawn from this record:",
         "graph_valid_window": "Valid window:",
         "graph_valid_open": "ongoing",
+        "nav_team": "Team",
+        "vis_private": "private",
+        "vis_team_read": "team (read)",
+        "vis_team_write": "team (write)",
+        "team_title": "Team & Roles",
+        "team_subtitle": "Shared workspaces with salted SHA-256 tokens and role isolation (owner, maintainer, contributor, auditor).",
+        "team_create_label": "New workspace:",
+        "team_create_ph": "Workspace name (e.g. Engineering)",
+        "team_create_btn": "Create workspace",
+        "team_empty": "No teams yet — PADAM is running in personal single-owner mode (all records private).",
+        "team_members_title": "Members & Tokens",
+        "team_subj_ph": "Member / agent subject (e.g. ci-bot)",
+        "team_add_btn": "Issue token",
+        "team_token_once": "One-time Bearer token (save it now — only salted SHA-256 is stored in the database):",
+        "team_revoke_btn": "Revoke",
+        "team_revoked_badge": "revoked",
+        "team_role_maintainer": "maintainer (review queue)",
+        "team_role_contributor": "contributor (team read/write)",
+        "team_role_auditor": "auditor (read-only + audit)",
+        "team_protected_note": "identity and preference records are never shared with a team.",
+        "team_vis_label": "Visibility:",
         "graph_edges_list_title": "Relations of selected node",
         "graph_forget_derived_btn": "Forget source + derived conclusions",
         "graph_forget_confirm_warn": "Permanently erase this source, its versions, and all derived conclusions? Issues an erasure receipt.",
@@ -730,6 +772,27 @@ STRINGS: dict[str, dict[str, str]] = {
         "graph_derived": "Conclusiones derivadas de este registro:",
         "graph_valid_window": "Ventana de validez:",
         "graph_valid_open": "vigente",
+        "nav_team": "Equipo",
+        "vis_private": "privada",
+        "vis_team_read": "equipo (lectura)",
+        "vis_team_write": "equipo (escritura)",
+        "team_title": "Equipo y roles",
+        "team_subtitle": "Espacios compartidos con tokens SHA-256 con sal y aislamiento de roles.",
+        "team_create_label": "Nuevo equipo:",
+        "team_create_ph": "Nombre del equipo",
+        "team_create_btn": "Crear equipo",
+        "team_empty": "Aún no hay equipos: modo personal activo (todo privado).",
+        "team_members_title": "Miembros y tokens",
+        "team_subj_ph": "Nombre de miembro o agente",
+        "team_add_btn": "Emitir token",
+        "team_token_once": "Token Bearer único (guárdelo ahora — solo se almacena su SHA-256 con sal):",
+        "team_revoke_btn": "Revocar",
+        "team_revoked_badge": "revocado",
+        "team_role_maintainer": "maintainer",
+        "team_role_contributor": "contributor",
+        "team_role_auditor": "auditor (solo lectura)",
+        "team_protected_note": "identity y preference nunca se comparten con el equipo.",
+        "team_vis_label": "Visibilidad:",
         "graph_edges_list_title": "Relaciones del nodo",
         "graph_forget_derived_btn": "Olvidar fuente y conclusiones derivadas",
         "graph_forget_confirm_warn": "¿Borrar permanentemente esta fuente, sus versiones y conclusiones derivadas? Emite recibo de borrado.",
@@ -989,6 +1052,27 @@ STRINGS: dict[str, dict[str, str]] = {
         "graph_derived": "由该记录得出的结论：",
         "graph_valid_window": "有效期窗口：",
         "graph_valid_open": "持续有效",
+        "nav_team": "团队",
+        "vis_private": "私有",
+        "vis_team_read": "团队只读",
+        "vis_team_write": "团队协作",
+        "team_title": "团队与角色",
+        "team_subtitle": "带加盐 SHA-256 令牌和角色权限隔离的共享工作区。",
+        "team_create_label": "新建团队：",
+        "team_create_ph": "团队名称",
+        "team_create_btn": "创建团队",
+        "team_empty": "暂无团队，当前为个人模式（默认全部私有）。",
+        "team_members_title": "成员与令牌",
+        "team_subj_ph": "成员或代理标识",
+        "team_add_btn": "签发令牌",
+        "team_token_once": "一次性 Bearer 令牌（请立即保存，数据库仅保存加盐 SHA-256 哈希）：",
+        "team_revoke_btn": "吊销",
+        "team_revoked_badge": "已吊销",
+        "team_role_maintainer": "maintainer（审核）",
+        "team_role_contributor": "contributor（读写）",
+        "team_role_auditor": "auditor（只读审计）",
+        "team_protected_note": "identity 和 preference 记录永远不会共享给团队。",
+        "team_vis_label": "可见性：",
         "graph_edges_list_title": "节点关联列表",
         "graph_forget_derived_btn": "删除源头及全部衍生结论",
         "graph_forget_confirm_warn": "永久销毁此源记录、所有历史版本及其衍生结论？系统将签发删除凭证。",
@@ -1924,7 +2008,8 @@ function say(text, ok = true) {
   box.className = ok ? 'msg-ok' : 'msg-err';
 }
 
-const TABS = ['overview', 'feed', 'search', 'ask', 'review', 'asof', 'forget', 'graph', 'entities', 'l3', 'settings', 'quickstart'];
+const TABS = ['overview', 'feed', 'search', 'ask', 'review', 'asof', 'forget', 'graph', 'entities', 'l3', 'team', 'settings', 'quickstart'];
+window._padamWorkspaces = [];
 let activeTab = (initialTab && TABS.includes(initialTab)) ? initialTab : 'overview';
 let feedView = 'active', feedOffset = 0, feedKind = null, feedShown = [];
 let lastReceipt = null;
@@ -2037,6 +2122,9 @@ function renderRecordCard(r, opts = {}) {
   meta.append(el('span', '', S.card_origin + ': ' + (S[origKey] || r.origin || 'user')));
   if (r.scope) meta.append(el('span', '', S.card_scope + ': ' + r.scope));
   if (r.agent_id) meta.append(el('span', 'badge', S.card_agent + ': ' + r.agent_id));
+  if (r.visibility && r.visibility !== 'private') {
+    meta.append(el('span', 'badge', S['vis_' + r.visibility] || r.visibility));
+  }
   if (r.status && r.status !== 'active') {
     const cls = r.status === 'quarantined' ? 'badge badge-warn' : (r.status === 'revoked' ? 'badge badge-danger' : 'badge');
     meta.append(el('span', cls, S['status_' + r.status] || r.status));
@@ -2098,6 +2186,26 @@ function renderRecordCard(r, opts = {}) {
       catch (e) { say(S.failed + ': ' + e.message, false); }
     };
     acts.append(bApp, bRej);
+  }
+  if (r.status === 'active' && Array.isArray(window._padamWorkspaces) && window._padamWorkspaces.length && r.kind !== 'identity' && r.kind !== 'preference') {
+    const visSel = document.createElement('select');
+    visSel.setAttribute('aria-label', S.team_vis_label || 'Visibility');
+    for (const v of ['private', 'team_read', 'team_write']) {
+      const opt = document.createElement('option');
+      opt.value = v;
+      opt.textContent = S['vis_' + v] || v;
+      if ((r.visibility || 'private') === v) opt.selected = true;
+      visSel.append(opt);
+    }
+    visSel.onchange = async () => {
+      try {
+        const wsId = r.workspace_id || (window._padamWorkspaces[0] && window._padamWorkspaces[0].id);
+        await api('/records/visibility', {id: r.id, visibility: visSel.value, workspace_id: wsId});
+        say(S.done, true);
+        loadActiveTab();
+      } catch (e) { say(S.failed + ': ' + e.message, false); loadActiveTab(); }
+    };
+    acts.append(visSel);
   }
   if (r.status === 'active') {
     const bConf = el('button', '', S.card_btn_confirm);
@@ -2165,6 +2273,7 @@ function renderRecordCard(r, opts = {}) {
 
 // --- 1. ОБЗОР ---
 async function loadOverview() {
+  refreshWorkspacesCache();
   if (!token) { say(S.no_token, false); return; }
   try {
     const data = await api('/overview');
@@ -2920,6 +3029,106 @@ async function loadGraph() {
 }
 
 // --- 8. ВЕЧНЫЙ СЛОЙ L3 ---
+async function refreshWorkspacesCache() {
+  try {
+    const d = await api('/workspaces');
+    window._padamWorkspaces = d.workspaces || [];
+    return d;
+  } catch (e) {
+    window._padamWorkspaces = [];
+    return {workspaces: [], members: [], actor: null};
+  }
+}
+
+async function loadTeam() {
+  const wsList = $('team-workspaces-list');
+  const memList = $('team-members-list');
+  const sel = $('team-ws-select');
+  if (!wsList || !memList) return;
+  try {
+    const d = await refreshWorkspacesCache();
+    const wss = d.workspaces || [];
+    const mems = d.members || [];
+    wsList.replaceChildren();
+    if (sel) sel.replaceChildren();
+    if (!wss.length) {
+      wsList.append(el('div', 'empty-box', S.team_empty || 'No teams yet'));
+    } else {
+      for (const w of wss) {
+        const row = el('div', 'setting-row');
+        const info = el('div', 'setting-info');
+        info.append(el('div', 'setting-name', w.name));
+        info.append(el('div', 'setting-desc mono', 'id: ' + w.id));
+        row.append(info);
+        wsList.append(row);
+        if (sel) {
+          const opt = document.createElement('option');
+          opt.value = w.id;
+          opt.textContent = w.name + ' (' + w.id + ')';
+          sel.append(opt);
+        }
+      }
+    }
+    memList.replaceChildren();
+    for (const m of mems) {
+      const row = el('div', 'setting-row');
+      const info = el('div', 'setting-info');
+      info.append(el('div', 'setting-name', m.subject + ' · ' + m.role));
+      info.append(el('div', 'setting-desc mono', (m.workspace_name || m.workspace_id) + ' · ' + m.token_prefix + '…'));
+      row.append(info);
+      if (m.revoked_at) {
+        row.append(el('span', 'badge badge-danger', S.team_revoked_badge || 'revoked'));
+      } else {
+        const btnRev = el('button', 'btn-danger', S.team_revoke_btn || 'Revoke');
+        btnRev.onclick = async () => {
+          try {
+            await api('/workspaces/revoke', {workspace_id: m.workspace_id, subject: m.subject});
+            say(S.done, true);
+            loadTeam();
+          } catch (e) { say(S.failed + ': ' + e.message, false); }
+        };
+        row.append(btnRev);
+      }
+      memList.append(row);
+    }
+  } catch (e) { say(S.failed + ': ' + e.message, false); }
+}
+
+if ($('team-create-btn')) {
+  $('team-create-btn').onclick = async () => {
+    const inp = $('team-create-input');
+    const name = inp ? inp.value.trim() : '';
+    if (!name) return;
+    try {
+      await api('/workspaces', {name});
+      if (inp) inp.value = '';
+      say(S.done, true);
+      loadTeam();
+    } catch (e) { say(S.failed + ': ' + e.message, false); }
+  };
+}
+
+if ($('team-add-btn')) {
+  $('team-add-btn').onclick = async () => {
+    const wsId = $('team-ws-select') ? $('team-ws-select').value : '';
+    const subj = $('team-subj-input') ? $('team-subj-input').value.trim() : '';
+    const role = $('team-role-select') ? $('team-role-select').value : 'contributor';
+    if (!wsId || !subj) return;
+    try {
+      const res = await api('/workspaces/members', {workspace_id: wsId, subject: subj, role});
+      if ($('team-subj-input')) $('team-subj-input').value = '';
+      const box = $('team-token-box');
+      const codeEl = $('team-issued-token');
+      if (box && codeEl && res.token) {
+        codeEl.textContent = res.token;
+        box.hidden = false;
+      }
+      say(S.done, true);
+      loadTeam();
+    } catch (e) { say(S.failed + ': ' + e.message, false); }
+  };
+}
+
 async function loadL3() {
   try {
     const d = await api('/l3');
@@ -3143,6 +3352,7 @@ function loadActiveTab() {
   else if (activeTab === 'graph') loadGraph();
   else if (activeTab === 'entities') loadEntities();
   else if (activeTab === 'l3') loadL3();
+  else if (activeTab === 'team') loadTeam();
   else if (activeTab === 'settings') loadSettings();
 }
 
@@ -3434,6 +3644,9 @@ def page() -> tuple[str, str]:
       <button id="tab-l3" data-tab="l3" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-l3">
         <span data-i18n="nav_l3">{s['nav_l3']}</span>
       </button>
+      <button id="tab-team" data-tab="team" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-team">
+        <span data-i18n="nav_team">{s['nav_team']}</span>
+      </button>
       <button id="tab-settings" data-tab="settings" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-settings">
         <span data-i18n="nav_settings">{s['nav_settings']}</span>
       </button>
@@ -3690,6 +3903,40 @@ def page() -> tuple[str, str]:
         </div>
         <h3 class="box-title" data-i18n="l3_anchors_list">{s['l3_anchors_list']}</h3>
         <div id="l3-anchors-list"></div>
+      </section>
+
+      <!-- 9a. КОМАНДА И РОЛИ -->
+      <section id="panel-team" role="tabpanel" aria-labelledby="tab-team" hidden>
+        <div class="panel-header">
+          <h2 class="panel-title" data-i18n="team_title">{s['team_title']}</h2>
+          <p class="panel-sub" data-i18n="team_subtitle">{s['team_subtitle']}</p>
+        </div>
+        <div class="box">
+          <p class="setting-desc" data-i18n="team_protected_note">{s['team_protected_note']}</p>
+          <div class="toolbar">
+            <input id="team-create-input" type="text" placeholder="{s['team_create_ph']}" data-i18n-ph="team_create_ph">
+            <button id="team-create-btn" class="btn-primary" data-i18n="team_create_btn">{s['team_create_btn']}</button>
+          </div>
+          <div id="team-workspaces-list"></div>
+        </div>
+        <div class="box">
+          <h3 class="box-title" data-i18n="team_members_title">{s['team_members_title']}</h3>
+          <div class="toolbar">
+            <select id="team-ws-select"></select>
+            <input id="team-subj-input" type="text" placeholder="{s['team_subj_ph']}" data-i18n-ph="team_subj_ph">
+            <select id="team-role-select">
+              <option value="maintainer" data-i18n="team_role_maintainer">{s['team_role_maintainer']}</option>
+              <option value="contributor" data-i18n="team_role_contributor">{s['team_role_contributor']}</option>
+              <option value="auditor" data-i18n="team_role_auditor">{s['team_role_auditor']}</option>
+            </select>
+            <button id="team-add-btn" class="btn-primary" data-i18n="team_add_btn">{s['team_add_btn']}</button>
+          </div>
+          <div id="team-token-box" class="code-block" hidden>
+            <span data-i18n="team_token_once">{s['team_token_once']}</span>
+            <code id="team-issued-token"></code>
+          </div>
+          <div id="team-members-list"></div>
+        </div>
       </section>
 
       <!-- 9. НАСТРОЙКИ -->

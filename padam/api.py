@@ -43,7 +43,7 @@ import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
-from . import __version__, config, logo, safety, studio, viewer
+from . import __version__, config, logo, roles, safety, studio, viewer
 from .i18n import t
 from .memory import Memory, decay, parse_ts
 from .nocturne import Nocturne
@@ -51,8 +51,8 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
 
@@ -164,13 +164,31 @@ class Handler(BaseHTTPRequestHandler):
             raise ValueError("body must be a JSON object")
         return data
 
-    def _authorized(self) -> bool:
+    def _resolve_actor(self) -> tuple[roles.ActorContext | None, bool]:
+        """Определить субъект и роль исключительно по проверенному Bearer-токену."""
         token = _state["token"]
-        if not token:
-            return True
-        header = self.headers.get("Authorization", "")
-        # Сравнение за постоянное время: обычное == выдаёт длину совпавшего начала по времени ответа.
-        return hmac.compare_digest(header.encode("utf-8"), f"Bearer {token}".encode("utf-8"))
+        header = (self.headers.get("Authorization") or "").strip()
+        if header:
+            if not header.startswith("Bearer "):
+                return None, False
+            raw_tok = header[7:].strip()
+            if token and hmac.compare_digest(header.encode("utf-8"), f"Bearer {token}".encode("utf-8")):
+                return roles.OWNER_ACTOR, True
+            member_actor = mem().authenticate_token(raw_tok)
+            if member_actor is not None:
+                return member_actor, True
+            return None, False
+        if token:
+            return None, False
+        # Режим --no-token: если в базе созданы участники команд, гость без токена не получает доступ к команде/private.
+        if mem().has_team_members():
+            return roles.ActorContext(role="guest", subject="guest", workspace_id=None, via_token=False), True
+        return None, True
+
+    def _authorized(self) -> bool:
+        actor, ok = self._resolve_actor()
+        self._actor = actor
+        return ok
 
     def _trusted(self) -> bool:
         """Запрос пришёл не из чужой веб-страницы в браузере владельца.
@@ -264,21 +282,37 @@ class Handler(BaseHTTPRequestHandler):
             return None
         if not self._authorized():
             return self._send(401, {"error": "unauthorized"})
-        if not _state["token"]:
+        actor = getattr(self, "_actor", None)
+        if not _state["token"] and (actor is None or not actor.via_token):
             q0 = parse_qs(путь.query)
             if путь.path in OWNER_GET or (путь.path == "/records" and q0.get("view", ["active"])[0] != "active"):
                 return self._send(403, NEEDS_TOKEN)
         try:
+            if путь.path == "/workspaces":
+                m = mem()
+                cur_role = actor.role if actor is not None else "owner"
+                cur_subj = actor.subject if actor is not None else "owner"
+                cur_ws = actor.workspace_id if actor is not None else None
+                return self._send(200, {
+                    "workspaces": m.list_workspaces(actor=actor),
+                    "members": m.list_members(actor=actor),
+                    "actor": {"role": cur_role, "subject": cur_subj, "workspace_id": cur_ws},
+                })
             if путь.path == "/records":
                 q = parse_qs(путь.query)
+                view_arg = q.get("view", ["active"])[0]
+                if view_arg in ("quarantined", "rejected") and actor is not None and not actor.is_owner:
+                    roles.require_moderate(actor)
                 return self._send(200, mem().list_records(
-                    view=q.get("view", ["active"])[0], text=q.get("q", [None])[0],
+                    view=view_arg, text=q.get("q", [None])[0],
                     limit=int(q.get("limit", ["100"])[0]), offset=int(q.get("offset", ["0"])[0]),
                     as_of=q.get("as_of", [None])[0],
                     kind=q.get("kind", [None])[0] or None,
                     scope=q.get("scope", [None])[0] or None,
-                    agent_id=q.get("agent_id", [None])[0] or None))
+                    agent_id=q.get("agent_id", [None])[0] or None,
+                    actor=actor))
             if путь.path == "/profile":
+                roles.require_owner(actor, "profile")
                 q = parse_qs(путь.query)
                 return self._send(200, mem().profile(scope=q.get("scope", ["global"])[0] or "global"))
             if путь.path == "/audit":
@@ -287,6 +321,7 @@ class Handler(BaseHTTPRequestHandler):
                     limit=int(q.get("limit", ["100"])[0]),
                     action=q.get("action", [None])[0] or None,
                     agent_id=q.get("agent_id", [None])[0] or None,
+                    actor=actor,
                 )})
             if путь.path == "/events":
                 q = parse_qs(путь.query)
@@ -331,22 +366,25 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(payload_bytes)
                 return None
             if self.path == "/stats":
-                return self._send(200, mem().stats())
+                return self._send(200, mem().stats(actor=actor))
             if путь.path == "/doctor":
+                roles.require_owner(actor, "doctor")
                 return self._send(200, mem().doctor_report())
             if путь.path == "/overview":
                 m = mem()
-                unsigned = m.unsigned_protected()
+                unsigned = m.unsigned_protected() if roles.is_owner(actor) else []
+                doc = m.doctor_report() if roles.is_owner(actor) else {"warnings": 0, "dangers": 0, "checks": []}
                 return self._send(200, {
-                    "stats": m.stats(),
-                    "doctor": m.doctor_report(),
-                    "nocturne_runs": m.nocturne_runs(5),
+                    "stats": m.stats(actor=actor),
+                    "doctor": doc,
+                    "nocturne_runs": m.nocturne_runs(5) if roles.is_owner(actor) else [],
                     "unsigned_protected": [
                         {"id": r["id"], "kind": r["kind"], "content": r["content"][:160]}
                         for r in unsigned
                     ],
-                    "conflicts": m.conflicts(),
-                    "desktop_cmds": _state.pop("desktop_cmds", []),
+                    "conflicts": m.conflicts(actor=actor),
+                    "desktop_cmds": _state.pop("desktop_cmds", []) if roles.is_owner(actor) else [],
+                    "actor": {"role": actor.role, "subject": actor.subject, "workspace_id": actor.workspace_id} if actor else {"role": "owner", "subject": "owner", "workspace_id": None},
                 })
             if путь.path == "/graph":
                 q = parse_qs(путь.query)
@@ -355,6 +393,7 @@ class Handler(BaseHTTPRequestHandler):
                         center_id=q.get("id", [None])[0] or None,
                         limit=int(q.get("limit", ["200"])[0]),
                         as_of=q.get("as_of", [None])[0] or None,
+                        actor=actor,
                     ))
                 except ValueError as e:
                     return self._send(400, {"error": str(e)})
@@ -364,22 +403,25 @@ class Handler(BaseHTTPRequestHandler):
                     scope=q.get("scope", [None])[0] or None,
                     query=q.get("q", [None])[0] or None,
                     limit=int(q.get("limit", ["100"])[0]),
+                    actor=actor,
                 ))
             if путь.path == "/forget-preview":
                 q = parse_qs(путь.query)
                 rid = q.get("id", [None])[0]
                 if not rid:
                     return self._send(400, {"error": "id is required"})
-                prev = mem().forget_preview(rid)
+                prev = mem().forget_preview(rid, actor=actor)
                 if not prev:
                     return self._send(404, {"error": "not found"})
                 return self._send(200, prev)
             if путь.path == "/forget-receipts":
                 q = parse_qs(путь.query)
-                return self._send(200, {"receipts": mem().forget_receipts(limit=int(q.get("limit", ["50"])[0]))})
+                return self._send(200, {"receipts": mem().forget_receipts(limit=int(q.get("limit", ["50"])[0]), actor=actor)})
             if путь.path == "/l3":
+                roles.require_owner(actor, "l3")
                 return self._send(200, mem().l3_status())
             if путь.path == "/settings":
+                roles.require_owner(actor, "settings")
                 from . import desktop as _desktop
 
                 return self._send(200, {
@@ -398,10 +440,10 @@ class Handler(BaseHTTPRequestHandler):
                     "autostart_supported": _desktop.autostart_supported(),
                 })
             if self.path == "/export":
-                return self._send(200, mem().export())
+                return self._send(200, mem().export(actor=actor))
             if self.path.startswith("/timeline/"):
                 rid = self.path.split("/timeline/", 1)[1]
-                chain = mem().timeline(rid)
+                chain = mem().timeline(rid, actor=actor)
                 if not chain:
                     return self._send(404, {"error": "not found"})
                 if not _state["token"]:
@@ -412,6 +454,8 @@ class Handler(BaseHTTPRequestHandler):
                             row["content"] = None
                 return self._send(200, {"versions": chain})
             return self._send(404, {"error": "unknown route"})
+        except PermissionError as e:
+            return self._send(403, {"error": str(e)})
         except Exception as e:
             return self._send(500, {"error": str(e)})
 
@@ -423,7 +467,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(415, {"error": "Content-Type must be application/json"})
         if not self._authorized():
             return self._send(401, {"error": "unauthorized"})
-        if not _state["token"] and self.path in OWNER_POST:
+        actor = getattr(self, "_actor", None)
+        if not _state["token"] and (actor is None or not actor.via_token) and self.path in OWNER_POST:
             return self._send(403, NEEDS_TOKEN)
         try:
             try:
@@ -441,6 +486,7 @@ class Handler(BaseHTTPRequestHandler):
                     scope=str(data.get("scope") or "global"),
                     limit=max(1, min(int(data.get("limit", 6)), 20)),
                     model=str(data["model"]).strip() if data.get("model") else None,
+                    actor=actor,
                 ))
 
             if self.path == "/search":
@@ -450,7 +496,8 @@ class Handler(BaseHTTPRequestHandler):
                                  kind=data.get("kind"),
                                  limit=max(1, min(int(data.get("limit", 5)), config.MAX_RECALL_LIMIT)),
                                  as_of=data.get("as_of") or None,
-                                 agent_id=data.get("agent_id") or None)
+                                 agent_id=data.get("agent_id") or None,
+                                 actor=actor)
                 return self._send(200, {"results": [
                     {"id": r.id, "kind": r.kind, "content": r.content,
                      "score": round(r.score, 5),
@@ -481,7 +528,12 @@ class Handler(BaseHTTPRequestHandler):
                 req_origin = (self.headers.get("Origin") or "").strip().lower()
                 if req_origin.startswith(("chrome-extension://", "moz-extension://")):
                     origin = "external"
-                agent_id = data.get("agent_id") or (self.headers.get("X-Agent-ID") or "").strip() or None
+                if actor is not None and not actor.is_owner:
+                    # Не-владелец не может подменить субъекта через заголовок X-Agent-ID или поле agent_id.
+                    agent_id = actor.subject
+                else:
+                    agent_id = data.get("agent_id") or (self.headers.get("X-Agent-ID") or "").strip() or None
+                can_link = bool(_state["token"] and (actor is None or actor.is_owner or actor.role in ("maintainer", "contributor")))
                 try:
                     outcome, mid = m.remember(
                         data["content"], kind=data.get("kind"),
@@ -489,52 +541,82 @@ class Handler(BaseHTTPRequestHandler):
                         scope=data.get("scope", "global"),
                         # Без токена владельца не отличить от любого процесса, дотянувшегося до порта.
                         origin=origin, guarded=origin != "user" or not _state["token"],
-                        derived_from=data.get("derived_from") if _state["token"] else None,
+                        derived_from=data.get("derived_from") if can_link else None,
                         agent_id=agent_id,
                         valid_from=data.get("valid_from") or None,
                         valid_to=data.get("valid_to") or None,
-                        links=data.get("links") if _state["token"] else None)
+                        links=data.get("links") if can_link else None,
+                        visibility=data.get("visibility") or None,
+                        workspace_id=data.get("workspace_id") or None,
+                        actor=actor)
+                except PermissionError as e:
+                    return self._send(403, {"error": str(e)})
                 except ValueError as e:
                     return self._send(400, {"error": str(e)})
                 return self._send(200, {"outcome": outcome, "id": mid, "agent_id": agent_id})
+
+            if self.path == "/workspaces":
+                try:
+                    return self._send(200, m.create_workspace(
+                        data.get("name", ""), workspace_id=data.get("id") or None, actor=actor))
+                except ValueError as e:
+                    return self._send(400, {"error": str(e)})
+            if self.path == "/workspaces/members":
+                try:
+                    return self._send(200, m.add_member(
+                        data["workspace_id"], data["subject"], data["role"], actor=actor))
+                except ValueError as e:
+                    return self._send(400, {"error": str(e)})
+            if self.path == "/workspaces/revoke":
+                return self._send(200, {"ok": m.revoke_member(
+                    data["workspace_id"], data["subject"], actor=actor)})
+            if self.path == "/records/visibility":
+                try:
+                    return self._send(200, m.set_visibility(
+                        data["id"], data["visibility"], workspace_id=data.get("workspace_id") or None, actor=actor))
+                except ValueError as e:
+                    return self._send(400, {"error": str(e)})
 
             if self.path == "/link":
                 src = str(data.get("source") or data.get("src") or "").strip()
                 dst = str(data.get("target") or data.get("dst") or "").strip()
                 rel = str(data.get("relation") or data.get("type") or "derived").strip()
                 try:
-                    return self._send(200, m.link(src, dst, relation=rel))
+                    return self._send(200, m.link(src, dst, relation=rel, actor=actor))
                 except ValueError as e:
                     return self._send(400, {"error": str(e)})
 
             if self.path == "/confirm":
-                return self._send(200, {"ok": m.confirm(data["id"])})
+                return self._send(200, {"ok": m.confirm(data["id"], actor=actor)})
 
             if self.path == "/refute":
-                return self._send(200, {"ok": m.refute(data["id"], drop=float(data.get("drop", 0.3)))})
+                return self._send(200, {"ok": m.refute(data["id"], drop=float(data.get("drop", 0.3)), actor=actor)})
 
             if self.path == "/forget":
-                ok = m.revoke(data["id"], with_derived=bool(data.get("with_derived", False)))
+                ok = m.revoke(data["id"], with_derived=bool(data.get("with_derived", False)), actor=actor)
                 return self._send(200, {
                     "ok": ok,
                     "receipt": getattr(m, "_last_receipt", None) if ok else None,
                 })
 
-            # Решения владельца по записям агента. У MCP этих действий нет; здесь они под токеном.
+            # Решения владельца и модераторов команды по записям агента.
             if self.path == "/approve":
-                return self._send(200, {"ok": m.approve(data["id"])})
+                return self._send(200, {"ok": m.approve(data["id"], actor=actor)})
             if self.path == "/reject":
-                return self._send(200, {"ok": m.reject(data["id"])})
+                return self._send(200, {"ok": m.reject(data["id"], actor=actor)})
             if self.path == "/restore":
-                return self._send(200, {"ok": m.restore(data["id"])})
+                return self._send(200, {"ok": m.restore(data["id"], actor=actor)})
             if self.path == "/trust-protected":
+                roles.require_owner(actor, "trust-protected")
                 return self._send(200, {"ok": True, "signed": m.trust_protected()})
             if self.path == "/l3-verify":
+                roles.require_owner(actor, "l3-verify")
                 return self._send(200, m.l3_verify_anchor(
                     anchor_id=data.get("anchor"),
                     online=bool(data.get("online", False)),
                 ))
             if self.path == "/settings":
+                roles.require_owner(actor, "settings")
                 # Опасные настройки нельзя включать из браузера: только читать или выключать в сторону защиты.
                 if data.get("keep_secrets") is True or data.get("mcp_trust_writes") is True or data.get("hold_external") is False:
                     return self._send(403, {"error": "unsafe setting cannot be enabled from the browser"})
@@ -608,16 +690,20 @@ class Handler(BaseHTTPRequestHandler):
                 return None
 
             if self.path == "/sleep":
+                roles.require_owner(actor, "sleep")
                 report = Nocturne(m, batch_size=int(data.get("batch", 256)),
                                   dry_run=bool(data.get("dry_run", False))).run()
                 report.pop("checks", None)
                 return self._send(200, report)
 
             if self.path == "/import":
+                roles.require_owner(actor, "import")
                 added = m.import_(data, overwrite=bool(data.get("overwrite")))
                 return self._send(200, {"imported": added})
 
             return self._send(404, {"error": "unknown route"})
+        except PermissionError as e:
+            return self._send(403, {"error": str(e)})
         except KeyError as e:
             return self._send(400, {"error": f"missing field: {e}"})
         except Exception as e:

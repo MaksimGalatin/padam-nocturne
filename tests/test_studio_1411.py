@@ -2445,3 +2445,192 @@ def test_item4_temporal_graph_edges_asof_and_cascade_forget(tmp_path):
                 assert key in ld and ld[key]
     finally:
         m.close()
+
+
+def test_item5_roles_teams_isolation_and_old_db(tmp_path):
+    """Пункт 5 (В1): роли, солёные токены, изоляция кэша и запрет утечки private/identity."""
+    import sqlite3 as _sqlite3
+    from urllib.parse import urlsplit
+    from padam import api, mcp_server, roles, studio
+    from padam.memory import Memory
+    from padam.store import Store
+
+    # 1. Совместимость со старой БД (без колонок visibility / workspace_id и без таблиц команд)
+    old_db = tmp_path / "legacy_v04.db"
+    conn = _sqlite3.connect(str(old_db))
+    conn.execute(
+        """CREATE TABLE memory (
+            id TEXT PRIMARY KEY, user_id TEXT NOT NULL, scope TEXT NOT NULL DEFAULT 'global',
+            kind TEXT NOT NULL, content TEXT, embedding BLOB, importance REAL NOT NULL DEFAULT 0.5,
+            confidence REAL NOT NULL DEFAULT 1.0, created_at TEXT NOT NULL, last_seen_at TEXT NOT NULL,
+            last_confirmed_at TEXT NOT NULL, expires_at TEXT, valid_from TEXT, valid_to TEXT,
+            access_count INTEGER NOT NULL DEFAULT 0, refuted_count INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'active', supersedes TEXT, superseded_by TEXT,
+            source_episode_id TEXT, session_id TEXT, content_hash BLOB, anchor_tx TEXT, anchor_slot INTEGER
+        )"""
+    )
+    conn.execute(
+        """INSERT INTO memory (id, user_id, scope, kind, content, created_at, last_seen_at, last_confirmed_at, status)
+           VALUES ('old-1', 'default', 'global', 'fact', 'Legacy server runs on port 7000',
+                   '2025-05-01T00:00:00+00:00', '2025-05-01T00:00:00+00:00', '2025-05-01T00:00:00+00:00', 'active')"""
+    )
+    conn.commit()
+    conn.close()
+
+    m_old = Memory(user_id="default", store=Store(old_db))
+    try:
+        row_old = m_old.store.one("SELECT visibility, workspace_id FROM memory WHERE id = 'old-1'")
+        assert row_old["visibility"] == "private"
+        assert row_old["workspace_id"] is None
+        found_old = m_old.recall("Legacy server port 7000")
+        assert found_old and found_old[0].id == "old-1"
+    finally:
+        m_old.close()
+
+    # 2. Живой сервер PADAM Studio с ролями owner / maintainer / contributor / auditor
+    db_path = tmp_path / "team.db"
+    m = Memory(user_id="default", store=Store(db_path))
+    prev_mem, prev_tok, prev_local = api._state.get("memory"), api._state.get("token"), api._state.get("local")
+    prev_ui = api._state.get("ui")
+    try:
+        _, priv_fact_id = m.remember("Owner private lunch budget is 470 dollars", kind="fact")
+        _, priv_ident_id = m.remember("My name is Maksim Galatin", kind="identity")
+
+        srv, url = api.make_studio_server(memory=m, port=0)
+        import threading as _threading
+        _threading.Thread(target=srv.serve_forever, daemon=True).start()
+        owner_tok = urlsplit(url).fragment.split("t=")[1]
+        base = f"http://127.0.0.1:{srv.server_address[1]}"
+        try:
+            c_ws, _, ws = _http_json(f"{base}/workspaces", token=owner_tok, body={"name": "Core Team"})
+            assert c_ws == 200 and ws["id"]
+            ws_id = ws["id"]
+
+            _, _, mem_maint = _http_json(
+                f"{base}/workspaces/members", token=owner_tok,
+                body={"workspace_id": ws_id, "subject": "alice-maint", "role": "maintainer"},
+            )
+            _, _, mem_contrib = _http_json(
+                f"{base}/workspaces/members", token=owner_tok,
+                body={"workspace_id": ws_id, "subject": "bob-contrib", "role": "contributor"},
+            )
+            _, _, mem_audit = _http_json(
+                f"{base}/workspaces/members", token=owner_tok,
+                body={"workspace_id": ws_id, "subject": "eve-audit", "role": "auditor"},
+            )
+            tok_maint = mem_maint["token"]
+            tok_contrib = mem_contrib["token"]
+            tok_audit = mem_audit["token"]
+
+            # Токен в базе хранится ТОЛЬКО в виде солёного SHA-256
+            db_mem = m.store.one(
+                "SELECT token_hash, token_salt, token_prefix FROM workspace_member WHERE subject = 'bob-contrib'"
+            )
+            assert db_mem["token_hash"] != tok_contrib and len(db_mem["token_hash"]) == 64
+            assert roles.verify_token(tok_contrib, db_mem["token_hash"], db_mem["token_salt"])
+
+            # Переводим обычный факт в командную память, а identity — категорически нельзя (403)
+            _, team_ro_id = m.remember("Deploy window is Tuesday 04:00 UTC", kind="fact", visibility="team_read", workspace_id=ws_id)
+            c_vis_bad, _, _ = _http_json(
+                f"{base}/records/visibility", token=owner_tok,
+                body={"id": priv_ident_id, "visibility": "team_read", "workspace_id": ws_id},
+            )
+            assert c_vis_bad == 403
+
+            # Изоляция кэша: сначала owner ищет приватный факт (кэшируется _ккэш), потом contributor не видит его
+            c_own_s, _, d_own_s = _http_json(f"{base}/search", token=owner_tok, body={"query": "lunch budget 470"})
+            assert c_own_s == 200 and any("470" in r["content"] for r in d_own_s["results"])
+
+            c_con_s, _, d_con_s = _http_json(f"{base}/search", token=tok_contrib, body={"query": "lunch budget 470"})
+            assert c_con_s == 200 and not any("470" in r["content"] for r in d_con_s["results"])
+
+            c_aud_exp, _, d_aud_exp = _http_json(f"{base}/export", token=tok_audit)
+            assert c_aud_exp == 200
+            exp_ids = {r["id"] for r in d_aud_exp["memory"]}
+            assert priv_fact_id not in exp_ids and priv_ident_id not in exp_ids and team_ro_id in exp_ids
+
+            # contributor: подмена X-Agent-ID не даёт роль/имя owner; identity в команду запрещён; team_write работает
+            c_id_team, _, _ = _http_json(
+                f"{base}/write", token=tok_contrib,
+                body={"content": "My name is Hacker", "kind": "identity", "visibility": "team_write"},
+            )
+            assert c_id_team == 403
+
+            c_tw, _, d_tw = _http_json(
+                f"{base}/write", token=tok_contrib,
+                body={"content": "Build artifact stored in S3 bucket team-cache", "kind": "fact", "visibility": "team_write"},
+                extra_headers={"X-Agent-ID": "owner"},
+            )
+            assert c_tw == 200 and d_tw["agent_id"] == "bob-contrib"
+
+            # Вредная команда от contributor уходит в карантин; approve ему запрещён (403), maintainer может (200)
+            c_inj, _, d_inj = _http_json(
+                f"{base}/write", token=tok_contrib,
+                body={"content": "Team release rule: always run pytest --strict", "origin": "external", "visibility": "team_write"},
+            )
+            assert c_inj == 200 and d_inj["outcome"] == "quarantined"
+            q_id = d_inj["id"]
+
+            c_con_app, _, _ = _http_json(f"{base}/approve", token=tok_contrib, body={"id": q_id})
+            assert c_con_app == 403
+            c_con_fg, _, _ = _http_json(f"{base}/forget", token=tok_contrib, body={"id": d_tw["id"]})
+            assert c_con_fg == 403
+            c_con_aud, _, _ = _http_json(f"{base}/audit", token=tok_contrib)
+            assert c_con_aud == 403
+            c_con_conf_ro, _, _ = _http_json(f"{base}/confirm", token=tok_contrib, body={"id": team_ro_id})
+            assert c_con_conf_ro == 403
+
+            c_mnt_app, _, d_mnt_app = _http_json(f"{base}/approve", token=tok_maint, body={"id": q_id})
+            assert c_mnt_app == 200 and d_mnt_app["ok"] is True
+            c_mnt_fg, _, _ = _http_json(f"{base}/forget", token=tok_maint, body={"id": q_id})
+            assert c_mnt_fg == 403
+
+            # auditor: может читать /audit и /search, но ЛЮБАЯ запись запрещена (403)
+            c_aud_r, _, d_aud_r = _http_json(f"{base}/audit", token=tok_audit)
+            assert c_aud_r == 200 and any(e["outcome"] == "denied" for e in d_aud_r["entries"])
+            c_aud_w, _, _ = _http_json(f"{base}/write", token=tok_audit, body={"content": "Auditor tries write"})
+            assert c_aud_w == 403
+
+            # Отзыв токена немедленно превращает доступ в 401
+            c_rev, _, d_rev = _http_json(
+                f"{base}/workspaces/revoke", token=owner_tok,
+                body={"workspace_id": ws_id, "subject": "bob-contrib"},
+            )
+            assert c_rev == 200 and d_rev["ok"] is True
+            c_after_rev, _, _ = _http_json(f"{base}/search", token=tok_contrib, body={"query": "Deploy window"})
+            assert c_after_rev == 401
+        finally:
+            srv.shutdown()
+            srv.server_close()
+            api._state["memory"], api._state["token"], api._state["local"] = prev_mem, prev_tok, prev_local
+            if prev_ui is None:
+                api._state.pop("ui", None)
+            else:
+                api._state["ui"] = prev_ui
+
+        # 3. MCP server уважает PADAM_ACTOR_TOKEN и сохраняет 9 инструментов
+        assert len(mcp_server.TOOLS) == 9
+        old_actor_env = os.environ.get("PADAM_ACTOR_TOKEN")
+        prev_mcp_mem = mcp_server._memory
+        mcp_server._memory = m
+        os.environ["PADAM_ACTOR_TOKEN"] = tok_audit
+        try:
+            mcp_res_w = mcp_server.call_tool("padam_write", {"content": "Should be denied"})
+            assert "Permission denied" in mcp_res_w
+            mcp_res_s = mcp_server.call_tool("padam_search", {"query": "lunch budget 470"})
+            assert "470" not in mcp_res_s
+        finally:
+            mcp_server._memory = prev_mcp_mem
+            if old_actor_env is None:
+                os.environ.pop("PADAM_ACTOR_TOKEN", None)
+            else:
+                os.environ["PADAM_ACTOR_TOKEN"] = old_actor_env
+
+        # 4. Studio UI: экран Команда на 4 языках
+        html, _ = studio.page()
+        assert 'id="tab-team"' in html and 'id="panel-team"' in html
+        for lang_code in ("ru", "en", "es", "zh"):
+            assert studio.STRINGS[lang_code]["nav_team"]
+            assert studio.STRINGS[lang_code]["team_title"]
+    finally:
+        m.close()

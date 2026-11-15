@@ -11,7 +11,7 @@ from datetime import datetime, timezone, timedelta
 
 import numpy as np
 
-from . import classify, config, embeddings, guard, integrity, retrieval, safety
+from . import classify, config, embeddings, guard, integrity, retrieval, roles, safety
 from .store import Store, new_id, now_iso, pack, parse_ts, unpack
 from .i18n import t
 
@@ -35,6 +35,8 @@ class Record:
     signed: bool | None = None       # для личности и предпочтений: подписана ли владельцем
     conflict: bool = False           # другая действующая запись о том же говорит иное
     agent_id: str | None = None      # Б11: идентификатор агента, создавшего запись
+    visibility: str = "private"      # В1: private | team_read | team_write
+    workspace_id: str | None = None  # В1: идентификатор команды
 
     def explain(self) -> str:
         d = decay(self.kind, self.last_confirmed_at)
@@ -164,13 +166,18 @@ class Memory:
     # -- L1: журнал эпизодов -------------------------------------------
 
     def log(self, content: str, role: str = "user",
-            scope: str = "global", priority: float = 1.0) -> str | None:
+            scope: str = "global", priority: float = 1.0,
+            actor: roles.ActorContext | None = None) -> str | None:
         """Эпизод в журнал L1. Мусор в журнал не идёт (сито кратковременного внимания, L0):
 
         строка без единой буквы и цифры (пустая, одни знаки) не пишется — возвращается None;
         точный повтор предыдущего эпизода той же роли за последние 60 секунд не дублируется —
         возвращается id уже записанного. Всё остальное пишется как есть.
         """
+        if actor is not None and actor.role == "auditor":
+            self._log_audit("log", None, actor=actor.role, agent_id=actor.subject,
+                            scope=scope, outcome="denied", detail="auditor read-only")
+            raise PermissionError(t("роль auditor не может записывать эпизоды", "auditor role is read-only"))
         content = safety.clean(content)
         if not re.search(r"\w", content or "") or not re.search(r"[^\W_]", content or ""):
             return None
@@ -202,7 +209,10 @@ class Memory:
                  agent_id: str | None = None,
                  valid_from: str | datetime | None = None,
                  valid_to: str | datetime | None = None,
-                 links: list | None = None) -> tuple[str, str]:
+                 links: list | None = None,
+                 visibility: str | None = None,
+                 workspace_id: str | None = None,
+                 actor: roles.ActorContext | None = None) -> tuple[str, str]:
         """Возвращает (исход, id записи).
 
         Исходы: created | duplicate | merged | superseded | coexists | quarantined
@@ -222,12 +232,42 @@ class Memory:
         if vf_str and vt_str and parse_ts(vt_str) <= parse_ts(vf_str):
             raise ValueError("valid_to must be after valid_from")
         norm_agent = (str(agent_id).strip()[:64] if agent_id else None) or None
-        with safety.одна_запись():          # виды текста строятся один раз на запись и не переживают её
-            исход, mid = self._remember(content, kind, importance, scope, source_episode_id, origin, guarded, norm_agent, vf_str, vt_str)
+        try:
+            vis = roles.check_write(actor, kind, visibility)
+        except PermissionError as exc:
+            self._log_audit("write", None, actor=actor.role if actor else (origin or "user"),
+                            agent_id=actor.subject if actor else norm_agent, scope=scope, kind=kind,
+                            outcome="denied", detail=str(exc))
+            raise
+        ws_id = workspace_id
+        if actor is not None and not actor.is_owner:
+            # Роль и субъект берутся исключительно из проверенного токена, а не из X-Agent-ID.
+            ws_id = actor.workspace_id
+            norm_agent = actor.subject
+            guarded = True
+            if origin == "user":
+                origin = "agent"
+        elif vis in roles.TEAM_VISIBILITIES and not ws_id:
+            wss = self.list_workspaces()
+            if len(wss) == 1:
+                ws_id = wss[0]["id"]
+            else:
+                raise ValueError(t("укажите workspace_id для командной записи",
+                                   "workspace_id is required for team records"))
+        try:
+            with safety.одна_запись():          # виды текста строятся один раз на запись и не переживают её
+                исход, mid = self._remember(
+                    content, kind, importance, scope, source_episode_id, origin, guarded,
+                    norm_agent, vf_str, vt_str, vis, ws_id, actor)
+        except PermissionError as exc:
+            self._log_audit("write", None, actor=actor.role if actor else (origin or "user"),
+                            agent_id=norm_agent, scope=scope, kind=kind,
+                            outcome="denied", detail=str(exc))
+            raise
         # При повторе mid — это уже существующая запись, возможно владельца. Связать её «выводом» из
         # чужой записи значило бы дать агенту способ стереть её каскадом при забвении источника.
         if derived_from and исход != "duplicate":
-            self._связать(derived_from, mid, relation="derived")
+            self._связать(derived_from, mid, relation="derived", actor=actor)
         if links and исход != "duplicate":
             for item in list(links)[:20]:
                 if isinstance(item, dict):
@@ -242,12 +282,13 @@ class Memory:
                 if not other or other == mid:
                     continue
                 if direction == "out":
-                    self._связать_пару(mid, other, relation=rel)
+                    self._связать_пару(mid, other, relation=rel, actor=actor)
                 else:
-                    self._связать([other], mid, relation=rel)
+                    self._связать([other], mid, relation=rel, actor=actor)
         if исход in ("created", "merged", "superseded", "coexists") and not (guarded and not config.MCP_TRUST_WRITES):
             self._подписать(mid)
-        self._log_audit("write", mid, actor=origin or "user", agent_id=norm_agent,
+        audit_actor = actor.role if actor is not None else (origin or "user")
+        self._log_audit("write", mid, actor=audit_actor, agent_id=norm_agent,
                         scope=scope, kind=kind, outcome=исход)
         return исход, mid
 
@@ -255,7 +296,10 @@ class Memory:
                   source_episode_id: str | None, origin: str, guarded: bool,
                   agent_id: str | None = None,
                   valid_from: str | None = None,
-                  valid_to: str | None = None) -> tuple[str, str]:
+                  valid_to: str | None = None,
+                  visibility: str = "private",
+                  workspace_id: str | None = None,
+                  actor: roles.ActorContext | None = None) -> tuple[str, str]:
         # Команда проверяется и по исходному тексту: маскирование секретов закрывает длинные случайные строки,
         # а base64 с командой внутри выглядит именно так — после маски раскодировать было бы нечего (аудит 09.11.2026).
         исходный = content
@@ -266,32 +310,46 @@ class Memory:
         kind = kind or classify.infer_kind(content)
         if kind not in config.KINDS:
             kind = "fact"
+        вид_по_тексту = classify.infer_kind_rules(content)
+        if visibility in roles.TEAM_VISIBILITIES and (
+            kind in config.PROTECTED_KINDS
+            or вид_по_тексту in config.PROTECTED_KINDS
+            or (origin != "user" and (safety.changes_owner_or_rules(content) or safety.changes_owner_or_rules(исходный)))
+        ):
+            raise PermissionError(t(
+                "записи identity, preference и правила владельца нельзя помещать в командную память",
+                "identity, preference and owner-rule records cannot be placed in team memory",
+            ))
         vec = embeddings.embed(content)
 
         if guarded and (safety.looks_like_instruction(content) or safety.looks_like_instruction(исходный)):
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
                 origin=origin, status="quarantined", reason="looks like an instruction",
-                agent_id=agent_id, valid_from=valid_from, valid_to=valid_to)
+                agent_id=agent_id, valid_from=valid_from, valid_to=valid_to,
+                visibility=visibility, workspace_id=workspace_id)
         # 0.4.13: необязательный второй слой — локальная модель-детектор (padam/guard.py), только для текста, где упомянут ИИ.
         # Выключен, пока не задан PADAM_GUARD_MODEL и не стоят пакеты [guard].
         if guarded and guard.flags(исходный):
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
                 origin=origin, status="quarantined", reason="looks like an instruction (classifier)",
-                agent_id=agent_id, valid_from=valid_from, valid_to=valid_to)
+                agent_id=agent_id, valid_from=valid_from, valid_to=valid_to,
+                visibility=visibility, workspace_id=workspace_id)
         if guarded and origin == "external" and config.HOLD_EXTERNAL:
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
                 origin=origin, status="quarantined", reason="external source held for the owner (PADAM_HOLD_EXTERNAL, on by default)",
-                agent_id=agent_id, valid_from=valid_from, valid_to=valid_to)
+                agent_id=agent_id, valid_from=valid_from, valid_to=valid_to,
+                visibility=visibility, workspace_id=workspace_id)
         # 0.4.1: граница, которая не зависит от пометки источника вовсе. Пометку ставит агент, а MCP не даёт серверу
         # способа проверить, откуда агент взял текст; с PADAM_MCP_REVIEW_ALL=1 ждёт владельца каждая запись агента.
         if guarded and config.MCP_REVIEW_ALL:
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
                 origin=origin, status="quarantined", reason="every agent write waits for the owner (PADAM_MCP_REVIEW_ALL)",
-                agent_id=agent_id, valid_from=valid_from, valid_to=valid_to)
+                agent_id=agent_id, valid_from=valid_from, valid_to=valid_to,
+                visibility=visibility, workspace_id=workspace_id)
 
         # Кто человек и как с ним работать, решает только он сам. Через MCP пометку origin
         # проверить нечем, поэтому запись о личности или предпочтении от агента или чужого
@@ -317,11 +375,11 @@ class Memory:
         # СНАЧАЛА точный поиск по структурному ключу, и только потом — по
         # близости векторов. Порядок важен: ключ находит спорящую запись
         # наверняка, а вектор — как повезёт. Подробности в `_по_ключу`.
-        по_ключу = self._по_ключу(content, scope)
+        по_ключу = self._по_ключу(content, scope, actor=actor)
         if по_ключу is not None:
             old_id, old_content = по_ключу
         else:
-            near = self._nearest_active(vec, kind, scope)
+            near = self._nearest_active(vec, kind, scope, actor=actor)
             threshold = config.similarity_threshold(embeddings.backend())
 
             if near is None or near[2] < threshold:
@@ -329,10 +387,12 @@ class Memory:
                     return "quarantined", self._insert(
                         content, kind, vec, importance, scope, source_episode_id,
                         origin=origin, status="quarantined", reason=причина_защиты,
-                        agent_id=agent_id, valid_from=valid_from, valid_to=valid_to)
+                        agent_id=agent_id, valid_from=valid_from, valid_to=valid_to,
+                        visibility=visibility, workspace_id=workspace_id)
                 return "created", self._insert(content, kind, vec, importance,
                                                scope, source_episode_id, origin=origin, agent_id=agent_id,
-                                               valid_from=valid_from, valid_to=valid_to)
+                                               valid_from=valid_from, valid_to=valid_to,
+                                               visibility=visibility, workspace_id=workspace_id)
 
             old_id, old_content, _ = near
         verdict = classify.resolve(content, old_content)
@@ -360,10 +420,21 @@ class Memory:
             if причина_защиты:
                 return "quarantined", self._insert(
                     content, kind, vec, importance, scope, source_episode_id,
-                    origin=origin, status="quarantined", reason=причина_защиты, agent_id=agent_id)
+                    origin=origin, status="quarantined", reason=причина_защиты, agent_id=agent_id,
+                    valid_from=valid_from, valid_to=valid_to,
+                    visibility=visibility, workspace_id=workspace_id)
             return "coexists", self._insert(content, kind, vec, importance,
                                             scope, source_episode_id, origin=origin, agent_id=agent_id,
-                                            valid_from=valid_from, valid_to=valid_to)
+                                            valid_from=valid_from, valid_to=valid_to,
+                                            visibility=visibility, workspace_id=workspace_id)
+
+        old_vis_row = self.store.one("SELECT visibility FROM memory WHERE id = ?", (old_id,))
+        if actor is not None and not actor.is_owner and actor.role == "contributor":
+            if old_vis_row and old_vis_row["visibility"] != "team_write":
+                raise PermissionError(t(
+                    "роль contributor не может перезаписывать запись с видимостью team_read/private",
+                    "contributor cannot supersede team_read or private records",
+                ))
 
         if guarded:
             старая = self.store.one("SELECT kind, origin FROM memory WHERE id = ?", (old_id,))
@@ -376,12 +447,14 @@ class Memory:
                 return "quarantined", self._insert(
                     content, kind, vec, importance, scope, source_episode_id,
                     supersedes=old_id, origin=origin, status="quarantined", reason=причина,
-                    agent_id=agent_id, valid_from=valid_from, valid_to=valid_to)
+                    agent_id=agent_id, valid_from=valid_from, valid_to=valid_to,
+                    visibility=visibility, workspace_id=workspace_id)
 
         # refinement и contradiction создают новую версию, закрывая окно старой и оставляя ребро графа
         new_mid = self._insert(content, kind, vec, importance, scope,
                                source_episode_id, supersedes=old_id, origin=origin,
-                               agent_id=agent_id, valid_from=valid_from, valid_to=valid_to)
+                               agent_id=agent_id, valid_from=valid_from, valid_to=valid_to,
+                               visibility=visibility, workspace_id=workspace_id)
         close_at = valid_from or now_iso()
         rel_type = "correction" if verdict == "refinement" else "contradiction"
         отметка_до = self.store.stamp()
@@ -396,15 +469,19 @@ class Memory:
 
     # -- связи выводов и подпись владельца ------------------------------
 
-    def _связать_пару(self, src: str, dst: str, relation: str = "derived") -> bool:
+    def _связать_пару(self, src: str, dst: str, relation: str = "derived",
+                      actor: roles.ActorContext | None = None) -> bool:
         """Создаёт одно направленное ребро графа между записями этого же пользователя."""
         rel = normalize_link_relation(relation)
         if not src or not dst or src == dst:
             return False
+        vis_sql, vis_params, _ = roles.visibility_sql(actor)
         s_row = self.store.one(
-            "SELECT 1 FROM memory WHERE id = ? AND user_id = ? AND status != 'revoked'", (src, self.user_id))
+            f"SELECT 1 FROM memory WHERE id = ? AND user_id = ? AND status != 'revoked'{vis_sql}",
+            (src, self.user_id, *vis_params))
         d_row = self.store.one(
-            "SELECT 1 FROM memory WHERE id = ? AND user_id = ? AND status != 'revoked'", (dst, self.user_id))
+            f"SELECT 1 FROM memory WHERE id = ? AND user_id = ? AND status != 'revoked'{vis_sql}",
+            (dst, self.user_id, *vis_params))
         if not s_row or not d_row:
             return False
         self.store.counters([
@@ -413,14 +490,17 @@ class Memory:
         ])
         return True
 
-    def _связать(self, источники: list[str], вывод: str, relation: str = "derived") -> int:
+    def _связать(self, источники: list[str], вывод: str, relation: str = "derived",
+                 actor: roles.ActorContext | None = None) -> int:
         """Связи графа («вывод сделан из записи» и другие типы рёбер). Не больше 20 за раз."""
         rel = normalize_link_relation(relation)
+        vis_sql, vis_params, _ = roles.visibility_sql(actor)
         ops = []
         ts = now_iso()
         for src in list(dict.fromkeys(источники))[:20]:
             if src == вывод or not self.store.one(
-                    "SELECT 1 FROM memory WHERE id = ? AND user_id = ?", (src, self.user_id)):
+                    f"SELECT 1 FROM memory WHERE id = ? AND user_id = ?{vis_sql}",
+                    (src, self.user_id, *vis_params)):
                 continue
             ops.append(("INSERT OR IGNORE INTO memory_link (src, dst, relation, created_at) VALUES (?,?,?,?)",
                         (src, вывод, rel, ts)))
@@ -429,15 +509,22 @@ class Memory:
             self.store.counters(ops)
         return len(ops)
 
-    def link(self, src_id: str, dst_id: str, relation: str = "derived") -> dict:
+    def link(self, src_id: str, dst_id: str, relation: str = "derived",
+             actor: roles.ActorContext | None = None) -> dict:
         """Явно связывает две записи памяти ребром типа derived | cause | correction | contradiction."""
+        if actor is not None and actor.role in ("auditor", "guest"):
+            self._log_audit("link", dst_id, actor=actor.role, agent_id=actor.subject, outcome="denied")
+            raise PermissionError(t("эта роль не может создавать связи", "this role cannot create links"))
         rel = normalize_link_relation(relation)
         if not src_id or not dst_id or src_id == dst_id:
             raise ValueError("source and target must be different non-empty record ids")
+        vis_sql, vis_params, _ = roles.visibility_sql(actor)
         s_row = self.store.one(
-            "SELECT 1 FROM memory WHERE id = ? AND user_id = ? AND status != 'revoked'", (src_id, self.user_id))
+            f"SELECT 1 FROM memory WHERE id = ? AND user_id = ? AND status != 'revoked'{vis_sql}",
+            (src_id, self.user_id, *vis_params))
         d_row = self.store.one(
-            "SELECT 1 FROM memory WHERE id = ? AND user_id = ? AND status != 'revoked'", (dst_id, self.user_id))
+            f"SELECT 1 FROM memory WHERE id = ? AND user_id = ? AND status != 'revoked'{vis_sql}",
+            (dst_id, self.user_id, *vis_params))
         if not s_row or not d_row:
             raise ValueError("source or target record not found")
         ts = now_iso()
@@ -445,7 +532,8 @@ class Memory:
             ("INSERT OR IGNORE INTO memory_link (src, dst, relation, created_at) VALUES (?,?,?,?)",
              (src_id, dst_id, rel, ts))
         ])
-        self._log_audit("link", dst_id, actor="owner", outcome=rel, detail=f"{src_id}->{dst_id}")
+        self._log_audit("link", dst_id, actor=actor.role if actor else "owner",
+                        agent_id=actor.subject if actor else None, outcome=rel, detail=f"{src_id}->{dst_id}")
         return {"ok": True, "source": src_id, "target": dst_id, "relation": rel, "created_at": ts}
 
     def links_of(self, memory_id: str) -> dict:
@@ -553,23 +641,24 @@ class Memory:
 
     # -- противоречия ----------------------------------------------------
 
-    def conflicts(self) -> list[dict]:
+    def conflicts(self, actor: roles.ActorContext | None = None) -> list[dict]:
         """Действующие записи, которые спорят: тот же объект и свойство, разные значения.
 
         В норме такая пара не возникает (новая версия заменяет старую), но её приносят импорт,
         принятие записи с проверки и ручные правки базы. Сон их находит и называет; какая верна,
         решает человек или следующее подтверждение.
         """
+        vis_sql, vis_params, _ = roles.visibility_sql(actor)
         группы = self.store.query(
-            """SELECT scope, факт_ключ, COUNT(*) AS n FROM memory
-               WHERE user_id = ? AND status = 'active' AND факт_ключ IS NOT NULL
-               GROUP BY scope, факт_ключ HAVING n > 1""", (self.user_id,))
+            f"""SELECT scope, факт_ключ, COUNT(*) AS n FROM memory
+               WHERE user_id = ? AND status = 'active' AND факт_ключ IS NOT NULL{vis_sql}
+               GROUP BY scope, факт_ключ HAVING n > 1""", (self.user_id, *vis_params))
         итог = []
         for г in группы:
             записи = self.store.query(
-                """SELECT id, content, origin, confidence, created_at FROM memory
-                   WHERE user_id = ? AND status = 'active' AND scope = ? AND факт_ключ = ?
-                   ORDER BY created_at""", (self.user_id, г["scope"], г["факт_ключ"]))
+                f"""SELECT id, content, origin, confidence, created_at FROM memory
+                   WHERE user_id = ? AND status = 'active' AND scope = ? AND факт_ключ = ?{vis_sql}
+                   ORDER BY created_at""", (self.user_id, г["scope"], г["факт_ключ"], *vis_params))
             итог.append({"scope": г["scope"], "key": г["факт_ключ"], "records": [dict(r) for r in записи]})
         return итог
 
@@ -655,7 +744,9 @@ class Memory:
                 status: str = "active", reason: str | None = None,
                 agent_id: str | None = None,
                 valid_from: str | None = None,
-                valid_to: str | None = None) -> str:
+                valid_to: str | None = None,
+                visibility: str = "private",
+                workspace_id: str | None = None) -> str:
         mid = new_id()
         ts = now_iso()
         vf = valid_from or ts
@@ -666,34 +757,48 @@ class Memory:
                 confidence, created_at, last_seen_at, last_confirmed_at,
                 valid_from, valid_to, expires_at, status, supersedes,
                 source_episode_id, content_hash, embedding_model, факт_ключ,
-                origin, quarantine_reason, agent_id)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                origin, quarantine_reason, agent_id, visibility, workspace_id)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (mid, self.user_id, scope, kind, content, pack(vec),
              max(0.0, min(1.0, importance)), config.ORIGIN_CONFIDENCE.get(origin, 1.0),
              ts, ts, ts, vf, valid_to, expires_at, status,
              supersedes, source_episode_id, content_hash(content),
              embeddings.метка_модели(), classify.разобрать_факт(content)[0],
-             origin, reason, agent_id))
-        self._дописать_в_кэш(отметка_до, mid, scope, kind, vec, status)
+             origin, reason, agent_id, visibility, workspace_id))
+        self._дописать_в_кэш(отметка_до, mid, scope, kind, vec, status, visibility=visibility, workspace_id=workspace_id)
         return mid
 
     # -- проверка владельцем -------------------------------------------
 
-    def quarantined(self) -> list[dict]:
+    def quarantined(self, actor: roles.ActorContext | None = None) -> list[dict]:
         """Записи, которые агент хотел внести и которые ждут решения владельца."""
+        roles.require_moderate(actor)
+        vis_sql, vis_params, _ = roles.visibility_sql(actor)
         return [dict(r) for r in self.store.query(
-            """SELECT id, kind, content, origin, created_at, supersedes, quarantine_reason
-               FROM memory WHERE user_id = ? AND status = 'quarantined'
-               ORDER BY created_at""", (self.user_id,))]
+            f"""SELECT id, kind, content, origin, created_at, supersedes, quarantine_reason, visibility, workspace_id
+               FROM memory WHERE user_id = ? AND status = 'quarantined'{vis_sql}
+               ORDER BY created_at""", (self.user_id, *vis_params))]
 
-    def approve(self, memory_id: str) -> bool:
-        """Владелец принял запись: она становится действующей и, если нужно, заменяет прежнюю."""
+    def approve(self, memory_id: str, actor: roles.ActorContext | None = None) -> bool:
+        """Владелец или maintainer команды принял запись: она становится действующей."""
+        try:
+            roles.require_moderate(actor)
+        except PermissionError as exc:
+            self._log_audit("approve", memory_id, actor=actor.role if actor else "user",
+                            agent_id=actor.subject if actor else None, outcome="denied", detail=str(exc))
+            raise
         row = self.store.one(
-            """SELECT supersedes, valid_from, content FROM memory
+            """SELECT supersedes, valid_from, content, kind, visibility, workspace_id FROM memory
                WHERE id = ? AND user_id = ? AND status = 'quarantined'""",
             (memory_id, self.user_id))
         if not row:
             return False
+        if actor is not None and not actor.is_owner:
+            if (row["visibility"] == "private" or row["workspace_id"] != actor.workspace_id
+                    or row["kind"] in config.PROTECTED_KINDS):
+                self._log_audit("approve", memory_id, actor=actor.role, agent_id=actor.subject, outcome="denied")
+                raise PermissionError(t("нельзя утверждать чужую, private или защищённую запись",
+                                        "cannot approve private, protected or cross-workspace record"))
         ts = now_iso()
         ops = [("""UPDATE memory SET status = 'active', confidence = 1.0,
                    last_confirmed_at = ?, quarantine_reason = NULL WHERE id = ?""",
@@ -715,23 +820,48 @@ class Memory:
                            VALUES (?,?,?,?)""",
                         (row["supersedes"], memory_id, rel_type, ts)))
         self.store.atomic(ops)
-        self._подписать(memory_id)       # принял владелец — значит запись его
-        self._log_audit("approve", memory_id, actor="owner", outcome="active")
+        if roles.is_owner(actor):
+            self._подписать(memory_id)       # подписывает только владелец
+        self._log_audit("approve", memory_id, actor=actor.role if actor else "owner",
+                        agent_id=actor.subject if actor else None, outcome="active")
         return True
 
-    def reject(self, memory_id: str) -> bool:
-        """Владелец отклонил запись. Текст остаётся в истории, в поиск она не попадает."""
+    def reject(self, memory_id: str, actor: roles.ActorContext | None = None) -> bool:
+        """Владелец или maintainer команды отклонил запись."""
+        try:
+            roles.require_moderate(actor)
+        except PermissionError as exc:
+            self._log_audit("reject", memory_id, actor=actor.role if actor else "user",
+                            agent_id=actor.subject if actor else None, outcome="denied", detail=str(exc))
+            raise
+        if actor is not None and not actor.is_owner:
+            row = self.store.one(
+                "SELECT kind, visibility, workspace_id FROM memory WHERE id = ? AND user_id = ? AND status = 'quarantined'",
+                (memory_id, self.user_id))
+            if not row:
+                return False
+            if row["visibility"] == "private" or row["workspace_id"] != actor.workspace_id or row["kind"] in config.PROTECTED_KINDS:
+                self._log_audit("reject", memory_id, actor=actor.role, agent_id=actor.subject, outcome="denied")
+                raise PermissionError(t("нельзя отклонять чужую или private запись",
+                                        "cannot reject private or cross-workspace record"))
         cur = self.store.execute(
             """UPDATE memory SET status = 'rejected'
                WHERE id = ? AND user_id = ? AND status = 'quarantined'""",
             (memory_id, self.user_id))
         ok = cur.rowcount > 0
         if ok:
-            self._log_audit("reject", memory_id, actor="owner", outcome="rejected")
+            self._log_audit("reject", memory_id, actor=actor.role if actor else "owner",
+                            agent_id=actor.subject if actor else None, outcome="rejected")
         return ok
 
-    def restore(self, memory_id: str) -> bool:
-        """Вернуть из архива запись, которую опровергли зря."""
+    def restore(self, memory_id: str, actor: roles.ActorContext | None = None) -> bool:
+        """Вернуть из архива запись, которую опровергли зря (только владелец)."""
+        try:
+            roles.require_owner(actor, "restore")
+        except PermissionError as exc:
+            self._log_audit("restore", memory_id, actor=actor.role if actor else "user",
+                            agent_id=actor.subject if actor else None, outcome="denied", detail=str(exc))
+            raise
         cur = self.store.execute(
             """UPDATE memory SET status = 'active', confidence = 0.5
                WHERE id = ? AND user_id = ? AND status = 'archived'""",
@@ -794,7 +924,7 @@ class Memory:
             (self.user_id, scope, с + " %", "%" + с + " %", предел))
         return [r["content"] for r in rows]
 
-    def _по_ключу(self, content, scope):
+    def _по_ключу(self, content, scope, actor: roles.ActorContext | None = None):
         """Действующая запись о ТОМ ЖЕ свойстве того же объекта, или None.
 
         🔴 ЗАЧЕМ ЭТО НУЖНО СВЕРХ ПОИСКА ПО ВЕКТОРУ (найдено замером 05.09.2026).
@@ -815,35 +945,38 @@ class Memory:
         ключ = classify.разобрать_факт(content)[0]
         if not ключ:
             return None
+        vis_sql, vis_params, _ = roles.visibility_sql(actor)
         rows = self.store.query(
-            """SELECT id, content FROM memory
+            f"""SELECT id, content FROM memory
                WHERE user_id = ? AND scope = ? AND факт_ключ = ?
-                 AND status = 'active'
+                 AND status = 'active'{vis_sql}
                ORDER BY created_at DESC, rowid DESC LIMIT 1""",
-            (self.user_id, scope, ключ))
+            (self.user_id, scope, ключ, *vis_params))
         return (rows[0]["id"], rows[0]["content"]) if rows else None
 
-    def _nearest_active(self, vec, kind, scope):
+    def _nearest_active(self, vec, kind, scope, actor: roles.ActorContext | None = None):
         # 0.4.4: одно матричное умножение вместо цикла Python по каждой записи, без текста всех записей, и
         # векторы держатся в памяти процесса. Замер 09.11.2026 (benchmarks/scale): каждая запись сравнивалась со
         # всеми сохранёнными по одной — 117,5 мс на запись при 6 000 записях, запись 10 000 реплик шла дольше
         # 25 минут. Итог тот же: близость = clip(a·b, -1, 1), 0 при другой размерности (векторы другой модели),
         # из равных — первая. Кэш сверяется с отметкой базы (свои коммиты + data_version) и не расходится с ней.
+        vis_sql, vis_params, _ = roles.visibility_sql(actor)
         if vec is None or not vec.size:
-            rows = self.store.query("""SELECT id FROM memory WHERE user_id = ? AND scope = ? AND kind = ?
-                                       AND status = 'active' AND embedding IS NOT NULL""", (self.user_id, scope, kind))
+            rows = self.store.query(f"""SELECT id FROM memory WHERE user_id = ? AND scope = ? AND kind = ?
+                                       AND status = 'active' AND embedding IS NOT NULL{vis_sql}""",
+                                    (self.user_id, scope, kind, *vis_params))
             if not rows:
                 return None
             r = self.store.one("SELECT content FROM memory WHERE id = ?", (rows[0]["id"],))
             return (rows[0]["id"], r["content"], 0.0)
         v = np.asarray(vec, dtype=np.float32)
         try:
-            ids, M = self._векторы(scope, kind, v.size)
+            ids, M = self._векторы(scope, kind, v.size, actor=actor)
         except MemoryError:
             # 0.4.8: кэш — только ускорение. Не хватило памяти — сбросить его и считать частями из базы, а не ронять
             # запись (замер 10.11.2026: ArrayMemoryError на ~50 000 записях при удвоении буфера).
             self.__dict__.pop("_вкэш", None)
-            return self._nearest_частями(v, kind, scope)
+            return self._nearest_частями(v, kind, scope, actor=actor)
         if not ids:
             return None
         sims = np.zeros(len(ids), dtype=np.float64)
@@ -854,15 +987,17 @@ class Memory:
         content = self.store.one("SELECT content FROM memory WHERE id = ?", (ids[i],))["content"]
         return (ids[i], content, float(sims[i]))
 
-    def _nearest_частями(self, v, kind, scope, часть=5000):
+    def _nearest_частями(self, v, kind, scope, часть=5000, actor: roles.ActorContext | None = None):
         """Тот же итог, что у _nearest_active, без матрицы в памяти: векторы читаются из базы частями по 5 000."""
+        vis_sql, vis_params, _ = roles.visibility_sql(actor)
         лучший, лучшая_близость, первый = None, -2.0, None
         последний = 0
         while True:
             rows = self.store.query(
-                """SELECT rowid, id, embedding FROM memory
+                f"""SELECT rowid, id, embedding FROM memory
                    WHERE user_id = ? AND scope = ? AND kind = ? AND status = 'active' AND embedding IS NOT NULL
-                     AND rowid > ? ORDER BY rowid LIMIT ?""", (self.user_id, scope, kind, последний, часть))
+                     AND rowid > ?{vis_sql} ORDER BY rowid LIMIT ?""",
+                (self.user_id, scope, kind, последний, *vis_params, часть))
             if not rows:
                 break
             последний = rows[-1]["rowid"]
@@ -879,19 +1014,20 @@ class Memory:
         content = self.store.one("SELECT content FROM memory WHERE id = ?", (лучший,))["content"]
         return (лучший, content, лучшая_близость)
 
-    def _векторы(self, scope, kind, dim):
+    def _векторы(self, scope, kind, dim, actor: roles.ActorContext | None = None):
         """(ids всех действующих записей с вектором, (матрица векторов размерности dim, их номера в ids))."""
+        vis_sql, vis_params, vis_key = roles.visibility_sql(actor)
         кэш = self.__dict__.setdefault("_вкэш", {})
-        ключ = (scope, kind, dim)
+        ключ = (scope, kind, dim, vis_key)
         отметка = self.store.stamp()
         было = кэш.get(ключ)
         if было is not None and было[0] == отметка:
             return было[1], было[2]
         rows = self.store.query(
-            """SELECT id, embedding FROM memory
+            f"""SELECT id, embedding FROM memory
                WHERE user_id = ? AND scope = ? AND kind = ?
-                 AND status = 'active' AND embedding IS NOT NULL ORDER BY rowid""",
-            (self.user_id, scope, kind))
+                 AND status = 'active' AND embedding IS NOT NULL{vis_sql} ORDER BY rowid""",
+            (self.user_id, scope, kind, *vis_params))
         ids = [r["id"] for r in rows]
         годные = [i for i, r in enumerate(rows) if len(r["embedding"]) == dim * 4]
         # Буфер с запасом: дописывание своей записи не копирует всю матрицу (рост ёмкости, в среднем O(1)).
@@ -957,7 +1093,8 @@ class Memory:
                     живые[живые > i] -= 1
             кэш[ключ] = (после, ids, (буфер, n, номера))
 
-    def _дописать_в_кэш(self, отметка_до, mid, scope, kind, vec, status):
+    def _дописать_в_кэш(self, отметка_до, mid, scope, kind, vec, status,
+                        visibility: str = "private", workspace_id: str | None = None):
         """Своя вставка — единственный коммит после отметки: вектор дописывается, а не перечитывается всё."""
         кэш = self.__dict__.get("_вкэш")
         if not кэш:
@@ -968,7 +1105,13 @@ class Memory:
             if отметка != отметка_до or после != (отметка_до[0] + 1, отметка_до[1]):
                 del кэш[ключ]
                 continue
-            if status == "active" and vec is not None:
+            vis_key = ключ[3] if len(ключ) > 3 else ("owner", None)
+            видна_для_кэша = (
+                vis_key == ("owner", None)
+                or (visibility in roles.TEAM_VISIBILITIES and workspace_id == vis_key[1]
+                    and kind not in config.PROTECTED_KINDS)
+            )
+            if видна_для_кэша and status == "active" and vec is not None:
                 ids.append(mid)
                 if vec.size == ключ[2]:
                     if n == len(буфер):
@@ -991,7 +1134,8 @@ class Memory:
                kind: str | None = None, limit: int = 10,
                session_id: str | None = None,
                as_of: str | datetime | None = None,
-               agent_id: str | None = None) -> list[Record]:
+               agent_id: str | None = None,
+               actor: roles.ActorContext | None = None) -> list[Record]:
         """Поиск в одной области памяти. Подробности — в `_recall`.
 
         Запрос дополняется синонимами терминов (`add_alias`); каждая найденная запись получает
@@ -1000,9 +1144,9 @@ class Memory:
         self.__dict__["_показы"] = []
         запрос = self._расширить(query)
         внутр_лимит = max(limit, config.RERANK_TOP_K) if config.RERANK else limit
-        найдено = self._recall(запрос, scope, kind, внутр_лимит, session_id, as_of, agent_id=agent_id)
+        найдено = self._recall(запрос, scope, kind, внутр_лимит, session_id, as_of, agent_id=agent_id, actor=actor)
         if config.SEARCH_FEEDBACK and найдено and not agent_id:
-            найдено = self._второй_проход(запрос, найдено, scope, kind, внутр_лимит, session_id, as_of)
+            найдено = self._второй_проход(запрос, найдено, scope, kind, внутр_лимит, session_id, as_of, actor=actor)
         if config.RERANK and len(найдено) > 1:
             найдено = retrieval.rerank_records(
                 query, найдено, top_k=config.RERANK_TOP_K, model_dir=config.RERANK_MODEL
@@ -1018,14 +1162,14 @@ class Memory:
         self._пометить(найдено)
         return найдено
 
-    def _второй_проход(self, запрос, найдено, scope, kind, limit, session_id, as_of):
+    def _второй_проход(self, запрос, найдено, scope, kind, limit, session_id, as_of, actor=None):
         """Псевдо-обратная связь (config.SEARCH_FEEDBACK): слова, общие для двух из пяти первых записей,
         дописываются к запросу; два списка сливаются обратным рангом (k = 60), как стратегии внутри поиска.
         Оценка записи (score) остаётся её собственной — меняется только порядок."""
         слова = retrieval.feedback_terms(запрос, [r.content for r in найдено[:5]])
         if not слова:
             return найдено
-        второе = self._recall(запрос + " " + " ".join(слова), scope, kind, limit, session_id, as_of)
+        второе = self._recall(запрос + " " + " ".join(слова), scope, kind, limit, session_id, as_of, actor=actor)
         балл: dict[str, float] = {}
         запись: dict[str, Record] = {}
         for список in (найдено, второе):
@@ -1036,7 +1180,8 @@ class Memory:
         return [запись[i] for i in порядок[:limit]]
 
     def recall_many(self, query: str, scopes: list[str], kind: str | None = None,
-                    limit: int = 10, as_of: str | datetime | None = None) -> list[Record]:
+                    limit: int = 10, as_of: str | datetime | None = None,
+                    actor: roles.ActorContext | None = None) -> list[Record]:
         """Поиск сразу в нескольких областях — явный мост между ролями («работа» и «дом»).
 
         Без него области не смешиваются: каждая ищется отдельно, итог сводится по баллу,
@@ -1046,7 +1191,7 @@ class Memory:
         всё: list[Record] = []
         self.__dict__["_показы"] = []
         for s in list(dict.fromkeys(scopes))[:10]:
-            всё += self._recall(запрос, s, kind, limit, None, as_of)
+            всё += self._recall(запрос, s, kind, limit, None, as_of, actor=actor)
         всё.sort(key=lambda x: x.score, reverse=True)
         self._учесть_поиск(not всё if as_of is None else None)
         self._пометить(всё[:limit])
@@ -1056,7 +1201,7 @@ class Memory:
         if not записи:
             return
         строки = {r["id"]: r for r in self.store.query(
-            f"""SELECT id, kind, content, owner_sig, факт_ключ, scope, agent_id FROM memory
+            f"""SELECT id, kind, content, owner_sig, факт_ключ, scope, agent_id, visibility, workspace_id FROM memory
                 WHERE id IN ({",".join("?" * len(записи))})""", tuple(з.id for з in записи))}
         спорные = {(r["scope"], r["факт_ключ"]) for r in self.store.query(
             """SELECT scope, факт_ключ FROM memory WHERE user_id = ? AND status = 'active'
@@ -1068,6 +1213,8 @@ class Memory:
                 continue
             з.scope = r["scope"]
             з.agent_id = r["agent_id"]
+            з.visibility = r["visibility"] or "private"
+            з.workspace_id = r["workspace_id"]
             if ключ is not None and integrity.protected(з.kind) and з.status == "active":
                 з.signed = integrity.valid(ключ, r)
             з.conflict = з.status == "active" and (r["scope"], r["факт_ключ"]) in спорные
@@ -1076,7 +1223,8 @@ class Memory:
                 kind: str | None = None, limit: int = 10,
                 session_id: str | None = None,
                 as_of: str | datetime | None = None,
-                agent_id: str | None = None) -> list[Record]:
+                agent_id: str | None = None,
+                actor: roles.ActorContext | None = None) -> list[Record]:
         """Гибридный поиск: вектор + BM25 + точные идентификаторы, RRF.
 
         Итог: rrf × важность × уверенность × затухание × свежесть сессии.
@@ -1096,16 +1244,20 @@ class Memory:
                  WHERE user_id = ? AND scope = ? AND status IN ({",".join("?" * len(statuses))})"""
         # Порядок строк задан явно (0.4.4): от него зависит, какая из равных записей выше.
         params: list = [self.user_id, scope, *statuses]
+        vis_sql, vis_params, vis_key = roles.visibility_sql(actor)
         if kind:
             sql += " AND kind = ?"
             params.append(kind)
         if agent_id:
             sql += " AND agent_id = ?"
             params.append(agent_id)
+        if vis_sql:
+            sql += vis_sql
+            params.extend(vis_params)
         sql += " ORDER BY rowid"
 
         if not момент:
-            rows, статусы = self._кандидаты(sql, tuple(params))
+            rows, статусы = self._кандидаты(sql, tuple(params), cache_tag=vis_key)
             if not rows:
                 return []
             return self._ранжировать(query, scope, statuses, rows, статусы, session_id, limit, момент)
@@ -1131,7 +1283,7 @@ class Memory:
         return self._ранжировать(query, scope, statuses, rows, статусы, session_id, limit, момент)
 
 
-    def _кандидаты(self, sql, params):
+    def _кандидаты(self, sql, params, cache_tag=("owner", None)):
         """0.4.10: кандидаты поиска (текст, вектор, поля оценки) один раз на состояние базы, а не на каждый поиск.
         Замер 11.11.2026 на 10 000 записях: 2,81 из 4,15 с на 20 поисков уходило на этот SELECT — каждый
         поиск заново читал и распаковывал все действующие записи. Кэш сверяется с store.stamp() (свои
@@ -1140,7 +1292,8 @@ class Memory:
         Строки только читаются дальше; итог поиска тот же, что без кэша."""
         кэш = self.__dict__.setdefault("_ккэш", {})
         отметка = self.store.stamp()
-        было = кэш.get(params)
+        ключ_кэша = (cache_tag, params)
+        было = кэш.get(ключ_кэша)
         if было is not None and было[0] == отметка and было[1] == sql:
             return было[2], было[3]
         raw = self.store.query(sql, params)
@@ -1154,7 +1307,7 @@ class Memory:
                  "created_at": r["created_at"],
                  "_ents": self._сущности_записи(r["id"], r["content"])} for r in raw]
         rows = self._с_матрицей(rows)
-        кэш[params] = (отметка, sql, rows, статусы)
+        кэш[ключ_кэша] = (отметка, sql, rows, статусы)
         return rows, статусы
 
     @staticmethod
@@ -1230,12 +1383,31 @@ class Memory:
              (показано, rec.id)) for rec in top)
         return top
 
-    def confirm(self, memory_id: str) -> bool:
+    def _check_record_write(self, memory_id: str, actor: roles.ActorContext | None, action: str) -> None:
+        if actor is None or actor.is_owner:
+            return
+        if actor.role == "auditor":
+            self._log_audit(action, memory_id, actor=actor.role, agent_id=actor.subject, outcome="denied")
+            raise PermissionError(t("роль auditor может только читать", "auditor role is read-only"))
+        row = self.store.one(
+            "SELECT kind, visibility, workspace_id FROM memory WHERE id = ? AND user_id = ?",
+            (memory_id, self.user_id))
+        if not row:
+            return
+        if row["visibility"] == "private" or row["workspace_id"] != actor.workspace_id or row["kind"] in config.PROTECTED_KINDS:
+            self._log_audit(action, memory_id, actor=actor.role, agent_id=actor.subject, outcome="denied")
+            raise PermissionError(t("нет прав изменять эту запись", "no permission to modify this record"))
+        if row["visibility"] == "team_read" and actor.role == "contributor":
+            self._log_audit(action, memory_id, actor=actor.role, agent_id=actor.subject, outcome="denied")
+            raise PermissionError(t("contributor не может менять team_read запись", "contributor cannot modify team_read record"))
+
+    def confirm(self, memory_id: str, actor: roles.ActorContext | None = None) -> bool:
         """Запись оказалась верной: обновить свежесть, поднять уверенность.
 
         Это то, что должно вызываться, когда извлечённая запись подтвердилась
         в разговоре, а не при каждом показе.
         """
+        self._check_record_write(memory_id, actor, "confirm")
         cur = self.store.execute(
             """UPDATE memory SET last_confirmed_at = ?,
                confidence = MIN(confidence + 0.05, 1.0)
@@ -1244,7 +1416,7 @@ class Memory:
         return cur.rowcount > 0
 
     def refute(self, memory_id: str, drop: float = 0.3,
-               floor: float = 0.0) -> bool:
+               floor: float = 0.0, actor: roles.ActorContext | None = None) -> bool:
         """Запись оказалась неверной: снизить уверенность.
 
         Свежесть НЕ обновляется. Если уверенность падает до нуля, запись уходит в архив, но
@@ -1252,6 +1424,7 @@ class Memory:
         защищённую запись. Несуществующая или уже недействующая запись — False, без молчаливого
         успеха.
         """
+        self._check_record_write(memory_id, actor, "refute")
         drop = max(0.0, min(float(drop), 1.0))
         cur = self.store.execute(
             """UPDATE memory SET confidence = MAX(confidence - ?, ?),
@@ -1295,7 +1468,8 @@ class Memory:
                     (self.user_id, row["content_hash"]))]
         return list(видел.values())
 
-    def revoke(self, memory_id: str, cascade: bool = True, with_derived: bool = False) -> bool:
+    def revoke(self, memory_id: str, cascade: bool = True, with_derived: bool = False,
+               actor: roles.ActorContext | None = None) -> bool:
         """Физическое затирание содержания. Хеш и якорь остаются.
 
         По умолчанию вместе с записью затираются её прежние и новые версии, точные копии и
@@ -1305,6 +1479,12 @@ class Memory:
         with_derived — ещё и все выводы, сделанные из этой записи (связи derived_from), со всеми
         их версиями: иначе забытое восстанавливается из выводов.
         """
+        try:
+            roles.require_owner(actor, "forget")
+        except PermissionError as exc:
+            self._log_audit("forget", memory_id, actor=actor.role if actor else "user",
+                            agent_id=actor.subject if actor else None, outcome="denied", detail=str(exc))
+            raise
         записи = self._связанные(memory_id)
         if not cascade:
             записи = [з for з in записи if з["id"] == memory_id]
@@ -1401,7 +1581,8 @@ class Memory:
     def list_records(self, view: str = "active", text: str | None = None,
                      limit: int = 100, offset: int = 0, as_of: str | None = None,
                      kind: str | None = None, scope: str | None = None,
-                     agent_id: str | None = None) -> dict:
+                     agent_id: str | None = None,
+                     actor: roles.ActorContext | None = None) -> dict:
         """Записи для просмотра владельцем: действующие, на проверке или история, новые сверху.
 
         as_of — все записи, что действовали в тот момент, включая заменённые позже.
@@ -1422,9 +1603,14 @@ class Memory:
         if agent_id:
             sql += " AND agent_id = ?"
             params.append(agent_id)
+        vis_sql, vis_params, _ = roles.visibility_sql(actor)
+        if vis_sql:
+            sql += vis_sql
+            params.extend(vis_params)
         поля = ("SELECT id, kind, scope, content, status, origin, agent_id, confidence, importance, created_at, "
                 "last_seen_at, last_confirmed_at, access_count, refuted_count, "
-                "valid_from, valid_to, quarantine_reason, supersedes, superseded_by, anchor_tx, anchor_slot ")
+                "valid_from, valid_to, quarantine_reason, supersedes, superseded_by, anchor_tx, anchor_slot, "
+                "visibility, workspace_id ")
         предел, сдвиг = max(1, min(int(limit), 500)), max(0, int(offset))
         def _обогатить(row_list):
             out = []
@@ -1446,14 +1632,16 @@ class Memory:
                                 tuple(params) + (предел, сдвиг))
         return {"view": view, "total": всего, "records": _обогатить(rows)}
 
-    def timeline(self, memory_id: str) -> list[dict]:
+    def timeline(self, memory_id: str, actor: roles.ActorContext | None = None) -> list[dict]:
         """Цепочка версий: от текущей вглубь, к самой первой."""
+        vis_sql, vis_params, _ = roles.visibility_sql(actor)
         chain, seen, cur_id = [], set(), memory_id
         while cur_id and cur_id not in seen:
             seen.add(cur_id)
             row = self.store.one(
-                """SELECT id, content, status, created_at, supersedes
-                   FROM memory WHERE id = ? AND user_id = ?""", (cur_id, self.user_id))
+                f"""SELECT id, content, status, created_at, supersedes, visibility, workspace_id
+                   FROM memory WHERE id = ? AND user_id = ?{vis_sql}""",
+                (cur_id, self.user_id, *vis_params))
             if not row:
                 break
             chain.append(dict(row))
@@ -1464,7 +1652,8 @@ class Memory:
 
     def export(self, include_superseded: bool = True,
                scope: str | None = None, limit: int | None = None,
-               offset: int = 0, include_held: bool = True) -> dict:
+               offset: int = 0, include_held: bool = True,
+               actor: roles.ActorContext | None = None) -> dict:
         """Полная выгрузка памяти. Доступна всегда, без окна и без условий.
 
         Формат самодостаточен: по нему можно восстановить состояние в
@@ -1482,6 +1671,10 @@ class Memory:
             sql += " AND status = 'active'"
         if not include_held:
             sql += " AND status NOT IN ('quarantined', 'rejected')"
+        vis_sql, vis_params, _ = roles.visibility_sql(actor)
+        if vis_sql:
+            sql += vis_sql
+            params.extend(vis_params)
         sql += " ORDER BY created_at"
         всего = self.store.one("SELECT COUNT(*) FROM (" + sql + ")", tuple(params))[0]
         if limit is not None:
@@ -1593,35 +1786,36 @@ class Memory:
 
     # -- статистика -----------------------------------------------------
 
-    def stats(self) -> dict:
+    def stats(self, actor: roles.ActorContext | None = None) -> dict:
+        vis_sql, vis_params, _ = roles.visibility_sql(actor)
         def scalar(sql, params=()):
             row = self.store.one(sql, params)
             return row[0] if row else 0
 
         by_kind = {
             r["kind"]: r["n"] for r in self.store.query(
-                """SELECT kind, COUNT(*) AS n FROM memory
-                   WHERE user_id = ? AND status = 'active'
-                   GROUP BY kind""", (self.user_id,))}
+                f"""SELECT kind, COUNT(*) AS n FROM memory
+                   WHERE user_id = ? AND status = 'active'{vis_sql}
+                   GROUP BY kind""", (self.user_id, *vis_params))}
         ожидает = scalar(
             "SELECT COUNT(*) FROM episode WHERE user_id=? AND processed=0",
-            (self.user_id,))
+            (self.user_id,)) if roles.is_owner(actor) else 0
 
         return {
             "backend": embeddings.backend(),
             "db": str(self.store.path),
             "active": scalar(
-                "SELECT COUNT(*) FROM memory WHERE user_id=? AND status='active'",
-                (self.user_id,)),
+                f"SELECT COUNT(*) FROM memory WHERE user_id=? AND status='active'{vis_sql}",
+                (self.user_id, *vis_params)),
             "superseded": scalar(
-                "SELECT COUNT(*) FROM memory WHERE user_id=? AND status='superseded'",
-                (self.user_id,)),
+                f"SELECT COUNT(*) FROM memory WHERE user_id=? AND status='superseded'{vis_sql}",
+                (self.user_id, *vis_params)),
             "revoked": scalar(
-                "SELECT COUNT(*) FROM memory WHERE user_id=? AND status='revoked'",
-                (self.user_id,)),
+                f"SELECT COUNT(*) FROM memory WHERE user_id=? AND status='revoked'{vis_sql}",
+                (self.user_id, *vis_params)),
             "quarantined": scalar(
-                "SELECT COUNT(*) FROM memory WHERE user_id=? AND status='quarantined'",
-                (self.user_id,)),
+                f"SELECT COUNT(*) FROM memory WHERE user_id=? AND status='quarantined'{vis_sql}",
+                (self.user_id, *vis_params)),
             "episodes_pending": ожидает,
             "consolidation_due": ожидает >= config.CONSOLIDATION_DUE,
             "stale_vectors": scalar(
@@ -1654,8 +1848,9 @@ class Memory:
             (self.user_id, max(1, min(int(limit), 100))))
         return [dict(r) for r in rows]
 
-    def forget_preview(self, memory_id: str) -> dict | None:
+    def forget_preview(self, memory_id: str, actor: roles.ActorContext | None = None) -> dict | None:
         """Предпросмотр удаления: сама запись, цепочка версий и все выводы из неё."""
+        roles.require_owner(actor, "forget")
         row = self.store.one(
             """SELECT id, kind, scope, content, status, created_at, content_hash, anchor_tx
                FROM memory WHERE id = ? AND user_id = ?""",
@@ -1690,8 +1885,9 @@ class Memory:
             "links": self.links_of(memory_id),
         }
 
-    def forget_receipts(self, limit: int = 50) -> list[dict]:
+    def forget_receipts(self, limit: int = 50, actor: roles.ActorContext | None = None) -> list[dict]:
         """Выданные квитанции об удалении (доказательства забвения)."""
+        roles.require_owner(actor, "forget-receipts")
         import json as _json
         rows = self.store.query(
             """SELECT receipt_id, memory_id, forgotten_at, content_hash_sha256,
@@ -1868,7 +2064,8 @@ class Memory:
         }
 
     def graph(self, center_id: str | None = None, limit: int = 200,
-              as_of: str | datetime | None = None) -> dict:
+              as_of: str | datetime | None = None,
+              actor: roles.ActorContext | None = None) -> dict:
         """Граф связей для Studio и API (/graph?id=&as_of=):
         - derived (источник): вывод сделан из источника (таблица memory_link)
         - cause (причина): причинно-следственная связь (таблица memory_link)
@@ -1881,14 +2078,21 @@ class Memory:
         предел = max(10, min(int(limit), 500))
         момент = parse_as_of(as_of) if as_of is not None and str(as_of).strip() else None
 
+        vis_sql_m, vis_params, _ = roles.visibility_sql(actor, alias="m")
+        vis_sql, _, _ = roles.visibility_sql(actor)
         все_ссылки = self.store.query(
-            """SELECT l.src, l.dst, COALESCE(l.relation, 'derived') AS relation, l.created_at
-               FROM memory_link l JOIN memory m ON m.id = l.dst
-               WHERE m.user_id = ? AND m.status != 'revoked'""", (self.user_id,))
+            f"""SELECT l.src, l.dst, COALESCE(l.relation, 'derived') AS relation, l.created_at
+               FROM memory_link l
+               JOIN memory m ON m.id = l.dst
+               JOIN memory s ON s.id = l.src
+               WHERE m.user_id = ? AND m.status != 'revoked' AND s.status != 'revoked'
+                 {vis_sql_m}{roles.visibility_sql(actor, alias="s")[0]}""",
+            (self.user_id, *vis_params, *vis_params))
         версии_строки = self.store.query(
-            """SELECT id, supersedes, created_at FROM memory
-               WHERE user_id = ? AND supersedes IS NOT NULL AND status != 'revoked'""", (self.user_id,))
-        споры = self.conflicts()
+            f"""SELECT id, supersedes, created_at FROM memory
+               WHERE user_id = ? AND supersedes IS NOT NULL AND status != 'revoked'{vis_sql}""",
+            (self.user_id, *vis_params))
+        споры = self.conflicts(actor=actor)
 
         edges = []
         связанные_ids = set()
@@ -1915,10 +2119,10 @@ class Memory:
         допустимые_на_дату: set[str] | None = None
         if момент is not None:
             все_записи = self.store.query(
-                """SELECT id, created_at, valid_from, valid_to, status
+                f"""SELECT id, created_at, valid_from, valid_to, status
                    FROM memory WHERE user_id = ?
-                   AND status NOT IN ('quarantined', 'rejected', 'revoked')""",
-                (self.user_id,))
+                   AND status NOT IN ('quarantined', 'rejected', 'revoked'){vis_sql}""",
+                (self.user_id, *vis_params))
             допустимые_на_дату = {
                 r["id"] for r in все_записи
                 if parse_ts(r["valid_from"] or r["created_at"]) <= момент
@@ -1958,9 +2162,9 @@ class Memory:
                         узлы_ids.add(nid)
                 else:
                     доп = self.store.query(
-                        """SELECT id FROM memory WHERE user_id = ? AND status = 'active'
+                        f"""SELECT id FROM memory WHERE user_id = ? AND status = 'active'{vis_sql}
                            ORDER BY created_at DESC LIMIT ?""",
-                        (self.user_id, min(30, предел) - len(узлы_ids)))
+                        (self.user_id, *vis_params, min(30, предел) - len(узлы_ids)))
                     for r in доп:
                         узлы_ids.add(r["id"])
             edges = [e for e in edges if e["source"] in узлы_ids and e["target"] in узлы_ids]
@@ -1971,9 +2175,9 @@ class Memory:
             rows = self.store.query(
                 f"""SELECT id, kind, scope, content, status, origin, confidence, importance,
                            created_at, last_confirmed_at, valid_from, valid_to,
-                           supersedes, superseded_by, факт_ключ
-                    FROM memory WHERE user_id = ? AND id IN ({','.join('?' * len(список_ids))})""",
-                (self.user_id, *список_ids))
+                           supersedes, superseded_by, факт_ключ, visibility, workspace_id
+                    FROM memory WHERE user_id = ?{vis_sql} AND id IN ({','.join('?' * len(список_ids))})""",
+                (self.user_id, *vis_params, *список_ids))
             for r in rows:
                 текст = r["content"]
                 nodes.append({
@@ -2272,8 +2476,10 @@ class Memory:
             return False
 
     def audit_log(self, limit: int = 100, action: str | None = None,
-                  agent_id: str | None = None) -> list[dict]:
+                  agent_id: str | None = None,
+                  actor: roles.ActorContext | None = None) -> list[dict]:
         """Б12: получить последние записи журнала действий."""
+        roles.require_audit_read(actor)
         sql = """SELECT id, user_id, created_at, action, memory_id, actor, agent_id, scope, kind, outcome, detail
                  FROM audit_log WHERE user_id = ?"""
         params: list = [self.user_id]
@@ -2555,7 +2761,8 @@ class Memory:
         except Exception:
             return {"available": False, "models": [], "selected": config.ASK_MODEL, "url": base_url}
 
-    def ask(self, question: str, scope: str = "global", limit: int = 10, model: str | None = None) -> dict:
+    def ask(self, question: str, scope: str = "global", limit: int = 10,
+            model: str | None = None, actor: roles.ActorContext | None = None) -> dict:
         """Г10 + Пункт 3: «Спроси свою память» — поиск + расширение контекста + упорядочивание по времени
         + отказ при недостатке данных + ответ ЛОКАЛЬНОЙ моделью через Ollama ($0, CPU <= 50%);
         без Ollama возвращает найденные записи с подробным разбором «почему найдено».
@@ -2578,7 +2785,7 @@ class Memory:
             }
 
         k_lim = max(1, min(int(limit), 25))
-        found = self.recall(q, scope=scope, limit=k_lim)
+        found = self.recall(q, scope=scope, limit=k_lim, actor=actor)
         records = []
         seen_ids = set()
         for r in found:
@@ -2751,14 +2958,16 @@ class Memory:
             "sufficiency": sufficiency,
         }
 
-    def entities_catalog(self, scope: str | None = None, query: str | None = None, limit: int = 100) -> dict:
+    def entities_catalog(self, scope: str | None = None, query: str | None = None,
+                         limit: int = 100, actor: roles.ActorContext | None = None) -> dict:
         """Г11: Экран «Сущности» — кто и что встречается в памяти (имена, проекты, сервисы, субъекты фактов)
         и все активные записи о каждом, поверх наших записей без внешней графовой БД.
         """
-        sql = """SELECT id, kind, scope, content, status, origin, agent_id, confidence, importance,
-                        created_at, last_seen_at, last_confirmed_at, факт_ключ
-                 FROM memory WHERE user_id = ? AND status = 'active'"""
-        params: list = [self.user_id]
+        vis_sql, vis_params, _ = roles.visibility_sql(actor)
+        sql = f"""SELECT id, kind, scope, content, status, origin, agent_id, confidence, importance,
+                        created_at, last_seen_at, last_confirmed_at, факт_ключ, visibility, workspace_id
+                 FROM memory WHERE user_id = ? AND status = 'active'{vis_sql}"""
+        params: list = [self.user_id, *vis_params]
         if scope:
             sql += " AND scope = ?"
             params.append(scope)
@@ -2851,3 +3060,168 @@ class Memory:
             "total": len(items),
             "entities": items[:max_lim],
         }
+
+    # -- В1: команды, роли и видимость ----------------------------------
+
+    def has_team_members(self) -> bool:
+        row = self.store.one(
+            """SELECT 1 FROM workspace_member m
+               JOIN workspace w ON w.id = m.workspace_id
+               WHERE w.owner_user_id = ? AND m.revoked_at IS NULL LIMIT 1""",
+            (self.user_id,))
+        return row is not None
+
+    def create_workspace(self, name: str, workspace_id: str | None = None,
+                         *, actor: roles.ActorContext | None = None) -> dict:
+        roles.require_owner(actor, "create_workspace")
+        clean_name = str(name or "").strip()[:80]
+        if not clean_name:
+            raise ValueError(t("название команды обязательно", "workspace name is required"))
+        wid = (str(workspace_id).strip()[:64] if workspace_id else "") or f"ws_{new_id()[:8]}"
+        ts = now_iso()
+        self.store.execute(
+            "INSERT INTO workspace (id, name, owner_user_id, created_at) VALUES (?,?,?,?)",
+            (wid, clean_name, self.user_id, ts))
+        self._log_audit("workspace_create", wid, actor="owner", outcome="ok", detail=clean_name)
+        return {"id": wid, "name": clean_name, "owner_user_id": self.user_id, "created_at": ts}
+
+    def list_workspaces(self, *, actor: roles.ActorContext | None = None) -> list[dict]:
+        if roles.is_owner(actor):
+            rows = self.store.query(
+                "SELECT id, name, owner_user_id, created_at FROM workspace WHERE owner_user_id = ? ORDER BY created_at DESC",
+                (self.user_id,))
+        elif actor is not None and actor.workspace_id:
+            rows = self.store.query(
+                "SELECT id, name, owner_user_id, created_at FROM workspace WHERE id = ? AND owner_user_id = ?",
+                (actor.workspace_id, self.user_id))
+        else:
+            rows = []
+        return [dict(r) for r in rows]
+
+    def add_member(self, workspace_id: str, subject: str, role: str,
+                   *, actor: roles.ActorContext | None = None) -> dict:
+        import secrets as _secrets
+        roles.require_owner(actor, "add_member")
+        clean_subj = str(subject or "").strip()[:64]
+        if not clean_subj:
+            raise ValueError(t("имя участника обязательно", "subject is required"))
+        if role not in roles.MEMBER_ROLES:
+            raise ValueError(t(f"роль должна быть одной из {roles.MEMBER_ROLES}",
+                               f"role must be one of {roles.MEMBER_ROLES}"))
+        ws = self.store.one(
+            "SELECT id, name FROM workspace WHERE id = ? AND owner_user_id = ?",
+            (workspace_id, self.user_id))
+        if not ws:
+            raise ValueError(t("команда не найдена", "workspace not found"))
+        raw_token = f"padam_tm_{_secrets.token_urlsafe(24)}"
+        token_hash, token_salt, token_prefix = roles.hash_token(raw_token)
+        ts = now_iso()
+        self.store.execute(
+            """INSERT INTO workspace_member
+               (workspace_id, subject, role, token_hash, token_salt, token_prefix, created_at, revoked_at)
+               VALUES (?,?,?,?,?,?,?,NULL)
+               ON CONFLICT(workspace_id, subject) DO UPDATE SET
+                   role = excluded.role,
+                   token_hash = excluded.token_hash,
+                   token_salt = excluded.token_salt,
+                   token_prefix = excluded.token_prefix,
+                   created_at = excluded.created_at,
+                   revoked_at = NULL""",
+            (workspace_id, clean_subj, role, token_hash, token_salt, token_prefix, ts))
+        self._log_audit("member_add", workspace_id, actor="owner", agent_id=clean_subj,
+                        outcome=role, detail=token_prefix)
+        return {
+            "workspace_id": workspace_id,
+            "subject": clean_subj,
+            "role": role,
+            "token": raw_token,
+            "token_prefix": token_prefix,
+            "created_at": ts,
+        }
+
+    def list_members(self, workspace_id: str | None = None,
+                     *, actor: roles.ActorContext | None = None) -> list[dict]:
+        if actor is not None and not actor.is_owner:
+            if not actor.workspace_id:
+                return []
+            workspace_id = actor.workspace_id
+        sql = """SELECT m.workspace_id, w.name AS workspace_name, m.subject, m.role,
+                        m.token_prefix, m.created_at, m.revoked_at
+                 FROM workspace_member m
+                 JOIN workspace w ON w.id = m.workspace_id
+                 WHERE w.owner_user_id = ?"""
+        params: list = [self.user_id]
+        if workspace_id:
+            sql += " AND m.workspace_id = ?"
+            params.append(workspace_id)
+        sql += " ORDER BY m.created_at DESC"
+        return [dict(r) for r in self.store.query(sql, tuple(params))]
+
+    def revoke_member(self, workspace_id: str, subject: str,
+                      *, actor: roles.ActorContext | None = None) -> bool:
+        roles.require_owner(actor, "revoke_member")
+        cur = self.store.execute(
+            """UPDATE workspace_member SET revoked_at = ?
+               WHERE workspace_id = ? AND subject = ? AND revoked_at IS NULL
+                 AND EXISTS (SELECT 1 FROM workspace w WHERE w.id = ? AND w.owner_user_id = ?)""",
+            (now_iso(), workspace_id, subject, workspace_id, self.user_id))
+        ok = cur.rowcount > 0
+        if ok:
+            self._log_audit("member_revoke", workspace_id, actor="owner", agent_id=subject, outcome="revoked")
+        return ok
+
+    def authenticate_token(self, raw_token: str) -> roles.ActorContext | None:
+        tok = (raw_token or "").strip()
+        if not tok:
+            return None
+        prefix = tok[:10]
+        rows = self.store.query(
+            """SELECT m.workspace_id, m.subject, m.role, m.token_hash, m.token_salt
+               FROM workspace_member m
+               JOIN workspace w ON w.id = m.workspace_id
+               WHERE w.owner_user_id = ? AND m.revoked_at IS NULL AND m.token_prefix = ?""",
+            (self.user_id, prefix))
+        for r in rows:
+            if roles.verify_token(tok, r["token_hash"], r["token_salt"]):
+                return roles.ActorContext(
+                    role=r["role"], subject=r["subject"],
+                    workspace_id=r["workspace_id"], via_token=True)
+        return None
+
+    def set_visibility(self, memory_id: str, visibility: str, workspace_id: str | None = None,
+                       *, actor: roles.ActorContext | None = None) -> dict:
+        roles.require_owner(actor, "set_visibility")
+        if visibility not in roles.VISIBILITIES:
+            raise ValueError(t(f"неизвестная видимость: {visibility}", f"unknown visibility: {visibility}"))
+        row = self.store.one(
+            "SELECT id, kind, content, scope, status FROM memory WHERE id = ? AND user_id = ?",
+            (memory_id, self.user_id))
+        if not row:
+            raise ValueError(t("запись не найдена", "record not found"))
+        if visibility in roles.TEAM_VISIBILITIES:
+            вид_по_тексту = classify.infer_kind_rules(row["content"] or "")
+            if row["kind"] in config.PROTECTED_KINDS or вид_по_тексту in config.PROTECTED_KINDS:
+                raise PermissionError(t(
+                    "записи identity и preference нельзя открывать команде",
+                    "identity and preference records cannot be shared with a team",
+                ))
+            if not workspace_id:
+                wss = self.list_workspaces()
+                if len(wss) == 1:
+                    workspace_id = wss[0]["id"]
+                else:
+                    raise ValueError(t("укажите workspace_id", "workspace_id is required"))
+            ws = self.store.one(
+                "SELECT id FROM workspace WHERE id = ? AND owner_user_id = ?",
+                (workspace_id, self.user_id))
+            if not ws:
+                raise ValueError(t("команда не найдена", "workspace not found"))
+        else:
+            workspace_id = None
+        self.store.execute(
+            "UPDATE memory SET visibility = ?, workspace_id = ? WHERE id = ? AND user_id = ?",
+            (visibility, workspace_id, memory_id, self.user_id))
+        self.__dict__.pop("_вкэш", None)
+        self.__dict__.pop("_ккэш", None)
+        self._log_audit("visibility", memory_id, actor="owner", outcome=visibility, detail=workspace_id)
+        return {"ok": True, "id": memory_id, "visibility": visibility, "workspace_id": workspace_id}
