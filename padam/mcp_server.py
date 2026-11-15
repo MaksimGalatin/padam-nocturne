@@ -2305,6 +2305,38 @@ def read_resource(uri: str) -> dict:
             "annotations": _make_annotations(["assistant", "user"], 0.85, None),
         }
 
+    if uri == "ui://padam/access-control":
+        if not config.mcp_apps_enabled() or not config.mcp_app_acl_enabled():
+            raise KeyError(f"Resource not found: {uri}")
+        if actor is not None and not actor.is_owner:
+            raise PermissionError("access-control UI requires the owner role")
+        from . import app_acl as _app_acl, mcp_apps as _mcp_apps
+        pols = _app_acl.list_policies(m.store)
+        evs = _app_acl.list_events(m.store, limit=30)
+        chain = _app_acl.verify_audit_chain(m.store)
+        return {
+            "uri": uri,
+            "mimeType": _mcp_apps.MCP_APP_MIME,
+            "text": _mcp_apps.render_access_control_html(pols, evs, bool(chain.get("valid", True))),
+            "annotations": _make_annotations(["user"], 0.85, None),
+            "_meta": _mcp_apps.UI_CSP_META,
+        }
+
+    if uri == "ui://padam/communities":
+        if not config.mcp_apps_enabled() or not config.mcp_communities_enabled():
+            raise KeyError(f"Resource not found: {uri}")
+        from . import communities as _comm, mcp_apps as _mcp_apps, procedural as _proc
+        eff_sc = _session_scope_ctx.get()
+        c_res = _comm.get_communities(m, scope=eff_sc, refresh=True)
+        procs = _proc.list_procedures(m, scope=eff_sc, include_quarantined=True) if config.mcp_procedural_memory_enabled() else []
+        return {
+            "uri": uri,
+            "mimeType": _mcp_apps.MCP_APP_MIME,
+            "text": _mcp_apps.render_communities_html(c_res.get("communities") or [], procs),
+            "annotations": _make_annotations(["user"], 0.82, None),
+            "_meta": _mcp_apps.UI_CSP_META,
+        }
+
     if uri == "ui://padam/review-queue":
         if not config.mcp_apps_enabled():
             raise KeyError(f"Resource not found: {uri}")

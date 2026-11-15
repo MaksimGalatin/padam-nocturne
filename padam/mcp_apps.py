@@ -45,11 +45,31 @@ def _now_iso() -> str:
 
 
 def list_ui_resources(*, ts: str | None = None) -> list[dict]:
+    from . import config
     mod_ts = ts or _now_iso()
-    return [
+    out = [
         {**res, "annotations": {**res["annotations"], "lastModified": mod_ts}}
         for res in UI_RESOURCES
     ]
+    if config.mcp_app_acl_enabled():
+        out.append({
+            "uri": "ui://padam/access-control",
+            "name": "padam_access_control_ui",
+            "title": "PADAM App Access Control",
+            "description": "Interactive per-app access policies and SHA-256 audit log.",
+            "mimeType": MCP_APP_MIME,
+            "annotations": {"audience": ["user"], "priority": 0.85, "lastModified": mod_ts},
+        })
+    if config.mcp_communities_enabled():
+        out.append({
+            "uri": "ui://padam/communities",
+            "name": "padam_communities_ui",
+            "title": "PADAM Communities & Procedures",
+            "description": "Interactive graph communities and procedural skills inspector.",
+            "mimeType": MCP_APP_MIME,
+            "annotations": {"audience": ["user"], "priority": 0.82, "lastModified": mod_ts},
+        })
+    return out
 
 
 def list_ui_templates(*, ts: str | None = None) -> list[dict]:
@@ -410,3 +430,149 @@ def render_graph_html(center_id: str, safe_nodes: list[dict], edges: list[dict])
         .replace("__MCP_BRIDGE_JS__", _MCP_BRIDGE_JS)
         .replace("__PAYLOAD__", payload_json)
     )
+
+
+_ACL_TEMPLATE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PADAM App Access Control</title>
+<style>__BASE_STYLE__</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>App Access Control</h1>
+    <div id="chainStatus" class="muted"></div>
+  </div>
+</header>
+<div id="policies"></div>
+<h2>Recent Access Events</h2>
+<div id="events"></div>
+<script id="padam-payload" type="application/json">__PAYLOAD__</script>
+<script>
+const payload = JSON.parse(document.getElementById("padam-payload").textContent);
+document.getElementById("chainStatus").textContent = "SHA-256 Audit Chain: " + (payload.chain_ok ? "VERIFIED" : "BROKEN");
+const polEl = document.getElementById("policies");
+for (const p of (payload.policies || [])) {
+  const c = document.createElement("div");
+  c.className = "card row";
+  const left = document.createElement("span");
+  left.textContent = p.client_id + " · " + p.status;
+  const right = document.createElement("span");
+  right.className = "badge";
+  right.textContent = (p.allowed_scopes || []).join(", ") || "*";
+  c.appendChild(left); c.appendChild(right);
+  polEl.appendChild(c);
+}
+const evEl = document.getElementById("events");
+for (const e of (payload.events || [])) {
+  const c = document.createElement("div");
+  c.className = "card";
+  c.textContent = [e.ts, e.client_id, e.tool_name, e.decision, e.reason].filter(Boolean).join(" | ");
+  evEl.appendChild(c);
+}
+</script>
+</body>
+</html>
+"""
+
+_COMM_TEMPLATE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PADAM Communities &amp; Procedures</title>
+<style>__BASE_STYLE__</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Graph Communities &amp; Procedures</h1>
+    <div class="muted">Local label-propagation clusters and procedural skills</div>
+  </div>
+</header>
+<div id="commList"></div>
+<h2>Procedures</h2>
+<div id="procList"></div>
+<script id="padam-payload" type="application/json">__PAYLOAD__</script>
+<script>
+const payload = JSON.parse(document.getElementById("padam-payload").textContent);
+const commEl = document.getElementById("commList");
+for (const cm of (payload.communities || [])) {
+  const c = document.createElement("div");
+  c.className = "card";
+  const h = document.createElement("div");
+  h.className = "row";
+  const t = document.createElement("strong");
+  t.textContent = (cm.scope || "global") + " · n=" + cm.size;
+  h.appendChild(t);
+  const p = document.createElement("p");
+  p.className = "txt";
+  p.textContent = cm.summary || "";
+  c.appendChild(h); c.appendChild(p);
+  commEl.appendChild(c);
+}
+const procEl = document.getElementById("procList");
+for (const pr of (payload.procedures || [])) {
+  const c = document.createElement("div");
+  c.className = "card";
+  c.textContent = (pr.skill_name || pr.id) + " [" + pr.status + "] v" + (pr.version || 1);
+  procEl.appendChild(c);
+}
+</script>
+</body>
+</html>
+"""
+
+
+def render_access_control_html(policies: list[dict], events: list[dict], chain_ok: bool) -> str:
+    """Рендерит самодостаточную UI-страницу прав доступа приложений (App Access Control)."""
+    payload_json = safe_json_for_script({
+        "chain_ok": bool(chain_ok),
+        "policies": [
+            {
+                "client_id": str(p.get("client_id") or ""),
+                "status": str(p.get("status") or ""),
+                "allowed_scopes": list(p.get("allowed_scopes") or []),
+            }
+            for p in policies
+        ],
+        "events": [
+            {
+                "ts": str(e.get("ts") or "")[:19],
+                "client_id": str(e.get("client_id") or ""),
+                "tool_name": str(e.get("tool_name") or ""),
+                "decision": str(e.get("decision") or ""),
+                "reason": str(e.get("reason") or ""),
+            }
+            for e in events[:30]
+        ],
+    })
+    return _ACL_TEMPLATE.replace("__BASE_STYLE__", _BASE_STYLE).replace("__PAYLOAD__", payload_json)
+
+
+def render_communities_html(communities_list: list[dict], procedures: list[dict]) -> str:
+    """Рендерит самодостаточную UI-страницу сообществ графа и процедур."""
+    payload_json = safe_json_for_script({
+        "communities": [
+            {
+                "community_id": str(c.get("community_id") or ""),
+                "scope": str(c.get("scope") or "global"),
+                "size": int(c.get("size") or 0),
+                "summary": str(c.get("summary") or ""),
+            }
+            for c in communities_list
+        ],
+        "procedures": [
+            {
+                "id": str(p.get("id") or ""),
+                "skill_name": str(p.get("skill_name") or ""),
+                "status": str(p.get("status") or ""),
+                "version": int(p.get("version") or 1),
+            }
+            for p in procedures
+        ],
+    })
+    return _COMM_TEMPLATE.replace("__BASE_STYLE__", _BASE_STYLE).replace("__PAYLOAD__", payload_json)

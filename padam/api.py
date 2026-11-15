@@ -51,8 +51,8 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
 
@@ -442,6 +442,22 @@ class Handler(BaseHTTPRequestHandler):
                     "autostart": _desktop.get_autostart(),
                     "autostart_supported": _desktop.autostart_supported(),
                 })
+            if self.path == "/api/v2/access":
+                roles.require_owner(actor, "api_v2_access")
+                if not config.mcp_app_acl_enabled():
+                    return self._send(404, {"error": "app_acl disabled"})
+                from . import app_acl as _app_acl
+                return self._send(200, {
+                    "policies": _app_acl.list_policies(mem().store),
+                    "events": _app_acl.list_events(mem().store, limit=50),
+                    "chain": _app_acl.verify_audit_chain(mem().store),
+                })
+            if self.path == "/api/v2/communities":
+                roles.require_owner(actor, "api_v2_communities")
+                if not config.mcp_communities_enabled():
+                    return self._send(404, {"error": "communities disabled"})
+                from . import communities as _comm
+                return self._send(200, _comm.get_communities(mem(), refresh=True))
             if self.path == "/export":
                 return self._send(200, mem().export(actor=actor))
             if self.path.startswith("/timeline/"):
@@ -618,6 +634,15 @@ class Handler(BaseHTTPRequestHandler):
                     anchor_id=data.get("anchor"),
                     online=bool(data.get("online", False)),
                 ))
+            if self.path == "/api/v2/procedures/approve":
+                roles.require_owner(actor, "api_v2_procedures_approve")
+                if not config.mcp_procedural_memory_enabled():
+                    return self._send(404, {"error": "procedural memory disabled"})
+                pid = str(data.get("id") or "").strip()
+                if not pid:
+                    return self._send(400, {"error": "id is required"})
+                from . import procedural as _proc
+                return self._send(200, _proc.approve_procedure(m, pid))
             if self.path == "/settings":
                 roles.require_owner(actor, "settings")
                 # Опасные настройки нельзя включать из браузера: только читать или выключать в сторону защиты.

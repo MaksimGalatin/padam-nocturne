@@ -253,3 +253,66 @@ def test_top10v3_6_doctor_deep_audit_and_safe_fix(tmp_path, monkeypatch):
     assert fixed["checks"]["dangling_links"] == 0
     assert fixed["checks"]["missing_learned_at"] == 0
     mem.close()
+
+
+def test_top10v3_7_live_ui_bridge_mcp_apps_and_studio_api(tmp_path, monkeypatch):
+    import json
+    import re
+    import threading
+    import urllib.request
+    from padam import api, app_acl, mcp_server, procedural
+    from padam.memory import Memory
+    from padam.store import Store
+
+    mem = Memory(user_id="arch", store=Store(tmp_path / "ui_bridge.sqlite"))
+    monkeypatch.setenv("PADAM_MCP_APPS", "1")
+    monkeypatch.setenv("PADAM_APP_ACL", "1")
+    monkeypatch.setenv("PADAM_COMMUNITIES", "1")
+    monkeypatch.setenv("PADAM_PROCEDURAL_MEMORY", "1")
+    monkeypatch.setattr(mcp_server, "mem", lambda: mem)
+
+    app_acl.set_policy(mem.store, "cursor</script>", status="allow", allowed_scopes=["work"])
+    proc = procedural.save_procedure(mem, name="deploy-check", steps=["run pytest", "check mcp"], scope="work", owner_approved=False)
+
+    uris = [r["uri"] for r in mcp_server._list_resources_annotated()]
+    assert "ui://padam/access-control" in uris
+    assert "ui://padam/communities" in uris
+
+    acl_ui = mcp_server.read_resource("ui://padam/access-control")
+    assert "App Access Control" in acl_ui["text"]
+    assert "cursor\\u003c/script\\u003e" in acl_ui["text"]
+
+    comm_ui = mcp_server.read_resource("ui://padam/communities")
+    assert "Graph Communities" in comm_ui["text"]
+    assert "deploy-check" in comm_ui["text"]
+
+    # Проверяем локальные JSON-маршруты PADAM Studio (/api/v2/...)
+    srv, link = api.make_studio_server(mem, port=0)
+    th = threading.Thread(target=srv.serve_forever, daemon=True)
+    th.start()
+    try:
+        m = re.match(r"^(http://127\.0\.0\.1:\d+)/studio#t=(.+)$", link)
+        assert m
+        base, token = m.group(1), m.group(2)
+
+        def req_json(path, body=None):
+            data = json.dumps(body).encode("utf-8") if body is not None else None
+            r = urllib.request.Request(
+                f"{base}{path}",
+                data=data,
+                method="POST" if body is not None else "GET",
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(r, timeout=10) as resp:
+                return resp.status, json.loads(resp.read().decode("utf-8"))
+
+        st1, d_acc = req_json("/api/v2/access")
+        assert st1 == 200 and len(d_acc["policies"]) >= 1
+        st2, d_com = req_json("/api/v2/communities")
+        assert st2 == 200 and d_com["enabled"] is True
+        st3, d_app = req_json("/api/v2/procedures/approve", {"id": proc["id"]})
+        assert st3 == 200 and d_app["status"] == "active"
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        mem.close()
