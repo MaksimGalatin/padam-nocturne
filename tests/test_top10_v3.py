@@ -124,3 +124,54 @@ def test_top10v3_3_rem_sleep_integrates_communities_procedures_and_reflect(tmp_p
     comm = communities.get_communities(mem, scope="ops", refresh=False)
     assert comm["enabled"] is True
     mem.close()
+
+
+def test_top10v3_4_memcube_xwing_asymmetric_seal_and_open(tmp_path, monkeypatch):
+    import pytest
+    from padam import memcube, pqc_sync
+    from padam.memory import Memory
+    from padam.store import Store
+
+    if not pqc_sync.HAS_PQC:
+        pytest.skip("PQC primitives unavailable")
+
+    monkeypatch.setenv("PADAM_MEMCUBE", "1")
+    src_mem = Memory(user_id="alice", store=Store(tmp_path / "src.sqlite"))
+    dst_mem = Memory(user_id="bob", store=Store(tmp_path / "dst.sqlite"))
+    src_mem.remember("Post-quantum MemCube verified note", kind="fact", scope="pqc")
+
+    bob_ident = pqc_sync.DeviceIdentity.generate()
+    wrong_ident = pqc_sync.DeviceIdentity.generate()
+
+    cube = memcube.export_memcube(
+        src_mem,
+        scope="pqc",
+        recipient_pub=bob_ident.public_bundle(),
+    )
+    assert cube["header"]["cipher"] == "aes-256-gcm+xwing-mlkem768-x25519"
+    assert "xwing_ct_mlkem_b64" in cube["header"]
+    assert "xwing_ct_x25519_b64" in cube["header"]
+
+    # Без ключа получателя импорт запрещён
+    with pytest.raises(ValueError):
+        memcube.import_memcube(dst_mem, cube)
+
+    # Чужой ключ получателя не расшифровывает
+    with pytest.raises(ValueError):
+        memcube.import_memcube(dst_mem, cube, recipient_identity=wrong_ident)
+
+    # Корректный ключ получателя успешно расшифровывает и переносит записи
+    author_hex = cube["header"]["author_pub_hex"]
+    res = memcube.import_memcube(
+        dst_mem,
+        cube,
+        recipient_identity=bob_ident,
+        trusted_authors=[author_hex],
+    )
+    assert res["imported"] == 1
+    assert res["quarantined"] == 0
+    recalled = dst_mem.recall("Post-quantum MemCube", scope="pqc", limit=5)
+    assert any("Post-quantum MemCube verified note" in r.content for r in recalled)
+
+    src_mem.close()
+    dst_mem.close()

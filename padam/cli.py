@@ -383,14 +383,22 @@ def cmd_cube(m, a) -> int:
     from . import memcube
     sub_cmd = getattr(a, "cube_cmd", "export")
     if sub_cmd == "export":
-        cube = memcube.export_memcube(m, scope=a.scope, passphrase=a.passphrase, ttl_seconds=a.ttl)
+        rpub = None
+        if getattr(a, "recipient_pub", None):
+            rp = Path(a.recipient_pub)
+            rpub = rp.read_text(encoding="utf-8") if rp.exists() else a.recipient_pub
+        cube = memcube.export_memcube(m, scope=a.scope, passphrase=a.passphrase, recipient_pub=rpub, ttl_seconds=a.ttl)
         Path(a.out).write_text(json.dumps(cube, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(json.dumps({"exported": a.out, "author_pub_hex": (cube.get("header") or {}).get("author_pub_hex")}, ensure_ascii=False))
+        print(json.dumps({"exported": a.out, "author_pub_hex": (cube.get("header") or {}).get("author_pub_hex"), "cipher": (cube.get("header") or {}).get("cipher")}, ensure_ascii=False))
         return 0
     if sub_cmd == "import":
         raw_cube = Path(a.file).read_text(encoding="utf-8")
         trusted = {x.strip() for x in a.trust_author.split(",") if x.strip()} if a.trust_author else set()
-        res = memcube.import_memcube(m, raw_cube, passphrase=a.passphrase, trusted_authors=trusted, target_scope=a.scope)
+        rident = None
+        if getattr(a, "recipient_key", False):
+            from . import pqc_sync
+            rident = pqc_sync.ensure_local_identity(m)
+        res = memcube.import_memcube(m, raw_cube, passphrase=a.passphrase, recipient_identity=rident, trusted_authors=trusted, target_scope=a.scope)
         print(json.dumps(res, ensure_ascii=False, indent=2))
         return 0
     return 1
@@ -1397,12 +1405,14 @@ def main(argv=None) -> int:
     cbe.add_argument("--out", required=True)
     cbe.add_argument("--passphrase", default=None)
     cbe.add_argument("--ttl", type=int, default=None)
+    cbe.add_argument("--recipient-pub", default=None)
     cbe.set_defaults(fn=cmd_cube)
     cbi = cbsub.add_parser("import", help=t("импортировать MemCube", "import MemCube"))
     cbi.add_argument("file")
     cbi.add_argument("--passphrase", default=None)
     cbi.add_argument("--trust-author", default="")
     cbi.add_argument("--scope", default=None)
+    cbi.add_argument("--recipient-key", action="store_true")
     cbi.set_defaults(fn=cmd_cube)
 
     ssk = sub.add_parser("skills", help=t("процедурная память (экспорт в SKILL.md / CLAUDE.md)",

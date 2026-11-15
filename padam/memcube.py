@@ -53,6 +53,7 @@ def export_memcube(
     scope: str,
     passphrase: str | None = None,
     sender_sk: ed25519.Ed25519PrivateKey | None = None,
+    recipient_pub: dict[str, Any] | str | None = None,
     ttl_seconds: int | None = None,
     rights: str = "read-only",
     force: bool = False,
@@ -87,8 +88,34 @@ def export_memcube(
     expires_at = (now + timedelta(seconds=int(ttl_seconds))).isoformat() if ttl_seconds is not None else None
     salt = secrets.token_bytes(16)
     nonce = secrets.token_bytes(12)
-    secret_str = passphrase if passphrase is not None else author_pub_hex
-    key = _derive_key(secret_str, salt)
+
+    if recipient_pub is not None:
+        from . import pqc_sync
+        pqc_sync._require_pqc()
+        bundle = json.loads(recipient_pub) if isinstance(recipient_pub, str) else dict(recipient_pub)
+        pk_m_bytes = base64.b64decode(bundle.get("pk_mlkem") or bundle["mlkem_pk_b64"])
+        pk_x_bytes = base64.b64decode(bundle.get("pk_x25519") or bundle["x25519_pk_b64"])
+        peer_mlkem_pk = pqc_sync.mlkem.MLKEM768PublicKey.from_public_bytes(pk_m_bytes)
+        ss_m, ct_m = peer_mlkem_pk.encapsulate()
+        eph_x = pqc_sync.x25519.X25519PrivateKey.generate()
+        ct_x = eph_x.public_key().public_bytes(
+            serialization.Encoding.Raw,
+            serialization.PublicFormat.Raw,
+        )
+        ss_x = eph_x.exchange(pqc_sync.x25519.X25519PublicKey.from_public_bytes(pk_x_bytes))
+        ss_xwing = pqc_sync._xwing_combine(ss_m, ss_x, ct_x, pk_x_bytes)
+        key = pqc_sync._derive_session_key(ss_xwing, salt)
+        cipher_name = "aes-256-gcm+xwing-mlkem768-x25519"
+        xwing_fields: dict[str, Any] = {
+            "xwing_ct_mlkem_b64": base64.b64encode(ct_m).decode("ascii"),
+            "xwing_ct_x25519_b64": base64.b64encode(ct_x).decode("ascii"),
+            "recipient_device_id": bundle.get("device_id"),
+        }
+    else:
+        secret_str = passphrase if passphrase is not None else author_pub_hex
+        key = _derive_key(secret_str, salt)
+        cipher_name = "aes-256-gcm+pbkdf2"
+        xwing_fields = {}
 
     header = {
         "magic": CUBE_MAGIC,
@@ -104,9 +131,10 @@ def export_memcube(
             "records_count": len(records),
             "links_count": len(links),
         },
-        "cipher": "aes-256-gcm+pbkdf2",
+        "cipher": cipher_name,
         "salt_b64": base64.b64encode(salt).decode("ascii"),
         "nonce_b64": base64.b64encode(nonce).decode("ascii"),
+        **xwing_fields,
     }
     aad = json.dumps(header, sort_keys=True, separators=(",", ":")).encode("utf-8")
     plain_bytes = json.dumps({"records": records, "links": links}, ensure_ascii=False).encode("utf-8")
@@ -127,6 +155,7 @@ def import_memcube(
     cube: dict[str, Any] | str | bytes,
     *,
     passphrase: str | None = None,
+    recipient_identity: Any | None = None,
     trusted_authors: set[str] | list[str] | None = None,
     target_scope: str | None = None,
     force: bool = False,
@@ -164,8 +193,27 @@ def import_memcube(
 
     salt = base64.b64decode(header["salt_b64"])
     nonce = base64.b64decode(header["nonce_b64"])
-    secret_str = passphrase if passphrase is not None else author_pub_hex
-    key = _derive_key(secret_str, salt)
+    cipher_name = str(header.get("cipher") or "aes-256-gcm+pbkdf2")
+    if cipher_name == "aes-256-gcm+xwing-mlkem768-x25519":
+        from . import pqc_sync
+        pqc_sync._require_pqc()
+        if recipient_identity is None:
+            raise ValueError("MemCube decryption requires recipient_identity (X-Wing)")
+        ct_m = base64.b64decode(header["xwing_ct_mlkem_b64"])
+        ct_x = base64.b64decode(header["xwing_ct_x25519_b64"])
+        ss_m = recipient_identity.kem_mlkem.decapsulate(ct_m)
+        ss_x = recipient_identity.kem_x25519.exchange(
+            pqc_sync.x25519.X25519PublicKey.from_public_bytes(ct_x)
+        )
+        pk_x_bytes = recipient_identity.kem_x25519.public_key().public_bytes(
+            serialization.Encoding.Raw,
+            serialization.PublicFormat.Raw,
+        )
+        ss_xwing = pqc_sync._xwing_combine(ss_m, ss_x, ct_x, pk_x_bytes)
+        key = pqc_sync._derive_session_key(ss_xwing, salt)
+    else:
+        secret_str = passphrase if passphrase is not None else author_pub_hex
+        key = _derive_key(secret_str, salt)
     aad = json.dumps(header, sort_keys=True, separators=(",", ":")).encode("utf-8")
     try:
         plain = AESGCM(key).decrypt(nonce, base64.b64decode(ct_b64), aad)
