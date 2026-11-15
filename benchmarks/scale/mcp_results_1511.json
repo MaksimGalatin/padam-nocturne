@@ -1,0 +1,29 @@
+{
+  "padam_version": "0.5.2",
+  "embedding": "builtin",
+  "python": "3.14.4",
+  "rows": [
+    {
+      "records": 10000,
+      "seed_seconds": 2.12,
+      "cold_search_ms": 363.55,
+      "search_samples": 50,
+      "search_p50_ms": 39.12,
+      "search_p95_ms": 42.19,
+      "write_samples": 50,
+      "write_p50_ms": 6.0,
+      "write_p95_ms": 11.1
+    },
+    {
+      "records": 100000,
+      "seed_seconds": 32.04,
+      "cold_search_ms": 3851.83,
+      "search_samples": 50,
+      "search_p50_ms": 255.77,
+      "search_p95_ms": 279.53,
+      "write_samples": 50,
+      "write_p50_ms": 10.66,
+      "write_p95_ms": 12.84
+    }
+  ]
+}

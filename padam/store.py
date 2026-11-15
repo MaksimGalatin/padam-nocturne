@@ -336,6 +336,8 @@ class Store:
         # Без этого затёртый текст остаётся в свободных страницах файла и читается простым
         # поиском по байтам: «забвение» было бы только в интерфейсе.
         self.conn.execute("PRAGMA secure_delete = ON")
+        self.conn.execute("PRAGMA cache_size = -16384")
+        self.conn.execute("PRAGMA temp_store = MEMORY")
         self.conn.executescript(SCHEMA)
         self.conn.executescript(FTS_TRIGGERS)
         self._дополнить_схему()

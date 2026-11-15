@@ -757,3 +757,49 @@ def test_mcp_ideal_3_2_inspector_ci_and_script(tmp_path):
         mem.close()
 
 
+def test_mcp_ideal_5_perf_and_two_step_fts_equivalence(tmp_path):
+    """Пункт 5: двухшаговый rank_lexical (в т.ч. фоллбэк), argpartition при ничьих и точечный _пометить."""
+    import json
+    from pathlib import Path
+    import numpy as np
+    from padam import retrieval
+
+    mem = Memory(user_id="ideal-5", store=Store(tmp_path / "m5.db"))
+    try:
+        # 250 записей в другой области, чтобы вытеснить pre_limit=200 и проверить фоллбэк
+        for i in range(250):
+            mem.remember(f"Nocturne throughput noise item {i}", kind="fact", scope="noise", origin="user")
+        _, target_id = mem.remember("Nocturne throughput benchmark target record", kind="fact", scope="prod", origin="user")
+        lex_ids = retrieval.rank_lexical(mem.store, "ideal-5", "prod", "Nocturne throughput", limit=5)
+        assert lex_ids == [target_id]
+
+        # argpartition с ничьими на границе limit
+        qvec = np.array([1.0, 0.0], dtype=np.float32)
+        rows = [
+            {"id": f"r{i}", "_vec": np.array([0.5 if i >= 2 else 0.9, 0.0], dtype=np.float32)}
+            for i in range(15)
+        ]
+        sem_ids = retrieval.rank_semantic(qvec, rows, limit=5)
+        assert sem_ids == ["r0", "r1", "r2", "r3", "r4"]
+
+        # Точечный _пометить помечает конфликт только для своей области
+        _, id_w1 = mem.remember("User favorite language is Python", kind="fact", scope="work", origin="user")
+        _, id_w2 = mem.remember("User favorite language is Rust", kind="fact", scope="work", origin="user")
+        mem.store.execute("UPDATE memory SET status = 'active', valid_to = NULL WHERE id = ?", (id_w1,))
+        _, id_other = mem.remember("User favorite language is Go", kind="fact", scope="personal", origin="user")
+        assert id_w2 and id_other
+        work_recs = mem.recall("favorite language", scope="work", limit=5)
+        assert len(work_recs) == 2 and all(r.conflict for r in work_recs)
+        pers_recs = mem.recall("favorite language", scope="personal", limit=5)
+        assert len(pers_recs) == 1 and not pers_recs[0].conflict
+
+        bench_path = Path(__file__).resolve().parent.parent / "benchmarks" / "scale" / "mcp_results_1511.json"
+        assert bench_path.is_file()
+        bench = json.loads(bench_path.read_text(encoding="utf-8"))
+        sizes = {row["records"]: row for row in bench["rows"]}
+        assert 10000 in sizes and 100000 in sizes
+        assert sizes[10000]["search_p50_ms"] > 0 and sizes[100000]["search_p95_ms"] > 0
+    finally:
+        mem.close()
+
+

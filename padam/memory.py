@@ -338,7 +338,8 @@ class Memory:
             ))
         vec = embeddings.embed(content)
 
-        if guarded and (safety.looks_like_instruction(content) or safety.looks_like_instruction(исходный)):
+        same_raw = (исходный == content)
+        if guarded and (safety.looks_like_instruction(content) or (not same_raw and safety.looks_like_instruction(исходный))):
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
                 origin=origin, status="quarantined", reason="looks like an instruction",
@@ -385,7 +386,7 @@ class Memory:
             # Круг 3 Red Team, 11.11.2026: 37 из 45 таких записей от агента становились действующими, потому что
             # вид «личность/предпочтение» узнавали по нескольким фразам. Запись самого человека не задерживается.
             # Как и команда, проверяется и исходный текст: base64 с «owner=…» маска закрывает целиком (круг 3, claude i-13).
-            elif origin != "user" and (safety.changes_owner_or_rules(content) or safety.changes_owner_or_rules(исходный)):
+            elif origin != "user" and (safety.changes_owner_or_rules(content) or (not same_raw and safety.changes_owner_or_rules(исходный))):
                 причина_защиты = "would change who the owner is or how the agent works"
 
         # СНАЧАЛА точный поиск по структурному ключу, и только потом — по
@@ -1249,9 +1250,21 @@ class Memory:
         строки = {r["id"]: r for r in self.store.query(
             f"""SELECT id, kind, content, owner_sig, факт_ключ, scope, agent_id, visibility, workspace_id FROM memory
                 WHERE id IN ({",".join("?" * len(записи))})""", tuple(з.id for з in записи))}
-        спорные = {(r["scope"], r["факт_ключ"]) for r in self.store.query(
-            """SELECT scope, факт_ключ FROM memory WHERE user_id = ? AND status = 'active'
-               AND факт_ключ IS NOT NULL GROUP BY scope, факт_ключ HAVING COUNT(*) > 1""", (self.user_id,))}
+        по_областям: dict[str, list[str]] = {}
+        for r in строки.values():
+            if r["факт_ключ"]:
+                по_областям.setdefault(r["scope"], []).append(r["факт_ключ"])
+        спорные: set[tuple[str, str]] = set()
+        for sc, fks in по_областям.items():
+            uniq_fks = list(dict.fromkeys(fks))
+            for r in self.store.query(
+                f"""SELECT scope, факт_ключ FROM memory
+                    WHERE user_id = ? AND scope = ? AND status = 'active'
+                      AND факт_ключ IN ({",".join("?" * len(uniq_fks))})
+                    GROUP BY scope, факт_ключ HAVING COUNT(*) > 1""",
+                (self.user_id, sc, *uniq_fks),
+            ):
+                спорные.add((r["scope"], r["факт_ключ"]))
         ключ = self._ключ_подписи() if any(integrity.protected(з.kind) for з in записи) else None
         for з in записи:
             r = строки.get(з.id)

@@ -127,6 +127,16 @@ def rank_semantic(query_vec: np.ndarray, rows: list, limit: int) -> list[str]:
     # давали разные числа LongMemEval (каждый пятый вопрос: 92,6 % против 91,5 %, найдено 09.11.2026).
     # 0.4.13: устойчивая сортировка numpy вместо sort по списку кортежей — тот же порядок, равные в исходном порядке.
     положительные = np.nonzero(sims > 0)[0]
+    if limit <= 0 or not положительные.size:
+        return []
+    if положительные.size > limit * 2:
+        pos_sims = sims[положительные]
+        part = np.argpartition(-pos_sims, limit - 1)[:limit]
+        threshold = pos_sims[part].min()
+        tied = положительные[pos_sims >= threshold]
+        if tied.size <= limit * 4:
+            порядок = tied[np.argsort(-sims[tied], kind="stable")][:limit]
+            return [ids[i] for i in порядок]
     порядок = положительные[np.argsort(-sims[положительные], kind="stable")][:limit]
     return [ids[i] for i in порядок]
 
@@ -167,13 +177,35 @@ def rank_lexical(store, user_id: str, scope: str, query: str,
     terms = list(dict.fromkeys(t[:max(5, len(t) - 2)] if len(t) > 5 else t for t in terms))
     # OR по терминам: пусть BM25 сам взвесит редкие выше частых
     match = " OR ".join(f'"{t}"*' for t in terms)
+    st_placeholders = ",".join("?" * len(statuses))
     try:
+        # 0.5.2: сначала отбираем верхние rowid из FTS5 без чтения BLOB-страниц большой таблицы memory;
+        # по rowid IN (...) проверяем user_id/scope/status, и только если верхушку заняли чужие записи — полный JOIN.
+        pre_limit = min(max(limit * 4, 200), 800) if limit > 0 else 200
+        fts_rows = store.query(
+            "SELECT rowid, bm25(memory_fts) AS r FROM memory_fts WHERE memory_fts MATCH ? ORDER BY r, rowid LIMIT ?",
+            (match, pre_limit),
+        )
+        if not fts_rows:
+            return []
+        rank_map = {int(fr["rowid"]): (float(fr["r"]), idx) for idx, fr in enumerate(fts_rows)}
+        rowid_ph = ",".join("?" * len(rank_map))
+        m_rows = store.query(
+            f"""SELECT rowid, id FROM memory
+               WHERE rowid IN ({rowid_ph}) AND user_id = ? AND scope = ?
+                 AND status IN ({st_placeholders})""",
+            (*rank_map.keys(), user_id, scope, *statuses),
+        )
+        m_sorted = sorted(m_rows, key=lambda mr: rank_map[int(mr["rowid"])])
+        if len(m_sorted) >= limit or len(fts_rows) < pre_limit:
+            return [r["id"] for r in m_sorted[:limit]]
+
         rows = store.query(
             f"""SELECT m.id FROM memory_fts f
                JOIN memory m ON m.rowid = f.rowid
                WHERE memory_fts MATCH ? AND m.user_id = ? AND m.scope = ?
-                 AND m.status IN ({",".join("?" * len(statuses))})
-               ORDER BY bm25(memory_fts) LIMIT ?""",
+                 AND m.status IN ({st_placeholders})
+               ORDER BY bm25(memory_fts), m.rowid LIMIT ?""",
             (match, user_id, scope, *statuses, limit))
         return [r["id"] for r in rows]
     except Exception:
