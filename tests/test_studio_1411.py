@@ -3425,3 +3425,124 @@ def test_step_2_2_build_extensions_script_and_ci(tmp_path):
             m = json.loads(zf.read("manifest.json").decode("utf-8"))
             assert m["version"] == __version__
 
+
+def test_step_1_4_persistent_sse_and_scope_role_filter(tmp_path):
+    """Пункт 1.4: постоянный SSE-канал на GET /mcp и уведомления по padam://scope/{scope} с изоляцией ролей."""
+    import http.client
+    import time
+    import urllib.request
+    from urllib.parse import urlsplit
+    from padam import mcp_server
+
+    db_path = tmp_path / "sse_scope.db"
+    m = Memory(user_id="sse_u", store=Store(db_path))
+    ws_a = m.create_workspace("Team A")
+    ws_b = m.create_workspace("Team B")
+    tok_a = m.add_member(ws_a["id"], "alice", "contributor")["token"]
+    tok_b = m.add_member(ws_b["id"], "bob", "auditor")["token"]
+
+    mcp_server.pop_notifications()
+    srv, url, tok = mcp_server.make_mcp_http_server(memory=m, host="127.0.0.1", port=0)
+    th = threading.Thread(target=srv.serve_forever, daemon=True)
+    th.start()
+    parsed = urlsplit(url)
+    host, port = parsed.hostname, parsed.port
+
+    def read_sse_events(headers: dict, query: str, out_list: list, ready_ev: threading.Event, stop_ev: threading.Event):
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        conn.request("GET", f"/mcp{query}", headers=headers)
+        resp = conn.getresponse()
+        assert resp.status == 200
+        assert "text/event-stream" in (resp.getheader("Content-Type") or "")
+        buf: list[str] = []
+        while not stop_ev.is_set():
+            line_b = resp.fp.readline()
+            if not line_b:
+                break
+            line = line_b.decode("utf-8", errors="replace").rstrip("\r\n")
+            if line == ": stream open":
+                ready_ev.set()
+                continue
+            if line.startswith("data: "):
+                buf.append(line[6:])
+            elif line == "" and buf:
+                out_list.append(json.loads("\n".join(buf)))
+                buf.clear()
+        conn.close()
+
+    try:
+        owner_events: list[dict] = []
+        alice_events: list[dict] = []
+        owner_ready, alice_ready = threading.Event(), threading.Event()
+        stop_ev = threading.Event()
+
+        t_owner = threading.Thread(
+            target=read_sse_events,
+            args=(
+                {"Authorization": f"Bearer {tok}", "Accept": "text/event-stream"},
+                "?scope=work",
+                owner_events,
+                owner_ready,
+                stop_ev,
+            ),
+            daemon=True,
+        )
+        t_alice = threading.Thread(
+            target=read_sse_events,
+            args=(
+                {"Authorization": f"Bearer {tok}", "Accept": "text/event-stream", "X-Padam-Actor-Token": tok_a},
+                "?stream=1&scope=work",
+                alice_events,
+                alice_ready,
+                stop_ev,
+            ),
+            daemon=True,
+        )
+        t_owner.start()
+        t_alice.start()
+        assert owner_ready.wait(timeout=3) and alice_ready.wait(timeout=3)
+
+        # 1. Приватная запись владельца в work -> видит owner, НЕ видит alice
+        m.remember("Owner private note in work", kind="fact", scope="work", origin="user", visibility="private")
+        # 2. Запись чужой команды ws_b в work -> видит owner, НЕ видит alice
+        m.remember("Team B note in work", kind="fact", scope="work", origin="user", visibility="team_write", workspace_id=ws_b["id"])
+        # 3. Запись команды ws_a в другой области other -> alice слушает scope=work, НЕ видит other
+        m.remember("Team A note in other", kind="fact", scope="other", origin="user", visibility="team_write", workspace_id=ws_a["id"])
+        # 4. Запись команды ws_a в work и последующее удаление -> видит и owner, и alice (2 события: write + revoke)
+        _, team_a_work_id = m.remember(
+            "Team A shared sprint goal", kind="fact", scope="work", origin="user", visibility="team_write", workspace_id=ws_a["id"]
+        )
+        m.revoke(team_a_work_id)
+
+        deadline = time.monotonic() + 3.0
+        while time.monotonic() < deadline and (len(owner_events) < 4 or len(alice_events) < 2):
+            time.sleep(0.05)
+
+        stop_ev.set()
+
+        # Владелец получил все 4 изменения в области work (приватное, ws_b, ws_a запись и ws_a удаление)
+        assert len(owner_events) >= 4
+        assert all(e["params"]["uri"] == "padam://scope/work" for e in owner_events)
+        # Alice (ws_a) получила ровно 2 события (создание + удаление своей команды в work), ни одного приватного/чужого/other
+        assert len(alice_events) == 2
+        assert all(e["params"]["uri"] == "padam://scope/work" for e in alice_events)
+
+        # Проверка изоляции и для одиночного снимка GET /mcp (без stream): tok_b не получает уведомлений от ws_a/private
+        mcp_server.handle({"jsonrpc": "2.0", "id": 1, "method": "resources/subscribe", "params": {"uri": "padam://stats"}})
+        m.remember("Private fact for snapshot check", kind="fact", scope="work", origin="user", visibility="private")
+        mcp_server._emit_resource_updated("padam://stats", scope="work", kind="fact", visibility="private", owner_only=False)
+        req_snap = urllib.request.Request(
+            url,
+            headers={"Authorization": f"Bearer {tok}", "X-Padam-Actor-Token": tok_b},
+            method="GET",
+        )
+        with urllib.request.urlopen(req_snap, timeout=5) as gs:
+            snap_body = gs.read().decode("utf-8")
+            assert "notifications/resources/updated" not in snap_body
+    finally:
+        mcp_server.handle({"jsonrpc": "2.0", "id": 99, "method": "resources/unsubscribe", "params": {"uri": "padam://stats"}})
+        mcp_server.pop_notifications()
+        srv.shutdown()
+        srv.server_close()
+        m.close()
+

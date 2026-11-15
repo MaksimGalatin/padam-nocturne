@@ -34,7 +34,7 @@ import threading
 import traceback
 
 from . import __version__, config, retrieval, safety
-from .memory import Memory, parse_as_of
+from .memory import Memory, parse_as_of, register_change_listener
 from .nocturne import Nocturne
 from .store import Store
 
@@ -532,12 +532,41 @@ def _sleep_hint(m: Memory) -> str:
 # --- Г1, Г2, Г3: elicitation, ресурсы (resources) и подсказки (prompts) MCP ---
 
 _state_lock = threading.RLock()
+_notify_cond = threading.Condition(_state_lock)
 _client_capabilities: dict = {}
 _caps_ctx: contextvars.ContextVar[dict | None] = contextvars.ContextVar("padam_mcp_caps", default=None)
 _actor_token_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar("padam_mcp_actor_token", default=None)
 _elicitation_callback = None
 _subscribed_resources: set[str] = {"padam://review-queue"}
 _pending_notifications: list[dict] = []
+_pending_audiences: list[dict] = []
+_stream_events: list[tuple[int, dict, dict]] = []
+_event_seq: int = 0
+
+
+def _event_allowed_for_actor(audience: dict | None, actor) -> bool:
+    """Проверяет право субъекта actor на получение SSE-уведомления (изоляция ролей и областей)."""
+    from . import roles
+
+    if roles.is_owner(actor):
+        return True
+    if not audience or audience.get("owner_only"):
+        return False
+    if audience.get("visibility") not in ("team_read", "team_write"):
+        return False
+    if not actor.workspace_id or audience.get("workspace_id") != actor.workspace_id:
+        return False
+    if audience.get("kind") in config.PROTECTED_KINDS:
+        return False
+    return True
+
+
+def _uri_matches_scope_filter(uri: str, scopes: list[str] | None) -> bool:
+    if not scopes:
+        return True
+    if "all" in scopes:
+        return uri.startswith("padam://scope/")
+    return uri in {f"padam://scope/{s}" for s in scopes}
 
 
 def set_client_capabilities(caps: dict | None) -> None:
@@ -554,23 +583,80 @@ def set_elicitation_callback(fn) -> None:
         _elicitation_callback = fn
 
 
-def pop_notifications() -> list[dict]:
-    """Возвращает и очищает накопленные уведомления сервера (например, notifications/resources/updated)."""
+def pop_notifications(actor=None, scopes: list[str] | None = None) -> list[dict]:
+    """Возвращает и очищает накопленные уведомления сервера с фильтром по правам роли и области."""
     with _state_lock:
-        out = list(_pending_notifications)
+        notes = list(_pending_notifications)
+        auds = list(_pending_audiences)
         _pending_notifications.clear()
-        return out
+        _pending_audiences.clear()
+    out: list[dict] = []
+    for idx, note in enumerate(notes):
+        aud = auds[idx] if idx < len(auds) else {}
+        uri = str((note.get("params") or {}).get("uri") or "")
+        if not _uri_matches_scope_filter(uri, scopes):
+            continue
+        if _event_allowed_for_actor(aud, actor):
+            out.append(note)
+    return out
 
 
-def _emit_resource_updated(uri: str = "padam://review-queue") -> None:
-    """Формирует уведомление MCP об обновлении ресурса (Г2)."""
+def _emit_resource_updated(
+    uri: str = "padam://review-queue",
+    *,
+    scope: str | None = None,
+    visibility: str | None = None,
+    workspace_id: str | None = None,
+    kind: str | None = None,
+    owner_only: bool = False,
+) -> None:
+    """Формирует уведомление MCP об обновлении ресурса (Г2 + 1.4)."""
+    global _event_seq
+    note = {
+        "jsonrpc": "2.0",
+        "method": "notifications/resources/updated",
+        "params": {"uri": uri},
+    }
+    audience = {
+        "scope": scope,
+        "visibility": visibility or "private",
+        "workspace_id": workspace_id,
+        "kind": kind,
+        "owner_only": bool(owner_only or uri == "padam://review-queue"),
+    }
     with _state_lock:
+        _event_seq += 1
+        _stream_events.append((_event_seq, note, audience))
+        if len(_stream_events) > 512:
+            del _stream_events[: len(_stream_events) - 512]
         if uri in _subscribed_resources or uri == "padam://review-queue":
-            _pending_notifications.append({
-                "jsonrpc": "2.0",
-                "method": "notifications/resources/updated",
-                "params": {"uri": uri},
-            })
+            _pending_notifications.append(note)
+            _pending_audiences.append(audience)
+        _notify_cond.notify_all()
+
+
+def _on_memory_change(ev: dict) -> None:
+    """Слушатель изменений Memory: отправляет уведомления по padam://scope/{scope} без утечки чужих/приватных данных."""
+    if not isinstance(ev, dict):
+        return
+    if ev.get("status") == "quarantined":
+        return
+    scope = str(ev.get("scope") or "global").strip() or "global"
+    vis = ev.get("visibility") or "private"
+    ws_id = ev.get("workspace_id")
+    kind = ev.get("kind")
+    for target_uri in (f"padam://scope/{scope}", "padam://scope/all"):
+        _emit_resource_updated(
+            target_uri,
+            scope=scope,
+            visibility=vis,
+            workspace_id=ws_id,
+            kind=kind,
+            owner_only=False,
+        )
+
+
+register_change_listener(_on_memory_change)
 
 
 def _client_supports_elicitation() -> bool:
@@ -1410,14 +1496,28 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
         except ValueError as e:
             return f"Invalid write argument: {e}", None
         reason_str = ""
+        row_meta = m.store.one(
+            "SELECT scope, kind, visibility, workspace_id FROM memory WHERE id = ? AND user_id = ?",
+            (mid, m.user_id),
+        )
+        rm_kw = (
+            {
+                "scope": row_meta["scope"],
+                "kind": row_meta["kind"],
+                "visibility": row_meta["visibility"],
+                "workspace_id": row_meta["workspace_id"],
+            }
+            if row_meta
+            else {}
+        )
         if outcome == "quarantined":
-            _emit_resource_updated("padam://review-queue")
+            _emit_resource_updated("padam://review-queue", owner_only=True, **rm_kw)
             elicit_outcome, reason_str = _try_elicit_quarantined(m, mid, args["content"], origin)
             if elicit_outcome is not None:
                 outcome = elicit_outcome
         if outcome not in ("duplicate", "rejected_via_elicitation"):
-            _emit_resource_updated("padam://stats")
-            _emit_resource_updated("padam://recent")
+            _emit_resource_updated("padam://stats", owner_only=(outcome == "quarantined"), **rm_kw)
+            _emit_resource_updated("padam://recent", owner_only=(outcome == "quarantined"), **rm_kw)
         поднята = origin == "user" and config.MCP_TRUST_WRITES
         notes = {
             "created": "stored as a new record",
@@ -1453,7 +1553,12 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
         except PermissionError as e:
             return f"Permission denied: {e}", None
         if ok:
-            _emit_resource_updated("padam://stats")
+            row_meta = m.store.one(
+                "SELECT scope, kind, visibility, workspace_id FROM memory WHERE id = ? AND user_id = ?",
+                (args["id"], m.user_id),
+            )
+            rm_kw = dict(row_meta) if row_meta else {}
+            _emit_resource_updated("padam://stats", **rm_kw)
         return ("Record confirmed and refreshed." if ok else "Record not found."), {
             "id": args["id"],
             "confirmed": bool(ok),
@@ -1475,8 +1580,13 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
                 "refuted": False,
                 "protected": bool(защищена),
             }
-        _emit_resource_updated("padam://stats")
-        текст = "Confidence lowered. Record not refreshed."
+        row_meta = m.store.one(
+            "SELECT scope, kind, visibility, workspace_id FROM memory WHERE id = ? AND user_id = ?",
+            (args["id"], m.user_id),
+        )
+        rm_kw = dict(row_meta) if row_meta else {}
+        _emit_resource_updated("padam://stats", **rm_kw)
+        текст = "Confidence lowered. Record not refreshed." 
         if защищена:
             текст += " This is a protected record: only the owner can archive it."
         return текст, {"id": args["id"], "refuted": True, "protected": bool(защищена)}
@@ -1523,8 +1633,8 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
         if "note" in report:
             report["note"] = _SLEEP_NOTES_EN.get(report["note"], report["note"])
         if not dry:
-            _emit_resource_updated("padam://stats")
-            _emit_resource_updated("padam://recent")
+            _emit_resource_updated("padam://stats", owner_only=True)
+            _emit_resource_updated("padam://recent", owner_only=True)
         return json.dumps(report, ensure_ascii=False, indent=2), report
 
     if name == "padam_export":
@@ -1830,8 +1940,11 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
     """
     import hmac
     import secrets
+    import time
     from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-    from urllib.parse import urlsplit
+    from urllib.parse import parse_qs, urlsplit
+
+    sse_stop_event = threading.Event()
 
     host_clean = (host or "127.0.0.1").strip().lower()
     if host_clean not in ("127.0.0.1", "localhost", "::1") and not host_clean.startswith("127."):
@@ -1914,7 +2027,9 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
             return self._send_json(200, {"closed": True, "sessionId": session_id})
 
         def do_GET(self):
-            path = urlsplit(self.path).path
+            parsed = urlsplit(self.path)
+            path = parsed.path
+            qs = parse_qs(parsed.query)
             if path == "/health":
                 return self._send_json(200, {"status": "ok", "transport": "streamable-http", "version": __version__})
             if not self._trusted_local():
@@ -1922,18 +2037,88 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
             if not self._authorized():
                 return self._send_json(401, {"error": "unauthorized: Bearer token required"})
             if path == "/mcp":
-                notifs = pop_notifications()
-                lines = [f"event: message\ndata: {json.dumps(n, ensure_ascii=False)}\n\n" for n in notifs]
-                if not lines:
-                    lines.append(": keepalive\n\n")
-                raw = "".join(lines).encode("utf-8")
+                m_cur = mem()
+                actor_hdr = (self.headers.get("X-Padam-Actor-Token") or "").strip() or os.environ.get("PADAM_ACTOR_TOKEN", "").strip()
+                actor = None
+                if actor_hdr:
+                    from . import roles as _roles
+                    actor = m_cur.authenticate_token(actor_hdr) or _roles.ActorContext(
+                        role="guest", subject="guest", workspace_id=None, via_token=False
+                    )
+                scope_filter = [s.strip() for s in qs.get("scope", []) if s.strip()]
+                accept_hdr = (self.headers.get("Accept") or "").lower()
+                wants_stream = ("text/event-stream" in accept_hdr) or (qs.get("stream", [""])[0] == "1")
+                if not wants_stream:
+                    notifs = pop_notifications(actor=actor, scopes=scope_filter or None)
+                    lines = [f"event: message\ndata: {json.dumps(n, ensure_ascii=False)}\n\n" for n in notifs]
+                    if not lines:
+                        lines.append(": keepalive\n\n")
+                    raw = "".join(lines).encode("utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                    self.send_header("Content-Length", str(len(raw)))
+                    self.send_header("Cache-Control", "no-cache")
+                    self.send_header("Mcp-Session-Id", session_id)
+                    self.end_headers()
+                    self.wfile.write(raw)
+                    return None
+
+                # Постоянный SSE-поток (1.4): без Content-Length, с мгновенным flush каждого события.
+                self.protocol_version = "HTTP/1.0"
                 self.send_response(200)
                 self.send_header("Content-Type", "text/event-stream; charset=utf-8")
-                self.send_header("Content-Length", str(len(raw)))
                 self.send_header("Cache-Control", "no-cache")
+                self.send_header("Connection", "close")
+                self.send_header("X-Accel-Buffering", "no")
                 self.send_header("Mcp-Session-Id", session_id)
                 self.end_headers()
-                self.wfile.write(raw)
+                try:
+                    self.wfile.write(b": stream open\n\n")
+                    self.wfile.flush()
+                    with _state_lock:
+                        cursor = _event_seq
+                    initial = pop_notifications(actor=actor, scopes=scope_filter or None)
+                    for n in initial:
+                        frame = f"event: message\ndata: {json.dumps(n, ensure_ascii=False)}\n\n".encode("utf-8")
+                        self.wfile.write(frame)
+                        self.wfile.flush()
+                    last_ka = time.monotonic()
+                    while not sse_stop_event.is_set():
+                        batch = []
+                        with _state_lock:
+                            if _event_seq <= cursor and not sse_stop_event.is_set():
+                                _notify_cond.wait(timeout=0.3)
+                            if sse_stop_event.is_set():
+                                break
+                            for seq, note, aud in _stream_events:
+                                if seq > cursor:
+                                    cursor = seq
+                                    batch.append((seq, note, aud))
+                        sent_any = False
+                        for seq, note, aud in batch:
+                            uri = str((note.get("params") or {}).get("uri") or "")
+                            if scope_filter:
+                                if not _uri_matches_scope_filter(uri, scope_filter):
+                                    continue
+                            else:
+                                with _state_lock:
+                                    allowed_sub = (uri in _subscribed_resources) or (uri == "padam://review-queue")
+                                if not allowed_sub:
+                                    continue
+                            if not _event_allowed_for_actor(aud, actor):
+                                continue
+                            frame = f"id: {seq}\nevent: message\ndata: {json.dumps(note, ensure_ascii=False)}\n\n".encode("utf-8")
+                            self.wfile.write(frame)
+                            self.wfile.flush()
+                            sent_any = True
+                        if sent_any:
+                            last_ka = time.monotonic()
+                        elif time.monotonic() - last_ka >= 10.0:
+                            self.wfile.write(b": keepalive\n\n")
+                            self.wfile.flush()
+                            last_ka = time.monotonic()
+                except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
+                    pass
                 return None
             return self._send_json(404, {"error": "not found"})
 
@@ -2016,6 +2201,16 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
             return self._send_json(200, resp)
 
     srv = ThreadingHTTPServer((host, port), _McpHttpHandler)
+    srv.daemon_threads = True
+    _orig_shutdown = srv.shutdown
+
+    def _shutdown_with_sse():
+        sse_stop_event.set()
+        with _state_lock:
+            _notify_cond.notify_all()
+        return _orig_shutdown()
+
+    srv.shutdown = _shutdown_with_sse
     actual_port = srv.server_address[1]
     return srv, f"http://{host}:{actual_port}/mcp", tok
 

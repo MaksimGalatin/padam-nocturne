@@ -15,6 +15,22 @@ from . import classify, config, embeddings, guard, integrity, retrieval, roles, 
 from .store import Store, new_id, now_iso, pack, parse_ts, unpack
 from .i18n import t
 
+_CHANGE_LISTENERS: list = []
+
+
+def register_change_listener(fn) -> None:
+    """Регистрирует обработчик изменений записей памяти (для живых SSE-уведомлений)."""
+    if fn not in _CHANGE_LISTENERS:
+        _CHANGE_LISTENERS.append(fn)
+
+
+def _notify_change(event: dict) -> None:
+    for fn in list(_CHANGE_LISTENERS):
+        try:
+            fn(event)
+        except Exception:
+            pass
+
 
 @dataclass
 class Record:
@@ -766,6 +782,15 @@ class Memory:
              embeddings.метка_модели(), classify.разобрать_факт(content)[0],
              origin, reason, agent_id, visibility, workspace_id))
         self._дописать_в_кэш(отметка_до, mid, scope, kind, vec, status, visibility=visibility, workspace_id=workspace_id)
+        _notify_change({
+            "action": "quarantined" if status == "quarantined" else "write",
+            "id": mid,
+            "scope": scope,
+            "kind": kind,
+            "status": status,
+            "visibility": visibility or "private",
+            "workspace_id": workspace_id,
+        })
         return mid
 
     # -- проверка владельцем -------------------------------------------
@@ -788,7 +813,7 @@ class Memory:
                             agent_id=actor.subject if actor else None, outcome="denied", detail=str(exc))
             raise
         row = self.store.one(
-            """SELECT supersedes, valid_from, content, kind, visibility, workspace_id FROM memory
+            """SELECT supersedes, valid_from, content, kind, scope, visibility, workspace_id FROM memory
                WHERE id = ? AND user_id = ? AND status = 'quarantined'""",
             (memory_id, self.user_id))
         if not row:
@@ -824,6 +849,15 @@ class Memory:
             self._подписать(memory_id)       # подписывает только владелец
         self._log_audit("approve", memory_id, actor=actor.role if actor else "owner",
                         agent_id=actor.subject if actor else None, outcome="active")
+        _notify_change({
+            "action": "approve",
+            "id": memory_id,
+            "scope": row["scope"] or "global",
+            "kind": row["kind"],
+            "status": "active",
+            "visibility": row["visibility"] or "private",
+            "workspace_id": row["workspace_id"],
+        })
         return True
 
     def reject(self, memory_id: str, actor: roles.ActorContext | None = None) -> bool:
@@ -1413,6 +1447,21 @@ class Memory:
                confidence = MIN(confidence + 0.05, 1.0)
                WHERE id = ? AND user_id = ? AND status = 'active'""",
             (now_iso(), memory_id, self.user_id))
+        if cur.rowcount > 0:
+            r = self.store.one(
+                "SELECT kind, scope, visibility, workspace_id, status FROM memory WHERE id = ? AND user_id = ?",
+                (memory_id, self.user_id),
+            )
+            if r:
+                _notify_change({
+                    "action": "confirm",
+                    "id": memory_id,
+                    "scope": r["scope"] or "global",
+                    "kind": r["kind"],
+                    "status": r["status"],
+                    "visibility": r["visibility"] or "private",
+                    "workspace_id": r["workspace_id"],
+                })
         return cur.rowcount > 0
 
     def refute(self, memory_id: str, drop: float = 0.3,
@@ -1437,6 +1486,20 @@ class Memory:
             """UPDATE memory SET status = 'archived'
                WHERE id = ? AND user_id = ? AND confidence <= 0.0""",
             (memory_id, self.user_id))
+        r = self.store.one(
+            "SELECT kind, scope, visibility, workspace_id, status FROM memory WHERE id = ? AND user_id = ?",
+            (memory_id, self.user_id),
+        )
+        if r:
+            _notify_change({
+                "action": "refute",
+                "id": memory_id,
+                "scope": r["scope"] or "global",
+                "kind": r["kind"],
+                "status": r["status"],
+                "visibility": r["visibility"] or "private",
+                "workspace_id": r["workspace_id"],
+            })
         return True
 
     # -- отзыв ----------------------------------------------------------
@@ -1501,7 +1564,7 @@ class Memory:
         import json as _json
         цель = next((з for з in записи if з["id"] == memory_id), записи[0])
         доп = self.store.one(
-            "SELECT kind, scope, anchor_tx, anchor_slot FROM memory WHERE id = ? AND user_id = ?",
+            "SELECT kind, scope, visibility, workspace_id, anchor_tx, anchor_slot FROM memory WHERE id = ? AND user_id = ?",
             (цель["id"], self.user_id))
         ch_bytes = цель["content_hash"]
         if ch_bytes:
@@ -1571,6 +1634,15 @@ class Memory:
                         scope=доп["scope"] if доп else "global",
                         kind=доп["kind"] if доп else None,
                         outcome="revoked", detail=f"wiped={len(wiped_ids)}")
+        _notify_change({
+            "action": "revoke",
+            "id": memory_id,
+            "scope": (доп["scope"] if доп else None) or "global",
+            "kind": доп["kind"] if доп else None,
+            "status": "revoked",
+            "visibility": (доп["visibility"] if доп else None) or "private",
+            "workspace_id": доп["workspace_id"] if доп else None,
+        })
         return True
 
     # -- история версий -------------------------------------------------
