@@ -26,7 +26,7 @@ from typing import Any, Callable
 
 from cryptography.exceptions import InvalidSignature, InvalidTag
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec, ed25519
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519, padding, rsa
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
@@ -104,15 +104,15 @@ def probe_hardware_capabilities() -> dict[str, Any]:
         except Exception:
             dpapi_available = False
         try:
-            wauthn = ctypes.windll.webauthn  # type: ignore[attr-defined]
-            webauthn_dll = hasattr(wauthn, "WebAuthNGetApiVersionNumber")
-            if webauthn_dll:
-                ver = ctypes.c_uint32(0)
-                hr = wauthn.WebAuthNGetApiVersionNumber(ctypes.byref(ver))
-                if hr == 0:
-                    webauthn_api_version = int(ver.value)
+            from . import webauthn_win
+
+            dll = webauthn_win.load_webauthn_dll()
+            webauthn_dll = True
+            webauthn_api_version = webauthn_win.api_version(dll)
+            platform_auth = bool(webauthn_win.platform_authenticator_available(dll))
         except Exception:
             webauthn_dll = False
+            platform_auth = False
 
     bioutil_present = sys.platform == "darwin" and Path("/usr/bin/bioutil").exists()
     return {
@@ -120,8 +120,9 @@ def probe_hardware_capabilities() -> dict[str, Any]:
         "dpapi_available": bool(dpapi_available),
         "webauthn_dll": bool(webauthn_dll),
         "webauthn_api_version": webauthn_api_version,
+        "platform_authenticator_available": platform_auth,
         "macos_bioutil": bool(bioutil_present),
-        "fido2_crypto_engine": "cryptography(ECDSA-P256/Ed25519+HKDF-SHA256)",
+        "fido2_crypto_engine": "cryptography(ECDSA-P256/Ed25519/RSA-SHA256+HKDF-SHA256)",
     }
 
 
@@ -324,10 +325,12 @@ def verify_fido2_assertion(
         raise HardwareAuthError("FIDO2 User Verification (UV=1) check failed")
 
     sign_count = struct.unpack(">I", assertion.authenticator_data[33:37])[0]
-    if sign_count <= last_sign_count:
-        raise HardwareAuthError(
-            f"FIDO2 replay detected: sign_count {sign_count} <= last {last_sign_count}"
-        )
+    if last_sign_count >= 0:
+        # По W3C WebAuthn платформенные TPM (Windows Hello) могут возвращать signCount=0 всегда
+        if not (sign_count == 0 and last_sign_count == 0) and sign_count <= last_sign_count:
+            raise HardwareAuthError(
+                f"FIDO2 replay detected: sign_count {sign_count} <= last {last_sign_count}"
+            )
 
     try:
         cd = json.loads(assertion.client_data_json.decode("utf-8"))
@@ -343,6 +346,8 @@ def verify_fido2_assertion(
             pub.verify(assertion.signature, signed_payload)
         elif isinstance(pub, ec.EllipticCurvePublicKey):
             pub.verify(assertion.signature, signed_payload, ec.ECDSA(hashes.SHA256()))
+        elif isinstance(pub, rsa.RSAPublicKey):
+            pub.verify(assertion.signature, signed_payload, padding.PKCS1v15(), hashes.SHA256())
         else:
             raise HardwareAuthError("Unsupported public key type")
     except InvalidSignature as exc:
@@ -436,7 +441,7 @@ def seal_database(
     db_path: Path | str,
     *,
     mode: str = "dpapi",
-    fido2_token: SoftwareFido2Token | None = None,
+    fido2_token: Any | None = None,
     rp_id: str = "padam.local",
     require_uv: bool = True,
 ) -> dict[str, Any]:
@@ -490,6 +495,7 @@ def seal_database(
                     require_uv=require_uv,
                 )
                 header["fido2"] = {
+                    "rp_id": rp_id,
                     "credential_id_hex": fido2_token.credential_id.hex(),
                     "public_key_pem": fido2_token.public_key_pem(),
                     "hmac_salt_hex": fido_salt.hex(),
@@ -517,6 +523,7 @@ def seal_database(
                         require_uv=require_uv,
                     )
                     header["fido2"] = {
+                        "rp_id": rp_id,
                         "credential_id_hex": fido2_token.credential_id.hex(),
                         "public_key_pem": fido2_token.public_key_pem(),
                         "hmac_salt_hex": fido_salt.hex(),
@@ -563,7 +570,8 @@ def _recover_dek_and_update_header(
     header: dict[str, Any],
     *,
     assertion_cb: Callable[[bytes, bytes, dict[str, Any]], Fido2Assertion] | None = None,
-    fido2_token: SoftwareFido2Token | None = None,
+    fido2_token: Any | None = None,
+    use_webauthn: bool = False,
 ) -> tuple[bytearray, dict[str, Any]]:
     mode = header["mode"]
     rp_id = str(header.get("rp_id") or "padam.local")
@@ -582,6 +590,10 @@ def _recover_dek_and_update_header(
         ass = assertion_cb(challenge, salt, finfo)
     elif fido2_token is not None:
         ass = fido2_token.assert_challenge(challenge, salt, increment_counter=True)
+    elif use_webauthn:
+        from . import webauthn_win
+
+        ass = webauthn_win.webauthn_assertion_cb()(challenge, salt, finfo)
     else:
         raise HardwareAuthError("FIDO2 assertion callback or token required to unseal database")
 
@@ -618,8 +630,9 @@ def _recover_dek_and_update_header(
 def unseal_database(
     db_path: Path | str,
     *,
-    fido2_token: SoftwareFido2Token | None = None,
+    fido2_token: Any | None = None,
     assertion_cb: Callable[[bytes, bytes, dict[str, Any]], Fido2Assertion] | None = None,
+    use_webauthn: bool = False,
 ) -> dict[str, Any]:
     """Проверяет аппаратное доказательство и распечатывает БД на диск."""
     p = Path(db_path)
@@ -633,7 +646,7 @@ def unseal_database(
     ct = raw[12 + hdr_len + 12 :]
 
     dek, _ = _recover_dek_and_update_header(
-        header, assertion_cb=assertion_cb, fido2_token=fido2_token
+        header, assertion_cb=assertion_cb, fido2_token=fido2_token, use_webauthn=use_webauthn
     )
     try:
         try:
@@ -667,13 +680,15 @@ class HardwareSealedMemory:
         sealed_db_path: Path | str,
         *,
         user_id: str = "default",
-        fido2_token: SoftwareFido2Token | None = None,
+        fido2_token: Any | None = None,
         assertion_cb: Callable[[bytes, bytes, dict[str, Any]], Fido2Assertion] | None = None,
+        use_webauthn: bool = False,
     ) -> None:
         self.sealed_path = Path(sealed_db_path)
         self.user_id = user_id
         self.fido2_token = fido2_token
         self.assertion_cb = assertion_cb
+        self.use_webauthn = bool(use_webauthn)
         self._work_dir: Path | None = None
         self._work_db: Path | None = None
         self._header: dict[str, Any] | None = None
@@ -691,7 +706,7 @@ class HardwareSealedMemory:
         ct = raw[12 + hdr_len + 12 :]
 
         dek, updated_header = _recover_dek_and_update_header(
-            header, assertion_cb=self.assertion_cb, fido2_token=self.fido2_token
+            header, assertion_cb=self.assertion_cb, fido2_token=self.fido2_token, use_webauthn=self.use_webauthn
         )
         try:
             plain = bytearray(AESGCM(bytes(dek)).decrypt(db_nonce, ct, b"PADAMHW1|" + hdr_bytes))

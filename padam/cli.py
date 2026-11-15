@@ -402,16 +402,26 @@ def cmd_seal_status(m, a) -> int:
     if a.json:
         print(json.dumps(out, ensure_ascii=False, indent=2))
     else:
-        print(f"Hardware Seal: db={db_target} sealed={sealed} dpapi={caps['dpapi_available']} webauthn={caps['webauthn_dll']}")
+        print(
+            f"Hardware Seal: db={db_target} sealed={sealed} dpapi={caps['dpapi_available']} "
+            f"webauthn={caps['webauthn_dll']} platform_auth={caps.get('platform_authenticator_available')}"
+        )
     return 0
 
 
 def cmd_seal(m, a) -> int:
-    """Шаг 5 Легенды: запечатать файл БД аппаратной печатью PADAMHW1."""
+    """Шаг 5 Легенды: запечатать файл БД аппаратной печатью PADAMHW1 (DPAPI / Windows Hello WebAuthn)."""
     from pathlib import Path
     from . import hardware_seal
     db_target = Path(a.db) if a.db else config.DB_PATH
-    res = hardware_seal.seal_database(db_target, mode=a.mode)
+    rp_id = getattr(a, "rp_id", "padam.local")
+    if a.mode in ("webauthn", "webauthn+dpapi"):
+        from . import webauthn_win
+        tok = webauthn_win.WindowsWebAuthnToken.enroll(rp_id=rp_id)
+        seal_mode = "fido2" if a.mode == "webauthn" else "fido2+dpapi"
+        res = hardware_seal.seal_database(db_target, mode=seal_mode, fido2_token=tok, rp_id=rp_id)
+    else:
+        res = hardware_seal.seal_database(db_target, mode=a.mode, rp_id=rp_id)
     if a.json:
         print(json.dumps(res, ensure_ascii=False, indent=2))
     else:
@@ -420,11 +430,13 @@ def cmd_seal(m, a) -> int:
 
 
 def cmd_unseal(m, a) -> int:
-    """Шаг 5 Легенды: распечатать файл БД (DPAPI)."""
+    """Шаг 5 Легенды: распечатать файл БД (DPAPI / Windows Hello WebAuthn)."""
     from pathlib import Path
     from . import hardware_seal
     db_target = Path(a.db) if a.db else config.DB_PATH
-    res = hardware_seal.unseal_database(db_target)
+    hdr = hardware_seal.read_seal_header(db_target)
+    use_wa = bool(getattr(a, "webauthn", False)) or hdr.get("mode") in ("fido2", "fido2+dpapi")
+    res = hardware_seal.unseal_database(db_target, use_webauthn=use_wa)
     if a.json:
         print(json.dumps(res, ensure_ascii=False, indent=2))
     else:
@@ -1242,14 +1254,16 @@ def main(argv=None) -> int:
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_seal_status)
 
-    s = sub.add_parser("seal", help=t("запечатать базу данных аппаратной печатью (Windows DPAPI)",
-                                      "seal the database with hardware protection (Windows DPAPI)"))
-    s.add_argument("--mode", default="dpapi", choices=("dpapi",))
+    s = sub.add_parser("seal", help=t("запечатать базу данных аппаратной печатью (DPAPI / Windows Hello WebAuthn)",
+                                      "seal the database with hardware protection (DPAPI / Windows Hello WebAuthn)"))
+    s.add_argument("--mode", default="dpapi", choices=("dpapi", "webauthn", "webauthn+dpapi"))
+    s.add_argument("--rp-id", default="padam.local")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_seal)
 
-    s = sub.add_parser("unseal", help=t("распечатать базу данных с аппаратной проверки (Windows DPAPI)",
-                                        "unseal a hardware-sealed database (Windows DPAPI)"))
+    s = sub.add_parser("unseal", help=t("распечатать базу данных с аппаратной проверки (DPAPI / WebAuthn)",
+                                        "unseal a hardware-sealed database (DPAPI / WebAuthn)"))
+    s.add_argument("--webauthn", action="store_true")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_unseal)
 
