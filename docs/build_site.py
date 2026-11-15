@@ -722,8 +722,10 @@ def render_page(lang: str, page: str) -> str:
         f'<a class="pill{" active" if lc == lang else ""}" data-set-lang="{lc}" href="../{lc}/{page}">{_esc(LANG_NAMES[lc])}</a>'
         for lc in LANGUAGES
     )
+    # Python 3.10/3.11 do not allow a backslash inside an f-string expression, so the attribute lives in a variable.
+    aria_current = 'aria-current="page" '
     nav_items = "".join(
-        f'<li><a class="nav-link" {"aria-current=\"page\" " if p == page else ""}href="{p}">{_esc(s["nav"][p])}</a></li>'
+        f'<li><a class="nav-link" {aria_current if p == page else ""}href="{p}">{_esc(s["nav"][p])}</a></li>'
         for p in PAGES
     )
     body_html = PAGE_RENDERERS[page](lang, s)
