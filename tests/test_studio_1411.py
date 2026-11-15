@@ -3356,3 +3356,31 @@ def test_step_1_1_mcp_typed_links_and_asof_graph_resource(tmp_path, monkeypatch)
         assert bad_date["error"]["code"] == -32602
     finally:
         m.close()
+
+
+def test_step_2_1_nsis_installer_header_and_sidebar_images():
+    """Пункт 2.1: Логотип CODE в мастере установки NSIS (headerImage 150x57 и sidebarImage 164x314, 24-bit BMP)."""
+    import struct
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    tconf = json.loads((root / "desktop" / "tauri" / "tauri.conf.json").read_text("utf-8"))
+    nsis = tconf["bundle"]["windows"]["nsis"]
+    assert nsis.get("headerImage") == "icons/nsis-header.bmp"
+    assert nsis.get("sidebarImage") == "icons/nsis-sidebar.bmp"
+
+    expected = {
+        "icons/nsis-header.bmp": (150, 57),
+        "icons/nsis-sidebar.bmp": (164, 314),
+    }
+    for rel, (ew, eh) in expected.items():
+        p = root / "desktop" / "tauri" / rel
+        assert p.exists(), f"Missing NSIS bitmap: {p}"
+        raw = p.read_bytes()
+        assert raw[:2] == b"BM", f"{rel} is not a BMP file"
+        w, h, planes, bpp, comp = struct.unpack("<IIHHI", raw[18:34])
+        assert (w, h) == (ew, eh), f"{rel} has size {(w, h)}, expected {(ew, eh)}"
+        assert planes == 1 and bpp == 24 and comp == 0, f"{rel} must be uncompressed 24-bit BMP"
+        # Проверяем, что картинка не однотонная (логотип действительно нарисован)
+        pixel_data = raw[54:]
+        assert len(set(pixel_data[i:i+3] for i in range(0, len(pixel_data), 9))) > 15
