@@ -370,3 +370,40 @@ def test_top10v3_8_elicitation_guard_allow_quarantine_reject(tmp_path, monkeypat
     mcp_server.set_elicitation_callback(None)
     mcp_server.set_client_capabilities({})
     mem.close()
+
+
+def test_top10v3_9_local_otel_telemetry_and_metrics_resource(tmp_path, monkeypatch):
+    import json
+    from padam import config, mcp_server, telemetry
+    from padam.memory import Memory
+    from padam.store import Store
+
+    monkeypatch.delenv("PADAM_OTEL_METRICS", raising=False)
+    assert config.mcp_otel_enabled() is False
+
+    otel_file = tmp_path / "otel.jsonl"
+    monkeypatch.setenv("PADAM_OTEL_METRICS", "1")
+    monkeypatch.setenv("PADAM_OTEL_PATH", str(otel_file))
+    telemetry.get_telemetry().reset()
+
+    mem = Memory(user_id="arch", store=Store(tmp_path / "otel.sqlite"))
+    monkeypatch.setattr(mcp_server, "mem", lambda: mem)
+
+    mcp_server._call_tool_full("padam_write", {"content": "OTLP telemetry test fact", "kind": "fact", "scope": "obs"})
+    mcp_server._call_tool_full("padam_search", {"query": "OTLP telemetry", "scope": "obs"})
+
+    uris = [r["uri"] for r in mcp_server._list_resources_annotated()]
+    assert "padam://metrics" in uris
+
+    res = mcp_server.read_resource("padam://metrics")
+    data = json.loads(res["text"])
+    assert data["enabled"] is True
+    assert data["counters"]["tool_calls_total"] >= 2
+    assert "padam_write" in data["latency_ms"]["by_tool"]
+    assert "p95_ms" in data["latency_ms"]["overall"]
+
+    lines = [json.loads(line) for line in otel_file.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert len(lines) >= 2
+    assert "resourceSpans" in lines[0]
+    telemetry.get_telemetry().reset()
+    mem.close()

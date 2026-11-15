@@ -2101,6 +2101,15 @@ def _list_resources_annotated() -> list[dict]:
             "mimeType": "application/json",
             "annotations": _make_annotations(["assistant", "user"], 0.9, by_uri.get("padam://stats")),
         })
+    if config.mcp_otel_enabled():
+        out.append({
+            "uri": "padam://metrics",
+            "name": "local_otel_metrics",
+            "title": "Local OpenTelemetry Metrics",
+            "description": "Local OTLP latency histograms (p50/p95/p99) and security counters (DLP, ACL, quarantine).",
+            "mimeType": "application/json",
+            "annotations": _make_annotations(["user"], 0.85, by_uri.get("padam://stats")),
+        })
     if config.mcp_claude_memory_fs_enabled():
         out.append({
             "uri": "padam://memories",
@@ -2208,6 +2217,17 @@ def read_resource(uri: str) -> dict:
 
     m = mem()
     actor = _current_actor(m)
+
+    if uri == "padam://metrics":
+        if not config.mcp_otel_enabled():
+            raise KeyError(f"Resource not found: {uri}")
+        from . import telemetry as _telemetry
+        return {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps(_telemetry.get_telemetry().snapshot(), ensure_ascii=False, indent=2),
+            "annotations": _make_annotations(["user"], 0.85, None),
+        }
 
     if uri == "padam://briefing" or uri.startswith("padam://briefing/"):
         if not config.mcp_briefing_enabled():
@@ -3039,6 +3059,30 @@ def _build_search_resource_links(structured: dict | None) -> list[dict]:
 
 
 def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
+    if not config.mcp_otel_enabled():
+        return _call_tool_full_impl(name, args)
+    import time as _time
+    from . import telemetry as _telemetry
+    tel = _telemetry.get_telemetry()
+    t0 = _time.perf_counter()
+    status = "ok"
+    try:
+        res_text, res_struct = _call_tool_full_impl(name, args)
+        if isinstance(res_struct, dict) and res_struct.get("status") == "quarantined":
+            tel.incr("quarantine_hits", 1)
+        return res_text, res_struct
+    except PermissionError:
+        status = "error"
+        tel.incr("acl_denies", 1)
+        raise
+    except Exception:
+        status = "error"
+        raise
+    finally:
+        tel.record_span(name, (_time.perf_counter() - t0) * 1000.0, status=status)
+
+
+def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
     m = mem()
     actor = _current_actor(m)
     if config.mcp_app_acl_enabled():

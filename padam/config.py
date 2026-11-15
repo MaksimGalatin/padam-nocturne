@@ -451,3 +451,14 @@ def mcp_compaction_enabled() -> bool:
 def mcp_elicitation_guard_enabled() -> bool:
     """Включает расширенный диалог elicitation (allow/quarantine/reject) для рисковых записей (PADAM_MCP_ELICITATION_GUARD=1)."""
     return os.environ.get("PADAM_MCP_ELICITATION_GUARD", "0").strip() == "1"
+
+
+# --- ТОП-10 v3 Пункт 9: Локальная телеметрия OpenTelemetry-формата (выключено по умолчанию) ---
+def mcp_otel_enabled() -> bool:
+    """Включает локальную OTLP-телеметрию и ресурс padam://metrics (PADAM_OTEL_METRICS=1)."""
+    return os.environ.get("PADAM_OTEL_METRICS", "0").strip() == "1"
+
+
+def mcp_otel_path() -> str:
+    """Путь к локальному JSONL-файлу для записи OTLP-спанов (опционально, PADAM_OTEL_PATH)."""
+    return os.environ.get("PADAM_OTEL_PATH", "").strip()
