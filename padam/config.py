@@ -433,3 +433,9 @@ def mcp_write_autolink_enabled() -> bool:
 def mcp_quant_index_enabled() -> bool:
     """Включает 1-bit + int8 квантизованный предфильтр векторного поиска (PADAM_QUANT_INDEX=1)."""
     return os.environ.get("PADAM_QUANT_INDEX", "0").strip() == "1"
+
+
+# --- ТОП-10 v3 Пункт 2: Брифинг проекта на старте сессии (выключено по умолчанию) ---
+def mcp_briefing_enabled() -> bool:
+    """Включает ресурс padam://briefing/{scope} и режим --briefing (PADAM_BRIEFING=1)."""
+    return os.environ.get("PADAM_BRIEFING", "0").strip() == "1"

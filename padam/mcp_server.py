@@ -2078,6 +2078,15 @@ def _list_resources_annotated() -> list[dict]:
             "mimeType": "application/json",
             "annotations": _make_annotations(["assistant", "user"], 0.8, by_uri.get("padam://stats")),
         })
+    if config.mcp_briefing_enabled():
+        out.append({
+            "uri": "padam://briefing",
+            "name": "project_briefing",
+            "title": "Project Session Briefing",
+            "description": "Compact fenced session-start briefing (core rules, communities, recent decisions, active procedures).",
+            "mimeType": "application/json",
+            "annotations": _make_annotations(["assistant", "user"], 0.9, by_uri.get("padam://stats")),
+        })
     if config.mcp_claude_memory_fs_enabled():
         out.append({
             "uri": "padam://memories",
@@ -2185,6 +2194,20 @@ def read_resource(uri: str) -> dict:
 
     m = mem()
     actor = _current_actor(m)
+
+    if uri == "padam://briefing" or uri.startswith("padam://briefing/"):
+        if not config.mcp_briefing_enabled():
+            raise KeyError(f"Resource not found: {uri}")
+        from . import briefing as _briefing
+        req_scope = uri[len("padam://briefing/"):].strip() if uri.startswith("padam://briefing/") else None
+        eff_sc = _check_session_scope(req_scope or None)
+        payload = _briefing.build_project_briefing(m, scope=eff_sc)
+        return {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps(payload, ensure_ascii=False, indent=2),
+            "annotations": _make_annotations(["assistant", "user"], 0.9, None),
+        }
 
     if uri == "padam://communities" or uri.startswith("padam://communities/"):
         if not config.mcp_communities_enabled():

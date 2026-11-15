@@ -492,6 +492,7 @@ def cmd_hooks(m, a) -> int:
             scope=a.scope,
             token_budget=a.budget,
             tool_name=tool_name,
+            briefing=bool(getattr(a, "briefing", False)),
         )
         print(json.dumps({"hookSpecificOutput": res["hookSpecificOutput"]}, ensure_ascii=False))
         return 0
@@ -1464,6 +1465,7 @@ def main(argv=None) -> int:
     hr.add_argument("--query", default="")
     hr.add_argument("--tool-name", default="")
     hr.add_argument("--budget", type=int, default=800)
+    hr.add_argument("--briefing", action="store_true")
     hr.set_defaults(fn=cmd_hooks)
 
     a = p.parse_args(argv)

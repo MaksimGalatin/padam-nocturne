@@ -53,9 +53,31 @@ def render_hook_context(
     scope: str | None = None,
     token_budget: int = 800,
     tool_name: str = "",
+    briefing: bool = False,
     force: bool = False,
 ) -> dict[str, Any]:
     """Собирает безопасный контекст памяти для инъекции в хук жизненного цикла."""
+    if briefing and (force or config.mcp_hooks_enabled() or config.mcp_briefing_enabled()):
+        from .briefing import build_project_briefing
+        br = build_project_briefing(
+            mem,
+            scope=scope,
+            token_budget=token_budget,
+            force=bool(force or config.mcp_briefing_enabled()),
+        )
+        fenced = br.get("fenced_text") or ""
+        return {
+            "enabled": bool(br.get("enabled")),
+            "event": event,
+            "scope": scope,
+            "briefing": True,
+            "items": br.get("sections", {}),
+            "additionalContext": fenced,
+            "hookSpecificOutput": {
+                "hookEventName": event,
+                "additionalContext": fenced,
+            },
+        }
     if not force and not config.mcp_hooks_enabled():
         return {
             "enabled": False,
