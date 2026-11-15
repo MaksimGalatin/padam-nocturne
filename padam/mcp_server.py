@@ -1937,6 +1937,10 @@ def _list_resources_annotated() -> list[dict]:
     if config.mcp_apps_enabled():
         from . import mcp_apps as _mcp_apps
         out.extend(_mcp_apps.list_ui_resources(ts=by_uri.get("padam://review-queue")))
+    if config.mcp_icons_enabled():
+        icons = _padam_icons("resource")
+        for item in out:
+            item["icons"] = icons
     return out
 
 
@@ -1959,6 +1963,10 @@ def _list_resource_templates_annotated() -> list[dict]:
     if config.mcp_apps_enabled():
         from . import mcp_apps as _mcp_apps
         out.extend(_mcp_apps.list_ui_templates(ts=ts_all))
+    if config.mcp_icons_enabled():
+        icons = _padam_icons("resource")
+        for item in out:
+            item["icons"] = icons
     return out
 
 
@@ -3187,8 +3195,98 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
 
 # --- JSON-RPC ----------------------------------------------------------
 
+def _svg_data_uri(bg: str, fg: str) -> str:
+    import base64 as _b64
+    svg = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'
+        f'<path fill="{bg}" d="M12 2L4 5v6c0 5.5 3.4 10.7 8 12 4.6-1.3 8-6.5 8-12V5l-8-3z"/>'
+        f'<circle cx="12" cy="11" r="3.2" fill="{fg}"/></svg>'
+    )
+    return "data:image/svg+xml;base64," + _b64.b64encode(svg.encode("utf-8")).decode("ascii")
+
+
+_PADAM_ICON_PACKS: dict[str, list[dict]] = {
+    "server": [
+        {"src": _svg_data_uri("#1d4ed8", "#ffffff"), "mimeType": "image/svg+xml", "sizes": ["any"], "theme": "light"},
+        {"src": _svg_data_uri("#60a5fa", "#0f172a"), "mimeType": "image/svg+xml", "sizes": ["any"], "theme": "dark"},
+    ],
+    "tool": [
+        {"src": _svg_data_uri("#0f766e", "#ffffff"), "mimeType": "image/svg+xml", "sizes": ["any"], "theme": "light"},
+        {"src": _svg_data_uri("#2dd4bf", "#0f172a"), "mimeType": "image/svg+xml", "sizes": ["any"], "theme": "dark"},
+    ],
+    "resource": [
+        {"src": _svg_data_uri("#4338ca", "#ffffff"), "mimeType": "image/svg+xml", "sizes": ["any"], "theme": "light"},
+        {"src": _svg_data_uri("#818cf8", "#0f172a"), "mimeType": "image/svg+xml", "sizes": ["any"], "theme": "dark"},
+    ],
+    "prompt": [
+        {"src": _svg_data_uri("#b45309", "#ffffff"), "mimeType": "image/svg+xml", "sizes": ["any"], "theme": "light"},
+        {"src": _svg_data_uri("#fbbf24", "#0f172a"), "mimeType": "image/svg+xml", "sizes": ["any"], "theme": "dark"},
+    ],
+}
+
+
+def _padam_icons(kind: str = "server") -> list[dict]:
+    """SEP-973 SVG data-URI иконки для светлой и тёмной тем."""
+    pack = _PADAM_ICON_PACKS.get(kind, _PADAM_ICON_PACKS["server"])
+    return [{**item, "sizes": list(item["sizes"])} for item in pack]
+
+
 def _server_info() -> dict:
-    return {"name": "padam", "title": "PADAM · NOCTURNE memory", "version": __version__}
+    info: dict = {"name": "padam", "title": "PADAM · NOCTURNE memory", "version": __version__}
+    if config.mcp_icons_enabled():
+        info["icons"] = _padam_icons("server")
+    return info
+
+
+def _list_tools_payload() -> list[dict]:
+    if not config.mcp_icons_enabled():
+        return TOOLS
+    icons = _padam_icons("tool")
+    return [{**t, "icons": icons} for t in TOOLS]
+
+
+def _list_prompts_payload() -> list[dict]:
+    if not config.mcp_icons_enabled():
+        return PROMPTS
+    icons = _padam_icons("prompt")
+    return [{**p, "icons": icons} for p in PROMPTS]
+
+
+def build_server_card(*, base_url: str | None = None, oauth_enabled: bool = False) -> dict:
+    """Формирует публичную мета-карточку /.well-known/mcp/server-card.json без секретов и путей."""
+    caps = {
+        "tools": {"listChanged": False},
+        "resources": {"subscribe": True, "listChanged": False},
+        "prompts": {"listChanged": False},
+        "completions": {},
+        "logging": {},
+        **({"tasks": {"list": {}, "cancel": {}, "requests": {"tools": {"call": {}}}}} if _tasks_enabled() else {}),
+        **({"experimental": {"io.modelcontextprotocol/ui": {}}} if config.mcp_apps_enabled() else {}),
+    }
+    transport: dict = {"type": "streamable-http", "endpoint": "/mcp"}
+    if base_url:
+        transport["url"] = f"{base_url.rstrip('/')}/mcp"
+    auth: dict = {"type": "oauth2" if oauth_enabled else "bearer", "required": True}
+    if oauth_enabled:
+        auth["protectedResourceMetadata"] = "/.well-known/oauth-protected-resource"
+    return {
+        "serverInfo": {
+            "name": "padam",
+            "title": "PADAM · NOCTURNE memory",
+            "version": __version__,
+            "icons": _padam_icons("server"),
+        },
+        "protocolVersion": PROTOCOL_VERSION,
+        "supportedProtocolVersions": list(SUPPORTED_PROTOCOL_VERSIONS),
+        "transport": transport,
+        "capabilities": caps,
+        "authentication": auth,
+        "tools": [{"name": t["name"], "title": t.get("title", ""), "description": t["description"]} for t in TOOLS],
+        "resources": [r["uri"] for r in RESOURCES],
+        "resourceTemplates": [t["uriTemplate"] for t in RESOURCE_TEMPLATES],
+        "prompts": [p["name"] for p in PROMPTS],
+        "icons": _padam_icons("server"),
+    }
 
 
 def _modern_meta(req: dict) -> dict | None:
@@ -3309,7 +3407,7 @@ def _handle_modern(req: dict, meta: dict) -> dict | None:
         })
     if method == "tools/list":
         # Порядок TOOLS задан в коде и не меняется от вызова к вызову: клиент и кэш подсказок модели это используют.
-        return done({"tools": TOOLS, "ttlMs": _LIST_TTL_MS, "cacheScope": "public"})
+        return done({"tools": _list_tools_payload(), "ttlMs": _LIST_TTL_MS, "cacheScope": "public"})
     if method in ("tools/call", "resources/list", "resources/templates/list", "resources/read",
                   "resources/subscribe", "resources/unsubscribe", "prompts/list", "prompts/get",
                   "completion/complete", "tasks/get", "tasks/list", "tasks/cancel", "tasks/result", "tasks/create"):
@@ -3392,7 +3490,7 @@ def _handle_legacy(req: dict) -> dict | None:
         return None
 
     if method == "tools/list":
-        return ok({"tools": TOOLS})
+        return ok({"tools": _list_tools_payload()})
 
     if method == "tools/call":
         params = req.get("params") or {}
@@ -3489,7 +3587,7 @@ def _handle_legacy(req: dict) -> dict | None:
         return ok({})
 
     if method == "prompts/list":
-        return ok({"prompts": PROMPTS})
+        return ok({"prompts": _list_prompts_payload()})
 
     if method == "prompts/get":
         params = req.get("params") or {}
@@ -3877,6 +3975,11 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                 return self._send_json(200, {"status": "ok", "transport": "streamable-http", "version": __version__})
             if not self._trusted_local():
                 return self._send_json(403, {"error": "forbidden origin or host"})
+            if path == "/.well-known/mcp/server-card.json":
+                if not config.mcp_server_card_enabled():
+                    return self._send_json(404, {"error": "not found"})
+                base_u = f"http://{self.headers.get('Host') or f'{host}:{actual_port}'}"
+                return self._send_json(200, build_server_card(base_url=base_u, oauth_enabled=oauth_enabled))
             if oauth_srv is not None:
                 if path == "/.well-known/oauth-protected-resource":
                     return self._send_json(200, oauth_srv.protected_resource_metadata())

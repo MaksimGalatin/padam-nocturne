@@ -284,3 +284,13 @@ def mcp_http_sse_post_enabled() -> bool:
 def mcp_apps_enabled() -> bool:
     """Включает ресурсы ui://padam/* с MIME text/html;profile=mcp-app (PADAM_MCP_APPS=1)."""
     return os.environ.get("PADAM_MCP_APPS", "0").strip() == "1"
+
+# --- ТОП-10 Пункт 7: Иконки SEP-973 и карточка /.well-known/mcp/server-card.json (выключено по умолчанию) ---
+def mcp_icons_enabled() -> bool:
+    """Добавляет SEP-973 icons в serverInfo, tools, resources, prompts (PADAM_MCP_ICONS=1)."""
+    return os.environ.get("PADAM_MCP_ICONS", "0").strip() == "1"
+
+
+def mcp_server_card_enabled() -> bool:
+    """Открывает GET /.well-known/mcp/server-card.json (PADAM_MCP_SERVER_CARD=1)."""
+    return os.environ.get("PADAM_MCP_SERVER_CARD", "0").strip() == "1"

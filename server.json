@@ -39,5 +39,23 @@
         }
       ]
     }
+  ],
+  "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzFkNGVkOCIgZD0iTTEyIDJMNCA1djZjMCA1LjUgMy40IDEwLjcgOCAxMiA0LjYtMS4zIDgtNi41IDgtMTJWNWwtOC0zeiIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTEiIHI9IjMuMiIgZmlsbD0iI2ZmZmZmZiIvPjwvc3ZnPg==",
+      "mimeType": "image/svg+xml",
+      "sizes": [
+        "any"
+      ],
+      "theme": "light"
+    },
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzYwYTVmYSIgZD0iTTEyIDJMNCA1djZjMCA1LjUgMy40IDEwLjcgOCAxMiA0LjYtMS4zIDgtNi41IDgtMTJWNWwtOC0zeiIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTEiIHI9IjMuMiIgZmlsbD0iIzBmMTcyYSIvPjwvc3ZnPg==",
+      "mimeType": "image/svg+xml",
+      "sizes": [
+        "any"
+      ],
+      "theme": "dark"
+    }
   ]
 }

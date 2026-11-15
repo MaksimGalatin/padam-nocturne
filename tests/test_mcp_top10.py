@@ -898,3 +898,83 @@ def test_top6_mcp_apps_review_queue_and_graph_ui(tmp_path, monkeypatch):
     finally:
         mcp_server._memory = old_mem
         m.close()
+
+
+def test_top7_sep973_icons_and_server_card(tmp_path, monkeypatch):
+    """Пункт 7 ТОП-10: opt-in иконки SEP-973 и карточка /.well-known/mcp/server-card.json."""
+    import json
+    import threading
+    import urllib.error
+    import urllib.request
+    from pathlib import Path
+
+    from padam import config, mcp_server
+    from padam.memory import Memory
+    from padam.store import Store
+
+    # По умолчанию выключено
+    monkeypatch.delenv("PADAM_MCP_ICONS", raising=False)
+    monkeypatch.delenv("PADAM_MCP_SERVER_CARD", raising=False)
+    assert config.mcp_icons_enabled() is False
+    assert config.mcp_server_card_enabled() is False
+
+    m = Memory(user_id="top7_u", store=Store(tmp_path / "m_top7.db"))
+    old_mem = mcp_server._memory
+    mcp_server._memory = m
+    try:
+        init_off = mcp_server.handle({"jsonrpc": "2.0", "id": "t7-i0", "method": "initialize", "params": {}})["result"]
+        assert "icons" not in init_off["serverInfo"]
+        tools_off = mcp_server.handle({"jsonrpc": "2.0", "id": "t7-t0", "method": "tools/list"})["result"]["tools"]
+        assert len(tools_off) == 9
+        assert "icons" not in tools_off[0]
+
+        # Включаем SEP-973 icons
+        monkeypatch.setenv("PADAM_MCP_ICONS", "1")
+        init_on = mcp_server.handle({"jsonrpc": "2.0", "id": "t7-i1", "method": "initialize", "params": {}})["result"]
+        icons_srv = init_on["serverInfo"]["icons"]
+        assert {ic["theme"] for ic in icons_srv} == {"light", "dark"}
+        assert all(ic["src"].startswith("data:image/svg+xml;base64,") for ic in icons_srv)
+
+        for meth, key in (
+            ("tools/list", "tools"),
+            ("resources/list", "resources"),
+            ("resources/templates/list", "resourceTemplates"),
+            ("prompts/list", "prompts"),
+        ):
+            items = mcp_server.handle({"jsonrpc": "2.0", "id": f"t7-{key}", "method": meth})["result"][key]
+            assert all("icons" in it and len(it["icons"]) == 2 for it in items)
+
+        # server.json также содержит иконки
+        sj = json.loads((Path(__file__).resolve().parents[1] / "server.json").read_text(encoding="utf-8"))
+        assert len(sj["icons"]) == 2 and {ic["theme"] for ic in sj["icons"]} == {"light", "dark"}
+
+        # HTTP endpoint /.well-known/mcp/server-card.json выключен -> 404; включён -> 200 без утечки токенов
+        srv, url, tok = mcp_server.make_mcp_http_server(
+            memory=m, host="127.0.0.1", port=0, token="top7-secret-token-1234"
+        )
+        t_srv = threading.Thread(target=srv.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True)
+        t_srv.start()
+        try:
+            card_url = url.rsplit("/mcp", 1)[0] + "/.well-known/mcp/server-card.json"
+            try:
+                urllib.request.urlopen(card_url, timeout=5)
+                raise AssertionError("expected 404 when PADAM_MCP_SERVER_CARD=0")
+            except urllib.error.HTTPError as he:
+                assert he.code == 404
+
+            monkeypatch.setenv("PADAM_MCP_SERVER_CARD", "1")
+            with urllib.request.urlopen(card_url, timeout=5) as resp:
+                assert resp.status == 200
+                raw_card = resp.read().decode("utf-8")
+                assert tok not in raw_card
+                card = json.loads(raw_card)
+                assert card["serverInfo"]["name"] == "padam"
+                assert len(card["tools"]) == 9
+                assert card["transport"]["endpoint"] == "/mcp"
+                assert len(card["icons"]) == 2
+        finally:
+            srv.shutdown()
+            srv.server_close()
+    finally:
+        mcp_server._memory = old_mem
+        m.close()
