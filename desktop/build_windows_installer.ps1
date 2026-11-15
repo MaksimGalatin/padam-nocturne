@@ -1,4 +1,4 @@
-# Сборка автономного установщика Windows для PADAM · NOCTURNE Studio (14.2 Г7 + 14.3 + п. 1.1–1.4).
+﻿# Сборка автономного установщика Windows для PADAM · NOCTURNE Studio (14.2 Г7 + 14.3 + п. 1.1–1.4).
 # Запускает бесплатный локальный тулчейн из E:\Tools (без установки VS на C:),
 # синхронизирует версию из единственной точки правды padam/__init__.py,
 # собирает встроенный Python 3.14 runtime в desktop\tauri\runtime и NSIS-установщик.
@@ -84,13 +84,16 @@ if (-not $SkipRuntime) {
 Write-Output "[BUILD] Компиляция PADAM Studio $PadamVersion (Tauri v2 + cargo-xwin, --jobs 6)..."
 $env:CARGO_BUILD_JOBS = "6"
 $DefaultMinisignKey = Join-Path $env:USERPROFILE ".tauri\padam-studio.key"
-if (-not $env:TAURI_SIGNING_PRIVATE_KEY -and -not $env:TAURI_SIGNING_PRIVATE_KEY_PATH -and (Test-Path $DefaultMinisignKey)) {
-    $env:TAURI_SIGNING_PRIVATE_KEY_PATH = $DefaultMinisignKey
+if (-not $env:TAURI_SIGNING_PRIVATE_KEY -and (Test-Path $DefaultMinisignKey)) {
+    $env:TAURI_SIGNING_PRIVATE_KEY = (Get-Content $DefaultMinisignKey -Raw -Encoding UTF8).Trim()
+    if (-not $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD) {
+        $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ""
+    }
     Write-Output "[SIGN-UPDATER] Используется локальный ключ minisign: $DefaultMinisignKey"
 }
 $TauriBuildArgs = @("tauri", "build", "--runner", "cargo-xwin", "--target", "x86_64-pc-windows-msvc")
-if (-not $env:TAURI_SIGNING_PRIVATE_KEY -and -not $env:TAURI_SIGNING_PRIVATE_KEY_PATH) {
-    Write-Warning "[SIGN-UPDATER] TAURI_SIGNING_PRIVATE_KEY[_PATH] не задан: артефакты .sig для автообновления пропущены."
+if (-not $env:TAURI_SIGNING_PRIVATE_KEY) {
+    Write-Warning "[SIGN-UPDATER] TAURI_SIGNING_PRIVATE_KEY не задан: артефакты .sig для автообновления пропущены."
     $TauriBuildArgs += @("--config", '{"bundle":{"createUpdaterArtifacts":false}}')
 }
 Push-Location $TauriDir

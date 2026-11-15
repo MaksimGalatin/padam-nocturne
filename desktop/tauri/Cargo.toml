@@ -1,6 +1,6 @@
 [package]
 name = "padam-studio-desktop"
-version = "0.5.1"
+version = "0.5.2"
 description = "PADAM · NOCTURNE Studio — Локальная защищённая память ИИ-агентов (CODE Eternal)"
 authors = ["Maksim Galatin <codeofdigitaleternity@gmail.com>"]
 license = "AGPL-3.0-only"

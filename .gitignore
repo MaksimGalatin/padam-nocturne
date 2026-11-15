@@ -11,4 +11,5 @@ dist/
 desktop/tauri/target/
 desktop/tauri/runtime/
 desktop/*.exe
+desktop/*.exe.sig
 extensions/dist/*.zip

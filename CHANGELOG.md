@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.2 — 15 November 2026
+
+### MCP protocol, security & backup/restore
+- **Optional OAuth 2.1 (PKCE S256) + RFC 9728 / RFC 8414 / RFC 7591** (`PADAM_MCP_OAUTH=1` / `--oauth`, off by default): `/.well-known/oauth-protected-resource`, owner-verified consent page, dynamic loopback client registration, and scoped Bearer tokens (`padam:read`, `padam:write`, `padam:sleep`).
+- **MCP tasks, sampling, persistent SSE & typed links**: opt-in `tasks/*` for `padam_sleep` and connector initial sync, opt-in `sampling/createMessage` cluster summarization, persistent `GET /mcp?stream=1` with role/scope filtering, `links` in `padam_write` (`cause`, `correction`, `contradiction`, `source`), resource `padam://asof-graph/{date}`, `completion/complete`, `outputSchema`/`structuredContent`, and RBAC isolation across resources and prompts.
+- **Temporal validity & cascade forget**: `valid_from` / `valid_to` windows, `graph(as_of=...)`, and owner-previewed cascade source removal in Studio.
+- **Roles & teams, connectors & PQC sync**: 4-role RBAC (`owner`, `maintainer`, `contributor`, `auditor`) with salted SHA-256 tokens and `audit_log`; encrypted external-guarded connectors for GitHub, Notion, Google Drive and Slack (off by default); hybrid post-quantum X-Wing (`ML-KEM-768` + `X25519`) + `ML-DSA-65` sync over `cryptography>=50.0.0`.
+- **Encrypted backup/restore**: `padam/backup.py`, `padam backup` / `padam restore`, Studio Backup tab (4 languages), and SHA-256 verification before and after restore.
+
+### Desktop installer, CI & supply chain
+- **Windows installer (`0.5.2`)**: custom CODE Eternal header/sidebar bitmaps in NSIS wizard, `runtime` cleanup on uninstall, and opt-in signed `tauri-plugin-updater` (`minisign`, off by default via `PADAM_AUTO_UPDATE=0`).
+- **Automated CI checks & SBOM**: `scripts/ci_restore_check.py`, `scripts/mcp_protocol_check.py`, `scripts/studio_a11y_check.py` (axe-core, 14 Studio tabs in dark/light themes), `scripts/build_extensions.py`, pinned `requirements.lock`, `pip-audit`, and CycloneDX SBOM generation on publish.
+
 ## 0.5.1 — 14 November 2026
 
 ### Native desktop application (Windows installer + system tray)
