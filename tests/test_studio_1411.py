@@ -3245,3 +3245,114 @@ def test_mcp_enhancements_rbac_templates_completion_structured_and_http(tmp_path
             srv.server_close()
     finally:
         m.close()
+
+
+def test_step_1_1_mcp_typed_links_and_asof_graph_resource(tmp_path, monkeypatch):
+    """Пункт 1.1: padam_write принимает типизированные рёбра links и ресурс padam://asof-graph/{date}."""
+    import re
+    from padam import mcp_server
+    from padam.memory import Memory
+    from padam.store import Store
+
+    fence_open = re.compile(r'<memory-data nonce="([0-9a-f]{32})">')
+    fence_close = re.compile(r'</memory-data nonce="([0-9a-f]{32})">')
+
+    m = Memory(user_id="step1_1", store=Store(tmp_path / "step1_1.db"))
+    monkeypatch.setattr(mcp_server, "_memory", m)
+    try:
+        assert len(mcp_server.TOOLS) == 9
+        _, id_cause = m.remember(
+            "Обнаружена задержка записи WAL на медленном диске",
+            kind="fact",
+            origin="user",
+            valid_from="2026-01-01T00:00:00Z",
+        )
+        # Неверная связь должна отбиваться на уровне инструмента (isError=True)
+        bad_res = mcp_server.handle({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {
+                "name": "padam_write",
+                "arguments": {
+                    "content": "Неверная связь",
+                    "links": [{"target": id_cause, "relation": "unknown_rel"}],
+                },
+            },
+        })["result"]
+        assert bad_res["isError"] is True
+
+        # Передаём cause + source + correction + contradiction через padam_write без нового инструмента
+        ok_res = mcp_server.handle({
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "tools/call",
+            "params": {
+                "name": "padam_write",
+                "arguments": {
+                    "content": "Переключили журнал WAL на быстрый NVMe том",
+                    "kind": "decision",
+                    "origin": "user",
+                    "valid_from": "2026-06-01T00:00:00Z",
+                    "links": [
+                        {"source": id_cause, "relation": "cause"},
+                        {"source": id_cause, "relation": "correction"},
+                        {"source": id_cause, "relation": "contradiction"},
+                        {"source": id_cause, "relation": "source"},
+                    ],
+                },
+            },
+        })["result"]
+        assert ok_res["isError"] is False
+        new_id = ok_res["structuredContent"]["id"]
+        # Проверяем, что все 4 типизированных ребра легли в memory_link.relation (source -> derived)
+        link_rows = m.store.query(
+            "SELECT src, dst, relation FROM memory_link WHERE dst = ? ORDER BY relation",
+            (new_id,),
+        )
+        assert [(r["src"], r["dst"], r["relation"]) for r in link_rows] == [
+            (id_cause, new_id, "cause"),
+            (id_cause, new_id, "contradiction"),
+            (id_cause, new_id, "correction"),
+            (id_cause, new_id, "derived"),
+        ]
+
+        # Проверяем шаблон padam://asof-graph/{date} в templates/list, completion и resources/read
+        tpls = mcp_server.handle({"jsonrpc": "2.0", "id": 3, "method": "resources/templates/list"})["result"]["resourceTemplates"]
+        assert any(t["uriTemplate"] == "padam://asof-graph/{date}" for t in tpls)
+
+        # Срез графа до 2026-06-01: есть id_cause, но нет new_id и рёбер
+        g_early = mcp_server.handle({
+            "jsonrpc": "2.0",
+            "id": 4,
+            "method": "resources/read",
+            "params": {"uri": "padam://asof-graph/2026-03-01"},
+        })["result"]["contents"][0]["text"]
+        om, cm = fence_open.findall(g_early), fence_close.findall(g_early)
+        assert len(om) == 1 and om == cm
+        inner_early = g_early.split(f'<memory-data nonce="{om[0]}">\n', 1)[1].rsplit(f'\n</memory-data nonce="{cm[0]}">', 1)[0]
+        early_data = json.loads(inner_early)
+        assert {n["id"] for n in early_data["nodes"]} == {id_cause}
+        assert early_data["edges"] == []
+
+        # Срез графа на актуальную дату после создания связей (2027-01-01): видны оба узла и все рёбра
+        g_late = mcp_server.handle({
+            "jsonrpc": "2.0",
+            "id": 5,
+            "method": "resources/read",
+            "params": {"uri": "padam://asof-graph/2027-01-01"},
+        })["result"]["contents"][0]["text"]
+        om2, cm2 = fence_open.findall(g_late), fence_close.findall(g_late)
+        assert len(om2) == 1 and om2 == cm2
+        inner_late = g_late.split(f'<memory-data nonce="{om2[0]}">\n', 1)[1].rsplit(f'\n</memory-data nonce="{cm2[0]}">', 1)[0]
+        late_data = json.loads(inner_late)
+        assert {n["id"] for n in late_data["nodes"]} == {id_cause, new_id}
+        assert {e["type"] for e in late_data["edges"]} >= {"cause", "correction", "contradiction", "derived"}
+
+        # Невалидная дата -> -32602
+        bad_date = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 6, "method": "resources/read", "params": {"uri": "padam://asof-graph/bad-date"}
+        })
+        assert bad_date["error"]["code"] == -32602
+    finally:
+        m.close()
