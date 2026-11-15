@@ -2921,3 +2921,84 @@ def test_item7_pqc_xwing_mlkem768_mldsa65_two_nodes_and_third_cannot_read():
             ma.close()
             mb.close()
             mc.close()
+
+
+def test_item8_v4_patch_and_solana_anchor_signature_devnet():
+    """Пункт 8: валидный git-патч В4, локальная проверка подписи якоря L3 и devnet-демо В5 ($0)."""
+    import json
+    import subprocess
+    import sys
+    import tempfile
+    from pathlib import Path
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from padam import anchor
+    from padam.memory import Memory
+    from padam.store import Store
+
+    repo = Path(__file__).resolve().parents[1]
+    v4_patch = repo / "docs" / "patches" / "V4.patch"
+    assert v4_patch.exists()
+    ptxt = v4_patch.read_text(encoding="utf-8")
+    for required_file in (
+        "web/src/lib/agent-signup.ts",
+        "web/src/app/api/agent-signup/challenge/route.ts",
+        "web/src/app/api/agent-signup/verify/route.ts",
+        "web/src/app/api/agent-signup/claim/route.ts",
+        "web/src/app/claim-agent/page.tsx",
+    ):
+        assert required_file in ptxt
+
+    # Проверяем что патч без ошибок ложится на чистую копию через git apply --check
+    with tempfile.TemporaryDirectory() as td:
+        subprocess.run(["git", "init", "-q"], cwd=td, check=True)
+        chk = subprocess.run(["git", "apply", "--check", str(v4_patch)], cwd=td, capture_output=True, text=True)
+        assert chk.returncode == 0, chk.stderr
+
+    # Локальная ($0) проверка подписи якоря L3 + отпечатка анклава + защита от mainnet
+    with tempfile.TemporaryDirectory() as td:
+        m = Memory(user_id="item8", store=Store(Path(td) / "anchor.db"))
+        try:
+            anchor.ensure_schema(m)
+            m.remember("Verified L3 bundle for Solana devnet check", kind="fact")
+            anchor.ensure_keys(m)
+            b = anchor.build_bundle(m)
+            assert b is not None
+            root_hex = b.root.hex()
+            memo = f"{anchor.MEMO_PREFIX} root={root_hex}"
+            sk = Ed25519PrivateKey.generate()
+            meas = "enclave-sha256:test-devnet-001"
+            att = anchor.sign_anchor_attestation(memo, root_hex, sk, network="devnet", measurement=meas, slot=123456)
+
+            ok_res = anchor.verify_anchor_attestation(
+                b.payload, memo, att, expected_measurement=meas, reject_mainnet=True
+            )
+            assert ok_res["ok"] is True and ok_res["bundle_ok"] is True and ok_res["signature_ok"] is True
+
+            bad_sig = dict(att)
+            sig_ba = bytearray.fromhex(att["signature_hex"])
+            sig_ba[0] ^= 0xFF
+            bad_sig["signature_hex"] = bytes(sig_ba).hex()
+            bad_res = anchor.verify_anchor_attestation(b.payload, memo, bad_sig, reject_mainnet=True)
+            assert bad_res["ok"] is False and bad_res["signature_ok"] is False
+
+            bad_meas = anchor.verify_anchor_attestation(
+                b.payload, memo, att, expected_measurement="other-enclave", reject_mainnet=True
+            )
+            assert bad_meas["ok"] is False
+
+            mainnet_att = anchor.sign_anchor_attestation(memo, root_hex, sk, network="mainnet", measurement=meas, slot=1)
+            main_res = anchor.verify_anchor_attestation(b.payload, memo, mainnet_att, reject_mainnet=True)
+            assert main_res["ok"] is False and "mainnet" in (main_res.get("error") or "")
+
+            # Mock read-only devnet slot query
+            assert anchor.read_devnet_slot(rpc_fn=lambda url, method, params: 987654 if "devnet" in url else 0) == 987654
+        finally:
+            m.close()
+
+    # Рабочий devnet-пример examples/solana/anchor_devnet_demo.py + README
+    demo_py = repo / "examples" / "solana" / "anchor_devnet_demo.py"
+    demo_readme = repo / "examples" / "solana" / "README.md"
+    assert demo_py.exists() and demo_readme.exists()
+    proc = subprocess.run([sys.executable, str(demo_py)], cwd=repo, capture_output=True, text=True, check=True)
+    out = json.loads(proc.stdout)
+    assert out["verification"]["ok"] is True and out["attestation"]["network"] == "devnet"

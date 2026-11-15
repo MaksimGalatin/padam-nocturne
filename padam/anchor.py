@@ -410,4 +410,124 @@ def verify_bundle(payload: bytes, memo: str) -> dict:
     in_memo = memo.split("root=", 1)[1].split()[0] if "root=" in memo else ""
     return {"root_recomputed": root, "root_in_bundle": d.get("root"),
             "root_in_chain": in_memo, "ok": root == d.get("root") == in_memo,
-            "records": len(d["records"]), "forgets": len(d["forgets"])}
+            "records": len(d["records"]), "forgets": len(d["forgets"])}# ---------------------------------------------------------------- В5: локальная подпись и проверка якоря ($0, devnet)
+
+def _attestation_message(memo: str, root_hex: str, network: str, measurement: str, slot: int) -> bytes:
+    canonical = (
+        f"PADAM-ANCHOR-SIG-v1|network={network}|root={root_hex}|"
+        f"memo={memo}|measurement={measurement}|slot={int(slot)}"
+    )
+    return canonical.encode("utf-8")
+
+
+def read_devnet_slot(rpc_fn: Optional[Callable[[str, str, list], object]] = None) -> int:
+    """Read-only запрос текущего слота Solana devnet (стоимость $0, без ключей)."""
+    caller = rpc_fn or _rpc
+    res = caller(RPC["devnet"], "getSlot", [{"commitment": "confirmed"}])
+    return int(res)  # type: ignore[arg-type]
+
+
+def sign_anchor_attestation(
+    memo: str,
+    root_hex: str,
+    signing_key,
+    *,
+    network: str = "devnet",
+    measurement: str = "local-devnet-demo",
+    slot: int = 0,
+) -> dict:
+    """Подписывает корень Меркла и заметку Memo локальным Ed25519-ключом (без сети и mainnet)."""
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+    if isinstance(signing_key, (bytes, bytearray)):
+        sk = Ed25519PrivateKey.from_private_bytes(bytes(signing_key))
+    elif isinstance(signing_key, Ed25519PrivateKey):
+        sk = signing_key
+    else:
+        raise TypeError("signing_key must be Ed25519PrivateKey or 32 raw bytes")
+
+    msg = _attestation_message(memo, root_hex, network, measurement, slot)
+    sig = sk.sign(msg)
+    pub = sk.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
+    return {
+        "version": 1,
+        "algorithm": "ed25519",
+        "network": network,
+        "root_hex": root_hex,
+        "memo": memo,
+        "measurement": measurement,
+        "slot": int(slot),
+        "pubkey_hex": pub.hex(),
+        "signature_hex": sig.hex(),
+    }
+
+
+def verify_anchor_attestation(
+    payload: Optional[bytes],
+    memo: str,
+    attestation: dict,
+    *,
+    expected_pubkey_hex: Optional[str] = None,
+    expected_measurement: Optional[str] = None,
+    reject_mainnet: bool = False,
+) -> dict:
+    """Локально ($0) проверяет дерево Меркла пакета (если передан) и подпись Ed25519 якоря."""
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+    net = str(attestation.get("network") or "")
+    if reject_mainnet and net == "mainnet":
+        return {"ok": False, "bundle_ok": None, "signature_ok": False, "error": "mainnet rejected by policy"}
+
+    bundle_ok: Optional[bool] = None
+    bundle_info: dict = {}
+    if payload is not None:
+        try:
+            bundle_info = verify_bundle(payload, memo)
+            bundle_ok = bool(bundle_info.get("ok"))
+        except Exception as exc:
+            return {"ok": False, "bundle_ok": False, "signature_ok": False, "error": f"bundle check failed: {exc}"}
+        if not bundle_ok:
+            return {"ok": False, "bundle_ok": False, "signature_ok": False, "error": "merkle root mismatch", **bundle_info}
+        if bundle_info.get("root_recomputed") != attestation.get("root_hex"):
+            return {"ok": False, "bundle_ok": True, "signature_ok": False, "error": "attestation root differs from bundle"}
+
+    if attestation.get("memo") != memo:
+        return {"ok": False, "bundle_ok": bundle_ok, "signature_ok": False, "error": "memo mismatch"}
+
+    pub_hex = str(attestation.get("pubkey_hex") or "").lower()
+    if expected_pubkey_hex and pub_hex != expected_pubkey_hex.lower():
+        return {"ok": False, "bundle_ok": bundle_ok, "signature_ok": False, "error": "unexpected pubkey"}
+
+    meas = str(attestation.get("measurement") or "")
+    if expected_measurement and meas != expected_measurement:
+        return {"ok": False, "bundle_ok": bundle_ok, "signature_ok": False, "error": "unexpected enclave measurement"}
+
+    try:
+        pk = Ed25519PublicKey.from_public_bytes(bytes.fromhex(pub_hex))
+        sig = bytes.fromhex(str(attestation.get("signature_hex") or ""))
+        msg = _attestation_message(
+            str(attestation.get("memo") or ""),
+            str(attestation.get("root_hex") or ""),
+            net,
+            meas,
+            int(attestation.get("slot") or 0),
+        )
+        pk.verify(sig, msg)
+        sig_ok = True
+        err = None
+    except (ValueError, InvalidSignature) as exc:
+        sig_ok = False
+        err = f"signature verification failed: {exc}"
+
+    ok = bool(sig_ok and (bundle_ok is not False))
+    return {
+        "ok": ok,
+        "bundle_ok": bundle_ok,
+        "signature_ok": sig_ok,
+        "network": net,
+        "slot": int(attestation.get("slot") or 0),
+        "error": err,
+    }
+

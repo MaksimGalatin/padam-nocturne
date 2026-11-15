@@ -51,3 +51,20 @@
 1. Разрешение на изменение правил регистрации на **боевых сайтах (`aifa.works` / `code-eternal`)** (по Конституции боевые сайты заморожены до прямого слова).
 2. Конкретные цифры бесплатной квоты для непривязанного агента: сколько **записей / МБ / дней хранения** допустимо отдавать до привязки к аккаунту человека (`500` записей и `14` дней — или меньше)?
 3. Требуется ли антиспам-преграда при анонимной регистрации (динамическая PoW-головоломка в CLI или капча только при превышении порога IP)?
+
+---
+
+## 5. Готовый к переносу патч (`docs/patches/V4.patch`)
+
+Боевые и локальные сайты не затрагивались. Отдельный патч [`docs/patches/V4.patch`](../patches/V4.patch) подготовлен для ручного переноса Архитектором в `code-eternal` (с последующим синком на зеркала) и добавляет:
+- `web/src/lib/agent-signup.ts` — DDL таблиц `agent_signup_challenge`, `agent_credentials`, `agent_claim_tokens`, проверка подписи Ed25519 (SPKI DER RFC 8410) и лимиты `SANDBOX_LIMITS` (`maxRecords: 500`, `maxBytes: 2 MiB`, `ttlDays: 14`, `paidOpsDisabled: true`);
+- `web/src/app/api/agent-signup/challenge/route.ts` — `POST`: выдача одноразового `nonce` (TTL 60 с, `dbRateLimit` 10 req/min на IP);
+- `web/src/app/api/agent-signup/verify/route.ts` — `POST`: проверка Ed25519 подписи, лимит `3` регистрации в час с одного IP, выдача sandbox-токена `padam_sbx_...`, `claim_code` и одноразового 6-значного `claim_pin`;
+- `web/src/app/api/agent-signup/claim/route.ts` — `POST`: привязка агента к сессии владельца (`getFreshSessionEmail`) с проверкой `claim_code` и `timingSafeEqual` по `pin_hash`;
+- `web/src/app/claim-agent/page.tsx` — UI-страница привязки `/claim-agent?code=...`.
+
+Применение в репозитории `code-eternal` после одобрения:
+
+```bash
+git apply --check docs/patches/V4.patch && git apply docs/patches/V4.patch
+```

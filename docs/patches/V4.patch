@@ -1,0 +1,345 @@
+diff --git a/web/src/app/api/agent-signup/challenge/route.ts b/web/src/app/api/agent-signup/challenge/route.ts
+new file mode 100644
+index 0000000..16fedee
+--- /dev/null
++++ b/web/src/app/api/agent-signup/challenge/route.ts
+@@ -0,0 +1,37 @@
++import crypto from 'node:crypto';
++import { NextRequest, NextResponse } from 'next/server';
++import { dbRateLimit, clientIp } from '@/lib/rate-limit-db';
++import { ensureAgentSignupTables, sha256Hex } from '@/lib/agent-signup';
++
++export const dynamic = 'force-dynamic';
++
++export async function POST(req: NextRequest) {
++  const ip = clientIp(req as never);
++  if (ip !== 'unknown' && !(await dbRateLimit(`agent_ch:${ip}`, 10, 60_000))) {
++    return NextResponse.json({ error: 'too_many_requests' }, { status: 429 });
++  }
++  const body = await req.json().catch(() => ({}));
++  const pubkeyHex = String(body?.pubkey_hex || '').trim().toLowerCase();
++  if (!/^[0-9a-f]{64}$/.test(pubkeyHex)) {
++    return NextResponse.json({ error: 'invalid_ed25519_pubkey_hex' }, { status: 400 });
++  }
++  const url = process.env.SUBMISSIONS_DB_URL;
++  if (!url) return NextResponse.json({ error: 'no_db' }, { status: 500 });
++
++  const { Pool } = await import('@neondatabase/serverless');
++  const pool = new Pool({ connectionString: url });
++  await ensureAgentSignupTables(pool);
++
++  const nonce = crypto.randomBytes(24).toString('hex');
++  const expiresAt = new Date(Date.now() + 60_000).toISOString();
++  await pool.query(
++    `INSERT INTO agent_signup_challenge (nonce, pubkey_hex, ip_hash, expires_at)
++     VALUES ($1, $2, $3, $4)`,
++    [nonce, pubkeyHex, sha256Hex(ip), expiresAt],
++  );
++  return NextResponse.json({
++    nonce,
++    expires_at: expiresAt,
++    message_to_sign: `padam-agent-signup-v1|${nonce}|${pubkeyHex}`,
++  });
++}
+diff --git a/web/src/app/api/agent-signup/claim/route.ts b/web/src/app/api/agent-signup/claim/route.ts
+new file mode 100644
+index 0000000..00ae139
+--- /dev/null
++++ b/web/src/app/api/agent-signup/claim/route.ts
+@@ -0,0 +1,52 @@
++import crypto from 'node:crypto';
++import { NextRequest, NextResponse } from 'next/server';
++import { getFreshSessionEmail } from '@/lib/user-auth';
++import { ensureAgentSignupTables, sha256Hex } from '@/lib/agent-signup';
++
++export const dynamic = 'force-dynamic';
++
++export async function POST(req: NextRequest) {
++  const email = await getFreshSessionEmail(req);
++  if (!email) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
++
++  const body = await req.json().catch(() => ({}));
++  const claimCode = String(body?.claim_code || '').trim().toLowerCase();
++  const claimPin = String(body?.claim_pin || '').trim();
++  if (!claimCode || !/^[0-9]{6}$/.test(claimPin)) {
++    return NextResponse.json({ error: 'invalid_claim_code_or_pin' }, { status: 400 });
++  }
++  const url = process.env.SUBMISSIONS_DB_URL;
++  if (!url) return NextResponse.json({ error: 'no_db' }, { status: 500 });
++
++  const { Pool } = await import('@neondatabase/serverless');
++  const pool = new Pool({ connectionString: url });
++  await ensureAgentSignupTables(pool);
++
++  const row = await pool.query(
++    `SELECT agent_id, pin_hash, expires_at, claimed_at
++       FROM agent_claim_tokens
++      WHERE claim_code = $1`,
++    [claimCode],
++  );
++  if (!row.rowCount) return NextResponse.json({ error: 'claim_not_found' }, { status: 404 });
++  const tok = row.rows[0];
++  if (tok.claimed_at || new Date(tok.expires_at).getTime() <= Date.now()) {
++    return NextResponse.json({ error: 'claim_expired_or_used' }, { status: 409 });
++  }
++  const a = Buffer.from(sha256Hex(claimPin), 'hex');
++  const b = Buffer.from(String(tok.pin_hash), 'hex');
++  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
++    return NextResponse.json({ error: 'pin_mismatch' }, { status: 403 });
++  }
++
++  const owner = email.trim().toLowerCase();
++  await pool.query(
++    `UPDATE agent_claim_tokens SET claimed_by = $2, claimed_at = NOW() WHERE claim_code = $1`,
++    [claimCode, owner],
++  );
++  await pool.query(
++    `UPDATE agent_credentials SET owner_email = $2, tier = 'claimed', claimed_at = NOW() WHERE id = $1`,
++    [tok.agent_id, owner],
++  );
++  return NextResponse.json({ ok: true, agent_id: tok.agent_id, owner_email: owner });
++}
+diff --git a/web/src/app/api/agent-signup/verify/route.ts b/web/src/app/api/agent-signup/verify/route.ts
+new file mode 100644
+index 0000000..9aba293
+--- /dev/null
++++ b/web/src/app/api/agent-signup/verify/route.ts
+@@ -0,0 +1,82 @@
++import crypto from 'node:crypto';
++import { NextRequest, NextResponse } from 'next/server';
++import { dbRateLimit, clientIp } from '@/lib/rate-limit-db';
++import {
++  SANDBOX_LIMITS,
++  ensureAgentSignupTables,
++  sha256Hex,
++  verifyEd25519Challenge,
++} from '@/lib/agent-signup';
++
++export const dynamic = 'force-dynamic';
++
++export async function POST(req: NextRequest) {
++  const ip = clientIp(req as never);
++  // Р–С‘СЃС‚РєРёР№ Р»РёРјРёС‚: РЅРµ Р±РѕР»РµРµ 3 СЂРµРіРёСЃС‚СЂР°С†РёР№ РЅРѕРІС‹С… Р°РіРµРЅС‚РѕРІ СЃ РѕРґРЅРѕРіРѕ IP РІ С‡Р°СЃ
++  if (ip !== 'unknown' && !(await dbRateLimit(`agent_reg:${ip}`, 3, 3_600_000))) {
++    return NextResponse.json({ error: 'signup_rate_limit_exceeded' }, { status: 429 });
++  }
++  const body = await req.json().catch(() => ({}));
++  const pubkeyHex = String(body?.pubkey_hex || '').trim().toLowerCase();
++  const nonce = String(body?.nonce || '').trim();
++  const signatureHex = String(body?.signature_hex || '').trim().toLowerCase();
++  const agentName = String(body?.agent_name || 'padam-agent').trim().slice(0, 64) || 'padam-agent';
++
++  if (!/^[0-9a-f]{64}$/.test(pubkeyHex) || !/^[0-9a-f]{48}$/.test(nonce) || !/^[0-9a-f]{128}$/.test(signatureHex)) {
++    return NextResponse.json({ error: 'invalid_payload' }, { status: 400 });
++  }
++  const url = process.env.SUBMISSIONS_DB_URL;
++  if (!url) return NextResponse.json({ error: 'no_db' }, { status: 500 });
++
++  const { Pool } = await import('@neondatabase/serverless');
++  const pool = new Pool({ connectionString: url });
++  await ensureAgentSignupTables(pool);
++
++  const ch = await pool.query(
++    `UPDATE agent_signup_challenge
++        SET used_at = NOW()
++      WHERE nonce = $1 AND pubkey_hex = $2 AND used_at IS NULL AND expires_at > NOW()
++      RETURNING nonce`,
++    [nonce, pubkeyHex],
++  );
++  if (!ch.rowCount) {
++    return NextResponse.json({ error: 'challenge_missing_or_expired' }, { status: 401 });
++  }
++  if (!verifyEd25519Challenge(pubkeyHex, nonce, signatureHex)) {
++    return NextResponse.json({ error: 'invalid_ed25519_signature' }, { status: 401 });
++  }
++
++  const rawToken = `padam_sbx_${crypto.randomBytes(24).toString('hex')}`;
++  const tokenHash = sha256Hex(rawToken);
++  const expiresAt = new Date(Date.now() + SANDBOX_LIMITS.ttlDays * 86_400_000).toISOString();
++  const cred = await pool.query(
++    `INSERT INTO agent_credentials (pubkey_hex, agent_name, tier, token_hash, token_prefix, max_records, max_bytes, expires_at)
++     VALUES ($1, $2, 'sandbox', $3, $4, $5, $6, $7)
++     ON CONFLICT (pubkey_hex) DO UPDATE SET
++       agent_name = EXCLUDED.agent_name,
++       token_hash = EXCLUDED.token_hash,
++       token_prefix = EXCLUDED.token_prefix,
++       expires_at = EXCLUDED.expires_at
++     RETURNING id`,
++    [pubkeyHex, agentName, tokenHash, rawToken.slice(0, 14), SANDBOX_LIMITS.maxRecords, SANDBOX_LIMITS.maxBytes, expiresAt],
++  );
++  const agentId = cred.rows[0].id;
++  const claimCode = crypto.randomBytes(9).toString('hex');
++  const claimPin = String(crypto.randomInt(100000, 999999));
++  const claimExp = new Date(Date.now() + 7 * 86_400_000).toISOString();
++  await pool.query(
++    `INSERT INTO agent_claim_tokens (claim_code, agent_id, pin_hash, expires_at)
++     VALUES ($1, $2, $3, $4)`,
++    [claimCode, agentId, sha256Hex(claimPin), claimExp],
++  );
++
++  return NextResponse.json({
++    ok: true,
++    agent_id: agentId,
++    token: rawToken,
++    claim_code: claimCode,
++    claim_pin: claimPin,
++    claim_url: `/claim-agent?code=${claimCode}`,
++    limits: SANDBOX_LIMITS,
++  });
++}
+diff --git a/web/src/app/claim-agent/page.tsx b/web/src/app/claim-agent/page.tsx
+new file mode 100644
+index 0000000..959c496
+--- /dev/null
++++ b/web/src/app/claim-agent/page.tsx
+@@ -0,0 +1,83 @@
++"use client";
++
++import React, { useEffect, useState } from "react";
++import { useRouter } from "next/navigation";
++
++export default function ClaimAgentPage() {
++  const router = useRouter();
++  const [code, setCode] = useState("");
++  const [pin, setPin] = useState("");
++  const [status, setStatus] = useState<string | null>(null);
++  const [busy, setBusy] = useState(false);
++
++  useEffect(() => {
++    const sp = new URLSearchParams(window.location.search);
++    const c = sp.get("code") || "";
++    if (c) setCode(c);
++  }, []);
++
++  async function onSubmit(e: React.FormEvent) {
++    e.preventDefault();
++    setBusy(true);
++    setStatus(null);
++    try {
++      const res = await fetch("/api/agent-signup/claim", {
++        method: "POST",
++        headers: { "Content-Type": "application/json" },
++        body: JSON.stringify({ claim_code: code.trim(), claim_pin: pin.trim() }),
++      });
++      const data = await res.json();
++      if (!res.ok) {
++        setStatus(data.error || "Claim failed");
++      } else {
++        setStatus("РђРіРµРЅС‚ СѓСЃРїРµС€РЅРѕ РїСЂРёРІСЏР·Р°РЅ Рє РІР°С€РµРјСѓ Р°РєРєР°СѓРЅС‚Сѓ.");
++        setTimeout(() => router.push("/cabinet"), 1000);
++      }
++    } catch (err) {
++      setStatus(String(err));
++    } finally {
++      setBusy(false);
++    }
++  }
++
++  return (
++    <main className="mx-auto max-w-md px-4 py-16 text-slate-100">
++      <h1 className="text-2xl font-semibold mb-2">РџСЂРёРІСЏР·РєР° sandbox-Р°РіРµРЅС‚Р° PADAM</h1>
++      <p className="text-sm text-slate-400 mb-6">
++        Р’РІРµРґРёС‚Рµ РєРѕРґ РїСЂРёРІСЏР·РєРё Рё РѕРґРЅРѕСЂР°Р·РѕРІС‹Р№ 6-Р·РЅР°С‡РЅС‹Р№ PIN, РїРѕРєР°Р·Р°РЅРЅС‹Р№ РїСЂРё Р·Р°РїСѓСЃРєРµ РІР°С€РµРіРѕ Р°РіРµРЅС‚Р°.
++      </p>
++      <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-slate-700 bg-slate-900/70 p-6">
++        <div>
++          <label className="block text-xs uppercase tracking-wider text-slate-400 mb-1">Claim Code</label>
++          <input
++            type="text"
++            value={code}
++            onChange={(e) => setCode(e.target.value)}
++            required
++            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
++          />
++        </div>
++        <div>
++          <label className="block text-xs uppercase tracking-wider text-slate-400 mb-1">6-digit PIN</label>
++          <input
++            type="text"
++            inputMode="numeric"
++            pattern="[0-9]{6}"
++            value={pin}
++            onChange={(e) => setPin(e.target.value)}
++            required
++            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
++          />
++        </div>
++        <button
++          type="submit"
++          disabled={busy}
++          className="w-full rounded-lg bg-sky-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-sky-400 disabled:opacity-50"
++        >
++          {busy ? "РџСЂРѕРІРµСЂСЏРµРјвЂ¦" : "РџСЂРёРІСЏР·Р°С‚СЊ Рє РєР°Р±РёРЅРµС‚Сѓ"}
++        </button>
++        {status && <p className="text-sm text-sky-300">{status}</p>}
++      </form>
++    </main>
++  );
++}
+diff --git a/web/src/lib/agent-signup.ts b/web/src/lib/agent-signup.ts
+new file mode 100644
+index 0000000..f4896ea
+--- /dev/null
++++ b/web/src/lib/agent-signup.ts
+@@ -0,0 +1,61 @@
++import crypto from 'node:crypto';
++import type { Pool } from '@neondatabase/serverless';
++
++export const SANDBOX_LIMITS = {
++  tier: 'sandbox',
++  maxRecords: 500,
++  maxBytes: 2 * 1024 * 1024,
++  ttlDays: 14,
++  paidOpsDisabled: true,
++} as const;
++
++// DER SPKI-РїСЂРµС„РёРєСЃ РґР»СЏ 32-Р±Р°Р№С‚РЅРѕРіРѕ РѕС‚РєСЂС‹С‚РѕРіРѕ РєР»СЋС‡Р° Ed25519 (RFC 8410)
++const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
++
++export async function ensureAgentSignupTables(pool: Pool): Promise<void> {
++  await pool.query(`
++    CREATE TABLE IF NOT EXISTS agent_signup_challenge (
++      nonce       TEXT PRIMARY KEY,
++      pubkey_hex  TEXT NOT NULL,
++      ip_hash     TEXT NOT NULL,
++      expires_at  TIMESTAMPTZ NOT NULL,
++      used_at     TIMESTAMPTZ
++    );
++    CREATE TABLE IF NOT EXISTS agent_credentials (
++      id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
++      pubkey_hex     TEXT NOT NULL UNIQUE,
++      agent_name     TEXT NOT NULL,
++      tier           TEXT NOT NULL DEFAULT 'sandbox',
++      token_hash     TEXT NOT NULL UNIQUE,
++      token_prefix   TEXT NOT NULL,
++      owner_email    TEXT,
++      claimed_at     TIMESTAMPTZ,
++      max_records    INTEGER NOT NULL DEFAULT 500,
++      max_bytes      INTEGER NOT NULL DEFAULT 2097152,
++      expires_at     TIMESTAMPTZ NOT NULL,
++      created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
++    );
++    CREATE TABLE IF NOT EXISTS agent_claim_tokens (
++      claim_code     TEXT PRIMARY KEY,
++      agent_id       UUID NOT NULL REFERENCES agent_credentials(id) ON DELETE CASCADE,
++      pin_hash       TEXT NOT NULL,
++      expires_at     TIMESTAMPTZ NOT NULL,
++      claimed_by     TEXT,
++      claimed_at     TIMESTAMPTZ
++    );
++  `);
++}
++
++export function sha256Hex(value: string): string {
++  return crypto.createHash('sha256').update(value, 'utf8').digest('hex');
++}
++
++export function verifyEd25519Challenge(pubkeyHex: string, nonce: string, sigHex: string): boolean {
++  const pubRaw = Buffer.from(pubkeyHex.trim(), 'hex');
++  const sigRaw = Buffer.from(sigHex.trim(), 'hex');
++  if (pubRaw.length !== 32 || sigRaw.length !== 64) return false;
++  const derKey = Buffer.concat([ED25519_SPKI_PREFIX, pubRaw]);
++  const keyObj = crypto.createPublicKey({ key: derKey, format: 'der', type: 'spki' });
++  const message = Buffer.from(`padam-agent-signup-v1|${nonce}|${pubkeyHex.trim().toLowerCase()}`, 'utf8');
++  return crypto.verify(null, message, keyObj, sigRaw);
++}
