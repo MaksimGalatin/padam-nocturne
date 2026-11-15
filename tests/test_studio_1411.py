@@ -3930,5 +3930,33 @@ def test_step_2_9_studio_accessibility_axe(tmp_path):
         assert rep["scans_total"] == 30
 
 
+def test_step_2_10_lockfile_audit_and_sbom_ci():
+    """Пункт 2.10: requirements.lock (9 runtime-зависимостей), job security-audit в tests.yml и SBOM CycloneDX в publish.yml."""
+    repo_root = Path(__file__).resolve().parent.parent
+    lock_file = repo_root / "requirements.lock"
+    assert lock_file.is_file()
+    lock_text = lock_file.read_text(encoding="utf-8")
+    pinned = [
+        line.strip()
+        for line in lock_text.splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+    assert len(pinned) >= 9
+    for pkg in ("numpy==", "requests==", "cryptography=="):
+        assert any(line.startswith(pkg) for line in pinned), f"Missing pinned {pkg} in requirements.lock"
+    assert all("==" in line for line in pinned), "All entries in requirements.lock must be exact-pinned with =="
+
+    tests_yml = (repo_root / ".github" / "workflows" / "tests.yml").read_text(encoding="utf-8")
+    assert "security-audit:" in tests_yml
+    assert "pip-audit -r requirements.lock" in tests_yml
+    assert "cyclonedx-py requirements requirements.lock" in tests_yml
+
+    publish_yml = (repo_root / ".github" / "workflows" / "publish.yml").read_text(encoding="utf-8")
+    assert "pip-audit -r requirements.lock" in publish_yml
+    assert "cyclonedx-py requirements requirements.lock" in publish_yml
+    assert "padam-nocturne.cdx.json" in publish_yml
+    assert "sbom-cyclonedx" in publish_yml
+
+
 
 
