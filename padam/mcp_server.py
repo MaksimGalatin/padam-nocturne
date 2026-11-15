@@ -1876,9 +1876,21 @@ def _try_elicit_quarantined(m: Memory, mid: str, content: str, origin: str) -> t
                     "decision": {
                         "type": "string",
                         "title": "Решение владельца / Owner decision",
-                        "description": "Принять (approve) или Отклонить (reject) удержанную запись",
-                        "enum": ["approve", "reject"],
-                        "enumNames": ["Принять / Approve", "Отклонить / Reject"],
+                        "description": (
+                            "Разрешить (approve/allow), оставить в карантине (quarantine) или Отклонить (reject)"
+                            if config.mcp_elicitation_guard_enabled()
+                            else "Принять (approve) или Отклонить (reject) удержанную запись"
+                        ),
+                        "enum": (
+                            ["approve", "quarantine", "reject"]
+                            if config.mcp_elicitation_guard_enabled()
+                            else ["approve", "reject"]
+                        ),
+                        "enumNames": (
+                            ["Разрешить / Allow", "Оставить в карантине / Quarantine", "Отклонить / Reject"]
+                            if config.mcp_elicitation_guard_enabled()
+                            else ["Принять / Approve", "Отклонить / Reject"]
+                        ),
                     }
                 },
                 "required": ["decision"],
@@ -1897,7 +1909,9 @@ def _try_elicit_quarantined(m: Memory, mid: str, content: str, origin: str) -> t
     content_obj = res_obj.get("content") if isinstance(res_obj.get("content"), dict) else {}
     decision = str(content_obj.get("decision") or res_obj.get("decision") or "").strip().lower()
 
-    if action == "accept" and decision in ("approve", "accept", "принять", "yes", "true"):
+    if action == "accept" and decision == "quarantine":
+        return None, reason_text
+    if action == "accept" and decision in ("approve", "allow", "accept", "принять", "yes", "true"):
         if m.approve(mid):
             _emit_resource_updated("padam://review-queue")
             return "approved_via_elicitation", reason_text

@@ -445,3 +445,9 @@ def mcp_briefing_enabled() -> bool:
 def mcp_compaction_enabled() -> bool:
     """Включает локальную компакцию старых event-записей в fact (PADAM_COMPACTION=1)."""
     return os.environ.get("PADAM_COMPACTION", "0").strip() == "1"
+
+
+# --- ТОП-10 v3 Пункт 8: Подтверждение рисковых записей через MCP elicitation/create ---
+def mcp_elicitation_guard_enabled() -> bool:
+    """Включает расширенный диалог elicitation (allow/quarantine/reject) для рисковых записей (PADAM_MCP_ELICITATION_GUARD=1)."""
+    return os.environ.get("PADAM_MCP_ELICITATION_GUARD", "0").strip() == "1"
