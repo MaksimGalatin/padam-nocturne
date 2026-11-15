@@ -116,3 +116,41 @@ def test_top10v4_3_migrate_from_chatgpt_claude_mem0_zep_notion(tmp_path):
     (notion_dir / "Arch.md").write_text("Zero downtime deploys with blue-green strategy", encoding="utf-8")
     assert migrate.migrate_from_source(mem, source="notion", input_path=notion_dir, scope="mig", guarded=False)["imported"] == 1
     mem.close()
+
+
+def test_top10v4_4_team_git_memcube_export_and_sync(tmp_path):
+    from padam import team_sync
+    from padam.memory import Memory
+    from padam.store import Store
+
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    lead_mem = Memory(user_id="lead", store=Store(tmp_path / "lead.sqlite"))
+    dev_mem = Memory(user_id="dev", store=Store(tmp_path / "dev.sqlite"))
+
+    lead_mem.remember("API v2 uses cursor pagination only", kind="decision", scope="project")
+    lead_mem.remember("Personal private note", kind="fact", scope="personal")
+
+    exp = team_sync.export_team_vault(lead_mem, project_dir=repo_dir, scope="project")
+    assert exp["status"] == "exported"
+    assert exp["records_count"] == 1
+    assert (repo_dir / ".padam" / "team.memcube").exists()
+
+    # Недоверенный автор -> в карантин; доверенный автор -> активно в dev_mem
+    sync_untrusted = team_sync.sync_team_vault(dev_mem, project_dir=repo_dir)
+    assert sync_untrusted["quarantined"] == 1
+
+    dev_mem2 = Memory(user_id="dev2", store=Store(tmp_path / "dev2.sqlite"))
+    sync_trusted = team_sync.sync_team_vault(
+        dev_mem2,
+        project_dir=repo_dir,
+        trusted_authors=[exp["author_pub_hex"]],
+    )
+    assert sync_trusted["imported"] == 1
+    assert sync_trusted["quarantined"] == 0
+    recalled = dev_mem2.recall("cursor pagination", scope="project", limit=5)
+    assert any("cursor pagination" in r.content for r in recalled)
+
+    lead_mem.close()
+    dev_mem.close()
+    dev_mem2.close()

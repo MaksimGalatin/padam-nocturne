@@ -460,6 +460,34 @@ def cmd_access(m, a) -> int:
     return 1
 
 
+def cmd_team(m, a) -> int:
+    """ТОП-10 v4 Пункт 4: командная память проекта в Git (.padam/team.memcube)."""
+    from pathlib import Path
+    from . import team_sync
+    sub_cmd = getattr(a, "team_cmd", "sync")
+    if sub_cmd == "export":
+        res = team_sync.export_team_vault(
+            m,
+            project_dir=Path(a.project_dir),
+            scope=a.scope,
+            passphrase=a.passphrase,
+        )
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+        return 0
+    if sub_cmd == "sync":
+        trusted = {x.strip() for x in a.trust_author.split(",") if x.strip()} if a.trust_author else set()
+        res = team_sync.sync_team_vault(
+            m,
+            project_dir=Path(a.project_dir),
+            scope=a.scope,
+            passphrase=a.passphrase,
+            trusted_authors=trusted,
+        )
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+        return 0
+    return 1
+
+
 def cmd_migrate(m, a) -> int:
     """ТОП-10 v4 Пункт 3: импорт памяти из ChatGPT, Claude, Mem0, Zep, Obsidian, Notion."""
     from . import migrate
@@ -1592,6 +1620,21 @@ def main(argv=None) -> int:
     smig.add_argument("--dry-run", action="store_true")
     smig.add_argument("--trusted", action="store_true")
     smig.set_defaults(fn=cmd_migrate)
+
+    stm = sub.add_parser("team", help=t("командная память проекта в Git (.padam/team.memcube)",
+                                        "team project memory in Git (.padam/team.memcube)"))
+    tsub = stm.add_subparsers(dest="team_cmd", required=True)
+    te = tsub.add_parser("export", help=t("экспортировать проектный scope в .padam/team.memcube", "export project scope to .padam/team.memcube"))
+    te.add_argument("--project-dir", default=".")
+    te.add_argument("--scope", default="project")
+    te.add_argument("--passphrase", default=None)
+    te.set_defaults(fn=cmd_team)
+    ts = tsub.add_parser("sync", help=t("синхронизировать из .padam/team.memcube", "sync from .padam/team.memcube"))
+    ts.add_argument("--project-dir", default=".")
+    ts.add_argument("--scope", default=None)
+    ts.add_argument("--passphrase", default=None)
+    ts.add_argument("--trust-author", default="")
+    ts.set_defaults(fn=cmd_team)
 
     a = p.parse_args(argv)
     if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup, cmd_pack_extension) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):
