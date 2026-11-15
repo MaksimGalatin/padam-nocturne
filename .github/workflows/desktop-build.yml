@@ -34,9 +34,11 @@ jobs:
           cargo install tauri-cli --version "^2.0.0" --locked
 
       - name: Sync version from padam/__init__.py and stage embedded runtime
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
           python3 - <<'PY'
-          import json, pathlib, re, shutil
+          import json, os, pathlib, re, shutil
           root = pathlib.Path(".")
           init_txt = (root / "padam" / "__init__.py").read_text(encoding="utf-8")
           ver = re.search(r'^__version__\s*=\s*"([^"]+)"', init_txt, re.M).group(1)
@@ -44,6 +46,8 @@ jobs:
           tconf = json.loads(tconf_path.read_text(encoding="utf-8"))
           tconf["version"] = ver
           tconf["bundle"]["targets"] = ["dmg", "app"]
+          has_key = bool(os.environ.get("TAURI_SIGNING_PRIVATE_KEY"))
+          tconf["bundle"]["createUpdaterArtifacts"] = has_key
           tconf_path.write_text(json.dumps(tconf, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
           cargo_path = root / "desktop" / "tauri" / "Cargo.toml"
           cargo_txt = cargo_path.read_text(encoding="utf-8")
@@ -59,6 +63,9 @@ jobs:
 
       - name: Build macOS .dmg bundle
         working-directory: desktop/tauri
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: cargo tauri build --bundles dmg
 
       - name: Upload macOS .dmg artifact
@@ -101,9 +108,11 @@ jobs:
           cargo install tauri-cli --version "^2.0.0" --locked
 
       - name: Sync version from padam/__init__.py and stage embedded runtime
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
           python3 - <<'PY'
-          import json, pathlib, re, shutil
+          import json, os, pathlib, re, shutil
           root = pathlib.Path(".")
           init_txt = (root / "padam" / "__init__.py").read_text(encoding="utf-8")
           ver = re.search(r'^__version__\s*=\s*"([^"]+)"', init_txt, re.M).group(1)
@@ -111,6 +120,8 @@ jobs:
           tconf = json.loads(tconf_path.read_text(encoding="utf-8"))
           tconf["version"] = ver
           tconf["bundle"]["targets"] = ["deb", "appimage"]
+          has_key = bool(os.environ.get("TAURI_SIGNING_PRIVATE_KEY"))
+          tconf["bundle"]["createUpdaterArtifacts"] = has_key
           tconf_path.write_text(json.dumps(tconf, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
           cargo_path = root / "desktop" / "tauri" / "Cargo.toml"
           cargo_txt = cargo_path.read_text(encoding="utf-8")
@@ -126,6 +137,9 @@ jobs:
 
       - name: Build Linux .deb and .AppImage bundles
         working-directory: desktop/tauri
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: cargo tauri build --bundles deb,appimage
 
       - name: Upload Linux .deb and .AppImage artifacts

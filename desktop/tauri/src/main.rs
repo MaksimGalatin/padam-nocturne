@@ -13,6 +13,61 @@ use std::time::{Duration, Instant};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, Url, WebviewWindow, WindowEvent};
+use tauri_plugin_updater::UpdaterExt;
+
+fn auto_update_enabled() -> bool {
+    matches!(
+        env::var("PADAM_AUTO_UPDATE").as_deref(),
+        Ok("1") | Ok("true") | Ok("yes")
+    )
+}
+
+fn spawn_update_check(app_handle: AppHandle, ru: bool, install_allowed: bool) {
+    tauri::async_runtime::spawn(async move {
+        let updater = match app_handle.updater() {
+            Ok(u) => u,
+            Err(e) => {
+                log_line(&format!("update_init_error={e}"));
+                return;
+            }
+        };
+        match updater.check().await {
+            Ok(Some(update)) => {
+                let ver = update.version.clone();
+                log_line(&format!("update_available={ver}"));
+                #[cfg(windows)]
+                {
+                    let title = if ru {
+                        "PADAM · NOCTURNE Studio — доступно обновление"
+                    } else {
+                        "PADAM · NOCTURNE Studio — update available"
+                    };
+                    let body = if ru {
+                        format!("Найдена подписанная версия {ver}. Выберите установку на GitHub Releases.")
+                    } else {
+                        format!("Signed release {ver} is available on GitHub Releases.")
+                    };
+                    let _ = tauri_winrt_notification::Toast::new(APP_IDENTIFIER)
+                        .title(title)
+                        .text1(&body)
+                        .show();
+                }
+                if install_allowed
+                    && matches!(
+                        env::var("PADAM_AUTO_UPDATE_INSTALL").as_deref(),
+                        Ok("1") | Ok("true")
+                    )
+                {
+                    if let Err(e) = update.download_and_install(|_, _| {}, || {}).await {
+                        log_line(&format!("update_install_error={e}"));
+                    }
+                }
+            }
+            Ok(None) => log_line("update_up_to_date"),
+            Err(e) => log_line(&format!("update_check_error={e}")),
+        }
+    });
+}
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -400,6 +455,7 @@ fn main() {
     let token = generate_token();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(move |app| {
             let child = spawn_padam_server(app.handle(), port, &token, db_arg.as_deref())
                 .map_err(|e| {
@@ -418,17 +474,30 @@ fn main() {
             let review_label = if ru { "На проверке: 0" } else { "Pending review: 0" };
             let open_label = if ru { "Открыть PADAM Studio" } else { "Open PADAM Studio" };
             let sleep_label = if ru { "Сон NOCTURNE" } else { "Run NOCTURNE Sleep" };
+            let update_label = if ru {
+                "Проверить обновления"
+            } else {
+                "Check for Updates"
+            };
             let quit_label = if ru { "Выход" } else { "Quit" };
 
             let review_item = MenuItem::with_id(app, "review", review_label, true, None::<&str>)?;
             let open_item = MenuItem::with_id(app, "open", open_label, true, None::<&str>)?;
             let sleep_item = MenuItem::with_id(app, "sleep", sleep_label, true, None::<&str>)?;
+            let update_item = MenuItem::with_id(app, "update", update_label, true, None::<&str>)?;
             let sep = PredefinedMenuItem::separator(app)?;
             let quit_item = MenuItem::with_id(app, "quit", quit_label, true, None::<&str>)?;
 
             let tray_menu = Menu::with_items(
                 app,
-                &[&review_item, &open_item, &sleep_item, &sep, &quit_item],
+                &[
+                    &review_item,
+                    &open_item,
+                    &sleep_item,
+                    &update_item,
+                    &sep,
+                    &quit_item,
+                ],
             )?;
 
             let icon = app
@@ -476,6 +545,7 @@ fn main() {
                             }
                         });
                     }
+                    "update" => spawn_update_check(app_handle.clone(), ru, true),
                     "quit" => {
                         guard_menu.shutdown();
                         app_handle.exit(0);
@@ -533,6 +603,10 @@ fn main() {
                     log_line("health_timeout_15s");
                 }
 
+                if auto_update_enabled() {
+                    spawn_update_check(app_bg.clone(), ru, false);
+                }
+
                 let mut prev_quarantined: Option<u64> = None;
                 while !guard_bg.stopping.load(Ordering::SeqCst) {
                     if let Some((200, body)) =
@@ -562,6 +636,7 @@ fn main() {
                                                 let q_val = cmd.get("count").and_then(|v| v.as_u64()).unwrap_or(1);
                                                 send_quarantine_toast(q_val, ru);
                                             }
+                                            "update" => spawn_update_check(app_bg.clone(), ru, true),
                                             "quit" => {
                                                 guard_bg.shutdown();
                                                 app_bg.exit(0);

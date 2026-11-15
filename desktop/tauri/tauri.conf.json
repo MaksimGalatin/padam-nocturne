@@ -25,6 +25,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": [
       "nsis"
     ],
@@ -61,6 +62,17 @@
         ],
         "displayLanguageSelector": true,
         "installerHooks": "./windows/hooks.nsh"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEUyMTU5NDgwMTQ2NDlBMzgKUldRNG1tUVVnSlFWNGxrZlJqNXJ0b1hoUzFqbWVMbHd1L012ZWZ0ZTV5cEkwK1J6eFZRdFBCa2UK",
+      "endpoints": [
+        "https://github.com/MaksimGalatin/padam-nocturne/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

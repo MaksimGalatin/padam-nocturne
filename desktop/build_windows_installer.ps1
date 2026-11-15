@@ -1,4 +1,4 @@
-﻿# Сборка автономного установщика Windows для PADAM · NOCTURNE Studio (14.2 Г7 + 14.3 + п. 1.1–1.4).
+# Сборка автономного установщика Windows для PADAM · NOCTURNE Studio (14.2 Г7 + 14.3 + п. 1.1–1.4).
 # Запускает бесплатный локальный тулчейн из E:\Tools (без установки VS на C:),
 # синхронизирует версию из единственной точки правды padam/__init__.py,
 # собирает встроенный Python 3.14 runtime в desktop\tauri\runtime и NSIS-установщик.
@@ -83,9 +83,19 @@ if (-not $SkipRuntime) {
 
 Write-Output "[BUILD] Компиляция PADAM Studio $PadamVersion (Tauri v2 + cargo-xwin, --jobs 6)..."
 $env:CARGO_BUILD_JOBS = "6"
+$DefaultMinisignKey = Join-Path $env:USERPROFILE ".tauri\padam-studio.key"
+if (-not $env:TAURI_SIGNING_PRIVATE_KEY -and -not $env:TAURI_SIGNING_PRIVATE_KEY_PATH -and (Test-Path $DefaultMinisignKey)) {
+    $env:TAURI_SIGNING_PRIVATE_KEY_PATH = $DefaultMinisignKey
+    Write-Output "[SIGN-UPDATER] Используется локальный ключ minisign: $DefaultMinisignKey"
+}
+$TauriBuildArgs = @("tauri", "build", "--runner", "cargo-xwin", "--target", "x86_64-pc-windows-msvc")
+if (-not $env:TAURI_SIGNING_PRIVATE_KEY -and -not $env:TAURI_SIGNING_PRIVATE_KEY_PATH) {
+    Write-Warning "[SIGN-UPDATER] TAURI_SIGNING_PRIVATE_KEY[_PATH] не задан: артефакты .sig для автообновления пропущены."
+    $TauriBuildArgs += @("--config", '{"bundle":{"createUpdaterArtifacts":false}}')
+}
 Push-Location $TauriDir
 try {
-    cargo tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc
+    & cargo @TauriBuildArgs
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 } finally {
     Pop-Location
@@ -98,6 +108,11 @@ if (-not $NsisOut) {
 
 $OutCopy = Join-Path $RepoRoot "desktop\PADAM-Studio-Setup.exe"
 Copy-Item -Force $NsisOut.FullName $OutCopy
+$SigSrc = "$($NsisOut.FullName).sig"
+if (Test-Path $SigSrc) {
+    Copy-Item -Force $SigSrc "$OutCopy.sig"
+    Write-Output "[SIGN-UPDATER] Подпись minisign сохранена: $OutCopy.sig"
+}
 
 # 14.3: Опциональный шаг подписи кода (выключен по умолчанию до покупки сертификата).
 if ($env:PADAM_SIGN_PFX -and (Test-Path $env:PADAM_SIGN_PFX)) {

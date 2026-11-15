@@ -3991,5 +3991,52 @@ def test_step_2_8_scale_benchmark_script(tmp_path):
     assert mini["rows"][0]["peak_rss_mb"] >= mini["rows"][0]["rss_mb_before"] > 0
 
 
+def test_step_2_4_tauri_updater_signed_and_no_privkey_in_repo():
+    """Пункт 2.4: Tauri updater с обязательной подписью minisign, выключенный по умолчанию, без приватного ключа в git."""
+    import base64
+    import json
+    import subprocess
+
+    repo_root = Path(__file__).resolve().parent.parent
+    cargo_txt = (repo_root / "desktop" / "tauri" / "Cargo.toml").read_text(encoding="utf-8")
+    assert 'tauri-plugin-updater = "2"' in cargo_txt
+
+    tconf = json.loads((repo_root / "desktop" / "tauri" / "tauri.conf.json").read_text(encoding="utf-8"))
+    assert tconf["bundle"]["createUpdaterArtifacts"] is True
+    upd = tconf["plugins"]["updater"]
+    pubkey_raw = upd["pubkey"]
+    decoded = base64.b64decode(pubkey_raw).decode("utf-8")
+    assert decoded.startswith("untrusted comment: minisign public key:")
+    assert upd["endpoints"][0].startswith("https://")
+    assert "latest.json" in upd["endpoints"][0]
+
+    cap = json.loads((repo_root / "desktop" / "tauri" / "capabilities" / "default.json").read_text(encoding="utf-8"))
+    assert "updater:default" in cap["permissions"]
+
+    main_rs = (repo_root / "desktop" / "tauri" / "src" / "main.rs").read_text(encoding="utf-8")
+    assert "tauri_plugin_updater::Builder::new().build()" in main_rs
+    assert "auto_update_enabled()" in main_rs
+    assert "PADAM_AUTO_UPDATE" in main_rs
+    assert "dangerous_" not in main_rs
+
+    wf = (repo_root / ".github" / "workflows" / "desktop-build.yml").read_text(encoding="utf-8")
+    assert "TAURI_SIGNING_PRIVATE_KEY" in wf
+
+    ps1 = (repo_root / "desktop" / "build_windows_installer.ps1").read_text(encoding="utf-8")
+    assert "TAURI_SIGNING_PRIVATE_KEY" in ps1
+
+    # Проверяем, что приватный ключ minisign НЕ находится в репозитории (ни среди tracked, ни untracked в desktop/)
+    for fpath in (repo_root / "desktop").rglob("*"):
+        if "target" in fpath.parts or "runtime" in fpath.parts:
+            continue
+        if fpath.is_file() and fpath.suffix in {".key", ".pem", ".json", ".toml", ".rs", ".ps1", ".yml"}:
+            txt = fpath.read_text(encoding="utf-8", errors="ignore")
+            assert "encrypted secret key" not in txt.lower(), f"Secret key material found in {fpath}"
+    ls = subprocess.run(["git", "-C", str(repo_root), "ls-files"], capture_output=True, text=True, timeout=15)
+    assert ls.returncode == 0
+    for tracked in ls.stdout.splitlines():
+        assert not tracked.endswith(".key"), f"Tracked .key file in git: {tracked}"
+
+
 
 
