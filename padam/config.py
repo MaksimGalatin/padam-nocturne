@@ -274,3 +274,8 @@ def mcp_default_max_tokens() -> int:
 def mcp_atomic_merge_default() -> bool:
     """Режим dedup_mode='atomic_merge' по умолчанию в padam_write (выключен по умолчанию)."""
     return os.environ.get("PADAM_MCP_ATOMIC_MERGE", "0").strip() == "1"
+
+# --- ТОП-10 Пункт 5: Настоящий Streamable HTTP v2 (выключено по умолчанию) ---
+def mcp_http_sse_post_enabled() -> bool:
+    """SSE-стриминг POST /mcp и возобновление GET /mcp по Last-Event-ID (PADAM_MCP_HTTP_SSE_POST=1)."""
+    return os.environ.get("PADAM_MCP_HTTP_SSE_POST", "0").strip() == "1"

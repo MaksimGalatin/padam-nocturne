@@ -1110,6 +1110,13 @@ _stream_events: list[tuple[int, dict, dict]] = []
 _event_seq: int = 0
 
 
+def _alloc_event_seq() -> int:
+    global _event_seq
+    with _state_lock:
+        _event_seq += 1
+        return _event_seq
+
+
 def _event_allowed_for_actor(audience: dict | None, actor) -> bool:
     """Проверяет право субъекта actor на получение SSE-уведомления (изоляция ролей и областей)."""
     from . import roles
@@ -3611,6 +3618,16 @@ class _SessionRateLimiter:
                     self._hits.pop(k, None)
             return True, 0
 
+    def clear(self, keys) -> int:
+        """Удаляет состояние лимитера для заданных ключей сессии."""
+        removed = 0
+        with self._lock:
+            for k in keys:
+                if k in self._hits:
+                    self._hits.pop(k, None)
+                    removed += 1
+        return removed
+
 
 def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                          port: int = 8079, token: str | None = None, oauth: bool | None = None,
@@ -3627,6 +3644,18 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
     from . import oauth as _oauth
 
     sse_stop_event = threading.Event()
+    session_lock = threading.Lock()
+    session_sse_stops: dict[str, threading.Event] = {}
+    session_subs: dict[str, set[str]] = {}
+    session_rate_keys: dict[str, set[str]] = {}
+
+    def _session_stop_event(sid: str) -> threading.Event:
+        with session_lock:
+            ev = session_sse_stops.get(sid)
+            if ev is None or ev.is_set():
+                ev = threading.Event()
+                session_sse_stops[sid] = ev
+            return ev
 
     host_clean = (host or "127.0.0.1").strip().lower()
     if host_clean not in ("127.0.0.1", "localhost", "::1") and not host_clean.startswith("127."):
@@ -3736,7 +3765,7 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                 self.send_header("Access-Control-Allow-Origin", orig)
                 self.send_header("Vary", "Origin")
             self.send_header("Access-Control-Allow-Headers",
-                             "Authorization, Content-Type, Mcp-Session-Id, MCP-Protocol-Version, X-Padam-Actor-Token")
+                             "Authorization, Content-Type, Mcp-Session-Id, MCP-Protocol-Version, X-Padam-Actor-Token, Last-Event-ID")
             self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
             self.send_header("Content-Length", "0")
             self.end_headers()
@@ -3750,7 +3779,42 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                 return self._send_unauth()
             if path != "/mcp":
                 return self._send_json(404, {"error": "not found"})
-            return self._send_json(200, {"closed": True, "sessionId": session_id})
+            target_sid = (self.headers.get("Mcp-Session-Id") or session_id).strip() or session_id
+            streams_closed = 0
+            subs_cleared = 0
+            rl_cleared = 0
+            with session_lock:
+                ev = session_sse_stops.pop(target_sid, None)
+                if ev is not None:
+                    ev.set()
+                    streams_closed += 1
+                tracked_subs = session_subs.pop(target_sid, set())
+                tracked_rl = session_rate_keys.pop(target_sid, set())
+            with _state_lock:
+                if tracked_subs:
+                    for sub_uri in tracked_subs:
+                        if sub_uri in _subscribed_resources:
+                            _subscribed_resources.discard(sub_uri)
+                            subs_cleared += 1
+                elif target_sid == session_id:
+                    subs_cleared += len(_subscribed_resources)
+                    _subscribed_resources.clear()
+                if target_sid == session_id:
+                    _cancelled_request_ids.clear()
+                _notify_cond.notify_all()
+            if rate_limiter is not None and tracked_rl:
+                rl_cleared = rate_limiter.clear(tracked_rl)
+            if target_sid == session_id and config.mcp_roots_enabled():
+                _reset_client_roots()
+            return self._send_json(200, {
+                "closed": True,
+                "sessionId": target_sid,
+                "cleaned": {
+                    "streamsClosed": streams_closed,
+                    "subscriptionsCleared": subs_cleared,
+                    "rateLimitsCleared": rl_cleared,
+                },
+            })
 
         def do_GET(self):
             parsed = urlsplit(self.path)
@@ -3786,12 +3850,44 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                     actor = m_cur.authenticate_token(actor_hdr) or _roles.ActorContext(
                         role="guest", subject="guest", workspace_id=None, via_token=False
                     )
+                req_sid = (self.headers.get("Mcp-Session-Id") or session_id).strip() or session_id
                 scope_filter = [s.strip() for s in qs.get("scope", []) if s.strip()]
                 accept_hdr = (self.headers.get("Accept") or "").lower()
                 wants_stream = ("text/event-stream" in accept_hdr) or (qs.get("stream", [""])[0] == "1")
+                last_ev_raw = (self.headers.get("Last-Event-ID") or "").strip()
+                resume_after: int | None = None
+                if config.mcp_http_sse_post_enabled() and last_ev_raw:
+                    if not last_ev_raw.isdigit():
+                        return self._send_json(400, {"error": "invalid Last-Event-ID"})
+                    resume_after = int(last_ev_raw)
+
+                def _sse_event_allowed(note_obj: dict, aud_obj: dict, *, allow_progress: bool = False) -> bool:
+                    uri = str((note_obj.get("params") or {}).get("uri") or "")
+                    meth = str(note_obj.get("method") or "")
+                    if scope_filter:
+                        if not _uri_matches_scope_filter(uri, scope_filter):
+                            return False
+                    elif uri or meth == "notifications/resources/updated":
+                        with _state_lock:
+                            allowed_sub = (uri in _subscribed_resources) or (uri == "padam://review-queue")
+                        if not allowed_sub:
+                            return False
+                    elif not (allow_progress and meth in ("notifications/progress", "notifications/resources/list_changed", "notifications/tools/list_changed", "notifications/prompts/list_changed")):
+                        return False
+                    return _event_allowed_for_actor(aud_obj, actor)
+
                 if not wants_stream:
-                    notifs = pop_notifications(actor=actor, scopes=scope_filter or None)
-                    lines = [f"event: message\ndata: {json.dumps(n, ensure_ascii=False)}\n\n" for n in notifs]
+                    if resume_after is not None:
+                        with _state_lock:
+                            replay = [(s, n, a) for (s, n, a) in _stream_events if s > resume_after]
+                        lines = [
+                            f"id: {s}\nevent: message\ndata: {json.dumps(n, ensure_ascii=False)}\n\n"
+                            for (s, n, a) in replay
+                            if _sse_event_allowed(n, a, allow_progress=True)
+                        ]
+                    else:
+                        notifs = pop_notifications(actor=actor, scopes=scope_filter or None)
+                        lines = [f"event: message\ndata: {json.dumps(n, ensure_ascii=False)}\n\n" for n in notifs]
                     if not lines:
                         lines.append(": keepalive\n\n")
                     raw = "".join(lines).encode("utf-8")
@@ -3799,24 +3895,29 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                     self.send_header("Content-Type", "text/event-stream; charset=utf-8")
                     self.send_header("Content-Length", str(len(raw)))
                     self.send_header("Cache-Control", "no-cache")
-                    self.send_header("Mcp-Session-Id", session_id)
+                    self.send_header("Mcp-Session-Id", req_sid)
                     self.end_headers()
                     self.wfile.write(raw)
                     return None
 
-                # Постоянный SSE-поток (1.4): без Content-Length, с мгновенным flush каждого события.
+                # Постоянный SSE-поток (1.4 + v2 resume по Last-Event-ID): без Content-Length, с мгновенным flush.
+                sid_stop = _session_stop_event(req_sid)
                 self.protocol_version = "HTTP/1.0"
                 self.send_response(200)
                 self.send_header("Content-Type", "text/event-stream; charset=utf-8")
                 self.send_header("Cache-Control", "no-cache")
                 self.send_header("Connection", "close")
                 self.send_header("X-Accel-Buffering", "no")
-                self.send_header("Mcp-Session-Id", session_id)
+                self.send_header("Mcp-Session-Id", req_sid)
                 self.end_headers()
                 try:
-                    with _state_lock:
-                        cursor = _event_seq
-                    initial = pop_notifications(actor=actor, scopes=scope_filter or None)
+                    if resume_after is not None:
+                        cursor = resume_after
+                        initial = []
+                    else:
+                        with _state_lock:
+                            cursor = _event_seq
+                        initial = pop_notifications(actor=actor, scopes=scope_filter or None)
                     self.wfile.write(b": stream open\n\n")
                     self.wfile.flush()
                     for n in initial:
@@ -3824,12 +3925,12 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                         self.wfile.write(frame)
                         self.wfile.flush()
                     last_ka = time.monotonic()
-                    while not sse_stop_event.is_set():
+                    while not sse_stop_event.is_set() and not sid_stop.is_set():
                         batch = []
                         with _state_lock:
-                            if _event_seq <= cursor and not sse_stop_event.is_set():
+                            if _event_seq <= cursor and not sse_stop_event.is_set() and not sid_stop.is_set():
                                 _notify_cond.wait(timeout=0.3)
-                            if sse_stop_event.is_set():
+                            if sse_stop_event.is_set() or sid_stop.is_set():
                                 break
                             for seq, note, aud in _stream_events:
                                 if seq > cursor:
@@ -3837,16 +3938,7 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                                     batch.append((seq, note, aud))
                         sent_any = False
                         for seq, note, aud in batch:
-                            uri = str((note.get("params") or {}).get("uri") or "")
-                            if scope_filter:
-                                if not _uri_matches_scope_filter(uri, scope_filter):
-                                    continue
-                            else:
-                                with _state_lock:
-                                    allowed_sub = (uri in _subscribed_resources) or (uri == "padam://review-queue")
-                                if not allowed_sub:
-                                    continue
-                            if not _event_allowed_for_actor(aud, actor):
+                            if not _sse_event_allowed(note, aud, allow_progress=(resume_after is not None)):
                                 continue
                             frame = f"id: {seq}\nevent: message\ndata: {json.dumps(note, ensure_ascii=False)}\n\n".encode("utf-8")
                             self.wfile.write(frame)
@@ -3944,7 +4036,10 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                     actor_hdr or "",
                     (self.headers.get("Authorization") or "")[-16:],
                 ])
+                req_sid_rl = (self.headers.get("Mcp-Session-Id") or session_id).strip() or session_id
                 sess_key = _hl.sha256(sess_key_raw.encode("utf-8")).hexdigest()[:24]
+                with session_lock:
+                    session_rate_keys.setdefault(req_sid_rl, set()).add(sess_key)
                 cost = len(req) if isinstance(req, list) and req else 1
                 allowed, retry_after = rate_limiter.allow(sess_key, cost=cost)
                 if not allowed:
@@ -4001,6 +4096,107 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                 need = _oauth.required_scope_for_rpc(req)
                 if need and need not in scopes:
                     return self._send_forbidden_scope(need)
+
+                req_sid_post = (self.headers.get("Mcp-Session-Id") or session_id).strip() or session_id
+                if req.get("method") == "resources/subscribe" and isinstance(req.get("params"), dict):
+                    sub_u = str(req["params"].get("uri") or "").strip()
+                    if sub_u:
+                        with session_lock:
+                            session_subs.setdefault(req_sid_post, set()).add(sub_u)
+                elif req.get("method") == "resources/unsubscribe" and isinstance(req.get("params"), dict):
+                    sub_u = str(req["params"].get("uri") or "").strip()
+                    if sub_u:
+                        with session_lock:
+                            if req_sid_post in session_subs:
+                                session_subs[req_sid_post].discard(sub_u)
+
+                accept_post = (self.headers.get("Accept") or "").lower()
+                wants_post_sse = (
+                    config.mcp_http_sse_post_enabled()
+                    and ("text/event-stream" in accept_post)
+                    and (req.get("id") is not None)
+                )
+                if wants_post_sse:
+                    import contextvars as _cv
+                    m_cur = mem()
+                    actor_obj = None
+                    if actor_hdr:
+                        from . import roles as _roles
+                        actor_obj = m_cur.authenticate_token(actor_hdr) or _roles.ActorContext(
+                            role="guest", subject="guest", workspace_id=None, via_token=False
+                        )
+                    req_params = req.get("params") if isinstance(req.get("params"), dict) else {}
+                    req_meta = req_params.get("_meta") if isinstance(req_params.get("_meta"), dict) else {}
+                    req_ptok = req_meta.get("progressToken")
+
+                    with _state_lock:
+                        post_cursor = _event_seq
+
+                    done_ev = threading.Event()
+                    holder: dict = {"resp": None}
+                    ctx_copy = _cv.copy_context()
+
+                    def _run_rpc():
+                        try:
+                            holder["resp"] = handle(req)
+                        except Exception:
+                            holder["resp"] = build_jsonrpc_error(req.get("id"), -32603, "internal error", key="internal_error", req=req)
+                        finally:
+                            done_ev.set()
+                            with _state_lock:
+                                _notify_cond.notify_all()
+
+                    self.protocol_version = "HTTP/1.0"
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                    self.send_header("Cache-Control", "no-cache")
+                    self.send_header("Connection", "close")
+                    self.send_header("X-Accel-Buffering", "no")
+                    self.send_header("Mcp-Session-Id", req_sid_post)
+                    self.end_headers()
+
+                    worker = threading.Thread(target=ctx_copy.run, args=(_run_rpc,), daemon=True)
+                    worker.start()
+
+                    def _post_event_ok(note_obj: dict, aud_obj: dict) -> bool:
+                        meth = str(note_obj.get("method") or "")
+                        if meth == "notifications/progress":
+                            np = note_obj.get("params") if isinstance(note_obj.get("params"), dict) else {}
+                            if req_ptok is not None and np.get("progressToken") != req_ptok:
+                                return False
+                            return True
+                        return _event_allowed_for_actor(aud_obj, actor_obj)
+
+                    try:
+                        while True:
+                            batch = []
+                            finished = done_ev.is_set()
+                            with _state_lock:
+                                if _event_seq <= post_cursor and not finished and not sse_stop_event.is_set():
+                                    _notify_cond.wait(timeout=0.05)
+                                finished = done_ev.is_set()
+                                for seq, note, aud in _stream_events:
+                                    if seq > post_cursor:
+                                        post_cursor = seq
+                                        batch.append((seq, note, aud))
+                            for seq, note, aud in batch:
+                                if not _post_event_ok(note, aud):
+                                    continue
+                                frame = f"id: {seq}\nevent: message\ndata: {json.dumps(note, ensure_ascii=False)}\n\n".encode("utf-8")
+                                self.wfile.write(frame)
+                                self.wfile.flush()
+                            if finished or sse_stop_event.is_set():
+                                break
+                        worker.join(timeout=5.0)
+                        final_resp = holder.get("resp")
+                        if final_resp is not None:
+                            final_seq = _alloc_event_seq()
+                            final_frame = f"id: {final_seq}\nevent: message\ndata: {json.dumps(final_resp, ensure_ascii=False)}\n\n".encode("utf-8")
+                            self.wfile.write(final_frame)
+                            self.wfile.flush()
+                    except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
+                        pass
+                    return None
 
                 try:
                     resp = handle(req)

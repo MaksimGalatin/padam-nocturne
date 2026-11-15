@@ -592,3 +592,211 @@ def test_top4_token_budget_and_atomic_merge(tmp_path):
         assert w_inj["structuredContent"]["mergedWithId"] is None
     finally:
         mcp_server._memory = old_mem
+
+
+def test_top5_streamable_http_v2_sse_post_resume_and_delete_cleanup(tmp_path, monkeypatch):
+    """Пункт 5 ТОП-10: opt-in Streamable HTTP v2 (POST SSE-стриминг, Last-Event-ID, очистка DELETE)."""
+    import http.client
+    import json
+    import threading
+    import time
+    import urllib.error
+    import urllib.request
+
+    from padam import config, mcp_server
+    from padam.memory import Memory
+    from padam.store import Store
+
+    # По умолчанию выключено
+    monkeypatch.delenv("PADAM_MCP_HTTP_SSE_POST", raising=False)
+    assert config.mcp_http_sse_post_enabled() is False
+
+    m = Memory(user_id="top5_u", store=Store(tmp_path / "m_top5.db"))
+    ws_a = m.create_workspace("Team Alpha")
+    tok_a = m.add_member(ws_a["id"], subject="alice", role="contributor")["token"]
+    m.remember("Public work milestone note", kind="fact", scope="work", origin="user", visibility="team_write", workspace_id=ws_a["id"])
+
+    old_mem = mcp_server._memory
+    try:
+        srv, url, tok = mcp_server.make_mcp_http_server(
+            memory=m, host="127.0.0.1", port=0, token="top5-secret-token-1234", rate_limit=20, rate_window_s=60.0
+        )
+        t_srv = threading.Thread(target=srv.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True)
+        t_srv.start()
+        try:
+            host_port = url.split("://", 1)[1].split("/", 1)[0]
+            sid = "sess-top5-client"
+
+            # 1. При выключенном флаге POST даже с Accept: text/event-stream возвращает application/json
+            req_plain = urllib.request.Request(
+                url,
+                data=json.dumps({"jsonrpc": "2.0", "id": "off-1", "method": "ping"}).encode("utf-8"),
+                headers={
+                    "Authorization": f"Bearer {tok}",
+                    "Content-Type": "application/json",
+                    "Accept": "application/json, text/event-stream",
+                    "Mcp-Session-Id": sid,
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req_plain, timeout=5) as resp_off:
+                assert "application/json" in (resp_off.getheader("Content-Type") or "")
+                assert json.loads(resp_off.read().decode("utf-8"))["result"] == {}
+
+            # 2. Включаем Streamable HTTP v2: POST с Accept: text/event-stream стримит progress + ответ
+            monkeypatch.setenv("PADAM_MCP_HTTP_SSE_POST", "1")
+            assert config.mcp_http_sse_post_enabled() is True
+
+            # Сначала подписка на padam://scope/work в этой сессии
+            req_sub = urllib.request.Request(
+                url,
+                data=json.dumps({
+                    "jsonrpc": "2.0", "id": "sub-1", "method": "resources/subscribe",
+                    "params": {"uri": "padam://scope/work"},
+                }).encode("utf-8"),
+                headers={
+                    "Authorization": f"Bearer {tok}",
+                    "Content-Type": "application/json",
+                    "Mcp-Session-Id": sid,
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req_sub, timeout=5) as rs:
+                assert rs.status == 200
+
+            req_sse = urllib.request.Request(
+                url,
+                data=json.dumps({
+                    "jsonrpc": "2.0",
+                    "id": "post-sse-1",
+                    "method": "tools/call",
+                    "params": {
+                        "name": "padam_export",
+                        "arguments": {"scope": "work"},
+                        "_meta": {"progressToken": "tok-top5"},
+                    },
+                }).encode("utf-8"),
+                headers={
+                    "Authorization": f"Bearer {tok}",
+                    "Content-Type": "application/json",
+                    "Accept": "text/event-stream",
+                    "Mcp-Session-Id": sid,
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req_sse, timeout=10) as resp_sse:
+                assert resp_sse.status == 200
+                assert "text/event-stream" in (resp_sse.getheader("Content-Type") or "")
+                raw_sse = resp_sse.read().decode("utf-8")
+
+            events = []
+            cur_id = None
+            cur_data = []
+            for ln in raw_sse.splitlines():
+                if ln.startswith("id: "):
+                    cur_id = int(ln[4:].strip())
+                elif ln.startswith("data: "):
+                    cur_data.append(ln[6:])
+                elif ln == "" and cur_data:
+                    events.append((cur_id, json.loads("\n".join(cur_data))))
+                    cur_id = None
+                    cur_data.clear()
+
+            assert len(events) >= 2
+            prog_events = [ev for _, ev in events if ev.get("method") == "notifications/progress"]
+            assert prog_events and all(p_ev["params"]["progressToken"] == "tok-top5" for p_ev in prog_events)
+            last_id, last_payload = events[-1]
+            assert last_id is not None and last_id > 0
+            assert last_payload["id"] == "post-sse-1"
+            assert last_payload["result"]["isError"] is False
+
+            # 3. Last-Event-ID возобновление на GET /mcp + строгая RBAC-изоляция
+            anchor_seq = events[0][0]
+            m.remember("Team A visible after drop", kind="fact", scope="work", origin="user", visibility="team_write", workspace_id=ws_a["id"])
+            m.remember("Owner secret after drop", kind="fact", scope="work", origin="user", visibility="private")
+
+            req_resume_owner = urllib.request.Request(
+                url,
+                headers={"Authorization": f"Bearer {tok}", "Last-Event-ID": str(anchor_seq), "Mcp-Session-Id": sid},
+                method="GET",
+            )
+            with urllib.request.urlopen(req_resume_owner, timeout=5) as rro:
+                body_owner = rro.read().decode("utf-8")
+                assert "padam://scope/work" in body_owner
+
+            req_resume_alice = urllib.request.Request(
+                url,
+                headers={
+                    "Authorization": f"Bearer {tok}",
+                    "X-Padam-Actor-Token": tok_a,
+                    "Last-Event-ID": str(anchor_seq),
+                    "Mcp-Session-Id": sid,
+                },
+                method="GET",
+            )
+            with urllib.request.urlopen(req_resume_alice, timeout=5) as rra:
+                body_alice = rra.read().decode("utf-8")
+                # Alice должна получить ровно 1 событие от Team A, приватное событие владельца отфильтровано
+                work_hits = [ln for ln in body_alice.splitlines() if "padam://scope/work" in ln]
+                assert len(work_hits) == 1
+
+            # Нечисловой Last-Event-ID -> 400
+            req_bad_id = urllib.request.Request(
+                url,
+                headers={"Authorization": f"Bearer {tok}", "Last-Event-ID": "bad-seq"},
+                method="GET",
+            )
+            try:
+                urllib.request.urlopen(req_bad_id, timeout=5)
+                raise AssertionError("expected HTTP 400 on invalid Last-Event-ID")
+            except urllib.error.HTTPError as he:
+                assert he.code == 400
+
+            # 4. Постоянный SSE-стрим и реальная очистка состояния при DELETE /mcp
+            stream_closed = threading.Event()
+            stream_ready = threading.Event()
+
+            def _open_stream():
+                conn = http.client.HTTPConnection(host_port, timeout=5)
+                conn.request(
+                    "GET",
+                    "/mcp?stream=1",
+                    headers={"Authorization": f"Bearer {tok}", "Accept": "text/event-stream", "Mcp-Session-Id": sid},
+                )
+                r = conn.getresponse()
+                while True:
+                    line = r.fp.readline()
+                    if not line:
+                        break
+                    if line.decode("utf-8", errors="ignore").strip() == ": stream open":
+                        stream_ready.set()
+                conn.close()
+                stream_closed.set()
+
+            th_s = threading.Thread(target=_open_stream, daemon=True)
+            th_s.start()
+            assert stream_ready.wait(timeout=3.0)
+
+            req_del = urllib.request.Request(
+                url,
+                headers={"Authorization": f"Bearer {tok}", "Mcp-Session-Id": sid},
+                method="DELETE",
+            )
+            with urllib.request.urlopen(req_del, timeout=5) as rd:
+                del_res = json.loads(rd.read().decode("utf-8"))
+                assert del_res["closed"] is True
+                assert del_res["sessionId"] == sid
+                assert del_res["cleaned"]["streamsClosed"] >= 1
+                assert del_res["cleaned"]["subscriptionsCleared"] >= 1
+                assert del_res["cleaned"]["rateLimitsCleared"] >= 1
+
+            assert stream_closed.wait(timeout=3.0)
+            th_s.join(timeout=2.0)
+            assert "padam://scope/work" not in mcp_server._subscribed_resources
+        finally:
+            mcp_server.pop_notifications()
+            srv.shutdown()
+            srv.server_close()
+    finally:
+        mcp_server._memory = old_mem
+        m.close()
