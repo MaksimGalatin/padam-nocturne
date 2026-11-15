@@ -242,6 +242,28 @@ CREATE TABLE IF NOT EXISTS connector_item (
     synced_at    TEXT NOT NULL,
     PRIMARY KEY (user_id, provider, external_id)
 );
+
+-- В3: постквантовый обмен ключами X-Wing (ML-KEM-768 + X25519) и доверенные устройства
+CREATE TABLE IF NOT EXISTS sync_identity (
+    user_id        TEXT PRIMARY KEY,
+    device_id      TEXT NOT NULL,
+    scheme         TEXT NOT NULL,
+    pk_bundle_json TEXT NOT NULL,
+    sk_enc         TEXT NOT NULL,
+    created_at     TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sync_peer (
+    user_id        TEXT NOT NULL,
+    peer_device_id TEXT NOT NULL,
+    label          TEXT NOT NULL DEFAULT '',
+    pk_bundle_json TEXT NOT NULL,
+    sas_code       TEXT NOT NULL,
+    trusted        INTEGER NOT NULL DEFAULT 0,
+    created_at     TEXT NOT NULL,
+    last_sync_at   TEXT,
+    PRIMARY KEY (user_id, peer_device_id)
+);
 """
 
 

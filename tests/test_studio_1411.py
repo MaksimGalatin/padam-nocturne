@@ -2824,3 +2824,100 @@ def test_item6_connectors_disabled_encrypted_guarded_and_dedup():
                 assert studio.STRINGS[lang_code]["conn_box_title"]
         finally:
             m.close()
+
+
+def test_item7_pqc_xwing_mlkem768_mldsa65_two_nodes_and_third_cannot_read():
+    """Пункт 7: постквантовый X-Wing (ML-KEM-768 + X25519), ML-DSA-65 + Ed25519, SAS, 3-й не читает, забытое не воскресает."""
+    import base64
+    import copy
+    import json
+    import tempfile
+    from pathlib import Path
+    from padam import integrity, keyvault, pqc_sync
+    from padam.memory import Memory
+    from padam.store import Store
+
+    with tempfile.TemporaryDirectory() as tmp:
+        ma = Memory(store=Store(Path(tmp) / "node_a.db"))
+        mb = Memory(store=Store(Path(tmp) / "node_b.db"))
+        mc = Memory(store=Store(Path(tmp) / "node_c.db"))
+        try:
+            keyvault.enable(ma, "owner-pqc-pass-a")
+            ida = pqc_sync.ensure_local_identity(ma)
+            idb = pqc_sync.ensure_local_identity(mb)
+            idc = pqc_sync.ensure_local_identity(mc)
+
+            # Приватные сиды на диске зашифрованы (w1: на A с keyvault, k1: на B по умолчанию)
+            ra = ma.store.one("SELECT sk_enc FROM sync_identity WHERE user_id=?", (ma.user_id,))
+            rb = mb.store.one("SELECT sk_enc FROM sync_identity WHERE user_id=?", (mb.user_id,))
+            assert ra and ra["sk_enc"].startswith("w1:")
+            assert rb and rb["sk_enc"].startswith("k1:")
+
+            # Без подтверждения SAS передача запрещена
+            reg_ab = pqc_sync.register_peer(ma, idb.public_bundle(), label="Laptop B")
+            assert reg_ab["trusted"] is False
+            with pytest.raises(pqc_sync.PeerNotTrustedError):
+                pqc_sync.seal_sync_packet(ma, idb.device_id)
+
+            # Неверный SAS отклоняется, правильный SAS совпадает у A и B и разрешает обмен
+            sas_a = pqc_sync.compute_sas_code(ida.public_bundle(), idb.public_bundle())
+            sas_b = pqc_sync.compute_sas_code(idb.public_bundle(), ida.public_bundle())
+            assert sas_a == sas_b and len(sas_a) == 6
+            with pytest.raises(pqc_sync.PeerNotTrustedError):
+                pqc_sync.trust_peer(ma, idb.device_id, "000000" if sas_a != "000000" else "999999")
+            pqc_sync.trust_peer(ma, idb.device_id, sas_a)
+            pqc_sync.register_peer(mb, ida.public_bundle(), label="Desktop A", verified_sas=sas_b)
+
+            # Пишем на A две записи: обычную (которую позже забудем) и защищённую identity
+            _, id_keep = ma.remember("Post-quantum ML-KEM-768 tunnel verified", kind="fact", importance=0.8)
+            _, id_ident = ma.remember("Architect prefers encrypted PQC backup", kind="identity", importance=0.9)
+            _, id_temp = ma.remember("Temporary hotel check-in code alpha91", kind="fact", importance=0.6)
+
+            pkt1 = pqc_sync.seal_sync_packet(ma, idb.device_id)
+            assert pkt1["scheme"] == "xwing-mlkem768-x25519+mldsa65-ed25519+aes256gcm"
+            assert len(base64.b64decode(pkt1["ct_mlkem"])) == 1088
+            assert len(base64.b64decode(pkt1["ct_x25519"])) == 32
+            assert len(base64.b64decode(pkt1["sig_mldsa65"])) == 3309
+            assert len(base64.b64decode(pkt1["sig_ed25519"])) == 64
+            assert "alpha91" not in json.dumps(pkt1)
+
+            # 3-й экземпляр C без ключа B не может прочитать пакет ни напрямую, ни подменив receiver_id
+            with pytest.raises(pqc_sync.PacketDecryptionError):
+                pqc_sync.open_sync_packet(mc, pkt1)
+            forged_rcvr = copy.deepcopy(pkt1)
+            forged_rcvr["receiver_id"] = idc.device_id
+            pqc_sync.register_peer(mc, ida.public_bundle(), label="Node A", verified_sas=pqc_sync.compute_sas_code(ida.public_bundle(), idc.public_bundle()))
+            with pytest.raises(pqc_sync.PacketVerificationError):
+                pqc_sync.open_sync_packet(mc, forged_rcvr)
+
+            # Порча подписи ML-DSA-65 или шифротекста отклоняется получателем B
+            tampered_sig = copy.deepcopy(pkt1)
+            raw_sig = bytearray(base64.b64decode(tampered_sig["sig_mldsa65"]))
+            raw_sig[0] ^= 0xFF
+            tampered_sig["sig_mldsa65"] = base64.b64encode(bytes(raw_sig)).decode("ascii")
+            with pytest.raises(pqc_sync.PacketVerificationError):
+                pqc_sync.apply_sync_packet(mb, tampered_sig)
+
+            # Узел B успешно применяет пакет 1
+            res1 = pqc_sync.apply_sync_packet(mb, pkt1)
+            assert res1["imported"] == 3
+            assert any("ML-KEM-768" in r.content for r in mb.recall("ML-KEM-768", limit=5))
+            assert any("alpha91" in r.content for r in mb.recall("alpha91", limit=5))
+            key_b, _ = integrity.owner_key(mb.store)
+            row_b_ident = mb.store.one("SELECT * FROM memory WHERE id=?", (id_ident,))
+            assert row_b_ident and integrity.valid(key_b, row_b_ident)
+
+            # Узел A забывает id_temp -> пакет 2 стирает id_temp и на B; старый пакет pkt1 не воскрешает id_temp!
+            assert ma.revoke(id_temp) > 0
+            pkt2 = pqc_sync.seal_sync_packet(ma, idb.device_id)
+            res2 = pqc_sync.apply_sync_packet(mb, pkt2)
+            assert res2["wiped_from_receipts"] == 1
+            assert not any("alpha91" in r.content for r in mb.recall("alpha91", limit=5))
+
+            res_replay = pqc_sync.apply_sync_packet(mb, pkt1)
+            assert res_replay["imported"] == 0 and res_replay["skipped_forgotten"] >= 1
+            assert not any("alpha91" in r.content for r in mb.recall("alpha91", limit=5))
+        finally:
+            ma.close()
+            mb.close()
+            mc.close()
