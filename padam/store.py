@@ -216,6 +216,32 @@ CREATE TABLE IF NOT EXISTS workspace_member (
     PRIMARY KEY (workspace_id, subject)
 );
 CREATE INDEX IF NOT EXISTS workspace_member_token ON workspace_member (token_hash);
+
+-- В2: внешние коннекторы (по умолчанию выключены, токены зашифрованы локально)
+CREATE TABLE IF NOT EXISTS connector_state (
+    provider       TEXT NOT NULL,
+    user_id        TEXT NOT NULL,
+    enabled        INTEGER NOT NULL DEFAULT 0,
+    token_enc      TEXT,
+    config_json    TEXT NOT NULL DEFAULT '{}',
+    cursor         TEXT,
+    last_sync_at   TEXT,
+    last_status    TEXT NOT NULL DEFAULT 'disabled',
+    last_error     TEXT,
+    imported_count INTEGER NOT NULL DEFAULT 0,
+    updated_at     TEXT NOT NULL,
+    PRIMARY KEY (provider, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS connector_item (
+    user_id      TEXT NOT NULL,
+    provider     TEXT NOT NULL,
+    external_id  TEXT NOT NULL,
+    memory_id    TEXT,
+    content_hash TEXT NOT NULL,
+    synced_at    TEXT NOT NULL,
+    PRIMARY KEY (user_id, provider, external_id)
+);
 """
 
 

@@ -43,7 +43,7 @@ import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
-from . import __version__, config, logo, roles, safety, studio, viewer
+from . import __version__, config, connectors, logo, roles, safety, studio, viewer
 from .i18n import t
 from .memory import Memory, decay, parse_ts
 from .nocturne import Nocturne
@@ -51,8 +51,8 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
 
@@ -420,6 +420,9 @@ class Handler(BaseHTTPRequestHandler):
             if путь.path == "/l3":
                 roles.require_owner(actor, "l3")
                 return self._send(200, mem().l3_status())
+            if путь.path == "/connectors":
+                roles.require_owner(actor, "connectors")
+                return self._send(200, {"connectors": connectors.list_connectors(mem())})
             if путь.path == "/settings":
                 roles.require_owner(actor, "settings")
                 from . import desktop as _desktop
@@ -695,6 +698,43 @@ class Handler(BaseHTTPRequestHandler):
                                   dry_run=bool(data.get("dry_run", False))).run()
                 report.pop("checks", None)
                 return self._send(200, report)
+
+            if self.path == "/connectors/configure":
+                roles.require_owner(actor, "connectors")
+                provider = str(data.get("provider") or "").strip().lower()
+                if not provider:
+                    return self._send(400, {"error": "provider is required"})
+                try:
+                    item = connectors.configure_connector(
+                        m,
+                        provider,
+                        enabled=data.get("enabled"),
+                        token=data.get("token"),
+                        clear_token=bool(data.get("clear_token", False)),
+                        config=data.get("config") if isinstance(data.get("config"), dict) else None,
+                    )
+                    return self._send(200, {"ok": True, "connector": item})
+                except ValueError as e:
+                    return self._send(400, {"error": str(e)})
+
+            if self.path == "/connectors/sync":
+                roles.require_owner(actor, "connectors")
+                provider = str(data.get("provider") or "").strip().lower()
+                if not provider:
+                    return self._send(400, {"error": "provider is required"})
+                try:
+                    res = connectors.sync_connector(m, provider)
+                    return self._send(200, res)
+                except connectors.ConnectorDisabledError as e:
+                    return self._send(409, {"error": str(e)})
+                except connectors.TokenRevokedError as e:
+                    return self._send(401, {"error": str(e)})
+                except connectors.RateLimitError as e:
+                    return self._send(429, {"error": str(e)})
+                except connectors.ConnectorError as e:
+                    return self._send(502, {"error": str(e)})
+                except ValueError as e:
+                    return self._send(400, {"error": str(e)})
 
             if self.path == "/import":
                 roles.require_owner(actor, "import")

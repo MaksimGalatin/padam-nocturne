@@ -314,6 +314,15 @@ STRINGS: dict[str, dict[str, str]] = {
         "audit_box_desc": "Кто, когда и какое действие выполнил (запись, одобрение, отклонение, забывание). Текст записей в журнале не хранится.",
         "audit_export_json": "Скачать журнал JSON",
         "audit_empty": "В журнале действий пока нет событий.",
+        "conn_box_title": "Внешние коннекторы (только чтение, через ограду)",
+        "conn_box_desc": "По умолчанию все коннекторы выключены. Токены шифруются локально (keyvault/AES-GCM), никогда не передаются обратно и всё приходящее проходит через очередь проверки.",
+        "conn_tok_saved": "токен сохранён",
+        "conn_tok_missing": "нет токена",
+        "conn_tok_ph": "Токен доступа (только чтение)…",
+        "conn_save": "Сохранить",
+        "conn_sync": "Синхронизировать",
+        "conn_clear_tok": "Стереть токен",
+        "conn_imported": "импортировано",
     },
     "en": {
         "app_title": "PADAM · NOCTURNE Studio",
@@ -594,6 +603,15 @@ STRINGS: dict[str, dict[str, str]] = {
         "audit_box_desc": "Who performed which action and when (write, approve, reject, forget). Record content is never stored in the audit log.",
         "audit_export_json": "Download Audit JSON",
         "audit_empty": "No audit events recorded yet.",
+        "conn_box_title": "External Connectors (read-only, safety guarded)",
+        "conn_box_desc": "All connectors are disabled by default. Tokens stay encrypted locally and never leave the device; imported items pass through the safety guard and Review Queue.",
+        "conn_tok_saved": "token saved",
+        "conn_tok_missing": "no token",
+        "conn_tok_ph": "Read-only access token…",
+        "conn_save": "Save",
+        "conn_sync": "Sync now",
+        "conn_clear_tok": "Clear token",
+        "conn_imported": "imported",
     },
     "es": {
         "app_title": "PADAM · NOCTURNE Studio",
@@ -874,6 +892,15 @@ STRINGS: dict[str, dict[str, str]] = {
         "audit_box_desc": "Quién realizó cada acción y cuándo (escritura, aprobación, rechazo, olvido). El texto nunca se guarda en la auditoría.",
         "audit_export_json": "Descargar auditoría JSON",
         "audit_empty": "Aún no hay eventos en el registro de auditoría.",
+        "conn_box_title": "Conectores externos (solo lectura, con valla de seguridad)",
+        "conn_box_desc": "Desactivados por defecto. Los tokens se cifran localmente y todo contenido importado pasa por la cola de revisión.",
+        "conn_tok_saved": "token guardado",
+        "conn_tok_missing": "sin token",
+        "conn_tok_ph": "Token de acceso de solo lectura…",
+        "conn_save": "Guardar",
+        "conn_sync": "Sincronizar",
+        "conn_clear_tok": "Borrar token",
+        "conn_imported": "importados",
     },
     "zh": {
         "app_title": "PADAM · NOCTURNE Studio",
@@ -1154,6 +1181,15 @@ STRINGS: dict[str, dict[str, str]] = {
         "audit_box_desc": "记录何人在何时执行了何种操作（写入、批准、拒绝、遗忘）。审计日志绝不存储记忆正文。",
         "audit_export_json": "下载审计 JSON",
         "audit_empty": "审计日志中暂无事件。",
+        "conn_box_title": "外部连接器（只读，经过安全围栏）",
+        "conn_box_desc": "默认全部关闭。令牌仅本地加密存储，所有导入内容均经过安全围栏与审核队列。",
+        "conn_tok_saved": "已保存令牌",
+        "conn_tok_missing": "无令牌",
+        "conn_tok_ph": "只读访问令牌…",
+        "conn_save": "保存",
+        "conn_sync": "立即同步",
+        "conn_clear_tok": "清除令牌",
+        "conn_imported": "已导入",
     },
 }
 
@@ -3316,6 +3352,75 @@ async function loadSettings() {
       makeReadOnlyRow('set_keep_secrets_name', 'set_keep_secrets_desc', Boolean(s.keep_secrets), 'keep_secrets'),
       makeReadOnlyRow('set_trust_mcp_name', 'set_trust_mcp_desc', Boolean(s.mcp_trust_writes), 'mcp_trust_writes')
     );
+    const connBox = $('settings-connectors-list');
+    if (connBox) {
+      connBox.replaceChildren();
+      try {
+        const cr = await api('/connectors');
+        const items = cr.connectors || [];
+        const cfgFieldMap = {
+          github: {key: 'repo', label: 'owner/repo'},
+          notion: {key: 'database_id', label: 'database_id (opt.)'},
+          gdrive: {key: 'folder_id', label: 'folder_id (opt.)'},
+          slack: {key: 'channel', label: 'channel ID'}
+        };
+        for (const c of items) {
+          const row = el('div', 'setting-row');
+          const info = el('div', 'setting-info');
+          const meta = [];
+          meta.push(c.enabled ? S.set_state_on : S.set_state_off);
+          meta.push(c.has_token ? S.conn_tok_saved : S.conn_tok_missing);
+          meta.push(S.conn_imported + ': ' + (c.imported_count || 0));
+          if (c.last_error) meta.push('⚠ ' + c.last_error);
+          info.append(
+            el('div', 'setting-name', c.provider.toUpperCase()),
+            el('div', 'setting-desc', meta.join(' · '))
+          );
+          const ctrl = el('div', 'rec-actions');
+          const fSpec = cfgFieldMap[c.provider] || {key: 'target', label: 'target'};
+          const cfgInp = document.createElement('input');
+          cfgInp.type = 'text';
+          cfgInp.placeholder = fSpec.label;
+          cfgInp.value = (c.config && c.config[fSpec.key]) ? c.config[fSpec.key] : '';
+          const tokInp = document.createElement('input');
+          tokInp.type = 'password';
+          tokInp.placeholder = S.conn_tok_ph;
+          const toggleBtn = el('button', c.enabled ? '' : 'btn-primary', c.enabled ? S.set_btn_disable : S.set_btn_enable);
+          toggleBtn.onclick = async () => {
+            try {
+              await api('/connectors/configure', {provider: c.provider, enabled: !c.enabled});
+              say(S.done, true);
+              loadSettings();
+            } catch (e) { say(S.failed + ': ' + e.message, false); }
+          };
+          const saveBtn = el('button', 'btn-ok', S.conn_save);
+          saveBtn.onclick = async () => {
+            try {
+              const payload = {provider: c.provider, config: {[fSpec.key]: cfgInp.value.trim()}};
+              if (tokInp.value.trim()) payload.token = tokInp.value.trim();
+              await api('/connectors/configure', payload);
+              tokInp.value = '';
+              say(S.done, true);
+              loadSettings();
+            } catch (e) { say(S.failed + ': ' + e.message, false); }
+          };
+          const syncBtn = el('button', '', S.conn_sync);
+          syncBtn.onclick = async () => {
+            try {
+              await api('/connectors/sync', {provider: c.provider});
+              say(S.done, true);
+              loadSettings();
+            } catch (e) { say(S.failed + ': ' + e.message, false); }
+          };
+          ctrl.append(cfgInp, tokInp, toggleBtn, saveBtn, syncBtn);
+          row.append(info, ctrl);
+          connBox.append(row);
+        }
+      } catch (ce) {
+        connBox.append(el('p', 'panel-sub', ce.message));
+      }
+    }
+
     const auditBox = $('settings-audit-list');
     if (auditBox) {
       auditBox.replaceChildren();
@@ -3951,6 +4056,11 @@ def page() -> tuple[str, str]:
         <div class="box">
           <h3 class="box-title" data-i18n="set_readonly_title">{s['set_readonly_title']}</h3>
           <div id="settings-readonly-list"></div>
+        </div>
+        <div class="box">
+          <h3 class="box-title" data-i18n="conn_box_title">{s['conn_box_title']}</h3>
+          <p class="panel-sub" data-i18n="conn_box_desc">{s['conn_box_desc']}</p>
+          <div id="settings-connectors-list"></div>
         </div>
         <div class="box">
           <div class="box-title">
