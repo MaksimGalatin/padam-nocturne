@@ -311,3 +311,47 @@ def test_top10v2_5_procedural_memory_skills_and_quarantine(tmp_path: Path, monke
     ext = procedural.extract_procedure_from_episodes(m, title="Debug DB", episode_texts=["Check WAL mode\nVerify pragma integrity_check"], scope="proj:dev")
     assert ext["status"] == "quarantined"
     m.close()
+
+
+def test_top10v2_6_reflect_facts_experience_opinions(tmp_path: Path, monkeypatch) -> None:
+    """Пункт 6: Reflect — разделение world_fact, agent_experience и opinion с confidence/evidence и оградой."""
+    import pytest
+
+    monkeypatch.delenv("PADAM_REFLECT", raising=False)
+    assert config.mcp_reflect_enabled() is False
+    assert len(mcp_server.TOOLS) == 9
+
+    db_path = tmp_path / "reflect.db"
+    m = Memory(user_id="ref-u", store=Store(db_path))
+    _, id_fact = m.remember("База данных работает в режиме WAL", kind="fact", scope="proj:ref", origin="user", agent_id="owner")
+    _, id_exp = m.remember("Агент заметил замедление WAL при чекпоинте", kind="fact", scope="proj:ref", origin="agent", agent_id="claude")
+    _, id_op = m.remember("Возможно, стоит увеличить checkpoint до 1000 страниц в WAL", kind="fact", scope="proj:ref", origin="reflection", derived_from=[id_fact], agent_id="claude")
+
+    old_mem = mcp_server._memory
+    mcp_server._memory = m
+    try:
+        with pytest.raises(KeyError):
+            mcp_server.read_resource("padam://reflect")
+
+        monkeypatch.setenv("PADAM_REFLECT", "1")
+        assert config.mcp_reflect_enabled() is True
+        assert any(r["uri"] == "padam://reflect" for r in mcp_server._list_resources_annotated())
+
+        text, struct = mcp_server._call_tool_full("padam_search", {"query": "WAL", "scope": "proj:ref", "reflect": True})
+        rv = struct["reflect"]
+        assert len(rv["world_facts"]) == 1 and rv["world_facts"][0]["id"] == id_fact
+        assert len(rv["agent_experiences"]) == 1 and rv["agent_experiences"][0]["id"] == id_exp
+        assert len(rv["opinions"]) == 1 and rv["opinions"][0]["id"] == id_op
+        assert id_fact in rv["opinions"][0]["evidence_ids"]
+        assert "[WORLD_FACT" in text and "[AGENT_EXPERIENCE" in text and "[OPINION" in text
+        assert safety.DATA_NOTICE in text or "<memory" in text
+
+        conf_before = rv["opinions"][0]["confidence"]
+        m.refute(id_op, drop=0.35)
+        res_item = mcp_server.read_resource("padam://reflect?query=WAL&scope=proj:ref")
+        rv2 = json.loads(res_item["text"])
+        assert rv2["opinions"][0]["confidence"] < conf_before
+        assert rv2["opinions"][0]["refuted_count"] >= 1
+    finally:
+        mcp_server._memory = old_mem
+        m.close()

@@ -2069,6 +2069,15 @@ def _list_resources_annotated() -> list[dict]:
             "mimeType": "application/json",
             "annotations": _make_annotations(["user", "assistant"], 0.7, by_uri.get("padam://stats")),
         })
+    if config.mcp_reflect_enabled():
+        out.append({
+            "uri": "padam://reflect",
+            "name": "epistemic_reflect",
+            "title": "Reflect: Facts vs Experience vs Opinions",
+            "description": "Separates world facts, agent experiences, and opinions with confidence and evidence IDs.",
+            "mimeType": "application/json",
+            "annotations": _make_annotations(["assistant", "user"], 0.8, by_uri.get("padam://stats")),
+        })
     if config.mcp_app_acl_enabled():
         out.append({
             "uri": "padam://access-control",
@@ -2158,6 +2167,22 @@ def read_resource(uri: str) -> dict:
 
     m = mem()
     actor = _current_actor(m)
+
+    if uri == "padam://reflect" or uri.startswith("padam://reflect?"):
+        if not config.mcp_reflect_enabled():
+            raise KeyError(f"Resource not found: {uri}")
+        from urllib.parse import parse_qs as _pqs, urlsplit as _usplit
+        from . import reflect
+        qs = _pqs(_usplit(uri).query)
+        q_str = (qs.get("query") or [""])[0]
+        sc_str = (qs.get("scope") or [_session_scope_ctx.get() or ""])[0] or None
+        payload = reflect.build_reflect_view(m, query=q_str, scope=sc_str, actor=actor)
+        return {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps(payload, ensure_ascii=False, indent=2),
+            "annotations": _make_annotations(["assistant", "user"], 0.8, None),
+        }
 
     if uri == "padam://access-control":
         if not config.mcp_app_acl_enabled():
@@ -2912,6 +2937,22 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
             raise PermissionError(f"App access denied for {acl_client}: {reason}")
 
     if name == "padam_search":
+        if config.mcp_reflect_enabled() and (args.get("reflect") or args.get("mode") == "reflect"):
+            from . import reflect
+            eff_scope = _check_session_scope(args.get("scope")) or "global"
+            rv = reflect.build_reflect_view(
+                m,
+                query=str(args.get("query") or ""),
+                scope=eff_scope,
+                limit=int(args.get("limit", 5)),
+                actor=actor,
+            )
+            return (rv["fenced"] or "Nothing found in memory for this query.", {
+                "query": args.get("query") or "",
+                "count": len(rv["world_facts"]) + len(rv["agent_experiences"]) + len(rv["opinions"]),
+                "fencedInContent": bool(rv["fenced"]),
+                "reflect": rv,
+            })
         if args.get("scopes"):
             checked_scopes = [_check_session_scope(s) for s in args["scopes"]]
             found = m.recall_many(args["query"], checked_scopes, kind=args.get("kind"),
