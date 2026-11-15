@@ -19,6 +19,12 @@ import numpy as np
 
 from . import config
 
+HW_SEAL_MAGIC = b"PADAMHW1"
+
+
+class HardwareLockedError(RuntimeError):
+    """База данных запечатана Аппаратной Печатью Души (PADAMHW1) и требует разблокировки FIDO2/DPAPI."""
+
 SCHEMA = """
 PRAGMA journal_mode = WAL;
 PRAGMA foreign_keys = ON;
@@ -363,6 +369,15 @@ class Store:
         self.path = Path(path) if path else config.DB_PATH
         if str(self.path) != ":memory:":
             self.path.parent.mkdir(parents=True, exist_ok=True)
+            if self.path.exists() and self.path.is_file():
+                try:
+                    with self.path.open("rb") as _hf:
+                        if _hf.read(8) == HW_SEAL_MAGIC:
+                            raise HardwareLockedError(
+                                f"Database {self.path} is hardware-sealed (PADAMHW1); unseal with FIDO2/DPAPI first."
+                            )
+                except OSError:
+                    pass
         # 16.10.2026: одно соединение делят потоки REST-сервера (ThreadingHTTPServer). Без
         # блокировки два запроса одновременно портили транзакцию («cannot commit — no
         # transaction is active»). Все обращения к соединению идут под этим замком.

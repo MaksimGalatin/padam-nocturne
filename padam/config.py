@@ -361,3 +361,9 @@ def mcp_dlp_upstream_url() -> str:
 def mcp_swarm_enabled() -> bool:
     """Включает локальную синаптическую шину агентов padam://swarm/feed и GET /swarm/feed (PADAM_MCP_SWARM=1)."""
     return os.environ.get("PADAM_MCP_SWARM", "0").strip() == "1"
+
+
+# --- Легенда Шаг 5: Аппаратная Печать Души (Hardware-Locked Genesis, выключено по умолчанию) ---
+def mcp_hw_seal_enabled() -> bool:
+    """Включает аппаратное запечатывание БД (PADAMHW1: FIDO2 + OS DPAPI/Keystore, PADAM_HW_SEAL=1)."""
+    return os.environ.get("PADAM_HW_SEAL", "0").strip() == "1"

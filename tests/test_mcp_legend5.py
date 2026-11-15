@@ -740,3 +740,149 @@ def test_legend4_p2p_swarm_synapse_and_sandbox_isolation(tmp_path, monkeypatch):
         mcp_server.pop_notifications()
         mcp_server._memory = old_mem
         m.close()
+
+
+
+def test_legend5_hardware_locked_genesis_and_fido2_seal(tmp_path, monkeypatch, capsys):
+    """Шаг 5: Аппаратная Печать Души (PADAMHW1, WebAuthn FIDO2 ECDSA P-256 + Windows DPAPI, автоперезапечатывание)."""
+    import copy
+    from padam import cli as _cli
+    from padam.hardware_seal import (
+        CONTAINER_MAGIC,
+        HardwareAuthError,
+        HardwareSealedMemory,
+        SoftwareFido2Token,
+        is_sealed_database,
+        probe_hardware_capabilities,
+        read_seal_header,
+        seal_database,
+        unseal_database,
+    )
+    from padam.store import HardwareLockedError
+
+    monkeypatch.delenv("PADAM_HW_SEAL", raising=False)
+    assert config.mcp_hw_seal_enabled() is False
+
+    # 1. Инициализируем базу с реальной записью
+    db_path = tmp_path / "genesis.db"
+    m = Memory(user_id="hw-u", store=Store(db_path))
+    old_mem = mcp_server._memory
+    mcp_server._memory = m
+    try:
+        st_off = mcp_server.handle({
+            "jsonrpc": "2.0", "id": "hw-off", "method": "tools/call",
+            "params": {"name": "padam_stats", "arguments": {}},
+        })["result"]["structuredContent"]
+        assert "hardwareSeal" not in st_off
+
+        monkeypatch.setenv("PADAM_HW_SEAL", "1")
+        st_on = mcp_server.handle({
+            "jsonrpc": "2.0", "id": "hw-on", "method": "tools/call",
+            "params": {"name": "padam_stats", "arguments": {}},
+        })["result"]["structuredContent"]
+        assert "hardwareSeal" in st_on
+
+        _, id1 = m.remember("Genesis hardware-locked secret insight 42", kind="fact", scope="proj:vault", origin="user")
+    finally:
+        mcp_server.pop_notifications()
+        mcp_server._memory = old_mem
+        m.close()
+
+    # До запечатывания в файле есть стандартный SQLite заголовок
+    assert db_path.read_bytes().startswith(b"SQLite format 3")
+
+    # 2. Запечатываем аппаратным токеном FIDO2 (ECDSA P-256 + hmac-secret)
+    token = SoftwareFido2Token(algorithm="ES256", rp_id="padam.local", present=True, user_verified=True)
+    seal_res = seal_database(db_path, mode="fido2", fido2_token=token)
+    assert seal_res["status"] == "sealed"
+    assert seal_res["mode"] == "fido2"
+    assert is_sealed_database(db_path) is True
+
+    sealed_raw = db_path.read_bytes()
+    assert sealed_raw.startswith(CONTAINER_MAGIC)
+    assert b"SQLite format 3" not in sealed_raw
+    assert b"Genesis hardware-locked" not in sealed_raw
+
+    # Обычный Store(db_path) обязан отказать с HardwareLockedError
+    with pytest.raises(HardwareLockedError):
+        Store(db_path)
+
+    # 3. Негативные крипто-проверки FIDO2: без касания (UP=0), чужой токен, replay sign_count
+    token.present = False
+    with pytest.raises(HardwareAuthError):
+        with HardwareSealedMemory(db_path, user_id="hw-u", fido2_token=token):
+            pass
+
+    token.present = True
+    alien_token = SoftwareFido2Token(algorithm="ES256", rp_id="padam.local", present=True)
+    with pytest.raises(HardwareAuthError):
+        with HardwareSealedMemory(db_path, user_id="hw-u", fido2_token=alien_token):
+            pass
+
+    # Replay: принудительно не увеличиваем sign_count -> защита от replay обязана отклонить
+    def _replay_cb(challenge, salt, finfo):
+        return token.assert_challenge(challenge, salt, increment_counter=False)
+
+    with pytest.raises(HardwareAuthError):
+        with HardwareSealedMemory(db_path, user_id="hw-u", assertion_cb=_replay_cb):
+            pass
+
+    # И поддельная подпись с верным sign_count обязана упасть
+    def _tampered_sig_cb(challenge, salt, finfo):
+        ass = token.assert_challenge(challenge, salt, increment_counter=True)
+        bad = copy.copy(ass)
+        bad.signature = bytes([ass.signature[0] ^ 0xFF]) + ass.signature[1:]
+        return bad
+
+    with pytest.raises(HardwareAuthError):
+        with HardwareSealedMemory(db_path, user_id="hw-u", assertion_cb=_tampered_sig_cb):
+            pass
+
+    # 4. Штатное открытие через HardwareSealedMemory и авто-перезапечатывание после close()
+    with HardwareSealedMemory(db_path, user_id="hw-u", fido2_token=token) as sealed_m:
+        hits1 = sealed_m.recall("hardware-locked secret", scope="proj:vault", limit=5)
+        assert any(h.id == id1 for h in hits1)
+        _, id2 = sealed_m.remember("Updated after biometric touch 99", kind="fact", scope="proj:vault", origin="user")
+
+    # После выхода файл на диске СНОВА зашифрован PADAMHW1, без открытого SQLite и новых строк
+    after_close_raw = db_path.read_bytes()
+    assert after_close_raw.startswith(CONTAINER_MAGIC)
+    assert b"SQLite format 3" not in after_close_raw
+    assert b"Updated after biometric" not in after_close_raw
+
+    # Повторное открытие видит обе записи и обновлённый счётчик sign_count
+    hdr_after = read_seal_header(db_path)
+    assert hdr_after["fido2"]["last_sign_count"] >= 2
+    with HardwareSealedMemory(db_path, user_id="hw-u", fido2_token=token) as sealed_m2:
+        hits2 = sealed_m2.recall("biometric touch", scope="proj:vault", limit=5)
+        assert any(h.id == id2 for h in hits2)
+
+    # Полная распечатка на диск
+    unseal_res = unseal_database(db_path, fido2_token=token)
+    assert unseal_res["status"] == "unsealed"
+    assert is_sealed_database(db_path) is False
+    assert db_path.read_bytes().startswith(b"SQLite format 3")
+
+    # 5. Реальная проверка Windows DPAPI + 2FA (fido2+dpapi) + CLI seal-status/seal/unseal
+    caps = probe_hardware_capabilities()
+    if caps["dpapi_available"]:
+        res_2fa = seal_database(db_path, mode="fido2+dpapi", fido2_token=token)
+        assert res_2fa["mode"] == "fido2+dpapi"
+        assert is_sealed_database(db_path) is True
+        with HardwareSealedMemory(db_path, user_id="hw-u", fido2_token=token) as m_2fa:
+            assert any(h.id == id1 for h in m_2fa.recall("hardware-locked", scope="proj:vault", limit=5))
+        unseal_database(db_path, fido2_token=token)
+
+        capsys.readouterr()
+        assert _cli.main(["--db", str(db_path), "seal", "--mode", "dpapi", "--json"]) == 0
+        cli_seal = json.loads(capsys.readouterr().out)
+        assert cli_seal["status"] == "sealed" and cli_seal["mode"] == "dpapi"
+
+        assert _cli.main(["--db", str(db_path), "seal-status", "--json"]) == 0
+        cli_st = json.loads(capsys.readouterr().out)
+        assert cli_st["sealed"] is True and cli_st["header"]["mode"] == "dpapi"
+
+        assert _cli.main(["--db", str(db_path), "unseal", "--json"]) == 0
+        cli_un = json.loads(capsys.readouterr().out)
+        assert cli_un["status"] == "unsealed"
+        assert is_sealed_database(db_path) is False

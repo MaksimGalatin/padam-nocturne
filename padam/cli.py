@@ -377,6 +377,61 @@ def cmd_profile(m: Memory, a) -> int:
     return 0
 
 
+def cmd_seal_status(m, a) -> int:
+    """Шаг 5 Легенды: статус аппаратных возможностей и печати PADAMHW1."""
+    from pathlib import Path
+    from . import hardware_seal
+    db_target = Path(a.db) if a.db else config.DB_PATH
+    sealed = hardware_seal.is_sealed_database(db_target)
+    caps = hardware_seal.probe_hardware_capabilities()
+    out = {
+        "db": str(db_target),
+        "sealed": sealed,
+        "hw_seal_env_enabled": bool(config.mcp_hw_seal_enabled()),
+        "capabilities": caps,
+    }
+    if sealed:
+        hdr = hardware_seal.read_seal_header(db_target)
+        out["header"] = {
+            "mode": hdr.get("mode"),
+            "rp_id": hdr.get("rp_id"),
+            "sealed_at": hdr.get("sealed_at"),
+            "plain_size": hdr.get("plain_size"),
+            "plain_sha256": hdr.get("plain_sha256"),
+        }
+    if a.json:
+        print(json.dumps(out, ensure_ascii=False, indent=2))
+    else:
+        print(f"Hardware Seal: db={db_target} sealed={sealed} dpapi={caps['dpapi_available']} webauthn={caps['webauthn_dll']}")
+    return 0
+
+
+def cmd_seal(m, a) -> int:
+    """Шаг 5 Легенды: запечатать файл БД аппаратной печатью PADAMHW1."""
+    from pathlib import Path
+    from . import hardware_seal
+    db_target = Path(a.db) if a.db else config.DB_PATH
+    res = hardware_seal.seal_database(db_target, mode=a.mode)
+    if a.json:
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+    else:
+        print(f"Sealed {res['db']} (mode={res['mode']}, bytes={res['container_size']})")
+    return 0
+
+
+def cmd_unseal(m, a) -> int:
+    """Шаг 5 Легенды: распечатать файл БД (DPAPI)."""
+    from pathlib import Path
+    from . import hardware_seal
+    db_target = Path(a.db) if a.db else config.DB_PATH
+    res = hardware_seal.unseal_database(db_target)
+    if a.json:
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+    else:
+        print(f"Unsealed {res['db']} (mode={res['mode']}, bytes={res['plain_size']})")
+    return 0
+
+
 def cmd_dlp_stats(m: Memory, a) -> int:
     """Шаг 3 Легенды: статистика локального DLP-сейфа секретов."""
     from .dlp_shield import DlpShield
@@ -1182,9 +1237,25 @@ def main(argv=None) -> int:
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_dlp_stats)
 
+    s = sub.add_parser("seal-status", help=t("статус аппаратной печати БД (PADAMHW1: FIDO2/DPAPI)",
+                                             "hardware seal status for the DB (PADAMHW1: FIDO2/DPAPI)"))
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_seal_status)
+
+    s = sub.add_parser("seal", help=t("запечатать базу данных аппаратной печатью (Windows DPAPI)",
+                                      "seal the database with hardware protection (Windows DPAPI)"))
+    s.add_argument("--mode", default="dpapi", choices=("dpapi",))
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_seal)
+
+    s = sub.add_parser("unseal", help=t("распечатать базу данных с аппаратной проверки (Windows DPAPI)",
+                                        "unseal a hardware-sealed database (Windows DPAPI)"))
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_unseal)
+
     a = p.parse_args(argv)
-    if a.fn is cmd_demo:
-        return cmd_demo(None, a)
+    if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal):
+        return a.fn(None, a)
     from .store import Store
     mem = Memory(user_id=a.user, store=Store(a.db) if a.db else None)
     try:

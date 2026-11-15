@@ -461,6 +461,7 @@ _OUTPUT_SCHEMAS = {
             "activeRootScope": {"type": "string"},
             "predictiveCache": {"type": "object"},
             "dlpShield": {"type": "object"},
+            "hardwareSeal": {"type": "object"},
         },
         "required": [
             "backend", "db", "active", "superseded", "revoked", "quarantined",
@@ -3347,6 +3348,10 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
             from .dlp_shield import DlpShield as _DlpShield
             st = dict(st)
             st["dlpShield"] = _DlpShield(m).stats()
+        if config.mcp_hw_seal_enabled():
+            from . import hardware_seal as _hw_seal
+            st = dict(st)
+            st["hardwareSeal"] = _hw_seal.probe_hardware_capabilities()
         return json.dumps(st, ensure_ascii=False, indent=2), st
 
     if name == "padam_sleep":
