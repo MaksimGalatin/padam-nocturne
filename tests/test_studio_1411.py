@@ -3837,3 +3837,38 @@ def test_step_2_5_encrypted_backup_restore_and_studio_ui(tmp_path):
         m1.close()
         m2.close()
 
+
+def test_step_2_6_ci_restore_roundtrip(tmp_path):
+    """Пункт 2.6: демо-база -> экспорт/бэкап -> импорт в пустую -> сверка всех записей и связей + CI."""
+    import scripts.ci_restore_check as ci_rc
+
+    res = ci_rc.run_restore_check()
+    assert res["ok"] is True
+    assert res["records_checked"] >= 15
+    assert res["links_checked"] >= 4
+    assert res["backup_records_checked"] == res["records_checked"]
+    assert res["backup_links_checked"] == res["links_checked"]
+
+    # Проверяем, что все типы рёбер (cause/correction/contradiction/source) переживают export -> import_
+    src = Memory(user_id="t26", store=Store(tmp_path / "src.db"))
+    dst = Memory(user_id="t26", store=Store(tmp_path / "dst.db"))
+    try:
+        _, id_a = src.remember("Primary power rail is 12V", kind="fact")
+        _, id_b = src.remember("Converter stepped down 12V to 5V", kind="fact")
+        _, id_c = src.remember("Power rail spec updated to 12.2V", kind="correction")
+        src.link(id_a, id_b, relation="cause")
+        src.link(id_c, id_a, relation="correction")
+        payload = json.loads(json.dumps(src.export(include_superseded=True, include_held=True), ensure_ascii=False))
+        assert len(payload["typed_links"]) == 2
+        assert dst.import_(payload) == 3
+        ci_rc._assert_equal_memories(src, dst, "typed-links-roundtrip")
+    finally:
+        src.close()
+        dst.close()
+
+    repo_root = Path(__file__).resolve().parent.parent
+    wf = (repo_root / ".github" / "workflows" / "tests.yml").read_text(encoding="utf-8")
+    assert "restore-check:" in wf
+    assert "python scripts/ci_restore_check.py" in wf
+
+

@@ -1782,17 +1782,25 @@ class Memory:
                WHERE m.user_id = ? AND COALESCE(l.relation, 'derived') = 'derived'
                ORDER BY l.created_at""", (self.user_id,))
                  if r["src"] in ids and r["dst"] in ids]
+        typed_links = [dict(r) for r in self.store.query(
+            """SELECT l.src, l.dst, COALESCE(l.relation, 'derived') AS relation, l.created_at
+               FROM memory_link l JOIN memory m ON m.id = l.dst
+               WHERE m.user_id = ? AND COALESCE(l.relation, 'derived') != 'derived'
+               ORDER BY l.created_at""", (self.user_id,))
+                       if r["src"] in ids and r["dst"] in ids]
 
         return {
             "format": "padam-export/1",
             "exported_at": now_iso(),
             "user_id": self.user_id,
             "counts": {"memory": len(records), "memory_total": всего,
-                       "sessions": len(sessions), "nocturne_runs": len(runs), "links": len(links)},
+                       "sessions": len(sessions), "nocturne_runs": len(runs),
+                       "links": len(links), "typed_links": len(typed_links)},
             "memory": records,
             "sessions": sessions,
             "nocturne_runs": runs,
             "links": links,
+            "typed_links": typed_links,
         }
 
     def import_(self, payload: dict, overwrite: bool = False) -> int:
@@ -1850,10 +1858,11 @@ class Memory:
                  classify.разобрать_факт(rec["content"])[0] if rec.get("content") else None))
             added += 1
         # Связи восстанавливаются только между записями этого человека (проверяет _связать).
-        for link in payload.get("links") or []:
+        for link in list(payload.get("links") or []) + list(payload.get("typed_links") or []):
             if isinstance(link, dict) and isinstance(link.get("src"), str) and isinstance(link.get("dst"), str):
                 if self.store.one("SELECT 1 FROM memory WHERE id = ? AND user_id = ?", (link["dst"], self.user_id)):
-                    self._связать([link["src"]], link["dst"])
+                    rel = str(link.get("relation") or "derived")
+                    self._связать([link["src"]], link["dst"], relation=rel)
         return added
 
     # -- статистика -----------------------------------------------------
