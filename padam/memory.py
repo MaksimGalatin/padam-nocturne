@@ -3476,3 +3476,40 @@ class Memory:
         self.__dict__.pop("_ккэш", None)
         self._log_audit("visibility", memory_id, actor="owner", outcome=visibility, detail=workspace_id)
         return {"ok": True, "id": memory_id, "visibility": visibility, "workspace_id": workspace_id}
+
+
+    # --- Легенда Шаг 2: Когнитивный контроль версий (снапшоты и откат) ---
+
+    def snapshot(self, name: str | None = None, *, scope: str | None = None,
+                 note: str = "", actor: roles.ActorContext | None = None) -> dict:
+        """Создаёт криптографический когнитивный снапшот (savepoint) состояния памяти."""
+        from . import snapshots
+        return snapshots.create_snapshot(self, name=name, scope=scope, note=note, actor=actor)
+
+    def snapshots(self, *, scope: str | None = None, limit: int = 20) -> list[dict]:
+        """Возвращает сохранённые когнитивные снапшоты памяти."""
+        from . import snapshots
+        return snapshots.list_snapshots(self, scope=scope, limit=limit)
+
+    def diff_snapshot(self, *, snapshot_id: str | None = None,
+                      as_of: str | None = None, scope: str | None = None) -> dict:
+        """Вычисляет diff откатываемых записей относительно снапшота или as_of."""
+        from . import snapshots
+        return snapshots.diff_snapshot(self, snapshot_id=snapshot_id, as_of=as_of, scope=scope)
+
+    def rollback(self, *, snapshot_id: str | None = None, as_of: str | None = None,
+                 scope: str | None = None, dry_run: bool = False,
+                 revoke_after: bool = True, reason: str = "",
+                 actor: roles.ActorContext | None = None) -> dict:
+        """Откатывает память к снапшоту или дате as_of с выпуском L3 квитанций."""
+        from . import snapshots
+        return snapshots.rollback(
+            self,
+            snapshot_id=snapshot_id,
+            as_of=as_of,
+            scope=scope,
+            dry_run=dry_run,
+            revoke_after=revoke_after,
+            reason=reason,
+            actor=actor,
+        )

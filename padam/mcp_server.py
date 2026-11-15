@@ -560,7 +560,55 @@ RECENT_TOOL_DEF = {
     },
     "outputSchema": _OUTPUT_SCHEMAS["padam_recent"],
 }
-_ALL_TOOLS_BY_NAME = {**_TOOLS_BY_NAME, "padam_recent": RECENT_TOOL_DEF}
+ROLLBACK_TOOL_DEF = {
+    "name": "padam_rollback",
+    "title": "Cognitive Time Machine (snapshots & rollback)",
+    "description": (
+        "Create lightweight cryptographic memory snapshots, inspect cognitive diffs, or roll back "
+        "hallucinated/erroneous branches to a snapshot or timestamp as_of with Solana/L3 forget leaves."
+    ),
+    "annotations": _hints(False, True, False),
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": ["snapshot", "list_snapshots", "diff", "rollback"],
+                "default": "rollback",
+            },
+            "snapshot_id": {"type": "string", "minLength": 1, "maxLength": 120},
+            "name": {"type": "string", "minLength": 1, "maxLength": 120},
+            "note": {"type": "string", "maxLength": 400},
+            "as_of": {"type": "string", "maxLength": 40, "pattern": _AS_OF_PATTERN},
+            "scope": {"type": "string", "minLength": 1, "maxLength": 200},
+            "dry_run": {"type": "boolean", "default": False},
+            "revoke_after": {"type": "boolean", "default": True},
+            "reason": {"type": "string", "maxLength": 400},
+            "limit": {"type": "integer", "default": 20, "minimum": 1, "maximum": 200},
+        },
+        "additionalProperties": False,
+    },
+    "outputSchema": {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string"},
+            "status": {"type": "string"},
+            "snapshot_id": {"type": "string"},
+            "name": {"type": "string"},
+            "snapshots": {"type": "array", "items": {"type": "object"}},
+            "forgotten_ids": {"type": "array", "items": {"type": "string"}},
+            "forget_leaves": {"type": "array", "items": {"type": "string"}},
+            "restored_ids": {"type": "array", "items": {"type": "string"}},
+            "unrecoverable_revoked_ids": {"type": "array", "items": {"type": "string"}},
+            "state_sha256": {"type": "string"},
+            "before_sha256": {"type": "string"},
+            "after_sha256": {"type": "string"},
+            "merkle_root_hex": {"type": ["string", "null"]},
+        },
+        "required": ["action", "status"],
+    },
+}
+_ALL_TOOLS_BY_NAME = {**_TOOLS_BY_NAME, "padam_recent": RECENT_TOOL_DEF, "padam_rollback": ROLLBACK_TOOL_DEF}
 
 
 # Заметки цикла сна приходят из ядра по-русски (их же печатает русский CLI); наружу через MCP — по-английски.
@@ -1986,6 +2034,15 @@ def _list_resources_annotated() -> list[dict]:
     if config.mcp_apps_enabled():
         from . import mcp_apps as _mcp_apps
         out.extend(_mcp_apps.list_ui_resources(ts=by_uri.get("padam://review-queue")))
+    if config.mcp_rollback_tool_enabled():
+        out.append({
+            "uri": "padam://snapshots",
+            "name": "cognitive_snapshots",
+            "title": "Cognitive Version Snapshots",
+            "description": "Lightweight cryptographic snapshots of memory state for Time Machine rollback",
+            "mimeType": "application/json",
+            "annotations": _make_annotations(["user", "assistant"], 0.7, by_uri.get("padam://stats")),
+        })
     if config.mcp_icons_enabled():
         icons = _padam_icons("resource")
         for item in out:
@@ -2057,6 +2114,18 @@ def read_resource(uri: str) -> dict:
 
     m = mem()
     actor = _current_actor(m)
+
+    if uri == "padam://snapshots":
+        if not config.mcp_rollback_tool_enabled():
+            raise KeyError(f"Resource not found: {uri}")
+        eff_s = _session_scope_ctx.get()
+        snaps = m.snapshots(scope=eff_s, limit=50)
+        return {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps({"snapshots": snaps, "count": len(snaps)}, ensure_ascii=False, indent=2),
+            "annotations": _make_annotations(["user", "assistant"], 0.7, None),
+        }
 
     if uri == "ui://padam/review-queue":
         if not config.mcp_apps_enabled():
@@ -3277,6 +3346,69 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
             "records": s_rows,
         }
 
+    if name == "padam_rollback":
+        if not config.mcp_rollback_tool_enabled():
+            return "PADAM error: padam_rollback is disabled by default (set PADAM_MCP_ROLLBACK_TOOL=1).", None
+        if actor is not None and not actor.is_owner:
+            return "Permission denied: cognitive rollback and snapshots require the owner role.", None
+        act = str(args.get("action") or "rollback").strip()
+        pinned_scope = _session_scope_ctx.get()
+        req_scope = args.get("scope")
+        if pinned_scope or req_scope:
+            eff_rb_scope = _check_session_scope(req_scope)
+        else:
+            eff_rb_scope = None
+        if act == "snapshot":
+            snap_res = m.snapshot(
+                name=args.get("name"),
+                scope=eff_rb_scope,
+                note=str(args.get("note") or ""),
+                actor=actor,
+            )
+            payload = {"action": "snapshot", "status": "created", **snap_res}
+            _emit_resource_updated("padam://snapshots", owner_only=True)
+            return json.dumps(payload, ensure_ascii=False, indent=2), payload
+        if act == "list_snapshots":
+            snaps = m.snapshots(scope=eff_rb_scope, limit=int(args.get("limit", 20)))
+            payload = {"action": "list_snapshots", "status": "ok", "snapshots": snaps}
+            return json.dumps(payload, ensure_ascii=False, indent=2), payload
+        if act == "diff":
+            diff_res = m.diff_snapshot(
+                snapshot_id=args.get("snapshot_id") or args.get("name"),
+                as_of=args.get("as_of"),
+                scope=eff_rb_scope,
+            )
+            payload = {"action": "diff", "status": "ok", **diff_res}
+            return json.dumps(payload, ensure_ascii=False, indent=2), payload
+        if act == "rollback":
+            rb_res = m.rollback(
+                snapshot_id=args.get("snapshot_id") or args.get("name"),
+                as_of=args.get("as_of"),
+                scope=eff_rb_scope,
+                dry_run=bool(args.get("dry_run", False)),
+                revoke_after=bool(args.get("revoke_after", True)),
+                reason=str(args.get("reason") or ""),
+                actor=actor,
+            )
+            if not rb_res.get("dry_run"):
+                _emit_resource_updated("padam://stats", owner_only=True)
+                _emit_resource_updated("padam://recent", owner_only=True)
+                _emit_resource_updated("padam://snapshots", owner_only=True)
+            emit_mcp_log(
+                "info",
+                "padam.rollback",
+                {
+                    "action": "rollback",
+                    "dry_run": bool(rb_res.get("dry_run")),
+                    "forgotten": len(rb_res.get("forgotten_ids") or []),
+                    "restored": len(rb_res.get("restored_ids") or []),
+                },
+                owner_only=True,
+            )
+            payload = {"action": "rollback", **rb_res}
+            return json.dumps(payload, ensure_ascii=False, indent=2), payload
+        return f"Invalid argument: unknown action {act!r}", None
+
     raise ValueError(f"unknown tool: {name}")
 
 
@@ -3326,10 +3458,13 @@ def _server_info() -> dict:
 
 
 def _list_tools_payload() -> list[dict]:
+    items = list(TOOLS)
+    if config.mcp_rollback_tool_enabled():
+        items.append(ROLLBACK_TOOL_DEF)
     if not config.mcp_icons_enabled():
-        return TOOLS
+        return items
     icons = _padam_icons("tool")
-    return [{**t, "icons": icons} for t in TOOLS]
+    return [{**t, "icons": icons} for t in items]
 
 
 def _list_prompts_payload() -> list[dict]:

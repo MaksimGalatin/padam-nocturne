@@ -164,3 +164,136 @@ def test_legend1_active_rem_sleep_offline_ollama_and_daemon_idle(tmp_path, monke
     cli_out = json.loads(capsys.readouterr().out)
     assert cli_out["status"] == "completed"
     assert cli_out["dry_run"] is True
+
+
+def test_legend2_cognitive_snapshots_and_rollback_time_machine(tmp_path, monkeypatch, capsys):
+    """Шаг 2: Git для Разума (снапшоты, diff, временной и снапшотный откат с L3 forget-квитанциями)."""
+    from padam import cli as _cli
+
+    monkeypatch.delenv("PADAM_MCP_ROLLBACK_TOOL", raising=False)
+    assert config.mcp_rollback_tool_enabled() is False
+
+    db_path = tmp_path / "rollback.db"
+    m = Memory(user_id="rb-u", store=Store(db_path))
+    old_mem = mcp_server._memory
+    mcp_server._memory = m
+    try:
+        # 1. По умолчанию 9 инструментов и padam_rollback отключён
+        t_def = mcp_server.handle({"jsonrpc": "2.0", "id": "rb-def", "method": "tools/list"})["result"]["tools"]
+        assert len(t_def) == 9
+        off_call = mcp_server.handle({
+            "jsonrpc": "2.0", "id": "rb-off", "method": "tools/call",
+            "params": {"name": "padam_rollback", "arguments": {"action": "list_snapshots"}},
+        })["result"]
+        assert off_call["isError"] is True
+
+        # 2. Создаём чистые записи и фиксируем снапшот "clean-evening"
+        monkeypatch.setenv("PADAM_MCP_ROLLBACK_TOOL", "1")
+        t_on = mcp_server.handle({"jsonrpc": "2.0", "id": "rb-on", "method": "tools/list"})["result"]["tools"]
+        assert len(t_on) == 10
+        assert any(t["name"] == "padam_rollback" for t in t_on)
+        res_list = mcp_server.handle({"jsonrpc": "2.0", "id": "rb-res", "method": "resources/list"})["result"]["resources"]
+        assert any(r["uri"] == "padam://snapshots" for r in res_list)
+
+        _, id_keep = m.remember("Database engine is PostgreSQL 16 with strict TLS", kind="fact", scope="proj:alpha", origin="user")
+        _, id_will_revoke = m.remember("Temporary migration token note for archive", kind="fact", scope="proj:alpha", origin="user")
+        _, id_base = m.remember("Primary API port is 8443", kind="decision", scope="proj:alpha", origin="user")
+
+        snap_rpc = mcp_server.handle({
+            "jsonrpc": "2.0", "id": "rb-snap", "method": "tools/call",
+            "params": {
+                "name": "padam_rollback",
+                "arguments": {"action": "snapshot", "name": "clean-evening", "scope": "proj:alpha", "note": "Before refactor"},
+            },
+        })["result"]
+        assert not snap_rpc.get("isError")
+        snap_sc = snap_rpc["structuredContent"]
+        assert snap_sc["status"] == "created"
+        assert snap_sc["record_count"] == 3
+        assert len(snap_sc["state_sha256"]) == 64
+        assert snap_sc["merkle_root_hex"]
+
+        # 3. Необратимое право на забвение на одну из записей снапшота — откат НЕ должен её воскресить
+        assert m.revoke(id_will_revoke) is True
+
+        # 4. Ложная галлюцинационная ветка после снапшота: вытеснение id_base + вывод derived
+        _, id_hallu = m.remember("Primary API port is 9999 deprecated insecure", kind="decision", scope="proj:alpha", origin="agent")
+        _, id_derived = m.remember("Healthchecks must curl port 9999", kind="fact", scope="proj:alpha", origin="agent", derived_from=[id_hallu])
+        # Имитируем вытеснение id_base новой записью
+        m.store.execute("UPDATE memory SET status = 'superseded', superseded_by = ? WHERE id = ?", (id_hallu, id_base))
+        assert m.store.one("SELECT status FROM memory WHERE id = ?", (id_base,))["status"] == "superseded"
+
+        # 5. Diff + dry_run не изменяют состояние
+        diff_rpc = mcp_server.handle({
+            "jsonrpc": "2.0", "id": "rb-diff", "method": "tools/call",
+            "params": {"name": "padam_rollback", "arguments": {"action": "diff", "name": "clean-evening", "scope": "proj:alpha"}},
+        })["result"]["structuredContent"]
+        assert set(diff_rpc["will_forget_ids"]) >= {id_hallu, id_derived}
+        assert id_will_revoke in diff_rpc["unrecoverable_revoked_ids"]
+
+        dry_rpc = mcp_server.handle({
+            "jsonrpc": "2.0", "id": "rb-dry", "method": "tools/call",
+            "params": {"name": "padam_rollback", "arguments": {"action": "rollback", "name": "clean-evening", "scope": "proj:alpha", "dry_run": True}},
+        })["result"]["structuredContent"]
+        assert dry_rpc["status"] == "dry_run"
+        assert m.store.one("SELECT status FROM memory WHERE id = ?", (id_hallu,))["status"] == "active"
+
+        # 6. Изоляция сессий: из чужой песочницы project:beta нельзя откатить proj:alpha
+        ctx_tok = mcp_server._session_scope_ctx.set("project:beta")
+        try:
+            denied_rb = mcp_server.handle({
+                "jsonrpc": "2.0", "id": "rb-deny", "method": "tools/call",
+                "params": {"name": "padam_rollback", "arguments": {"action": "rollback", "name": "clean-evening", "scope": "proj:alpha"}},
+            })["result"]
+            assert denied_rb["isError"] is True
+        finally:
+            mcp_server._session_scope_ctx.reset(ctx_tok)
+
+        # 7. Боевой откат назад к clean-evening
+        rb_rpc = mcp_server.handle({
+            "jsonrpc": "2.0", "id": "rb-go", "method": "tools/call",
+            "params": {
+                "name": "padam_rollback",
+                "arguments": {"action": "rollback", "name": "clean-evening", "scope": "proj:alpha", "reason": "false reasoning branch"},
+            },
+        })["result"]
+        assert not rb_rpc.get("isError")
+        rb_sc = rb_rpc["structuredContent"]
+        assert rb_sc["status"] == "rolled_back"
+        assert id_hallu in rb_sc["forgotten_ids"]
+        assert id_derived in rb_sc["forgotten_ids"]
+        assert len(rb_sc["forget_leaves"]) >= 2
+        assert id_base in rb_sc["restored_ids"]
+        assert id_will_revoke in rb_sc["unrecoverable_revoked_ids"]
+        # Проверяем, что галлюцинации затёрты криптографически, прежний id_base восстановлен, а забытая запись НЕ воскресла!
+        assert m.store.one("SELECT content, status FROM memory WHERE id = ?", (id_hallu,))["status"] == "revoked"
+        assert m.store.one("SELECT content, status FROM memory WHERE id = ?", (id_hallu,))["content"] is None
+        assert m.store.one("SELECT status, superseded_by FROM memory WHERE id = ?", (id_base,))["status"] == "active"
+        assert m.store.one("SELECT status FROM memory WHERE id = ?", (id_will_revoke,))["status"] == "revoked"
+        assert m.store.one("SELECT content FROM memory WHERE id = ?", (id_will_revoke,))["content"] is None
+
+        # 8. Temporal as_of откат без предварительного снапшота (чисто по created_at)
+        cutoff = "2026-11-10T20:00:00+00:00"
+        _, id_past = m.remember("Evening checkpoint baseline rule", kind="fact", scope="proj:tempo", origin="user")
+        m.store.execute("UPDATE memory SET created_at = ? WHERE id = ?", ("2026-11-10T18:00:00+00:00", id_past))
+        _, id_future = m.remember("Morning hallucinated dependency change", kind="fact", scope="proj:tempo", origin="agent")
+        m.store.execute("UPDATE memory SET created_at = ? WHERE id = ?", ("2026-11-11T08:00:00+00:00", id_future))
+        asof_rb = m.rollback(as_of=cutoff, scope="proj:tempo")
+        assert asof_rb["mode"] == "temporal_asof"
+        assert id_future in asof_rb["forgotten_ids"]
+        assert m.store.one("SELECT status FROM memory WHERE id = ?", (id_past,))["status"] == "active"
+        assert m.store.one("SELECT status FROM memory WHERE id = ?", (id_future,))["status"] == "revoked"
+
+        # Ресурс padam://snapshots читается
+        res_snap = mcp_server.handle({
+            "jsonrpc": "2.0", "id": "rb-rread", "method": "resources/read", "params": {"uri": "padam://snapshots"}
+        })["result"]["contents"][0]
+        assert "clean-evening" in res_snap["text"]
+    finally:
+        mcp_server._memory = old_mem
+        m.close()
+
+    capsys.readouterr()
+    assert _cli.main(["--db", str(db_path), "--user", "rb-u", "snapshot", "--list", "--json"]) == 0
+    cli_snaps = json.loads(capsys.readouterr().out)
+    assert len(cli_snaps) >= 1 and cli_snaps[0]["name"] == "clean-evening"

@@ -338,3 +338,9 @@ def mcp_rem_ollama_url() -> str:
 def mcp_rem_model() -> str:
     """Модель локальной Ollama для синтеза инсайтов во сне."""
     return (os.environ.get("PADAM_REM_MODEL", "llama3.2:3b") or "llama3.2:3b").strip()
+
+
+# --- Легенда Шаг 2: Когнитивный Контроль Версий (padam_rollback, выключено по умолчанию) ---
+def mcp_rollback_tool_enabled() -> bool:
+    """Включает 10-й MCP-инструмент padam_rollback (Машина Времени) и ресурс padam://snapshots."""
+    return os.environ.get("PADAM_MCP_ROLLBACK_TOOL", "0").strip() == "1"

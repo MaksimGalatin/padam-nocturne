@@ -32,6 +32,7 @@ WRITE_TOOLS: frozenset[str] = frozenset({
 })
 SLEEP_TOOLS: frozenset[str] = frozenset({
     "padam_sleep",
+    "padam_rollback",
 })
 
 

@@ -264,6 +264,40 @@ CREATE TABLE IF NOT EXISTS sync_peer (
     last_sync_at   TEXT,
     PRIMARY KEY (user_id, peer_device_id)
 );
+
+-- Легенда Шаг 2: Когнитивный контроль версий (снапшоты без дублирования открытого текста)
+CREATE TABLE IF NOT EXISTS cognitive_snapshot (
+    id              TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL,
+    name            TEXT NOT NULL,
+    scope           TEXT,
+    note            TEXT NOT NULL DEFAULT '',
+    created_at      TEXT NOT NULL,
+    record_count    INTEGER NOT NULL DEFAULT 0,
+    state_sha256    TEXT NOT NULL,
+    merkle_root_hex TEXT,
+    anchor_tx       TEXT,
+    rollback_count  INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS cognitive_snapshot_user
+    ON cognitive_snapshot (user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS cognitive_snapshot_item (
+    snapshot_id   TEXT NOT NULL,
+    memory_id     TEXT NOT NULL,
+    status        TEXT NOT NULL,
+    kind          TEXT NOT NULL,
+    scope         TEXT NOT NULL,
+    importance    REAL NOT NULL,
+    confidence    REAL NOT NULL,
+    supersedes    TEXT,
+    superseded_by TEXT,
+    valid_from    TEXT,
+    valid_to      TEXT,
+    expires_at    TEXT,
+    content_hash  BLOB,
+    PRIMARY KEY (snapshot_id, memory_id)
+);
 """
 
 

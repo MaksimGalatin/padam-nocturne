@@ -377,6 +377,41 @@ def cmd_profile(m: Memory, a) -> int:
     return 0
 
 
+def cmd_snapshot(m: Memory, a) -> int:
+    """Шаг 2 Легенды: создать или вывести список когнитивных снапшотов."""
+    if a.list_only:
+        snaps = m.snapshots(scope=a.scope, limit=a.limit)
+        if a.json:
+            print(json.dumps(snaps, ensure_ascii=False, indent=2))
+        else:
+            for s in snaps:
+                print(f"{s['id'][:8]}  {s['created_at'][:19]}  {s['name']}  records={s['record_count']}  sha={s['state_sha256'][:12]}")
+        return 0
+    res = m.snapshot(name=a.name, scope=a.scope, note=a.note or "")
+    if a.json:
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+    else:
+        print(f"Snapshot {res['snapshot_id']} ({res['name']}) records={res['record_count']} sha={res['state_sha256'][:16]}")
+    return 0
+
+
+def cmd_rollback(m: Memory, a) -> int:
+    """Шаг 2 Легенды: когнитивный откат к снапшоту или моменту as_of."""
+    res = m.rollback(
+        snapshot_id=a.snapshot_id,
+        as_of=a.as_of,
+        scope=a.scope,
+        dry_run=a.dry_run,
+        revoke_after=not a.soft,
+        reason=a.reason or "",
+    )
+    if a.json:
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+    else:
+        print(f"Rollback {res['status']}: forgotten={len(res.get('forgotten_ids', []))} restored={len(res.get('restored_ids', []))}")
+    return 0
+
+
 def cmd_rem(m: Memory, a) -> int:
     """Шаг 1 Легенды: цикл активного REM-сна (связи, сжатие дубликатов, локальные инсайты)."""
     from . import rem_sleep
@@ -1105,6 +1140,27 @@ def main(argv=None) -> int:
     s.add_argument("--model", default=None)
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_rem)
+
+    s = sub.add_parser("snapshot", help=t("когнитивные снапшоты памяти (Git для Разума)",
+                                          "cognitive memory snapshots (Git for Mind)"))
+    s.add_argument("--name", default=None)
+    s.add_argument("--scope", default=None)
+    s.add_argument("--note", default="")
+    s.add_argument("--list", dest="list_only", action="store_true")
+    s.add_argument("--limit", type=int, default=20)
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_snapshot)
+
+    s = sub.add_parser("rollback", help=t("откатить память к снапшоту или дате as_of",
+                                          "roll back memory to a snapshot or as_of timestamp"))
+    s.add_argument("--snapshot-id", default=None)
+    s.add_argument("--as-of", default=None)
+    s.add_argument("--scope", default=None)
+    s.add_argument("--reason", default="")
+    s.add_argument("--dry-run", action="store_true")
+    s.add_argument("--soft", action="store_true")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_rollback)
 
     a = p.parse_args(argv)
     if a.fn is cmd_demo:
