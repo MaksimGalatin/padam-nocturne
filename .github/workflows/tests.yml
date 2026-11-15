@@ -55,3 +55,18 @@ jobs:
         run: pip install -e .
       - name: Run MCP protocol audit (stdio + Streamable HTTP + SSE)
         run: python scripts/mcp_protocol_check.py
+
+  accessibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - name: Install Studio runtime, Playwright and axe-core
+        run: |
+          pip install -e . playwright
+          playwright install chromium
+          npm install --no-save --prefix /tmp/axe axe-core@4.14.0
+      - name: Verify Studio accessibility (14 tabs x 2 themes + quick-add modal, 0 serious/critical)
+        run: python scripts/studio_a11y_check.py --axe-js /tmp/axe/node_modules/axe-core/axe.min.js

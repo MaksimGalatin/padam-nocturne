@@ -3889,4 +3889,46 @@ def test_step_2_7_mcp_protocol_check_ci():
     assert "python scripts/mcp_protocol_check.py" in wf
 
 
+def test_step_2_9_studio_accessibility_axe(tmp_path):
+    """Пункт 2.9: доступность Studio (ARIA-разметка, JS-синтаксис, axe-core скрипт и CI job)."""
+    import shutil
+    import subprocess
+    from padam import studio
+
+    html, _ = studio.page()
+    # Проверяем исправленные доступные имена элементов и отсутствие конфликта на theme-toggle
+    assert '<button id="theme-toggle">' in html
+    assert '<button id="theme-toggle" aria-label=' not in html
+    assert '<select id="team-ws-select" aria-label=' in html
+    assert '<select id="team-role-select" aria-label=' in html
+    assert 'id="team-create-input"' in html and 'data-i18n-aria="team_create_ph"' in html
+    assert 'id="team-subj-input"' in html and 'data-i18n-aria="team_subj_ph"' in html
+    assert "selRel.setAttribute('aria-label'" in html
+    assert "inpDst.setAttribute('aria-label'" in html
+
+    # Проверяем синтаксис JS (node --check)
+    m_js = re.findall(r"<script nonce=\"[^\"]+\">(.*?)</script>", html, flags=re.S)
+    assert m_js, "No inline <script> found in Studio HTML"
+    js_file = tmp_path / "studio_check.js"
+    js_file.write_text(m_js[-1], encoding="utf-8")
+    if shutil.which("node"):
+        proc = subprocess.run(["node", "--check", str(js_file)], capture_output=True, text=True, timeout=15)
+        assert proc.returncode == 0, f"node --check failed: {proc.stderr}"
+
+    repo_root = Path(__file__).resolve().parent.parent
+    wf = (repo_root / ".github" / "workflows" / "tests.yml").read_text(encoding="utf-8")
+    assert "accessibility:" in wf
+    assert "scripts/studio_a11y_check.py" in wf
+    assert "axe-core" in wf
+
+    import scripts.studio_a11y_check as a11y_mod
+    assert len(a11y_mod.TABS) == 14
+    axe_env = os.environ.get("AXE_JS_PATH", "").strip()
+    if axe_env and Path(axe_env).is_file():
+        rep = a11y_mod.run_a11y_check(axe_env)
+        assert rep["ok"] is True and rep["violations_serious_critical"] == 0
+        assert rep["scans_total"] == 30
+
+
+
 

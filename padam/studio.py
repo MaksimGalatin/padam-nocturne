@@ -3035,6 +3035,7 @@ function renderSelectedGraphNode() {
   const linkRow = el('div', 'toolbar');
   const selRel = document.createElement('select');
   selRel.id = 'graph-link-rel';
+  selRel.setAttribute('aria-label', S.graph_link_add_title || 'Relation type');
   for (const rKey of ['derived', 'cause', 'correction', 'contradiction']) {
     const opt = document.createElement('option');
     opt.value = rKey;
@@ -3044,6 +3045,7 @@ function renderSelectedGraphNode() {
   const inpDst = document.createElement('input');
   inpDst.type = 'text';
   inpDst.placeholder = S.graph_link_target_placeholder || 'Target record ID…';
+  inpDst.setAttribute('aria-label', S.graph_link_target_placeholder || 'Target record ID');
   const bLink = el('button', '', S.graph_link_btn || 'Link');
   bLink.onclick = async () => {
     const targetId = inpDst.value.trim();
@@ -3892,7 +3894,7 @@ def page() -> tuple[str, str]:
           <button id="lang-es" class="lang-btn" aria-pressed="false">ES</button>
           <button id="lang-zh" class="lang-btn" aria-pressed="false">ZH</button>
         </div>
-        <button id="theme-toggle" aria-label="Toggle theme">☀️ {s['theme_light']}</button>
+        <button id="theme-toggle">☀️ {s['theme_light']}</button>
       </div>
     </header>
 
@@ -4138,7 +4140,7 @@ def page() -> tuple[str, str]:
         <div class="box">
           <p class="setting-desc" data-i18n="team_protected_note">{s['team_protected_note']}</p>
           <div class="toolbar">
-            <input id="team-create-input" type="text" placeholder="{s['team_create_ph']}" data-i18n-ph="team_create_ph">
+            <input id="team-create-input" type="text" placeholder="{s['team_create_ph']}" aria-label="{s['team_create_ph']}" data-i18n-ph="team_create_ph" data-i18n-aria="team_create_ph">
             <button id="team-create-btn" class="btn-primary" data-i18n="team_create_btn">{s['team_create_btn']}</button>
           </div>
           <div id="team-workspaces-list"></div>
@@ -4146,9 +4148,9 @@ def page() -> tuple[str, str]:
         <div class="box">
           <h3 class="box-title" data-i18n="team_members_title">{s['team_members_title']}</h3>
           <div class="toolbar">
-            <select id="team-ws-select"></select>
-            <input id="team-subj-input" type="text" placeholder="{s['team_subj_ph']}" data-i18n-ph="team_subj_ph">
-            <select id="team-role-select">
+            <select id="team-ws-select" aria-label="Workspace"></select>
+            <input id="team-subj-input" type="text" placeholder="{s['team_subj_ph']}" aria-label="{s['team_subj_ph']}" data-i18n-ph="team_subj_ph" data-i18n-aria="team_subj_ph">
+            <select id="team-role-select" aria-label="Role">
               <option value="maintainer" data-i18n="team_role_maintainer">{s['team_role_maintainer']}</option>
               <option value="contributor" data-i18n="team_role_contributor">{s['team_role_contributor']}</option>
               <option value="auditor" data-i18n="team_role_auditor">{s['team_role_auditor']}</option>
