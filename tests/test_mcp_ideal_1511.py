@@ -518,3 +518,80 @@ def test_mcp_ideal_2_7_ping_and_logging_set_level(tmp_path):
         mcp_server._memory = old_mem
         mcp_server.pop_notifications()
         mem.close()
+def test_mcp_ideal_4_2_input_and_record_limits(tmp_path):
+    """Пункт 4.2: пределы длины строк, limit/batch, числа элементов и глубины/размера JSON."""
+    import json
+    import os
+    import subprocess
+    import sys
+
+    from padam import config
+
+    mem = Memory(user_id="ideal-4-2", store=Store(tmp_path / "m42.db"))
+    old_mem = mcp_server._memory
+    mcp_server._memory = mem
+    try:
+        # 1. Длинный текст и длинный поисковый запрос
+        r_long = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+            "params": {"name": "padam_write", "arguments": {"content": "A" * (config.MAX_CONTENT_CHARS + 1)}},
+        })["result"]
+        assert r_long["isError"] is True and "longer than" in r_long["content"][0]["text"]
+
+        r_qlong = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 2, "method": "tools/call",
+            "params": {"name": "padam_search", "arguments": {"query": "q" * 4001}},
+        })["result"]
+        assert r_qlong["isError"] is True and "longer than" in r_qlong["content"][0]["text"]
+
+        # 2. Огромный limit / batch / offset / списки
+        for tname, args in (
+            ("padam_search", {"query": "test", "limit": config.MAX_RECALL_LIMIT + 1}),
+            ("padam_search", {"query": "test", "scopes": [f"s{i}" for i in range(11)]}),
+            ("padam_export", {"limit": config.MAX_EXPORT_LIMIT + 1}),
+            ("padam_export", {"offset": -1}),
+            ("padam_sleep", {"batch": 4097}),
+            ("padam_write", {"content": "ok", "derived_from": [f"id-{i}" for i in range(21)]}),
+            ("padam_write", {"content": "ok", "links": [{"target": f"id-{i}", "relation": "cause"} for i in range(21)]}),
+        ):
+            res = mcp_server.handle({
+                "jsonrpc": "2.0", "id": 3, "method": "tools/call",
+                "params": {"name": tname, "arguments": args},
+            })["result"]
+            assert res["isError"] is True, f"{tname} should reject {args}"
+
+        # 3. Слишком глубокий JSON (глубина > MAX_JSON_DEPTH=32, без RecursionError даже при 1200 уровнях)
+        deep: dict = {"x": 1}
+        for _ in range(config.MAX_JSON_DEPTH + 10):
+            deep = {"nested": deep}
+        r_deep = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 4, "method": "tools/call",
+            "params": {"name": "padam_search", "arguments": {"query": "test"}},
+            "extra": deep,
+        })
+        assert r_deep["error"]["code"] == -32602
+
+        very_deep: list = [1]
+        for _ in range(1200):
+            very_deep = [very_deep]
+        r_vdeep = mcp_server.handle({"jsonrpc": "2.0", "id": 5, "method": "ping", "params": very_deep})
+        assert r_vdeep["error"]["code"] == -32602
+
+        # 4. Слишком много узлов JSON (> MAX_JSON_NODES)
+        wide = {"jsonrpc": "2.0", "id": 6, "method": "ping", "params": list(range(config.MAX_JSON_NODES + 50))}
+        assert mcp_server.handle(wide)["error"]["code"] == -32602
+
+        # 5. Гигантское сообщение в stdio (> MAX_MCP_MESSAGE_BYTES) не роняет сервер
+        env = dict(os.environ, PADAM_DB=str(tmp_path / "stdio42.db"), PADAM_MAX_MCP_BYTES="2048")
+        huge = '{"jsonrpc":"2.0","id":1,"method":"ping","pad":"' + ("x" * 3000) + '"}\n{"jsonrpc":"2.0","id":2,"method":"ping"}\n'
+        proc = subprocess.run(
+            [sys.executable, "-m", "padam.mcp_server"],
+            input=huge, capture_output=True, text=True, encoding="utf-8", env=env, timeout=30,
+        )
+        lines = [json.loads(ln) for ln in proc.stdout.strip().splitlines() if ln.strip()]
+        assert len(lines) == 2
+        assert lines[0]["error"]["code"] == -32600
+        assert lines[1]["id"] == 2 and lines[1]["result"] == {}
+    finally:
+        mcp_server._memory = old_mem
+        mem.close()

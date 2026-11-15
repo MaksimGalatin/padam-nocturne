@@ -204,3 +204,10 @@ MCP_OAUTH_ENABLED = os.environ.get("PADAM_MCP_OAUTH", "0") == "1"
 def mcp_oauth_enabled() -> bool:
     """Включается только явно через PADAM_MCP_OAUTH=1; по умолчанию выключено."""
     return os.environ.get("PADAM_MCP_OAUTH", "0") == "1"
+
+# --- Пункт 4.2: Пределы входа MCP (размер, глубина JSON, число записей за вызов) ---
+MAX_EXPORT_LIMIT = int(os.environ.get("PADAM_MAX_EXPORT_LIMIT", "5000"))
+MAX_EXPORT_OFFSET = int(os.environ.get("PADAM_MAX_EXPORT_OFFSET", "1000000"))
+MAX_JSON_DEPTH = int(os.environ.get("PADAM_MAX_JSON_DEPTH", "32"))
+MAX_JSON_NODES = int(os.environ.get("PADAM_MAX_JSON_NODES", "4096"))
+MAX_MCP_MESSAGE_BYTES = int(os.environ.get("PADAM_MAX_MCP_BYTES", str(512 * 1024)))

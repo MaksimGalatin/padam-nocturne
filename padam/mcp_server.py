@@ -272,8 +272,8 @@ TOOLS = [
             "properties": {
                 "include_superseded": {"type": "boolean", "default": True},
                 "scope": {"type": "string", "minLength": 1, "maxLength": 200},
-                "limit": {"type": "integer", "minimum": 1, "maximum": 100000},
-                "offset": {"type": "integer", "default": 0, "minimum": 0},
+                "limit": {"type": "integer", "minimum": 1, "maximum": config.MAX_EXPORT_LIMIT},
+                "offset": {"type": "integer", "default": 0, "minimum": 0, "maximum": config.MAX_EXPORT_OFFSET},
             },
             "additionalProperties": False,
         },
@@ -879,6 +879,18 @@ _ERROR_MESSAGES: dict[str, dict[str, str]] = {
         "ru": "Неизвестный шаблон подсказки",
         "es": "Plantilla de prompt desconocida",
         "zh": "未知的提示模板",
+    },
+    "payload_too_complex": {
+        "en": "JSON payload exceeds nesting depth or node limit",
+        "ru": "Превышена допустимая глубина вложенности или размер JSON-запроса",
+        "es": "La carga JSON supera el límite de profundidad o tamaño",
+        "zh": "JSON 负载超出最大嵌套深度或节点数限制",
+    },
+    "message_too_large": {
+        "en": "request message exceeds maximum allowed byte size",
+        "ru": "Размер входящего сообщения превышает допустимый предел",
+        "es": "El mensaje de solicitud supera el tamaño máximo permitido",
+        "zh": "请求消息超出允许的最大字节限制",
     },
     "internal_error": {
         "en": "internal error",
@@ -2649,7 +2661,34 @@ def _modern_meta(req: dict) -> dict | None:
     return None
 
 
+def _check_json_limits(obj, *, max_depth: int | None = None, max_nodes: int | None = None) -> tuple[str, str] | None:
+    """Итеративная проверка глубины вложенности и числа узлов JSON без риска RecursionError."""
+    md = config.MAX_JSON_DEPTH if max_depth is None else max_depth
+    mn = config.MAX_JSON_NODES if max_nodes is None else max_nodes
+    stack: list[tuple[object, int]] = [(obj, 0)]
+    nodes = 0
+    while stack:
+        cur, depth = stack.pop()
+        if depth > md:
+            return "payload_too_complex", f"nesting depth > {md}"
+        nodes += 1
+        if nodes > mn:
+            return "payload_too_complex", f"node count > {mn}"
+        if isinstance(cur, dict):
+            for v in cur.values():
+                stack.append((v, depth + 1))
+        elif isinstance(cur, (list, tuple)):
+            for v in cur:
+                stack.append((v, depth + 1))
+    return None
+
+
 def handle(req: dict) -> dict | None:
+    limit_err = _check_json_limits(req)
+    if limit_err is not None:
+        ekey, edet = limit_err
+        rid = req.get("id") if isinstance(req, dict) else None
+        return build_jsonrpc_error(rid, -32602, f"invalid parameters: {edet}", key=ekey, detail=edet, req=req if isinstance(req, dict) else None)
     if isinstance(req, dict) and req.get("method") == "notifications/cancelled":
         params = req.get("params") or {}
         if isinstance(params, dict):
@@ -3513,6 +3552,17 @@ def main(argv: list[str] | None = None, memory: Memory | None = None) -> int:
             break
         line = line.strip()
         if not line:
+            continue
+        if len(line.encode("utf-8", "replace")) > config.MAX_MCP_MESSAGE_BYTES:
+            err_msg = build_jsonrpc_error(
+                None, -32600,
+                f"request exceeds {config.MAX_MCP_MESSAGE_BYTES} bytes",
+                key="message_too_large",
+                detail=f">{config.MAX_MCP_MESSAGE_BYTES} bytes",
+            )
+            with _stdout_lock:
+                sys.stdout.write(json.dumps(err_msg, ensure_ascii=False) + "\n")
+                sys.stdout.flush()
             continue
         try:
             req = json.loads(line)
