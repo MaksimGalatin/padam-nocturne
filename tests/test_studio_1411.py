@@ -3002,3 +3002,246 @@ def test_item8_v4_patch_and_solana_anchor_signature_devnet():
     proc = subprocess.run([sys.executable, str(demo_py)], cwd=repo, capture_output=True, text=True, check=True)
     out = json.loads(proc.stdout)
     assert out["verification"]["ok"] is True and out["attestation"]["network"] == "devnet"
+
+
+def test_mcp_enhancements_rbac_templates_completion_structured_and_http(tmp_path, monkeypatch):
+    """Усиления MCP: visibility в padam_write, valid_from/valid_to, outputSchema/structuredContent,
+    новые шаблоны ресурсов с изоляцией ролей (actor), completion/complete и расширенный Streamable HTTP."""
+    import re
+    import threading
+    import urllib.error
+    import urllib.request
+    import pytest
+    from padam import mcp_server
+    from padam.memory import Memory
+    from padam.store import Store
+
+    fence_open = re.compile(r'<memory-data nonce="([0-9a-f]{32})">')
+    fence_close = re.compile(r'</memory-data nonce="([0-9a-f]{32})">')
+
+    m = Memory(user_id="mcp_plus", store=Store(tmp_path / "mcp_plus.db"))
+    monkeypatch.setattr(mcp_server, "_memory", m)
+    mcp_server.set_elicitation_callback(None)
+    mcp_server.set_client_capabilities({})
+    mcp_server.pop_notifications()
+    try:
+        # 1. Инициализация и server/discover объявляют completions, tools/list отдает 9 инструментов с outputSchema
+        init_r = mcp_server.handle({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})["result"]
+        assert "completions" in init_r["capabilities"]
+
+        disc_r = mcp_server.handle({
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "server/discover",
+            "params": {
+                "_meta": {
+                    "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                    "io.modelcontextprotocol/clientCapabilities": {},
+                }
+            },
+        })["result"]
+        assert "completions" in disc_r["capabilities"]
+
+        tools = mcp_server.handle({"jsonrpc": "2.0", "id": 3, "method": "tools/list"})["result"]["tools"]
+        assert len(tools) == 9
+        for t in tools:
+            assert "outputSchema" in t and t["outputSchema"]["type"] == "object"
+
+        # 2. Записи владельца (приватная, командная, временная, конфликт и источник)
+        _, id_ident = m.remember("Владелец работает на Rust и Python", kind="identity", origin="user")
+        w_priv = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 4, "method": "tools/call",
+            "params": {
+                "name": "padam_write",
+                "arguments": {
+                    "content": "Приватный ключ ротируется раз в квартал",
+                    "kind": "fact",
+                    "scope": "sec",
+                    "origin": "user",
+                    "visibility": "private",
+                    "valid_from": "2026-01-01",
+                    "valid_to": "2026-12-31",
+                },
+            },
+        })["result"]
+        assert w_priv["isError"] is False
+        id_priv = w_priv["structuredContent"]["id"]
+        assert w_priv["structuredContent"]["outcome"] == "created"
+        assert w_priv["structuredContent"]["maskedSecrets"] == 0
+
+        ws = m.create_workspace("alpha-team")
+        contrib_tok = m.add_member(ws["id"], "alice", "contributor")["token"]
+        w_team = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 5, "method": "tools/call",
+            "params": {
+                "name": "padam_write",
+                "arguments": {
+                    "content": "Командный стендап в 10:00 UTC",
+                    "kind": "fact",
+                    "scope": "team",
+                    "origin": "user",
+                    "visibility": "team_read",
+                    "workspace_id": ws["id"],
+                    "derived_from": [id_ident],
+                },
+            },
+        })["result"]
+        assert w_team["isError"] is False
+        id_team = w_team["structuredContent"]["id"]
+
+        # 3. structuredContent в padam_search без утечки сырого текста вне fence + показ valid_from..valid_to
+        s_res = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 6, "method": "tools/call",
+            "params": {
+                "name": "padam_search",
+                "arguments": {"query": "Приватный ключ", "scope": "sec", "as_of": "2026-06-01"},
+            },
+        })["result"]
+        assert s_res["isError"] is False
+        assert "valid=2026-01-01..2026-12-31" in s_res["content"][0]["text"]
+        sc = s_res["structuredContent"]
+        assert sc["fencedInContent"] is True and sc["count"] >= 1
+        assert all("content" not in rec for rec in sc["records"])
+        assert sc["records"][0]["valid_from"].startswith("2026-01-01")
+
+        # 4. Новые шаблоны ресурсов (r_tpl[0] сохранён) + строгая ограда на каждом
+        tpls = mcp_server.handle({"jsonrpc": "2.0", "id": 7, "method": "resources/templates/list"})["result"]["resourceTemplates"]
+        assert tpls[0]["uriTemplate"] == "padam://record/{id}"
+        tpl_uris = {x["uriTemplate"] for x in tpls}
+        assert {
+            "padam://timeline/{id}",
+            "padam://scope/{scope}",
+            "padam://asof/{date}",
+            "padam://conflicts/{scope}",
+            "padam://graph/{id}",
+            "padam://connectors/{provider}",
+        }.issubset(tpl_uris)
+
+        for uri in (
+            f"padam://timeline/{id_priv}",
+            "padam://scope/sec",
+            "padam://asof/2026-06-01",
+            "padam://conflicts/all",
+            f"padam://graph/{id_team}",
+            "padam://connectors/all",
+        ):
+            rr = mcp_server.handle({"jsonrpc": "2.0", "id": 8, "method": "resources/read", "params": {"uri": uri}})
+            assert "result" in rr, f"Failed resource {uri}: {rr}"
+            txt = rr["result"]["contents"][0]["text"]
+            om, cm = fence_open.findall(txt), fence_close.findall(txt)
+            assert len(om) == 1 and om == cm, f"Unfenced resource {uri}"
+
+        bad_asof = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 9, "method": "resources/read", "params": {"uri": "padam://asof/not-a-date"}
+        })
+        assert bad_asof["error"]["code"] == -32602
+
+        # 5. Изоляция ролей (RBAC) в ресурсах, промптах и completion/complete через PADAM_ACTOR_TOKEN
+        monkeypatch.setenv("PADAM_ACTOR_TOKEN", contrib_tok)
+        for denied_uri in ("padam://profile", "padam://review-queue", "padam://connectors/all"):
+            resp = mcp_server.handle({"jsonrpc": "2.0", "id": 10, "method": "resources/read", "params": {"uri": denied_uri}})
+            assert resp["error"]["code"] == -32003, f"{denied_uri} must reject contributor"
+
+        priv_rec_resp = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 11, "method": "resources/read", "params": {"uri": f"padam://record/{id_priv}"}
+        })
+        assert priv_rec_resp["error"]["code"] == -32002
+
+        team_rec_resp = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 12, "method": "resources/read", "params": {"uri": f"padam://record/{id_team}"}
+        })
+        assert "Командный стендап" in team_rec_resp["result"]["contents"][0]["text"]
+
+        prm_contrib = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 13, "method": "prompts/get",
+            "params": {"name": "recall_before_task", "arguments": {"task": "ключ", "scope": "sec"}},
+        })["result"]
+        prm_txt = prm_contrib["messages"][0]["content"]["text"]
+        assert "omitted for non-owner role" in prm_txt
+        assert "Приватный ключ" not in prm_txt
+
+        wk_contrib = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 14, "method": "prompts/get",
+            "params": {"name": "weekly_memory_review", "arguments": {"scope": "sec", "days": "7"}},
+        })["result"]["messages"][0]["content"]["text"]
+        assert "hidden for current role" in wk_contrib
+        assert "Приватный ключ" not in wk_contrib
+
+        comp_priv = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 15, "method": "completion/complete",
+            "params": {"ref": {"type": "ref/resource", "uri": "padam://record/{id}"}, "argument": {"name": "id", "value": id_priv[:8]}},
+        })["result"]["completion"]
+        assert id_priv not in comp_priv["values"]
+        monkeypatch.delenv("PADAM_ACTOR_TOKEN", raising=False)
+
+        # Полное автодополнение владельцем
+        comp_days = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 16, "method": "completion/complete",
+            "params": {"ref": {"type": "ref/prompt", "name": "weekly_memory_review"}, "argument": {"name": "days", "value": "3"}},
+        })["result"]["completion"]
+        assert comp_days["values"] == ["30"] and comp_days["hasMore"] is False
+
+        comp_conn = mcp_server.handle({
+            "jsonrpc": "2.0", "id": 17, "method": "completion/complete",
+            "params": {"ref": {"type": "ref/resource", "uri": "padam://connectors/{provider}"}, "argument": {"name": "provider", "value": "g"}},
+        })["result"]["completion"]
+        assert set(comp_conn["values"]) == {"github", "gdrive"}
+
+        # 6. Расширенный Streamable HTTP: OPTIONS, MCP-Protocol-Version, X-Padam-Actor-Token, subscribe/SSE, DELETE
+        srv, url, tok = mcp_server.make_mcp_http_server(memory=m, host="127.0.0.1", port=0)
+        th = threading.Thread(target=srv.serve_forever, daemon=True)
+        th.start()
+        try:
+            # Неверная версия в заголовке -> 400
+            req_bad_ver = urllib.request.Request(
+                url,
+                data=b'{"jsonrpc":"2.0","id":1,"method":"ping"}',
+                headers={"Content-Type": "application/json", "Authorization": f"Bearer {tok}", "MCP-Protocol-Version": "1999-01-01"},
+                method="POST",
+            )
+            with pytest.raises(urllib.error.HTTPError) as e_ver:
+                urllib.request.urlopen(req_bad_ver, timeout=5)
+            assert e_ver.value.code == 400
+
+            # X-Padam-Actor-Token изолирует приватную запись по HTTP
+            req_actor = urllib.request.Request(
+                url,
+                data=json.dumps({
+                    "jsonrpc": "2.0", "id": 2, "method": "resources/read", "params": {"uri": f"padam://record/{id_priv}"}
+                }).encode("utf-8"),
+                headers={"Content-Type": "application/json", "Authorization": f"Bearer {tok}", "X-Padam-Actor-Token": contrib_tok},
+                method="POST",
+            )
+            with urllib.request.urlopen(req_actor, timeout=5) as ra:
+                actor_resp = json.loads(ra.read().decode("utf-8"))
+                assert actor_resp["error"]["code"] == -32002
+
+            # Подписка на padam://stats + запись -> SSE событие на GET /mcp
+            for req_payload in (
+                {"jsonrpc": "2.0", "id": 3, "method": "resources/subscribe", "params": {"uri": "padam://stats"}},
+                {"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "padam_write", "arguments": {"content": "HTTP event metric fact", "kind": "fact", "origin": "user"}}},
+            ):
+                r_p = urllib.request.Request(
+                    url,
+                    data=json.dumps(req_payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json", "Authorization": f"Bearer {tok}"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(r_p, timeout=5) as rp:
+                    assert rp.status == 200
+
+            with urllib.request.urlopen(urllib.request.Request(url, headers={"Authorization": f"Bearer {tok}"}, method="GET"), timeout=5) as gs:
+                sse_body = gs.read().decode("utf-8")
+                assert "notifications/resources/updated" in sse_body and "padam://stats" in sse_body
+
+            # DELETE /mcp -> 200 closed
+            with urllib.request.urlopen(urllib.request.Request(url, headers={"Authorization": f"Bearer {tok}"}, method="DELETE"), timeout=5) as rd:
+                assert rd.status == 200
+                assert json.loads(rd.read().decode("utf-8"))["closed"] is True
+        finally:
+            mcp_server.handle({"jsonrpc": "2.0", "id": 99, "method": "resources/unsubscribe", "params": {"uri": "padam://stats"}})
+            mcp_server.pop_notifications()
+            srv.shutdown()
+            srv.server_close()
+    finally:
+        m.close()

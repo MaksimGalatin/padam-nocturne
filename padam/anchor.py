@@ -410,7 +410,10 @@ def verify_bundle(payload: bytes, memo: str) -> dict:
     in_memo = memo.split("root=", 1)[1].split()[0] if "root=" in memo else ""
     return {"root_recomputed": root, "root_in_bundle": d.get("root"),
             "root_in_chain": in_memo, "ok": root == d.get("root") == in_memo,
-            "records": len(d["records"]), "forgets": len(d["forgets"])}# ---------------------------------------------------------------- В5: локальная подпись и проверка якоря ($0, devnet)
+            "records": len(d["records"]), "forgets": len(d["forgets"])}
+
+
+# ---------------------------------------------------------------- В5: локальная подпись и проверка якоря ($0, devnet)
 
 def _attestation_message(memo: str, root_hex: str, network: str, measurement: str, slot: int) -> bytes:
     canonical = (

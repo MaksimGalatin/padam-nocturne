@@ -13,4 +13,5 @@ VIAddVersionKey "CompanyName" "CODE Eternal LLC"
   Delete "$DESKTOP\PADAM Studio.lnk"
   Delete "$SMPROGRAMS\PADAM Studio.lnk"
   DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "PADAMStudio"
+  RMDir /r "$INSTDIR\runtime"
 !macroend

@@ -31,7 +31,8 @@ def test_discover_answers_with_versions_and_identity():
     r = новый("server/discover")["result"]
     assert r["resultType"] == "complete"
     assert r["supportedVersions"][0] == "2026-07-28" and "2025-06-18" in r["supportedVersions"]
-    assert r["capabilities"] == {"tools": {}}
+    assert r["capabilities"]["tools"] == {}
+    assert {"tools", "resources", "prompts", "completions"}.issubset(r["capabilities"])
     assert r["_meta"]["io.modelcontextprotocol/serverInfo"]["name"] == "padam"
     assert r["ttlMs"] > 0 and r["cacheScope"] in ("public", "private") and r["instructions"]
 
