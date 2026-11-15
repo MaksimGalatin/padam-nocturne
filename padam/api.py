@@ -78,7 +78,10 @@ class Handler(BaseHTTPRequestHandler):
         low = origin.lower()
         if re.match(r"^https?://(127\.\d+\.\d+\.\d+|localhost|\[::1\])(:\d+)?$", low):
             return origin
-        if _state.get("token") and re.match(r"^chrome-extension://[a-z]{32}$", low):
+        if _state.get("token") and (
+            re.match(r"^chrome-extension://[a-z]{32}$", low)
+            or re.match(r"^moz-extension://[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", low)
+        ):
             return origin
         return None
 
@@ -187,7 +190,10 @@ class Handler(BaseHTTPRequestHandler):
         origin = (self.headers.get("Origin") or "").strip().lower()
         if origin:
             is_local_orig = bool(re.match(r"^https?://(127\.\d+\.\d+\.\d+|localhost|\[::1\])(:\d+)?$", origin))
-            is_ext_orig = bool(_state.get("token") and re.match(r"^chrome-extension://[a-z]{32}$", origin))
+            is_ext_orig = bool(_state.get("token") and (
+                re.match(r"^chrome-extension://[a-z]{32}$", origin)
+                or re.match(r"^moz-extension://[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", origin)
+            ))
             if not (is_local_orig or is_ext_orig):
                 return False
         return True
@@ -469,7 +475,7 @@ class Handler(BaseHTTPRequestHandler):
                 # (Origin: chrome-extension://<32 буквы>), сервер САМ принудительно ставит origin = "external",
                 # не веря значению в теле запроса, чтобы расширение не могло писать как владелец в обход очереди проверки.
                 req_origin = (self.headers.get("Origin") or "").strip().lower()
-                if req_origin.startswith("chrome-extension://"):
+                if req_origin.startswith(("chrome-extension://", "moz-extension://")):
                     origin = "external"
                 agent_id = data.get("agent_id") or (self.headers.get("X-Agent-ID") or "").strip() or None
                 outcome, mid = m.remember(

@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "PADAM · NOCTURNE 记忆守卫"
+  },
+  "extDescription": {
+    "message": "将网页选中内容保存到本地 PADAM 记忆库，强制标记 origin=external 并进入待审核队列以拦截提示词注入。"
+  },
+  "actionTitle": {
+    "message": "PADAM · NOCTURNE 记忆守卫"
+  }
+}

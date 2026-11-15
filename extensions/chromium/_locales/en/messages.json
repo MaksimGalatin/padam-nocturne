@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "PADAM · NOCTURNE Memory Guard"
+  },
+  "extDescription": {
+    "message": "Save highlighted text or web pages into local PADAM memory with origin=external quarantine protection and review queue badge."
+  },
+  "actionTitle": {
+    "message": "PADAM · NOCTURNE Memory Guard"
+  }
+}

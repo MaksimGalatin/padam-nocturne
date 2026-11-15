@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "PADAM · NOCTURNE — Защита памяти"
+  },
+  "extDescription": {
+    "message": "Сохраняет выделенный текст и веб-страницы в локальную память PADAM с меткой origin=external и проверкой владельцем."
+  },
+  "actionTitle": {
+    "message": "PADAM · NOCTURNE — Память"
+  }
+}

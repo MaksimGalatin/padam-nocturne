@@ -428,30 +428,49 @@ def test_desktop_mode_and_tauri_security_section10(tmp_path):
 
 
 def test_chromium_extension_manifest_v3_and_external_quarantine():
-    """А3: расширение Chrome/Edge Manifest V3 имеет строгий CSP, 0 innerHTML и отправляет записи с origin=external."""
+    """А3 + Пункт 2: расширения Chrome/Edge и Firefox Manifest V3 имеют строгий CSP, 0 innerHTML,
+    иконки 16/32/48/64/128, локали RU/EN/ES/ZH, политику PRIVACY.md, архивы .zip и снимки 1280x800."""
     root = Path(__file__).resolve().parents[1]
-    ext_dir = root / "extensions" / "chromium"
-    manifest = json.loads((ext_dir / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["manifest_version"] == 3
-    assert "contextMenus" in manifest["permissions"]
-    csp = manifest["content_security_policy"]["extension_pages"]
-    assert "default-src 'none'" in csp
-    assert "script-src 'self'" in csp
+    for browser_dir in ("chromium", "firefox"):
+        ext_dir = root / "extensions" / browser_dir
+        manifest = json.loads((ext_dir / "manifest.json").read_text(encoding="utf-8"))
+        assert manifest["manifest_version"] == 3
+        assert manifest["default_locale"] == "en"
+        assert "contextMenus" in manifest["permissions"]
+        csp = manifest["content_security_policy"]["extension_pages"]
+        assert "default-src 'none'" in csp
+        assert "script-src 'self'" in csp
+        if browser_dir == "firefox":
+            gecko = manifest["browser_specific_settings"]["gecko"]
+            assert gecko["id"] == "padam-memory-guard@codeofdigitaleternity.com"
+            assert "strict_min_version" in gecko
 
-    bg_js = (ext_dir / "background.js").read_text(encoding="utf-8")
-    popup_js = (ext_dir / "popup.js").read_text(encoding="utf-8")
-    popup_html = (ext_dir / "popup.html").read_text(encoding="utf-8")
-    assert "origin: 'external'" in bg_js
-    assert "origin: 'external'" in popup_js
-    assert "innerHTML" not in bg_js and "innerHTML" not in popup_js
-    assert 'style="' not in popup_html
-    for sz in (16, 48, 128):
-        assert (ext_dir / "icons" / f"icon{sz}.png").exists()
+        bg_js = (ext_dir / "background.js").read_text(encoding="utf-8")
+        popup_js = (ext_dir / "popup.js").read_text(encoding="utf-8")
+        popup_html = (ext_dir / "popup.html").read_text(encoding="utf-8")
+        assert "origin: 'external'" in bg_js
+        assert "origin: 'external'" in popup_js
+        assert "innerHTML" not in bg_js and "innerHTML" not in popup_js
+        assert 'style="' not in popup_html
+        for sz in (16, 32, 48, 64, 128):
+            assert (ext_dir / "icons" / f"icon{sz}.png").exists()
+        for loc in ("en", "ru", "es", "zh", "zh_CN"):
+            msg_file = ext_dir / "_locales" / loc / "messages.json"
+            assert msg_file.exists()
+            msgs = json.loads(msg_file.read_text(encoding="utf-8"))
+            assert "extName" in msgs and "extDescription" in msgs
+
+    assert (root / "extensions" / "PRIVACY.md").exists()
+    assert (root / "extensions" / "STORE_SUBMIT.md").exists()
+    assert (root / "extensions" / "dist" / "padam-memory-guard-chromium.zip").exists()
+    assert (root / "extensions" / "dist" / "padam-memory-guard-firefox.zip").exists()
+    for shot in ("store_1_popup_ru.png", "store_2_capture_quarantine_en.png", "store_3_studio_review_4langs.png"):
+        assert (root / "extensions" / "screenshots" / shot).exists()
 
 
 def test_chrome_extension_origin_forces_external_and_review_queue(tmp_path):
-    """Раздел 11 (А3): запрос с Origin: chrome-extension://<32 буквы>, валидным токеном и origin='user'
-    принудительно получает origin='external' на сервере и удерживается в очереди проверки."""
+    """Раздел 11 (А3) + Пункт 2.1: запросы с Origin: chrome-extension://<32 буквы> и
+    Origin: moz-extension://<uuid> принудительно получают origin='external' на сервере и удерживаются в карантине."""
     db_path = tmp_path / "ext_origin.db"
     mem = Memory(user_id="ext_test_user", store=Store(db_path))
     srv, url = api.make_studio_server(mem, port=0)
@@ -461,27 +480,31 @@ def test_chrome_extension_origin_forces_external_and_review_queue(tmp_path):
         m = re.match(r"^(http://127\.0\.0\.1:\d+)/studio#t=(.+)$", url)
         assert m
         base, token = m.group(1), m.group(2)
-        ext_origin = "chrome-extension://" + ("a" * 32)
 
-        code, _, res = _http_json(
-            f"{base}/write",
-            token=token,
-            body={"content": "Запись из расширения с подменённым origin=user", "origin": "user", "kind": "fact"},
-            extra_headers={"Origin": ext_origin},
-        )
-        assert code == 200
-        assert res["outcome"] == "quarantined"
-        rec_id = res["id"]
+        origins = [
+            "chrome-extension://" + ("a" * 32),
+            "moz-extension://12345678-1234-1234-1234-123456789abc",
+        ]
+        for idx, ext_origin in enumerate(origins):
+            code, _, res = _http_json(
+                f"{base}/write",
+                token=token,
+                body={"content": f"Запись из расширения #{idx} с подменённым origin=user", "origin": "user", "kind": "fact"},
+                extra_headers={"Origin": ext_origin},
+            )
+            assert code == 200, ext_origin
+            assert res["outcome"] == "quarantined", ext_origin
+            rec_id = res["id"]
 
-        # В активной памяти записи нет — она удерживается в очереди проверки (review) с origin='external'
-        _, _, active = _http_json(f"{base}/records?view=active", token=token)
-        assert all(r["id"] != rec_id for r in active["records"])
+            # В активной памяти записи нет — она удерживается в очереди проверки (review) с origin='external'
+            _, _, active = _http_json(f"{base}/records?view=active", token=token)
+            assert all(r["id"] != rec_id for r in active["records"])
 
-        _, _, review = _http_json(f"{base}/records?view=review", token=token)
-        matched = [r for r in review["records"] if r["id"] == rec_id]
-        assert len(matched) == 1
-        assert matched[0]["origin"] == "external"
-        assert matched[0]["status"] == "quarantined"
+            _, _, review = _http_json(f"{base}/records?view=review", token=token)
+            matched = [r for r in review["records"] if r["id"] == rec_id]
+            assert len(matched) == 1
+            assert matched[0]["origin"] == "external"
+            assert matched[0]["status"] == "quarantined"
     finally:
         srv.shutdown()
         srv.server_close()

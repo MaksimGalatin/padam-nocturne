@@ -1,0 +1,160 @@
+:root {
+  --bg: #080b12;
+  --card: #131a2c;
+  --line: #23304d;
+  --fg: #f1f5f9;
+  --muted: #94a3b8;
+  --cyan: #38bdf8;
+  --amber: #fbbf24;
+  --ok: #34d399;
+  --danger: #f87171;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  width: 360px;
+  padding: 14px;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.ext-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
+}
+.ext-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ext-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: block;
+  object-fit: contain;
+}
+.ext-title { font-size: 14px; font-weight: 700; }
+.ext-sub { font-size: 11.5px; color: var(--muted); }
+.lang-bar { display: flex; gap: 3px; }
+.lang-btn {
+  background: var(--card);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.lang-btn[aria-pressed="true"] {
+  background: var(--cyan);
+  color: #041019;
+  border-color: var(--cyan);
+}
+.status-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.num-cyan { color: var(--cyan); font-size: 15px; }
+.num-amber { color: var(--amber); font-size: 15px; }
+.guard-note {
+  font-size: 11.5px;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  padding-top: 6px;
+  margin-top: 4px;
+}
+.actions-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+button {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 9px 12px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  transition: opacity 0.15s;
+}
+button:hover { opacity: 0.92; }
+.btn-primary {
+  background: var(--cyan);
+  color: #041019;
+  border-color: var(--cyan);
+}
+.btn-secondary {
+  background: #1e293b;
+  color: var(--fg);
+  border-color: #334155;
+}
+.btn-outline {
+  background: var(--card);
+  color: var(--fg);
+  width: 100%;
+}
+.note-section {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+.field-label {
+  display: block;
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+textarea, input {
+  width: 100%;
+  background: #0b101d;
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 7px 9px;
+  font-family: inherit;
+  font-size: 12.5px;
+  margin-bottom: 8px;
+}
+.conn-details {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.conn-details summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cyan);
+}
+.conn-body { margin-top: 8px; }
+.conn-actions { display: flex; gap: 8px; }
+.conn-actions button { flex: 1; padding: 7px; font-size: 12px; }
+.ext-msg {
+  min-height: 18px;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.msg-ok { color: var(--ok); }
+.msg-err { color: var(--danger); }

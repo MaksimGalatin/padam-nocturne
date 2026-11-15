@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "PADAM · NOCTURNE — Guardia de Memoria"
+  },
+  "extDescription": {
+    "message": "Guarda texto seleccionado o páginas web en la memoria local PADAM con protección origin=external y cola de revisión."
+  },
+  "actionTitle": {
+    "message": "PADAM · NOCTURNE — Memoria"
+  }
+}
