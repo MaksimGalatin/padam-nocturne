@@ -1,0 +1,13 @@
+{
+  "name": "@padam/mcp",
+  "version": "0.5.2",
+  "description": "Zero-install stdio launcher for PADAM NOCTURNE local sovereign MCP server",
+  "license": "AGPL-3.0",
+  "bin": {
+    "padam-mcp": "./bin/padam-mcp.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": ["mcp", "memory", "ai", "padam", "local-first"]
+}

@@ -192,3 +192,36 @@ def test_top10v4_5_agent_sdk_adapters_zero_deps(tmp_path):
     ag.add("AutoGen multi-agent coordination rule")
     assert any("AutoGen" in x for x in ag.query("AutoGen"))
     mem.close()
+
+
+
+def test_top10v4_6_zero_install_npm_homebrew_winget_manifests():
+    import shutil
+    import subprocess
+
+    root = Path(__file__).resolve().parents[1]
+
+    pkg_path = root / "packages" / "npm-padam-mcp" / "package.json"
+    bin_path = root / "packages" / "npm-padam-mcp" / "bin" / "padam-mcp.js"
+    brew_path = root / "packages" / "homebrew" / "padam-nocturne.rb"
+    winget_path = root / "packages" / "winget" / "CODEternal.PADAMStudio.yaml"
+
+    assert pkg_path.exists()
+    assert bin_path.exists()
+    assert brew_path.exists()
+    assert winget_path.exists()
+
+    pkg = json.loads(pkg_path.read_text(encoding="utf-8"))
+    assert "bin" in pkg and ("padam-mcp" in pkg["bin"] or "@padam/mcp" in str(pkg.get("name", "")))
+
+    node = shutil.which("node")
+    if node:
+        proc = subprocess.run([node, "--check", str(bin_path)], capture_output=True, text=True, check=False)
+        assert proc.returncode == 0, proc.stderr
+
+    brew_txt = brew_path.read_text(encoding="utf-8")
+    assert "class PadamNocturne < Formula" in brew_txt
+
+    winget_txt = winget_path.read_text(encoding="utf-8")
+    assert "PackageIdentifier: CODEternal.PADAMStudio" in winget_txt
+    assert "ManifestType: singleton" in winget_txt

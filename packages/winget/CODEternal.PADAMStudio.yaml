@@ -1,0 +1,15 @@
+PackageIdentifier: CODEternal.PADAMStudio
+PackageVersion: 0.5.2
+PackageLocale: en-US
+Publisher: CODE Eternal LLC
+PublisherUrl: https://aifa.works
+PackageName: PADAM Studio
+PackageUrl: https://github.com/MaksimGalatin/padam-nocturne
+License: AGPL-3.0
+ShortDescription: Local-first AI memory studio and MCP server (9 tools, DLP shield, PQC sync)
+Installers:
+  - Architecture: x64
+    InstallerType: inno
+    InstallerUrl: https://github.com/MaksimGalatin/padam-nocturne/releases/download/v0.5.2/PADAM-Studio-Setup.exe
+ManifestType: singleton
+ManifestVersion: 1.6.0
