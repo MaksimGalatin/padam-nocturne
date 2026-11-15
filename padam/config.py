@@ -191,3 +191,8 @@ MAX_HI_SHARE = K_MAX
 MIN_KIND_ENTROPY_RATIO = 0.8
 MAX_OVERREPLAY_SHARE = 0.01
 OVERREPLAY_COUNT = 5
+
+# --- Пункт 1.3: MCP tasks (2025-11-25) и sampling для сжатия кластеров ---
+# По умолчанию выключены: включаются явным флагом и согласием клиента.
+MCP_TASKS_ENABLED = os.environ.get("PADAM_MCP_TASKS", "0") == "1"
+MCP_SAMPLING_ENABLED = os.environ.get("PADAM_MCP_SAMPLING", "0") == "1"

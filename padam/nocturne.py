@@ -15,7 +15,7 @@ from collections import Counter
 
 import numpy as np
 
-from . import classify, config
+from . import classify, config, safety
 from .memory import Memory
 from .store import new_id, now_iso
 
@@ -82,12 +82,16 @@ def stratified(kinds: list[str], pool: np.ndarray, n: int,
 
 class Nocturne:
     def __init__(self, memory: Memory, batch_size: int = 256,
-                 dry_run: bool = False, seed: int | None = None):
+                 dry_run: bool = False, seed: int | None = None,
+                 cancel_event=None, progress_cb=None, sampling_fn=None):
         self.mem = memory
         self.store = memory.store
         self.batch_size = batch_size
         self.dry_run = dry_run
         self.rng = np.random.default_rng(seed)
+        self.cancel_event = cancel_event
+        self.progress_cb = progress_cb
+        self.sampling_fn = sampling_fn
 
     def pending(self) -> list:
         return self.store.query(
@@ -180,8 +184,94 @@ class Nocturne:
                    VALUES (?,?,?)""", (run_id, self.mem.user_id, now_iso()))
 
         outcomes, kind_counts = Counter(), Counter()
+        total_chosen = len(chosen)
+        ep_snapshots: dict[str, tuple[float, int, int]] = {}
+        created_mids: list[str] = []
+        sampling_clusters = 0
+
+        def _rollback_run() -> dict:
+            for mid in reversed(created_mids):
+                self.store.execute(
+                    "UPDATE memory SET status = 'active', superseded_by = NULL WHERE superseded_by = ?",
+                    (mid,),
+                )
+                self.store.execute("DELETE FROM anchor_key WHERE memory_id = ?", (mid,))
+                self.store.execute("DELETE FROM memory_link WHERE src = ? OR dst = ?", (mid, mid))
+                self.store.execute("DELETE FROM memory WHERE id = ? AND user_id = ?", (mid, self.mem.user_id))
+            for eid, (orig_pri, orig_rc, orig_proc) in ep_snapshots.items():
+                self.store.execute(
+                    "UPDATE episode SET priority = ?, replay_count = ?, processed = ? WHERE id = ?",
+                    (orig_pri, orig_rc, orig_proc, eid),
+                )
+            if not self.dry_run:
+                self.store.execute("DELETE FROM nocturne_run WHERE id = ?", (run_id,))
+            self.mem.__dict__.pop("_ккэш", None)
+            return {
+                "episodes_sampled": total_chosen,
+                "cancelled": True,
+                "rolled_back": True,
+                "outcomes": {},
+                "kinds": dict(kind_counts),
+                "note": "cancelled",
+            }
+
+        if self.progress_cb is not None:
+            self.progress_cb(0, total_chosen, "consolidation started")
+
+        done_count = 0
+        handled_positions: set[int] = set()
+        if self.sampling_fn is not None and not self.dry_run:
+            clusters: dict[tuple[str, str], list[int]] = {}
+            for pos, idx in enumerate(chosen):
+                key = (kinds[idx], episodes[idx]["scope"])
+                clusters.setdefault(key, []).append(pos)
+            for (ckind, cscope), pos_list in clusters.items():
+                if len(pos_list) < 2:
+                    continue
+                if self.cancel_event is not None and self.cancel_event.is_set():
+                    return _rollback_run()
+                texts = [episodes[chosen[p]]["content"] for p in pos_list]
+                summary = self.sampling_fn(texts, ckind, cscope)
+                if not summary or not str(summary).strip():
+                    continue
+                if self.cancel_event is not None and self.cancel_event.is_set():
+                    return _rollback_run()
+                clean_summary, _ = safety.redact(str(summary).strip())
+                avg_weight = float(sum(w[p] for p in pos_list) / len(pos_list))
+                outcome, mid = self.mem.remember(
+                    content=clean_summary,
+                    kind=ckind,
+                    importance=min(1.0, 0.5 * avg_weight + 0.3),
+                    scope=cscope,
+                    source_episode_id=episodes[chosen[pos_list[0]]]["id"],
+                    origin="agent",
+                    guarded=True,
+                )
+                if outcome != "duplicate":
+                    created_mids.append(mid)
+                outcomes[outcome] += 1
+                sampling_clusters += 1
+                for p in pos_list:
+                    handled_positions.add(p)
+                    ep = episodes[chosen[p]]
+                    kind_counts[kinds[chosen[p]]] += 1
+                    ep_snapshots[ep["id"]] = (float(ep["priority"]), int(ep["replay_count"]), 0)
+                    self.store.execute(
+                        """UPDATE episode SET priority = priority * ?,
+                           replay_count = replay_count + 1, processed = 1
+                           WHERE id = ?""",
+                        (config.GAMMA_REPLAY, ep["id"]),
+                    )
+                    done_count += 1
+                    if self.progress_cb is not None:
+                        self.progress_cb(done_count, total_chosen, f"sampled cluster {ckind}/{cscope}")
 
         for pos, idx in enumerate(chosen):
+            if pos in handled_positions:
+                continue
+            if self.cancel_event is not None and self.cancel_event.is_set():
+                return _rollback_run()
+
             ep = episodes[idx]
             kind = kinds[idx]
             kind_counts[kind] += 1
@@ -189,16 +279,22 @@ class Nocturne:
 
             if self.dry_run:
                 outcomes["dry"] += 1
+                done_count += 1
+                if self.progress_cb is not None:
+                    self.progress_cb(done_count, total_chosen, f"dry {ep['id']}")
                 continue
 
+            ep_snapshots[ep["id"]] = (float(ep["priority"]), int(ep["replay_count"]), 0)
             # Реплика модели или чужой текст из буфера не становятся словами человека:
             # у них меньше начальная уверенность, и защищённое они сами не заменят.
             откуда = {"user": "user", "assistant": "agent"}.get(ep["role"], "external")
-            outcome, _ = self.mem.remember(
+            outcome, mid = self.mem.remember(
                 content=ep["content"], kind=kind,
                 importance=min(1.0, 0.5 * weight + 0.25),
                 scope=ep["scope"], source_episode_id=ep["id"],
                 origin=откуда, guarded=откуда != "user")
+            if outcome != "duplicate":
+                created_mids.append(mid)
             outcomes[outcome] += 1
 
             # (3) распад приоритета после переигрывания
@@ -206,6 +302,9 @@ class Nocturne:
                 """UPDATE episode SET priority = priority * ?,
                    replay_count = replay_count + 1, processed = 1
                    WHERE id = ?""", (config.GAMMA_REPLAY, ep["id"]))
+            done_count += 1
+            if self.progress_cb is not None:
+                self.progress_cb(done_count, total_chosen, f"processed {ep['id']}")
 
         row = self.store.one(
             """SELECT COUNT(*) AS total,
@@ -224,6 +323,7 @@ class Nocturne:
             "beta": round(beta, 3),
             "outcomes": dict(outcomes),
             "kinds": dict(kind_counts),
+            "sampling_clusters": sampling_clusters,
         }
 
         if not self.dry_run:

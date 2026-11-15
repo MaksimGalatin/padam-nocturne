@@ -149,10 +149,18 @@ def sync_connector(
     *,
     http_call: HttpCallable | None = None,
     rate_limit_s: float = 0.2,
+    cancel_event=None,
+    progress_cb=None,
 ) -> dict[str, Any]:
     """Запускает синхронизацию выбранного коннектора через ограду безопасности."""
     conn = _get_connector(provider)
-    return conn.sync(memory, http_call=http_call, rate_limit_s=rate_limit_s)
+    return conn.sync(
+        memory,
+        http_call=http_call,
+        rate_limit_s=rate_limit_s,
+        cancel_event=cancel_event,
+        progress_cb=progress_cb,
+    )
 
 
 __all__ = [

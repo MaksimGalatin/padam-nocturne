@@ -202,6 +202,8 @@ class BaseConnector:
         *,
         http_call: HttpCallable | None = None,
         rate_limit_s: float = 0.2,
+        cancel_event=None,
+        progress_cb=None,
     ) -> dict[str, Any]:
         """Синхронизация одного коннектора: проверяет флаг включения, расшифровывает токен и пропускает всё через ограду."""
         row = memory.store.one(
@@ -214,31 +216,104 @@ class BaseConnector:
                 f"connector {self.provider} is disabled by default (enable it in Settings)",
             ))
 
+        prev_state = dict(row)
         cfg = json.loads(row["config_json"] or "{}")
         cfg.setdefault("cursor", row["cursor"])
         limiter = RateLimiter(min_interval_s=rate_limit_s)
         transport = http_call or default_http_call
 
+        created_memory_ids: list[str] = []
+        rollback_items: list[tuple[str, dict | None]] = []
+
+        def _rollback_import() -> None:
+            for mid in reversed(created_memory_ids):
+                memory.store.execute(
+                    "UPDATE memory SET status = 'active', superseded_by = NULL WHERE superseded_by = ?",
+                    (mid,),
+                )
+                memory.store.execute("DELETE FROM anchor_key WHERE memory_id = ?", (mid,))
+                memory.store.execute("DELETE FROM memory_link WHERE src = ? OR dst = ?", (mid, mid))
+                memory.store.execute("DELETE FROM memory WHERE id = ? AND user_id = ?", (mid, memory.user_id))
+            for ext_id, old_ci in reversed(rollback_items):
+                if old_ci is None:
+                    memory.store.execute(
+                        "DELETE FROM connector_item WHERE user_id = ? AND provider = ? AND external_id = ?",
+                        (memory.user_id, self.provider, ext_id),
+                    )
+                else:
+                    memory.store.execute(
+                        """INSERT OR REPLACE INTO connector_item
+                           (user_id, provider, external_id, memory_id, content_hash, synced_at)
+                           VALUES (?,?,?,?,?,?)""",
+                        (
+                            old_ci["user_id"],
+                            old_ci["provider"],
+                            old_ci["external_id"],
+                            old_ci["memory_id"],
+                            old_ci["content_hash"],
+                            old_ci["synced_at"],
+                        ),
+                    )
+            memory.store.execute(
+                """UPDATE connector_state
+                   SET cursor = ?, last_sync_at = ?, last_status = ?, last_error = ?, imported_count = ?
+                   WHERE provider = ? AND user_id = ?""",
+                (
+                    prev_state.get("cursor"),
+                    prev_state.get("last_sync_at"),
+                    prev_state.get("last_status"),
+                    prev_state.get("last_error"),
+                    prev_state.get("imported_count", 0),
+                    self.provider,
+                    memory.user_id,
+                ),
+            )
+            memory.__dict__.pop("_ккэш", None)
+
         try:
             token = decrypt_token(memory, self.provider, row["token_enc"])
             items, next_cursor = self.fetch_items(token, cfg, transport, limiter)
+            total_items = len(items)
+            if progress_cb is not None:
+                progress_cb(0, total_items, f"fetched {total_items}")
             imported = 0
             quarantined = 0
             skipped = 0
             scope = str(cfg.get("scope") or f"connector:{self.provider}")
 
-            for item in items:
+            for idx, item in enumerate(items):
+                if cancel_event is not None and cancel_event.is_set():
+                    _rollback_import()
+                    memory._log_audit(
+                        "connector_sync", self.provider, actor="connector", agent_id=self.provider,
+                        scope=scope, outcome="cancelled", detail="rolled back on task cancellation",
+                    )
+                    return {
+                        "ok": False,
+                        "cancelled": True,
+                        "rolled_back": True,
+                        "provider": self.provider,
+                        "fetched": total_items,
+                        "imported": 0,
+                        "quarantined": 0,
+                        "skipped": 0,
+                    }
+
                 full_text = item.render_text(self.provider)
                 chash = hashlib.sha256(full_text.encode("utf-8")).hexdigest()
                 prev = memory.store.one(
-                    """SELECT memory_id, content_hash FROM connector_item
+                    """SELECT user_id, provider, external_id, memory_id, content_hash, synced_at
+                       FROM connector_item
                        WHERE user_id = ? AND provider = ? AND external_id = ?""",
                     (memory.user_id, self.provider, item.external_id),
                 )
                 if prev and prev["content_hash"] == chash:
                     skipped += 1
+                    if progress_cb is not None:
+                        progress_cb(idx + 1, total_items, item.external_id)
                     continue
 
+                rollback_items.append((item.external_id, dict(prev) if prev else None))
                 outcome, mid = memory.remember(
                     full_text,
                     kind=item.kind,
@@ -248,6 +323,8 @@ class BaseConnector:
                     agent_id=f"connector:{self.provider}",
                     valid_from=item.updated_at,
                 )
+                if outcome != "duplicate":
+                    created_memory_ids.append(mid)
                 ts_now = now_iso()
                 memory.store.execute(
                     """INSERT INTO connector_item (user_id, provider, external_id, memory_id, content_hash, synced_at)
@@ -261,6 +338,8 @@ class BaseConnector:
                 imported += 1
                 if outcome == "quarantined":
                     quarantined += 1
+                if progress_cb is not None:
+                    progress_cb(idx + 1, total_items, item.external_id)
 
             ts_done = now_iso()
             memory.store.execute(
