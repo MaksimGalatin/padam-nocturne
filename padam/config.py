@@ -427,3 +427,9 @@ def mcp_memcube_enabled() -> bool:
 def mcp_write_autolink_enabled() -> bool:
     """Включает автоматическое создание связей при записи (без LLM-вызова, PADAM_WRITE_AUTOLINK=1)."""
     return os.environ.get("PADAM_WRITE_AUTOLINK", "0").strip() == "1"
+
+
+# --- ТОП-10 v3 Пункт 1: Квантизованный векторный индекс (int8 + 1-битный бинарный предфильтр, выключено по умолчанию) ---
+def mcp_quant_index_enabled() -> bool:
+    """Включает 1-bit + int8 квантизованный предфильтр векторного поиска (PADAM_QUANT_INDEX=1)."""
+    return os.environ.get("PADAM_QUANT_INDEX", "0").strip() == "1"

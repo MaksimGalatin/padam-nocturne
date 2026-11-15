@@ -116,6 +116,18 @@ def rank_semantic(query_vec: np.ndarray, rows: list, limit: int) -> list[str]:
         _, M, ids = матрица
         if not ids:
             return []
+        if len(ids) > 400:
+            from . import config as _cfg
+            if _cfg.mcp_quant_index_enabled():
+                qi = getattr(rows, "quant_index", None)
+                if qi is None:
+                    from .quant_index import QuantizedIndex
+                    qi = QuantizedIndex(M, ids)
+                    try:
+                        rows.quant_index = qi
+                    except Exception:
+                        pass
+                return qi.search(q, limit)
         sims = np.clip(M @ q, -1.0, 1.0)
     else:
         годные = [r for r in rows if r["_vec"] is not None and r["_vec"].shape == q.shape]
