@@ -154,3 +154,41 @@ def test_top10v4_4_team_git_memcube_export_and_sync(tmp_path):
     lead_mem.close()
     dev_mem.close()
     dev_mem2.close()
+
+
+def test_top10v4_5_agent_sdk_adapters_zero_deps(tmp_path):
+    from padam.adapters import (
+        AutoGenPadamMemory,
+        LangGraphPadamStore,
+        LlamaIndexPadamMemory,
+        OpenAIAgentsMemory,
+        PydanticAIMemoryDeps,
+    )
+    from padam.memory import Memory
+    from padam.store import Store
+
+    mem = Memory(user_id="arch", store=Store(tmp_path / "adapters.sqlite"))
+
+    oa = OpenAIAgentsMemory(mem, scope="sdk")
+    assert len(oa.as_tools()) == 2
+    assert oa.remember("OpenAI Agents SDK uses strict schema")["status"] == "created"
+    assert "strict schema" in oa.recall("OpenAI Agents")
+
+    lg = LangGraphPadamStore(mem, scope="lg")
+    lg.put(("org", "app"), "db_mode", {"wal": True})
+    assert lg.get(("org", "app"), "db_mode") is not None
+    assert len(lg.search(("org", "app"), query="wal")) >= 1
+
+    pa = PydanticAIMemoryDeps(mem, scope="pa")
+    pa.remember_fact("PydanticAI injects memory via deps")
+    assert "PydanticAI" in pa.context_for("PydanticAI")
+
+    li = LlamaIndexPadamMemory(mem, scope="li")
+    li.put({"content": "LlamaIndex retrieval context note"})
+    assert len(li.get("LlamaIndex")) >= 1
+    assert li.reset() >= 1
+
+    ag = AutoGenPadamMemory(mem, scope="ag")
+    ag.add("AutoGen multi-agent coordination rule")
+    assert any("AutoGen" in x for x in ag.query("AutoGen"))
+    mem.close()
