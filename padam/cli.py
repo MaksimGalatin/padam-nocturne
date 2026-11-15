@@ -475,6 +475,23 @@ def cmd_compact(m, a) -> int:
     return 0
 
 
+def cmd_setup(m, a) -> int:
+    """ТОП-10 v4 Пункт 1: авто-установка PADAM MCP в IDE и AI-клиенты."""
+    from pathlib import Path
+    from . import setup_clients
+    clients = [c.strip() for c in (a.client or "").split(",") if c.strip()]
+    res = setup_clients.setup_clients(
+        clients=clients or None,
+        all_detected=bool(a.all),
+        project_dir=Path(a.project_dir),
+        user_id=getattr(a, "user", "default") or "default",
+        dry_run=bool(a.dry_run),
+        verify=bool(a.verify),
+    )
+    print(json.dumps(res, ensure_ascii=False, indent=2))
+    return 0
+
+
 def cmd_hooks(m, a) -> int:
     """ТОП-10 v2 Пункт 1: управление хуками жизненного цикла (install/run/status)."""
     from pathlib import Path
@@ -1529,8 +1546,17 @@ def main(argv=None) -> int:
     scmp.add_argument("--force", action="store_true")
     scmp.set_defaults(fn=cmd_compact)
 
+    sset = sub.add_parser("setup", help=t("авто-установка PADAM MCP в IDE и AI-клиенты",
+                                          "auto-install PADAM MCP into IDEs and AI clients"))
+    sset.add_argument("--all", action="store_true", help=t("во все найденные клиенты", "all detected clients"))
+    sset.add_argument("--client", default="", help=t("список клиентов через запятую", "comma-separated client names"))
+    sset.add_argument("--project-dir", default=".")
+    sset.add_argument("--dry-run", action="store_true")
+    sset.add_argument("--verify", action="store_true")
+    sset.set_defaults(fn=cmd_setup)
+
     a = p.parse_args(argv)
-    if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):
+    if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):
         return a.fn(None, a)
     from .store import Store
     mem = Memory(user_id=a.user, store=Store(a.db) if a.db else None)

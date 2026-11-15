@@ -6,6 +6,8 @@
 
 [![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%209%20tools-8A2BE2) [![PyPI](https://img.shields.io/pypi/v/padam-nocturne)](https://pypi.org/project/padam-nocturne/)
 
+**Instalación en 1 clic:** [Instalar en Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=padam&config=eyJjb21tYW5kIjoicGFkYW0tbWNwIiwiYXJncyI6W119) · [Instalar en VS Code](vscode:mcp/install?%7B%22name%22%3A%22padam%22%2C%22command%22%3A%22padam-mcp%22%2C%22args%22%3A%5B%5D%7D) · CLI: `padam setup --all`
+
 **Tu agente lee una página web hoy y mañana la trata como si fuera su propia memoria.** PADAM guarda esa memoria en un único archivo SQLite local y hace que sea seguro volver a leerla:
 
 - una orden oculta en una página puede retenerse para tu revisión en lugar de convertirse en una instrucción (`PADAM_STRICT=1` retiene cada escritura del agente hasta que tú decidas);

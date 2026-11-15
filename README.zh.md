@@ -6,6 +6,8 @@
 
 [![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%209%20tools-8A2BE2) [![PyPI](https://img.shields.io/pypi/v/padam-nocturne)](https://pypi.org/project/padam-nocturne/)
 
+**一键安装：** [在 Cursor 中安装](cursor://anysphere.cursor-deeplink/mcp/install?name=padam&config=eyJjb21tYW5kIjoicGFkYW0tbWNwIiwiYXJncyI6W119) · [在 VS Code 中安装](vscode:mcp/install?%7B%22name%22%3A%22padam%22%2C%22command%22%3A%22padam-mcp%22%2C%22args%22%3A%5B%5D%7D) · CLI: `padam setup --all`
+
 **你的智能体今天读取了一个网页，明天就会把它当成自己的记忆。** PADAM 将记忆保存在单个本地 SQLite 文件中，并确保安全地读取：
 
 - 隐藏在网页中的指令会被拦截并等待你的审核，而不会直接变成执行指令（开启 `PADAM_STRICT=1` 后，智能体的每一次写入都需由你审核）；

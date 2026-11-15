@@ -1,0 +1,23 @@
+# Smithery MCP server manifest for PADAM NOCTURNE
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      padamDb:
+        type: string
+        title: SQLite database path
+        default: "~/.padam/memory.db"
+      padamUser:
+        type: string
+        title: Owner user identifier
+        default: "default"
+  commandFunction: |-
+    (config) => ({
+      command: "padam-mcp",
+      args: [],
+      env: {
+        PADAM_DB: config.padamDb || "~/.padam/memory.db",
+        PADAM_USER: config.padamUser || "default"
+      }
+    })
