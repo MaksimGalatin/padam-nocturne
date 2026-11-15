@@ -279,3 +279,31 @@ def test_top10v4_8_playground_60s_tour_in_memory(monkeypatch, capsys):
     out = json.loads(capsys.readouterr().out)
     assert out["status"] == "ok"
     assert out["in_memory"] is True
+
+
+
+def test_top10v4_9_sovereignty_svg_and_markdown_badge(tmp_path, capsys):
+    from padam import badge, cli
+
+    svg_file = tmp_path / "sovereignty.svg"
+    res = badge.generate_sovereignty_badge(out_svg=svg_file)
+    assert res["status"] == "ok"
+    assert svg_file.exists()
+    svg_txt = svg_file.read_text(encoding="utf-8")
+    assert svg_txt.startswith("<svg ") and "</svg>" in svg_txt
+    assert "PADAM NOCTURNE" in svg_txt
+    assert "Recall@5:" in svg_txt
+    assert "### PADAM Nocturne" in res["markdown"]
+
+    # Проверка XML/HTML-экранирования при произвольном имени датасета
+    xss_res = badge.generate_sovereignty_badge(metrics={"dataset": "<script>alert(1)</script>"})
+    assert "<script>" not in xss_res["svg"]
+    assert "&lt;script&gt;" in xss_res["svg"]
+
+    svg_cli = tmp_path / "cli_card.svg"
+    rc = cli.main(["badge", "--out-svg", str(svg_cli)])
+    assert rc == 0
+    assert svg_cli.exists()
+    out = json.loads(capsys.readouterr().out)
+    assert out["status"] == "ok"
+    assert out["svg_path"] == str(svg_cli)

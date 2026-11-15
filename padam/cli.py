@@ -460,6 +460,17 @@ def cmd_access(m, a) -> int:
     return 1
 
 
+def cmd_badge(m, a) -> int:
+    """ТОП-10 v4 Пункт 9: виральная карточка суверенности (SVG + Markdown)."""
+    from pathlib import Path
+    from . import badge
+    rep = Path(a.report) if getattr(a, "report", None) else None
+    out_svg = Path(a.out_svg) if getattr(a, "out_svg", None) else None
+    res = badge.generate_sovereignty_badge(report_path=rep, out_svg=out_svg)
+    print(json.dumps(res, ensure_ascii=False, indent=2))
+    return 0
+
+
 def cmd_playground(m, a) -> int:
     """ТОП-10 v4 Пункт 8: 60-секундный интерактивный вау-тур в :memory:."""
     from . import playground
@@ -1648,8 +1659,14 @@ def main(argv=None) -> int:
                                               "60-second interactive wow-tour in :memory:"))
     spg.set_defaults(fn=cmd_playground)
 
+    sbd = sub.add_parser("badge", help=t("сгенерировать карточку суверенности (SVG + Markdown)",
+                                         "generate sovereignty card (SVG + Markdown)"))
+    sbd.add_argument("--report", default=None)
+    sbd.add_argument("--out-svg", default=None)
+    sbd.set_defaults(fn=cmd_badge)
+
     a = p.parse_args(argv)
-    if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup, cmd_pack_extension, cmd_playground) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):
+    if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup, cmd_pack_extension, cmd_playground, cmd_badge) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):
         return a.fn(None, a)
     from .store import Store
     mem = Memory(user_id=a.user, store=Store(a.db) if a.db else None)
