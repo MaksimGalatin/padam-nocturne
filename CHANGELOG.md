@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.6.1 — 16 November 2026
+
+Drop-in for the official MCP memory server, plus fixes found by testing on every OS.
+- **Official memory compatibility (opt-in).** With `PADAM_MCP_COMPAT=official-memory` (or `padam-mcp --compat
+  official-memory`) PADAM also serves the 9 tools of `@modelcontextprotocol/server-memory` — `create_entities`,
+  `create_relations`, `add_observations`, `delete_entities`, `delete_observations`, `delete_relations`, `read_graph`,
+  `search_nodes`, `open_nodes` — with the same names and input schemas, checked field by field against the official
+  `src/memory/index.ts`. Tutorials written for the official server work unchanged; every write still goes through
+  PADAM's guard (keys masked, planted instructions held for review), and deletes are revocations with receipts.
+  Off by default: the usual 9 PADAM tools are unchanged.
+- **Move in from the official server's file:** `padam migrate --from official_mcp memory.jsonl`, also in the Studio
+  "Move in" tab. Guide in 4 languages: `docs/MIGRATE_FROM_OFFICIAL_MCP*.md`.
+- **Held items are reported, not dropped.** When the guard holds an observation or relation, the response says so: a
+  `heldForReview` list (entity and reason, never the held text) and a second text block for the agent. The first block
+  stays the official server's JSON byte for byte.
+- **CI is green on Linux, Windows and macOS, Python 3.10–3.13** (macOS added to the matrix). Fixed: the hardware seal
+  crashed `padam_stats` outside Windows; timestamps ending in `Z` failed on Python 3.10; `tomllib` is missing on 3.10
+  (`tomli` added to the test extra); the scale benchmark's memory probe failed on some Windows builds.
+- **`padam migrate` accepts paths the way people paste them:** quotes, `file://` links, escaped spaces from a macOS
+  terminal, `~`; CSV exports saved as UTF-16 are read.
+- Studio: text fields no longer overflow on phones and narrow windows.
+- Verified: `pytest tests` — 1,157 passed, 11 skipped (Python 3.14.4, Windows); 1,153 passed on Python 3.10.
+
 ## 0.6.0 — 16 November 2026
 
 Move in from other AI assistants (stage 1 of the PADAM Studio plan).
