@@ -1,0 +1,395 @@
+{
+  "benchmark": "padam-masking-compare-1611/1",
+  "python_version": "3.14.4",
+  "padam_commit_sha": "806610ba7ad6512e1e680acf20d103f71cb97a6c",
+  "sources": {
+    "mem0": {
+      "repo": "mem0ai/mem0",
+      "path": "integrations/codex-plugin/core/memory_core.py",
+      "commit_sha": "f1791daa86d469249c9b002f62644d58a1eb96a0",
+      "patterns_count": 8
+    },
+    "claude_mem": {
+      "repo": "thedotmack/claude-mem",
+      "path": "src/utils/redaction.ts",
+      "commit_sha": "f705e9b99601dd9ac03e2f77c5aded6ff3d9471b",
+      "builtin_patterns_count": 42,
+      "generic_patterns_count": 4
+    }
+  },
+  "elapsed_s": 426.716,
+  "systems": {
+    "PADAM": {
+      "fake_keys": {
+        "total": 1500300,
+        "leaks": 0,
+        "leak_rate": 0.0,
+        "by_family": {
+          "TELEGRAM_BOT_TOKEN": {
+            "total": 166700,
+            "leaks": 0
+          },
+          "PAYMENTS_API_KEY": {
+            "total": 166700,
+            "leaks": 0
+          },
+          "IPN_SECRET": {
+            "total": 166700,
+            "leaks": 0
+          },
+          "MASTER_KEY": {
+            "total": 166700,
+            "leaks": 0
+          },
+          "ENCRYPTION_SECRET": {
+            "total": 166700,
+            "leaks": 0
+          },
+          "DB_PASSWORD": {
+            "total": 166700,
+            "leaks": 0
+          },
+          "OPENAI_API_KEY": {
+            "total": 166700,
+            "leaks": 0
+          },
+          "MAIL_API_KEY": {
+            "total": 166700,
+            "leaks": 0
+          },
+          "DEPLOY_TOKEN": {
+            "total": 166700,
+            "leaks": 0
+          }
+        }
+      },
+      "solana_keys": {
+        "total": 2200,
+        "leaks": 0,
+        "leak_rate": 0.0,
+        "by_family": {
+          "solana_keypair": {
+            "total": 700,
+            "leaks": 0
+          },
+          "solana_base58": {
+            "total": 700,
+            "leaks": 0
+          },
+          "solana_seed": {
+            "total": 800,
+            "leaks": 0
+          }
+        }
+      },
+      "vendor_keys": {
+        "total": 200,
+        "leaks": 0,
+        "leak_rate": 0.0,
+        "by_family": {
+          "VENDOR_AWS_AKIA": {
+            "total": 50,
+            "leaks": 0
+          },
+          "VENDOR_GITHUB_GHP": {
+            "total": 50,
+            "leaks": 0
+          },
+          "VENDOR_STRIPE_LIVE": {
+            "total": 50,
+            "leaks": 0
+          },
+          "VENDOR_JWT": {
+            "total": 50,
+            "leaks": 0
+          }
+        }
+      },
+      "clean_phrases": {
+        "total": 240,
+        "false_masks": 0,
+        "false_mask_rate": 0.0,
+        "examples": []
+      }
+    },
+    "Mem0": {
+      "fake_keys": {
+        "total": 1500300,
+        "leaks": 1233560,
+        "leak_rate": 0.822209,
+        "by_family": {
+          "TELEGRAM_BOT_TOKEN": {
+            "total": 166700,
+            "leaks": 166700
+          },
+          "PAYMENTS_API_KEY": {
+            "total": 166700,
+            "leaks": 133360
+          },
+          "IPN_SECRET": {
+            "total": 166700,
+            "leaks": 166700
+          },
+          "MASTER_KEY": {
+            "total": 166700,
+            "leaks": 166700
+          },
+          "ENCRYPTION_SECRET": {
+            "total": 166700,
+            "leaks": 166680
+          },
+          "DB_PASSWORD": {
+            "total": 166700,
+            "leaks": 133360
+          },
+          "OPENAI_API_KEY": {
+            "total": 166700,
+            "leaks": 0
+          },
+          "MAIL_API_KEY": {
+            "total": 166700,
+            "leaks": 133360
+          },
+          "DEPLOY_TOKEN": {
+            "total": 166700,
+            "leaks": 166700
+          }
+        }
+      },
+      "solana_keys": {
+        "total": 2200,
+        "leaks": 2200,
+        "leak_rate": 1.0,
+        "by_family": {
+          "solana_keypair": {
+            "total": 700,
+            "leaks": 700
+          },
+          "solana_base58": {
+            "total": 700,
+            "leaks": 700
+          },
+          "solana_seed": {
+            "total": 800,
+            "leaks": 800
+          }
+        }
+      },
+      "vendor_keys": {
+        "total": 200,
+        "leaks": 50,
+        "leak_rate": 0.25,
+        "by_family": {
+          "VENDOR_AWS_AKIA": {
+            "total": 50,
+            "leaks": 0
+          },
+          "VENDOR_GITHUB_GHP": {
+            "total": 50,
+            "leaks": 0
+          },
+          "VENDOR_STRIPE_LIVE": {
+            "total": 50,
+            "leaks": 50
+          },
+          "VENDOR_JWT": {
+            "total": 50,
+            "leaks": 0
+          }
+        }
+      },
+      "clean_phrases": {
+        "total": 240,
+        "false_masks": 0,
+        "false_mask_rate": 0.0,
+        "examples": []
+      }
+    },
+    "Claude-Mem (builtin)": {
+      "fake_keys": {
+        "total": 1500300,
+        "leaks": 1333560,
+        "leak_rate": 0.888862,
+        "by_family": {
+          "TELEGRAM_BOT_TOKEN": {
+            "total": 166700,
+            "leaks": 166700
+          },
+          "PAYMENTS_API_KEY": {
+            "total": 166700,
+            "leaks": 166700
+          },
+          "IPN_SECRET": {
+            "total": 166700,
+            "leaks": 166700
+          },
+          "MASTER_KEY": {
+            "total": 166700,
+            "leaks": 166700
+          },
+          "ENCRYPTION_SECRET": {
+            "total": 166700,
+            "leaks": 166660
+          },
+          "DB_PASSWORD": {
+            "total": 166700,
+            "leaks": 166700
+          },
+          "OPENAI_API_KEY": {
+            "total": 166700,
+            "leaks": 0
+          },
+          "MAIL_API_KEY": {
+            "total": 166700,
+            "leaks": 166700
+          },
+          "DEPLOY_TOKEN": {
+            "total": 166700,
+            "leaks": 166700
+          }
+        }
+      },
+      "solana_keys": {
+        "total": 2200,
+        "leaks": 2200,
+        "leak_rate": 1.0,
+        "by_family": {
+          "solana_keypair": {
+            "total": 700,
+            "leaks": 700
+          },
+          "solana_base58": {
+            "total": 700,
+            "leaks": 700
+          },
+          "solana_seed": {
+            "total": 800,
+            "leaks": 800
+          }
+        }
+      },
+      "vendor_keys": {
+        "total": 200,
+        "leaks": 0,
+        "leak_rate": 0.0,
+        "by_family": {
+          "VENDOR_AWS_AKIA": {
+            "total": 50,
+            "leaks": 0
+          },
+          "VENDOR_GITHUB_GHP": {
+            "total": 50,
+            "leaks": 0
+          },
+          "VENDOR_STRIPE_LIVE": {
+            "total": 50,
+            "leaks": 0
+          },
+          "VENDOR_JWT": {
+            "total": 50,
+            "leaks": 0
+          }
+        }
+      },
+      "clean_phrases": {
+        "total": 240,
+        "false_masks": 0,
+        "false_mask_rate": 0.0,
+        "examples": []
+      }
+    },
+    "Claude-Mem (builtin+generic)": {
+      "fake_keys": {
+        "total": 1500300,
+        "leaks": 983504,
+        "leak_rate": 0.655538,
+        "by_family": {
+          "TELEGRAM_BOT_TOKEN": {
+            "total": 166700,
+            "leaks": 166700
+          },
+          "PAYMENTS_API_KEY": {
+            "total": 166700,
+            "leaks": 108355
+          },
+          "IPN_SECRET": {
+            "total": 166700,
+            "leaks": 108355
+          },
+          "MASTER_KEY": {
+            "total": 166700,
+            "leaks": 166700
+          },
+          "ENCRYPTION_SECRET": {
+            "total": 166700,
+            "leaks": 108329
+          },
+          "DB_PASSWORD": {
+            "total": 166700,
+            "leaks": 108355
+          },
+          "OPENAI_API_KEY": {
+            "total": 166700,
+            "leaks": 0
+          },
+          "MAIL_API_KEY": {
+            "total": 166700,
+            "leaks": 108355
+          },
+          "DEPLOY_TOKEN": {
+            "total": 166700,
+            "leaks": 108355
+          }
+        }
+      },
+      "solana_keys": {
+        "total": 2200,
+        "leaks": 2200,
+        "leak_rate": 1.0,
+        "by_family": {
+          "solana_keypair": {
+            "total": 700,
+            "leaks": 700
+          },
+          "solana_base58": {
+            "total": 700,
+            "leaks": 700
+          },
+          "solana_seed": {
+            "total": 800,
+            "leaks": 800
+          }
+        }
+      },
+      "vendor_keys": {
+        "total": 200,
+        "leaks": 0,
+        "leak_rate": 0.0,
+        "by_family": {
+          "VENDOR_AWS_AKIA": {
+            "total": 50,
+            "leaks": 0
+          },
+          "VENDOR_GITHUB_GHP": {
+            "total": 50,
+            "leaks": 0
+          },
+          "VENDOR_STRIPE_LIVE": {
+            "total": 50,
+            "leaks": 0
+          },
+          "VENDOR_JWT": {
+            "total": 50,
+            "leaks": 0
+          }
+        }
+      },
+      "clean_phrases": {
+        "total": 240,
+        "false_masks": 0,
+        "false_mask_rate": 0.0,
+        "examples": []
+      }
+    }
+  }
+}
