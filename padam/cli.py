@@ -508,17 +508,30 @@ def cmd_team(m, a) -> int:
 
 
 def cmd_migrate(m, a) -> int:
-    """ТОП-10 v4 Пункт 3: импорт памяти из ChatGPT, Claude, Mem0, Zep, Obsidian, Notion."""
+    """Переезд из ChatGPT, Claude, Gemini, Grok, DeepSeek, Copilot, Perplexity, Mem0, Zep, Obsidian, Notion.
+
+    --from auto определяет источник по содержимому файла, папки или .zip; --preview показывает, что будет
+    импортировано, ничего не записывая; --undo SNAPSHOT_ID отменяет импорт (откат с квитанциями).
+    """
     from . import migrate
-    res = migrate.migrate_from_source(
-        m,
-        source=a.source,
-        input_path=a.path,
-        scope=a.scope,
-        dry_run=bool(a.dry_run),
-        guarded=not bool(getattr(a, "trusted", False)),
-    )
-    print(json.dumps(res, ensure_ascii=False, indent=2))
+    if getattr(a, "undo", None):
+        res = migrate.undo_import(m, snapshot_id=a.undo, scope=a.scope)
+    elif getattr(a, "preview", False):
+        res = migrate.preview(source=a.source, input_path=a.path)
+    else:
+        if not a.path:
+            print("path is required", file=sys.stderr)
+            return 2
+        res = migrate.migrate_from_source(
+            m,
+            source=a.source,
+            input_path=a.path,
+            scope=a.scope,
+            dry_run=bool(a.dry_run),
+            guarded=not bool(getattr(a, "trusted", False)),
+            hold_all=bool(getattr(a, "hold_all", False)),
+        )
+    print(json.dumps(res, ensure_ascii=False, indent=2, default=str))
     return 0
 
 
@@ -1633,12 +1646,17 @@ def main(argv=None) -> int:
     spack.add_argument("--out", default="padam-nocturne.mcpb")
     spack.set_defaults(fn=cmd_pack_extension)
 
-    smig = sub.add_parser("migrate", help=t("импорт из ChatGPT/Claude/Mem0/Zep/Obsidian/Notion",
-                                          "migrate memory from ChatGPT/Claude/Mem0/Zep/Obsidian/Notion"))
-    smig.add_argument("--from", dest="source", required=True, choices=("chatgpt", "claude", "mem0", "zep", "obsidian", "notion"))
-    smig.add_argument("path")
+    smig = sub.add_parser("migrate", help=t("переезд из ChatGPT/Claude/Gemini/Grok/DeepSeek/Copilot/Perplexity и др.",
+                                          "move in from ChatGPT/Claude/Gemini/Grok/DeepSeek/Copilot/Perplexity and more"))
+    smig.add_argument("--from", dest="source", default="auto",
+                      choices=("auto", "chatgpt", "claude", "gemini", "grok", "deepseek", "copilot", "perplexity",
+                               "mem0", "zep", "obsidian", "notion"))
+    smig.add_argument("path", nargs="?")
     smig.add_argument("--scope", default="imported")
     smig.add_argument("--dry-run", action="store_true")
+    smig.add_argument("--preview", action="store_true")
+    smig.add_argument("--hold-all", action="store_true")
+    smig.add_argument("--undo", metavar="SNAPSHOT_ID")
     smig.add_argument("--trusted", action="store_true")
     smig.set_defaults(fn=cmd_migrate)
 

@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.6.0 — 16 November 2026
+
+Move in from other AI assistants (stage 1 of the PADAM Studio plan).
+- `padam migrate` reads the exports of seven assistants: ChatGPT, Claude, Gemini (Google Takeout, My Activity in JSON),
+  Grok (`prod-grok-backend.json`), DeepSeek (`conversations.json` with message fragments), Microsoft Copilot (activity CSV)
+  and Perplexity (`conversations-*.json`). Export layouts were taken from open-source importers and cross-checked in at
+  least two independent projects; they are covered by tests on sample files, not yet on real people's archives.
+- `--from auto` (the default) recognises the export by its content: a file, a folder or the `.zip` as downloaded,
+  including ChatGPT's zip-inside-a-zip. Archives are read in memory, with limits of 1 GiB per file and 4 GiB per import.
+- `--preview` shows conversations, messages, period and keys to be masked without writing anything.
+- Every import takes a snapshot first; `--undo SNAPSHOT_ID` rolls the import back with receipts (records revoked,
+  text erased).
+- Long answers are split into records of up to 2,000 characters instead of being cut off; ChatGPT and DeepSeek keep the
+  current branch of the message tree; Gemini prompts are put back into their chats; Grok render tags and DeepSeek
+  reasoning are left out.
+- Your own messages are stored as yours and the assistant's answers with agent trust; instructions planted in a chat
+  (for example "ignore previous instructions…") still go to review, and keys are masked. `--hold-all` keeps every
+  imported record for review, as before.
+- PADAM Studio: new "Move in" tab in 4 languages with where-to-get-the-export steps and links for each service, path or
+  small-file upload, preview, import and undo. API: `POST /migrate/preview`, `/migrate/run`, `/migrate/undo`
+  (owner token only).
+
 ## 0.5.5 — 16 November 2026
 
 Found by re-running the fake-key leak test at full scale with new random seeds:

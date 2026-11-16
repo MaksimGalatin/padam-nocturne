@@ -1372,6 +1372,157 @@ _EXTRA_STRINGS_G9_G12: dict[str, dict[str, str]] = {
 for _lg, _extra in _EXTRA_STRINGS_G9_G12.items():
     STRINGS[_lg].update(_extra)
 
+
+# 16.11.2026: вкладка «Переезд» — чаты и память из других ИИ (padam migrate).
+_STRINGS_MIGRATE: dict[str, dict[str, str]] = {
+    "ru": {
+        "nav_migrate": "Переезд",
+        "mig_title": "Переехать из других ИИ",
+        "mig_subtitle": "Чаты и память из ChatGPT, Claude, Gemini, Grok, DeepSeek, Copilot и Perplexity. Всё остаётся на этом компьютере: ключи скрываются, подброшенные приказы уходят на проверку, импорт можно отменить.",
+        "mig_source_label": "Откуда",
+        "mig_auto": "Определить автоматически",
+        "mig_how": "Как получить экспорт",
+        "mig_open_export": "Открыть страницу экспорта",
+        "mig_path_label": "Путь к архиву или файлу на этом компьютере",
+        "mig_path_ph": "например C:\\Users\\Вы\\Downloads\\export.zip",
+        "mig_file_label": "Или выберите файл (до 10 МБ)",
+        "mig_too_big": "Файл больше 10 МБ — укажите путь к нему в поле выше.",
+        "mig_preview_btn": "Предпросмотр",
+        "mig_run_btn": "Импортировать",
+        "mig_undo_btn": "Отменить импорт",
+        "mig_found": "Найдено",
+        "mig_conversations": "разговоров",
+        "mig_messages": "сообщений",
+        "mig_records": "записей",
+        "mig_period": "период",
+        "mig_secrets": "будет скрыто ключей",
+        "mig_done": "Импортировано",
+        "mig_quarantined": "на проверке",
+        "mig_masked": "скрыто ключей",
+        "mig_undone": "Импорт отменён, квитанция выдана.",
+        "mig_nothing": "Известный экспорт не найден. Выберите источник вручную или проверьте файл.",
+        "mig_need_input": "Укажите путь или выберите файл.",
+        "mig_steps_chatgpt": "ChatGPT → Настройки → Управление данными → Экспорт данных. Ссылка придёт на почту и действует 24 часа.",
+        "mig_steps_claude": "Claude → Настройки → Конфиденциальность → Экспорт данных. Ссылка придёт на почту и действует 24 часа.",
+        "mig_steps_gemini": "takeout.google.com → выберите только «Мои действия» → «Приложения Gemini» и переключите формат с HTML на JSON.",
+        "mig_steps_grok": "Grok → Настройки → Управление данными → Скачать данные аккаунта (accounts.x.ai/data). Ссылка придёт на почту.",
+        "mig_steps_deepseek": "DeepSeek → Настройки → Данные → Экспорт данных. Ссылка действует 7 дней.",
+        "mig_steps_copilot": "account.microsoft.com/privacy → Copilot → Приложения Copilot → Экспорт всей истории действий.",
+        "mig_steps_perplexity": "Perplexity → Все настройки → Аккаунт → Экспорт моих данных. Архив придёт на почту.",
+        "mig_steps_auto": "Выберите сервис, чтобы увидеть, где взять экспорт. Студия сама узнает архив любого из семи сервисов."
+    },
+    "en": {
+        "nav_migrate": "Move in",
+        "mig_title": "Move in from other AI assistants",
+        "mig_subtitle": "Chats and memory from ChatGPT, Claude, Gemini, Grok, DeepSeek, Copilot and Perplexity. Everything stays on this computer: keys are masked, planted instructions are held for review, and the import can be undone.",
+        "mig_source_label": "From",
+        "mig_auto": "Detect automatically",
+        "mig_how": "How to get your export",
+        "mig_open_export": "Open the export page",
+        "mig_path_label": "Path to the archive or file on this computer",
+        "mig_path_ph": "e.g. C:\\Users\\You\\Downloads\\export.zip",
+        "mig_file_label": "Or choose a file (up to 10 MB)",
+        "mig_too_big": "The file is larger than 10 MB: enter its path in the field above.",
+        "mig_preview_btn": "Preview",
+        "mig_run_btn": "Import",
+        "mig_undo_btn": "Undo import",
+        "mig_found": "Found",
+        "mig_conversations": "conversations",
+        "mig_messages": "messages",
+        "mig_records": "records",
+        "mig_period": "period",
+        "mig_secrets": "keys to mask",
+        "mig_done": "Imported",
+        "mig_quarantined": "held for review",
+        "mig_masked": "keys masked",
+        "mig_undone": "Import undone, receipt issued.",
+        "mig_nothing": "No known export found. Choose the source by hand or check the file.",
+        "mig_need_input": "Enter a path or choose a file.",
+        "mig_steps_chatgpt": "ChatGPT → Settings → Data controls → Export data. The emailed link lasts 24 hours.",
+        "mig_steps_claude": "Claude → Settings → Privacy → Export data. The emailed link lasts 24 hours.",
+        "mig_steps_gemini": "takeout.google.com → choose only My Activity → Gemini Apps and switch its format from HTML to JSON.",
+        "mig_steps_grok": "Grok → Settings → Data Controls → Download account data. The link arrives by email.",
+        "mig_steps_deepseek": "DeepSeek → Settings → Data → Export data. The link lasts 7 days.",
+        "mig_steps_copilot": "account.microsoft.com/privacy → Copilot → Copilot apps → Export all activity history.",
+        "mig_steps_perplexity": "Perplexity → All settings → Account → Export my data. The zip arrives by email.",
+        "mig_steps_auto": "Pick a service to see where to get its export. Studio recognises an archive from any of the seven services."
+    },
+    "es": {
+        "nav_migrate": "Mudanza",
+        "mig_title": "Múdate desde otros asistentes de IA",
+        "mig_subtitle": "Chats y memoria de ChatGPT, Claude, Gemini, Grok, DeepSeek, Copilot y Perplexity. Todo se queda en este equipo: las claves se ocultan, las órdenes infiltradas quedan en revisión y la importación se puede deshacer.",
+        "mig_source_label": "Desde",
+        "mig_auto": "Detectar automáticamente",
+        "mig_how": "Cómo obtener tu exportación",
+        "mig_open_export": "Abrir la página de exportación",
+        "mig_path_label": "Ruta del archivo o del zip en este equipo",
+        "mig_path_ph": "p. ej. C:\\Users\\Tú\\Downloads\\export.zip",
+        "mig_file_label": "O elige un archivo (hasta 10 MB)",
+        "mig_too_big": "El archivo supera los 10 MB: escribe su ruta en el campo de arriba.",
+        "mig_preview_btn": "Vista previa",
+        "mig_run_btn": "Importar",
+        "mig_undo_btn": "Deshacer importación",
+        "mig_found": "Encontrado",
+        "mig_conversations": "conversaciones",
+        "mig_messages": "mensajes",
+        "mig_records": "registros",
+        "mig_period": "período",
+        "mig_secrets": "claves a ocultar",
+        "mig_done": "Importado",
+        "mig_quarantined": "en revisión",
+        "mig_masked": "claves ocultas",
+        "mig_undone": "Importación deshecha, recibo emitido.",
+        "mig_nothing": "No se encontró una exportación conocida. Elige la fuente a mano o revisa el archivo.",
+        "mig_need_input": "Escribe una ruta o elige un archivo.",
+        "mig_steps_chatgpt": "ChatGPT → Configuración → Controles de datos → Exportar datos. El enlace llega por correo y dura 24 horas.",
+        "mig_steps_claude": "Claude → Configuración → Privacidad → Exportar datos. El enlace llega por correo y dura 24 horas.",
+        "mig_steps_gemini": "takeout.google.com → elige solo Mi actividad → Apps de Gemini y cambia el formato de HTML a JSON.",
+        "mig_steps_grok": "Grok → Settings → Data Controls → Download account data. El enlace llega por correo.",
+        "mig_steps_deepseek": "DeepSeek → Configuración → Datos → Exportar datos. El enlace dura 7 días.",
+        "mig_steps_copilot": "account.microsoft.com/privacy → Copilot → Aplicaciones de Copilot → Exportar todo el historial de actividad.",
+        "mig_steps_perplexity": "Perplexity → Toda la configuración → Cuenta → Export my data. El zip llega por correo.",
+        "mig_steps_auto": "Elige un servicio para ver dónde obtener su exportación. Studio reconoce el archivo de cualquiera de los siete servicios."
+    },
+    "zh": {
+        "nav_migrate": "迁入",
+        "mig_title": "从其他 AI 助手迁入",
+        "mig_subtitle": "导入 ChatGPT、Claude、Gemini、Grok、DeepSeek、Copilot 和 Perplexity 的对话与记忆。一切都留在这台电脑上：密钥会被遮蔽，混入的指令会交给你审核，导入可以撤销。",
+        "mig_source_label": "来源",
+        "mig_auto": "自动识别",
+        "mig_how": "如何获取导出",
+        "mig_open_export": "打开导出页面",
+        "mig_path_label": "本机上压缩包或文件的路径",
+        "mig_path_ph": "例如 C:\\Users\\你\\Downloads\\export.zip",
+        "mig_file_label": "或选择文件（最大 10 MB）",
+        "mig_too_big": "文件超过 10 MB：请在上方输入它的路径。",
+        "mig_preview_btn": "预览",
+        "mig_run_btn": "导入",
+        "mig_undo_btn": "撤销导入",
+        "mig_found": "找到",
+        "mig_conversations": "对话",
+        "mig_messages": "消息",
+        "mig_records": "记录",
+        "mig_period": "时间段",
+        "mig_secrets": "将遮蔽的密钥",
+        "mig_done": "已导入",
+        "mig_quarantined": "待审核",
+        "mig_masked": "已遮蔽的密钥",
+        "mig_undone": "导入已撤销，已出具回执。",
+        "mig_nothing": "未找到已知的导出。请手动选择来源或检查文件。",
+        "mig_need_input": "请输入路径或选择文件。",
+        "mig_steps_chatgpt": "ChatGPT → 设置 → 数据控制 → 导出数据。链接通过邮件发送，24 小时内有效。",
+        "mig_steps_claude": "Claude → 设置 → 隐私 → 导出数据。链接通过邮件发送，24 小时内有效。",
+        "mig_steps_gemini": "takeout.google.com → 只选择“我的活动”→“Gemini 应用”，并把格式从 HTML 改为 JSON。",
+        "mig_steps_grok": "Grok → 设置 → Data Controls → Download account data。链接通过邮件发送。",
+        "mig_steps_deepseek": "DeepSeek → 设置 → 数据 → 导出数据。链接 7 天内有效。",
+        "mig_steps_copilot": "account.microsoft.com/privacy → Copilot → Copilot 应用 → 导出全部活动历史。",
+        "mig_steps_perplexity": "Perplexity → 全部设置 → 账户 → Export my data。压缩包通过邮件发送。",
+        "mig_steps_auto": "选择一个服务，查看在哪里获取导出。Studio 能识别这七个服务中任何一个的压缩包。"
+    }
+}
+for _lg, _extra in _STRINGS_MIGRATE.items():
+    STRINGS[_lg].update(_extra)
+
 _CSS = """
 :root, html[data-theme="dark"] {
   --bg: #080b12;
@@ -2100,7 +2251,7 @@ function say(text, ok = true) {
   box.className = ok ? 'msg-ok' : 'msg-err';
 }
 
-const TABS = ['overview', 'feed', 'search', 'ask', 'review', 'asof', 'forget', 'graph', 'entities', 'l3', 'team', 'backup', 'settings', 'quickstart'];
+const TABS = ['overview', 'migrate', 'feed', 'search', 'ask', 'review', 'asof', 'forget', 'graph', 'entities', 'l3', 'team', 'backup', 'settings', 'quickstart'];
 window._padamWorkspaces = [];
 let activeTab = (initialTab && TABS.includes(initialTab)) ? initialTab : 'overview';
 let feedView = 'active', feedOffset = 0, feedKind = null, feedShown = [];
@@ -3506,6 +3657,7 @@ async function loadSettings() {
 function loadActiveTab() {
   refreshTopbarStats();
   if (activeTab === 'overview') loadOverview();
+  else if (activeTab === 'migrate') loadMigrate();
   else if (activeTab === 'feed') loadFeed(true);
   else if (activeTab === 'search') runSearch();
   else if (activeTab === 'ask') loadAskTab();
@@ -3518,6 +3670,69 @@ function loadActiveTab() {
   else if (activeTab === 'team') loadTeam();
   else if (activeTab === 'settings') loadSettings();
 }
+
+
+// --- Переезд из других ИИ (16.11.2026) ---
+const MIG_URLS = {chatgpt: 'https://chatgpt.com/', claude: 'https://claude.ai/settings', gemini: 'https://takeout.google.com/',
+  grok: 'https://accounts.x.ai/data', deepseek: 'https://chat.deepseek.com/', copilot: 'https://account.microsoft.com/privacy',
+  perplexity: 'https://www.perplexity.ai/'};
+let migLast = null;
+function migShowSteps() {
+  const src = $('mig-source').value;
+  $('mig-steps').textContent = S['mig_steps_' + src] || S.mig_steps_auto;
+  const a = $('mig-export-link');
+  if (MIG_URLS[src]) { a.href = MIG_URLS[src]; a.hidden = false; } else { a.hidden = true; }
+}
+function loadMigrate() { migShowSteps(); }
+async function migBody() {
+  const body = {source: $('mig-source').value};
+  const f = $('mig-file').files && $('mig-file').files[0];
+  if (f) {
+    if (f.size > 10 * 1024 * 1024) { throw new Error(S.mig_too_big); }
+    const buf = new Uint8Array(await f.arrayBuffer());
+    let bin = '';
+    for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+    body.file_b64 = btoa(bin);
+    body.filename = f.name;
+  } else {
+    const p = $('mig-path').value.trim();
+    if (!p) throw new Error(S.mig_need_input);
+    body.path = p;
+  }
+  return body;
+}
+function migPeriod(r) { return r.date_from ? (r.date_from + ' — ' + r.date_to) : '—'; }
+$('mig-source').onchange = migShowSteps;
+$('mig-preview-btn').onclick = async () => {
+  try {
+    const r = await api('/migrate/preview', await migBody());
+    if (!r.conversations && !r.records) { $('mig-result').textContent = S.mig_nothing; return; }
+    $('mig-result').textContent = S.mig_found + ': ' + r.source + ' · ' + S.mig_conversations + ': ' + r.conversations + ' · ' +
+      S.mig_messages + ': ' + r.messages + ' · ' + S.mig_period + ': ' + migPeriod(r) + ' · ' + S.mig_secrets + ': ' + r.secrets_to_mask +
+      (r.warnings && r.warnings.length ? (' · ' + r.warnings.join('; ')) : '');
+  } catch (e) { say(e.message, false); }
+};
+$('mig-run-btn').onclick = async () => {
+  try {
+    const r = await api('/migrate/run', await migBody());
+    if (r.source === 'unknown') { $('mig-result').textContent = S.mig_nothing; return; }
+    migLast = r;
+    $('mig-result').textContent = S.mig_done + ' (' + r.source + ') · ' + S.mig_records + ': ' + r.imported + ' · ' +
+      S.mig_quarantined + ': ' + r.quarantined + ' · ' + S.mig_masked + ': ' + r.redacted_secrets;
+    $('mig-undo-btn').hidden = !r.snapshot_id;
+    refreshTopbarStats();
+  } catch (e) { say(e.message, false); }
+};
+$('mig-undo-btn').onclick = async () => {
+  if (!migLast || !migLast.snapshot_id) return;
+  try {
+    await api('/migrate/undo', {snapshot_id: migLast.snapshot_id, scope: migLast.scope});
+    $('mig-result').textContent = S.mig_undone;
+    $('mig-undo-btn').hidden = true;
+    migLast = null;
+    refreshTopbarStats();
+  } catch (e) { say(e.message, false); }
+};
 
 // --- События интерфейса ---
 for (const t of TABS) {
@@ -3839,6 +4054,9 @@ def page() -> tuple[str, str]:
       <button id="tab-overview" data-tab="overview" class="nav-tab" role="tab" aria-selected="true" aria-controls="panel-overview">
         <span data-i18n="nav_overview">{s['nav_overview']}</span>
       </button>
+      <button id="tab-migrate" data-tab="migrate" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-migrate">
+        <span data-i18n="nav_migrate">{s['nav_migrate']}</span>
+      </button>
       <button id="tab-feed" data-tab="feed" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-feed">
         <span data-i18n="nav_feed">{s['nav_feed']}</span>
       </button>
@@ -3940,6 +4158,41 @@ def page() -> tuple[str, str]:
       </section>
 
       <!-- 2. ЛЕНТА ПАМЯТИ -->
+      <section id="panel-migrate" role="tabpanel" aria-labelledby="tab-migrate" hidden>
+        <div class="panel-header">
+          <h2 class="panel-title" data-i18n="mig_title">{s['mig_title']}</h2>
+          <p class="panel-sub" data-i18n="mig_subtitle">{s['mig_subtitle']}</p>
+        </div>
+        <div class="box">
+          <div class="toolbar">
+            <label for="mig-source" data-i18n="mig_source_label">{s['mig_source_label']}</label>
+            <select id="mig-source">
+              <option value="auto" data-i18n="mig_auto">{s['mig_auto']}</option>
+              <option value="chatgpt">ChatGPT</option><option value="claude">Claude</option>
+              <option value="gemini">Gemini</option><option value="grok">Grok</option>
+              <option value="deepseek">DeepSeek</option><option value="copilot">Microsoft Copilot</option>
+              <option value="perplexity">Perplexity</option>
+            </select>
+          </div>
+          <p class="panel-sub"><strong data-i18n="mig_how">{s['mig_how']}</strong>: <span id="mig-steps">{s['mig_steps_auto']}</span>
+            <a id="mig-export-link" href="#" target="_blank" rel="noopener noreferrer" hidden data-i18n="mig_open_export">{s['mig_open_export']}</a></p>
+          <div class="toolbar">
+            <label for="mig-path" data-i18n="mig_path_label">{s['mig_path_label']}</label>
+            <input id="mig-path" type="text" size="60" placeholder="{s['mig_path_ph']}" data-i18n-placeholder="mig_path_ph" autocomplete="off">
+          </div>
+          <div class="toolbar">
+            <label for="mig-file" data-i18n="mig_file_label">{s['mig_file_label']}</label>
+            <input id="mig-file" type="file" accept=".zip,.json,.csv">
+          </div>
+          <div class="toolbar">
+            <button id="mig-preview-btn" data-i18n="mig_preview_btn">{s['mig_preview_btn']}</button>
+            <button id="mig-run-btn" class="btn-primary" data-i18n="mig_run_btn">{s['mig_run_btn']}</button>
+            <button id="mig-undo-btn" hidden data-i18n="mig_undo_btn">{s['mig_undo_btn']}</button>
+          </div>
+          <div id="mig-result" class="panel-sub" aria-live="polite"></div>
+        </div>
+      </section>
+
       <section id="panel-feed" role="tabpanel" aria-labelledby="tab-feed" hidden>
         <div class="panel-header">
           <h2 class="panel-title" data-i18n="feed_title">{s['feed_title']}</h2>

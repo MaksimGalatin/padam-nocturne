@@ -35,6 +35,7 @@ from __future__ import annotations
 import argparse
 import hmac
 import json
+import zipfile
 import os
 import re
 import secrets
@@ -51,7 +52,7 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/migrate/preview", "/migrate/run", "/migrate/undo"}
 OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
@@ -800,6 +801,42 @@ class Handler(BaseHTTPRequestHandler):
                     "filename": f"padam-backup-{stamp}.padambak",
                     "backup_b64": base64.b64encode(container).decode("ascii"),
                 })
+
+            if self.path in ("/migrate/preview", "/migrate/run", "/migrate/undo"):
+                # Переезд из других ИИ. Архивы экспорта бывают в сотни мегабайт, поэтому Studio передаёт путь к файлу
+                # на этом же компьютере (сервер слушает только loopback, действие — только владельца с токеном);
+                # небольшой файл (до 10 МБ) можно прислать в file_b64.
+                import base64
+                import tempfile
+                import zipfile
+                from pathlib import Path
+                from . import migrate as _migrate
+                roles.require_owner(actor, "import")
+                if self.path == "/migrate/undo":
+                    return self._send(200, _migrate.undo_import(
+                        m, snapshot_id=str(data.get("snapshot_id") or ""), scope=str(data.get("scope") or "imported")))
+                source = str(data.get("source") or "auto")
+                with tempfile.TemporaryDirectory(prefix="padam-migrate-") as tmp:
+                    if data.get("file_b64"):
+                        name = Path(str(data.get("filename") or "export.zip")).name or "export.zip"
+                        target = Path(tmp) / name
+                        target.write_bytes(base64.b64decode(str(data["file_b64"]).encode("ascii"), validate=True))
+                        src_path = target
+                    else:
+                        raw_path = str(data.get("path") or "").strip().strip('"')
+                        if not raw_path:
+                            return self._send(400, {"error": "path or file_b64 is required"})
+                        src_path = Path(raw_path).expanduser()
+                    try:
+                        if self.path == "/migrate/preview":
+                            return self._send(200, _migrate.preview(source=source, input_path=src_path))
+                        return self._send(200, _migrate.migrate_from_source(
+                            m, source=source, input_path=src_path, scope=str(data.get("scope") or "imported"),
+                            hold_all=bool(data.get("hold_all"))))
+                    except FileNotFoundError:
+                        return self._send(404, {"error": "file not found"})
+                    except (ValueError, zipfile.BadZipFile) as e:
+                        return self._send(400, {"error": str(e)})
 
             if self.path == "/backup/restore":
                 import base64
