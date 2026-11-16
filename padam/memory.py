@@ -838,6 +838,12 @@ class Memory:
              embeddings.метка_модели(), classify.разобрать_факт(content)[0],
              origin, reason, agent_id, visibility, workspace_id))
         self._дописать_в_кэш(отметка_до, mid, scope, kind, vec, status, visibility=visibility, workspace_id=workspace_id)
+        if status == "quarantined":
+            # 16.11.2026: счётчик атак. След в журнале аудита остаётся и после решения владельца
+            # (принять снимает причину с самой записи), поэтому попытка не теряется из статистики.
+            from . import defense_stats as _ds
+            self._log_audit("held", mid, actor=origin or "agent", agent_id=agent_id, scope=scope, kind=kind,
+                            outcome=_ds.classify(reason), detail=(reason or "")[:200])
         _notify_change({
             "action": "quarantined" if status == "quarantined" else "write",
             "id": mid,

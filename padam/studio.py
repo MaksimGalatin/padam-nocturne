@@ -1680,6 +1680,34 @@ _STRINGS_CABINET: dict[str, dict[str, str]] = {
 for _lg, _extra in _STRINGS_CABINET.items():
     STRINGS[_lg].update(_extra)
 
+# 16.11.2026: вкладки «Атаки» и «Справка».
+from . import studio_help as _studio_help
+_STRINGS_ATTACKS: dict[str, dict[str, str]] = {
+    "ru": {"att_title": "Счётчик атак", "att_sub": "Сколько попыток задержала защита PADAM, каких видов, от кого и когда. Текст атак не показывается.",
+           "att_total": "Задержано за всё время", "att_window": "За 30 дней", "att_pending": "Ждут вашего решения", "att_secrets": "Скрыто ключей и паролей",
+           "att_by_kind": "По видам", "att_by_source": "От кого", "att_by_day": "По дням (30 дней)", "att_secrets_kind": "Скрытые ключи по видам", "att_recent": "Последние попытки", "att_none": "Пока ни одной попытки — защита на месте.",
+           "k_injection": "внедрённая команда", "k_protected_record": "подмена «кто я» и предпочтений", "k_external_held": "внешний текст до проверки", "k_procedure": "процедура без одобрения", "k_review_all": "запись агента на проверке", "k_other": "другое",
+           "help_links": "Ссылки"},
+    "en": {"att_title": "Attack counter", "att_sub": "How many attempts PADAM's guard held, of which kind, from whom and when. Attack text is never shown.",
+           "att_total": "Held, all time", "att_window": "Last 30 days", "att_pending": "Waiting for your decision", "att_secrets": "Keys and passwords masked",
+           "att_by_kind": "By kind", "att_by_source": "By source", "att_by_day": "By day (30 days)", "att_secrets_kind": "Masked keys by kind", "att_recent": "Latest attempts", "att_none": "No attempts yet — the guard is in place.",
+           "k_injection": "planted instruction", "k_protected_record": "identity / preference tampering", "k_external_held": "external text before review", "k_procedure": "procedure without approval", "k_review_all": "agent write under review", "k_other": "other",
+           "help_links": "Links"},
+    "es": {"att_title": "Contador de ataques", "att_sub": "Cuántos intentos retuvo la protección de PADAM, de qué tipo, de quién y cuándo. El texto de los ataques nunca se muestra.",
+           "att_total": "Retenidos en total", "att_window": "Últimos 30 días", "att_pending": "Esperan su decisión", "att_secrets": "Claves y contraseñas ocultas",
+           "att_by_kind": "Por tipo", "att_by_source": "Por origen", "att_by_day": "Por día (30 días)", "att_secrets_kind": "Claves ocultas por tipo", "att_recent": "Últimos intentos", "att_none": "Aún no hay intentos: la protección está activa.",
+           "k_injection": "instrucción plantada", "k_protected_record": "alteración de identidad o preferencias", "k_external_held": "texto externo antes de revisión", "k_procedure": "procedimiento sin aprobación", "k_review_all": "escritura de agente en revisión", "k_other": "otro",
+           "help_links": "Enlaces"},
+    "zh": {"att_title": "攻击计数器", "att_sub": "PADAM 防护拦截了多少次尝试、什么类型、来自谁、何时发生。从不显示攻击文本。",
+           "att_total": "累计拦截", "att_window": "最近 30 天", "att_pending": "等待您的决定", "att_secrets": "已隐藏的密钥和密码",
+           "att_by_kind": "按类型", "att_by_source": "按来源", "att_by_day": "按日期(30 天)", "att_secrets_kind": "按类型隐藏的密钥", "att_recent": "最近的尝试", "att_none": "暂无尝试——防护已就位。",
+           "k_injection": "植入指令", "k_protected_record": "篡改身份或偏好", "k_external_held": "未经审核的外部文本", "k_procedure": "未经批准的流程", "k_review_all": "待审核的智能体写入", "k_other": "其他",
+           "help_links": "链接"},
+}
+for _lg, _extra in _STRINGS_ATTACKS.items():
+    STRINGS[_lg].update(_extra)
+    STRINGS[_lg].update(_studio_help.NAV[_lg])
+
 _CSS = """
 :root, html[data-theme="dark"] {
   --bg: #080b12;
@@ -1973,6 +2001,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .traffic-green { background: var(--ok-bg); color: var(--ok); border-color: var(--ok); }
 .traffic-yellow { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
 .traffic-red { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+
+.att-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.att-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.att-name { min-width: 0; overflow-wrap: anywhere; }
+.att-val { font-weight: 600; white-space: nowrap; }
+.help-sec summary { cursor: pointer; }
+.help-item { margin: 10px 0 0; }
+.help-name { margin: 0 0 4px; font-size: 15px; }
+.help-text { margin: 0; line-height: 1.55; overflow-wrap: anywhere; }
 .check-list {
   display: flex;
   flex-direction: column;
@@ -2415,7 +2452,7 @@ function say(text, ok = true) {
   box.className = ok ? 'msg-ok' : 'msg-err';
 }
 
-const TABS = ['overview', 'migrate', 'aifa', 'plans', 'feed', 'search', 'ask', 'review', 'asof', 'forget', 'graph', 'entities', 'l3', 'team', 'backup', 'settings', 'quickstart'];
+const TABS = ['overview', 'migrate', 'aifa', 'plans', 'feed', 'search', 'ask', 'review', 'attacks', 'asof', 'forget', 'graph', 'entities', 'l3', 'team', 'backup', 'settings', 'quickstart', 'help'];
 window._padamWorkspaces = [];
 let activeTab = (initialTab && TABS.includes(initialTab)) ? initialTab : 'overview';
 let feedView = 'active', feedOffset = 0, feedKind = null, feedShown = [];
@@ -2443,6 +2480,7 @@ function applyI18n() {
     const b = $('lang-' + lg);
     if (b) b.setAttribute('aria-pressed', String(lg === currentLang));
   }
+  try { if (activeTab === 'help' || activeTab === 'attacks') loadActiveTab(); } catch (e) {}
 }
 
 function switchTab(tab) {
@@ -3835,8 +3873,84 @@ function loadActiveTab() {
   else if (activeTab === 'l3') loadL3();
   else if (activeTab === 'team') loadTeam();
   else if (activeTab === 'settings') loadSettings();
+  else if (activeTab === 'attacks') loadAttacks();
+  else if (activeTab === 'help') loadHelp();
 }
 
+
+// --- Счётчик атак и Справка (16.11.2026) ---
+function _el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+function _kv(container, obj, labeler) {
+  container.textContent = '';
+  const keys = Object.keys(obj || {});
+  if (!keys.length) { container.appendChild(_el('p', 'panel-sub', '—')); return; }
+  for (const k of keys) {
+    const row = _el('div', 'att-row');
+    row.appendChild(_el('span', 'att-name', labeler ? labeler(k) : k));
+    row.appendChild(_el('span', 'att-val', String(obj[k])));
+    container.appendChild(row);
+  }
+}
+async function loadAttacks() {
+  if (!token) return;
+  let d = null;
+  try { d = await api('/attacks'); } catch (e) { return; }
+  const kindLabel = k => S['k_' + k] || k;
+  const set = (id, v) => { const e = $(id); if (e) e.textContent = String(v); };
+  set('att-total-val', d.held_total || 0);
+  set('att-window-val', d.held_in_window || 0);
+  set('att-pending-val', d.pending_review || 0);
+  set('att-secrets-val', d.secrets_masked || 0);
+  const none = $('att-none'); if (none) none.hidden = (d.held_total || 0) + (d.secrets_masked || 0) > 0;
+  if ($('att-by-kind')) _kv($('att-by-kind'), d.by_kind, kindLabel);
+  if ($('att-by-source')) _kv($('att-by-source'), d.by_source);
+  if ($('att-by-day')) _kv($('att-by-day'), d.by_day);
+  if ($('att-secrets-kind')) _kv($('att-secrets-kind'), d.secrets_by_kind);
+  const rec = $('att-recent');
+  if (rec) {
+    rec.textContent = '';
+    for (const r of (d.recent || [])) {
+      const row = _el('div', 'att-row');
+      row.appendChild(_el('span', 'att-name', String(r.at || '').slice(0, 16).replace('T', ' ') + ' · ' + kindLabel(r.kind)));
+      row.appendChild(_el('span', 'att-val', String(r.source || '') + ' · ' + String(r.status || '')));
+      rec.appendChild(row);
+    }
+  }
+}
+async function loadHelp() {
+  if (!token) return;
+  let d = null;
+  try { d = await api('/help?lang=' + encodeURIComponent(currentLang)); } catch (e) { return; }
+  const root = $('help-body');
+  if (!root) return;
+  root.textContent = '';
+  const hdr = $('help-title'); if (hdr) hdr.textContent = d.title + ' · PADAM NOCTURNE ' + d.version;
+  const sub = $('help-sub'); if (sub) sub.textContent = d.sub;
+  for (const sec of (d.sections || [])) {
+    const box = _el('details', 'box help-sec');
+    if (sec.id === 'tabs') box.open = true;
+    box.appendChild(_el('summary', 'box-title', sec.title));
+    for (const it of (sec.items || [])) {
+      const name = sec.id === 'tabs' ? (S['nav_' + it[0]] || it[0]) : it[0];
+      const p = _el('div', 'help-item');
+      if (name) p.appendChild(_el('h4', 'help-name', name));
+      p.appendChild(_el('p', 'help-text', it[1]));
+      box.appendChild(p);
+    }
+    root.appendChild(box);
+  }
+  const lk = _el('details', 'box help-sec');
+  lk.appendChild(_el('summary', 'box-title', S.help_links || 'Links'));
+  for (const [k, v] of Object.entries(d.links || {})) {
+    const p = _el('div', 'help-item');
+    p.appendChild(_el('h4', 'help-name', k));
+    if (String(v).startsWith('https://')) {
+      const a = _el('a', '', v); a.href = v; a.target = '_blank'; a.rel = 'noopener noreferrer'; p.appendChild(a);
+    } else { p.appendChild(_el('p', 'help-text', v)); }
+    lk.appendChild(p);
+  }
+  root.appendChild(lk);
+}
 
 // --- Переезд из других ИИ (16.11.2026) ---
 const MIG_URLS = {chatgpt: 'https://chatgpt.com/', claude: 'https://claude.ai/settings', gemini: 'https://takeout.google.com/',
@@ -4385,6 +4499,9 @@ def page() -> tuple[str, str]:
         <span data-i18n="nav_review">{s['nav_review']}</span>
         <span id="review-badge" class="badge">0</span>
       </button>
+      <button id="tab-attacks" data-tab="attacks" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-attacks">
+        <span data-i18n="nav_attacks">{s['nav_attacks']}</span>
+      </button>
       <button id="tab-asof" data-tab="asof" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-asof">
         <span data-i18n="nav_asof">{s['nav_asof']}</span>
       </button>
@@ -4411,6 +4528,9 @@ def page() -> tuple[str, str]:
       </button>
       <button id="tab-quickstart" data-tab="quickstart" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-quickstart">
         <span data-i18n="nav_quickstart">{s['nav_quickstart']}</span>
+      </button>
+      <button id="tab-help" data-tab="help" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-help">
+        <span data-i18n="nav_help">{s['nav_help']}</span>
       </button>
     </nav>
   </aside>
@@ -4855,6 +4975,35 @@ def page() -> tuple[str, str]:
           <p class="panel-sub" data-i18n="audit_box_desc">{s['audit_box_desc']}</p>
           <div id="settings-audit-list" class="check-list"></div>
         </div>
+      </section>
+
+      <!-- АТАКИ (16.11.2026) -->
+      <section id="panel-attacks" role="tabpanel" aria-labelledby="tab-attacks" hidden>
+        <div class="panel-header">
+          <h2 class="panel-title" data-i18n="att_title">{s['att_title']}</h2>
+          <p class="panel-sub" data-i18n="att_sub">{s['att_sub']}</p>
+        </div>
+        <div class="att-grid">
+          <div class="box"><div id="att-total-val" class="box-title">0</div><p class="panel-sub" data-i18n="att_total">{s['att_total']}</p></div>
+          <div class="box"><div id="att-window-val" class="box-title">0</div><p class="panel-sub" data-i18n="att_window">{s['att_window']}</p></div>
+          <div class="box"><div id="att-pending-val" class="box-title">0</div><p class="panel-sub" data-i18n="att_pending">{s['att_pending']}</p></div>
+          <div class="box"><div id="att-secrets-val" class="box-title">0</div><p class="panel-sub" data-i18n="att_secrets">{s['att_secrets']}</p></div>
+        </div>
+        <p id="att-none" class="panel-sub" data-i18n="att_none">{s['att_none']}</p>
+        <div class="box"><h3 class="box-title" data-i18n="att_by_kind">{s['att_by_kind']}</h3><div id="att-by-kind"></div></div>
+        <div class="box"><h3 class="box-title" data-i18n="att_by_source">{s['att_by_source']}</h3><div id="att-by-source"></div></div>
+        <div class="box"><h3 class="box-title" data-i18n="att_by_day">{s['att_by_day']}</h3><div id="att-by-day"></div></div>
+        <div class="box"><h3 class="box-title" data-i18n="att_secrets_kind">{s['att_secrets_kind']}</h3><div id="att-secrets-kind"></div></div>
+        <div class="box"><h3 class="box-title" data-i18n="att_recent">{s['att_recent']}</h3><div id="att-recent"></div></div>
+      </section>
+
+      <!-- СПРАВКА (16.11.2026) -->
+      <section id="panel-help" role="tabpanel" aria-labelledby="tab-help" hidden>
+        <div class="panel-header">
+          <h2 id="help-title" class="panel-title" data-i18n="nav_help">{s['nav_help']}</h2>
+          <p id="help-sub" class="panel-sub"></p>
+        </div>
+        <div id="help-body"></div>
       </section>
 
       <!-- 10. ПЕРВЫЙ ЗАПУСК -->

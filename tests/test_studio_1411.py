@@ -870,7 +870,8 @@ def test_b10_sse_events_and_hmac_signed_webhooks(tmp_path):
         mem.approve(rec_id)
         mem.revoke(rec_id)
 
-        assert len(received_webhooks) == 3
+        # 16.11.2026: задержанная запись даёт ещё событие held (счётчик атак) — без текста записи.
+        assert len(received_webhooks) == 4
         seen_actions = []
         for hdrs, raw_body in received_webhooks:
             sig_hdr = hdrs.get("X-Padam-Signature") or hdrs.get("x-padam-signature")
@@ -880,7 +881,7 @@ def test_b10_sse_events_and_hmac_signed_webhooks(tmp_path):
             assert secret_marker not in body_str
             ev_obj = json.loads(body_str)
             seen_actions.append(ev_obj["action"])
-        assert seen_actions == ["write", "approve", "forget"]
+        assert seen_actions == ["held", "write", "approve", "forget"]
 
         # Проверим SSE-поток GET /events?once=1&replay=10
         req = urllib.request.Request(

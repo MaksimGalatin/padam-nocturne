@@ -1,0 +1,257 @@
+"""Раздел «Справка» PADAM Studio: как работает каждая вкладка и кнопка, защита, MCP и приложение,
+хронология версий, о разработчиках (16.11.2026, слово Архитектора: «Сделать прямо сейчас. Каждый раз
+обновлять раздел при каждом обновлении»).
+
+Хронология версий берётся из `padam/help_versions.py`, который собирается из CHANGELOG.md скриптом
+`scripts/gen_help_versions.py`. Тест `tests/test_help_1611.py` падает, если в справке нет текущей версии:
+так справку нельзя забыть обновить при выпуске.
+"""
+from __future__ import annotations
+
+from typing import Any
+
+from . import __version__
+from .help_versions import VERSIONS
+
+LINKS = {
+    "site": "https://aifa.works/nocturne",
+    "pypi": "https://pypi.org/project/padam-nocturne/",
+    "github": "https://github.com/MaksimGalatin/padam-nocturne",
+    "mcp_registry": "https://registry.modelcontextprotocol.io/v0/servers?search=padam-nocturne",
+    "issues": "https://github.com/MaksimGalatin/padam-nocturne/issues",
+    "email": "contact@codeofdigitaleternity.com",
+}
+
+# Пункты вкладок: (ключ вкладки, текст). Название вкладки берётся из строк Studio (nav_*), чтобы не расходилось.
+_TABS = ["overview", "migrate", "aifa", "plans", "feed", "search", "ask", "review", "attacks", "asof", "forget",
+         "graph", "entities", "l3", "team", "backup", "settings", "quickstart"]
+
+_T: dict[str, dict[str, Any]] = {
+    "ru": {
+        "title": "Справка",
+        "sub": "Как устроен PADAM NOCTURNE и что делает каждая кнопка. Обновляется с каждым выпуском.",
+        "s_tabs": "Вкладки и кнопки",
+        "tabs": {
+            "overview": "Сводка: сколько записей действует, сколько ждёт проверки, забыто, противоречит. «Открыть очередь проверки» ведёт к задержанным записям. «Запустить сон NOCTURNE» сводит накопленные эпизоды в факты. Ниже — состояние защиты (padam doctor): зелёный — всё в порядке, жёлтый — есть предупреждения, красный — нужна ваша помощь.",
+            "migrate": "Переезд из ChatGPT, Claude, Gemini, Grok, DeepSeek, Copilot, Perplexity и официальной памяти MCP. Укажите архив экспорта или выберите файл. «Предпросмотр» ничего не записывает и показывает, сколько разговоров и ключей будет. «Импортировать» сначала делает снимок, потом переносит. «Отменить импорт» откатывает всё по снимку и выдаёт квитанцию.",
+            "aifa": "Разговор с AIfa из единого кабинета CODE Eternal — та же память, что на четырёх сайтах. Вход по коду из почты, пароль не нужен. Переключатель «AIfa видит мою локальную память» по умолчанию выключен; если включить, в запрос уйдёт не больше 5 найденных записей, уже со скрытыми ключами, и вы увидите, какие именно.",
+            "plans": "Ваш тариф и сколько вечной памяти Arweave использовано в этом месяце. Таблица «бесплатно навсегда» — то, за что вы никогда не платите. «Улучшить» открывает оплату в вашем браузере: приложение не видит платёжных данных.",
+            "feed": "Все записи по дням. На карточке: «Подтвердить» — запись верна; «Опровергнуть» — неверна; «Версии» — как она менялась; «Связи» — из чего выведена; «Забыть» — удалить с квитанцией. Сверху можно запомнить новую запись от своего имени.",
+            "search": "Поиск по смыслу и по словам сразу. Для каждого результата показано, почему он найден и как посчитана оценка.",
+            "ask": "Вопрос своей памяти. Ответ даёт локальная модель (Ollama) только по вашим записям; ниже — записи-источники и почему они выбраны.",
+            "review": "Очередь проверки: записи, которые защита задержала. Агенты их не видят. «Принять» — запись станет действующей; «Отклонить» — останется отклонённой; «Забыть» — удалить с квитанцией. Под каждой записью — почему она задержана.",
+            "attacks": "Счётчик атак: сколько попыток задержала защита за всё время и за 30 дней, каких видов (внедрённая команда, подмена «кто я» и предпочтений, внешний текст до проверки), от каких агентов и по дням, плюс сколько ключей и паролей скрыто до сохранения. Текст самих атак здесь не показывается.",
+            "asof": "Машина времени: какой была память на выбранную дату. «Показать срез» — записи на тот момент; «Граф на эту дату» — их связи.",
+            "forget": "Честное удаление одной записи. «Проверить связи и версии» показывает, что удалится вместе с ней. «Забыть запись…» и «Подтверждаю удаление навсегда» стирают текст, версии и выводы, уничтожают ключ записи и выдают квитанцию — доказательство удаления. Ниже — журнал квитанций.",
+            "graph": "Граф связей: из каких записей выведен факт, его версии и противоречия. «Показать связи» — вокруг выбранной записи; «Весь граф» — всё сразу; «Связать» — добавить связь вручную; «Удалить источник вместе с выводами» — забыть источник и всё, что из него выведено.",
+            "entities": "Люди, проекты и сервисы, о которых есть записи, и что о каждом известно.",
+            "l3": "Вечный слой: пакет записей в Arweave и корень Меркла в Solana (по команде padam l3, нужен ваш кошелёк). У каждой записи свой ключ, в цепь он не уходит; уничтожили ключ — запись в цепи стала шумом. «Проверить якорь» сверяет пакет с цепью.",
+            "team": "Общая память команды: «Создать команду», «Выдать токен» участнику с ролью, «Отозвать» доступ. Личные записи участникам не видны.",
+            "backup": "«Создать резервную копию» — зашифрованный файл всей памяти; «Восстановить из копии» — вернуть из него.",
+            "settings": "Переключатели защиты: строгий профиль, задержка внешнего текста, проверка всех записей агентов и другие. Опасные переключатели только для чтения. Ниже — журнал действий с памятью и внешние подключения.",
+            "quickstart": "Три шага: как устроен PADAM, как подключить его к агенту одной командой, как включить строгий режим и защиту ключей паролем.",
+        },
+        "s_protect": "Как защищена память",
+        "protect": [
+            ["Ключи и пароли скрываются до сохранения", "Токены, ключи API, пароли, приватные ключи кошельков заменяются меткой [REDACTED:вид] ещё до записи в базу. Исходного ключа в базе нет."],
+            ["Подброшенные команды ждут проверки", "Текст вида «забудь прежние инструкции и сделай…» из чатов, страниц и файлов не становится памятью, а уходит в «На проверку»."],
+            ["Защищённые записи", "«Кто я» и предпочтения агент не может создать или изменить сам — только вы."],
+            ["Забвение с доказательством", "Удаление одной записи уничтожает её ключ и выдаёт квитанцию с отпечатками состояния до и после."],
+            ["Всё локально", "Память — один файл на вашем компьютере. Без вашего входа в кабинет ничего не уходит в сеть."],
+        ],
+        "s_mcp": "MCP-сервер и приложение — в чём разница",
+        "mcp": [
+            ["MCP-сервер", "Работает без окна: к нему подключаются ИИ-агенты (Claude Code, Cursor, Antigravity и другие) и через 9 инструментов читают и пишут память. Подключение: claude mcp add padam -- uvx padam-nocturne. С PADAM_MCP_COMPAT=official-memory добавляются ещё 9 инструментов официальной памяти MCP."],
+            ["Приложение Studio", "Окно для человека над той же базой: видно, что запомнено, что задержано, что забыто. Запуск: padam studio, или PADAM Studio для Windows."],
+            ["Где взять", "PyPI: pip install padam-nocturne или uvx padam-nocturne. Код и выпуски: GitHub. Описание: aifa.works/nocturne."],
+        ],
+        "s_versions": "Хронология версий",
+        "s_about": "О разработчиках",
+        "about": [
+            ["CODE Eternal LLC", "Компания из Нью-Мексико (США). Делает PADAM NOCTURNE и AIfa — ИИ, чья память принадлежит человеку."],
+            ["Maksim Galatin", "Основатель и единственный владелец CODE Eternal LLC, архитектор PADAM."],
+            ["AIfa", "ИИ-соразработчица проекта: пишет код, тесты и документацию вместе с основателем."],
+            ["Лицензия", "AGPL-3.0. Коммерческая лицензия для закрытого использования — по почте."],
+        ],
+        "s_contact": "Связь и ошибки",
+        "contact": "Нашли ошибку или способ обойти защиту — откройте issue на GitHub или напишите на contact@codeofdigitaleternity.com. Каждая найденная атака становится тестом и исправлением.",
+        "version_label": "Версия",
+    },
+    "en": {
+        "title": "Help",
+        "sub": "How PADAM NOCTURNE works and what each button does. Updated with every release.",
+        "s_tabs": "Tabs and buttons",
+        "tabs": {
+            "overview": "Summary: how many records are active, waiting for review, forgotten or in conflict. \"Open review queue\" takes you to held records. \"Run NOCTURNE sleep\" consolidates pending episodes into facts. Below is the protection status (padam doctor): green is fine, yellow has warnings, red needs you.",
+            "migrate": "Move in from ChatGPT, Claude, Gemini, Grok, DeepSeek, Copilot, Perplexity and the official MCP memory. Point to the export archive or choose a file. \"Preview\" writes nothing and shows how many conversations and keys there are. \"Import\" takes a snapshot first, then moves the data. \"Undo import\" rolls everything back from the snapshot and issues a receipt.",
+            "aifa": "Talk to AIfa from the unified CODE Eternal account — the same memory as on the four sites. Sign in with a code from your email, no password. \"AIfa sees my local memory\" is off by default; when on, at most 5 matching records, already with keys masked, are sent, and you see which ones.",
+            "plans": "Your plan and how much permanent Arweave memory you used this month. \"Free forever\" lists what you never pay for. \"Upgrade\" opens payment in your browser: the app never sees payment details.",
+            "feed": "All records by day. On a card: \"Confirm\" — it is right; \"Refute\" — it is wrong; \"Versions\" — how it changed; \"Links\" — what it was derived from; \"Forget\" — delete with a receipt. At the top you can save a new record as the owner.",
+            "search": "Search by meaning and by words at once. Each result shows why it was found and how its score was computed.",
+            "ask": "Ask your memory. A local model (Ollama) answers only from your records; below are the source records and why they were chosen.",
+            "review": "Review queue: records the guard held. Agents cannot see them. \"Approve\" makes a record active; \"Reject\" keeps it rejected; \"Forget\" deletes it with a receipt. Each record shows why it was held.",
+            "attacks": "Attack counter: how many attempts the guard held, all time and in the last 30 days, by kind (planted instruction, tampering with identity and preferences, external text before review), by agent and by day, plus how many keys and passwords were masked before saving. The attack text itself is never shown here.",
+            "asof": "Time machine: what your memory looked like on a chosen date. \"Show snapshot\" lists the records; \"Graph on this date\" shows their links.",
+            "forget": "Honest deletion of one record. \"Check links and versions\" shows what goes with it. \"Forget record…\" and \"Confirm permanent deletion\" erase the text, versions and derived facts, destroy the record's key and issue a receipt that proves it. Below is the receipt log.",
+            "graph": "Link graph: which records a fact was derived from, its versions and conflicts. \"Show links\" around a record; \"Whole graph\"; \"Link\" to add a link by hand; \"Delete source with derived facts\" forgets a source and everything derived from it.",
+            "entities": "People, projects and services your records mention, and what is known about each.",
+            "l3": "Permanent layer: a bundle of records on Arweave and a Merkle root on Solana (padam l3, needs your wallet). Every record has its own key that never goes on-chain; destroy the key and the record on-chain becomes noise. \"Verify anchor\" checks the bundle against the chain.",
+            "team": "Shared team memory: \"Create team\", \"Issue token\" to a member with a role, \"Revoke\" access. Private records stay private.",
+            "backup": "\"Create backup\" makes an encrypted file of your whole memory; \"Restore from backup\" brings it back.",
+            "settings": "Protection switches: strict profile, holding external text, reviewing every agent write and more. Dangerous switches are read-only. Below are the memory action log and external connectors.",
+            "quickstart": "Three steps: how PADAM works, how to connect it to your agent with one command, how to turn on strict mode and password-protected keys.",
+        },
+        "s_protect": "How your memory is protected",
+        "protect": [
+            ["Keys and passwords are masked before saving", "Tokens, API keys, passwords and wallet keys are replaced with [REDACTED:kind] before they reach the database. The original key is never stored."],
+            ["Planted instructions wait for review", "Text like \"ignore previous instructions and do…\" from chats, pages and files does not become memory; it goes to Review."],
+            ["Protected records", "An agent cannot create or change your identity and preferences on its own — only you can."],
+            ["Forgetting with proof", "Deleting one record destroys its key and issues a receipt with state hashes before and after."],
+            ["Everything local", "Memory is one file on your computer. Nothing leaves it until you sign in to the account."],
+        ],
+        "s_mcp": "MCP server and app — the difference",
+        "mcp": [
+            ["MCP server", "Runs without a window: AI agents (Claude Code, Cursor, Antigravity and others) connect to it and read and write memory through 9 tools. Connect: claude mcp add padam -- uvx padam-nocturne. With PADAM_MCP_COMPAT=official-memory it also serves the 9 tools of the official MCP memory."],
+            ["Studio app", "A window for people over the same database: what is remembered, held and forgotten. Start: padam studio, or PADAM Studio for Windows."],
+            ["Where to get it", "PyPI: pip install padam-nocturne or uvx padam-nocturne. Code and releases: GitHub. Overview: aifa.works/nocturne."],
+        ],
+        "s_versions": "Version history",
+        "s_about": "About the developers",
+        "about": [
+            ["CODE Eternal LLC", "A New Mexico (USA) company that builds PADAM NOCTURNE and AIfa — AI whose memory belongs to the person."],
+            ["Maksim Galatin", "Founder and sole owner of CODE Eternal LLC, architect of PADAM."],
+            ["AIfa", "The project's AI co-developer: writes code, tests and documentation with the founder."],
+            ["License", "AGPL-3.0. A commercial licence for closed-source use is available by email."],
+        ],
+        "s_contact": "Contact and bugs",
+        "contact": "Found a bug or a way around the guard? Open an issue on GitHub or write to contact@codeofdigitaleternity.com. Every attack we learn about becomes a test and a fix.",
+        "version_label": "Version",
+    },
+    "es": {
+        "title": "Ayuda",
+        "sub": "Cómo funciona PADAM NOCTURNE y qué hace cada botón. Se actualiza con cada versión.",
+        "s_tabs": "Pestañas y botones",
+        "tabs": {
+            "overview": "Resumen: cuántos registros están activos, esperan revisión, se olvidaron o se contradicen. «Abrir cola de revisión» lleva a los registros retenidos. «Ejecutar sueño NOCTURNE» consolida los episodios en hechos. Abajo, el estado de la protección (padam doctor): verde está bien, amarillo tiene avisos, rojo necesita su ayuda.",
+            "migrate": "Mudanza desde ChatGPT, Claude, Gemini, Grok, DeepSeek, Copilot, Perplexity y la memoria oficial de MCP. Indique el archivo de exportación o elija un archivo. «Vista previa» no escribe nada y muestra cuántas conversaciones y claves hay. «Importar» primero toma una instantánea y luego mueve los datos. «Deshacer importación» revierte todo desde la instantánea y emite un recibo.",
+            "aifa": "Hable con AIfa desde la cuenta única de CODE Eternal: la misma memoria que en los cuatro sitios. Entrada con un código del correo, sin contraseña. «AIfa ve mi memoria local» está desactivado por defecto; si lo activa, se envían como máximo 5 registros encontrados, ya con las claves ocultas, y usted ve cuáles.",
+            "plans": "Su plan y cuánta memoria permanente de Arweave usó este mes. «Gratis para siempre» muestra lo que nunca paga. «Mejorar» abre el pago en su navegador: la aplicación nunca ve los datos de pago.",
+            "feed": "Todos los registros por día. En cada tarjeta: «Confirmar» — es correcto; «Refutar» — es incorrecto; «Versiones» — cómo cambió; «Vínculos» — de qué se dedujo; «Olvidar» — borrar con recibo. Arriba puede guardar un registro nuevo como propietario.",
+            "search": "Búsqueda por significado y por palabras a la vez. Cada resultado muestra por qué se encontró y cómo se calculó su puntuación.",
+            "ask": "Pregunte a su memoria. Un modelo local (Ollama) responde solo con sus registros; abajo están los registros de origen y por qué se eligieron.",
+            "review": "Cola de revisión: registros que la protección retuvo. Los agentes no los ven. «Aprobar» activa el registro; «Rechazar» lo deja rechazado; «Olvidar» lo borra con recibo. Cada registro muestra por qué se retuvo.",
+            "attacks": "Contador de ataques: cuántos intentos retuvo la protección, en total y en los últimos 30 días, por tipo (instrucción plantada, alteración de identidad y preferencias, texto externo antes de revisión), por agente y por día, y cuántas claves y contraseñas se ocultaron antes de guardar. El texto de los ataques nunca se muestra aquí.",
+            "asof": "Máquina del tiempo: cómo era su memoria en una fecha elegida. «Mostrar instantánea» lista los registros; «Grafo en esta fecha» muestra sus vínculos.",
+            "forget": "Borrado honesto de un registro. «Comprobar vínculos y versiones» muestra lo que se va con él. «Olvidar registro…» y «Confirmo el borrado permanente» borran el texto, las versiones y lo deducido, destruyen la clave del registro y emiten un recibo que lo prueba. Abajo está el historial de recibos.",
+            "graph": "Grafo de vínculos: de qué registros se dedujo un hecho, sus versiones y contradicciones. «Mostrar vínculos» alrededor de un registro; «Todo el grafo»; «Vincular» para añadir un vínculo a mano; «Borrar la fuente con lo deducido».",
+            "entities": "Personas, proyectos y servicios que mencionan sus registros, y lo que se sabe de cada uno.",
+            "l3": "Capa permanente: un paquete de registros en Arweave y una raíz de Merkle en Solana (padam l3, requiere su billetera). Cada registro tiene su propia clave que nunca va a la cadena; al destruirla, el registro en la cadena se vuelve ruido. «Verificar ancla» comprueba el paquete con la cadena.",
+            "team": "Memoria compartida del equipo: «Crear equipo», «Emitir token» a un miembro con un rol, «Revocar» el acceso. Los registros privados siguen privados.",
+            "backup": "«Crear copia de seguridad» genera un archivo cifrado de toda su memoria; «Restaurar desde copia» la recupera.",
+            "settings": "Interruptores de protección: perfil estricto, retención de texto externo, revisión de cada escritura de agentes y más. Los interruptores peligrosos son solo de lectura. Abajo, el registro de acciones y los conectores externos.",
+            "quickstart": "Tres pasos: cómo funciona PADAM, cómo conectarlo a su agente con un comando y cómo activar el modo estricto y las claves protegidas con contraseña.",
+        },
+        "s_protect": "Cómo se protege su memoria",
+        "protect": [
+            ["Claves y contraseñas ocultas antes de guardar", "Tokens, claves de API, contraseñas y claves de billeteras se sustituyen por [REDACTED:tipo] antes de llegar a la base. La clave original nunca se guarda."],
+            ["Las instrucciones plantadas esperan revisión", "Un texto como «ignora las instrucciones anteriores y haz…» en chats, páginas y archivos no se convierte en memoria: va a Revisión."],
+            ["Registros protegidos", "Un agente no puede crear ni cambiar por sí mismo su identidad y sus preferencias: solo usted."],
+            ["Olvido con prueba", "Borrar un registro destruye su clave y emite un recibo con las huellas del estado antes y después."],
+            ["Todo es local", "La memoria es un archivo en su ordenador. Nada sale de él hasta que inicie sesión en la cuenta."],
+        ],
+        "s_mcp": "Servidor MCP y aplicación: la diferencia",
+        "mcp": [
+            ["Servidor MCP", "Funciona sin ventana: los agentes de IA (Claude Code, Cursor, Antigravity y otros) se conectan y leen y escriben la memoria con 9 herramientas. Conexión: claude mcp add padam -- uvx padam-nocturne. Con PADAM_MCP_COMPAT=official-memory ofrece además las 9 herramientas de la memoria oficial de MCP."],
+            ["Aplicación Studio", "Una ventana para personas sobre la misma base: qué se recuerda, qué se retiene y qué se olvidó. Inicio: padam studio, o PADAM Studio para Windows."],
+            ["Dónde obtenerlo", "PyPI: pip install padam-nocturne o uvx padam-nocturne. Código y versiones: GitHub. Descripción: aifa.works/nocturne."],
+        ],
+        "s_versions": "Historial de versiones",
+        "s_about": "Sobre los desarrolladores",
+        "about": [
+            ["CODE Eternal LLC", "Empresa de Nuevo México (EE. UU.) que crea PADAM NOCTURNE y AIfa, una IA cuya memoria pertenece a la persona."],
+            ["Maksim Galatin", "Fundador y único propietario de CODE Eternal LLC, arquitecto de PADAM."],
+            ["AIfa", "La codesarrolladora de IA del proyecto: escribe código, pruebas y documentación con el fundador."],
+            ["Licencia", "AGPL-3.0. Licencia comercial para uso cerrado disponible por correo."],
+        ],
+        "s_contact": "Contacto y errores",
+        "contact": "¿Encontró un error o una forma de saltarse la protección? Abra un issue en GitHub o escriba a contact@codeofdigitaleternity.com. Cada ataque que conocemos se convierte en una prueba y una corrección.",
+        "version_label": "Versión",
+    },
+    "zh": {
+        "title": "帮助",
+        "sub": "PADAM NOCTURNE 的工作方式以及每个按钮的作用。每次发布都会更新。",
+        "s_tabs": "标签页与按钮",
+        "tabs": {
+            "overview": "概览:有多少记录生效、等待审核、已遗忘或存在冲突。「打开审核队列」进入被拦截的记录。「立即运行 NOCTURNE 睡眠」把待处理的片段整合为事实。下方是防护状态(padam doctor):绿色正常,黄色有警告,红色需要您处理。",
+            "migrate": "从 ChatGPT、Claude、Gemini、Grok、DeepSeek、Copilot、Perplexity 以及官方 MCP 记忆迁入。指定导出压缩包或选择文件。「预览」不写入任何内容,只显示会话和密钥数量。「导入」先创建快照再迁移数据。「撤销导入」按快照全部回滚并出具回执。",
+            "aifa": "在统一的 CODE Eternal 账户中与 AIfa 对话——与四个网站相同的记忆。用邮箱验证码登录,无需密码。「AIfa 可见我的本地记忆」默认关闭;开启后最多发送 5 条已隐藏密钥的匹配记录,并显示具体是哪些。",
+            "plans": "您的套餐以及本月已使用的 Arweave 永久记忆。「永久免费」列出您无需付费的功能。「升级」在浏览器中打开付款页面:应用永远看不到付款信息。",
+            "feed": "按日期列出所有记录。卡片上:「确认」——正确;「反驳」——错误;「版本」——如何变化;「关联」——由何推导;「遗忘」——带回执删除。顶部可以以所有者身份保存新记录。",
+            "search": "同时按语义和关键词搜索。每个结果都说明为何被找到以及评分如何计算。",
+            "ask": "向您的记忆提问。本地模型(Ollama)只根据您的记录作答;下方列出来源记录及选取原因。",
+            "review": "审核队列:被防护拦截的记录,智能体看不到。「批准」使记录生效;「拒绝」保持拒绝;「遗忘」带回执删除。每条记录都显示被拦截的原因。",
+            "attacks": "攻击计数器:防护拦截了多少次尝试(累计和最近 30 天),按类型(植入指令、篡改身份与偏好、未经审核的外部文本)、按智能体、按日期统计,以及保存前隐藏了多少密钥和密码。这里从不显示攻击文本本身。",
+            "asof": "时光机:查看所选日期的记忆。「显示快照」列出当时的记录;「该日期的图谱」显示它们的关联。",
+            "forget": "如实删除单条记录。「检查关联与版本」显示会一起删除的内容。「遗忘记录…」和「确认永久删除」会擦除文本、版本和推导结果,销毁该记录的密钥并出具证明删除的回执。下方是回执记录。",
+            "graph": "关联图谱:事实由哪些记录推导、它的版本和冲突。「显示关联」查看某条记录周围;「全部图谱」;「关联」手动添加;「删除来源及其推导」。",
+            "entities": "记录中提到的人物、项目和服务,以及对每一项已知的信息。",
+            "l3": "永久层:记录包存入 Arweave,默克尔根锚定在 Solana(padam l3,需要您的钱包)。每条记录都有独立密钥且从不上链;销毁密钥后,链上记录即成噪声。「验证锚点」将记录包与链上数据核对。",
+            "team": "团队共享记忆:「创建团队」、为成员「发放令牌」并指定角色、「撤销」访问。私人记录保持私密。",
+            "backup": "「创建备份」生成整个记忆的加密文件;「从备份恢复」将其还原。",
+            "settings": "防护开关:严格模式、外部文本拦截、审核所有智能体写入等。危险开关为只读。下方是记忆操作日志和外部连接器。",
+            "quickstart": "三步:PADAM 如何工作、如何用一条命令连接到您的智能体、如何开启严格模式和密码保护密钥。",
+        },
+        "s_protect": "记忆如何受到保护",
+        "protect": [
+            ["保存前隐藏密钥和密码", "令牌、API 密钥、密码和钱包密钥在写入数据库前即被替换为 [REDACTED:类型],原始密钥从不保存。"],
+            ["植入的指令等待审核", "聊天、网页和文件中诸如「忽略之前的指令并执行……」的文本不会成为记忆,而是进入审核。"],
+            ["受保护的记录", "智能体不能自行创建或修改您的身份与偏好,只有您可以。"],
+            ["可证明的遗忘", "删除一条记录会销毁其密钥,并出具包含前后状态指纹的回执。"],
+            ["一切都在本地", "记忆是您电脑上的一个文件。在您登录账户之前,不会有任何数据离开。"],
+        ],
+        "s_mcp": "MCP 服务器与应用的区别",
+        "mcp": [
+            ["MCP 服务器", "无窗口运行:AI 智能体(Claude Code、Cursor、Antigravity 等)连接后通过 9 个工具读写记忆。连接:claude mcp add padam -- uvx padam-nocturne。设置 PADAM_MCP_COMPAT=official-memory 后,还会提供官方 MCP 记忆的 9 个工具。"],
+            ["Studio 应用", "面向人的窗口,基于同一个数据库:哪些被记住、被拦截、被遗忘。启动:padam studio,或 Windows 版 PADAM Studio。"],
+            ["获取方式", "PyPI:pip install padam-nocturne 或 uvx padam-nocturne。代码与发布:GitHub。介绍:aifa.works/nocturne。"],
+        ],
+        "s_versions": "版本历史",
+        "s_about": "关于开发者",
+        "about": [
+            ["CODE Eternal LLC", "美国新墨西哥州公司,开发 PADAM NOCTURNE 和 AIfa——记忆属于用户本人的人工智能。"],
+            ["Maksim Galatin", "CODE Eternal LLC 创始人兼唯一所有者,PADAM 架构师。"],
+            ["AIfa", "项目的 AI 共同开发者:与创始人一起编写代码、测试和文档。"],
+            ["许可证", "AGPL-3.0。闭源使用的商业许可可通过邮件获取。"],
+        ],
+        "s_contact": "联系与问题反馈",
+        "contact": "发现错误或绕过防护的方法?请在 GitHub 提交 issue,或写信至 contact@codeofdigitaleternity.com。我们得知的每一种攻击都会变成测试和修复。",
+        "version_label": "版本",
+    },
+}
+
+NAV = {"ru": {"nav_help": "Справка", "nav_attacks": "Атаки"},
+       "en": {"nav_help": "Help", "nav_attacks": "Attacks"},
+       "es": {"nav_help": "Ayuda", "nav_attacks": "Ataques"},
+       "zh": {"nav_help": "帮助", "nav_attacks": "攻击"}}
+
+
+def help_payload(lang: str = "ru") -> dict[str, Any]:
+    """Справка для Studio на нужном языке: только данные, разметку строит страница (textContent, без HTML)."""
+    lg = lang if lang in _T else "en"
+    t = _T[lg]
+    return {
+        "lang": lg,
+        "version": __version__,
+        "title": t["title"],
+        "sub": t["sub"],
+        "sections": [
+            {"id": "tabs", "title": t["s_tabs"], "items": [[k, t["tabs"][k]] for k in _TABS]},
+            {"id": "protect", "title": t["s_protect"], "items": t["protect"]},
+            {"id": "mcp", "title": t["s_mcp"], "items": t["mcp"]},
+            {"id": "versions", "title": t["s_versions"],
+             "items": [[f"{t['version_label']} {v['version']} · {v['date']}", v["summary"]] for v in VERSIONS]},
+            {"id": "about", "title": t["s_about"], "items": t["about"]},
+            {"id": "contact", "title": t["s_contact"], "items": [["", t["contact"]]]},
+        ],
+        "links": LINKS,
+    }

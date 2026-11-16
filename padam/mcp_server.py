@@ -472,6 +472,7 @@ _OUTPUT_SCHEMAS = {
             "predictiveCache": {"type": "object"},
             "dlpShield": {"type": "object"},
             "hardwareSeal": {"type": "object"},
+            "attacks": {"type": "object"},
         },
         "required": [
             "backend", "db", "active", "superseded", "revoked", "quarantined",
@@ -3608,6 +3609,10 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
 
     if name == "padam_stats":
         st = m.stats(actor=actor)
+        # 16.11.2026: счётчик атак — сколько и каких попыток задержала защита, от кого, по дням.
+        from . import defense_stats as _defense_stats
+        st = dict(st)
+        st["attacks"] = _defense_stats.attack_stats(m)
         if config.mcp_roots_enabled():
             eff_scope = resolve_default_scope()
             st = dict(st)
