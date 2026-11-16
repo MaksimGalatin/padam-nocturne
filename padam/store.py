@@ -346,6 +346,9 @@ def now_iso() -> str:
 
 
 def parse_ts(s: str) -> datetime:
+    s = str(s).strip()
+    if s.endswith(("Z", "z")):
+        s = s[:-1] + "+00:00"   # Python 3.10 не понимает «Z» в fromisoformat
     dt = datetime.fromisoformat(s)
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 

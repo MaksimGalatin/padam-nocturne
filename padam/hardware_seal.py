@@ -96,6 +96,7 @@ def probe_hardware_capabilities() -> dict[str, Any]:
     dpapi_available = False
     webauthn_api_version: int | None = None
     webauthn_dll = False
+    platform_auth = False   # на Linux и macOS ветки win32 нет — без этого UnboundLocalError ронял padam_stats
 
     if sys.platform == "win32":
         try:

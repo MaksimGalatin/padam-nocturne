@@ -1846,6 +1846,13 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 .toolbar input[type="search"], .toolbar input[type="text"] {
   flex: 1 1 240px;
+  min-width: 0;          /* иначе на телефоне и в узком окне поле шире экрана */
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.toolbar select, .toolbar input[type="file"] {
+  max-width: 100%;
+  min-width: 0;
 }
 .chips-row {
   display: flex;
@@ -4182,7 +4189,7 @@ def page() -> tuple[str, str]:
             <a id="mig-export-link" href="#" target="_blank" rel="noopener noreferrer" hidden data-i18n="mig_open_export">{s['mig_open_export']}</a></p>
           <div class="toolbar">
             <label for="mig-path" data-i18n="mig_path_label">{s['mig_path_label']}</label>
-            <input id="mig-path" type="text" size="60" placeholder="{s['mig_path_ph']}" data-i18n-placeholder="mig_path_ph" autocomplete="off">
+            <input id="mig-path" type="text" placeholder="{s['mig_path_ph']}" data-i18n-placeholder="mig_path_ph" autocomplete="off">
           </div>
           <div class="toolbar">
             <label for="mig-file" data-i18n="mig_file_label">{s['mig_file_label']}</label>

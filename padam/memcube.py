@@ -176,7 +176,8 @@ def import_memcube(
 
     exp = header.get("expires_at")
     if exp:
-        exp_dt = datetime.fromisoformat(str(exp))
+        exp_s = str(exp).strip()
+        exp_dt = datetime.fromisoformat(exp_s[:-1] + "+00:00" if exp_s.endswith(("Z", "z")) else exp_s)
         if exp_dt.tzinfo is None:
             exp_dt = exp_dt.replace(tzinfo=timezone.utc)
         if _utc_now() > exp_dt:

@@ -253,6 +253,8 @@ def _items_from_conversations(convs: list[dict[str, Any]], *, user_label: str = 
 
 
 def _json(data: bytes) -> Any:
+    if data.startswith((b"\xff\xfe", b"\xfe\xff")):
+        return json.loads(data.decode("utf-16"))
     return json.loads(data.decode("utf-8-sig"))
 
 
@@ -463,14 +465,21 @@ def _parse_grok_data(data: Any) -> list[dict[str, Any]]:
 _COPILOT_HEADER = ["Conversation", "Time", "Author", "Message"]
 
 
+def _text(data: bytes) -> str:
+    """Текст файла в кодировках, в которых его сохраняют Windows, Excel и телефоны."""
+    if data.startswith((b"\xff\xfe", b"\xfe\xff")):
+        return data.decode("utf-16", "replace")          # Excel «Юникод-текст» и часть выгрузок Windows
+    return data.decode("utf-8-sig", "replace")
+
+
 def _is_copilot_csv(head: bytes) -> bool:
-    text = head.lstrip(b"\xef\xbb\xbf").decode("utf-8", "replace")
+    text = _text(head)
     first = text.splitlines()[0] if text else ""
     return [c.strip().strip('"') for c in first.split(",")] == _COPILOT_HEADER
 
 
 def _parse_copilot_csv(data: bytes) -> list[dict[str, Any]]:
-    rows = list(csv.reader(io.StringIO(data.decode("utf-8-sig", "replace"))))
+    rows = list(csv.reader(io.StringIO(_text(data))))
     if not rows or [c.strip() for c in rows[0]] != _COPILOT_HEADER:
         return []
     roles = {"human": "user", "user": "user", "ai": "assistant", "assistant": "assistant", "copilot": "assistant"}
@@ -730,11 +739,33 @@ def _parse(src_req: str, p: Path) -> dict[str, Any]:
             "files": files, "warnings": warnings}
 
 
+def clean_path(raw: Path | str) -> Path:
+    r"""Путь так, как его вставляет человек на любой системе: «Копировать как путь» в Windows даёт кавычки,
+    перетаскивание в терминал macOS — экранированные пробелы (`My\ Export.zip`), браузер и Finder — `file://`."""
+    if isinstance(raw, Path):
+        return raw.expanduser()
+    s = str(raw).strip().strip('"').strip("'").strip()
+    if s.lower().startswith("file://"):
+        from urllib.parse import unquote, urlparse
+        u = urlparse(s)
+        s = unquote(u.path)
+        if u.netloc and u.netloc.lower() != "localhost":
+            s = f"//{u.netloc}{s}"                      # сетевая папка Windows: file://server/share
+        if re.match(r"^/[A-Za-z]:[/\\]", s):
+            s = s[1:]                                   # file:///C:/Users/... -> C:/Users/...
+    p = Path(s).expanduser()
+    if not p.exists() and "\\ " in s:
+        alt = Path(s.replace("\\ ", " ")).expanduser()
+        if alt.exists():
+            return alt
+    return p
+
+
 def _check(source: str, input_path: Path | str) -> tuple[str, Path]:
     src = (source or "auto").strip().lower()
     if src != "auto" and src not in SUPPORTED_SOURCES:
         raise ValueError(f"Unsupported migration source: {source}")
-    p = Path(input_path)
+    p = clean_path(input_path)
     if not p.exists():
         raise FileNotFoundError(f"Migration input not found: {p}")
     return src, p

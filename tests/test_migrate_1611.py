@@ -227,3 +227,39 @@ def test_hold_all_keeps_everything_for_review(m, tmp_path):
     p.write_text(json.dumps(CLAUDE), encoding="utf-8")
     res = migrate.migrate_from_source(m, input_path=p, hold_all=True)
     assert res["imported"] == 0 and res["quarantined"] == 2
+
+
+def test_paths_as_people_paste_them_on_every_system(tmp_path):
+    folder = tmp_path / "My Export"            # Safari на iPhone, iPad и Mac сам распаковывает zip в папку
+    folder.mkdir()
+    (folder / "conversations.json").write_text(json.dumps(CLAUDE), encoding="utf-8")
+    assert migrate.preview(input_path=str(folder))["source"] == "claude"
+    assert migrate.preview(input_path=f'"{folder}"')["source"] == "claude"          # «Копировать как путь» в Windows
+    uri = folder.as_uri()                                                           # file:// из браузера и Finder
+    assert migrate.preview(input_path=uri)["source"] == "claude"
+    escaped = str(folder).replace("My Export", "My\ Export")                       # перетаскивание в терминал macOS
+    assert migrate.clean_path(escaped) == folder
+
+
+def test_copilot_csv_saved_by_excel_in_utf16(tmp_path):
+    p = tmp_path / "activity.csv"
+    p.write_bytes(COPILOT.lstrip("\ufeff").encode("utf-16"))
+    pv = migrate.preview(input_path=p)
+    assert pv["source"] == "copilot" and pv["messages"] == 2
+
+
+def test_big_export_is_fast_enough(tmp_path):
+    import time
+    convs = [{"title": f"c{i}", "create_time": 1700000000 + i, "mapping": {
+        "a": {"parent": None, "message": None},
+        "b": {"parent": "a", "message": {"author": {"role": "user"}, "create_time": 1700000000 + i,
+                                         "content": {"parts": [f"Question number {i} about the project plan"]}}},
+        "c": {"parent": "b", "message": {"author": {"role": "assistant"}, "create_time": 1700000001 + i,
+                                         "content": {"parts": [f"Answer number {i}: keep the plan simple."]}}}}}
+             for i in range(5000)]
+    p = tmp_path / "chatgpt.zip"
+    p.write_bytes(_zip({"conversations.json": json.dumps(convs).encode()}))
+    t0 = time.time()
+    pv = migrate.preview(input_path=p)
+    assert pv["conversations"] == 5000 and pv["messages"] == 10000
+    assert time.time() - t0 < 30

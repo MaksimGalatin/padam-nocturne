@@ -43,9 +43,18 @@ def _memory_mb():
 
         pmc = _PMC()
         pmc.cb = ctypes.sizeof(_PMC)
-        h = ctypes.windll.kernel32.GetCurrentProcess()
-        if ctypes.windll.psapi.GetProcessMemoryInfo(h, ctypes.byref(pmc), pmc.cb):
-            return round(pmc.WorkingSetSize / 1e6, 2), round(pmc.PeakWorkingSetSize / 1e6, 2)
+        k32 = ctypes.windll.kernel32
+        k32.GetCurrentProcess.restype = wintypes.HANDLE
+        h = k32.GetCurrentProcess()
+        # На серверных Windows (CI) функция живёт в kernel32 как K32GetProcessMemoryInfo; psapi — запасной путь.
+        for fn in (getattr(k32, "K32GetProcessMemoryInfo", None), getattr(ctypes.windll.psapi, "GetProcessMemoryInfo", None)):
+            if fn is None:
+                continue
+            fn.argtypes = [wintypes.HANDLE, ctypes.POINTER(_PMC), wintypes.DWORD]
+            if fn(h, ctypes.byref(pmc), pmc.cb):
+                return round(pmc.WorkingSetSize / 1e6, 2), round(pmc.PeakWorkingSetSize / 1e6, 2)
+        if psutil is None:
+            return 0.0, 0.0   # модуля resource на Windows нет: честный ноль вместо падения
     if psutil is not None:
         mi = psutil.Process().memory_info()
         peak = getattr(mi, "peak_wset", mi.rss)
