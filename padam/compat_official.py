@@ -332,11 +332,18 @@ def _filter_relations(relations: list[dict[str, str]], names: set[str]) -> list[
     return [r for r in relations if r["from"] in names and r["to"] in names]
 
 
+def _held_reason(m: Any, rec_id: Any) -> str:
+    # Причина берётся из самой записи; текст записи наружу не уходит (там может быть внедрённая команда).
+    row = m.store.query("SELECT quarantine_reason FROM memory WHERE id = ?", (rec_id,))
+    return str(row[0]["quarantine_reason"] or "held for owner review") if row else "held for owner review"
+
+
 def _create_entities(m: Any, args: dict, *, scope: str, actor: Any) -> tuple[str, dict]:
     state = _load_active_graph(m, scope)
     existing = set(state["entities"].keys())
     created: list[dict[str, Any]] = []
     skipped: list[str] = []
+    held: list[dict[str, str]] = []
     seen_in_call: set[str] = set()
 
     for raw in args.get("entities") or []:
@@ -362,7 +369,9 @@ def _create_entities(m: Any, args: dict, *, scope: str, actor: Any) -> tuple[str
                     guarded=True,
                     actor=actor,
                 )
-                if status != "quarantined":
+                if status == "quarantined":
+                    held.append({"entityName": name, "reason": _held_reason(m, rec_id)})
+                else:
                     # Получаем фактический (замаскированный) текст из записи
                     row = m.store.query("SELECT content FROM memory WHERE id = ?", (rec_id,))
                     if row:
@@ -376,6 +385,8 @@ def _create_entities(m: Any, args: dict, *, scope: str, actor: Any) -> tuple[str
     struct: dict[str, Any] = {"entities": created}
     if skipped:
         struct["skipped"] = skipped
+    if held:
+        struct["heldForReview"] = held
     return json.dumps(created, ensure_ascii=False, indent=2), struct
 
 
@@ -385,6 +396,7 @@ def _create_relations(m: Any, args: dict, *, scope: str, actor: Any) -> tuple[st
     ent_recs = state["entity_records"]
     existing_rels = {(r["from"], r["to"], r["relationType"]) for r in state["relations"]}
     created: list[dict[str, str]] = []
+    held: list[dict[str, str]] = []
 
     for raw in args.get("relations") or []:
         src = _clean_tag(raw.get("from", ""))
@@ -398,7 +410,7 @@ def _create_relations(m: Any, args: dict, *, scope: str, actor: Any) -> tuple[st
             continue
         src_id = ent_recs[src][0][0]
         dst_id = ent_recs[dst][0][0]
-        status, _ = m.remember(
+        status, rel_id = m.remember(
             _format_rel(src, dst, rtype),
             kind="fact",
             scope=scope,
@@ -410,11 +422,16 @@ def _create_relations(m: Any, args: dict, *, scope: str, actor: Any) -> tuple[st
             ],
             actor=actor,
         )
-        if status != "quarantined":
+        if status == "quarantined":
+            held.append({"entityName": f"{src} -> {dst}", "reason": _held_reason(m, rel_id)})
+        else:
             existing_rels.add((src, dst, rtype))
             created.append({"from": src, "to": dst, "relationType": rtype})
 
-    return json.dumps(created, ensure_ascii=False, indent=2), {"relations": created}
+    struct: dict[str, Any] = {"relations": created}
+    if held:
+        struct["heldForReview"] = held
+    return json.dumps(created, ensure_ascii=False, indent=2), struct
 
 
 def _add_observations(m: Any, args: dict, *, scope: str, actor: Any) -> tuple[str, dict]:
@@ -422,6 +439,7 @@ def _add_observations(m: Any, args: dict, *, scope: str, actor: Any) -> tuple[st
     entities = state["entities"]
     ent_recs = state["entity_records"]
     results: list[dict[str, Any]] = []
+    held: list[dict[str, str]] = []
 
     for item in args.get("observations") or []:
         ename = _clean_tag(item.get("entityName", ""))
@@ -445,7 +463,9 @@ def _add_observations(m: Any, args: dict, *, scope: str, actor: Any) -> tuple[st
                 links=links,
                 actor=actor,
             )
-            if status != "quarantined":
+            if status == "quarantined":
+                held.append({"entityName": ename, "reason": _held_reason(m, rec_id)})
+            else:
                 row = m.store.query("SELECT content FROM memory WHERE id = ?", (rec_id,))
                 if row:
                     me = _ENTITY_LINE_RE.match(str(row[0]["content"] or ""))
@@ -456,7 +476,10 @@ def _add_observations(m: Any, args: dict, *, scope: str, actor: Any) -> tuple[st
                             added.append(val)
         results.append({"entityName": ename, "addedObservations": added})
 
-    return json.dumps(results, ensure_ascii=False, indent=2), {"results": results}
+    struct: dict[str, Any] = {"results": results}
+    if held:
+        struct["heldForReview"] = held
+    return json.dumps(results, ensure_ascii=False, indent=2), struct
 
 
 def _delete_entities(m: Any, args: dict, *, scope: str, actor: Any) -> tuple[str, dict]:

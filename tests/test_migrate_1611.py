@@ -237,7 +237,7 @@ def test_paths_as_people_paste_them_on_every_system(tmp_path):
     assert migrate.preview(input_path=f'"{folder}"')["source"] == "claude"          # «Копировать как путь» в Windows
     uri = folder.as_uri()                                                           # file:// из браузера и Finder
     assert migrate.preview(input_path=uri)["source"] == "claude"
-    escaped = str(folder).replace("My Export", "My\ Export")                       # перетаскивание в терминал macOS
+    escaped = str(folder).replace("My Export", r"My\ Export")                       # перетаскивание в терминал macOS
     assert migrate.clean_path(escaped) == folder
 
 

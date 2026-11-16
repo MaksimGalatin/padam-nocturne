@@ -3103,6 +3103,21 @@ def _call_tool_full(name: str, args: dict) -> tuple[str, dict | None]:
         tel.record_span(name, (_time.perf_counter() - t0) * 1000.0, status=status)
 
 
+def _held_for_review_note(structured: dict | None) -> str:
+    """Пояснение агенту о записях, отложенных на проверку владельцу (режим совместимости).
+
+    Без него агент видит, что часть наблюдений «пропала». Первый блок ответа (JSON как у официального
+    сервера) не трогаем, пояснение идёт отдельным блоком."""
+    held = (structured or {}).get("heldForReview") if isinstance(structured, dict) else None
+    if not held:
+        return ""
+    parts = [f"{h.get('entityName')}: {h.get('reason')}" for h in held[:10]]
+    more = f" (+{len(held) - 10} more)" if len(held) > 10 else ""
+    return (f"PADAM: {len(held)} item(s) held for the owner's review, not saved yet: "
+            + "; ".join(parts) + more
+            + ". The owner approves or rejects them in `padam console`; do not retry the same write.")
+
+
 def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
     m = mem()
     actor = _current_actor(m)
@@ -4217,6 +4232,9 @@ def _handle_legacy(req: dict) -> dict | None:
                         text = _format_tool_error_text("invalid_argument", text.split(":", 1)[1].strip(), req)
                 return ok({"content": [{"type": "text", "text": text}], "isError": True})
             content = [{"type": "text", "text": text}]
+            held_note = _held_for_review_note(structured)
+            if held_note:
+                content.append({"type": "text", "text": held_note})
             if name == "padam_search":
                 content.extend(_build_search_resource_links(structured))
             payload = {"content": content, "isError": False, "structuredContent": structured}
