@@ -26,6 +26,19 @@ from .hardware_seal import _dpapi_protect, _dpapi_unprotect
 DEFAULT_CABINET_URL = "https://aifa.works"
 _CABINET_DPAPI_ENTROPY = b"padam-cabinet-session-v1"
 _HTTP_TIMEOUT = 25
+_keystore_backend: dict[str, Any] | None = None
+
+
+def register_keystore_backend(save_fn: Any, load_fn: Any, clear_fn: Any) -> None:
+    """Подключает системное хранилище ключей (например Android Keystore) вместо файла."""
+    global _keystore_backend
+    _keystore_backend = {"save": save_fn, "load": load_fn, "clear": clear_fn}
+
+
+def clear_keystore_backend() -> None:
+    """Сбрасывает внешний keystore-бэкенд (для тестов)."""
+    global _keystore_backend
+    _keystore_backend = None
 
 # Тарифы и месячные лимиты Arweave строго по Конституции и lib/arweave-quota.ts
 PLANS: list[dict[str, Any]] = [
@@ -109,13 +122,19 @@ def _unprotect_secret(b64_text: str, is_dpapi: bool) -> str:
 
 
 def save_session(email: str, cookie_token: str, cabinet_url: str | None = None) -> dict[str, Any]:
-    """Сохраняет сессию кабинета локально в защищённом виде (DPAPI на Windows)."""
+    """Сохраняет сессию кабинета локально в защищённом виде (Keystore / DPAPI)."""
+    em = email.strip().lower()
+    cab = (cabinet_url or get_cabinet_url()).rstrip("/")
+    if _keystore_backend is not None:
+        raw_json = json.dumps({"email": em, "cabinet_url": cab, "token": cookie_token}, ensure_ascii=False)
+        _keystore_backend["save"](raw_json)
+        return {"authenticated": True, "email": em, "cabinet_url": cab, "dpapi_protected": False, "keystore_protected": True}
     path = _session_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     enc_b64, is_dpapi = _protect_secret(cookie_token)
     payload = {
-        "email": email.strip().lower(),
-        "cabinet_url": (cabinet_url or get_cabinet_url()).rstrip("/"),
+        "email": em,
+        "cabinet_url": cab,
         "dpapi": is_dpapi,
         "token_b64": enc_b64,
     }
@@ -132,6 +151,24 @@ def save_session(email: str, cookie_token: str, cabinet_url: str | None = None) 
 
 def load_session() -> dict[str, Any] | None:
     """Читает и расшифровывает локальную сессию кабинета. Не логирует сам токен."""
+    if _keystore_backend is not None:
+        try:
+            raw_json = _keystore_backend["load"]()
+            if not raw_json:
+                return None
+            data = json.loads(raw_json)
+            tok = str(data.get("token") or "")
+            if not tok:
+                return None
+            return {
+                "email": str(data.get("email") or ""),
+                "cabinet_url": str(data.get("cabinet_url") or get_cabinet_url()).rstrip("/"),
+                "dpapi_protected": False,
+                "keystore_protected": True,
+                "token": tok,
+            }
+        except Exception:
+            return None
     path = _session_path()
     if not path.exists():
         return None
@@ -152,6 +189,11 @@ def load_session() -> dict[str, Any] | None:
 
 def clear_session() -> bool:
     """Стирает локальную сохранённую сессию кабинета."""
+    if _keystore_backend is not None:
+        try:
+            return bool(_keystore_backend["clear"]())
+        except Exception:
+            return False
     path = _session_path()
     existed = path.exists()
     try:

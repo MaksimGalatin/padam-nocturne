@@ -211,3 +211,24 @@ def test_studio_html_i18n_and_default_local_memory_off() -> None:
     for lg in ("ru", "en", "es", "zh"):
         for key in ("nav_aifa", "nav_plans", "aifa_send_code", "plans_btn_upgrade", "plans_free_forever_title"):
             assert key in studio.STRINGS[lg]
+
+
+def test_keystore_backend_hook_avoids_disk_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    sess_file = tmp_path / "should_not_exist.json"
+    monkeypatch.setenv("PADAM_CABINET_SESSION_FILE", str(sess_file))
+    mem_box: dict[str, str] = {}
+    cabinet.register_keystore_backend(
+        save_fn=lambda v: mem_box.__setitem__("val", v),
+        load_fn=lambda: mem_box.get("val"),
+        clear_fn=lambda: bool(mem_box.pop("val", None)),
+    )
+    try:
+        res = cabinet.save_session("android@example.com", "tok_android_1", "https://aifa.works")
+        assert res["keystore_protected"] is True
+        assert not sess_file.exists()
+        loaded = cabinet.load_session()
+        assert loaded is not None and loaded["token"] == "tok_android_1" and loaded["keystore_protected"] is True
+        assert cabinet.clear_session() is True
+        assert cabinet.load_session() is None
+    finally:
+        cabinet.clear_keystore_backend()
