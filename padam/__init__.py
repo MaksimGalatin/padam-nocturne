@@ -3,7 +3,7 @@
 Три уровня: буфер эпизодов, семантическая память, неизменяемый якорь.
 NOCTURNE — цикл консолидации между уровнями.
 """
-__version__ = "0.5.3"
+__version__ = "0.5.4"
 
 from .memory import Memory, Record          # noqa: F401
 from .nocturne import Nocturne              # noqa: F401

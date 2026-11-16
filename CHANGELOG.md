@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.4 — 15 November 2026
+
+Found by installing 0.5.3 from PyPI into a clean environment and running 37 real user actions (35 passed):
+- `padam_search` accepts `reflect`, `mode` and `known_at`. The code read them, but the strict input schema rejected
+  them with "unknown argument", so Reflect and bi-temporal recall were unreachable for agents. Swept all 9 tools:
+  this was the only one affected.
+- The project briefing resource and Claude Code hooks no longer crash when the DLP shield is on
+  (`DlpShield.scrub` did not exist; now `sanitize_text`), and secrets stay masked in the briefing.
+- New regression tests `tests/test_live_combo_1511.py` for these flag combinations.
+- Verified: `pytest tests` — 1,131 tests; two HTTP SSE tests are timing-sensitive under heavy parallel load and pass
+  when run on their own (3 of 3).
+
 ## 0.5.3 — 15 November 2026
 
 - `padam badge` no longer draws made-up zeros. The PyPI package has no `benchmarks/` folder, so the card used to show

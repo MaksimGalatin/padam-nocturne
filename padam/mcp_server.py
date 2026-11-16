@@ -130,6 +130,16 @@ TOOLS = [
                                "description": "Optional multi-hop graph expansion around hits (0=off, 1..2 hops across cause/correction/contradiction/source/version links)"},
                 "max_tokens": {"type": "integer", "minimum": 50, "maximum": 32000,
                                "description": "Optional token budget for returned fenced memory context; prioritizes conflicts and high-signal facts without cutting fence markers."},
+                # 15.11.2026: код читал эти три аргумента, а строгая схема их отвергала («unknown argument»),
+                # и Reflect с двойным временем были недоступны агенту. Действуют, только когда включены их флаги.
+                "known_at": {"type": "string", "maxLength": 40, "pattern": _AS_OF_PATTERN,
+                             "description": "Bi-temporal recall (PADAM_BITEMPORAL=1): what memory knew at this moment, "
+                                            "combined with as_of for when the fact was true."},
+                "reflect": {"type": "boolean", "default": False,
+                            "description": "Return world facts, agent experience and opinions separately "
+                                           "(PADAM_REFLECT=1); opinions are never presented as facts."},
+                "mode": {"type": "string", "enum": ["default", "reflect"], "default": "default",
+                         "description": "Same as reflect=true when set to 'reflect'."},
             },
             "required": ["query"],
             "additionalProperties": False,

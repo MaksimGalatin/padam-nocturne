@@ -135,7 +135,7 @@ def render_hook_context(
         cleaned, _ = safety.redact(str(rec.get("content") or ""))
         if config.mcp_dlp_shield_enabled():
             from .dlp_shield import DlpShield
-            cleaned, _ = DlpShield(mem).scrub(cleaned)
+            cleaned, _ = DlpShield(mem).sanitize_text(cleaned, record_audit=False)
         cleaned = safety.clean(cleaned)
         if not cleaned:
             continue
