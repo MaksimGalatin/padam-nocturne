@@ -5026,7 +5026,7 @@ def page() -> tuple[str, str]:
           <h3 class="box-title" data-i18n="att_aifasec_title">{s['att_aifasec_title']}</h3>
           <p id="att-aifasec-summary" class="panel-sub">—</p>
           <button id="att-aifasec-run" class="btn-primary" type="button" data-i18n="att_aifasec_btn">{s['att_aifasec_btn']}</button>
-          <div id="att-aifasec-domains" style="margin-top:10px;"></div>
+          <div id="att-aifasec-domains"></div>
         </div>
       </section>
 
