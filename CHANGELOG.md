@@ -2,6 +2,56 @@
 
 ## 0.5.2 — 15 November 2026
 
+Everything below is **opt-in** unless stated otherwise: with default settings PADAM behaves as 0.5.1 plus the
+protocol hardening in the first section. Verified on the release commit: `pytest tests` — 1,127 passed, 11 skipped
+(Python 3.14.4, Windows); fake-key leak test — 0 leaks in 300,000 key placements and 0 false masks in 12 clean
+phrases; Solana wallet keys — 0 leaks in 2,200 phrases.
+
+### MCP protocol conformance & hardening (on by default)
+- Strict `outputSchema` / `structuredContent` / `isError`, `resource_link` items in `padam_search`, `audience` /
+  `priority` / `lastModified` annotations on resources, `notifications/cancelled` and `progressToken`, `logging`
+  capability with `logging/setLevel` and sanitized log notifications, one JSON-RPC error catalog in 4 languages,
+  expanded `completion/complete`.
+- Limits on input size, record count, JSON depth and stdio bytes; a 10,000-case MCP fuzzer (`scripts/mcp_fuzz_check.py`)
+  that found and fixed a crash on non-object `params`; CI runs the official MCP Inspector over stdio and Streamable HTTP.
+- Two-step FTS5 narrowing, `np.argpartition` and scoped conflict checks: `padam_search` p50 at 100,000 records
+  656.57 → 255.77 ms (`benchmarks/scale/mcp_results_1511.json`).
+- Checked configs for 8 MCP clients (`integrations/`), 4-language MCP reference page (`docs/site/*/mcp.html`).
+
+### Opt-in MCP features
+- Multi-hop graph expansion and token-budget packing in `padam_search`, `atomic_merge` in `padam_write`, MCP `roots`
+  auto-scope with a graph cache, async stdio multiplexer (live cancel, batches, sampling), Streamable HTTP v2
+  (POST SSE, `Last-Event-ID` resume, `DELETE` cleanup), per-session HTTP rate limiter (429 + `Retry-After`),
+  cursor pagination for all `*/list`, SEP-973 icons and `/.well-known/mcp/server-card.json`, MCP Apps views
+  (`ui://padam/review-queue`, `ui://padam/graph/{id}`), shared local daemon `--auto-daemon` with per-session scopes,
+  elicitation guard (`PADAM_MCP_ELICITATION_GUARD`), session-start project briefing, local OpenTelemetry metrics.
+
+### Opt-in memory engine features
+- Active REM sleep (`padam/rem_sleep.py`): idle-time consolidation; insight synthesis only through an Ollama server on
+  loopback (non-local hosts are refused), offline fallback without a model.
+- Cognitive time machine (`padam/snapshots.py`): snapshots, diff and rollback that keeps the L3 hash chain verifiable.
+- DLP shield (`padam/dlp_shield.py`): replaces secrets with `[PADAM_SECRET_ID_N]`, keeps originals in an AES-256-GCM
+  vault, local proxy on 127.0.0.1. It protects only traffic you route through it or through `/sanitize`; it does not
+  intercept other programs.
+- Local swarm bus (`padam/swarm_synapse.py`) with sandbox scope isolation; local messenger / n8n bridge.
+- Hardware seal (`padam/hardware_seal.py`, `padam/webauthn_win.py`): whole-database `PADAMHW1` container (AES-256-GCM)
+  with the key wrapped by Windows DPAPI, by a real FIDO2 / Windows Hello credential through `webauthn.dll`
+  (`--mode webauthn`), or both. Losing the Windows profile or the security key means losing the sealed database —
+  keep `padam backup`. Tests use a software FIDO2 token.
+- Bi-temporal recall (`learned_at` / `invalidated_at`), versioned procedural memory with `SKILL.md` export, epistemic
+  separation (`world_fact` / `agent_experience` / `opinion`), graph communities, zero-LLM write-time autolinking,
+  1-bit + int8 vector prefilter, hierarchical episode compaction, `/memories` virtual FS backend, signed encrypted
+  portable MemCube containers (incl. X-Wing ML-KEM-768 + X25519 sealing), per-client access control with a SHA-256
+  audit chain, Obsidian/Markdown two-way sync, `padam doctor --fix` with snapshots.
+
+### Integrations & distribution
+- Lifecycle hooks for Claude Code, Codex and Gemini CLI; `padam setup` for 12 clients; `padam migrate` importers
+  (ChatGPT, Claude, Mem0, Zep, Obsidian, Notion); zero-dependency adapters (OpenAI Agents, LangGraph, PydanticAI,
+  LlamaIndex, AutoGen); Git-backed signed team memory; `.mcpb` Desktop Extension and VS Code/Cursor extension builders;
+  local-only browser WebExtension; `padam playground` tour; `padam badge`; 100-scenario bilingual MCP quality benchmark.
+- Packaging drafts not yet published to their stores: npm launcher `packages/npm-padam-mcp`, Homebrew formula,
+  winget manifest.
+
 ### MCP protocol, security & backup/restore
 - **Optional OAuth 2.1 (PKCE S256) + RFC 9728 / RFC 8414 / RFC 7591** (`PADAM_MCP_OAUTH=1` / `--oauth`, off by default): `/.well-known/oauth-protected-resource`, owner-verified consent page, dynamic loopback client registration, and scoped Bearer tokens (`padam:read`, `padam:write`, `padam:sleep`).
 - **MCP tasks, sampling, persistent SSE & typed links**: opt-in `tasks/*` for `padam_sleep` and connector initial sync, opt-in `sampling/createMessage` cluster summarization, persistent `GET /mcp?stream=1` with role/scope filtering, `links` in `padam_write` (`cause`, `correction`, `contradiction`, `source`), resource `padam://asof-graph/{date}`, `completion/complete`, `outputSchema`/`structuredContent`, and RBAC isolation across resources and prompts.

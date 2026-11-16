@@ -354,7 +354,7 @@ python -m padam l3-verify                 # 独立校验：重新下载 Arweave 
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 968 passed, 10 skipped with [embed] and [l3] (Python 3.14.4, PADAM_LANG=en and ru); 963 passed, 11 skipped with [l3] only (3.10.9); 13 Nov 2026, Windows
+python -m pytest tests/ -q        # 1127 passed, 11 skipped (Python 3.14.4, 15 Nov 2026, Windows, 0.5.2). Earlier: 968 passed, 10 skipped with [embed] and [l3] (Python 3.14.4, PADAM_LANG=en and ru); 963 passed, 11 skipped with [l3] only (3.10.9); 13 Nov 2026, Windows
 ```
 
 ---

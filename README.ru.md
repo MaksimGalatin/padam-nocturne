@@ -422,7 +422,7 @@ export PADAM_GUARD_MODEL=~/padam-guard
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 968 passed, 10 skipped с [embed] и [l3] (Python 3.14.4, PADAM_LANG=en и ru); 963 passed, 11 skipped только с [l3] (3.10.9); 13.11.2026, Windows
+python -m pytest tests/ -q        # 1127 passed, 11 skipped (Python 3.14.4, 15.11.2026, Windows, 0.5.2). Раньше: 968 passed, 10 skipped с [embed] и [l3] (Python 3.14.4, PADAM_LANG=en и ru); 963 passed, 11 skipped только с [l3] (3.10.9); 13.11.2026, Windows
 ```
 
 CI прогоняет тесты на каждый push под Ubuntu и Windows с Python 3.10–3.13. Тесты L3 не ходят в сеть: Arweave и Solana заменены подделками. Локальную Ollama набор тоже не зовёт, даже если она запущена: каждый тест работает на встроенных векторах, как на CI. `PADAM_TEST_LIVE_OLLAMA=1` включает единственную живую проверку. Схема Меркла дополнительно сверена с закреплением CODE Eternal на TypeScript — листья и корень совпадают.
