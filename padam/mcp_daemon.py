@@ -128,6 +128,8 @@ def spawn_or_attach_daemon(
 
     cmd = [
         sys.executable,
+        "-X",
+        "faulthandler",  # при зависании старта трассировка всех потоков уйдёт в журнал (см. ниже)
         "-m",
         "padam.mcp_server",
         "--http",
@@ -169,8 +171,17 @@ def spawn_or_attach_daemon(
         if proc.poll() is not None:
             break  # демон уже завершился: ждать дальше бессмысленно
         time.sleep(0.08)
+    if proc.poll() is None and os.name != "nt":
+        # 16.11.2026: демон жив, но не отвечает (так было на macOS в CI, журнал пуст). SIGABRT при включённом
+        # faulthandler печатает, где именно он застрял, — без этого причину не узнать.
+        import signal
+        try:
+            proc.send_signal(signal.SIGABRT)
+            proc.wait(timeout=5)
+        except Exception:
+            pass
     try:
-        tail = log_path.read_text(encoding="utf-8", errors="replace")[-1500:].strip()
+        tail = log_path.read_text(encoding="utf-8", errors="replace")[-4000:].strip()
     except OSError:
         tail = ""
     state = "exited with code %s" % proc.returncode if proc.poll() is not None else "still running"
