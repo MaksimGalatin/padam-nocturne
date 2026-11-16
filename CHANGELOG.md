@@ -17,7 +17,9 @@ Drop-in for the official MCP memory server, plus fixes found by testing on every
   stays the official server's JSON byte for byte.
 - **CI is green on Linux, Windows and macOS, Python 3.10–3.13** (macOS added to the matrix). Fixed: the hardware seal
   crashed `padam_stats` outside Windows; timestamps ending in `Z` failed on Python 3.10; `tomllib` is missing on 3.10
-  (`tomli` added to the test extra); the scale benchmark's memory probe failed on some Windows builds.
+  (`tomli` added to the test extra); the scale benchmark's memory probe failed on some Windows builds; on macOS a
+  cold Python start can take longer than 8 s, so `--auto-daemon` now waits up to 30 s for the shared daemon (it
+  returns as soon as the daemon answers).
 - **`padam migrate` accepts paths the way people paste them:** quotes, `file://` links, escaped spaces from a macOS
   terminal, `~`; CSV exports saved as UTF-16 are read.
 - Studio: text fields no longer overflow on phones and narrow windows.

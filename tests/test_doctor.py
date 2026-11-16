@@ -39,7 +39,7 @@ def test_api_token_reaches_a_log_file_at_once(tmp_path):
     with open(журнал, "w") as f:
         п = subprocess.Popen([sys.executable, "-m", "padam", "api", "--port", "0"], stdout=f, stderr=f, env=окружение)
     try:
-        for _ in range(100):
+        for _ in range(600):  # до 60 с: холодный старт Python на macOS в CI дольше 10 с
             if re.search(r"Token for this run: \S{24,}", журнал.read_text(errors="replace")):
                 break
             time.sleep(0.1)

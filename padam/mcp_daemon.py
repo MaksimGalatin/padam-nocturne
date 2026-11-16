@@ -100,7 +100,7 @@ def spawn_or_attach_daemon(
     db_path: str | Path | None = None,
     user_id: str | None = None,
     state_path: Path | None = None,
-    wait_timeout_s: float = 8.0,
+    wait_timeout_s: float = 30.0,  # 16.11.2026: холодный старт Python на macOS (CI) не укладывался в 8 с
 ) -> dict:
     """Подключается к живому локальному пулу или запускает его в фоне и ждёт готовности."""
     sp = state_path or daemon_state_path(db_path=db_path, user_id=user_id)
