@@ -1527,6 +1527,159 @@ _STRINGS_MIGRATE: dict[str, dict[str, str]] = {
 for _lg, _extra in _STRINGS_MIGRATE.items():
     STRINGS[_lg].update(_extra)
 
+_STRINGS_CABINET: dict[str, dict[str, str]] = {
+    "ru": {
+        "nav_aifa": "AIfa",
+        "nav_plans": "Тариф и Arweave",
+        "aifa_title": "AIfa из единого кабинета CODE Eternal",
+        "aifa_subtitle": "Та же AIfa и единая память, что на четырёх сайтах. Без входа Studio работает полностью локально.",
+        "aifa_need_login": "Войдите по почтовому коду (пароль не нужен), чтобы продолжить разговор с AIfa и видеть свой тариф.",
+        "aifa_email_ph": "Ваша почта (например, name@example.com)…",
+        "aifa_send_code": "Войти в CODE Eternal · прислать код",
+        "aifa_code_sent": "6-значный код отправлен на почту. Введите его ниже:",
+        "aifa_code_ph": "Код из письма (6 цифр)…",
+        "aifa_verify_btn": "Подтвердить вход",
+        "aifa_logout_btn": "Выйти",
+        "aifa_signed_in_as": "Учётная запись:",
+        "aifa_use_local_label": "AIfa видит мою локальную память",
+        "aifa_use_local_hint": "По умолчанию выключено. Если включить, в запрос уйдёт до 5 найденных локальных записей, уже прошедших маскировку секретов.",
+        "aifa_msg_ph": "Напишите сообщение AIfa…",
+        "aifa_send_btn": "Отправить",
+        "aifa_local_sent_title": "Локальные записи, переданные в этом запросе (после маскировки):",
+        "aifa_empty_chat": "Сообщений пока нет. Напишите AIfa ниже.",
+        "plans_title": "Тариф и вечная память Arweave",
+        "plans_subtitle": "PADAM Studio и локальная память бесплатны навсегда. Оплата нужна только для облачной памяти и Arweave.",
+        "plans_current_tier": "Текущий тариф:",
+        "plans_free_mode": "Бесплатно навсегда (без входа в кабинет)",
+        "plans_quota_label": "Квота Arweave в этом месяце:",
+        "plans_arweave_off": "Без платного тарифа запись в блокчейн Arweave не используется (0 МБ/мес).",
+        "plans_free_forever_title": "Что бесплатно навсегда",
+        "plans_free_item_1": "Локальная память PADAM на вашем ПК (без ограничений по объёму и сроку)",
+        "plans_free_item_2": "Импорт переписок из ChatGPT, Claude, Gemini, Grok, DeepSeek, Copilot",
+        "plans_free_item_3": "Полный PADAM Studio, маскировка ключей, карантин и локальный вечный слой L3",
+        "plans_free_item_4": "Экспорт и резервные копии без привязки к облаку",
+        "plans_paid_title": "Тарифы облачной и вечной памяти (оплата в кабинете)",
+        "plans_btn_upgrade": "Улучшить",
+        "plans_upgrade_opened": "Страница оплаты кабинета открыта во внешнем браузере.",
+        "plans_spark_desc": "$15/мес · AIfa с единой памятью · Arweave 30 МБ/мес",
+        "plans_family_desc": "$100/мес · Семейный архив и роли · Arweave 300 МБ/мес",
+        "plans_dna_desc": "$1 000 разово за устройство + $200/мес · Полный контур · Arweave 1 ГБ/мес",
+    },
+    "en": {
+        "nav_aifa": "AIfa",
+        "nav_plans": "Plan & Arweave",
+        "aifa_title": "AIfa from your CODE Eternal Cabinet",
+        "aifa_subtitle": "The same AIfa and unified memory as on all four websites. Without sign-in, Studio stays 100% local.",
+        "aifa_need_login": "Sign in with an email code (no password needed) to talk with AIfa and see your plan.",
+        "aifa_email_ph": "Your email (e.g. name@example.com)…",
+        "aifa_send_code": "Sign in to CODE Eternal · send code",
+        "aifa_code_sent": "A 6-digit code was sent to your email. Enter it below:",
+        "aifa_code_ph": "6-digit code from email…",
+        "aifa_verify_btn": "Verify sign-in",
+        "aifa_logout_btn": "Sign out",
+        "aifa_signed_in_as": "Signed in as:",
+        "aifa_use_local_label": "Let AIfa see my local memory",
+        "aifa_use_local_hint": "Off by default. When enabled, up to 5 matching local records (already secret-masked) are included and shown below.",
+        "aifa_msg_ph": "Write a message to AIfa…",
+        "aifa_send_btn": "Send",
+        "aifa_local_sent_title": "Masked local records sent with this request:",
+        "aifa_empty_chat": "No messages yet. Write to AIfa below.",
+        "plans_title": "Plan & Permanent Arweave Memory",
+        "plans_subtitle": "PADAM Studio and local memory are free forever. Paid plans cover cloud sync and permanent Arweave storage.",
+        "plans_current_tier": "Current plan:",
+        "plans_free_mode": "Free forever (not signed in)",
+        "plans_quota_label": "Arweave quota used this month:",
+        "plans_arweave_off": "Without a paid plan, permanent Arweave anchoring is not used (0 MB/month).",
+        "plans_free_forever_title": "What is free forever",
+        "plans_free_item_1": "Local PADAM memory on your PC (no record or time limits)",
+        "plans_free_item_2": "One-click import from ChatGPT, Claude, Gemini, Grok, DeepSeek, Copilot",
+        "plans_free_item_3": "Full PADAM Studio, secret masking, quarantine, and local L3 anchoring",
+        "plans_free_item_4": "Open export and encrypted backups with zero cloud lock-in",
+        "plans_paid_title": "Cloud & Arweave plans (checkout in cabinet browser)",
+        "plans_btn_upgrade": "Upgrade",
+        "plans_upgrade_opened": "Cabinet checkout page opened in your external browser.",
+        "plans_spark_desc": "$15/mo · AIfa with unified memory · Arweave 30 MB/mo",
+        "plans_family_desc": "$100/mo · Family archive & roles · Arweave 300 MB/mo",
+        "plans_dna_desc": "$1,000 one-time per device + $200/mo · Full contour · Arweave 1 GB/mo",
+    },
+    "es": {
+        "nav_aifa": "AIfa",
+        "nav_plans": "Plan y Arweave",
+        "aifa_title": "AIfa desde tu gabinete CODE Eternal",
+        "aifa_subtitle": "La misma AIfa y memoria unificada que en los cuatro sitios. Sin sesión, Studio es 100% local.",
+        "aifa_need_login": "Inicia sesión con código por correo (sin contraseña) para hablar con AIfa y ver tu plan.",
+        "aifa_email_ph": "Tu correo (ej. nombre@ejemplo.com)…",
+        "aifa_send_code": "Entrar en CODE Eternal · enviar código",
+        "aifa_code_sent": "Se envió un código de 6 dígitos a tu correo. Escríbelo abajo:",
+        "aifa_code_ph": "Código de 6 dígitos…",
+        "aifa_verify_btn": "Confirmar acceso",
+        "aifa_logout_btn": "Salir",
+        "aifa_signed_in_as": "Cuenta:",
+        "aifa_use_local_label": "AIfa ve mi memoria local",
+        "aifa_use_local_hint": "Desactivado por defecto. Al activarlo, se envían hasta 5 recuerdos locales ya enmascarados.",
+        "aifa_msg_ph": "Escribe un mensaje para AIfa…",
+        "aifa_send_btn": "Enviar",
+        "aifa_local_sent_title": "Registros locales enmascarados enviados:",
+        "aifa_empty_chat": "Aún no hay mensajes. Escribe a AIfa abajo.",
+        "plans_title": "Plan y memoria permanente en Arweave",
+        "plans_subtitle": "PADAM Studio y la memoria local son gratis para siempre. Solo se paga por nube y Arweave.",
+        "plans_current_tier": "Plan actual:",
+        "plans_free_mode": "Gratis para siempre (sin sesión iniciada)",
+        "plans_quota_label": "Cuota de Arweave este mes:",
+        "plans_arweave_off": "Sin plan de pago no se usa Arweave permanente (0 MB/mes).",
+        "plans_free_forever_title": "Qué es gratis para siempre",
+        "plans_free_item_1": "Memoria local PADAM en tu equipo sin límites",
+        "plans_free_item_2": "Importación desde ChatGPT, Claude, Gemini, Grok, DeepSeek y Copilot",
+        "plans_free_item_3": "PADAM Studio completo, máscara de claves, cuarentena y capa L3 local",
+        "plans_free_item_4": "Exportación abierta y copias cifradas sin bloqueo en la nube",
+        "plans_paid_title": "Planes de nube y Arweave (pago en el navegador)",
+        "plans_btn_upgrade": "Mejorar",
+        "plans_upgrade_opened": "Página de pago del gabinete abierta en el navegador externo.",
+        "plans_spark_desc": "$15/mes · AIfa con memoria unificada · Arweave 30 MB/mes",
+        "plans_family_desc": "$100/mes · Archivo familiar y roles · Arweave 300 MB/mes",
+        "plans_dna_desc": "$1 000 pago único por dispositivo + $200/mes · Arweave 1 GB/mes",
+    },
+    "zh": {
+        "nav_aifa": "AIfa",
+        "nav_plans": "套餐与 Arweave",
+        "aifa_title": "来自 CODE Eternal 个人中心的 AIfa",
+        "aifa_subtitle": "与四个官网同一位 AIfa 与统一记忆。未登录时 Studio 完全本地运行。",
+        "aifa_need_login": "使用邮箱验证码登录（无需密码），即可与 AIfa 对话并查看您的套餐。",
+        "aifa_email_ph": "您的邮箱（如 name@example.com）…",
+        "aifa_send_code": "登录 CODE Eternal · 发送验证码",
+        "aifa_code_sent": "6 位验证码已发送到您的邮箱，请在下方输入：",
+        "aifa_code_ph": "邮件中的 6 位验证码…",
+        "aifa_verify_btn": "验证并登录",
+        "aifa_logout_btn": "退出登录",
+        "aifa_signed_in_as": "当前账号：",
+        "aifa_use_local_label": "允许 AIfa 查看我的本地记忆",
+        "aifa_use_local_hint": "默认关闭。开启后最多附带 5 条已完成密钥掩码的本地记忆，并在下方明示。",
+        "aifa_msg_ph": "给 AIfa 发消息…",
+        "aifa_send_btn": "发送",
+        "aifa_local_sent_title": "本次请求发送的已掩码本地记忆：",
+        "aifa_empty_chat": "暂无消息，请在下方与 AIfa 对话。",
+        "plans_title": "套餐与 Arweave 永久记忆配额",
+        "plans_subtitle": "PADAM Studio 与本地记忆永久免费，仅云同步与 Arweave 永久存储需付费。",
+        "plans_current_tier": "当前套餐：",
+        "plans_free_mode": "永久免费（未登录个人中心）",
+        "plans_quota_label": "本月 Arweave 已用配额：",
+        "plans_arweave_off": "免费状态下不使用 Arweave 永久上链（0 MB/月）。",
+        "plans_free_forever_title": "永久免费包含",
+        "plans_free_item_1": "本地 PADAM 记忆（容量与时长无限制）",
+        "plans_free_item_2": "从 ChatGPT、Claude、Gemini、Grok、DeepSeek、Copilot 一键迁移",
+        "plans_free_item_3": "完整 Studio、密钥自动掩码、隔离区与本地 L3 锚定",
+        "plans_free_item_4": "开放导出与加密备份，无云端锁定",
+        "plans_paid_title": "云端与 Arweave 套餐（外部浏览器跳转支付）",
+        "plans_btn_upgrade": "升级套餐",
+        "plans_upgrade_opened": "已在外部浏览器中打开个人中心支付页面。",
+        "plans_spark_desc": "$15/月 · 统一记忆 AIfa · Arweave 30 MB/月",
+        "plans_family_desc": "$100/月 · 家庭档案与角色权限 · Arweave 300 MB/月",
+        "plans_dna_desc": "$1,000 单设备一次性 + $200/月 · 完整架构 · Arweave 1 GB/月",
+    },
+}
+for _lg, _extra in _STRINGS_CABINET.items():
+    STRINGS[_lg].update(_extra)
+
 _CSS = """
 :root, html[data-theme="dark"] {
   --bg: #080b12;
@@ -2262,7 +2415,7 @@ function say(text, ok = true) {
   box.className = ok ? 'msg-ok' : 'msg-err';
 }
 
-const TABS = ['overview', 'migrate', 'feed', 'search', 'ask', 'review', 'asof', 'forget', 'graph', 'entities', 'l3', 'team', 'backup', 'settings', 'quickstart'];
+const TABS = ['overview', 'migrate', 'aifa', 'plans', 'feed', 'search', 'ask', 'review', 'asof', 'forget', 'graph', 'entities', 'l3', 'team', 'backup', 'settings', 'quickstart'];
 window._padamWorkspaces = [];
 let activeTab = (initialTab && TABS.includes(initialTab)) ? initialTab : 'overview';
 let feedView = 'active', feedOffset = 0, feedKind = null, feedShown = [];
@@ -3669,6 +3822,8 @@ function loadActiveTab() {
   refreshTopbarStats();
   if (activeTab === 'overview') loadOverview();
   else if (activeTab === 'migrate') loadMigrate();
+  else if (activeTab === 'aifa') loadAifaTab();
+  else if (activeTab === 'plans') loadPlansTab();
   else if (activeTab === 'feed') loadFeed(true);
   else if (activeTab === 'search') runSearch();
   else if (activeTab === 'ask') loadAskTab();
@@ -4022,6 +4177,149 @@ $('qs-enable-strict-btn').onclick = async () => {
 };
 $('qs-go-overview-btn').onclick = () => switchTab('overview');
 
+// --- Кабинет CODE Eternal: AIfa и Тарифы (этапы 2-3) ---
+let cabinetState = null;
+let aifaHistory = [];
+
+function renderAifaChat() {
+  const box = $('aifa-chat-list');
+  if (!box) return;
+  box.replaceChildren();
+  if (!aifaHistory.length) {
+    box.appendChild(el('p', 'panel-sub', S.aifa_empty_chat));
+    return;
+  }
+  for (const m of aifaHistory) {
+    const role = (m.role === 'user') ? 'Вы' : 'AIfa';
+    const card = el('div', 'rec-card');
+    card.appendChild(el('div', 'rec-head', role + (m.timestamp ? (' · ' + fmtTime(m.timestamp, false)) : '')));
+    card.appendChild(el('div', 'rec-body', String(m.content || '')));
+    box.appendChild(card);
+  }
+}
+
+async function loadAifaTab() {
+  if (!token) return;
+  try {
+    cabinetState = await api('/api/v2/cabinet/status?lang=' + encodeURIComponent(currentLang));
+  } catch (e) {
+    cabinetState = {authenticated: false};
+  }
+  const authBox = $('aifa-auth-box');
+  const chatBox = $('aifa-chat-box');
+  if (cabinetState && cabinetState.authenticated) {
+    if (authBox) authBox.hidden = true;
+    if (chatBox) chatBox.hidden = false;
+    if ($('aifa-user-label')) {
+      $('aifa-user-label').textContent = S.aifa_signed_in_as + ' ' + (cabinetState.email || '') + ' (' + (cabinetState.tier_name || 'Free') + ')';
+    }
+    try {
+      const h = await api('/api/v2/cabinet/aifa/history');
+      aifaHistory = Array.isArray(h.history) ? h.history : [];
+    } catch (e) {
+      aifaHistory = [];
+    }
+    renderAifaChat();
+  } else {
+    if (authBox) authBox.hidden = false;
+    if (chatBox) chatBox.hidden = true;
+  }
+}
+
+async function loadPlansTab() {
+  if (!token) return;
+  let data = null;
+  try {
+    data = await api('/api/v2/cabinet/status?lang=' + encodeURIComponent(currentLang));
+  } catch (e) {
+    try { data = await api('/api/v2/cabinet/plans'); } catch (e2) { data = {authenticated: false, tier: 0, tier_name: 'Free'}; }
+  }
+  const curEl = $('plans-current-val');
+  if (curEl) {
+    curEl.textContent = (data && data.authenticated)
+      ? ((data.tier_name || 'Free') + ' (' + (data.email || '') + ')')
+      : S.plans_free_mode;
+  }
+  const qEl = $('plans-quota-val');
+  if (qEl) {
+    if (data && data.quota && Number(data.quota.limitMb || 0) > 0) {
+      qEl.textContent = String(data.quota.usedMb || 0) + ' / ' + String(data.quota.limitMb) + ' MB (' + String(data.quota.percent || 0) + '%)';
+    } else {
+      qEl.textContent = S.plans_arweave_off;
+    }
+  }
+}
+
+if ($('aifa-send-code-btn')) {
+  $('aifa-send-code-btn').onclick = async () => {
+    const email = ($('aifa-email-input') ? $('aifa-email-input').value : '').trim();
+    if (!email) { say(S.aifa_email_ph, false); return; }
+    try {
+      await api('/api/v2/cabinet/auth/send-code', {email});
+      if ($('aifa-code-row')) $('aifa-code-row').hidden = false;
+      say(S.aifa_code_sent, true);
+    } catch (e) { say(S.failed + ': ' + e.message, false); }
+  };
+}
+if ($('aifa-verify-code-btn')) {
+  $('aifa-verify-code-btn').onclick = async () => {
+    const email = ($('aifa-email-input') ? $('aifa-email-input').value : '').trim();
+    const code = ($('aifa-code-input') ? $('aifa-code-input').value : '').trim();
+    try {
+      await api('/api/v2/cabinet/auth/verify-code', {email, code});
+      say(S.done, true);
+      await loadAifaTab();
+    } catch (e) { say(S.failed + ': ' + e.message, false); }
+  };
+}
+if ($('aifa-logout-btn')) {
+  $('aifa-logout-btn').onclick = async () => {
+    try {
+      await api('/api/v2/cabinet/auth/logout', {});
+      aifaHistory = [];
+      await loadAifaTab();
+      await loadPlansTab();
+      say(S.done, true);
+    } catch (e) { say(S.failed + ': ' + e.message, false); }
+  };
+}
+if ($('aifa-send-msg-btn')) {
+  $('aifa-send-msg-btn').onclick = async () => {
+    const inp = $('aifa-msg-input');
+    const msg = (inp ? inp.value : '').trim();
+    if (!msg) return;
+    const useLocal = Boolean($('aifa-use-local') && $('aifa-use-local').checked);
+    try {
+      const res = await api('/api/v2/cabinet/aifa/chat', {
+        message: msg,
+        locale: currentLang,
+        history: aifaHistory.slice(-20),
+        use_local_memory: useLocal
+      });
+      if (inp) inp.value = '';
+      aifaHistory.push({role: 'user', content: msg});
+      aifaHistory.push({role: 'assistant', content: res.reply || ''});
+      renderAifaChat();
+      const sentBox = $('aifa-local-sent-box');
+      const sentList = $('aifa-local-sent-list');
+      if (sentBox && sentList) {
+        sentList.replaceChildren();
+        const items = Array.isArray(res.local_records_sent) ? res.local_records_sent : [];
+        sentBox.hidden = items.length === 0;
+        for (const it of items) sentList.appendChild(el('li', '', String(it)));
+      }
+    } catch (e) { say(S.failed + ': ' + e.message, false); }
+  };
+}
+if ($('plans-upgrade-btn')) {
+  $('plans-upgrade-btn').onclick = async () => {
+    try {
+      const res = await api('/api/v2/cabinet/open-upgrade', {});
+      say(S.plans_upgrade_opened + ' (' + String(res.url || '') + ')', true);
+    } catch (e) { say(S.failed + ': ' + e.message, false); }
+  };
+}
+
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
@@ -4067,6 +4365,12 @@ def page() -> tuple[str, str]:
       </button>
       <button id="tab-migrate" data-tab="migrate" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-migrate">
         <span data-i18n="nav_migrate">{s['nav_migrate']}</span>
+      </button>
+      <button id="tab-aifa" data-tab="aifa" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-aifa">
+        <span data-i18n="nav_aifa">{s['nav_aifa']}</span>
+      </button>
+      <button id="tab-plans" data-tab="plans" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-plans">
+        <span data-i18n="nav_plans">{s['nav_plans']}</span>
       </button>
       <button id="tab-feed" data-tab="feed" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-feed">
         <span data-i18n="nav_feed">{s['nav_feed']}</span>
@@ -4447,6 +4751,81 @@ def page() -> tuple[str, str]:
             <button id="backup-restore-btn" data-i18n="bak_restore_btn">{s['bak_restore_btn']}</button>
           </div>
           <div id="backup-result" class="panel-sub" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- 2а. AIFA ИЗ КАБИНЕТА -->
+      <section id="panel-aifa" role="tabpanel" aria-labelledby="tab-aifa" hidden>
+        <div class="panel-header">
+          <h2 class="panel-title" data-i18n="aifa_title">{s['aifa_title']}</h2>
+          <p class="panel-sub" data-i18n="aifa_subtitle">{s['aifa_subtitle']}</p>
+        </div>
+        <div id="aifa-auth-box" class="box">
+          <p class="setting-desc" data-i18n="aifa_need_login">{s['aifa_need_login']}</p>
+          <div class="toolbar">
+            <input id="aifa-email-input" type="email" placeholder="{s['aifa_email_ph']}" aria-label="{s['aifa_email_ph']}" data-i18n-placeholder="aifa_email_ph" data-i18n-aria="aifa_email_ph">
+            <button id="aifa-send-code-btn" class="btn-primary" data-i18n="aifa_send_code">{s['aifa_send_code']}</button>
+          </div>
+          <div id="aifa-code-row" class="toolbar" hidden>
+            <input id="aifa-code-input" type="text" inputmode="numeric" placeholder="{s['aifa_code_ph']}" aria-label="{s['aifa_code_ph']}" data-i18n-placeholder="aifa_code_ph" data-i18n-aria="aifa_code_ph">
+            <button id="aifa-verify-code-btn" class="btn-primary" data-i18n="aifa_verify_btn">{s['aifa_verify_btn']}</button>
+          </div>
+        </div>
+        <div id="aifa-chat-box" hidden>
+          <div class="box">
+            <div class="toolbar">
+              <strong id="aifa-user-label"></strong>
+              <button id="aifa-logout-btn" data-i18n="aifa_logout_btn">{s['aifa_logout_btn']}</button>
+            </div>
+            <label class="toolbar">
+              <input id="aifa-use-local" type="checkbox">
+              <span data-i18n="aifa_use_local_label">{s['aifa_use_local_label']}</span>
+            </label>
+            <p class="panel-sub" data-i18n="aifa_use_local_hint">{s['aifa_use_local_hint']}</p>
+          </div>
+          <div id="aifa-chat-list"></div>
+          <div id="aifa-local-sent-box" class="box" hidden>
+            <h3 class="box-title" data-i18n="aifa_local_sent_title">{s['aifa_local_sent_title']}</h3>
+            <ul id="aifa-local-sent-list"></ul>
+          </div>
+          <div class="box">
+            <div class="toolbar">
+              <input id="aifa-msg-input" type="text" placeholder="{s['aifa_msg_ph']}" aria-label="{s['aifa_msg_ph']}" data-i18n-placeholder="aifa_msg_ph" data-i18n-aria="aifa_msg_ph">
+              <button id="aifa-send-msg-btn" class="btn-primary" data-i18n="aifa_send_btn">{s['aifa_send_btn']}</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2б. ТАРИФ И ARWEAVE -->
+      <section id="panel-plans" role="tabpanel" aria-labelledby="tab-plans" hidden>
+        <div class="panel-header">
+          <h2 class="panel-title" data-i18n="plans_title">{s['plans_title']}</h2>
+          <p class="panel-sub" data-i18n="plans_subtitle">{s['plans_subtitle']}</p>
+        </div>
+        <div class="box">
+          <p><strong data-i18n="plans_current_tier">{s['plans_current_tier']}</strong> <span id="plans-current-val" data-i18n="plans_free_mode">{s['plans_free_mode']}</span></p>
+          <p><strong data-i18n="plans_quota_label">{s['plans_quota_label']}</strong> <span id="plans-quota-val" data-i18n="plans_arweave_off">{s['plans_arweave_off']}</span></p>
+          <div class="toolbar">
+            <button id="plans-upgrade-btn" class="btn-primary" data-i18n="plans_btn_upgrade">{s['plans_btn_upgrade']}</button>
+          </div>
+        </div>
+        <div class="box">
+          <h3 class="box-title" data-i18n="plans_free_forever_title">{s['plans_free_forever_title']}</h3>
+          <ul class="check-list">
+            <li data-i18n="plans_free_item_1">{s['plans_free_item_1']}</li>
+            <li data-i18n="plans_free_item_2">{s['plans_free_item_2']}</li>
+            <li data-i18n="plans_free_item_3">{s['plans_free_item_3']}</li>
+            <li data-i18n="plans_free_item_4">{s['plans_free_item_4']}</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3 class="box-title" data-i18n="plans_paid_title">{s['plans_paid_title']}</h3>
+          <ul class="check-list">
+            <li><strong>Spark</strong> — <span data-i18n="plans_spark_desc">{s['plans_spark_desc']}</span></li>
+            <li><strong>Family Archive</strong> — <span data-i18n="plans_family_desc">{s['plans_family_desc']}</span></li>
+            <li><strong>Digital DNA</strong> — <span data-i18n="plans_dna_desc">{s['plans_dna_desc']}</span></li>
+          </ul>
         </div>
       </section>
 
