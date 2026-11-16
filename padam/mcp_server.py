@@ -624,13 +624,20 @@ ROLLBACK_TOOL_DEF = {
 _ALL_TOOLS_BY_NAME = {**_TOOLS_BY_NAME, "padam_recent": RECENT_TOOL_DEF, "padam_rollback": ROLLBACK_TOOL_DEF}
 
 
+def _active_tools_by_name() -> dict[str, dict]:
+    if not config.mcp_official_compat_enabled():
+        return _ALL_TOOLS_BY_NAME
+    from . import compat_official as _compat_official
+    return {**_ALL_TOOLS_BY_NAME, **{t["name"]: t for t in _compat_official.OFFICIAL_MEMORY_TOOLS}}
+
+
 # Заметки цикла сна приходят из ядра по-русски (их же печатает русский CLI); наружу через MCP — по-английски.
 _SLEEP_NOTES_EN = {"буфер пуст": "episode buffer is empty", "нечего выбрать": "nothing to sample"}
 
 
 def missing_arguments(name: str, args: dict) -> list[str]:
     """Обязательные поля из inputSchema, которых нет или которые пусты."""
-    required = _ALL_TOOLS_BY_NAME[name]["inputSchema"].get("required", [])
+    required = _active_tools_by_name()[name]["inputSchema"].get("required", [])
     return [k for k in required if args.get(k) is None or args.get(k) == ""]
 
 
@@ -640,7 +647,7 @@ def invalid_argument(name: str, args: dict) -> str | None:
     Без неё схема оставалась только советом: limit=100000 и drop=-5 проходили, а drop=-5 поднимал
     уверенность выше единицы.
     """
-    свойства = _ALL_TOOLS_BY_NAME[name]["inputSchema"].get("properties", {})
+    свойства = _active_tools_by_name()[name]["inputSchema"].get("properties", {})
     for ключ, значение in args.items():
         схема = свойства.get(ключ)
         if схема is None:
@@ -675,6 +682,10 @@ def invalid_argument(name: str, args: dict) -> str | None:
                         if sc is None:
                             if closed:
                                 return f"unknown field {sk} in {ключ}[{idx}]"
+                            continue
+                        if sc.get("type") == "array":
+                            if not isinstance(sv, list) or not all(isinstance(el, str) for el in sv):
+                                return f"{ключ}[{idx}].{sk} must be an array of strings"
                             continue
                         if not isinstance(sv, str):
                             return f"{ключ}[{idx}].{sk} must be a string"
@@ -3105,6 +3116,12 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
         if not allowed:
             raise PermissionError(f"App access denied for {acl_client}: {reason}")
 
+    if config.mcp_official_compat_enabled():
+        from . import compat_official as _compat_official
+        if name in _compat_official.OFFICIAL_TOOL_NAMES:
+            eff_scope = _check_session_scope((args or {}).get("scope")) or "global"
+            return _compat_official.dispatch_tool(m, name, args or {}, scope=eff_scope, actor=actor)
+
     if name == "padam_search":
         if config.mcp_reflect_enabled() and (args.get("reflect") or args.get("mode") == "reflect"):
             from . import reflect
@@ -3843,6 +3860,9 @@ def _list_tools_payload() -> list[dict]:
     items = list(TOOLS)
     if config.mcp_rollback_tool_enabled():
         items.append(ROLLBACK_TOOL_DEF)
+    if config.mcp_official_compat_enabled():
+        from . import compat_official as _compat_official
+        items.extend(_compat_official.OFFICIAL_MEMORY_TOOLS)
     if not config.mcp_icons_enabled():
         return items
     icons = _padam_icons("tool")
@@ -4158,7 +4178,7 @@ def _handle_legacy(req: dict) -> dict | None:
         name = params.get("name")
         args = params.get("arguments") or {}
         # Неизвестный инструмент и не-объект в arguments — ошибка протокола (MCP: -32602 Invalid params).
-        if not isinstance(name, str) or name not in _ALL_TOOLS_BY_NAME:
+        if not isinstance(name, str) or name not in _active_tools_by_name():
             return err(-32602, f"unknown tool: {name}", key="unknown_tool", detail=str(name))
         if not isinstance(args, dict):
             return err(-32602, "arguments must be an object", key="invalid_argument", detail="arguments must be an object")
@@ -5242,6 +5262,31 @@ def main(argv: list[str] | None = None, memory: Memory | None = None) -> int:
               "PADAM_MCP_REVIEW_ALL, PADAM_MCP_TRUST_WRITES, PADAM_KEEP_SECRETS, PADAM_MCP_ASYNC_STDIO, PADAM_MCP_AUTO_DAEMON, PADAM_STRICT.\n"
               "`padam doctor` reports the security state.")
         return 0
+    compat_mode = None
+    filtered_args: list[str] = []
+    i = 0
+    while i < len(args):
+        tok = args[i]
+        if tok == "--compat":
+            if i + 1 >= len(args):
+                print("Refused: --compat requires a value (e.g. official-memory)", file=sys.stderr)
+                return 2
+            compat_mode = args[i + 1].strip().lower()
+            i += 2
+            continue
+        if tok.startswith("--compat="):
+            compat_mode = tok.split("=", 1)[1].strip().lower()
+            i += 1
+            continue
+        filtered_args.append(tok)
+        i += 1
+    args = filtered_args
+    if compat_mode is not None:
+        if compat_mode != "official-memory":
+            print(f"Refused: unsupported --compat mode {compat_mode!r}", file=sys.stderr)
+            return 2
+        os.environ["PADAM_MCP_COMPAT"] = compat_mode
+
     if "--http" in args:
         import argparse as _ap
         hp = _ap.ArgumentParser(prog="padam serve --http")

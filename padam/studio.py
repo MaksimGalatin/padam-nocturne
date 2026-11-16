@@ -1409,6 +1409,7 @@ _STRINGS_MIGRATE: dict[str, dict[str, str]] = {
         "mig_steps_deepseek": "DeepSeek → Настройки → Данные → Экспорт данных. Ссылка действует 7 дней.",
         "mig_steps_copilot": "account.microsoft.com/privacy → Copilot → Приложения Copilot → Экспорт всей истории действий.",
         "mig_steps_perplexity": "Perplexity → Все настройки → Аккаунт → Экспорт моих данных. Архив придёт на почту.",
+        "mig_steps_official_mcp": "Официальная MCP-память (@modelcontextprotocol/server-memory) → выберите файл memory.jsonl.",
         "mig_steps_auto": "Выберите сервис, чтобы увидеть, где взять экспорт. Студия сама узнает архив любого из семи сервисов."
     },
     "en": {
@@ -1445,6 +1446,7 @@ _STRINGS_MIGRATE: dict[str, dict[str, str]] = {
         "mig_steps_deepseek": "DeepSeek → Settings → Data → Export data. The link lasts 7 days.",
         "mig_steps_copilot": "account.microsoft.com/privacy → Copilot → Copilot apps → Export all activity history.",
         "mig_steps_perplexity": "Perplexity → All settings → Account → Export my data. The zip arrives by email.",
+        "mig_steps_official_mcp": "Official MCP Memory (@modelcontextprotocol/server-memory) → pick your memory.jsonl file.",
         "mig_steps_auto": "Pick a service to see where to get its export. Studio recognises an archive from any of the seven services."
     },
     "es": {
@@ -1481,6 +1483,7 @@ _STRINGS_MIGRATE: dict[str, dict[str, str]] = {
         "mig_steps_deepseek": "DeepSeek → Configuración → Datos → Exportar datos. El enlace dura 7 días.",
         "mig_steps_copilot": "account.microsoft.com/privacy → Copilot → Aplicaciones de Copilot → Exportar todo el historial de actividad.",
         "mig_steps_perplexity": "Perplexity → Toda la configuración → Cuenta → Export my data. El zip llega por correo.",
+        "mig_steps_official_mcp": "Memoria MCP oficial (@modelcontextprotocol/server-memory) → elige tu archivo memory.jsonl.",
         "mig_steps_auto": "Elige un servicio para ver dónde obtener su exportación. Studio reconoce el archivo de cualquiera de los siete servicios."
     },
     "zh": {
@@ -1517,6 +1520,7 @@ _STRINGS_MIGRATE: dict[str, dict[str, str]] = {
         "mig_steps_deepseek": "DeepSeek → 设置 → 数据 → 导出数据。链接 7 天内有效。",
         "mig_steps_copilot": "account.microsoft.com/privacy → Copilot → Copilot 应用 → 导出全部活动历史。",
         "mig_steps_perplexity": "Perplexity → 全部设置 → 账户 → Export my data。压缩包通过邮件发送。",
+        "mig_steps_official_mcp": "官方 MCP 记忆 (@modelcontextprotocol/server-memory) → 选择 memory.jsonl 文件。",
         "mig_steps_auto": "选择一个服务，查看在哪里获取导出。Studio 能识别这七个服务中任何一个的压缩包。"
     }
 }
@@ -4171,7 +4175,7 @@ def page() -> tuple[str, str]:
               <option value="chatgpt">ChatGPT</option><option value="claude">Claude</option>
               <option value="gemini">Gemini</option><option value="grok">Grok</option>
               <option value="deepseek">DeepSeek</option><option value="copilot">Microsoft Copilot</option>
-              <option value="perplexity">Perplexity</option>
+              <option value="perplexity">Perplexity</option><option value="official_mcp">MCP Memory (memory.jsonl)</option>
             </select>
           </div>
           <p class="panel-sub"><strong data-i18n="mig_how">{s['mig_how']}</strong>: <span id="mig-steps">{s['mig_steps_auto']}</span>

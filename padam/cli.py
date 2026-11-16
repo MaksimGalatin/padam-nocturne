@@ -1650,7 +1650,7 @@ def main(argv=None) -> int:
                                           "move in from ChatGPT/Claude/Gemini/Grok/DeepSeek/Copilot/Perplexity and more"))
     smig.add_argument("--from", dest="source", default="auto",
                       choices=("auto", "chatgpt", "claude", "gemini", "grok", "deepseek", "copilot", "perplexity",
-                               "mem0", "zep", "obsidian", "notion"))
+                               "mem0", "zep", "obsidian", "notion", "official_mcp"))
     smig.add_argument("path", nargs="?")
     smig.add_argument("--scope", default="imported")
     smig.add_argument("--dry-run", action="store_true")

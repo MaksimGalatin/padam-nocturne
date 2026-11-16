@@ -474,3 +474,15 @@ def mcp_playground_enabled() -> bool:
 def mcp_bridge_enabled() -> bool:
     """Включает API-маршрут /api/v2/bridge/ingest (PADAM_BRIDGE=1)."""
     return os.environ.get("PADAM_BRIDGE", "0").strip() == "1"
+
+
+
+# --- Режим совместимости с официальной MCP-памятью (выключено по умолчанию) ---
+def mcp_compat_mode() -> str:
+    """Режим совместимости MCP-инструментов (например, 'official-memory' при PADAM_MCP_COMPAT=official-memory)."""
+    return os.environ.get("PADAM_MCP_COMPAT", "").strip().lower()
+
+
+def mcp_official_compat_enabled() -> bool:
+    """Включает 9 инструментов официальной MCP-памяти (@modelcontextprotocol/server-memory) поверх PADAM."""
+    return mcp_compat_mode() == "official-memory"

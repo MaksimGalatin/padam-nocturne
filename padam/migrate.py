@@ -31,7 +31,7 @@ from . import safety
 from .memory import Memory
 
 SUPPORTED_SOURCES = ("chatgpt", "claude", "gemini", "grok", "deepseek", "copilot", "perplexity",
-                     "mem0", "zep", "obsidian", "notion")
+                     "mem0", "zep", "obsidian", "notion", "official_mcp")
 AUTO_SOURCES = ("chatgpt", "claude", "gemini", "grok", "deepseek", "copilot", "perplexity")
 
 MAX_MEMBER_BYTES = 1024 * 1024 * 1024        # один файл внутри экспорта — не больше 1 ГиБ
@@ -666,6 +666,52 @@ def _scan(path: Path, wanted: str) -> tuple[str, list[dict[str, Any]], list[str]
     return src, found[src], used[src], budget.warnings
 
 
+def _parse_official_mcp_jsonl(p: Path) -> tuple[list[dict[str, Any]], list[str], list[str]]:
+    """Разбор файла memory.jsonl официального сервера @modelcontextprotocol/server-memory."""
+    target = p
+    if p.is_dir():
+        cand = p / "memory.jsonl"
+        if not cand.exists():
+            jsonls = sorted(p.glob("*.jsonl"))
+            if not jsonls:
+                return [], [], [f"{p}: no memory.jsonl found"]
+            cand = jsonls[0]
+        target = cand
+    items: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    text = target.read_text(encoding="utf-8", errors="replace")
+    for idx, line in enumerate(text.splitlines(), 1):
+        s = line.strip()
+        if not s:
+            continue
+        try:
+            obj = json.loads(s)
+        except ValueError:
+            warnings.append(f"{target.name}:{idx}: malformed JSON line skipped")
+            continue
+        if not isinstance(obj, dict):
+            continue
+        rtype = obj.get("type")
+        if rtype == "entity":
+            name = str(obj.get("name") or "").strip()
+            etype = str(obj.get("entityType") or "entity").strip()
+            if not name:
+                continue
+            obs_list = [str(o).strip() for o in (obj.get("observations") or []) if str(o).strip()]
+            if not obs_list:
+                items.append({"content": f"[entity:{name} type:{etype}]", "kind": "fact", "origin": "external"})
+            else:
+                for obs in obs_list:
+                    items.append({"content": f"[entity:{name} type:{etype}] {obs}", "kind": "fact", "origin": "external"})
+        elif rtype == "relation":
+            src = str(obj.get("from") or "").strip()
+            dst = str(obj.get("to") or "").strip()
+            rel = str(obj.get("relationType") or "").strip()
+            if src and dst and rel:
+                items.append({"content": f"[relation:{src} --({rel})--> {dst}]", "kind": "fact", "origin": "external"})
+    return items, [target.name], warnings
+
+
 def _parse(src_req: str, p: Path) -> dict[str, Any]:
     """Разбор без записи: источник, разговоры, записи, файлы, предупреждения."""
     if src_req in ("mem0", "zep"):
@@ -674,6 +720,10 @@ def _parse(src_req: str, p: Path) -> dict[str, Any]:
     if src_req in ("obsidian", "notion"):
         items = _parse_markdown_or_notion(p)
         return {"source": src_req, "conversations": [], "items": items, "files": [p.name], "warnings": []}
+    if src_req == "official_mcp" or (src_req == "auto" and ((p.is_file() and p.suffix.lower() == ".jsonl") or (p.is_dir() and (p / "memory.jsonl").exists()))):
+        items, files, warnings = _parse_official_mcp_jsonl(p)
+        if items or src_req == "official_mcp":
+            return {"source": "official_mcp", "conversations": [], "items": items, "files": files, "warnings": warnings}
     src, convs, files, warnings = _scan(p, src_req)
     label = "human" if src == "claude" else "user"   # прежний вид записей Claude сохранён
     return {"source": src, "conversations": convs, "items": _items_from_conversations(convs, user_label=label),
