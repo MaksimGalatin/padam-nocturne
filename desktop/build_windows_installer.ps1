@@ -36,11 +36,15 @@ $CargoTomlRaw = Get-Content $CargoTomlPath -Raw -Encoding UTF8
 $CargoTomlUpdated = [regex]::Replace($CargoTomlRaw, '(?m)^version\s*=\s*"[^"]+"', ('version = "{0}"' -f $PadamVersion), 1)
 [System.IO.File]::WriteAllText($CargoTomlPath, $CargoTomlUpdated, [System.Text.UTF8Encoding]::new($false))
 
-$env:RUSTUP_HOME = Join-Path $ToolsRoot "rustup"
-$env:CARGO_HOME = Join-Path $ToolsRoot "cargo"
-$env:XWIN_CACHE_DIR = Join-Path $ToolsRoot "xwin"
-$env:XWIN_ACCEPT_LICENSE = "yes"
-$env:PATH = "$(Join-Path $ToolsRoot 'cargo\bin');$(Join-Path $ToolsRoot 'llvm\bin');$env:PATH"
+# В режиме Native (GitHub Actions) Rust уже установлен системно: свои папки rustup/cargo
+# не подставляем, иначе cargo не находит компилятор (сбой сборки 16.11.2026).
+if (-not $Native) {
+    $env:RUSTUP_HOME = Join-Path $ToolsRoot "rustup"
+    $env:CARGO_HOME = Join-Path $ToolsRoot "cargo"
+    $env:XWIN_CACHE_DIR = Join-Path $ToolsRoot "xwin"
+    $env:XWIN_ACCEPT_LICENSE = "yes"
+    $env:PATH = "$(Join-Path $ToolsRoot 'cargo\bin');$(Join-Path $ToolsRoot 'llvm\bin');$env:PATH"
+}
 
 if (-not $SkipRuntime) {
     $EmbedZip = Join-Path $ToolsRoot "downloads\python-3.14.4-embed-amd64.zip"
