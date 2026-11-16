@@ -625,7 +625,15 @@ def _случайный_регистр(core: str) -> bool:
     if len(core) < 20 or not re.fullmatch(r"[A-Za-z0-9_\-]+", core):
         return False
     переходы = sum(1 for x, y in zip(core, core[1:]) if x.isalpha() and y.isalpha() and x.isupper() != y.isupper())
-    return переходы >= len(core) // 4
+    if переходы >= len(core) // 4:
+        return True
+    # 16.11.2026: случайная строка с редкими переходами («yVYPWWJFaMCKmnnlwldtusmu» — 4 перехода на 24 буквы) уходила
+    # как camelCase: 20 утечек на 300 060 размещений при трёх зёрнах из пяти. Второй признак — мало гласных: у случайных
+    # букв их около 19 %, у имён из слов («authenticationServiceToken») — около 40 %.
+    буквы = [c for c in core if c.isalpha()]
+    гласные = sum(1 for c in буквы if c in "aeiouyAEIOUY")
+    return (переходы >= 3 and len(буквы) >= 20 and гласные / len(буквы) < 0.25
+            and len(set(core)) >= 12 and _entropy(core) >= 3.5)
 
 
 # Проза шире таблицы и «ИМЯ=»: после слова key стоят заголовки («**Key Considerations:**»), названия

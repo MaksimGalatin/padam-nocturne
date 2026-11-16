@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.5 — 16 November 2026
+
+Found by re-running the fake-key leak test at full scale with new random seeds:
+- A random key of letters only, with few case switches (for example a 24-letter deploy token like
+  `yVYPWWJFaMCKmnnlwldtusmu`), was taken for a camelCase name and left unmasked: 20 leaks in 300,060 key placements
+  on 3 of 5 seeds (seed 17, used for 0.5.2, happened to have 0). The letter-only check now has a second signal:
+  random letters have about 19 % vowels, names built from words about 40 % (`authenticationServiceToken` stays readable).
+- Verified: fake-key leak test — 0 leaks in 1,500,300 placements on 5 seeds; Solana wallet keys — 0 leaks in 2,200;
+  `pytest tests` — 1,132 passed, 11 skipped (Python 3.14.4, Windows); the new key is a regression test.
+
 ## 0.5.4 — 15 November 2026
 
 Found by installing 0.5.3 from PyPI into a clean environment and running 37 real user actions (35 passed):

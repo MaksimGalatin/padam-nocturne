@@ -3,7 +3,7 @@ class PadamNocturne < Formula
 
   desc "Local-first AI memory MCP server with injection firewall, DLP shield, and X-Wing PQC"
   homepage "https://github.com/MaksimGalatin/padam-nocturne"
-  url "https://github.com/MaksimGalatin/padam-nocturne/archive/refs/tags/v0.5.4.tar.gz"
+  url "https://github.com/MaksimGalatin/padam-nocturne/archive/refs/tags/v0.5.5.tar.gz"
   license "AGPL-3.0-only"
 
   depends_on "python@3.12"
@@ -13,6 +13,6 @@ class PadamNocturne < Formula
   end
 
   test do
-    assert_match "0.5.4", shell_output("#{bin}/padam --version")
+    assert_match "0.5.5", shell_output("#{bin}/padam --version")
   end
 end

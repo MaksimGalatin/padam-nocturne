@@ -49,7 +49,8 @@ def test_ни_одно_фейковое_значение_не_остаётся()
     assert not утечки, f"{len(утечки)} из {len(СЛУЧАИ)}: {утечки[:3]}"
 
 
-@pytest.mark.parametrize("v", ["CVNUVBI-VBOEINQ-NELLAIQ-RRQDYBH", "QwErTyUiOpAsDfGhJkLzXcVb"])
+@pytest.mark.parametrize("v", ["CVNUVBI-VBOEINQ-NELLAIQ-RRQDYBH", "QwErTyUiOpAsDfGhJkLzXcVb",
+                               "yVYPWWJFaMCKmnnlwldtusmu"])  # 16.11: редкие переходы регистра, мало гласных
 def test_ключ_без_цифр(v):
     # 7×4 из одних букв и случайная строка двух регистров без цифр: strong_secret их не видел.
     for f in ("my api key is {v}", "DEPLOY_TOKEN={v}", "| DEPLOY_TOKEN | {v} |"):
