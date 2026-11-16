@@ -3,19 +3,58 @@ on:
   workflow_dispatch:
     inputs:
       target_os:
-        description: "Целевая платформа сборки (all, macos, linux)"
+        description: "Целевая платформа сборки (all, windows, macos, linux)"
         required: false
         default: "all"
         type: choice
         options:
           - all
+          - windows
           - macos
           - linux
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  build-windows:
+    if: ${{ inputs.target_os == 'all' || inputs.target_os == 'windows' || inputs.target_os == '' }}
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install Rust stable toolchain and Tauri CLI
+        run: |
+          rustup default stable
+          cargo install tauri-cli --version "^2.0.0" --locked
+
+      - name: Build Windows NSIS installer with the embedded Python runtime
+        shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: ./desktop/build_windows_installer.ps1 -Native -ToolsRoot "$env:RUNNER_TEMP\tools"
+
+      - name: Upload Windows installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PADAM-Studio-Windows-setup
+          path: desktop/PADAM-Studio-Setup.exe
+          if-no-files-found: error
+
+      - name: Attach the installer to the release of this version
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ver = (Select-String -Path padam/__init__.py -Pattern '__version__\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
+          Copy-Item desktop/PADAM-Studio-Setup.exe "desktop/PADAM-Studio-Setup-$ver.exe"
+          gh release upload "v$ver" desktop/PADAM-Studio-Setup.exe "desktop/PADAM-Studio-Setup-$ver.exe" --clobber
+
   build-macos:
     if: ${{ inputs.target_os == 'all' || inputs.target_os == 'macos' || inputs.target_os == '' }}
     runs-on: macos-latest

@@ -6,7 +6,9 @@
 
 param(
     [string]$ToolsRoot = "E:\Tools",
-    [switch]$SkipRuntime
+    [switch]$SkipRuntime,
+    # Native: Windows build with MSVC (GitHub Actions windows-latest), no cargo-xwin and no E:\Tools.
+    [switch]$Native
 )
 
 $ErrorActionPreference = "Stop"
@@ -91,7 +93,11 @@ if (-not $env:TAURI_SIGNING_PRIVATE_KEY -and (Test-Path $DefaultMinisignKey)) {
     }
     Write-Output "[SIGN-UPDATER] Используется локальный ключ minisign: $DefaultMinisignKey"
 }
-$TauriBuildArgs = @("tauri", "build", "--runner", "cargo-xwin", "--target", "x86_64-pc-windows-msvc")
+if ($Native) {
+    $TauriBuildArgs = @("tauri", "build", "--bundles", "nsis")
+} else {
+    $TauriBuildArgs = @("tauri", "build", "--runner", "cargo-xwin", "--target", "x86_64-pc-windows-msvc")
+}
 if (-not $env:TAURI_SIGNING_PRIVATE_KEY) {
     Write-Warning "[SIGN-UPDATER] TAURI_SIGNING_PRIVATE_KEY не задан: артефакты .sig для автообновления пропущены."
     $TauriBuildArgs += @("--config", '{"bundle":{"createUpdaterArtifacts":false}}')
@@ -104,7 +110,8 @@ try {
     Pop-Location
 }
 
-$NsisOut = Get-ChildItem (Join-Path $TauriDir "target\x86_64-pc-windows-msvc\release\bundle\nsis") -Filter "*-setup.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+$NsisDir = if ($Native) { Join-Path $TauriDir "target\release\bundle\nsis" } else { Join-Path $TauriDir "target\x86_64-pc-windows-msvc\release\bundle\nsis" }
+$NsisOut = Get-ChildItem $NsisDir -Filter "*-setup.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 if (-not $NsisOut) {
     throw "Установщик NSIS *-setup.exe не найден!"
 }
