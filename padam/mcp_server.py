@@ -2240,6 +2240,15 @@ def read_resource(uri: str) -> dict:
     m = mem()
     actor = _current_actor(m)
 
+    if uri == "padam://aifa-security":
+        from . import aifa_sec_bridge as _asb
+        rep = _asb.get_aifa_security_report(run_fresh=False)
+        return {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps(rep, ensure_ascii=False, indent=2),
+            "annotations": _make_annotations(["user"], 0.9, None),
+        }
     if uri == "padam://metrics":
         if not config.mcp_otel_enabled():
             raise KeyError(f"Resource not found: {uri}")

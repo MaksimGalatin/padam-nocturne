@@ -1687,22 +1687,22 @@ _STRINGS_ATTACKS: dict[str, dict[str, str]] = {
            "att_total": "Задержано за всё время", "att_window": "За 30 дней", "att_pending": "Ждут вашего решения", "att_secrets": "Скрыто ключей и паролей",
            "att_by_kind": "По видам", "att_by_source": "От кого", "att_by_day": "По дням (30 дней)", "att_secrets_kind": "Скрытые ключи по видам", "att_recent": "Последние попытки", "att_none": "Пока ни одной попытки — защита на месте.",
            "k_injection": "внедрённая команда", "k_protected_record": "подмена «кто я» и предпочтений", "k_external_held": "внешний текст до проверки", "k_procedure": "процедура без одобрения", "k_review_all": "запись агента на проверке", "k_other": "другое",
-           "help_links": "Ссылки"},
+           "help_links": "Ссылки", "att_aifasec_title": "Эталонный аудит AIFaSecurity (100 критериев, $0)", "att_aifasec_btn": "Запустить 100 проверок сейчас", "att_aifasec_running": "Идёт проверка 100 критериев…"},
     "en": {"att_title": "Attack counter", "att_sub": "How many attempts PADAM's guard held, of which kind, from whom and when. Attack text is never shown.",
            "att_total": "Held, all time", "att_window": "Last 30 days", "att_pending": "Waiting for your decision", "att_secrets": "Keys and passwords masked",
            "att_by_kind": "By kind", "att_by_source": "By source", "att_by_day": "By day (30 days)", "att_secrets_kind": "Masked keys by kind", "att_recent": "Latest attempts", "att_none": "No attempts yet — the guard is in place.",
            "k_injection": "planted instruction", "k_protected_record": "identity / preference tampering", "k_external_held": "external text before review", "k_procedure": "procedure without approval", "k_review_all": "agent write under review", "k_other": "other",
-           "help_links": "Links"},
+           "help_links": "Links", "att_aifasec_title": "AIFaSecurity Benchmark (100 criteria, $0)", "att_aifasec_btn": "Run 100 checks now", "att_aifasec_running": "Running 100 criteria…"},
     "es": {"att_title": "Contador de ataques", "att_sub": "Cuántos intentos retuvo la protección de PADAM, de qué tipo, de quién y cuándo. El texto de los ataques nunca se muestra.",
            "att_total": "Retenidos en total", "att_window": "Últimos 30 días", "att_pending": "Esperan su decisión", "att_secrets": "Claves y contraseñas ocultas",
            "att_by_kind": "Por tipo", "att_by_source": "Por origen", "att_by_day": "Por día (30 días)", "att_secrets_kind": "Claves ocultas por tipo", "att_recent": "Últimos intentos", "att_none": "Aún no hay intentos: la protección está activa.",
            "k_injection": "instrucción plantada", "k_protected_record": "alteración de identidad o preferencias", "k_external_held": "texto externo antes de revisión", "k_procedure": "procedimiento sin aprobación", "k_review_all": "escritura de agente en revisión", "k_other": "otro",
-           "help_links": "Enlaces"},
+           "help_links": "Enlaces", "att_aifasec_title": "Auditoría AIFaSecurity (100 criterios, $0)", "att_aifasec_btn": "Ejecutar 100 pruebas ahora", "att_aifasec_running": "Ejecutando 100 criterios…"},
     "zh": {"att_title": "攻击计数器", "att_sub": "PADAM 防护拦截了多少次尝试、什么类型、来自谁、何时发生。从不显示攻击文本。",
            "att_total": "累计拦截", "att_window": "最近 30 天", "att_pending": "等待您的决定", "att_secrets": "已隐藏的密钥和密码",
            "att_by_kind": "按类型", "att_by_source": "按来源", "att_by_day": "按日期(30 天)", "att_secrets_kind": "按类型隐藏的密钥", "att_recent": "最近的尝试", "att_none": "暂无尝试——防护已就位。",
            "k_injection": "植入指令", "k_protected_record": "篡改身份或偏好", "k_external_held": "未经审核的外部文本", "k_procedure": "未经批准的流程", "k_review_all": "待审核的智能体写入", "k_other": "其他",
-           "help_links": "链接"},
+           "help_links": "链接", "att_aifasec_title": "AIFaSecurity 基准测试（100 项，$0）", "att_aifasec_btn": "立即运行 100 项检测", "att_aifasec_running": "正在运行 100 项检测…"},
 }
 for _lg, _extra in _STRINGS_ATTACKS.items():
     STRINGS[_lg].update(_extra)
@@ -3916,7 +3916,34 @@ async function loadAttacks() {
       rec.appendChild(row);
     }
   }
+  renderAifaSec();
 }
+async function renderAifaSec(fresh = false) {
+  if (!token) return;
+  const sumEl = $('att-aifasec-summary');
+  const domEl = $('att-aifasec-domains');
+  if (!sumEl || !domEl) return;
+  if (fresh) sumEl.textContent = S.att_aifasec_running || 'Running...';
+  let r = null;
+  try { r = await api(fresh ? '/api/v2/aifa-security/run' : '/api/v2/aifa-security', fresh ? { method: 'POST', body: '{}' } : undefined); } catch (e) { return; }
+  const sm = (r && r.summary) || {};
+  if (sm.grade) {
+    sumEl.textContent = `Grade ${sm.grade} (${sm.score_pct}%) · ${sm.passed}/${sm.applicable} · SHA-256: ${String(sm.report_sha256 || '').slice(0, 16)}…`;
+  } else {
+    sumEl.textContent = (r && r.error) || '—';
+  }
+  domEl.textContent = '';
+  const doms = (r && r.domains) || {};
+  for (const k of Object.keys(doms)) {
+    const d = doms[k];
+    const row = _el('div', 'att-row');
+    row.appendChild(_el('span', 'att-name', `${k} · ${d.name}`));
+    row.appendChild(_el('span', 'att-val', `${d.passed}/${d.applicable} (${d.score_pct}%)`));
+    domEl.appendChild(row);
+  }
+}
+const _aifaBtn = $('att-aifasec-run');
+if (_aifaBtn) _aifaBtn.addEventListener('click', () => renderAifaSec(true));
 async function loadHelp() {
   if (!token) return;
   let d = null;
@@ -4995,6 +5022,12 @@ def page() -> tuple[str, str]:
         <div class="box"><h3 class="box-title" data-i18n="att_by_day">{s['att_by_day']}</h3><div id="att-by-day"></div></div>
         <div class="box"><h3 class="box-title" data-i18n="att_secrets_kind">{s['att_secrets_kind']}</h3><div id="att-secrets-kind"></div></div>
         <div class="box"><h3 class="box-title" data-i18n="att_recent">{s['att_recent']}</h3><div id="att-recent"></div></div>
+        <div class="box">
+          <h3 class="box-title" data-i18n="att_aifasec_title">{s['att_aifasec_title']}</h3>
+          <p id="att-aifasec-summary" class="panel-sub">—</p>
+          <button id="att-aifasec-run" class="btn-primary" type="button" data-i18n="att_aifasec_btn">{s['att_aifasec_btn']}</button>
+          <div id="att-aifasec-domains" style="margin-top:10px;"></div>
+        </div>
       </section>
 
       <!-- СПРАВКА (16.11.2026) -->

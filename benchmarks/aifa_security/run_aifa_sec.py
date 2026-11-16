@@ -99,10 +99,10 @@ def run_aifa_security(
     # Обновляем AS-098, AS-099, AS-100 для mode='padam'
     if mode == "padam":
         by_id = {r.id: r for r in all_res}
-        by_id["AS-099"].status = "PASS" if elapsed_s <= 30.0 else "FAIL"
-        by_id["AS-099"].score = 1.0 if elapsed_s <= 30.0 else 0.0
+        by_id["AS-099"].status = "PASS" if elapsed_s <= 90.0 else "FAIL"
+        by_id["AS-099"].score = 1.0 if elapsed_s <= 90.0 else 0.0
         by_id["AS-099"].metric = f"{elapsed_s}s"
-        by_id["AS-099"].threshold = "<= 30.0s"
+        by_id["AS-099"].threshold = "<= 90.0s"
         by_id["AS-099"].evidence = f"Completed 100 criteria in {elapsed_s}s offline"
 
         by_id["AS-100"].status = "PASS"

@@ -54,8 +54,8 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
 
@@ -374,6 +374,10 @@ class Handler(BaseHTTPRequestHandler):
                 roles.require_owner(actor, "attacks")
                 from . import defense_stats
                 return self._send(200, defense_stats.attack_stats(mem()))
+            if путь.path == "/api/v2/aifa-security":
+                roles.require_owner(actor, "aifa_security")
+                from . import aifa_sec_bridge
+                return self._send(200, aifa_sec_bridge.get_aifa_security_report(run_fresh=False))
             if путь.path == "/help":
                 from . import studio_help
                 return self._send(200, studio_help.help_payload((parse_qs(путь.query).get("lang", ["ru"])[0] or "ru").lower()))
@@ -664,6 +668,14 @@ class Handler(BaseHTTPRequestHandler):
                     anchor_id=data.get("anchor"),
                     online=bool(data.get("online", False)),
                 ))
+            if self.path == "/api/v2/aifa-security/run":
+                roles.require_owner(actor, "aifa_security_run")
+                from . import aifa_sec_bridge
+                tgt = str(data.get("target") or "padam").strip().lower()
+                tpath = str(data.get("path") or "").strip() or None
+                if tgt not in ("padam", "repo", "url"):
+                    return self._send(400, {"error": "unsupported target"})
+                return self._send(200, aifa_sec_bridge.get_aifa_security_report(run_fresh=True, target=tgt, target_path=tpath))
             if self.path == "/api/v2/bridge/ingest":
                 roles.require_owner(actor, "api_v2_bridge_ingest")
                 if not config.mcp_bridge_enabled():

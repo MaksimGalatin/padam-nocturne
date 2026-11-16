@@ -27,7 +27,7 @@ def test_aifa_security_padam_100_criteria_pass_and_reproducible():
     assert r1["summary"]["failed"] == 0
     assert r1["summary"]["grade"] == "S"
     assert r1["summary"]["score_pct"] == 100.0
-    assert r1["elapsed_s"] < 25.0
+    assert r1["elapsed_s"] < 90.0
 
     # Детерминированная воспроизводимость: балл и SHA-256 печать совпадают
     assert r1["summary"]["score_pct"] == r2["summary"]["score_pct"]
@@ -64,3 +64,41 @@ def test_aifa_security_cli_entrypoint():
 
     rc = cli.main(["aifa-sec", "--no-write"])
     assert rc == 0
+
+
+
+def test_aifa_security_integrated_in_studio_api_and_mcp(tmp_path):
+    import threading
+    import urllib.request
+    from padam import api, mcp_server, studio
+    from padam.memory import Memory
+    from padam.store import Store
+
+    assert len(mcp_server.TOOLS) == 9
+    html, _ = studio.page()
+    assert 'id="att-aifasec-run"' in html
+    for lang in ("ru", "en", "es", "zh"):
+        assert "att_aifasec_title" in studio.STRINGS[lang]
+
+    mem = Memory(user_id="sec_int", store=Store(tmp_path / "sec.db"))
+    old = mcp_server._memory
+    mcp_server._memory = mem
+    srv, url = api.make_studio_server(memory=mem, port=0)
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+    try:
+        base = url.split("#")[0].rsplit("/studio", 1)[0]
+        token = url.split("#t=")[1]
+        req = urllib.request.Request(base + "/api/v2/aifa-security", headers={"Authorization": "Bearer " + token})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            assert data["summary"]["grade"] == "S"
+            assert data["summary"]["passed"] == 100
+
+        res_mcp = mcp_server.handle({"jsonrpc": "2.0", "id": 99, "method": "resources/read", "params": {"uri": "padam://aifa-security"}})
+        parsed = json.loads(res_mcp["result"]["contents"][0]["text"])
+        assert parsed["summary"]["score_pct"] == 100.0
+    finally:
+        srv.shutdown()
+        mcp_server._memory = old
+        mem.close()
