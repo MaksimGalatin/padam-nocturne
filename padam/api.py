@@ -41,10 +41,12 @@ import re
 import secrets
 import threading
 import sys
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import webbrowser
+from http.server import BaseHTTPRequestHandler
+from ._httpserver import ThreadingHTTPServer  # без DNS при запуске (macOS)
 from urllib.parse import parse_qs, urlsplit
 
-from . import __version__, config, connectors, logo, roles, safety, studio, viewer
+from . import __version__, cabinet, config, connectors, logo, roles, safety, studio, viewer
 from .i18n import t
 from .memory import Memory, decay, parse_ts
 from .nocturne import Nocturne
@@ -52,8 +54,8 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/migrate/preview", "/migrate/run", "/migrate/undo"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
 
@@ -459,6 +461,26 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(404, {"error": "communities disabled"})
                 from . import communities as _comm
                 return self._send(200, _comm.get_communities(mem(), refresh=True))
+            if путь.path == "/api/v2/cabinet/status":
+                roles.require_owner(actor, "cabinet_status")
+                lang = (q0.get("lang", ["ru"])[0] or "ru").lower()
+                pub = cabinet.get_public_status()
+                if not pub["authenticated"]:
+                    return self._send(200, {**pub, "tier": 0, "tier_name": "Free", "quota": None, "plans": cabinet.PLANS})
+                try:
+                    return self._send(200, cabinet.fetch_me_and_quota(lang=lang))
+                except Exception as err:
+                    return self._send(200, {**pub, "tier": 0, "tier_name": "Free", "quota": None, "plans": cabinet.PLANS, "network_error": str(err)})
+            if путь.path == "/api/v2/cabinet/aifa/history":
+                roles.require_owner(actor, "cabinet_aifa_history")
+                try:
+                    return self._send(200, cabinet.fetch_aifa_history())
+                except PermissionError:
+                    return self._send(401, {"error": "not_authenticated"})
+            if путь.path == "/api/v2/cabinet/plans":
+                roles.require_owner(actor, "cabinet_plans")
+                pub = cabinet.get_public_status()
+                return self._send(200, {**pub, "plans": cabinet.PLANS})
             if self.path == "/export":
                 return self._send(200, mem().export(actor=actor))
             if self.path.startswith("/timeline/"):
@@ -851,6 +873,62 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(200, res)
                 except ValueError as e:
                     return self._send(400, {"error": str(e)})
+
+            if self.path == "/api/v2/cabinet/auth/send-code":
+                roles.require_owner(actor, "cabinet_auth")
+                try:
+                    return self._send(200, cabinet.send_login_code(str(data.get("email") or "")))
+                except ValueError as e:
+                    return self._send(400, {"error": str(e)})
+
+            if self.path == "/api/v2/cabinet/auth/verify-code":
+                roles.require_owner(actor, "cabinet_auth")
+                try:
+                    return self._send(200, cabinet.verify_login_code(str(data.get("email") or ""), str(data.get("code") or "")))
+                except ValueError as e:
+                    return self._send(400, {"error": str(e)})
+
+            if self.path == "/api/v2/cabinet/auth/logout":
+                roles.require_owner(actor, "cabinet_auth")
+                cabinet.clear_session()
+                return self._send(200, {"ok": True, "authenticated": False})
+
+            if self.path == "/api/v2/cabinet/aifa/chat":
+                roles.require_owner(actor, "cabinet_aifa_chat")
+                msg_text = str(data.get("message") or "").strip()
+                if not msg_text:
+                    return self._send(400, {"error": "message is required"})
+                locale = str(data.get("locale") or "ru")
+                history = data.get("history") if isinstance(data.get("history"), list) else []
+                use_local = bool(data.get("use_local_memory", False))
+                masked_records: list[str] = []
+                if use_local:
+                    found = m.recall(msg_text, limit=5, actor=actor)
+                    for item in found:
+                        raw_c = str(item.get("content") or "").strip()
+                        if raw_c:
+                            masked_c, _ = safety.mask_secrets(raw_c)
+                            masked_records.append(masked_c[:400])
+                try:
+                    res = cabinet.send_aifa_message(
+                        message=msg_text,
+                        locale=locale,
+                        history=history,
+                        masked_local_records=masked_records,
+                    )
+                    return self._send(200, res)
+                except PermissionError:
+                    return self._send(401, {"error": "not_authenticated"})
+                except ValueError as e:
+                    return self._send(400, {"error": str(e)})
+
+            if self.path == "/api/v2/cabinet/open-upgrade":
+                roles.require_owner(actor, "cabinet_upgrade")
+                url = cabinet.get_upgrade_url()
+                if not url.startswith(cabinet.get_cabinet_url()):
+                    return self._send(400, {"error": "invalid upgrade url"})
+                opened = bool(webbrowser.open(url))
+                return self._send(200, {"ok": True, "opened": opened, "url": url})
 
             return self._send(404, {"error": "unknown route"})
         except PermissionError as e:

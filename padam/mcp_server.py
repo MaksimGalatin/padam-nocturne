@@ -4503,7 +4503,8 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
     import hmac
     import secrets
     import time
-    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from http.server import BaseHTTPRequestHandler
+    from ._httpserver import ThreadingHTTPServer  # без DNS при запуске (macOS)
     from urllib.parse import parse_qs, urlsplit
 
     from . import oauth as _oauth

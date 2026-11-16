@@ -69,3 +69,21 @@ def test_server_names_switched_off_protection_on_stderr_only(tmp_path):
                        timeout=60)
     assert b"PADAM_MCP_TRUST_WRITES=1" in r.stderr
     assert r.stdout == b""                                      # stdout занят протоколом — туда ни строки
+
+
+def test_http_servers_do_not_look_up_dns_at_start(monkeypatch):
+    """16.11.2026: на macOS `socket.getfqdn` при запуске сервера висел десятки секунд (CI, 4 версии Python).
+    Серверы PADAM не должны обращаться к DNS при старте."""
+    import socket
+    from padam._httpserver import ThreadingHTTPServer
+    from http.server import BaseHTTPRequestHandler
+
+    def запрет(*a, **k):
+        raise AssertionError("getfqdn вызван при запуске сервера")
+
+    monkeypatch.setattr(socket, "getfqdn", запрет)
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), BaseHTTPRequestHandler)
+    try:
+        assert srv.server_name == "127.0.0.1" and srv.server_port > 0
+    finally:
+        srv.server_close()

@@ -15,7 +15,8 @@ import re
 import secrets
 import urllib.error
 import urllib.request
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
+from ._httpserver import ThreadingHTTPServer  # без DNS при запуске (macOS)
 from typing import Any
 
 from cryptography.exceptions import InvalidTag
