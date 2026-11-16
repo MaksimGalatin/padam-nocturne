@@ -6,3 +6,6 @@ local.properties
 *.aab
 *.iml
 .idea/
+*.keystore
+*.jks
+signing.properties

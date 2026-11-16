@@ -460,6 +460,30 @@ def cmd_access(m, a) -> int:
     return 1
 
 
+def cmd_aifa_sec(m, a) -> int:
+    """Эталонный автономный бенчмарк AIFaSecurity (100 критериев, $0, без LLM)."""
+    import sys as _sys
+    from pathlib import Path as _Path
+    _root = _Path(__file__).resolve().parents[1]
+    if str(_root) not in _sys.path:
+        _sys.path.insert(0, str(_root))
+    from benchmarks.aifa_security import run_aifa_sec
+    argv = ["--target", a.target]
+    if a.path:
+        argv.extend(["--path", a.path])
+    if a.out_html:
+        argv.extend(["--out-html", a.out_html])
+    if a.out_svg:
+        argv.extend(["--out-svg", a.out_svg])
+    if a.out_json:
+        argv.extend(["--out-json", a.out_json])
+    if a.no_write:
+        argv.append("--no-write")
+    if a.json_out:
+        argv.append("--json")
+    return run_aifa_sec.main(argv)
+
+
 def cmd_badge(m, a) -> int:
     """ТОП-10 v4 Пункт 9: виральная карточка суверенности (SVG + Markdown)."""
     from pathlib import Path
@@ -1685,8 +1709,19 @@ def main(argv=None) -> int:
     sbd.add_argument("--out-svg", default=None)
     sbd.set_defaults(fn=cmd_badge)
 
+    ssec = sub.add_parser("aifa-sec", help=t("эталонный аудит защиты AIFaSecurity (100 критериев, $0)",
+                                             "AIFaSecurity 100-criteria autonomous security benchmark ($0)"))
+    ssec.add_argument("--target", default="padam", choices=("padam", "repo", "url", "mcp-cmd"))
+    ssec.add_argument("--path", default=None)
+    ssec.add_argument("--out-json", default=None)
+    ssec.add_argument("--out-html", default=None)
+    ssec.add_argument("--out-svg", default=None)
+    ssec.add_argument("--no-write", action="store_true")
+    ssec.add_argument("--json", dest="json_out", action="store_true")
+    ssec.set_defaults(fn=cmd_aifa_sec)
+
     a = p.parse_args(argv)
-    if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup, cmd_pack_extension, cmd_playground, cmd_badge) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):
+    if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup, cmd_pack_extension, cmd_playground, cmd_badge, cmd_aifa_sec) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):
         return a.fn(None, a)
     from .store import Store
     mem = Memory(user_id=a.user, store=Store(a.db) if a.db else None)

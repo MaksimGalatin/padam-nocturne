@@ -18,6 +18,13 @@ def test_help_lists_current_version_and_every_tab_in_four_languages():
         described = {k for k, _ in next(s for s in p["sections"] if s["id"] == "tabs")["items"]}
         assert set(tabs) - {"help"} <= described, f"{lang}: нет описания вкладок {set(tabs) - {'help'} - described}"
         assert studio.STRINGS[lang]["nav_help"] and studio.STRINGS[lang]["nav_attacks"]
+        for _, ver_summary in versions:
+            assert "`" not in ver_summary, f"{lang}: backtick in {ver_summary}"
+            assert not ver_summary.endswith(":"), f"{lang}: trailing colon in {ver_summary}"
+        # Для текущей версии должен быть перевод (не английский) во всех не-английских языках
+        if lang != "en":
+            en_versions = next(s for s in studio_help.help_payload("en")["sections"] if s["id"] == "versions")["items"]
+            assert versions[0][1] != en_versions[0][1], f"{lang}: missing translation for {__version__}"
 
 
 def test_attack_counter_keeps_attempts_after_owner_decision(tmp_path):

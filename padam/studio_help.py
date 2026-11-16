@@ -12,6 +12,7 @@ from typing import Any
 
 from . import __version__
 from .help_versions import VERSIONS
+from .help_versions_i18n import translate_summary
 
 LINKS = {
     "site": "https://aifa.works/nocturne",
@@ -249,7 +250,7 @@ def help_payload(lang: str = "ru") -> dict[str, Any]:
             {"id": "protect", "title": t["s_protect"], "items": t["protect"]},
             {"id": "mcp", "title": t["s_mcp"], "items": t["mcp"]},
             {"id": "versions", "title": t["s_versions"],
-             "items": [[f"{t['version_label']} {v['version']} · {v['date']}", v["summary"]] for v in VERSIONS]},
+             "items": [[f"{t['version_label']} {v['version']} · {v['date']}", translate_summary(v["version"], lg, v["summary"])] for v in VERSIONS]},
             {"id": "about", "title": t["s_about"], "items": t["about"]},
             {"id": "contact", "title": t["s_contact"], "items": [["", t["contact"]]]},
         ],

@@ -36,9 +36,25 @@ android {
         }
     }
 
+    signingConfigs {
+        val ksPath = System.getenv("PADAM_KEYSTORE_PATH")?.trim()
+        val ksPass = System.getenv("PADAM_KEYSTORE_PASS")?.trim()
+        val ksAlias = System.getenv("PADAM_KEY_ALIAS")?.trim()
+        val ksKeyPass = System.getenv("PADAM_KEY_PASS")?.trim()
+        if (!ksPath.isNullOrEmpty() && !ksPass.isNullOrEmpty() && !ksAlias.isNullOrEmpty() && !ksKeyPass.isNullOrEmpty()) {
+            create("release") {
+                storeFile = file(ksPath)
+                storePassword = ksPass
+                keyAlias = ksAlias
+                keyPassword = ksKeyPass
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfigs.findByName("release")?.let { signingConfig = it }
         }
     }
 
