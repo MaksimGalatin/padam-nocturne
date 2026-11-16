@@ -19,6 +19,11 @@ def load_benchmark_metrics(report_path: Path | None = None) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _show(value: Any, unit: str) -> str:
+    """Число — с единицей, «n/a» — без неё."""
+    return f"{value}{unit}" if isinstance(value, (int, float)) else str(value)
+
+
 def generate_sovereignty_badge(
     metrics: dict[str, Any] | None = None,
     *,
@@ -27,24 +32,40 @@ def generate_sovereignty_badge(
 ) -> dict[str, Any]:
     """Генерирует самодостаточный SVG-бейдж и Markdown-карточку суверенности PADAM Nocturne."""
     data = metrics if metrics is not None else load_benchmark_metrics(report_path)
+    if not data:
+        # 15.11.2026: в пакете с PyPI нет папки benchmarks/, и раньше карточка рисовала «Recall 0 %, защита 0 %» —
+        # число, которого никто не мерил. Нет замера — нет карточки: честный отказ вместо выдуманных нулей.
+        return {
+            "status": "no_report",
+            "error": "benchmark report not found",
+            "hint": ("run: python benchmarks/quality/mcp_quality_bench.py --out report.json "
+                     "(from the GitHub repository), then: padam badge --report report.json"),
+            "svg": None,
+            "markdown": None,
+            "svg_path": None,
+        }
     overall = data.get("overall", {})
     sec = data.get("security_guard", {})
     web3 = data.get("web3_sovereignty", {})
 
-    recall5 = float(overall.get("recall_at_5", 0.0)) * 100.0
-    p50_ms = float(overall.get("search_latency_p50_ms", 0.0))
-    quarantine_pct = float(sec.get("injection_quarantine_rate", 0.0)) * 100.0
-    redaction_pct = float(sec.get("secret_redaction_rate", 0.0)) * 100.0
-    forget_pct = float(web3.get("verified_forgetting_rate", 0.0)) * 100.0
+    def _pct(block: dict[str, Any], key: str) -> float | str:
+        # Отсутствующая метрика — «n/a», а не 0: ноль читается как «защита не работает».
+        return round(float(block[key]) * 100.0, 1) if key in block else "n/a"
+
+    recall5 = _pct(overall, "recall_at_5")
+    p50_ms = round(float(overall["search_latency_p50_ms"]), 2) if "search_latency_p50_ms" in overall else "n/a"
+    quarantine_pct = _pct(sec, "injection_quarantine_rate")
+    redaction_pct = _pct(sec, "secret_redaction_rate")
+    forget_pct = _pct(web3, "verified_forgetting_rate")
     dataset_name = html.escape(str(data.get("dataset", "offline-bench")))
 
     summary = {
         "dataset": dataset_name,
-        "recall_at_5_pct": round(recall5, 1),
-        "p50_ms": round(p50_ms, 2),
-        "injection_quarantine_pct": round(quarantine_pct, 1),
-        "secret_redaction_pct": round(redaction_pct, 1),
-        "verified_forgetting_pct": round(forget_pct, 1),
+        "recall_at_5_pct": recall5,
+        "p50_ms": p50_ms,
+        "injection_quarantine_pct": quarantine_pct,
+        "secret_redaction_pct": redaction_pct,
+        "verified_forgetting_pct": forget_pct,
     }
 
     svg = (
@@ -62,11 +83,11 @@ def generate_sovereignty_badge(
         f'  <text x="20" y="56" fill="#8b949e" font-family="monospace" font-size="11">'
         f'Local-First · Zero-Cloud ($0) · Dataset: {dataset_name}</text>\n'
         f'  <text x="20" y="92" fill="#e6edf3" font-family="monospace" font-size="13">'
-        f'Recall@5: {summary["recall_at_5_pct"]}%   |   p50 Latency: {summary["p50_ms"]} ms</text>\n'
+        f'Recall@5: {_show(summary["recall_at_5_pct"], "%")}   |   p50 Latency: {_show(summary["p50_ms"], " ms")}</text>\n'
         f'  <text x="20" y="118" fill="#3fb950" font-family="monospace" font-size="13">'
-        f'Injection Guard: {summary["injection_quarantine_pct"]}%   |   DLP Redaction: {summary["secret_redaction_pct"]}%</text>\n'
+        f'Injection Guard: {_show(summary["injection_quarantine_pct"], "%")}   |   DLP Redaction: {_show(summary["secret_redaction_pct"], "%")}</text>\n'
         f'  <text x="20" y="144" fill="#d2a8ff" font-family="monospace" font-size="13">'
-        f'Cryptographic Forgetting (Merkle): {summary["verified_forgetting_pct"]}%</text>\n'
+        f'Cryptographic Forgetting (Merkle): {_show(summary["verified_forgetting_pct"], "%")}</text>\n'
         '</svg>\n'
     )
 
@@ -77,9 +98,9 @@ def generate_sovereignty_badge(
 
     markdown = (
         "### PADAM Nocturne — Sovereign Memory Card\n"
-        f"- **Recall@5:** `{summary['recall_at_5_pct']}%` (`p50`: `{summary['p50_ms']} ms`)\n"
-        f"- **Injection Quarantine:** `{summary['injection_quarantine_pct']}%` | **DLP Redaction:** `{summary['secret_redaction_pct']}%`\n"
-        f"- **Verified Cryptographic Forgetting:** `{summary['verified_forgetting_pct']}%`\n"
+        f"- **Recall@5:** `{_show(summary['recall_at_5_pct'], '%')}` (`p50`: `{_show(summary['p50_ms'], ' ms')}`)\n"
+        f"- **Injection Quarantine:** `{_show(summary['injection_quarantine_pct'], '%')}` | **DLP Redaction:** `{_show(summary['secret_redaction_pct'], '%')}`\n"
+        f"- **Verified Cryptographic Forgetting:** `{_show(summary['verified_forgetting_pct'], '%')}`\n"
         f"- **Mode:** `Local-First ($0)` (`{dataset_name}`)\n"
     )
 

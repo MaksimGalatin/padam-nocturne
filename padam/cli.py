@@ -468,7 +468,7 @@ def cmd_badge(m, a) -> int:
     out_svg = Path(a.out_svg) if getattr(a, "out_svg", None) else None
     res = badge.generate_sovereignty_badge(report_path=rep, out_svg=out_svg)
     print(json.dumps(res, ensure_ascii=False, indent=2))
-    return 0
+    return 0 if res.get("status") == "ok" else 2
 
 
 def cmd_playground(m, a) -> int:
@@ -1201,6 +1201,8 @@ def main(argv=None) -> int:
     _safe_stdout()
     p = argparse.ArgumentParser(prog="padam", description=t(__doc__, DOC_EN),
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    from . import __version__ as _ver
+    p.add_argument("--version", action="version", version=f"padam-nocturne {_ver}")
     # Тот же пользователь, что у MCP-сервера и API: иначе `padam review` не видит записей агента.
     p.add_argument("--user", default=os.environ.get("PADAM_USER", "default"))
     p.add_argument("--db", default=None, help=t("путь к файлу базы", "path to the database file"))

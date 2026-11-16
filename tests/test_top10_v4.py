@@ -361,3 +361,32 @@ def test_top10v4_10_messenger_and_n8n_bridge_isolation_and_quarantine(monkeypatc
         assert mem.recall("exfiltrate", scope="bridge:n8n:hook-1", limit=5) == []
     finally:
         mem.close()
+
+
+def test_badge_without_report_refuses_instead_of_zeros(tmp_path, capsys):
+    """15.11.2026: без файла замера карточка не рисует выдуманные нули, а честно отказывает."""
+    from padam import badge, cli
+
+    missing = tmp_path / "нет_такого.json"
+    res = badge.generate_sovereignty_badge(report_path=missing)
+    assert res["status"] == "no_report"
+    assert res["svg"] is None and res["markdown"] is None
+    rc = cli.main(["badge", "--report", str(missing)])
+    assert rc == 2
+    out = capsys.readouterr().out
+    assert "0.0%" not in out and "no_report" in out
+
+    partial = badge.generate_sovereignty_badge(metrics={"overall": {"recall_at_5": 0.875}})
+    assert partial["metrics"]["recall_at_5_pct"] == 87.5
+    assert partial["metrics"]["injection_quarantine_pct"] == "n/a"
+    assert "Injection Guard: n/a" in partial["svg"]
+
+
+def test_cli_version_flag(capsys):
+    import pytest
+    from padam import __version__, cli
+
+    with pytest.raises(SystemExit) as ex:
+        cli.main(["--version"])
+    assert ex.value.code == 0
+    assert __version__ in capsys.readouterr().out

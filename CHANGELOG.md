@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.3 — 15 November 2026
+
+- `padam badge` no longer draws made-up zeros. The PyPI package has no `benchmarks/` folder, so the card used to show
+  "Recall 0 %, injection guard 0 %". Without a benchmark report it now refuses with `status: no_report` (exit code 2)
+  and says how to produce one; a metric that is missing is shown as `n/a`, never as 0.
+- `padam --version` prints the installed version.
+- `server.json` icons are https links (the MCP registry rejects `data:` URIs longer than 255 characters).
+- Verified: `pytest tests` — 1,129 passed, 11 skipped (Python 3.14.4, Windows).
+
 ## 0.5.2 — 15 November 2026
 
 Everything below is **opt-in** unless stated otherwise: with default settings PADAM behaves as 0.5.1 plus the
