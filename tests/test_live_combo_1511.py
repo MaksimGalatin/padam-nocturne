@@ -1,15 +1,15 @@
 """Сочетания флагов, которые по отдельности проходили тесты, а вместе ломались (живая проверка 15.11.2026)."""
 from __future__ import annotations
 
-import importlib
 
 
 def _mcp(monkeypatch, tmp_path, **flags):
     monkeypatch.setenv("PADAM_DB", str(tmp_path / "combo.db"))
     for k, v in flags.items():
         monkeypatch.setenv(k, v)
+    # Без importlib.reload: перезагрузка регистрирует обработчик изменений памяти второй раз,
+    # и все остальные тесты SSE начинают получать каждое уведомление дважды (найдено 15.11.2026).
     from padam import mcp_server as ms
-    importlib.reload(ms)
     ms.handle({"jsonrpc": "2.0", "id": 1, "method": "initialize",
                "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "t", "version": "1"}}})
     ms.handle({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "padam_write", "arguments": {
