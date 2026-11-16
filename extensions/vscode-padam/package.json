@@ -2,7 +2,7 @@
   "name": "padam-nocturne-mcp",
   "displayName": "PADAM NOCTURNE Memory (MCP)",
   "description": "Registers local sovereign PADAM NOCTURNE MCP server (9 tools, prompt-injection firewall, DLP shield, cognitive rollback).",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "publisher": "code-eternal",
   "license": "AGPL-3.0",
   "engines": {
