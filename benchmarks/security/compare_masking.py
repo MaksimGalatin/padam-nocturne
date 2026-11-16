@@ -137,14 +137,14 @@ CLAUDE_MEM_BUILTIN_PATTERNS: list[tuple[str, re.Pattern[str], bool]] = [
     # 4. aws_secret_key (JS variable-width lookbehind -> prefix group 1)
     _cm_compile(
         "aws_secret_key",
-        _cm_apply_escaped_ws(rf"({_cm_keyed_prefix(r'(?:aws_secret_access_key|\bSecretAccessKey)')})[A-Za-z0-9/+=]{{40}}"),
+        _cm_apply_escaped_ws((rf"(" + _cm_keyed_prefix(r'(?:aws_secret_access_key|\bSecretAccessKey)') + rf")[A-Za-z0-9/+=]{{40}}")),
         re.IGNORECASE,
         has_prefix_group=True,
     ),
     # 5. aws_session_token (JS variable-width lookbehind -> prefix group 1)
     _cm_compile(
         "aws_session_token",
-        _cm_apply_escaped_ws(rf"({_cm_keyed_prefix(r'\b(?:aws_session_token|SessionToken)')})[A-Za-z0-9/+=]{{100,}}"),
+        _cm_apply_escaped_ws((rf"(" + _cm_keyed_prefix(r'\b(?:aws_session_token|SessionToken)') + rf")[A-Za-z0-9/+=]{{100,}}")),
         re.IGNORECASE,
         has_prefix_group=True,
     ),
@@ -231,13 +231,13 @@ CLAUDE_MEM_BUILTIN_PATTERNS: list[tuple[str, re.Pattern[str], bool]] = [
     # 40. slack_webhook (JS variable-width lookbehind -> prefix group 1)
     _cm_compile(
         "slack_webhook",
-        _cm_apply_escaped_ws(rf"({_cm_webhook_host(r'hooks\.slack\.com')}/(?:services|workflows|triggers)/T[A-Z0-9]+/[A-Z0-9]+/(?:[0-9]+/)?)[A-Za-z0-9]{{20,}}(?!\w)"),
+        _cm_apply_escaped_ws((rf"(" + _cm_webhook_host(r'hooks\.slack\.com') + rf"/(?:services|workflows|triggers)/T[A-Z0-9]+/[A-Z0-9]+/(?:[0-9]+/)?)[A-Za-z0-9]{{20,}}(?!\w)")),
         has_prefix_group=True,
     ),
     # 41. discord_webhook (JS variable-width lookbehind -> prefix group 1)
     _cm_compile(
         "discord_webhook",
-        _cm_apply_escaped_ws(rf"({_cm_webhook_host(r'(?:(?:ptb|canary)\.)?discord(?:app)?\.com')}/api/(?:v\d+/)?webhooks/[0-9]{{17,20}}/)[A-Za-z0-9_-]{{60,}}(?![\w-])"),
+        _cm_apply_escaped_ws((rf"(" + _cm_webhook_host(r'(?:(?:ptb|canary)\.)?discord(?:app)?\.com') + rf"/api/(?:v\d+/)?webhooks/[0-9]{{17,20}}/)[A-Za-z0-9_-]{{60,}}(?![\w-])")),
         has_prefix_group=True,
     ),
     # 42. claude_mem_key
@@ -248,14 +248,14 @@ CLAUDE_MEM_GENERIC_PATTERNS: list[tuple[str, re.Pattern[str], bool]] = [
     # 43. generic_password
     _cm_compile(
         "generic_password",
-        rf"({_cm_keyed_prefix(r'\b(?:\w*_?(?:password|passwd)|\w+_pwd)')}){_CM_GENERIC_VALUE}",
+        (rf"(" + _cm_keyed_prefix(r'\b(?:\w*_?(?:password|passwd)|\w+_pwd)') + rf"){_CM_GENERIC_VALUE}"),
         re.IGNORECASE,
         has_prefix_group=True,
     ),
     # 44. generic_token (5 ветвей из GENERIC_TOKEN_REGEX; каждая с группой префикса `(?P<...>)` или `\1`)
     (
         "generic_token_1",
-        re.compile(rf"({_cm_keyed_prefix(rf'\b\w*_{_CM_BARE_TOKEN_KEY}')}){_CM_GENERIC_VALUE}", re.IGNORECASE),
+        re.compile((rf"(" + _cm_keyed_prefix(rf'\b\w*_{_CM_BARE_TOKEN_KEY}') + rf"){_CM_GENERIC_VALUE}"), re.IGNORECASE),
         True,
     ),
     (

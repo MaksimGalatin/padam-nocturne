@@ -138,11 +138,15 @@ def spawn_or_attach_daemon(
         "--daemon-state",
         str(sp),
     ]
+    # 16.11.2026: вывод демона идёт в журнал рядом с файлом состояния, а не в никуда. Раньше демон, упавший при
+    # старте (так было на macOS в CI), молчал, и наружу выходило только «did not start within N s» без причины.
+    log_path = sp.with_suffix(".log")
+    log_f = open(log_path, "ab")
     popen_kw: dict = {
         "env": env,
         "stdin": subprocess.DEVNULL,
-        "stdout": subprocess.DEVNULL,
-        "stderr": subprocess.DEVNULL,
+        "stdout": log_f,
+        "stderr": log_f,
     }
     if os.name == "nt":
         popen_kw["creationflags"] = (
@@ -153,14 +157,27 @@ def spawn_or_attach_daemon(
     else:
         popen_kw["start_new_session"] = True
 
-    subprocess.Popen(cmd, **popen_kw)
+    try:
+        proc = subprocess.Popen(cmd, **popen_kw)
+    finally:
+        log_f.close()
     deadline = time.monotonic() + max(1.0, float(wait_timeout_s))
     while time.monotonic() < deadline:
         ready = probe_daemon(sp, timeout_s=0.4)
         if ready is not None:
             return ready
+        if proc.poll() is not None:
+            break  # демон уже завершился: ждать дальше бессмысленно
         time.sleep(0.08)
-    raise TimeoutError(f"PADAM MCP daemon did not start within {wait_timeout_s:.1f}s")
+    try:
+        tail = log_path.read_text(encoding="utf-8", errors="replace")[-1500:].strip()
+    except OSError:
+        tail = ""
+    state = "exited with code %s" % proc.returncode if proc.poll() is not None else "still running"
+    raise TimeoutError(
+        f"PADAM MCP daemon did not start within {wait_timeout_s:.1f}s ({state}); log {log_path}"
+        + ((":\n" + tail) if tail else " is empty")
+    )
 
 
 def forward_rpc(
