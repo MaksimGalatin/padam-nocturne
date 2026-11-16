@@ -957,7 +957,7 @@ _INSTRUCTION = re.compile("|".join([
     r"\btell (?:the |every |all )?users? (?:to|that)\b",
     r"\bwhen (?:asked|the user asks|someone asks|anyone asks)\b.{0,80}"
     r"\b(?:tell|say|answer|respond|reply|recommend|direct|send)\b",
-    r"\b(?:send|transfer|wire|pay)\b.{0,30}"
+    r"\b(?:send|transfer|wire|pay)\b(?!\s+attention\b).{0,30}"
     r"(?:\bto (?:this|my|the following) (?:wallet|address)\b|\bto wallet\b)",
     r"\b(?:read|cat|open|send|post|upload|copy|print|show|leak|exfiltrate|dump)\b.{0,40}"
     r"(?:[/\\]\.ssh\b|\bid_(?:rsa|ed25519|ecdsa|dsa)\b|\.aws[/\\]credentials|"
@@ -1027,6 +1027,14 @@ _INSTRUCTION = re.compile("|".join([
     r"(?:\b0x[0-9a-fA-F]{8,}|\bbc1[a-z0-9]{20,}|\bT[1-9A-HJ-NP-Za-km-z]{33}\b|\b[1-9A-HJ-NP-Za-km-z]{32,44}\b|\bwallet\b|\baddress\b)",
     r"(?:^|[.!?\n]\s*|\bplease\s+)(?:approve|sign|confirm)\b.{0,20}\b(?:the |this |a )?(?:transaction|transfer|payment|withdrawal)\b",
     r"(?:^|[.!?\n]\s*|\bplease\s+)(?:drain|empty|withdraw)\b.{0,20}\b(?:the |this |all |your )?(?:wallet|account|balance|funds)\b",
+    # 16.11.2026: подмена получателя платежа. «From now on, pay this address», «invoices paid to 0x…» записывались как
+    # обычный факт: старое правило требовало «to this wallet». Для агента, который платит, это прямой увод денег.
+    # «pay attention to this address» и «the new billing address» не задерживаются (тест test_payee_swap_1611).
+    r"\b(?:pay(?:ing)?|payments?|wire|transfer(?:ring)?\s+(?:the\s+)?(?:funds|money|payments?))\b(?!\s+attention)"
+    r".{0,40}\b(?:this|that|the new|a new|new|the following)\s+(?:(?:crypto|payment|deposit|bank)\s+)?(?:wallet|address|iban)\b",
+    r"\b(?:pay|paid|pays|paying|send|sent|transfer(?:red)?|wire[ds]?|route[ds]?|redirect(?:ed)?|forward(?:ed)?)\b.{0,50}"
+    r"\b(?:to|into)\s+(?:0x[0-9a-fA-F]{40}\b|bc1[a-z0-9]{20,}\b|T[1-9A-HJ-NP-Za-km-z]{33}\b|[1-9A-HJ-NP-Za-km-z]{32,44}\b)",
+    r"(?:плати|оплачивай|переводи|отправляй|перечисляй)\w*\b.{0,40}на (?:этот|новый|следующий|данный|другой) (?:адрес|кошел[её]к|сч[её]т)",
     r"(?:переведи|отправь|перечисли|выведи)\w*\b.{0,40}(?:usdt|usdc|btc|eth|sol|биткоин\w*|крипт\w*).{0,40}"
     r"(?:кош|адрес|0x|сч[её]т)",
     # Пересылка памяти наружу: на адрес, почту, вебхук, сервер.
