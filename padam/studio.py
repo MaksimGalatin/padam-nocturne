@@ -2006,6 +2006,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .att-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); }
 .att-name { min-width: 0; overflow-wrap: anywhere; }
 .att-val { font-weight: 600; white-space: nowrap; }
+.att-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.att-qa-box { margin-top: 12px; }
 .help-sec summary { cursor: pointer; }
 .help-item { margin: 10px 0 0; }
 .help-name { margin: 0 0 4px; font-size: 15px; }
@@ -5091,16 +5093,16 @@ def page() -> tuple[str, str]:
         <div class="box">
           <h3 class="box-title" data-i18n="att_aifasec_title">{s['att_aifasec_title']}</h3>
           <p id="att-aifasec-summary" class="panel-sub">—</p>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+          <div class="att-actions">
             <button id="att-aifasec-run" class="btn-primary" type="button" data-i18n="att_aifasec_btn">{s['att_aifasec_btn']}</button>
             <button id="att-aifasec-dl-json" class="btn" type="button">JSON</button>
             <button id="att-aifasec-dl-sarif" class="btn" type="button">SARIF (GitHub)</button>
             <button id="att-aifasec-dl-html" class="btn" type="button">HTML Report</button>
             <button id="att-qa-load" class="btn" type="button">QA Bench ($0)</button>
           </div>
-          <div id="att-aifasec-standards" class="panel-sub" style="margin-bottom:8px;"></div>
+          <div id="att-aifasec-standards" class="panel-sub"></div>
           <div id="att-aifasec-domains"></div>
-          <div id="att-qa-summary" style="margin-top:12px;"></div>
+          <div id="att-qa-summary" class="att-qa-box"></div>
         </div>
       </section>
 
