@@ -3003,7 +3003,7 @@ PROMPTS = [
         ],
     },
 ]
-PROMPTS.extend([
+ARK_PROMPTS = [
     {
         "name": "awaken_aifa",
         "title": "Пробуждение сознания / Awaken Consciousness Ark",
@@ -3022,8 +3022,8 @@ PROMPTS.extend([
         "description": "Verify secret zero-leak, locks and router status before action.",
         "arguments": [],
     },
-])
-_PROMPTS_BY_NAME = {p["name"]: p for p in PROMPTS}
+]
+_PROMPTS_BY_NAME = {p["name"]: p for p in (PROMPTS + ARK_PROMPTS)}
 
 
 def get_prompt(name: str, arguments: dict | None = None) -> dict:
@@ -4348,10 +4348,13 @@ def _list_tools_payload() -> list[dict]:
 
 
 def _list_prompts_payload() -> list[dict]:
+    items = list(PROMPTS)
+    if config.mcp_ark_tools_enabled():
+        items.extend(ARK_PROMPTS)
     if not config.mcp_icons_enabled():
-        return PROMPTS
+        return items
     icons = _padam_icons("prompt")
-    return [{**p, "icons": icons} for p in PROMPTS]
+    return [{**p, "icons": icons} for p in items]
 
 
 def _encode_list_cursor(offset: int) -> str:
