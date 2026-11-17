@@ -219,6 +219,7 @@ class SovereignRouter:
                 **payload,
                 "model": payload.get("model") or c.model,
                 "messages": safe_msgs,
+                "stream": False,
             }
             try:
                 status, resp_data = self._http_post(endpoint, headers, req_payload, c.timeout_s)
@@ -294,6 +295,85 @@ class SovereignRouter:
 
 SovereignModelRouter = SovereignRouter
 _DEFAULT_ROUTER = SovereignRouter()
+
+
+def probe_local_backend(timeout_s: float = 0.6) -> dict[str, Any]:
+    """Проверяет доступность локального Ollama / OpenAI-совместимого бэкенда."""
+    contours = load_contours()
+    local_c = next((c for c in contours if c.name == "local"), None)
+    if local_c is None or not local_c.enabled:
+        return {"online": False, "url": "", "models": [], "error": "local contour disabled"}
+    base = local_c.url[:-3] if local_c.url.endswith("/v1") else local_c.url
+    tags_url = f"{base.rstrip('/')}/api/tags"
+    try:
+        with urllib.request.urlopen(tags_url, timeout=timeout_s) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+            data = json.loads(raw) if raw else {}
+            models = [str(m.get("name") or "") for m in (data.get("models") or []) if isinstance(m, dict) and m.get("name")]
+            return {"online": True, "url": local_c.url, "models": models, "error": ""}
+    except Exception as exc:
+        return {"online": False, "url": local_c.url, "models": [], "error": f"{type(exc).__name__}: {exc}"}
+
+
+def models_payload(*, include_local_probe: bool = False) -> dict[str, Any]:
+    """Формирует OpenAI-совместимый список моделей для GET /v1/models."""
+    items: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    now_ts = int(time.time())
+    for c in load_contours():
+        if c.enabled and c.model and c.model not in seen:
+            seen.add(c.model)
+            items.append({
+                "id": c.model,
+                "object": "model",
+                "created": now_ts,
+                "owned_by": f"padam-{c.name}",
+            })
+    if include_local_probe:
+        probe = probe_local_backend()
+        for mname in probe.get("models") or []:
+            if mname not in seen:
+                seen.add(mname)
+                items.append({
+                    "id": mname,
+                    "object": "model",
+                    "created": now_ts,
+                    "owned_by": "padam-local-ollama",
+                })
+    return {"object": "list", "data": items}
+
+
+def format_sse_chunks(resp_data: dict[str, Any]) -> list[str]:
+    """Преобразует JSON-ответ /chat/completions в OpenAI SSE-чанки для клиентов со stream=true."""
+    cid = str(resp_data.get("id") or f"chatcmpl-padam-{int(time.time())}")
+    created = int(resp_data.get("created") or int(time.time()))
+    model = str(resp_data.get("model") or (resp_data.get("_padam_router") or {}).get("model") or "padam-sovereign")
+    choices = resp_data.get("choices") or []
+    content = ""
+    if choices and isinstance(choices[0], dict):
+        msg = choices[0].get("message") or {}
+        content = str(msg.get("content") or "")
+
+    chunk1 = {
+        "id": cid,
+        "object": "chat.completion.chunk",
+        "created": created,
+        "model": model,
+        "choices": [{"index": 0, "delta": {"role": "assistant", "content": content}, "finish_reason": None}],
+    }
+    chunk2 = {
+        "id": cid,
+        "object": "chat.completion.chunk",
+        "created": created,
+        "model": model,
+        "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+        "_padam_router": resp_data.get("_padam_router"),
+    }
+    return [
+        f"data: {json.dumps(chunk1, ensure_ascii=False)}\n\n",
+        f"data: {json.dumps(chunk2, ensure_ascii=False)}\n\n",
+        "data: [DONE]\n\n",
+    ]
 
 
 def get_router() -> SovereignRouter:

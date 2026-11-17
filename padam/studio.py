@@ -4621,18 +4621,25 @@ if ('serviceWorker' in navigator) {
 async function loadBrain() {
   if (!token) return;
   let st = null;
-  try { st = await api('/api/v2/brain/status'); } catch (e) { return; }
+  try { st = await api('/api/v2/brain/status?probe=1'); } catch (e) { return; }
   const cBox = $('brain-contours');
   if (cBox) {
     cBox.textContent = '';
+    const probe = (st && st.local_probe) || null;
     const list = (st && st.contours) || [];
     for (const c of list) {
       const row = _el('div', 'att-row');
       const left = _el('span', 'att-name');
-      const dot = _el('span', 'brain-dot ' + (c.enabled ? 'brain-dot-on' : 'brain-dot-off'));
+      const isOnline = (c.name === 'local' && probe) ? Boolean(probe.online) : Boolean(c.enabled);
+      const dot = _el('span', 'brain-dot ' + (isOnline ? 'brain-dot-on' : 'brain-dot-off'));
       left.appendChild(dot);
       left.appendChild(document.createTextNode(String(c.name || '').toUpperCase() + (c.model ? ' · ' + c.model : '')));
-      const right = _el('span', 'att-val', c.enabled ? (c.url || 'local') : 'OFF (🔒)');
+      let rightText = c.enabled ? (c.url || 'local') : 'OFF (🔒)';
+      if (c.name === 'local' && probe) {
+        const mCount = (probe.models || []).length;
+        rightText = (probe.online ? 'ONLINE' : 'OFFLINE') + ' · ' + String(mCount) + ' models';
+      }
+      const right = _el('span', 'att-val', rightText);
       row.appendChild(left);
       row.appendChild(right);
       cBox.appendChild(row);
@@ -4642,6 +4649,7 @@ async function loadBrain() {
   if (mBox && st) {
     mBox.textContent = '';
     _kv(mBox, {
+      openai_gateway_v1: window.location.origin + '/v1',
       active_contour: st.active_contour || 'local',
       total_requests: st.total_requests || 0,
       failover_count: st.failover_count || 0,
@@ -4649,6 +4657,10 @@ async function loadBrain() {
       estimated_cloud_cost_usd: '$' + String(st.estimated_cloud_cost_usd || 0),
     });
   }
+}
+
+if ($('brain-refresh-btn')) {
+  $('brain-refresh-btn').onclick = () => loadBrain();
 }
 
 if ($('brain-distill-btn')) {
@@ -5333,6 +5345,9 @@ def page() -> tuple[str, str]:
         <div class="box">
           <h3 class="box-title" data-i18n="brain_traffic_title">{s['brain_traffic_title']}</h3>
           <div id="brain-contours"></div>
+          <div class="rec-actions">
+            <button id="brain-refresh-btn" data-i18n="btn_refresh">{s['btn_refresh']}</button>
+          </div>
         </div>
         <div class="box">
           <h3 class="box-title" data-i18n="brain_cost_title">{s['brain_cost_title']}</h3>

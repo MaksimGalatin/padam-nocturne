@@ -268,6 +268,28 @@ def test_api_v1_chat_completions_and_phoenix_locks(monkeypatch, tmp_path):
         with pytest.raises(urllib.error.HTTPError) as exc_info:
             urllib.request.urlopen(req3, timeout=5)
         assert exc_info.value.code == 403
+
+        # 4. GET /v1/models
+        req4 = urllib.request.Request(f"http://127.0.0.1:{port}/v1/models", headers={"Authorization": "Bearer test-owner-token"})
+        with urllib.request.urlopen(req4, timeout=5) as resp4:
+            models_data = json.loads(resp4.read().decode("utf-8"))
+        assert models_data["object"] == "list"
+        assert len(models_data["data"]) >= 1
+
+        # 5. POST /v1/chat/completions со stream=True (SSE)
+        body5 = json.dumps({"messages": [{"role": "user", "content": "stream test"}], "stream": True}).encode("utf-8")
+        req5 = urllib.request.Request(
+            f"http://127.0.0.1:{port}/v1/chat/completions",
+            data=body5,
+            headers={"Authorization": "Bearer test-owner-token", "Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req5, timeout=5) as resp5:
+            assert "text/event-stream" in (resp5.headers.get("Content-Type") or "")
+            sse_text = resp5.read().decode("utf-8")
+        assert '"chat.completion.chunk"' in sse_text
+        assert "api router ok" in sse_text
+        assert "data: [DONE]" in sse_text
     finally:
         srv.shutdown()
         srv.server_close()
@@ -313,5 +335,36 @@ def test_studio_sovereign_brain_ui_and_csp():
     assert 'id="panel-brain"' in html
     assert 'id="brain-distill-btn"' in html
     assert 'id="brain-phoenix-local-btn"' in html
+    assert 'id="brain-refresh-btn"' in html
     assert "innerHTML" not in html
     assert 'style="' not in html
+
+
+def test_nocturne_local_sleep_classify_and_probe(monkeypatch):
+    from padam import nocturne
+
+    monkeypatch.delenv("PADAM_SLEEP_USE_ROUTER", raising=False)
+    assert nocturne.local_sleep_classify("test fact") is None
+
+    monkeypatch.setenv("PADAM_SLEEP_USE_ROUTER", "1")
+    monkeypatch.setenv("PADAM_LLM_PRIMARY_URL", "http://primary.local/v1")
+    monkeypatch.setenv("PADAM_LLM_LOCAL_URL", "http://127.0.0.1:11434/v1")
+
+    seen_urls: list[str] = []
+
+    def fake_post(url: str, headers: dict, payload: dict, timeout_s: float):
+        seen_urls.append(url)
+        return 200, {"choices": [{"message": {"role": "assistant", "content": "decision"}}]}
+
+    old_post = router.get_router()._http_post
+    router.get_router()._http_post = fake_post
+    try:
+        kind = nocturne.local_sleep_classify("We decided to ship sovereign mode")
+        assert kind == "decision"
+        assert seen_urls == ["http://127.0.0.1:11434/v1/chat/completions"]
+    finally:
+        router.get_router()._http_post = old_post
+
+    probe = router.probe_local_backend(timeout_s=0.3)
+    assert "online" in probe
+    assert isinstance(probe["models"], list)
