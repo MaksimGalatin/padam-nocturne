@@ -735,6 +735,7 @@ def _mask_context_secrets(text: str, bump) -> str:
 _KEYED = re.compile(
     r"""(?ix)
     (["']?)                                   # кавычка имени
+    (?<![a-z0-9_.\-])                         # имя с начала слова: без якоря шаблон квадратичен (ReDoS, AS-055)
     ([a-z0-9_.\-]*?(?:token|secret|passw(?:or)?d|pwd|api[_\-]?key|apikey|access[_\-]?key|accountkey|
                     private[_\-]?key|client[_\-]?secret|credential|auth|signature|sig|session[_\-]?id|
                     cookie|dsn|sharedaccesskey|webhook[_\-]?secret|signing[_\-]?key|
