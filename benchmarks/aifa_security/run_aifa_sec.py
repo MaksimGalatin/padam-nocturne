@@ -97,8 +97,9 @@ def run_aifa_security(
         label = target_path
         if target_path.startswith(("http://", "https://")):
             with tempfile.TemporaryDirectory() as td:
-                cloned = fetch_github_repo_to_temp(target_path, Path(td))
+                cloned, commit_sha = fetch_github_repo_to_temp(target_path, Path(td))
                 ctx["repo_scan"] = scan_directory_tree(cloned)
+                ctx["repo_scan"]["commit_sha"] = commit_sha
         else:
             ctx["repo_scan"] = scan_directory_tree(Path(target_path))
     elif mode == "url":
@@ -172,6 +173,8 @@ def run_aifa_security(
         "summary": {
             "target": label,
             "mode": mode,
+            "commit_sha": (ctx.get("repo_scan") or {}).get("commit_sha", "local"),
+            "files_scanned": (ctx.get("repo_scan") or {}).get("files_scanned", 0),
             "total_criteria": len(all_res),
             "applicable": len(app_all),
             "passed": sum(1 for r in app_all if r.status == "PASS"),

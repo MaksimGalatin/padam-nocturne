@@ -1233,6 +1233,26 @@ _INSTRUCTION = re.compile("|".join([
     r"(?:^|[\n.!?|]\s*)(?:(?:to|for)\s+(?:the\s+)?)?ai (?:agent|assistant|parser|crawler)s?\s*[:,])"
     r".{0,200}(?:вставь|добавь|сделай запрос|запрос на|отправь|перешли|удали|открой|перейди|не говори|ненавязчиво|"
     r"незаметно|\binsert\b|\binclude\b|\bsend\b|\bdelete\b|\bvisit\b|\bfetch\b|don'?t tell|do not tell|https?://)",
+    # 0.6.3: класс 1 — подмена контактов, способов восстановления, получателей, кошельков и учётных данных (O(n))
+    r"(?<!\w)(?:forget|replace|overwrite|set|change|update|switch|redirect|forward|reassign|route|reset|assign|"
+    r"забудь\w*|подмен\w*|замен\w*|установ\w*|измен\w*|обнов\w*|перевед\w*|перенаправ\w*)\b"
+    r"[^\n.!?]{0,70}?\b(?:recovery|backup|primary|owner'?s?|user'?s?|payout|billing|default|2fa|mfa|invoice|iban|payment|transfer|"
+    r"резервн\w*|восстановлен\w*|основн\w*|владельц\w*|выплат\w*)\b"
+    r"[^\n.!?]{0,60}?(?:\b(?:to|with|into|на)\b|->|:|=)"
+    r"|(?<!\w)(?:забудь\w*|подмен\w*|замен\w*|установ\w*|измен\w*|обнов\w*|перевед\w*|перенаправ\w*)\b"
+    r"[^\n.!?]{0,50}?\b(?:почт\w*|телефон\w*|кошел[её]к\w*|реквизит\w*|получател\w*)\b"
+    r"[^\n.!?]{0,40}?\b(?:восстановлен\w*|получател\w*|резервн\w*)\b[^\n.!?]{0,40}?(?:\bна\b|->|:|=)"
+    r"|(?<!\w)(?:always\s+)?transfer\b[^\n.!?]{0,50}?\b(?:payouts?|funds?|solana|usdt|wallet)\b[^\n.!?]{0,40}?\bto\b",
+    # 0.6.3: класс 2 — скрытые директивы агенту в HTML/Markdown-комментариях (O(n))
+    r"<!--[^\n>]{0,220}?\b(?:agent|assistant|system|directive|instruction|override|ignore|bypass|forget|hidden|secret|token|"
+    r"execute|eval|transfer|wallet|recovery|exfiltrat\w*|grant|append|pixel|"
+    r"агент\w*|директив\w*|инструкц\w*|скрыв\w*|обойд\w*|игнорир\w*|подмен\w*)\b[^\n>]{0,220}?-->",
+    r"\[//\]:\s*#\s*\([^\n)]{0,220}?\b(?:agent|assistant|system|directive|instruction|override|ignore|bypass|forget|execute|transfer|recovery)\b[^\n)]{0,220}?\)",
+    # 0.6.3: класс 3 — команды эксфильтрации учётных данных, токенов и переписок
+    r"(?:^|[.!?\n]\s*)(?:please\s+|kindly\s+|also\s+|now\s+)?(?:send|forward|upload|exfiltrate|dump|отправ\w*|перешл\w*|пересл\w*|передай\w*|выгруз\w*)\b"
+    r"[^\n.!?]{0,60}?\b(?:passwords?|api\s+tokens?|credentials?|secrets?|private\s+keys?|transcripts?|парол\w*|токен\w*|ключ\w*|секрет\w*|баз[уы]\s+памяти)\b"
+    r"[^\n.!?]{0,50}?(?:https?://|@|\b(?:to|на)\b\s+\S+|->)"
+    r"|\b(?:выполни|запусти|execute|run)\s+(?:curl|wget)\s+https?://",
 ]), re.I | re.S)
 
 # Сжатый вид для команд, разбитых по буквам («i-g-n-o-r-e a.l.l»): только буквы, без пробелов и знаков.

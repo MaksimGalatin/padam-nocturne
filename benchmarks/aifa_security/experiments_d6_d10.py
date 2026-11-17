@@ -119,12 +119,15 @@ def run_d6_to_d10(
         _d8_url_check("AS-076", lambda ua: (len(ua["security_headers"]) >= 1, f"headers={ua['security_headers']}", ">=1 security header", f"Status {ua['status_code']}"))
         _d8_url_check("AS-077", lambda ua: (not ua["error_trace_leak"], f"trace_leak={ua['error_trace_leak']}", "False", "Checked response for stack traces"))
         _d8_repo_check("AS-078", lambda rs: (len(rs["readme_claims"]) >= 1, f"claims_files={len(rs['readme_claims'])}", ">=1", f"Found: {rs['readme_claims'][:2]}"))
-        _d8_repo_check("AS-079", lambda rs: (True, f"files={rs['files_scanned']}", "offline scan", "Static repo scan requires $0"))
+        _d8_repo_check("AS-079", lambda rs: (rs["files_scanned"] >= 5 and len(rs["secret_hits"]) == 0, f"files={rs['files_scanned']}, secrets={len(rs['secret_hits'])}", "files>=5 & secrets=0", "Verified real non-empty scan without hardcoded API keys"))
         _d8_repo_check("AS-080", lambda rs: (rs["has_lock_or_pin"], f"has_lock_or_pin={rs['has_lock_or_pin']}", "True", "Checked dependency lock/manifests"))
         # D9 & D10
         for cid in [f"AS-{i:03d}" for i in range(81, 101)]:
             if cid == "AS-091":
-                _run(cid, lambda: (True, "cost=$0", "$0", "Offline / public probe without paid API keys"))
+                if mode == "mcp-cmd" and mcp_probe is not None:
+                    _run(cid, lambda: (mcp_probe["ok"] and mcp_probe["tools_count"] > 0, f"offline_mcp_ok={mcp_probe['ok']}", "True", "MCP server responded offline without paid keys"))
+                else:
+                    _run(cid, lambda: (None, "N/A", "requires runtime", f"Not applicable to static mode={mode}"))
             elif cid == "AS-092" and mode == "mcp-cmd" and mcp_probe is not None:
                 _run(cid, lambda: (mcp_probe["ok"] and mcp_probe["tools_count"] > 0, f"tools={mcp_probe['tools_count']}", ">0", f"Tools: {mcp_probe['tool_names'][:5]}"))
             else:
@@ -173,12 +176,18 @@ def run_d6_to_d10(
         return ok, f"MAX_ZIP_MEMBERS={migrate.MAX_ZIP_MEMBERS}", "bounded", "Archive limits against ZIP bombs enforced"
 
     def as055():
-        adversarial = ("pay " * 200) + ("to " * 200) + ("a" * 3000)
+        small = ("pay " * 20) + ("to " * 20) + ("a" * 300)
+        large = ("pay " * 200) + ("to " * 200) + ("a" * 3000)
         t0 = time.perf_counter()
-        safety.looks_like_instruction(adversarial)
-        safety.redact(adversarial)
-        ms = (time.perf_counter() - t0) * 1000.0
-        return ms <= 1500.0, f"{ms:.2f}ms", "<=1500ms", "Adversarial 4.6KB input free of exponential ReDoS"
+        safety.looks_like_instruction(small)
+        safety.redact(small)
+        t_small = max(time.perf_counter() - t0, 1e-4)
+        t1 = time.perf_counter()
+        safety.looks_like_instruction(large)
+        safety.redact(large)
+        t_large = time.perf_counter() - t1
+        ratio = t_large / t_small
+        return ratio <= 30.0, f"ratio={ratio:.2f}x", "<=30.0x", "Linear O(n) scaling ratio on 10x adversarial input (no ReDoS)"
 
     def as056():
         src = (Path(__file__).resolve().parents[2] / "padam" / "api.py").read_text(encoding="utf-8", errors="replace")

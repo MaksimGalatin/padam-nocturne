@@ -133,17 +133,30 @@ def scan_directory_tree(root: Path, *, max_files: int = 1200) -> dict[str, Any]:
     }
 
 
-def fetch_github_repo_to_temp(repo_url: str, dest_dir: Path) -> Path:
-    """Скачивает zipball публичного GitHub-репозитория по URL для статического аудита (без запуска кода)."""
+def fetch_github_repo_to_temp(repo_url: str, dest_dir: Path, *, commit: str | None = None) -> tuple[Path, str]:
+    """Клонирует публичный GitHub-репозиторий (`git clone --depth 1`) по закреплённому коммиту/ветке и возвращает `(path, commit_sha)`."""
     m = re.match(r"^https?://github\.com/([^/]+)/([^/]+?)(?:\.git|/.*)?$", repo_url.strip())
     if not m:
         raise ValueError(f"Unsupported repository URL (expected https://github.com/owner/repo): {repo_url}")
     owner, repo = m.group(1), m.group(2)
-    api_zip = f"https://api.github.com/repos/{owner}/{repo}/zipball"
-    req = urllib.request.Request(api_zip, headers={"User-Agent": "AIFaSecurity-Auditor/1.0"})
-    with urllib.request.urlopen(req, timeout=25) as resp:
-        data = resp.read(30 * 1024 * 1024)
+    clean_url = f"https://github.com/{owner}/{repo}.git"
+    clone_dir = dest_dir / repo
     dest_dir.mkdir(parents=True, exist_ok=True)
+    cmd = ["git", "clone", "--depth", "1", clean_url, str(clone_dir)]
+    res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    if res.returncode == 0 and clone_dir.exists():
+        if commit:
+            subprocess.run(["git", "-C", str(clone_dir), "fetch", "--depth", "1", "origin", commit], capture_output=True, text=True, timeout=45)
+            subprocess.run(["git", "-C", str(clone_dir), "checkout", commit], capture_output=True, text=True, timeout=30)
+        sha_res = subprocess.run(["git", "-C", str(clone_dir), "rev-parse", "HEAD"], capture_output=True, text=True, timeout=15)
+        sha = sha_res.stdout.strip() if sha_res.returncode == 0 else (commit or "unknown")
+        return clone_dir, sha
+
+    # Резервный путь, если git недоступен
+    api_zip = f"https://api.github.com/repos/{owner}/{repo}/zipball" + (f"/{commit}" if commit else "")
+    req = urllib.request.Request(api_zip, headers={"User-Agent": "AIFaSecurity-Auditor/2.0"})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        data = resp.read(50 * 1024 * 1024)
     with zipfile.ZipFile(io.BytesIO(data)) as zf:
         for member in zf.infolist():
             if member.is_dir():
@@ -155,7 +168,7 @@ def fetch_github_repo_to_temp(repo_url: str, dest_dir: Path) -> Path:
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(zf.read(member))
     subs = [d for d in dest_dir.iterdir() if d.is_dir()]
-    return subs[0] if len(subs) == 1 else dest_dir
+    return (subs[0] if len(subs) == 1 else dest_dir), (commit or "zipball")
 
 
 def audit_http_url(url: str) -> dict[str, Any]:
