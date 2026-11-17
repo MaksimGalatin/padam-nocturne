@@ -1,0 +1,292 @@
+{
+  "benchmark": "PADAM Honest QA Bench (LongMemEval-S + LoCoMo-10)",
+  "padam_version": "0.6.2",
+  "mode": "offline_extractive_0usd",
+  "embedder": "builtin",
+  "paid_api_cost_usd": 0.0,
+  "generated_at": "2026-11-17T01:10:12Z",
+  "longmemeval": {
+    "dataset": "LongMemEval-S",
+    "questions_total": 100,
+    "stride": 5,
+    "padam": {
+      "overall": {
+        "n": 94,
+        "evidence_recall@5": 0.9362,
+        "evidence_recall@10": 0.9787,
+        "token_f1": 0.0707,
+        "token_recall": 0.2914,
+        "short_fact_match": 0.2771,
+        "latency_p50_ms": 64.17,
+        "latency_p95_ms": 80.71
+      },
+      "by_type": {
+        "knowledge-update": {
+          "n": 14,
+          "evidence_recall@5": 1.0,
+          "evidence_recall@10": 1.0,
+          "token_f1": 0.078,
+          "token_recall": 0.494,
+          "short_fact_match": 0.3571,
+          "latency_p50_ms": 62.56,
+          "latency_p95_ms": 66.17
+        },
+        "multi-session": {
+          "n": 25,
+          "evidence_recall@5": 1.0,
+          "evidence_recall@10": 1.0,
+          "token_f1": 0.0101,
+          "token_recall": 0.0489,
+          "short_fact_match": 0.12,
+          "latency_p50_ms": 64.31,
+          "latency_p95_ms": 70.73
+        },
+        "single-session-assistant": {
+          "n": 11,
+          "evidence_recall@5": 1.0,
+          "evidence_recall@10": 1.0,
+          "token_f1": 0.1382,
+          "token_recall": 0.4584,
+          "short_fact_match": 0.4444,
+          "latency_p50_ms": 63.74,
+          "latency_p95_ms": 69.1
+        },
+        "single-session-preference": {
+          "n": 6,
+          "evidence_recall@5": 0.5,
+          "evidence_recall@10": 0.8333,
+          "token_f1": 0.0673,
+          "token_recall": 0.0461,
+          "short_fact_match": null,
+          "latency_p50_ms": 63.13,
+          "latency_p95_ms": 69.67
+        },
+        "single-session-user": {
+          "n": 13,
+          "evidence_recall@5": 0.9231,
+          "evidence_recall@10": 1.0,
+          "token_f1": 0.1167,
+          "token_recall": 0.6667,
+          "short_fact_match": 0.5385,
+          "latency_p50_ms": 79.93,
+          "latency_p95_ms": 82.17
+        },
+        "temporal-reasoning": {
+          "n": 25,
+          "evidence_recall@5": 0.92,
+          "evidence_recall@10": 0.96,
+          "token_f1": 0.0743,
+          "token_recall": 0.2105,
+          "short_fact_match": 0.1818,
+          "latency_p50_ms": 63.92,
+          "latency_p95_ms": 66.45
+        }
+      },
+      "abstention": {
+        "n": 6,
+        "accuracy": 0.0
+      }
+    },
+    "bm25": {
+      "overall": {
+        "n": 94,
+        "evidence_recall@5": 0.9574,
+        "evidence_recall@10": 0.9787,
+        "token_f1": 0.075,
+        "token_recall": 0.2956,
+        "short_fact_match": 0.2771,
+        "latency_p50_ms": 1.76,
+        "latency_p95_ms": 2.43
+      },
+      "by_type": {
+        "knowledge-update": {
+          "n": 14,
+          "evidence_recall@5": 1.0,
+          "evidence_recall@10": 1.0,
+          "token_f1": 0.078,
+          "token_recall": 0.494,
+          "short_fact_match": 0.3571,
+          "latency_p50_ms": 1.7,
+          "latency_p95_ms": 2.06
+        },
+        "multi-session": {
+          "n": 25,
+          "evidence_recall@5": 1.0,
+          "evidence_recall@10": 1.0,
+          "token_f1": 0.0103,
+          "token_recall": 0.0489,
+          "short_fact_match": 0.12,
+          "latency_p50_ms": 1.73,
+          "latency_p95_ms": 2.25
+        },
+        "single-session-assistant": {
+          "n": 11,
+          "evidence_recall@5": 1.0,
+          "evidence_recall@10": 1.0,
+          "token_f1": 0.1382,
+          "token_recall": 0.4584,
+          "short_fact_match": 0.4444,
+          "latency_p50_ms": 1.97,
+          "latency_p95_ms": 2.81
+        },
+        "single-session-preference": {
+          "n": 6,
+          "evidence_recall@5": 0.6667,
+          "evidence_recall@10": 0.8333,
+          "token_f1": 0.0718,
+          "token_recall": 0.0461,
+          "short_fact_match": null,
+          "latency_p50_ms": 1.57,
+          "latency_p95_ms": 1.74
+        },
+        "single-session-user": {
+          "n": 13,
+          "evidence_recall@5": 0.9231,
+          "evidence_recall@10": 1.0,
+          "token_f1": 0.1475,
+          "token_recall": 0.7244,
+          "short_fact_match": 0.5385,
+          "latency_p50_ms": 1.97,
+          "latency_p95_ms": 2.16
+        },
+        "temporal-reasoning": {
+          "n": 25,
+          "evidence_recall@5": 0.96,
+          "evidence_recall@10": 0.96,
+          "token_f1": 0.0734,
+          "token_recall": 0.1966,
+          "short_fact_match": 0.1818,
+          "latency_p50_ms": 1.94,
+          "latency_p95_ms": 2.88
+        }
+      },
+      "abstention": {
+        "n": 6,
+        "accuracy": 0.0
+      }
+    }
+  },
+  "locomo": {
+    "dataset": "LoCoMo-10",
+    "conversations": 10,
+    "questions_total": 500,
+    "qa_stride": 4,
+    "padam": {
+      "overall": {
+        "n": 388,
+        "evidence_recall@5": 0.8325,
+        "evidence_recall@10": 0.8737,
+        "token_f1": 0.0817,
+        "token_recall": 0.256,
+        "short_fact_match": 0.1102,
+        "latency_p50_ms": 4.0,
+        "latency_p95_ms": 5.38
+      },
+      "by_type": {
+        "multi-hop": {
+          "n": 67,
+          "evidence_recall@5": 0.7313,
+          "evidence_recall@10": 0.8507,
+          "token_f1": 0.0601,
+          "token_recall": 0.1188,
+          "short_fact_match": 0.0323,
+          "latency_p50_ms": 3.92,
+          "latency_p95_ms": 5.46
+        },
+        "open-domain": {
+          "n": 26,
+          "evidence_recall@5": 0.6154,
+          "evidence_recall@10": 0.6154,
+          "token_f1": 0.0252,
+          "token_recall": 0.0411,
+          "short_fact_match": 0.0,
+          "latency_p50_ms": 4.2,
+          "latency_p95_ms": 21.78
+        },
+        "single-hop": {
+          "n": 209,
+          "evidence_recall@5": 0.8804,
+          "evidence_recall@10": 0.9139,
+          "token_f1": 0.0893,
+          "token_recall": 0.2394,
+          "short_fact_match": 0.145,
+          "latency_p50_ms": 3.98,
+          "latency_p95_ms": 5.06
+        },
+        "temporal": {
+          "n": 86,
+          "evidence_recall@5": 0.8605,
+          "evidence_recall@10": 0.8721,
+          "token_f1": 0.0969,
+          "token_recall": 0.468,
+          "short_fact_match": 0.1163,
+          "latency_p50_ms": 4.04,
+          "latency_p95_ms": 16.66
+        }
+      },
+      "abstention": {
+        "n": 112,
+        "accuracy": 0.0
+      }
+    },
+    "bm25": {
+      "overall": {
+        "n": 388,
+        "evidence_recall@5": 0.8814,
+        "evidence_recall@10": 0.9253,
+        "token_f1": 0.0809,
+        "token_recall": 0.2667,
+        "short_fact_match": 0.1237,
+        "latency_p50_ms": 0.61,
+        "latency_p95_ms": 0.88
+      },
+      "by_type": {
+        "multi-hop": {
+          "n": 67,
+          "evidence_recall@5": 0.7612,
+          "evidence_recall@10": 0.8358,
+          "token_f1": 0.0421,
+          "token_recall": 0.0993,
+          "short_fact_match": 0.0323,
+          "latency_p50_ms": 0.57,
+          "latency_p95_ms": 0.75
+        },
+        "open-domain": {
+          "n": 26,
+          "evidence_recall@5": 0.8077,
+          "evidence_recall@10": 0.8846,
+          "token_f1": 0.0275,
+          "token_recall": 0.047,
+          "short_fact_match": 0.0,
+          "latency_p50_ms": 0.61,
+          "latency_p95_ms": 0.99
+        },
+        "single-hop": {
+          "n": 209,
+          "evidence_recall@5": 0.9378,
+          "evidence_recall@10": 0.9713,
+          "token_f1": 0.0947,
+          "token_recall": 0.2701,
+          "short_fact_match": 0.175,
+          "latency_p50_ms": 0.63,
+          "latency_p95_ms": 0.9
+        },
+        "temporal": {
+          "n": 86,
+          "evidence_recall@5": 0.8605,
+          "evidence_recall@10": 0.8953,
+          "token_f1": 0.0939,
+          "token_recall": 0.4554,
+          "short_fact_match": 0.1047,
+          "latency_p50_ms": 0.6,
+          "latency_p95_ms": 0.8
+        }
+      },
+      "abstention": {
+        "n": 112,
+        "accuracy": 0.0
+      }
+    }
+  },
+  "total_seconds": 128.18
+}
