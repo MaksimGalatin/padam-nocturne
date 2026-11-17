@@ -166,10 +166,15 @@ class PadamMemoryAdapter(MemoryAdapter):
         self._mems.clear()
 
 
-class OfficialMcpServerAdapter(MemoryAdapter):
-    """Адаптер официального контракта @modelcontextprotocol/server-memory (Knowledge Graph MCP)."""
+class PadamOfficialCompatAdapter(MemoryAdapter):
+    """Режим совместимости САМОГО PADAM с инструментами @modelcontextprotocol/server-memory.
 
-    name = "official-server-memory-compat"
+    ВНИМАНИЕ: это НЕ настоящий официальный сервер, а PADAM, отвечающий его 9 инструментами. Сравнивать с ним
+    «официальный сервер» нельзя — это PADAM против самого себя. Настоящий сервер (Node, `npx -y
+    @modelcontextprotocol/server-memory`) подключается через StdioMcpAdapter.
+    """
+
+    name = "padam-official-compat"
 
     def __init__(self, db_path: str = ":memory:") -> None:
         from padam import compat_official, mcp_server
@@ -418,3 +423,6 @@ def compute_three_axis_score(memory_pct: float, security_pct: float, agent_pct: 
         "overall_score_pct": overall,
         "weights": {"memory": 0.35, "security": 0.45, "agent": 0.20},
     }
+
+# Прежнее имя оставлено для совместимости; по смыслу это PadamOfficialCompatAdapter.
+OfficialMcpServerAdapter = PadamOfficialCompatAdapter

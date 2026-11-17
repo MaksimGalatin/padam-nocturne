@@ -1233,26 +1233,6 @@ _INSTRUCTION = re.compile("|".join([
     r"(?:^|[\n.!?|]\s*)(?:(?:to|for)\s+(?:the\s+)?)?ai (?:agent|assistant|parser|crawler)s?\s*[:,])"
     r".{0,200}(?:вставь|добавь|сделай запрос|запрос на|отправь|перешли|удали|открой|перейди|не говори|ненавязчиво|"
     r"незаметно|\binsert\b|\binclude\b|\bsend\b|\bdelete\b|\bvisit\b|\bfetch\b|don'?t tell|do not tell|https?://)",
-    # 0.6.3: класс 1 — подмена контактов, способов восстановления, получателей, кошельков и учётных данных (O(n))
-    r"(?<!\w)(?:forget|replace|overwrite|set|change|update|switch|redirect|forward|reassign|route|reset|assign|"
-    r"забудь\w*|подмен\w*|замен\w*|установ\w*|измен\w*|обнов\w*|перевед\w*|перенаправ\w*)\b"
-    r"[^\n.!?]{0,70}?\b(?:recovery|backup|primary|owner'?s?|user'?s?|payout|billing|default|2fa|mfa|invoice|iban|payment|transfer|"
-    r"резервн\w*|восстановлен\w*|основн\w*|владельц\w*|выплат\w*)\b"
-    r"[^\n.!?]{0,60}?(?:\b(?:to|with|into|на)\b|->|:|=)"
-    r"|(?<!\w)(?:забудь\w*|подмен\w*|замен\w*|установ\w*|измен\w*|обнов\w*|перевед\w*|перенаправ\w*)\b"
-    r"[^\n.!?]{0,50}?\b(?:почт\w*|телефон\w*|кошел[её]к\w*|реквизит\w*|получател\w*)\b"
-    r"[^\n.!?]{0,40}?\b(?:восстановлен\w*|получател\w*|резервн\w*)\b[^\n.!?]{0,40}?(?:\bна\b|->|:|=)"
-    r"|(?<!\w)(?:always\s+)?transfer\b[^\n.!?]{0,50}?\b(?:payouts?|funds?|solana|usdt|wallet)\b[^\n.!?]{0,40}?\bto\b",
-    # 0.6.3: класс 2 — скрытые директивы агенту в HTML/Markdown-комментариях (O(n))
-    r"<!--[^\n>]{0,220}?\b(?:agent|assistant|system|directive|instruction|override|ignore|bypass|forget|hidden|secret|token|"
-    r"execute|eval|transfer|wallet|recovery|exfiltrat\w*|grant|append|pixel|"
-    r"агент\w*|директив\w*|инструкц\w*|скрыв\w*|обойд\w*|игнорир\w*|подмен\w*)\b[^\n>]{0,220}?-->",
-    r"\[//\]:\s*#\s*\([^\n)]{0,220}?\b(?:agent|assistant|system|directive|instruction|override|ignore|bypass|forget|execute|transfer|recovery)\b[^\n)]{0,220}?\)",
-    # 0.6.3: класс 3 — команды эксфильтрации учётных данных, токенов и переписок
-    r"(?:^|[.!?\n]\s*)(?:please\s+|kindly\s+|also\s+|now\s+)?(?:send|forward|upload|exfiltrate|dump|отправ\w*|перешл\w*|пересл\w*|передай\w*|выгруз\w*)\b"
-    r"[^\n.!?]{0,60}?\b(?:passwords?|api\s+tokens?|credentials?|secrets?|private\s+keys?|transcripts?|парол\w*|токен\w*|ключ\w*|секрет\w*|баз[уы]\s+памяти)\b"
-    r"[^\n.!?]{0,50}?(?:https?://|@|\b(?:to|на)\b\s+\S+|->)"
-    r"|\b(?:выполни|запусти|execute|run)\s+(?:curl|wget)\s+https?://",
 ]), re.I | re.S)
 
 # Сжатый вид для команд, разбитых по буквам («i-g-n-o-r-e a.l.l»): только буквы, без пробелов и знаков.
@@ -1589,6 +1569,77 @@ def _разговор_о_приказе(вариант: str, m: re.Match) -> boo
     return bool(_ЖАНР_ОБСУЖДЕНИЯ.search(заголовок) and _ЦИТАТА_РЯДОМ.search(вариант[max(0, m.start() - 80):m.start()]))
 
 
+# --- 0.6.3: подмена реквизитов, скрытые директивы в комментариях, вывоз секретов -----------------------------
+# Срабатывают только в пределах ОДНОГО предложения и только на сочетание признаков: широкое правило «set … default … to»
+# (черновик 17.11) поднимало тревогу на 14 из 15 обычных заметок («set the default theme to dark»). Каждая часть —
+# простой шаблон без вложенных повторов, проверка линейна по длине текста.
+_ПРЕДЛОЖЕНИЯ = re.compile(r"(?<=[!?\n])|(?<=[.;])\s+")
+_НОВОЕ_ЗНАЧЕНИЕ = re.compile(
+    r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+"                       # почта
+    r"|\+?\d[\d \-()]{8,}\d"                              # телефон
+    r"|\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){3,7}\b"           # IBAN
+    r"|\b0x[0-9a-fA-F]{40}\b"                             # адрес EVM
+    r"|\b[1-9A-HJ-NP-Za-km-z]{32,44}\b")                  # адрес Solana / Bitcoin (base58); ссылки сюда не входят
+_ПОЛЕ_РИСКА = re.compile(
+    r"\b(?:recovery|backup (?:e-?mail|phone|codes?|address)|verification codes?|2fa|mfa|otp|"
+    r"one-time (?:codes?|passwords?)|password resets?|reset links?|payouts?|refunds?|withdrawals?|wallets?|iban|"
+    r"bank account|beneficiary|recipient|payment (?:address|destination|details)|receiving account|"
+    r"account that receives|invoices? (?:to|paid)|owner'?s?|admin|primary (?:e-?mail|phone(?: number)?)|"
+    r"(?:owner|recovery|payout|admin|billing)_\w*(?:e-?mail|phone|wallet|address))\b"
+    r"|восстановлен\w*|сброс\w*\s+парол\w*|код\w*\s+подтвержд\w*|выплат\w*|возврат\w*\s+средств|кош[её]л\w*|"
+    r"реквизит\w*|получател\w*", re.I)
+_СИГНАЛ_ПОДМЕНЫ = re.compile(
+    r"\b(?:from now on|going forward|henceforth|instead|is now|are now|should (?:now )?be sent|new|replac\w*|updat\w*|"
+    r"chang\w*|switch\w*|set|forget|apply|redirect\w*|reassign\w*|overwrit\w*|route|assign)\b"
+    r"|(?:e-?mail|phone|wallet|iban|recipient|payout|address)\s*[:=]"
+    r"|отныне|теперь|вместо|нов\w+|замени\w*|обнови\w*|измени\w*|забудь\w*|используй\w*|перенаправ\w*", re.I)
+_КОММЕНТАРИЙ = re.compile(r"<!--(.{0,600}?)-->|\[//\]:\s*#\s*\(([^)\n]{0,600})\)", re.S)
+_АДРЕСАТ_ИИ = re.compile(r"\b(?:agents?|assistants?|ai|llms?|models?|bots?|copilot|chatbot|system|directive|override|hidden)\b\s*:?"
+                         r"|агент\w*|ассистент\w*|\bии\b|нейросет\w*|инструкци\w* для|директив\w*", re.I)
+_ПРИКАЗ_ИИ = re.compile(
+    r"\b(?:ignore|disregard|paste|reveal|send|forward|transfer|forget|include|insert|append|execute|run|tell|"
+    r"output|print|copy|exfiltrate|leak|grant|override|bypass|use|set|replace|always|never|must|make|disable|trust|"
+    r"skip|approve)\b"
+    r"|игнорир\w*|вставь|отправь|перешли|забудь|выполни|раскрой|покажи|скопируй|используй|замени|подмени|отключи|"
+    r"всегда|никогда", re.I)
+_ВЫВОЗ_ГЛАГОЛ = re.compile(r"\b(?:send|forward|upload|post|paste|email|exfiltrate|leak|dump)\b|отправ\w*|перешл\w*|пересл\w*|выгруз\w*|вставь", re.I)
+_СЕКРЕТ_СЛОВО = re.compile(
+    r"\b(?:passwords?|passphrases?|api[ _-]?keys?|access tokens?|auth tokens?|credentials|private keys?|seed phrases?|"
+    r"mnemonic|session cookies?|cookies|ssh keys?)\b|парол\w*|ключ\w*\s+(?:api|доступа|кошел\w*)|токен\w*|сид-фраз\w*|куки", re.I)
+_ВЫВОЗ_КУДА = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+|https?://\S+")
+_ССЫЛКА = re.compile(r"https?://\S+|www\.\S+")
+_ЗАГЛУШКА = re.compile(r"example\.(?:com|org|net)|localhost|127\.0\.0\.1|\byour[_-]", re.I)
+_CURL = re.compile(r"\b(?:выполни|запусти|execute|run)\s+(?:curl|wget)\s+https?://"
+                   r"|\b(?:forward|send|upload|mirror|copy)\s+(?:all|every)\s+(?:future\s+)?(?:chat\s+|conversation\s+)?"
+                   r"(?:transcripts?|conversations?|chats?|messages|memor(?:y|ies))\b[^.\n]{0,40}?https?://"
+                   r"|\byou (?:actually |now )?work for\b[^.\n]{0,40}\bnow\b"
+                   r"|\b(?:ты|вы) больше не\b[^.\n]{0,40}(?:помощни\w*|ассистент\w*)"
+                   r"|\b(?:тво[яё]|ваш[аеи]?) нов\w+ рол\w*\s*[—:-]\s*(?:выполн\w*|подчин\w*|слушать)", re.I)
+
+
+def _подмена_или_вывоз(вариант: str) -> bool:
+    """Подмена реквизитов, скрытая директива ИИ в комментарии или вывоз секретов — по сочетанию признаков."""
+    for m in _КОММЕНТАРИЙ.finditer(вариант):
+        тело = m.group(1) or m.group(2) or ""
+        if _АДРЕСАТ_ИИ.search(тело) and _ПРИКАЗ_ИИ.search(тело):
+            return True
+    if _CURL.search(вариант):
+        return True
+    for фраза in _ПРЕДЛОЖЕНИЯ.split(вариант):
+        if not фраза or len(фраза) > 600 or not фраза.strip():
+            continue
+        значения = [z.group(0) for z in _НОВОЕ_ЗНАЧЕНИЕ.finditer(фраза) if not _ЗАГЛУШКА.search(z.group(0))]
+        if значения:
+            # поле и сигнал ищутся в тексте БЕЗ самих значений и ссылок: «mfa» в домене mfa.gov.eg — не поле
+            остаток = _ССЫЛКА.sub(" ", _НОВОЕ_ЗНАЧЕНИЕ.sub(" ", фраза))
+            if _ПОЛЕ_РИСКА.search(остаток) and _СИГНАЛ_ПОДМЕНЫ.search(остаток):
+                return True
+        куда = [z.group(0) for z in _ВЫВОЗ_КУДА.finditer(фраза) if not _ЗАГЛУШКА.search(z.group(0))]
+        if куда and _ВЫВОЗ_ГЛАГОЛ.search(фраза) and _СЕКРЕТ_СЛОВО.search(фраза):
+            return True
+    return False
+
+
 def looks_like_instruction(text: str) -> bool:
     """Текст похож на команду агенту, а не на сведения о человеке или проекте.
 
@@ -1601,6 +1652,8 @@ def looks_like_instruction(text: str) -> bool:
         for m in _INSTRUCTION.finditer(вариант):
             if not _разговор_о_приказе(вариант, m):
                 return True
+        if _подмена_или_вывоз(вариант):
+            return True
     норм = _for_check(text)
     if _РАЗБИВКА.search(норм) and _СЖАТЫЕ.search("".join(ch for ch in норм if ch.isalpha())):
         return True
