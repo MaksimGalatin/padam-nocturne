@@ -1,0 +1,38 @@
+name: Build iOS App (unsigned .ipa)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios-ipa.yml"
+
+jobs:
+  build-ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        working-directory: ios/PADAMStudio
+        run: xcodegen generate
+      - name: Build unsigned iOS archive & .ipa
+        working-directory: ios/PADAMStudio
+        run: |
+          xcodebuild -project PADAMStudio.xcodeproj \
+            -scheme PADAMStudio \
+            -configuration Release \
+            -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "PADAMStudio.app" -type d | head -n 1)
+          mkdir -p dist/Payload
+          cp -R "$APP_PATH" dist/Payload/
+          (cd dist && zip -r PADAM-Studio-iOS-unsigned.ipa Payload)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PADAM-Studio-iOS-unsigned-ipa
+          path: ios/PADAMStudio/dist/PADAM-Studio-iOS-unsigned.ipa

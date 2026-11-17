@@ -622,7 +622,66 @@ ROLLBACK_TOOL_DEF = {
         "required": ["action", "status"],
     },
 }
-_ALL_TOOLS_BY_NAME = {**_TOOLS_BY_NAME, "padam_recent": RECENT_TOOL_DEF, "padam_rollback": ROLLBACK_TOOL_DEF}
+CABINET_TOOL_DEF = {
+    "name": "padam_cabinet",
+    "title": "CODE Cabinet, Billing Plans & AIfa Chat",
+    "description": (
+        "Connect the same CODE site account (email code login), inspect tier/Arweave quota "
+        "and billing upgrade URL, or talk directly with AIfa using masked local memory context."
+    ),
+    "annotations": {**_hints(False, False, False), "openWorldHint": True},
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": [
+                    "status",
+                    "send_code",
+                    "verify_code",
+                    "logout",
+                    "plans",
+                    "upgrade_url",
+                    "chat_history",
+                    "chat_send",
+                ],
+                "default": "status",
+            },
+            "email": {"type": "string", "maxLength": 200},
+            "code": {"type": "string", "maxLength": 32},
+            "lang": {"type": "string", "enum": ["ru", "en", "es", "zh"], "default": "ru"},
+            "chat_type": {"type": "string", "maxLength": 32, "default": "main"},
+            "message": {"type": "string", "maxLength": 8000},
+            "attach_local_memories": {"type": "boolean", "default": False},
+            "open_browser": {"type": "boolean", "default": False},
+        },
+        "additionalProperties": False,
+    },
+    "outputSchema": {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string"},
+            "ok": {"type": "boolean"},
+            "authenticated": {"type": "boolean"},
+            "email": {"type": ["string", "null"]},
+            "tier": {"type": "integer"},
+            "tier_name": {"type": "string"},
+            "upgrade_url": {"type": "string"},
+            "plans": {"type": "array", "items": {"type": "object"}},
+            "quota": {"type": ["object", "null"]},
+            "history": {"type": "array", "items": {"type": "object"}},
+            "reply": {"type": "string"},
+            "error": {"type": "string"},
+        },
+        "required": ["action", "ok"],
+    },
+}
+_ALL_TOOLS_BY_NAME = {
+    **_TOOLS_BY_NAME,
+    "padam_recent": RECENT_TOOL_DEF,
+    "padam_rollback": ROLLBACK_TOOL_DEF,
+    "padam_cabinet": CABINET_TOOL_DEF,
+}
 
 
 def _active_tools_by_name() -> dict[str, dict]:
@@ -2249,6 +2308,18 @@ def read_resource(uri: str) -> dict:
             "text": json.dumps(rep, ensure_ascii=False, indent=2),
             "annotations": _make_annotations(["user"], 0.9, None),
         }
+    if uri == "padam://cabinet":
+        from . import cabinet as _cab
+        try:
+            cab_data = _cab.fetch_me_and_quota()
+        except Exception as exc:
+            cab_data = {**_cab.get_public_status(), "plans": _cab.PLANS, "offline_error": str(exc)}
+        return {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps(cab_data, ensure_ascii=False, indent=2),
+            "annotations": _make_annotations(["user"], 0.85, None),
+        }
     if uri == "padam://metrics":
         if not config.mcp_otel_enabled():
             raise KeyError(f"Resource not found: {uri}")
@@ -3763,6 +3834,72 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             "records": s_rows,
         }
 
+    if name == "padam_cabinet":
+        if actor is not None and not actor.is_owner:
+            return "Permission denied: cabinet account and billing require the owner role.", None
+        from . import cabinet as _cab
+        act = str(args.get("action") or "status").strip()
+        lang = str(args.get("lang") or "ru").strip()
+        if act == "plans":
+            payload = {"action": "plans", "ok": True, "upgrade_url": _cab.get_upgrade_url(), "plans": _cab.PLANS}
+            return json.dumps(payload, ensure_ascii=False, indent=2), payload
+        if act == "upgrade_url":
+            u_url = _cab.get_upgrade_url()
+            opened = False
+            if bool(args.get("open_browser")):
+                import webbrowser as _wb
+                try:
+                    opened = bool(_wb.open(u_url))
+                except Exception:
+                    opened = False
+            payload = {"action": "upgrade_url", "ok": True, "upgrade_url": u_url, "opened": opened}
+            return json.dumps(payload, ensure_ascii=False, indent=2), payload
+        if act == "logout":
+            _cab.clear_session()
+            payload = {"action": "logout", "ok": True, "authenticated": False}
+            return json.dumps(payload, ensure_ascii=False, indent=2), payload
+        try:
+            if act == "status":
+                try:
+                    st_res = _cab.fetch_me_and_quota(lang=lang)
+                except Exception as exc:
+                    st_res = {**_cab.get_public_status(), "plans": _cab.PLANS, "offline_error": str(exc)}
+                payload = {"action": "status", "ok": True, **st_res}
+                return json.dumps(payload, ensure_ascii=False, indent=2), payload
+            if act == "send_code":
+                res = _cab.send_login_code(str(args.get("email") or ""))
+                payload = {"action": "send_code", **res}
+                return json.dumps(payload, ensure_ascii=False, indent=2), payload
+            if act == "verify_code":
+                res = _cab.verify_login_code(str(args.get("email") or ""), str(args.get("code") or ""))
+                payload = {"action": "verify_code", **res}
+                return json.dumps(payload, ensure_ascii=False, indent=2), payload
+            if act == "chat_history":
+                res = _cab.fetch_aifa_history(chat_type=str(args.get("chat_type") or "main"))
+                payload = {"action": "chat_history", **res}
+                return json.dumps(payload, ensure_ascii=False, indent=2), payload
+            if act == "chat_send":
+                msg = str(args.get("message") or "").strip()
+                masked_ctx: list[str] = []
+                if bool(args.get("attach_local_memories")) and msg:
+                    found = m.recall(msg, limit=3, actor=actor)
+                    masked_ctx = [safety.redact(r.content)[0] for r in found if r.content]
+                res = _cab.send_aifa_message(
+                    msg,
+                    locale=lang,
+                    masked_local_records=masked_ctx,
+                    chat_type=str(args.get("chat_type") or "main"),
+                )
+                payload = {"action": "chat_send", **res}
+                return json.dumps(payload, ensure_ascii=False, indent=2), payload
+            return f"PADAM error: unknown padam_cabinet action '{act}'.", None
+        except PermissionError as exc:
+            payload = {"action": act, "ok": False, "authenticated": False, "error": str(exc)}
+            return json.dumps(payload, ensure_ascii=False, indent=2), payload
+        except Exception as exc:
+            payload = {"action": act, "ok": False, "error": str(exc)}
+            return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
     if name == "padam_rollback":
         if not config.mcp_rollback_tool_enabled():
             return "PADAM error: padam_rollback is disabled by default (set PADAM_MCP_ROLLBACK_TOOL=1).", None
@@ -3889,6 +4026,8 @@ def _list_tools_payload() -> list[dict]:
     items = list(TOOLS)
     if config.mcp_rollback_tool_enabled():
         items.append(ROLLBACK_TOOL_DEF)
+    if config.mcp_cabinet_tool_enabled():
+        items.append(CABINET_TOOL_DEF)
     if config.mcp_official_compat_enabled():
         from . import compat_official as _compat_official
         items.extend(_compat_official.OFFICIAL_MEMORY_TOOLS)

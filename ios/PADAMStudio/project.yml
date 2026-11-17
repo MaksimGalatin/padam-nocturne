@@ -1,0 +1,21 @@
+name: PADAMStudio
+options:
+  bundleIdPrefix: com.codeofdigitaleternity
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  PADAMStudio:
+    type: application
+    platform: iOS
+    sources:
+      - path: .
+        excludes:
+          - project.yml
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.codeofdigitaleternity.padam
+        MARKETING_VERSION: "0.6.2"
+        CURRENT_PROJECT_VERSION: 1
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Info.plist
+        SWIFT_VERSION: "5.9"
