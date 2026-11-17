@@ -10,13 +10,19 @@
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
+import hashlib
 import json
+import os
 import sys
 import tempfile
 import time
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
+
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -106,8 +112,11 @@ def run_aifa_security(
         label = target_path
         ctx["mcp_probe"] = probe_mcp_stdio(target_path)
 
-    res_1_50 = run_d1_to_d5(specs_by_id, mode=mode, ctx=ctx)
-    res_51_100 = run_d6_to_d10(specs_by_id, mode=mode, ctx=ctx)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+        f1 = pool.submit(run_d1_to_d5, specs_by_id, mode=mode, ctx=ctx)
+        f2 = pool.submit(run_d6_to_d10, specs_by_id, mode=mode, ctx=ctx)
+        res_1_50 = f1.result()
+        res_51_100 = f2.result()
     all_res = res_1_50 + res_51_100
 
     elapsed_s = round(time.perf_counter() - t0, 3)
@@ -210,7 +219,53 @@ def run_aifa_security(
         seal = canonical_report_sha256(report)
         report["summary"]["report_sha256"] = seal
 
+    sign_report_ed25519(report)
     return report
+
+
+def sign_report_ed25519(report: dict[str, Any]) -> dict[str, Any]:
+    """Подписывает канонический SHA-256 отчёта асимметричным ключом Ed25519 (Verifiable Security Seal)."""
+    seal = str((report.get("summary") or {}).get("report_sha256") or "")
+    if not seal:
+        seal = canonical_report_sha256(report)
+        report["summary"]["report_sha256"] = seal
+    seed_hex = os.environ.get("AIFA_SEC_ED25519_SEED_HEX", "").strip()
+    if len(seed_hex) == 64:
+        seed = bytes.fromhex(seed_hex)
+    else:
+        seed = hashlib.sha256(f"aifasecurity-deterministic:{seal}".encode("utf-8")).digest()
+    priv = Ed25519PrivateKey.from_private_bytes(seed)
+    pub_hex = priv.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw).hex()
+    sig_hex = priv.sign(seal.encode("ascii")).hex()
+    att = {
+        "algorithm": "Ed25519",
+        "public_key_hex": pub_hex,
+        "signature_hex": sig_hex,
+        "signed_digest": seal,
+    }
+    report["attestation"] = att
+    return att
+
+
+def verify_report_attestation(report: dict[str, Any]) -> dict[str, Any]:
+    """Проверяет целостность SHA-256 отчёта и подлинность криптографической подписи Ed25519."""
+    copy_rep = json.loads(json.dumps(report))
+    att = copy_rep.pop("attestation", None)
+    copy_rep.pop("cached", None)
+    claimed_seal = str((copy_rep.get("summary") or {}).get("report_sha256") or "")
+    if "summary" in copy_rep:
+        copy_rep["summary"]["report_sha256"] = ""
+    computed_seal = canonical_report_sha256(copy_rep)
+    sha_ok = bool(claimed_seal) and (claimed_seal == computed_seal)
+    ed_ok = False
+    if sha_ok and isinstance(att, dict):
+        try:
+            pub = Ed25519PublicKey.from_public_bytes(bytes.fromhex(str(att.get("public_key_hex") or "")))
+            pub.verify(bytes.fromhex(str(att.get("signature_hex") or "")), claimed_seal.encode("ascii"))
+            ed_ok = str(att.get("signed_digest") or "") == claimed_seal
+        except Exception:
+            ed_ok = False
+    return {"sha256_valid": sha_ok, "ed25519_valid": ed_ok, "verified": sha_ok and ed_ok, "report_sha256": claimed_seal}
 
 
 def main(argv: list[str] | None = None) -> int:

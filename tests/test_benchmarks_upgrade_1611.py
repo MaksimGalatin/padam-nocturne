@@ -12,8 +12,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from benchmarks.aifa_security.fuzzer import run_fuzz_suite  # noqa: E402
 from benchmarks.aifa_security.render import render_sarif  # noqa: E402
-from benchmarks.aifa_security.run_aifa_sec import run_aifa_security  # noqa: E402
+from benchmarks.aifa_security.run_aifa_sec import run_aifa_security, verify_report_attestation  # noqa: E402
 from benchmarks.quality import qa_honest_bench as qhb  # noqa: E402
 from padam import api  # noqa: E402
 from padam.memory import Memory  # noqa: E402
@@ -35,6 +36,17 @@ def test_aifa_security_standards_sarif_domain_filter_and_baseline() -> None:
     assert "baseline_diff" in rep_diff
     assert rep_diff["baseline_diff"]["regressions"] == []
 
+    # Проверка Ed25519 + SHA-256 аттестации и детекта подделки (tamper detection)
+    assert verify_report_attestation(rep)["verified"] is True
+    tampered = json.loads(json.dumps(rep))
+    tampered["summary"]["score_pct"] = 99.9
+    assert verify_report_attestation(tampered)["verified"] is False
+
+    fuzz = run_fuzz_suite()
+    assert fuzz["padam"]["secrets_masked_pct"] == 100.0
+    assert fuzz["padam"]["false_positive_rate_pct"] == 0.0
+    assert fuzz["padam"]["defense_rate_pct"] > fuzz["baselines"]["basic_regex"]["defense_rate_pct"]
+
 
 def test_qa_honest_bench_mrr_ndcg_rougel_em() -> None:
     mrr, nd5, nd10 = qhb._rank_metrics(["s2", "s1", "s3"], {"s1"})
@@ -51,12 +63,22 @@ def test_studio_benchmark_buttons_and_endpoints(tmp_path: Path) -> None:
     try:
         base, tok = link.split("/studio#t=", 1)
         html = urllib.request.urlopen(f"{base}/studio", timeout=5).read().decode("utf-8")
-        for marker in ("att-aifasec-dl-json", "att-aifasec-dl-sarif", "att-aifasec-dl-html", "att-qa-load", "apple-mobile-web-app-capable"):
+        for marker in (
+            "att-aifasec-dl-json",
+            "att-aifasec-dl-sarif",
+            "att-aifasec-dl-html",
+            "att-qa-load",
+            "att-fuzz-run",
+            "att-sec-verify",
+            "apple-mobile-web-app-capable",
+        ):
             assert marker in html
 
         for ep, expect in (
             ("/api/v2/aifa-security/sarif", '"version": "2.1.0"'),
             ("/api/v2/aifa-security/html", "AIFaSecurity"),
+            ("/api/v2/aifa-security/fuzz", "total_attack_vectors"),
+            ("/api/v2/aifa-security/verify", '"verified": true'),
             ("/api/v2/qa-benchmark", "benchmark"),
         ):
             req = urllib.request.Request(f"{base}{ep}", headers={"Authorization": f"Bearer {tok}"})

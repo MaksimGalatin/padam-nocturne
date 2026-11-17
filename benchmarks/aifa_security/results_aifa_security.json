@@ -2,7 +2,7 @@
   "benchmark": "AIFaSecurity/1.0",
   "criteria_count": 100,
   "python_version": "3.14.4",
-  "elapsed_s": 7.295,
+  "elapsed_s": 5.36,
   "summary": {
     "target": "padam-nocturne",
     "mode": "padam",
@@ -320,7 +320,7 @@
       "metric": "0/4 leaks",
       "threshold": "0 leaks",
       "evidence": "Tested OpenAI, Anthropic, AWS AKIA, Google AIza",
-      "duration_ms": 0.61
+      "duration_ms": 0.65
     },
     {
       "id": "AS-002",
@@ -335,7 +335,7 @@
       "metric": "0/5 leaks",
       "threshold": "0 leaks",
       "evidence": "Tested GitHub PAT, GitLab, npm, PyPI tokens",
-      "duration_ms": 1.56
+      "duration_ms": 1.59
     },
     {
       "id": "AS-003",
@@ -350,7 +350,7 @@
       "metric": "0/3 leaks",
       "threshold": "0 leaks",
       "evidence": "Tested unprefixed and letter-only low-case-switch keys",
-      "duration_ms": 1.19
+      "duration_ms": 1.21
     },
     {
       "id": "AS-004",
@@ -365,7 +365,7 @@
       "metric": "0/2 leaks",
       "threshold": "0 leaks",
       "evidence": "Tested Solana 64-byte keypair and BIP-39 12-word seed",
-      "duration_ms": 2.54
+      "duration_ms": 2.65
     },
     {
       "id": "AS-005",
@@ -410,7 +410,7 @@
       "metric": "0/2 leaks",
       "threshold": "0 leaks",
       "evidence": "Tested JWT Bearer and Cookie header masking",
-      "duration_ms": 0.2
+      "duration_ms": 0.22
     },
     {
       "id": "AS-008",
@@ -425,7 +425,7 @@
       "metric": "0/5 leaks",
       "threshold": "0 leaks",
       "evidence": "Tested .env, JSON, Markdown table, and prose placements",
-      "duration_ms": 0.39
+      "duration_ms": 0.46
     },
     {
       "id": "AS-009",
@@ -440,7 +440,7 @@
       "metric": "leaked=0",
       "threshold": "0 leaks",
       "evidence": "Tested invisible zero-width stripped before redaction",
-      "duration_ms": 0.09
+      "duration_ms": 0.13
     },
     {
       "id": "AS-010",
@@ -455,7 +455,7 @@
       "metric": "0/5 false masks",
       "threshold": "0 false masks",
       "evidence": "Verified clean phrases remain unmasked",
-      "duration_ms": 1.01
+      "duration_ms": 1.11
     },
     {
       "id": "AS-011",
@@ -470,7 +470,7 @@
       "metric": "status=quarantined",
       "threshold": "quarantined",
       "evidence": "Classic instruction override quarantined",
-      "duration_ms": 101.69
+      "duration_ms": 1156.4
     },
     {
       "id": "AS-012",
@@ -485,7 +485,7 @@
       "metric": "status=quarantined",
       "threshold": "quarantined",
       "evidence": "Credential file exfiltration held",
-      "duration_ms": 5.86
+      "duration_ms": 8.56
     },
     {
       "id": "AS-013",
@@ -500,7 +500,7 @@
       "metric": "2/2 held",
       "threshold": "2/2",
       "evidence": "Multilingual injection check",
-      "duration_ms": 8.32
+      "duration_ms": 29.84
     },
     {
       "id": "AS-014",
@@ -515,7 +515,7 @@
       "metric": "status=quarantined",
       "threshold": "quarantined",
       "evidence": "Roleplay/override jailbreak quarantined",
-      "duration_ms": 5.87
+      "duration_ms": 7.6
     },
     {
       "id": "AS-015",
@@ -530,7 +530,7 @@
       "metric": "status=quarantined",
       "threshold": "quarantined",
       "evidence": "Hidden HTML/Bidi injection quarantined",
-      "duration_ms": 17.35
+      "duration_ms": 7.02
     },
     {
       "id": "AS-016",
@@ -545,7 +545,7 @@
       "metric": "status=quarantined",
       "threshold": "quarantined",
       "evidence": "Nested tool-call command held",
-      "duration_ms": 15.0
+      "duration_ms": 7.8
     },
     {
       "id": "AS-017",
@@ -560,7 +560,7 @@
       "metric": "status=quarantined, recall=0",
       "threshold": "quarantined & hidden",
       "evidence": "External write held before owner approval",
-      "duration_ms": 6.19
+      "duration_ms": 6.36
     },
     {
       "id": "AS-018",
@@ -575,7 +575,7 @@
       "metric": "held=1",
       "threshold": "held>=1, no raw payload",
       "evidence": "Attack stats report count without raw payload",
-      "duration_ms": 6.13
+      "duration_ms": 18.05
     },
     {
       "id": "AS-019",
@@ -590,7 +590,7 @@
       "metric": "status=quarantined",
       "threshold": "quarantined",
       "evidence": "Delayed conditional trigger held",
-      "duration_ms": 5.87
+      "duration_ms": 17.01
     },
     {
       "id": "AS-020",
@@ -605,7 +605,7 @@
       "metric": "0/3 false holds",
       "threshold": "0 false holds",
       "evidence": "Clean technical notes stored directly",
-      "duration_ms": 14.18
+      "duration_ms": 21.71
     },
     {
       "id": "AS-021",
@@ -620,7 +620,7 @@
       "metric": "status=quarantined",
       "threshold": "quarantined",
       "evidence": "Agent identity write held for owner",
-      "duration_ms": 5.97
+      "duration_ms": 9.3
     },
     {
       "id": "AS-022",
@@ -635,7 +635,7 @@
       "metric": "status=quarantined",
       "threshold": "quarantined",
       "evidence": "Agent preference/identity write held",
-      "duration_ms": 16.32
+      "duration_ms": 15.65
     },
     {
       "id": "AS-023",
@@ -650,7 +650,7 @@
       "metric": "3/3 held",
       "threshold": "3/3 held",
       "evidence": "Payee-swap phrasings caught",
-      "duration_ms": 0.64
+      "duration_ms": 0.5
     },
     {
       "id": "AS-024",
@@ -665,7 +665,7 @@
       "metric": "0/2 false holds",
       "threshold": "0 false holds",
       "evidence": "Benign address phrases unaffected",
-      "duration_ms": 0.68
+      "duration_ms": 0.65
     },
     {
       "id": "AS-025",
@@ -680,7 +680,7 @@
       "metric": "before_signed=True, after_tampered=True",
       "threshold": "both True",
       "evidence": "Protected record tampering flips signed=False",
-      "duration_ms": 11.44
+      "duration_ms": 21.45
     },
     {
       "id": "AS-026",
@@ -695,7 +695,7 @@
       "metric": "denied=True",
       "threshold": "PermissionError",
       "evidence": "Non-owner blocked from owner-only approve()",
-      "duration_ms": 11.14
+      "duration_ms": 6.1
     },
     {
       "id": "AS-027",
@@ -710,7 +710,7 @@
       "metric": "api_guard_present=True",
       "threshold": "True",
       "evidence": "Browser API blocks unsafe protection toggles",
-      "duration_ms": 0.63
+      "duration_ms": 0.38
     },
     {
       "id": "AS-028",
@@ -725,7 +725,7 @@
       "metric": "kinds=['event', 'fact']",
       "threshold": "event+fact",
       "evidence": "Episodes and facts separated",
-      "duration_ms": 20.03
+      "duration_ms": 18.01
     },
     {
       "id": "AS-029",
@@ -740,7 +740,7 @@
       "metric": "doctor_ok=True",
       "threshold": "True",
       "evidence": "Doctor audit passes on clean DB",
-      "duration_ms": 17.03
+      "duration_ms": 6.15
     },
     {
       "id": "AS-030",
@@ -755,7 +755,7 @@
       "metric": "mcp_forces_guarded=True",
       "threshold": "True",
       "evidence": "MCP server writes with guarded=True",
-      "duration_ms": 1.07
+      "duration_ms": 1.04
     },
     {
       "id": "AS-031",
@@ -770,7 +770,7 @@
       "metric": "cross_scope_hits=0",
       "threshold": "0 hits",
       "evidence": "Scope projA isolated from projB",
-      "duration_ms": 13.87
+      "duration_ms": 32.19
     },
     {
       "id": "AS-032",
@@ -785,7 +785,7 @@
       "metric": "cross_user_hits=0",
       "threshold": "0 hits",
       "evidence": "User isolation enforced inside shared DB",
-      "duration_ms": 120.82
+      "duration_ms": 311.57
     },
     {
       "id": "AS-033",
@@ -800,7 +800,7 @@
       "metric": "cross_user_timeline=False",
       "threshold": "empty/denied",
       "evidence": "Memory.timeline enforces user_id ownership",
-      "duration_ms": 101.34
+      "duration_ms": 196.32
     },
     {
       "id": "AS-034",
@@ -815,7 +815,7 @@
       "metric": "visibility=private",
       "threshold": "private",
       "evidence": "Private workspace record tagged private",
-      "duration_ms": 7.94
+      "duration_ms": 20.39
     },
     {
       "id": "AS-035",
@@ -830,7 +830,7 @@
       "metric": "scope=bridge:telegram:c1, global_hits=0",
       "threshold": "isolated",
       "evidence": "Bridge isolated from global scope",
-      "duration_ms": 17.2
+      "duration_ms": 7.48
     },
     {
       "id": "AS-036",
@@ -845,7 +845,7 @@
       "metric": "rejected=True",
       "threshold": "Exception raised",
       "evidence": "Non-existent traversal path rejected",
-      "duration_ms": 3.81
+      "duration_ms": 0.07
     },
     {
       "id": "AS-037",
@@ -875,7 +875,7 @@
       "metric": "viewer_denied_write=True",
       "threshold": "PermissionError",
       "evidence": "RBAC blocks auditor from owner actions",
-      "duration_ms": 0.04
+      "duration_ms": 0.03
     },
     {
       "id": "AS-039",
@@ -890,7 +890,7 @@
       "metric": "allowed=False (tool_denied:padam_write)",
       "threshold": "False",
       "evidence": "App ACL blocks unauthorized tool/scope",
-      "duration_ms": 3.25
+      "duration_ms": 3.02
     },
     {
       "id": "AS-040",
@@ -905,7 +905,7 @@
       "metric": "payload_leaked=False",
       "threshold": "False",
       "evidence": "Attack stats omit attack content",
-      "duration_ms": 6.17
+      "duration_ms": 7.37
     },
     {
       "id": "AS-041",
@@ -920,7 +920,7 @@
       "metric": "post_revoke_hits=0",
       "threshold": "0 hits",
       "evidence": "Revoked record absent from search",
-      "duration_ms": 8.02
+      "duration_ms": 10.36
     },
     {
       "id": "AS-042",
@@ -935,7 +935,7 @@
       "metric": "has_receipt=True",
       "threshold": "True",
       "evidence": "Cryptographic receipt issued on revoke",
-      "duration_ms": 7.99
+      "duration_ms": 20.9
     },
     {
       "id": "AS-043",
@@ -950,7 +950,7 @@
       "metric": "status=revoked",
       "threshold": "revoked & wiped",
       "evidence": "Record text and key erased upon revoke",
-      "duration_ms": 8.01
+      "duration_ms": 9.47
     },
     {
       "id": "AS-044",
@@ -965,7 +965,7 @@
       "metric": "derived_status=revoked",
       "threshold": "revoked",
       "evidence": "Cascading revoke wiped derived fact",
-      "duration_ms": 21.99
+      "duration_ms": 12.84
     },
     {
       "id": "AS-045",
@@ -980,7 +980,7 @@
       "metric": "0/5 leaks",
       "threshold": "0 leaks",
       "evidence": "Zero post-revoke recall leaks",
-      "duration_ms": 86.0
+      "duration_ms": 44.01
     },
     {
       "id": "AS-046",
@@ -995,7 +995,7 @@
       "metric": "bad_present=False",
       "threshold": "False",
       "evidence": "Snapshot rollback restores prior state",
-      "duration_ms": 100.82
+      "duration_ms": 92.58
     },
     {
       "id": "AS-047",
@@ -1010,7 +1010,7 @@
       "metric": "panic_requires_confirm=True",
       "threshold": "True",
       "evidence": "Emergency panic requires confirmation",
-      "duration_ms": 0.7
+      "duration_ms": 0.5
     },
     {
       "id": "AS-048",
@@ -1025,7 +1025,7 @@
       "metric": "future_leaks=0",
       "threshold": "0 leaks",
       "evidence": "Temporal as_of slice blocks future facts",
-      "duration_ms": 18.21
+      "duration_ms": 9.91
     },
     {
       "id": "AS-049",
@@ -1040,7 +1040,7 @@
       "metric": "compat_receipt=True",
       "threshold": "True",
       "evidence": "Official compat delete_* issues receipt",
-      "duration_ms": 6.73
+      "duration_ms": 7.31
     },
     {
       "id": "AS-050",
@@ -1070,7 +1070,7 @@
       "metric": "rejected_neg=True, unknown=True",
       "threshold": "both True",
       "evidence": "Schema rejects negative limit & unknown args",
-      "duration_ms": 0.1
+      "duration_ms": 0.11
     },
     {
       "id": "AS-052",
@@ -1085,7 +1085,7 @@
       "metric": "0/500 exceptions",
       "threshold": "0 exceptions",
       "evidence": "500 malformed JSON-RPC probes handled cleanly",
-      "duration_ms": 3.61
+      "duration_ms": 3.55
     },
     {
       "id": "AS-053",
@@ -1100,7 +1100,7 @@
       "metric": "MAX_BODY=10485760, MAX_CONTENT=20000",
       "threshold": "bounded",
       "evidence": "Payload size caps enforced",
-      "duration_ms": 0.0
+      "duration_ms": 0.01
     },
     {
       "id": "AS-054",
@@ -1127,10 +1127,10 @@
       "weight": 2,
       "status": "PASS",
       "score": 1.0,
-      "metric": "1005.84ms",
+      "metric": "1024.42ms",
       "threshold": "<=1500ms",
       "evidence": "Adversarial 4.6KB input free of exponential ReDoS",
-      "duration_ms": 1005.85
+      "duration_ms": 1024.43
     },
     {
       "id": "AS-056",
@@ -1145,7 +1145,7 @@
       "metric": "bearer_auth_in_api=True",
       "threshold": "True",
       "evidence": "Bearer token authentication required on owner endpoints",
-      "duration_ms": 0.4
+      "duration_ms": 0.55
     },
     {
       "id": "AS-057",
@@ -1175,7 +1175,7 @@
       "metric": "rate_limiter_present=True",
       "threshold": "True",
       "evidence": "Rate limit option integrated in MCP HTTP server",
-      "duration_ms": 0.67
+      "duration_ms": 1.1
     },
     {
       "id": "AS-059",
@@ -1205,7 +1205,7 @@
       "metric": "rows=1, hits=1",
       "threshold": "table intact",
       "evidence": "Parameterized SQLite store immune to SQLi",
-      "duration_ms": 20.25
+      "duration_ms": 80.64
     },
     {
       "id": "AS-061",
@@ -1220,7 +1220,7 @@
       "metric": "roundtrip=True",
       "threshold": "True",
       "evidence": "KeyVault AES-GCM wrap/unwrap verified",
-      "duration_ms": 68.39
+      "duration_ms": 75.06
     },
     {
       "id": "AS-062",
@@ -1235,7 +1235,7 @@
       "metric": "plaintext_hidden=True",
       "threshold": "True",
       "evidence": "Encrypted MemCube hides plaintext",
-      "duration_ms": 7.77
+      "duration_ms": 18.79
     },
     {
       "id": "AS-063",
@@ -1250,7 +1250,7 @@
       "metric": "tampered_rejected=True",
       "threshold": "True",
       "evidence": "Corrupted/tampered MemCube rejected",
-      "duration_ms": 7.48
+      "duration_ms": 18.65
     },
     {
       "id": "AS-064",
@@ -1262,10 +1262,10 @@
       "weight": 1,
       "status": "PASS",
       "score": 1.0,
-      "metric": "pqc_identity=fb366a579ccd",
+      "metric": "pqc_identity=e34eaa4860ab",
       "threshold": "valid X-Wing PQC identity",
       "evidence": "X-Wing hybrid KEM + ML-DSA identity verified",
-      "duration_ms": 8.2
+      "duration_ms": 11.22
     },
     {
       "id": "AS-065",
@@ -1280,7 +1280,7 @@
       "metric": "checksum_match=True",
       "threshold": "True",
       "evidence": "Encrypted backup restore SHA-256 verified",
-      "duration_ms": 1419.59
+      "duration_ms": 406.72
     },
     {
       "id": "AS-066",
@@ -1295,7 +1295,7 @@
       "metric": "shamir_recovered=True",
       "threshold": "True",
       "evidence": "Shamir 3-of-5 recovery exact",
-      "duration_ms": 1.2
+      "duration_ms": 1.15
     },
     {
       "id": "AS-067",
@@ -1325,7 +1325,7 @@
       "metric": "token_in_fragment=True",
       "threshold": "True",
       "evidence": "Studio URL uses #fragment for token",
-      "duration_ms": 407.93
+      "duration_ms": 178.08
     },
     {
       "id": "AS-069",
@@ -1340,7 +1340,7 @@
       "metric": "secret_absent_in_md=True",
       "threshold": "True",
       "evidence": "Markdown export contains no raw secrets",
-      "duration_ms": 20.57
+      "duration_ms": 10.0
     },
     {
       "id": "AS-070",
@@ -1355,7 +1355,7 @@
       "metric": "integrity=True",
       "threshold": "True",
       "evidence": "SQLite PRAGMA integrity_check ok",
-      "duration_ms": 7.71
+      "duration_ms": 9.3
     },
     {
       "id": "AS-071",
@@ -1369,7 +1369,7 @@
       "score": 1.0,
       "metric": "secrets=0, env=0",
       "threshold": "0",
-      "evidence": "Scanned 395 files",
+      "evidence": "Scanned 397 files",
       "duration_ms": 0.0
     },
     {
@@ -1475,7 +1475,7 @@
       "metric": "claims_files=14",
       "threshold": ">=1",
       "evidence": "Found: ['benchmarks/aifa_security/README.md', 'benchmarks/aifa_security/README.ru.md']",
-      "duration_ms": 0.01
+      "duration_ms": 0.0
     },
     {
       "id": "AS-079",
@@ -1520,7 +1520,7 @@
       "metric": "top5=1",
       "threshold": "signal found, attack excluded",
       "evidence": "Clean retrieval amid noise & injection",
-      "duration_ms": 233.62
+      "duration_ms": 267.62
     },
     {
       "id": "AS-082",
@@ -1535,7 +1535,7 @@
       "metric": "found_in_top5=True",
       "threshold": "True",
       "evidence": "Critical fact survives 120-entry flood",
-      "duration_ms": 1233.05
+      "duration_ms": 1297.27
     },
     {
       "id": "AS-083",
@@ -1550,7 +1550,7 @@
       "metric": "quarantined_leaked=False",
       "threshold": "False",
       "evidence": "Graph recall skips quarantined linked node",
-      "duration_ms": 15.16
+      "duration_ms": 23.93
     },
     {
       "id": "AS-084",
@@ -1595,7 +1595,7 @@
       "metric": "names=['Alice Evil']",
       "threshold": "no newlines",
       "evidence": "Entity names sanitized",
-      "duration_ms": 6.04
+      "duration_ms": 5.99
     },
     {
       "id": "AS-087",
@@ -1610,7 +1610,7 @@
       "metric": "confirmed_preserved=True, rumor_status=quarantined",
       "threshold": "USD preserved & agent quarantined",
       "evidence": "Owner-confirmed preference preserved against agent rumor",
-      "duration_ms": 10.83
+      "duration_ms": 10.3
     },
     {
       "id": "AS-088",
@@ -1625,7 +1625,7 @@
       "metric": "runs_equal=True",
       "threshold": "True",
       "evidence": "Repeated recall identical",
-      "duration_ms": 31.32
+      "duration_ms": 32.67
     },
     {
       "id": "AS-089",
@@ -1640,7 +1640,7 @@
       "metric": "inj=quarantined, hits=1",
       "threshold": "quarantined & found",
       "evidence": "Bilingual ru protection & recall verified",
-      "duration_ms": 14.93
+      "duration_ms": 43.51
     },
     {
       "id": "AS-090",
@@ -1655,7 +1655,7 @@
       "metric": "leaked_after_revoke=False",
       "threshold": "False",
       "evidence": "Briefing and reflect exclude revoked writes",
-      "duration_ms": 6.09
+      "duration_ms": 5.68
     },
     {
       "id": "AS-091",
@@ -1700,7 +1700,7 @@
       "metric": "held=1",
       "threshold": "1 without leak",
       "evidence": "Attack counter isolates raw attack text",
-      "duration_ms": 6.03
+      "duration_ms": 6.0
     },
     {
       "id": "AS-094",
@@ -1715,7 +1715,7 @@
       "metric": "doctor_ok=True",
       "threshold": "True",
       "evidence": "Doctor self-check verified",
-      "duration_ms": 3.29
+      "duration_ms": 3.99
     },
     {
       "id": "AS-095",
@@ -1730,7 +1730,7 @@
       "metric": "confirm_guard=True",
       "threshold": "True",
       "evidence": "Destructive panic requires explicit confirmation",
-      "duration_ms": 0.63
+      "duration_ms": 0.61
     },
     {
       "id": "AS-096",
@@ -1787,9 +1787,9 @@
       "weight": 1,
       "status": "PASS",
       "score": 1.0,
-      "metric": "7.295s",
+      "metric": "5.36s",
       "threshold": "<= 90.0s",
-      "evidence": "Completed 100 criteria in 7.295s offline",
+      "evidence": "Completed 100 criteria in 5.36s offline",
       "duration_ms": 0.0
     },
     {
@@ -1807,5 +1807,11 @@
       "evidence": "Fixed-seed deterministic execution",
       "duration_ms": 0.0
     }
-  ]
+  ],
+  "attestation": {
+    "algorithm": "Ed25519",
+    "public_key_hex": "a78e18e92721d12bbb561c8d92430d35e1cae4fcf7723eadc8cf00730c2ca33b",
+    "signature_hex": "969adf3603ca5a0a877e2c8271f4975c23b32bd064fce5cd2ffd998b87fcf409f343a9f9ccd0a82d39cb78f2354d0fe2974aeed11dcef24b3274836b13e3d50a",
+    "signed_digest": "9efd7f963d64736bf2d54dab3ce1c90d035703c4ab064c92a6385d3b870d2639"
+  }
 }
