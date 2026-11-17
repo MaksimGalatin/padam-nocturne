@@ -29,6 +29,32 @@ def apply_floor(p: np.ndarray) -> np.ndarray:
     return np.maximum(p, config.P_FLOOR_RATIO * float(np.median(p)))
 
 
+def local_sleep_classify(text: str, *, memory: Memory | None = None) -> str | None:
+    """Опциональная классификация эпизода во время сна строго через локальный контур ($0)."""
+    import os
+    if os.environ.get("PADAM_SLEEP_USE_ROUTER") != "1":
+        return None
+    from . import router as _router
+    status, data = _router.get_router().chat_completions(
+        {
+            "messages": [
+                {"role": "system", "content": "Classify memory kind in one word: fact, preference, decision, correction, event, state."},
+                {"role": "user", "content": text},
+            ],
+            "temperature": 0.0,
+            "max_tokens": 16,
+        },
+        memory=memory,
+        task_type="sleep",
+    )
+    if 200 <= status < 300:
+        choices = data.get("choices") or []
+        if choices and isinstance(choices[0], dict):
+            msg = choices[0].get("message") or {}
+            return str(msg.get("content") or "").strip().lower() or None
+    return None
+
+
 def probabilities(p: np.ndarray, alpha: float = config.ALPHA) -> np.ndarray:
     pa = np.power(np.maximum(p, 1e-12), alpha)
     s = pa.sum()

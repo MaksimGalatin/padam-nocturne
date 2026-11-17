@@ -676,11 +676,33 @@ CABINET_TOOL_DEF = {
         "required": ["action", "ok"],
     },
 }
+BRAIN_STATUS_TOOL_DEF = {
+    "name": "padam_brain_status",
+    "description": "Read-only Sovereign Model Router status: active contour, failover count, tier hits and masked contour config (no keys exposed).",
+    "inputSchema": {
+        "type": "object",
+        "properties": {},
+    },
+    "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+}
+SOVEREIGN_SYNC_TOOL_DEF = {
+    "name": "padam_sovereign_sync",
+    "description": "Checks if 500+ confirmed records exist and queues a dataset distill request in Review Queue for owner approval (never trains automatically).",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "min_records": {"type": "integer", "default": 500},
+        },
+    },
+    "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+}
 _ALL_TOOLS_BY_NAME = {
     **_TOOLS_BY_NAME,
     "padam_recent": RECENT_TOOL_DEF,
     "padam_rollback": ROLLBACK_TOOL_DEF,
     "padam_cabinet": CABINET_TOOL_DEF,
+    "padam_brain_status": BRAIN_STATUS_TOOL_DEF,
+    "padam_sovereign_sync": SOVEREIGN_SYNC_TOOL_DEF,
 }
 
 
@@ -2308,6 +2330,15 @@ def read_resource(uri: str) -> dict:
             "text": json.dumps(rep, ensure_ascii=False, indent=2),
             "annotations": _make_annotations(["user"], 0.9, None),
         }
+    if uri == "padam://brain-status":
+        from . import router as _router
+        snap = _router.get_router().status_snapshot()
+        return {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps(snap, ensure_ascii=False, indent=2),
+            "annotations": _make_annotations(["user"], 0.9, None),
+        }
     if uri == "padam://cabinet":
         from . import cabinet as _cab
         try:
@@ -3900,6 +3931,33 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             payload = {"action": act, "ok": False, "error": str(exc)}
             return json.dumps(payload, ensure_ascii=False, indent=2), payload
 
+    if name == "padam_brain_status":
+        from . import router as _router
+        snap = _router.get_router().status_snapshot()
+        return json.dumps(snap, ensure_ascii=False, indent=2), snap
+
+    if name == "padam_sovereign_sync":
+        if not config.mcp_sovereign_sync_tool_enabled():
+            return "PADAM error: padam_sovereign_sync is disabled by default (set PADAM_MCP_SOVEREIGN_SYNC_TOOL=1).", None
+        min_records = int(args.get("min_records") or 500)
+        confirmed = m.store.conn.execute(
+            "SELECT COUNT(*) FROM memory WHERE user_id = ? AND status = 'active' AND last_confirmed_at IS NOT NULL AND last_confirmed_at != ''",
+            (m.user_id,),
+        ).fetchone()[0]
+        if confirmed < min_records:
+            payload = {"queued": False, "confirmed_records": int(confirmed), "threshold": min_records, "reason": "below_threshold"}
+            return json.dumps(payload, ensure_ascii=False, indent=2), payload
+        # Постановка только в Review Queue (статус pending/quarantine), без автоматического обучения.
+        req_id = m.remember(
+            f"[Review Queue] Ready for Sovereign LoRA dataset distill ({confirmed} confirmed records).",
+            kind="event",
+            scope="system",
+            origin="agent",
+            actor=actor,
+        )
+        payload = {"queued": True, "confirmed_records": int(confirmed), "threshold": min_records, "review_id": req_id, "auto_train": False}
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
     if name == "padam_rollback":
         if not config.mcp_rollback_tool_enabled():
             return "PADAM error: padam_rollback is disabled by default (set PADAM_MCP_ROLLBACK_TOOL=1).", None
@@ -4028,6 +4086,10 @@ def _list_tools_payload() -> list[dict]:
         items.append(ROLLBACK_TOOL_DEF)
     if config.mcp_cabinet_tool_enabled():
         items.append(CABINET_TOOL_DEF)
+    if config.mcp_brain_status_tool_enabled():
+        items.append(BRAIN_STATUS_TOOL_DEF)
+    if config.mcp_sovereign_sync_tool_enabled():
+        items.append(SOVEREIGN_SYNC_TOOL_DEF)
     if config.mcp_official_compat_enabled():
         from . import compat_official as _compat_official
         items.extend(_compat_official.OFFICIAL_MEMORY_TOOLS)

@@ -35,6 +35,18 @@ STRINGS: dict[str, dict[str, str]] = {
         "nav_forget": "Забыть",
         "nav_graph": "Связи",
         "nav_l3": "Вечный слой L3",
+        "nav_brain": "Суверенный мозг",
+        "brain_title": "Суверенный мозг и Феникс",
+        "brain_sub": "Светофор контуров моделей, гигиеническая сборка датасета LoRA и мастер восстановления Феникса",
+        "brain_traffic_title": "Светофор контуров (Primary -> Sovereign -> Local)",
+        "brain_distill_title": "Датасет личности (Zero-Leak Distill)",
+        "brain_distill_btn": "Собрать датасет личности",
+        "brain_phoenix_title": "Мастер восстановления Феникса",
+        "brain_phoenix_local_btn": "Восстановить из локального бэкапа",
+        "brain_phoenix_arweave_btn": "Восстановить из Arweave/Solana (🔒)",
+        "brain_phoenix_ph": "Путь к локальному .padam-backup файлу",
+        "brain_cost_title": "Учёт вычислений и экономия токенов (только учёт)",
+        "brain_locked_note": "Замок активен: облачное восстановление Arweave/Solana и платежи выключены по умолчанию.",
         "nav_settings": "Настройки",
         "nav_quickstart": "Первый запуск",
         "theme_dark": "Тёмная тема",
@@ -349,6 +361,18 @@ STRINGS: dict[str, dict[str, str]] = {
         "nav_forget": "Forget & Receipts",
         "nav_graph": "Lineage Graph",
         "nav_l3": "Eternal Layer L3",
+        "nav_brain": "Sovereign Brain",
+        "brain_title": "Sovereign Brain & Phoenix",
+        "brain_sub": "Model contour traffic light, Zero-Leak LoRA dataset distill, and Phoenix recovery wizard",
+        "brain_traffic_title": "Model Contours (Primary -> Sovereign -> Local)",
+        "brain_distill_title": "Personality Dataset (Zero-Leak Distill)",
+        "brain_distill_btn": "Distill & Export Persona",
+        "brain_phoenix_title": "Phoenix Recovery Wizard",
+        "brain_phoenix_local_btn": "Restore from local backup",
+        "brain_phoenix_arweave_btn": "Restore from Arweave/Solana (🔒)",
+        "brain_phoenix_ph": "Path to local .padam-backup file",
+        "brain_cost_title": "Compute Ledger & Token Savings (Read-Only)",
+        "brain_locked_note": "Lock active: Arweave/Solana cloud restore and automated payments are disabled by default.",
         "nav_settings": "Settings",
         "nav_quickstart": "Quick Start",
         "theme_dark": "Dark theme",
@@ -652,6 +676,18 @@ STRINGS: dict[str, dict[str, str]] = {
         "nav_forget": "Olvidar y recibos",
         "nav_graph": "Grafo de vínculos",
         "nav_l3": "Capa eterna L3",
+        "nav_brain": "Cerebro Soberano",
+        "brain_title": "Cerebro Soberano y Fénix",
+        "brain_sub": "Semáforo de contornos LLM, exportación LoRA sin fugas y asistente de recuperación Fénix",
+        "brain_traffic_title": "Contornos de modelos (Primary -> Sovereign -> Local)",
+        "brain_distill_title": "Dataset de personalidad (Zero-Leak Distill)",
+        "brain_distill_btn": "Generar dataset de personalidad",
+        "brain_phoenix_title": "Asistente de recuperación Fénix",
+        "brain_phoenix_local_btn": "Restaurar desde respaldo local",
+        "brain_phoenix_arweave_btn": "Restaurar desde Arweave/Solana (🔒)",
+        "brain_phoenix_ph": "Ruta al archivo local .padam-backup",
+        "brain_cost_title": "Registro de cómputo y ahorro de tokens",
+        "brain_locked_note": "Bloqueo activo: restauración en Arweave/Solana y pagos desactivados por defecto.",
         "nav_settings": "Ajustes",
         "nav_quickstart": "Inicio rápido",
         "theme_dark": "Tema oscuro",
@@ -955,6 +991,18 @@ STRINGS: dict[str, dict[str, str]] = {
         "nav_forget": "遗忘与凭证",
         "nav_graph": "关联图谱",
         "nav_l3": "永恒层 L3",
+        "nav_brain": "主权大脑",
+        "brain_title": "主权大脑与凤凰模式",
+        "brain_sub": "模型回路状态灯、零泄漏 LoRA 人格数据集导出与凤凰恢复向导",
+        "brain_traffic_title": "模型回路状态 (Primary -> Sovereign -> Local)",
+        "brain_distill_title": "人格数据集 (Zero-Leak Distill)",
+        "brain_distill_btn": "导出人格数据集",
+        "brain_phoenix_title": "凤凰恢复向导",
+        "brain_phoenix_local_btn": "从本地备份恢复",
+        "brain_phoenix_arweave_btn": "从 Arweave/Solana 恢复 (🔒)",
+        "brain_phoenix_ph": "本地 .padam-backup 文件路径",
+        "brain_cost_title": "算力账本与 Token 节省统计（仅统计）",
+        "brain_locked_note": "安全锁已开启：Arweave/Solana 恢复与自动支付默认禁用。",
         "nav_settings": "设置",
         "nav_quickstart": "快速开始",
         "theme_dark": "深色主题",
@@ -2004,6 +2052,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .att-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
 .att-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.brain-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; background: #64748b; }
+.brain-dot-on { background: #22c55e; }
+.brain-dot-off { background: #ef4444; }
 .att-name { min-width: 0; overflow-wrap: anywhere; }
 .att-val { font-weight: 600; white-space: nowrap; }
 .att-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
@@ -3873,6 +3924,7 @@ function loadActiveTab() {
   else if (activeTab === 'graph') loadGraph();
   else if (activeTab === 'entities') loadEntities();
   else if (activeTab === 'l3') loadL3();
+  else if (activeTab === 'brain') loadBrain();
   else if (activeTab === 'team') loadTeam();
   else if (activeTab === 'settings') loadSettings();
   else if (activeTab === 'attacks') loadAttacks();
@@ -4565,6 +4617,81 @@ if ($('plans-upgrade-btn')) {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
+
+async function loadBrain() {
+  if (!token) return;
+  let st = null;
+  try { st = await api('/api/v2/brain/status'); } catch (e) { return; }
+  const cBox = $('brain-contours');
+  if (cBox) {
+    cBox.textContent = '';
+    const list = (st && st.contours) || [];
+    for (const c of list) {
+      const row = _el('div', 'att-row');
+      const left = _el('span', 'att-name');
+      const dot = _el('span', 'brain-dot ' + (c.enabled ? 'brain-dot-on' : 'brain-dot-off'));
+      left.appendChild(dot);
+      left.appendChild(document.createTextNode(String(c.name || '').toUpperCase() + (c.model ? ' · ' + c.model : '')));
+      const right = _el('span', 'att-val', c.enabled ? (c.url || 'local') : 'OFF (🔒)');
+      row.appendChild(left);
+      row.appendChild(right);
+      cBox.appendChild(row);
+    }
+  }
+  const mBox = $('brain-metrics');
+  if (mBox && st) {
+    mBox.textContent = '';
+    _kv(mBox, {
+      active_contour: st.active_contour || 'local',
+      total_requests: st.total_requests || 0,
+      failover_count: st.failover_count || 0,
+      tokens_saved_local: st.tokens_saved_local || 0,
+      estimated_cloud_cost_usd: '$' + String(st.estimated_cloud_cost_usd || 0),
+    });
+  }
+}
+
+if ($('brain-distill-btn')) {
+  $('brain-distill-btn').onclick = async () => {
+    const outEl = $('brain-distill-out');
+    if (outEl) outEl.textContent = '...';
+    try {
+      const r = await api('/api/v2/brain/distill', { method: 'POST', body: JSON.stringify({ format: 'both' }) });
+      if (outEl) {
+        outEl.textContent = 'OK: ' + String(r.exported_examples || 0) + ' examples · SHA-256: ' + String(r.dataset_sha256 || '').slice(0, 16) + '…';
+      }
+    } catch (e) {
+      if (outEl) outEl.textContent = String(e.message || e);
+    }
+  };
+}
+
+if ($('brain-phoenix-local-btn')) {
+  $('brain-phoenix-local-btn').onclick = async () => {
+    const p = ($('brain-phoenix-path') ? $('brain-phoenix-path').value : '').trim();
+    const outEl = $('brain-phoenix-out');
+    if (!p) { if (outEl) outEl.textContent = S.brain_phoenix_ph || 'Path required'; return; }
+    try {
+      const r = await api('/api/v2/brain/phoenix-restore', { method: 'POST', body: JSON.stringify({ source: 'local', backup_path: p }) });
+      if (outEl) outEl.textContent = JSON.stringify(r);
+    } catch (e) {
+      if (outEl) outEl.textContent = String(e.message || e);
+    }
+  };
+}
+
+if ($('brain-phoenix-arweave-btn')) {
+  $('brain-phoenix-arweave-btn').onclick = async () => {
+    const outEl = $('brain-phoenix-out');
+    try {
+      const r = await api('/api/v2/brain/phoenix-restore', { method: 'POST', body: JSON.stringify({ source: 'arweave' }) });
+      if (outEl) outEl.textContent = JSON.stringify(r);
+    } catch (e) {
+      if (outEl) outEl.textContent = S.brain_locked_note || String(e.message || e);
+    }
+  };
+}
+
 applyI18n();
 switchTab(activeTab);
 """
@@ -4647,6 +4774,9 @@ def page() -> tuple[str, str]:
       </button>
       <button id="tab-l3" data-tab="l3" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-l3">
         <span data-i18n="nav_l3">{s['nav_l3']}</span>
+      </button>
+      <button id="tab-brain" data-tab="brain" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-brain">
+        <span data-i18n="nav_brain">{s['nav_brain']}</span>
       </button>
       <button id="tab-team" data-tab="team" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-team">
         <span data-i18n="nav_team">{s['nav_team']}</span>
@@ -5191,6 +5321,41 @@ def page() -> tuple[str, str]:
             <button id="qs-enable-strict-btn" class="btn-primary" data-i18n="qs_btn_enable_strict">{s['qs_btn_enable_strict']}</button>
             <button id="qs-go-overview-btn" data-i18n="qs_btn_go_overview">{s['qs_btn_go_overview']}</button>
           </div>
+        </div>
+      </section>
+
+      <!-- СУВЕРЕННЫЙ МОЗГ И ФЕНИКС -->
+      <section id="panel-brain" role="tabpanel" aria-labelledby="tab-brain" hidden>
+        <div class="panel-header">
+          <h2 class="panel-title" data-i18n="brain_title">{s['brain_title']}</h2>
+          <p class="panel-sub" data-i18n="brain_sub">{s['brain_sub']}</p>
+        </div>
+        <div class="box">
+          <h3 class="box-title" data-i18n="brain_traffic_title">{s['brain_traffic_title']}</h3>
+          <div id="brain-contours"></div>
+        </div>
+        <div class="box">
+          <h3 class="box-title" data-i18n="brain_cost_title">{s['brain_cost_title']}</h3>
+          <div id="brain-metrics"></div>
+        </div>
+        <div class="box">
+          <h3 class="box-title" data-i18n="brain_distill_title">{s['brain_distill_title']}</h3>
+          <div class="rec-actions">
+            <button id="brain-distill-btn" class="btn-primary" data-i18n="brain_distill_btn">{s['brain_distill_btn']}</button>
+          </div>
+          <p id="brain-distill-out" class="panel-sub"></p>
+        </div>
+        <div class="box">
+          <h3 class="box-title" data-i18n="brain_phoenix_title">{s['brain_phoenix_title']}</h3>
+          <p class="panel-sub" data-i18n="brain_locked_note">{s['brain_locked_note']}</p>
+          <div class="toolbar">
+            <input id="brain-phoenix-path" type="text" data-i18n-placeholder="brain_phoenix_ph" placeholder="{s['brain_phoenix_ph']}">
+          </div>
+          <div class="rec-actions">
+            <button id="brain-phoenix-local-btn" class="btn-primary" data-i18n="brain_phoenix_local_btn">{s['brain_phoenix_local_btn']}</button>
+            <button id="brain-phoenix-arweave-btn" data-i18n="brain_phoenix_arweave_btn">{s['brain_phoenix_arweave_btn']}</button>
+          </div>
+          <p id="brain-phoenix-out" class="panel-sub"></p>
         </div>
       </section>
     </main>

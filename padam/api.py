@@ -54,8 +54,8 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
 
@@ -414,6 +414,14 @@ class Handler(BaseHTTPRequestHandler):
                 from benchmarks.aifa_security.run_aifa_sec import verify_report_attestation
                 rep = aifa_sec_bridge.get_aifa_security_report(run_fresh=False)
                 return self._send(200, verify_report_attestation(rep))
+            if путь.path == "/api/v2/brain/status":
+                roles.require_owner(actor, "brain_status")
+                from . import router as _router
+                snap = _router.get_router().status_snapshot()
+                snap["arweave_restore_locked"] = os.environ.get("PADAM_ARWEAVE_RESTORE") != "1"
+                snap["arweave_lora_upload_locked"] = os.environ.get("PADAM_ARWEAVE_LORA_UPLOAD") != "1"
+                snap["auto_payments_locked"] = True
+                return self._send(200, snap)
             if путь.path == "/api/v2/qa-benchmark":
                 roles.require_owner(actor, "aifa_security")
                 from pathlib import Path as _Path
@@ -984,6 +992,50 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(401, {"error": "not_authenticated"})
                 except ValueError as e:
                     return self._send(400, {"error": str(e)})
+
+            if self.path == "/v1/chat/completions":
+                if self.client_address[0] not in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
+                    return self._send(403, {"error": "sovereign router accepts loopback 127.0.0.1 only"})
+                roles.require_owner(actor, "llm_router")
+                from . import router as _router
+                st, resp_data = _router.get_router().chat_completions(
+                    data,
+                    memory=mem(),
+                    background=bool(data.get("background", False)),
+                    task_type=str(data.get("task_type") or "agent"),
+                    scope=str(data.get("scope") or "global"),
+                )
+                return self._send(st, resp_data)
+
+            if self.path == "/api/v2/brain/distill":
+                roles.require_owner(actor, "distill")
+                from .distill import distill_personality_dataset
+                out_dir = str(mem().store.path) + ".distill"
+                rep = distill_personality_dataset(
+                    mem().store.path,
+                    out_dir,
+                    user_id=mem().user_id,
+                    fmt=str(data.get("format") or "both"),
+                    scope=data.get("scope"),
+                )
+                return self._send(200, rep)
+
+            if self.path == "/api/v2/brain/phoenix-restore":
+                roles.require_owner(actor, "phoenix_restore")
+                source = str(data.get("source") or "local").strip().lower()
+                if source == "arweave":
+                    if os.environ.get("PADAM_ARWEAVE_RESTORE") != "1":
+                        return self._send(403, {
+                            "error": "Arweave/Solana Phoenix restore is locked by default (requires PADAM_ARWEAVE_RESTORE=1)",
+                            "locked": True,
+                        })
+                    return self._send(501, {"error": "On-demand Arweave TX fetch requires external gateway URL"})
+                backup_path = str(data.get("backup_path") or "").strip()
+                if not backup_path:
+                    return self._send(400, {"error": "backup_path is required for local Phoenix restore"})
+                from . import backup as _backup
+                res = _backup.restore_backup_file(backup_path, mem().store.path, passphrase=data.get("passphrase") or None)
+                return self._send(200, res)
 
             if self.path == "/api/v2/cabinet/open-upgrade":
                 roles.require_owner(actor, "cabinet_upgrade")
