@@ -812,7 +812,15 @@ def test_audit_chain_loop_guard_compaction_health_and_genesis(monkeypatch, tmp_p
         assert gen["agent_id"] == "lance"
         assert ark.latest_checkpoint(mem, agent_id="lance")["agent_id"] == "lance"
 
+        # 17.11.2026: индекс не должен зависеть от того, стоит ли Ollama на машине прогона (в CI её нет: было 75 < 80)
+        from padam import router as _router
+        monkeypatch.setattr(_router, "probe_local_backend", lambda **kw: {"online": False})
+        health_off = ark.ark_health_score(mem)
+        assert health_off["checks"]["local_ollama_online"] is False
+        monkeypatch.setattr(_router, "probe_local_backend", lambda **kw: {"online": True})
         health = ark.ark_health_score(mem)
+        assert health["checks"]["local_ollama_online"] is True
+        assert health["score"] > health_off["score"]
         assert health["score"] >= 80
         assert health["checks"]["signed_identity"] is True
         assert health["checks"]["has_checkpoint"] is True
