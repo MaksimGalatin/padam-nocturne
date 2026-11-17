@@ -368,3 +368,93 @@ def test_nocturne_local_sleep_classify_and_probe(monkeypatch):
     probe = router.probe_local_backend(timeout_s=0.3)
     assert "online" in probe
     assert isinstance(probe["models"], list)
+
+
+def test_sovereign_ops_locked_by_default_and_perfect_when_unlocked(monkeypatch):
+    import hashlib
+    from padam import sovereign_ops
+
+    # 1. Все замки по умолчанию закрыты
+    for k in ("PADAM_ALLOW_GPU_RENTAL", "PADAM_ARWEAVE_LORA_UPLOAD", "PADAM_ARWEAVE_RESTORE", "PADAM_TREASURY_AUTOPAY"):
+        monkeypatch.delenv(k, raising=False)
+    locks = sovereign_ops.locks_status()
+    assert all(locks.values())
+
+    # 2. Аренда GPU
+    gpu_calls: list[dict] = []
+
+    def fake_gpu_post(url: str, headers: dict, payload: dict, timeout_s: float):
+        gpu_calls.append(payload)
+        return 201, {"deployment_id": "akash-dseq-999", "status": "active"}
+
+    mgr = sovereign_ops.GpuRentalManager(http_post_fn=fake_gpu_post)
+    spec = sovereign_ops.GpuOrderSpec(provider="akash", gpu_model="RTX-4090", hours=2.0, hourly_rate_usd=0.6)
+    quote = mgr.build_order_quote(spec)
+    assert quote["estimated_cost_usd"] == 1.2
+    assert quote["locked"] is True
+
+    with pytest.raises(sovereign_ops.SovereignLockError):
+        mgr.provision(spec, endpoint_url="https://gpu.mock/orders", api_token="tok")
+
+    monkeypatch.setenv("PADAM_ALLOW_GPU_RENTAL", "1")
+    monkeypatch.setenv("PADAM_GPU_MAX_USD", "2.0")
+    prov = mgr.provision(spec, endpoint_url="https://gpu.mock/orders", api_token="tok")
+    assert prov["ok"] is True
+    assert prov["deployment"]["deployment_id"] == "akash-dseq-999"
+    assert len(gpu_calls) == 1
+
+    # Превышение лимита отклоняется даже с открытым замком
+    big_spec = sovereign_ops.GpuOrderSpec(provider="vast", gpu_model="A100-80GB", hours=10.0, hourly_rate_usd=1.5)
+    with pytest.raises(ValueError, match="exceeds cap"):
+        mgr.provision(big_spec, endpoint_url="https://gpu.mock/orders", api_token="tok")
+
+    # 3. Arweave Phoenix Restore
+    sample_bytes = b"PADAM-PHOENIX-BUNDLE-OK"
+    good_sha = hashlib.sha256(sample_bytes).hexdigest()
+
+    def fake_arweave_get(url: str, timeout_s: float):
+        return 200, sample_bytes
+
+    with pytest.raises(sovereign_ops.SovereignLockError):
+        sovereign_ops.fetch_arweave_phoenix_bundle("arweave-tx-123456", http_get_fn=fake_arweave_get)
+
+    monkeypatch.setenv("PADAM_ARWEAVE_RESTORE", "1")
+    bundle = sovereign_ops.fetch_arweave_phoenix_bundle(
+        "arweave-tx-123456",
+        expected_sha256=good_sha,
+        http_get_fn=fake_arweave_get,
+    )
+    assert bundle["ok"] is True
+    assert bundle["sha256"] == good_sha
+
+    with pytest.raises(ValueError, match="SHA-256 mismatch"):
+        sovereign_ops.fetch_arweave_phoenix_bundle(
+            "arweave-tx-123456",
+            expected_sha256="0" * 64,
+            http_get_fn=fake_arweave_get,
+        )
+
+    # 4. Казна и автооплата вычислений (двойной замок + идемпотентность)
+    tx_calls: list[dict] = []
+
+    def fake_transfer(req: dict) -> dict:
+        tx_calls.append(req)
+        return {"tx_hash": "sol-tx-ok-1"}
+
+    tm = sovereign_ops.TreasuryComputeManager(transfer_fn=fake_transfer)
+    t_quote = tm.quote_topup(revenue_usdt=100.0, compute_share_pct=15.0, estimated_cost_usd=2.5)
+    assert t_quote["allocated_usdt"] == 15.0
+    assert t_quote["autopay_locked"] is True
+
+    with pytest.raises(sovereign_ops.SovereignLockError):
+        tm.execute_topup(provider="akash", amount_usdt=5.0, idempotency_key="ord-1", owner_confirmed=True)
+
+    monkeypatch.setenv("PADAM_TREASURY_AUTOPAY", "1")
+    with pytest.raises(sovereign_ops.SovereignLockError):
+        tm.execute_topup(provider="akash", amount_usdt=5.0, idempotency_key="ord-1", owner_confirmed=False)
+
+    res1 = tm.execute_topup(provider="akash", amount_usdt=5.0, idempotency_key="ord-1", owner_confirmed=True)
+    res2 = tm.execute_topup(provider="akash", amount_usdt=5.0, idempotency_key="ord-1", owner_confirmed=True)
+    assert res1["idempotent_replay"] is False
+    assert res2["idempotent_replay"] is True
+    assert len(tx_calls) == 1

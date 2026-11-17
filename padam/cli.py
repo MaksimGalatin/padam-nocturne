@@ -1057,12 +1057,19 @@ def cmd_l3(m: Memory, a) -> int:
         }
         if os.environ.get("PADAM_ARWEAVE_LORA_UPLOAD") == "1" and not a.dry_run and wallet:
             lora_meta["arweave_upload_locked"] = False
-            lora_meta["arweave_tx_id"] = anchor.turbo_upload(
+            tx_id = anchor.turbo_upload(
                 lora_path.read_bytes(),
                 wallet,
                 {"App-Name": "PADAM-Nocturne", "Content-Type": "application/octet-stream", "LoRA-SHA256": lora_sha256},
                 a.turbo_sdk,
             )
+            lora_meta["arweave_tx_id"] = tx_id
+            if keypair:
+                lora_meta["solana_memo_tx"] = anchor.solana_memo(
+                    f"PADAM-LORA:{lora_sha256}:{tx_id}",
+                    keypair,
+                    a.network,
+                )
         Path(save_dir).mkdir(parents=True, exist_ok=True)
         (Path(save_dir) / "lora_manifest.json").write_text(
             json.dumps(lora_meta, ensure_ascii=False, indent=2) + "\n",

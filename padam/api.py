@@ -54,7 +54,7 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/treasury/quote"}
 OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
@@ -421,14 +421,14 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, _router.models_payload(include_local_probe=(qs.get("probe") == ["1"])))
             if путь.path == "/api/v2/brain/status":
                 roles.require_owner(actor, "brain_status")
-                from . import router as _router
+                from . import router as _router, sovereign_ops as _sops
                 qs = parse_qs(путь.query)
                 snap = _router.get_router().status_snapshot()
                 if qs.get("probe") == ["1"]:
                     snap["local_probe"] = _router.probe_local_backend()
-                snap["arweave_restore_locked"] = os.environ.get("PADAM_ARWEAVE_RESTORE") != "1"
-                snap["arweave_lora_upload_locked"] = os.environ.get("PADAM_ARWEAVE_LORA_UPLOAD") != "1"
-                snap["auto_payments_locked"] = True
+                locks = _sops.locks_status()
+                snap.update(locks)
+                snap["auto_payments_locked"] = locks["treasury_autopay_locked"]
                 return self._send(200, snap)
             if путь.path == "/api/v2/qa-benchmark":
                 roles.require_owner(actor, "aifa_security")
@@ -1042,18 +1042,40 @@ class Handler(BaseHTTPRequestHandler):
                 roles.require_owner(actor, "phoenix_restore")
                 source = str(data.get("source") or "local").strip().lower()
                 if source == "arweave":
-                    if os.environ.get("PADAM_ARWEAVE_RESTORE") != "1":
-                        return self._send(403, {
-                            "error": "Arweave/Solana Phoenix restore is locked by default (requires PADAM_ARWEAVE_RESTORE=1)",
-                            "locked": True,
+                    from . import sovereign_ops as _sops
+                    try:
+                        bundle = _sops.fetch_arweave_phoenix_bundle(
+                            str(data.get("tx_id") or ""),
+                            expected_sha256=data.get("expected_sha256"),
+                            gateway_url=str(data.get("gateway_url") or "https://arweave.net"),
+                        )
+                        return self._send(200, {
+                            "ok": True,
+                            "tx_id": bundle["tx_id"],
+                            "size_bytes": bundle["size_bytes"],
+                            "sha256": bundle["sha256"],
                         })
-                    return self._send(501, {"error": "On-demand Arweave TX fetch requires external gateway URL"})
+                    except _sops.SovereignLockError as exc:
+                        return self._send(403, {"error": str(exc), "locked": True})
+                    except ValueError as exc:
+                        return self._send(400, {"error": str(exc)})
                 backup_path = str(data.get("backup_path") or "").strip()
                 if not backup_path:
                     return self._send(400, {"error": "backup_path is required for local Phoenix restore"})
                 from . import backup as _backup
                 res = _backup.restore_backup_file(backup_path, mem().store.path, passphrase=data.get("passphrase") or None)
                 return self._send(200, res)
+
+            if self.path == "/api/v2/brain/treasury/quote":
+                roles.require_owner(actor, "brain_status")
+                from . import router as _router, sovereign_ops as _sops
+                snap = _router.get_router().status_snapshot()
+                quote = _sops.get_treasury_manager().quote_topup(
+                    revenue_usdt=float(data.get("revenue_usdt") or 0.0),
+                    compute_share_pct=float(data.get("compute_share_pct") or 15.0),
+                    estimated_cost_usd=float(snap.get("estimated_cloud_cost_usd") or 0.0),
+                )
+                return self._send(200, quote)
 
             if self.path == "/api/v2/cabinet/open-upgrade":
                 roles.require_owner(actor, "cabinet_upgrade")
