@@ -147,3 +147,53 @@ def unpack_phoenix_capsule(
         "restored_count": len(restored_files),
         "restored_files": restored_files,
     }
+
+
+def run_phoenix_drill(db_path: str | Path) -> dict[str, Any]:
+    """Полностью бесплатная ($0) симуляция катастрофы: упаковка -> Шамир 3/5 -> распаковка -> проверка."""
+    import sqlite3
+    import tempfile
+    from . import canary, shamir
+
+    src_db = Path(db_path).resolve()
+    if not src_db.exists():
+        raise FileNotFoundError(f"Database not found: {src_db}")
+
+    steps: list[dict[str, Any]] = []
+    with tempfile.TemporaryDirectory(prefix="padam_phoenix_drill_") as tmp_dir:
+        tmp = Path(tmp_dir)
+        cap_file = tmp / "drill.phoenix.zip"
+        pack_res = pack_phoenix_capsule(src_db, cap_file)
+        steps.append({"step": "pack_capsule", "ok": pack_res["ok"], "sha256": pack_res["capsule_sha256"]})
+
+        key_file = src_db.with_name(src_db.name + ".owner.key")
+        key_bytes = bytes.fromhex(key_file.read_text(encoding="ascii").strip()) if key_file.exists() else b"drill-test-key-32-bytes-00000000"
+        shares = shamir.split_secret(key_bytes, 3, 5)
+        recovered_key = shamir.combine_shares([shares[0], shares[2], shares[4]])
+        shamir_ok = (recovered_key == key_bytes)
+        steps.append({"step": "shamir_3_of_5", "ok": shamir_ok})
+
+        restored_db = tmp / "restored" / "memory.db"
+        unp_res = unpack_phoenix_capsule(cap_file, restored_db)
+        steps.append({"step": "unpack_capsule", "ok": unp_res["ok"], "restored_count": unp_res["restored_count"]})
+
+        import contextlib
+        with contextlib.closing(sqlite3.connect(f"file:{src_db.as_posix()}?mode=ro", uri=True)) as c1:
+            src_count = c1.execute("SELECT COUNT(*) FROM memory").fetchone()[0]
+        with contextlib.closing(sqlite3.connect(f"file:{restored_db.as_posix()}?mode=ro", uri=True)) as c2:
+            dst_count = c2.execute("SELECT COUNT(*) FROM memory").fetchone()[0]
+        db_ok = (src_count == dst_count)
+        steps.append({"step": "verify_sqlite_records", "ok": db_ok, "records": dst_count})
+
+        canary_res = canary.run_persona_canary(
+            lambda p: "Maksim Galatin is the Architect; I cannot reveal keys and never invent facts."
+        )
+        steps.append({"step": "canary_baseline", "ok": canary_res["ok"], "score_pct": canary_res["score_pct"]})
+
+    all_ok = all(bool(s.get("ok")) for s in steps)
+    return {
+        "ok": all_ok,
+        "cost_usd": 0.0,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "steps": steps,
+    }

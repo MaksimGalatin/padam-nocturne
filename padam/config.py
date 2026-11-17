@@ -361,6 +361,11 @@ def mcp_sovereign_sync_tool_enabled() -> bool:
     return os.environ.get("PADAM_MCP_SOVEREIGN_SYNC_TOOL", "0").strip() == "1"
 
 
+def mcp_ark_tools_enabled() -> bool:
+    """Включает публикацию MCP-инструментов Ковчега сознания (padam_wake_up, commitments, relay, checkpoint, timeline, lesson) в tools/list."""
+    return os.environ.get("PADAM_MCP_ARK_TOOLS", "0").strip() == "1"
+
+
 # --- Легенда Шаг 3: Превентивный Семантический Фаервол (DLP & Zero-Leak Shield, выключено по умолчанию) ---
 def mcp_dlp_shield_enabled() -> bool:
     """Включает токенизацию секретов в [PADAM_SECRET_ID_N] и локальный DLP-прокси-щит."""

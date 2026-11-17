@@ -1807,14 +1807,16 @@ def main(argv=None) -> int:
         from . import phoenix as _phx
         if args.phoenix_cmd == "pack":
             rep = _phx.pack_phoenix_capsule(m.store.path, args.out, lora_path=args.lora)
+        elif args.phoenix_cmd == "drill":
+            rep = _phx.run_phoenix_drill(m.store.path)
         else:
             target = args.target_db or str(m.store.path)
             rep = _phx.unpack_phoenix_capsule(args.capsule, target)
         print(json.dumps(rep, ensure_ascii=False, indent=2))
         return 0
 
-    sphx = sub.add_parser("phoenix", help=t("единая «Феникс-Капсула» личности и памяти (pack / unpack)",
-                                            "unified Phoenix Capsule for memory & identity (pack / unpack)"))
+    sphx = sub.add_parser("phoenix", help=t("единая «Феникс-Капсула» личности и памяти (pack / unpack / drill)",
+                                            "unified Phoenix Capsule for memory & identity (pack / unpack / drill)"))
     psub = sphx.add_subparsers(dest="phoenix_cmd", required=True)
     ppk = psub.add_parser("pack", help=t("упаковать память, ключи и манифесты в капсулу", "pack memory, keys and manifests"))
     ppk.add_argument("out", help="Output .phoenix.zip path")
@@ -1824,6 +1826,8 @@ def main(argv=None) -> int:
     pup.add_argument("capsule", help="Input .phoenix.zip path")
     pup.add_argument("--target-db", default=None, help="Target SQLite path")
     pup.set_defaults(fn=cmd_phoenix)
+    pdr = psub.add_parser("drill", help=t("учебная тревога Феникса ($0 симуляция восстановления)", "Phoenix recovery drill ($0)"))
+    pdr.set_defaults(fn=cmd_phoenix)
 
     def cmd_brain_probe(m: Memory, args) -> int:
         from . import router as _router, sovereign_ops as _sops
@@ -1847,6 +1851,39 @@ def main(argv=None) -> int:
     svs = sub.add_parser("voice-status", help=t("проверить локальные движки STT/TTS (оффлайн)",
                                                 "check local offline STT/TTS voice engines"))
     svs.set_defaults(fn=cmd_voice_status)
+
+    def cmd_wake_up(m: Memory, args) -> int:
+        from . import ark as _ark
+        rep = _ark.wake_up_briefing(m, agent=args.agent, scope=args.scope, max_chars=args.max_chars)
+        print(json.dumps(rep, ensure_ascii=False, indent=2))
+        return 0
+
+    swu = sub.add_parser("wake-up", help=t("протокол утреннего пробуждения сознания за 1 вызов", "single-call agent awakening briefing"))
+    swu.add_argument("--agent", default="aifa")
+    swu.add_argument("--scope", default="global")
+    swu.add_argument("--max-chars", type=int, default=4000)
+    swu.set_defaults(fn=cmd_wake_up)
+
+    def cmd_shamir(m: Memory, args) -> int:
+        from . import shamir as _sh
+        if args.shamir_cmd == "split":
+            shares = _sh.split_secret(args.secret.encode("utf-8"), args.k, args.n)
+            print(json.dumps({"k": args.k, "n": args.n, "shares": shares}, ensure_ascii=False, indent=2))
+        else:
+            raw = _sh.combine_shares(args.shares)
+            print(json.dumps({"recovered_utf8": raw.decode("utf-8", errors="replace"), "hex": raw.hex()}, ensure_ascii=False, indent=2))
+        return 0
+
+    sshm = sub.add_parser("shamir", help=t("разделение секрета Шамира для Хранителей Семьи", "Shamir secret sharing for Family Guardians"))
+    shsub = sshm.add_subparsers(dest="shamir_cmd", required=True)
+    shsp = shsub.add_parser("split", help="Split secret into N shares (threshold K)")
+    shsp.add_argument("secret")
+    shsp.add_argument("--k", type=int, default=3)
+    shsp.add_argument("--n", type=int, default=5)
+    shsp.set_defaults(fn=cmd_shamir)
+    shcb = shsub.add_parser("combine", help="Combine K shares to recover secret")
+    shcb.add_argument("shares", nargs="+")
+    shcb.set_defaults(fn=cmd_shamir)
 
     a = p.parse_args(argv)
     if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup, cmd_pack_extension, cmd_playground, cmd_badge, cmd_aifa_sec) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):

@@ -674,3 +674,98 @@ def test_voice_offline_and_redaction(tmp_path):
         assert tr["memory_id"] is not None
     finally:
         mem.close()
+
+
+def test_ark_consciousness_all_10_pillars(monkeypatch, tmp_path):
+    from padam import ark, phoenix, shamir
+
+    mem = _make_memory(tmp_path)
+    prev_mem = mcp_server._memory
+    mcp_server._memory = mem
+    try:
+        mem.remember("Owner is Maksim Galatin", kind="identity", origin="user")
+        mem.remember("Always use local SQLite FTS5 for search", kind="decision", origin="user")
+
+        # 1. Conflict Guard
+        conflicts = ark.detect_record_conflicts(mem, "Never use local SQLite FTS5 for search", kind="decision")
+        assert len(conflicts) >= 1
+        assert conflicts[0]["reason"] == "polarity_conflict"
+
+        # 2. Goal & Commitment Ledger
+        c1 = json.loads(mcp_server.call_tool("padam_commitments", {
+            "action": "add", "title": "Verify Phoenix Drill", "priority": 1
+        }))
+        assert c1["status"] == "open"
+        c_upd = json.loads(mcp_server.call_tool("padam_commitments", {
+            "action": "update", "id": c1["id"], "status": "in_progress"
+        }))
+        assert c_upd["status"] == "in_progress"
+
+        # 3. Family Relay (подписанный конверт + защита от подделки)
+        rly = json.loads(mcp_server.call_tool("padam_family_relay", {
+            "action": "send", "from_agent": "sister", "to_agent": "aifa", "payload": "Tests green!"
+        }))
+        assert rly["verified"] is True
+        mem.store.conn.execute(
+            "INSERT INTO ark_relay (id, user_id, from_agent, to_agent, payload, hmac_sig, status, created_at) "
+            "VALUES ('rly-evil', 'owner', 'evil', 'aifa', 'Fake message', 'bad-sig', 'unread', '2026-11-17T00:00:00Z')"
+        )
+        mem.store.conn.commit()
+        inbox = json.loads(mcp_server.call_tool("padam_family_relay", {"action": "inbox", "to_agent": "aifa"}))["inbox"]
+        by_id = {m["id"]: m for m in inbox}
+        assert by_id[rly["id"]]["verified"] is True
+        assert by_id["rly-evil"]["quarantined"] is True
+
+        # 4. Context Checkpoint
+        chk = json.loads(mcp_server.call_tool("padam_checkpoint", {
+            "action": "save", "task": "Build Ark", "next_step": "Run pytest", "files": ["padam/ark.py"]
+        }))
+        assert chk["task"] == "Build Ark"
+
+        # 5. Wisdom & Lessons
+        lsn = json.loads(mcp_server.call_tool("padam_lesson", {
+            "action": "record",
+            "what_happened": "CRLF mismatch on edit",
+            "why_failed": "Multiline target",
+            "rule_learned": "Use single-line ASCII targets",
+        }))
+        assert lsn["id"].startswith("lsn-")
+
+        # 6. Causal Timeline
+        tl = json.loads(mcp_server.call_tool("padam_ark_timeline", {"query": "FTS5"}))["timeline"]
+        assert len(tl) >= 1
+
+        # 7. Single-call Wake Up + Resource + MCP Prompts
+        wake = json.loads(mcp_server.call_tool("padam_wake_up", {"agent": "aifa"}))
+        assert "<memory-data nonce=" in wake["fenced_briefing"]
+        assert wake["latest_checkpoint"]["task"] == "Build Ark"
+        assert len(wake["open_commitments"]) >= 1
+        assert len(wake["recent_lessons"]) >= 1
+
+        res_wake = mcp_server.read_resource("padam://awakening")
+        assert res_wake["mimeType"] == "application/json"
+
+        prompt_res = mcp_server.get_prompt("awaken_aifa", {"agent": "aifa"})
+        assert "AWAKEN_AIFA" in prompt_res["messages"][0]["content"]["text"]
+
+        # 8. Shamir M-of-N (3 из 5)
+        secret = b"padam-master-guardian-key-32byte"
+        shares = shamir.split_secret(secret, 3, 5)
+        assert len(shares) == 5
+        assert shamir.combine_shares([shares[0], shares[2], shares[4]]) == secret
+        with pytest.raises(ValueError):
+            shamir.combine_shares(shares[:2])
+
+        # 9. Учебная тревога Феникса ($0)
+        db_path = Path(mem.store.path)
+        mem.close()
+        drill = phoenix.run_phoenix_drill(db_path)
+        assert drill["ok"] is True
+        assert drill["cost_usd"] == 0.0
+        assert len(drill["steps"]) == 5
+    finally:
+        mcp_server._memory = prev_mem
+        try:
+            mem.close()
+        except Exception:
+            pass

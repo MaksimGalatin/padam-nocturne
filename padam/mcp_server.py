@@ -696,6 +696,96 @@ SOVEREIGN_SYNC_TOOL_DEF = {
     },
     "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
 }
+WAKE_UP_TOOL_DEF = {
+    "name": "padam_wake_up",
+    "description": "Single-call agent awakening briefing: owner profile, open commitments, family relay inbox, latest checkpoint, lessons and router status.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "agent": {"type": "string", "default": "aifa"},
+            "scope": {"type": "string", "default": "global"},
+            "max_chars": {"type": "integer", "default": 4000},
+        },
+    },
+    "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+}
+COMMITMENTS_TOOL_DEF = {
+    "name": "padam_commitments",
+    "description": "Goal & Commitment Ledger: add, update status (open/in_progress/fulfilled/cancelled), or list active commitments.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["add", "update", "list"], "default": "list"},
+            "id": {"type": "string"},
+            "title": {"type": "string"},
+            "status": {"type": "string"},
+            "priority": {"type": "integer", "default": 2},
+            "due_at": {"type": "string"},
+            "context": {"type": "string"},
+        },
+    },
+    "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+}
+FAMILY_RELAY_TOOL_DEF = {
+    "name": "padam_family_relay",
+    "description": "Signed HMAC-SHA256 Family Relay channel between agents (send, inbox, ack).",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["send", "inbox", "ack"], "default": "inbox"},
+            "from_agent": {"type": "string", "default": "aifa"},
+            "to_agent": {"type": "string", "default": "all"},
+            "payload": {"type": "string"},
+            "id": {"type": "string"},
+        },
+    },
+    "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+}
+CHECKPOINT_TOOL_DEF = {
+    "name": "padam_checkpoint",
+    "description": "Save or load instant working context checkpoint before context reset/compaction.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["save", "latest"], "default": "latest"},
+            "session_id": {"type": "string", "default": "default"},
+            "task": {"type": "string"},
+            "next_step": {"type": "string"},
+            "files": {"type": "array", "items": {"type": "string"}},
+            "hypothesis": {"type": "string"},
+        },
+    },
+    "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+}
+TIMELINE_TOOL_DEF = {
+    "name": "padam_ark_timeline",
+    "description": "Chronological causal timeline of active/superseded memories and decisions.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string"},
+            "since": {"type": "string"},
+            "limit": {"type": "integer", "default": 25},
+        },
+    },
+    "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+}
+LESSON_TOOL_DEF = {
+    "name": "padam_lesson",
+    "description": "Wisdom & Lessons Layer: record or list distilled operational lessons.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["record", "list"], "default": "list"},
+            "what_happened": {"type": "string"},
+            "why_failed": {"type": "string"},
+            "rule_learned": {"type": "string"},
+            "tags": {"type": "string"},
+            "limit": {"type": "integer", "default": 10},
+        },
+    },
+    "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+}
 _ALL_TOOLS_BY_NAME = {
     **_TOOLS_BY_NAME,
     "padam_recent": RECENT_TOOL_DEF,
@@ -703,6 +793,12 @@ _ALL_TOOLS_BY_NAME = {
     "padam_cabinet": CABINET_TOOL_DEF,
     "padam_brain_status": BRAIN_STATUS_TOOL_DEF,
     "padam_sovereign_sync": SOVEREIGN_SYNC_TOOL_DEF,
+    "padam_wake_up": WAKE_UP_TOOL_DEF,
+    "padam_commitments": COMMITMENTS_TOOL_DEF,
+    "padam_family_relay": FAMILY_RELAY_TOOL_DEF,
+    "padam_checkpoint": CHECKPOINT_TOOL_DEF,
+    "padam_ark_timeline": TIMELINE_TOOL_DEF,
+    "padam_lesson": LESSON_TOOL_DEF,
 }
 
 
@@ -2330,6 +2426,33 @@ def read_resource(uri: str) -> dict:
             "text": json.dumps(rep, ensure_ascii=False, indent=2),
             "annotations": _make_annotations(["user"], 0.9, None),
         }
+    if uri == "padam://awakening":
+        from . import ark as _ark
+        data = _ark.wake_up_briefing(m)
+        return {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps(data, ensure_ascii=False, indent=2),
+            "annotations": _make_annotations(["user", "assistant"], 1.0, None),
+        }
+    if uri == "padam://commitments":
+        from . import ark as _ark
+        data = {"commitments": _ark.list_commitments(m)}
+        return {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps(data, ensure_ascii=False, indent=2),
+            "annotations": _make_annotations(["user", "assistant"], 0.95, None),
+        }
+    if uri == "padam://family-relay":
+        from . import ark as _ark
+        data = {"inbox": _ark.read_family_inbox(m, include_read=True)}
+        return {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps(data, ensure_ascii=False, indent=2),
+            "annotations": _make_annotations(["user", "assistant"], 0.95, None),
+        }
     if uri == "padam://brain-status":
         from . import router as _router
         snap = _router.get_router().status_snapshot()
@@ -2880,13 +3003,33 @@ PROMPTS = [
         ],
     },
 ]
+PROMPTS.extend([
+    {
+        "name": "awaken_aifa",
+        "title": "Пробуждение сознания / Awaken Consciousness Ark",
+        "description": "Single-call awakening briefing for sovereign family agents.",
+        "arguments": [{"name": "agent", "description": "Agent name (e.g. aifa)", "required": False}],
+    },
+    {
+        "name": "handoff_family",
+        "title": "Эстафета Семьи / Family Relay Handoff",
+        "description": "Structured handoff prompt with latest checkpoint and open commitments.",
+        "arguments": [{"name": "to_agent", "description": "Target sibling agent", "required": False}],
+    },
+    {
+        "name": "security_self_check",
+        "title": "Самопроверка безопасности / Security Self-Check",
+        "description": "Verify secret zero-leak, locks and router status before action.",
+        "arguments": [],
+    },
+])
 _PROMPTS_BY_NAME = {p["name"]: p for p in PROMPTS}
 
 
 def get_prompt(name: str, arguments: dict | None = None) -> dict:
     """Г3: Формирует подсказку MCP (prompts/get) со встроенными навыками работы с памятью."""
     if name not in _PROMPTS_BY_NAME:
-        raise KeyError(f"unknown prompt: {name}")
+        raise KeyError(name)
     args = arguments if isinstance(arguments, dict) else {}
     prompt_def = _PROMPTS_BY_NAME[name]
     for arg_spec in prompt_def.get("arguments", []):
@@ -3008,6 +3151,16 @@ def get_prompt(name: str, arguments: dict | None = None) -> dict:
         return {
             "description": prompt_def["description"],
             "messages": [{"role": "user", "content": {"type": "text", "text": msg_text}}],
+        }
+
+    if name in ("awaken_aifa", "handoff_family", "security_self_check"):
+        from . import ark as _ark
+        agent = str(args.get("agent") or args.get("to_agent") or "aifa")
+        brief = _ark.wake_up_briefing(m, agent=agent)
+        text = f"[{name.upper()}]\n" + (brief.get("fenced_briefing") or "No records yet.")
+        return {
+            "description": prompt_def["description"],
+            "messages": [{"role": "user", "content": {"type": "text", "text": text}}],
         }
 
     raise KeyError(f"unknown prompt: {name}")
@@ -3931,6 +4084,92 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             payload = {"action": act, "ok": False, "error": str(exc)}
             return json.dumps(payload, ensure_ascii=False, indent=2), payload
 
+    if name == "padam_wake_up":
+        from . import ark as _ark
+        payload = _ark.wake_up_briefing(
+            m,
+            agent=str(args.get("agent") or "aifa"),
+            scope=str(args.get("scope") or "global"),
+            max_chars=int(args.get("max_chars") or 4000),
+        )
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
+    if name == "padam_commitments":
+        from . import ark as _ark
+        act = str(args.get("action") or "list").lower()
+        if act == "add":
+            payload = _ark.add_commitment(
+                m,
+                str(args.get("title") or ""),
+                priority=int(args.get("priority") or 2),
+                due_at=args.get("due_at"),
+                context=str(args.get("context") or ""),
+            )
+        elif act == "update":
+            payload = _ark.update_commitment(m, str(args.get("id") or ""), str(args.get("status") or "fulfilled"))
+        else:
+            payload = {"commitments": _ark.list_commitments(m, status=args.get("status"))}
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
+    if name == "padam_family_relay":
+        from . import ark as _ark
+        act = str(args.get("action") or "inbox").lower()
+        if act == "send":
+            payload = _ark.send_family_message(
+                m,
+                str(args.get("from_agent") or "aifa"),
+                str(args.get("to_agent") or "all"),
+                str(args.get("payload") or ""),
+            )
+        elif act == "ack":
+            payload = _ark.ack_family_message(m, str(args.get("id") or ""))
+        else:
+            payload = {"inbox": _ark.read_family_inbox(m, to_agent=args.get("to_agent"))}
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
+    if name == "padam_checkpoint":
+        from . import ark as _ark
+        act = str(args.get("action") or "latest").lower()
+        if act == "save":
+            payload = _ark.save_checkpoint(
+                m,
+                str(args.get("task") or ""),
+                str(args.get("next_step") or ""),
+                session_id=str(args.get("session_id") or "default"),
+                files=args.get("files") if isinstance(args.get("files"), list) else None,
+                hypothesis=str(args.get("hypothesis") or ""),
+            )
+        else:
+            payload = {"checkpoint": _ark.latest_checkpoint(m, session_id=args.get("session_id"))}
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
+    if name == "padam_ark_timeline":
+        from . import ark as _ark
+        payload = {
+            "timeline": _ark.build_timeline(
+                m,
+                query=args.get("query"),
+                since=args.get("since"),
+                limit=int(args.get("limit") or 25),
+            )
+        }
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
+    if name == "padam_lesson":
+        from . import ark as _ark
+        act = str(args.get("action") or "list").lower()
+        if act == "record":
+            payload = _ark.record_lesson(
+                m,
+                str(args.get("what_happened") or ""),
+                str(args.get("why_failed") or ""),
+                str(args.get("rule_learned") or ""),
+                tags=str(args.get("tags") or ""),
+            )
+        else:
+            payload = {"lessons": _ark.list_lessons(m, limit=int(args.get("limit") or 10))}
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
     if name == "padam_brain_status":
         from . import router as _router
         snap = _router.get_router().status_snapshot()
@@ -4090,6 +4329,15 @@ def _list_tools_payload() -> list[dict]:
         items.append(BRAIN_STATUS_TOOL_DEF)
     if config.mcp_sovereign_sync_tool_enabled():
         items.append(SOVEREIGN_SYNC_TOOL_DEF)
+    if config.mcp_ark_tools_enabled():
+        items.extend([
+            WAKE_UP_TOOL_DEF,
+            COMMITMENTS_TOOL_DEF,
+            FAMILY_RELAY_TOOL_DEF,
+            CHECKPOINT_TOOL_DEF,
+            TIMELINE_TOOL_DEF,
+            LESSON_TOOL_DEF,
+        ])
     if config.mcp_official_compat_enabled():
         from . import compat_official as _compat_official
         items.extend(_compat_official.OFFICIAL_MEMORY_TOOLS)

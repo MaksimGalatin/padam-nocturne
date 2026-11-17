@@ -202,6 +202,14 @@ def distill_personality_dataset(
                     ep_sql += " AND role IN ('user', 'assistant')"
                 ep_sql += " ORDER BY created_at ASC LIMIT 1000"
                 episode_rows = conn.execute(ep_sql, ep_params).fetchall()
+
+        lesson_rows: list[sqlite3.Row] = []
+        has_lsn = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='ark_lesson'").fetchone()
+        if has_lsn:
+            lesson_rows = conn.execute(
+                "SELECT what_happened, why_failed, rule_learned FROM ark_lesson WHERE user_id = ? ORDER BY created_at DESC LIMIT 500",
+                (user_id,),
+            ).fetchall()
     finally:
         conn.close()
 
@@ -305,6 +313,26 @@ def distill_personality_dataset(
         seen_hashes.add(pair_h)
         qa_pairs.append(("dialogue", u_txt, a_txt))
         kinds_breakdown["dialogue"] = kinds_breakdown.get("dialogue", 0) + 1
+
+    # Уроки саморефлексии (ark_lesson), прошедшие Zero-Leak Gate
+    for lr in lesson_rows:
+        q_txt = f"What lesson did we learn from: {str(lr['what_happened'] or '').strip()}?"
+        a_txt = f"Why: {str(lr['why_failed'] or '').strip()} | Rule: {str(lr['rule_learned'] or '').strip()}"
+        g1 = _check_zero_leak_gate(q_txt, owner_tokens)
+        g2 = _check_zero_leak_gate(a_txt, owner_tokens)
+        if g1 is not None:
+            skipped[g1] = skipped.get(g1, 0) + 1
+            continue
+        if g2 is not None:
+            skipped[g2] = skipped.get(g2, 0) + 1
+            continue
+        lh = hashlib.sha256(a_txt.lower().encode("utf-8")).hexdigest()
+        if lh in seen_hashes:
+            skipped["duplicate"] += 1
+            continue
+        seen_hashes.add(lh)
+        qa_pairs.append(("lesson", q_txt, a_txt))
+        kinds_breakdown["lesson"] = kinds_breakdown.get("lesson", 0) + 1
 
     formats_to_write = ("chatml", "sharegpt") if fmt_norm == "both" else (fmt_norm,)
     written_files: dict[str, dict[str, Any]] = {}
