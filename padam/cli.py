@@ -1803,6 +1803,42 @@ def main(argv=None) -> int:
     sllm.add_argument("--token", default=None)
     sllm.set_defaults(fn=cmd_serve_llm)
 
+    def cmd_phoenix(m: Memory, args) -> int:
+        from . import phoenix as _phx
+        if args.phoenix_cmd == "pack":
+            rep = _phx.pack_phoenix_capsule(m.store.path, args.out, lora_path=args.lora)
+        else:
+            target = args.target_db or str(m.store.path)
+            rep = _phx.unpack_phoenix_capsule(args.capsule, target)
+        print(json.dumps(rep, ensure_ascii=False, indent=2))
+        return 0
+
+    sphx = sub.add_parser("phoenix", help=t("единая «Феникс-Капсула» личности и памяти (pack / unpack)",
+                                            "unified Phoenix Capsule for memory & identity (pack / unpack)"))
+    psub = sphx.add_subparsers(dest="phoenix_cmd", required=True)
+    ppk = psub.add_parser("pack", help=t("упаковать память, ключи и манифесты в капсулу", "pack memory, keys and manifests"))
+    ppk.add_argument("out", help="Output .phoenix.zip path")
+    ppk.add_argument("--lora", default=None, help="Optional .safetensors LoRA adapter path")
+    ppk.set_defaults(fn=cmd_phoenix)
+    pup = psub.add_parser("unpack", help=t("проверить SHA-256 и развернуть капсулу", "verify SHA-256 and unpack capsule"))
+    pup.add_argument("capsule", help="Input .phoenix.zip path")
+    pup.add_argument("--target-db", default=None, help="Target SQLite path")
+    pup.set_defaults(fn=cmd_phoenix)
+
+    def cmd_brain_probe(m: Memory, args) -> int:
+        from . import router as _router, sovereign_ops as _sops
+        rep = {
+            "local_recommendation": _router.recommend_local_model(),
+            "locks": _sops.locks_status(),
+            "router": _router.get_router().status_snapshot(),
+        }
+        print(json.dumps(rep, ensure_ascii=False, indent=2))
+        return 0
+
+    sbp = sub.add_parser("brain-probe", help=t("проверить локальный Ollama, VRAM и замки автономии ($0)",
+                                               "probe local Ollama, VRAM and autonomy locks ($0)"))
+    sbp.set_defaults(fn=cmd_brain_probe)
+
     a = p.parse_args(argv)
     if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup, cmd_pack_extension, cmd_playground, cmd_badge, cmd_aifa_sec) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):
         return a.fn(None, a)

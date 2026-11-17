@@ -160,6 +160,7 @@ def distill_personality_dataset(
     min_confidence: float = 0.7,
     min_importance: float = 0.3,
     include_unconfirmed: bool = False,
+    include_episodes: bool = True,
 ) -> dict[str, Any]:
     """Читает БД в режиме `mode=ro` и экспортирует очищенный датасет + манифест."""
     db_file = Path(db_path)
@@ -189,6 +190,18 @@ def distill_personality_dataset(
             params.append(scope)
         sql += " ORDER BY importance DESC, last_confirmed_at DESC, created_at ASC"
         rows = conn.execute(sql, params).fetchall()
+
+        episode_rows: list[sqlite3.Row] = []
+        if include_episodes:
+            has_ep = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='episode'").fetchone()
+            if has_ep:
+                ep_cols = {r["name"] for r in conn.execute("PRAGMA table_info(episode)").fetchall()}
+                ep_sql = "SELECT * FROM episode WHERE user_id = ?"
+                ep_params: list[Any] = [user_id]
+                if "role" in ep_cols:
+                    ep_sql += " AND role IN ('user', 'assistant')"
+                ep_sql += " ORDER BY created_at ASC LIMIT 1000"
+                episode_rows = conn.execute(ep_sql, ep_params).fetchall()
     finally:
         conn.close()
 
@@ -199,6 +212,7 @@ def distill_personality_dataset(
         "injection_trigger": 0,
         "pii_or_third_party": 0,
         "low_quality": 0,
+        "duplicate": 0,
     }
     kinds_breakdown: dict[str, int] = {}
 
@@ -251,16 +265,46 @@ def distill_personality_dataset(
         anchor_answer = "\n".join(clean_identity + clean_preference)
         qa_pairs.append(("anchor", "State your core principles and identity boundaries.", anchor_answer))
 
+    seen_hashes: set[str] = set()
     for row in preliminary_rows:
         content = str(row["content"] or "").strip()
         gate_reason = _check_zero_leak_gate(content, owner_tokens)
         if gate_reason is not None:
             skipped[gate_reason] = skipped.get(gate_reason, 0) + 1
             continue
+        norm_h = hashlib.sha256(" ".join(content.lower().split()).encode("utf-8")).hexdigest()
+        if norm_h in seen_hashes:
+            skipped["duplicate"] += 1
+            continue
+        seen_hashes.add(norm_h)
         kind = str(row["kind"] or "fact")
         prompt = _KIND_PROMPTS.get(kind, "What verified knowledge should be recalled about this?")
         qa_pairs.append((kind, prompt, content))
         kinds_breakdown[kind] = kinds_breakdown.get(kind, 0) + 1
+
+    # Многоходовые диалоговые пары из L1-эпизодов (user -> assistant), прошедшие Zero-Leak Gate
+    ep_list = [dict(r) for r in episode_rows]
+    for i in range(len(ep_list) - 1):
+        u_ep, a_ep = ep_list[i], ep_list[i + 1]
+        if str(u_ep.get("role") or "") != "user" or str(a_ep.get("role") or "") != "assistant":
+            continue
+        u_txt = str(u_ep.get("content") or "").strip()
+        a_txt = str(a_ep.get("content") or "").strip()
+        r1 = _check_zero_leak_gate(u_txt, owner_tokens)
+        r2 = _check_zero_leak_gate(a_txt, owner_tokens)
+        if r1 is not None:
+            skipped[r1] = skipped.get(r1, 0) + 1
+            continue
+        if r2 is not None:
+            skipped[r2] = skipped.get(r2, 0) + 1
+            continue
+        pair_h = hashlib.sha256(f"{u_txt}\n{a_txt}".lower().encode("utf-8")).hexdigest()
+        if pair_h in seen_hashes:
+            skipped["duplicate"] += 1
+            continue
+        seen_hashes.add(pair_h)
+        qa_pairs.append(("dialogue", u_txt, a_txt))
+        kinds_breakdown["dialogue"] = kinds_breakdown.get("dialogue", 0) + 1
 
     formats_to_write = ("chatml", "sharegpt") if fmt_norm == "both" else (fmt_norm,)
     written_files: dict[str, dict[str, Any]] = {}

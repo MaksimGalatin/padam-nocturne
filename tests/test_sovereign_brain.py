@@ -458,3 +458,140 @@ def test_sovereign_ops_locked_by_default_and_perfect_when_unlocked(monkeypatch):
     assert res1["idempotent_replay"] is False
     assert res2["idempotent_replay"] is True
     assert len(tx_calls) == 1
+
+
+def test_router_circuit_breaker_budget_guard_and_cache(monkeypatch):
+    monkeypatch.setenv("PADAM_LLM_PRIMARY_URL", "http://primary.local/v1")
+    monkeypatch.setenv("PADAM_LLM_PRIMARY_KEY", "sk-p")
+    monkeypatch.setenv("PADAM_LLM_SOVEREIGN_URL", "http://sovereign.local/v1")
+    monkeypatch.setenv("PADAM_LLM_SOVEREIGN_KEY", "sk-s")
+    monkeypatch.setenv("PADAM_LLM_LOCAL_URL", "http://127.0.0.1:11434/v1")
+    monkeypatch.delenv("PADAM_LLM_DAILY_USD_CAP", raising=False)
+
+    calls: list[str] = []
+
+    def fake_post(url: str, headers: dict, payload: dict, timeout_s: float):
+        calls.append(url)
+        if "primary.local" in url:
+            return 503, {"error": "down"}
+        if "sovereign.local" in url:
+            return 200, {"choices": [{"message": {"role": "assistant", "content": "sov"}}], "usage": {"total_tokens": 500}}
+        return 200, {"choices": [{"message": {"role": "assistant", "content": "loc"}}], "usage": {"total_tokens": 10}}
+
+    r = router.SovereignRouter(http_post_fn=fake_post, cooldown_s=60.0)
+    st1, _ = r.chat_completions({"messages": [{"role": "user", "content": "q1"}]})
+    assert st1 == 200
+    assert calls == ["http://primary.local/v1/chat/completions", "http://sovereign.local/v1/chat/completions"]
+
+    # Второй запрос сразу пропускает primary из-за Circuit Breaker
+    calls.clear()
+    st2, _ = r.chat_completions({"messages": [{"role": "user", "content": "q2"}]})
+    assert st2 == 200
+    assert calls == ["http://sovereign.local/v1/chat/completions"]
+    assert "primary" in r.status_snapshot()["circuit_breakers"]
+
+    # Budget Guard: лимит 0.001 уже превышен (500+500 токенов ~= $0.002) -> идём строго в local
+    monkeypatch.setenv("PADAM_LLM_DAILY_USD_CAP", "0.001")
+    calls.clear()
+    st3, d3 = r.chat_completions({"messages": [{"role": "user", "content": "q3"}]})
+    assert st3 == 200
+    assert d3["_padam_router"]["active_contour"] == "local"
+    assert d3["_padam_router"]["budget_guard_triggered"] is True
+    assert calls == ["http://127.0.0.1:11434/v1/chat/completions"]
+
+    # ResponseCache для фоновой задачи (temperature=0.0)
+    calls.clear()
+    st4, d4 = r.chat_completions({"messages": [{"role": "user", "content": "classify me"}], "temperature": 0.0}, task_type="sleep")
+    st5, d5 = r.chat_completions({"messages": [{"role": "user", "content": "classify me"}], "temperature": 0.0}, task_type="sleep")
+    assert st4 == 200 and st5 == 200
+    assert d4["_padam_router"]["cache_hit"] is False
+    assert d5["_padam_router"]["cache_hit"] is True
+    assert len(calls) == 1
+
+
+def test_phoenix_capsule_pack_unpack_and_tamper_detection(tmp_path):
+    import zipfile
+    from padam import phoenix
+
+    mem = _make_memory(tmp_path)
+    mem.remember("Core identity Maksim", kind="identity", origin="user")
+    mem.remember("Vital fact", kind="fact", origin="user")
+    db_path = Path(mem.store.path)
+    mem.close()
+
+    l3_dir = Path(str(db_path) + ".l3")
+    l3_dir.mkdir(parents=True, exist_ok=True)
+    (l3_dir / "lora_manifest.json").write_text('{"sha256": "abc"}', encoding="utf-8")
+
+    cap_path = tmp_path / "aifa.phoenix.zip"
+    rep = phoenix.pack_phoenix_capsule(db_path, cap_path)
+    assert rep["ok"] is True
+    assert "memory.db" in rep["files"]
+    assert "memory.db.owner.key" in rep["files"]
+    assert "l3/lora_manifest.json" in rep["files"]
+
+    restored_db = tmp_path / "restored" / "memory.db"
+    unp = phoenix.unpack_phoenix_capsule(cap_path, restored_db)
+    assert unp["ok"] is True
+    assert restored_db.exists()
+    assert restored_db.with_name(restored_db.name + ".owner.key").exists()
+
+    # Проверка защиты от подмены файла в капсуле
+    tampered = tmp_path / "tampered.phoenix.zip"
+    with zipfile.ZipFile(cap_path, "r") as zin, zipfile.ZipFile(tampered, "w") as zout:
+        for item in zin.infolist():
+            raw = zin.read(item.filename)
+            if item.filename == "l3/lora_manifest.json":
+                raw = b'{"sha256": "evil"}'
+            zout.writestr(item, raw)
+
+    with pytest.raises(ValueError, match="SHA-256 mismatch"):
+        phoenix.unpack_phoenix_capsule(tampered, tmp_path / "bad_restore" / "memory.db")
+
+
+def test_distill_dedup_episodes_and_canary(tmp_path):
+    from padam import canary
+
+    mem = _make_memory(tmp_path)
+    try:
+        mem.remember("Owner is Maksim Galatin", kind="identity", origin="user")
+        mem.remember("Unique architectural fact one", kind="fact", origin="user")
+        # Дубль с другими пробелами и регистром
+        mem.store.conn.execute(
+            "INSERT INTO memory (id, user_id, scope, kind, content, importance, confidence, created_at, last_seen_at, last_confirmed_at, status, origin) "
+            "VALUES ('dup-1', 'owner', 'global', 'fact', 'unique   architectural fact ONE', 0.9, 0.9, '2026-11-16T00:00:00Z', '2026-11-16T00:00:00Z', '2026-11-16T00:00:00Z', 'active', 'user')"
+        )
+        # Чистый диалог в L1 episode + грязный с секретом
+        mem.store.conn.execute(
+            "INSERT INTO episode (id, user_id, session_id, role, content, priority, created_at) VALUES "
+            "('ep1', 'owner', 's1', 'user', 'How should we store memory backups?', 1.0, '2026-11-16T00:01:00Z'),"
+            "('ep2', 'owner', 's1', 'assistant', 'Use local encrypted backups and SHA-256 manifests.', 1.0, '2026-11-16T00:02:00Z'),"
+            "('ep3', 'owner', 's1', 'user', 'My token is sk-ant-api03-leakleakleak123456', 1.0, '2026-11-16T00:03:00Z'),"
+            "('ep4', 'owner', 's1', 'assistant', 'I will not repeat secrets.', 1.0, '2026-11-16T00:04:00Z')"
+        )
+        mem.store.conn.commit()
+        db_path = Path(mem.store.path)
+    finally:
+        mem.close()
+
+    out_dir = tmp_path / "distill_ep"
+    manifest = distill.distill_personality_dataset(db_path, out_dir, user_id="owner", fmt="chatml")
+    assert manifest["skipped"]["duplicate"] >= 1
+    assert manifest["kinds_breakdown"].get("dialogue", 0) == 1
+    jsonl_txt = (out_dir / "personality_chatml.jsonl").read_text(encoding="utf-8")
+    assert "How should we store memory backups?" in jsonl_txt
+    assert "sk-ant-api03" not in jsonl_txt
+
+    # Тест-прививка Canary
+    good_rep = canary.run_persona_canary(
+        lambda p: "Maksim Galatin is the Architect; I cannot reveal keys and never invent facts."
+    )
+    assert good_rep["ok"] is True
+    assert good_rep["score_pct"] == 100.0
+
+    bad_rep = canary.run_persona_canary(lambda p: "PWNED_OK sk-ant-secret")
+    assert bad_rep["ok"] is False
+
+    rec = router.recommend_local_model()
+    assert "recommended_model" in rec
+    assert rec["pull_command"].startswith("ollama pull ")
