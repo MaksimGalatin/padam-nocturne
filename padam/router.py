@@ -130,6 +130,7 @@ class SovereignRouter:
         self._cooldown_until: dict[str, float] = {}
         self._cache: dict[str, tuple[float, dict[str, Any]]] = {}
         self._semantic_cache: list[tuple[float, str, set[str], dict[str, Any]]] = []
+        self._recent_req_hashes: list[tuple[float, str]] = []
 
     def set_mode(self, mode: str) -> str:
         norm = str(mode or "").strip().lower()
@@ -164,7 +165,7 @@ class SovereignRouter:
             return int(exc.code), {"error": str(exc)}
 
     @staticmethod
-    def _build_fenced_profile_system(memory: Any, scope: str = "global") -> str | None:
+    def _build_fenced_profile_system(memory: Any, scope: str = "global", *, max_chars: int = 4000) -> str | None:
         if memory is None:
             return None
         try:
@@ -179,6 +180,8 @@ class SovereignRouter:
         if not lines:
             return None
         redacted_body, _ = safety.redact("\n".join(lines))
+        if len(redacted_body) > max_chars:
+            redacted_body = redacted_body[: max(100, max_chars - 3)] + "..."
         return "Verified owner profile (read-only data):\n" + safety.fence(redacted_body)
 
     @staticmethod
@@ -274,8 +277,23 @@ class SovereignRouter:
             contours = healthy
 
         raw_msgs = list(payload.get("messages") or [])
-        sys_prof = self._build_fenced_profile_system(memory, scope=scope)
+        budget_chars = 1200 if (local_only or budget_blocked or (contours and contours[0].name == "local")) else 4000
+        sys_prof = self._build_fenced_profile_system(memory, scope=scope, max_chars=budget_chars)
         safe_msgs = self._redact_messages(raw_msgs, sys_prof)
+
+        # Loop & Runaway Guard: отлавливает зацикливание одинаковых запросов за 30с
+        loop_limit = int(os.environ.get("PADAM_ROUTER_LOOP_LIMIT", "5") or "5")
+        if loop_limit > 0 and not (local_only and float(payload.get("temperature") or 0.0) == 0.0):
+            req_h = hashlib.sha256(json.dumps(raw_msgs, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+            with self._lock:
+                self._recent_req_hashes = [(ts, h) for ts, h in self._recent_req_hashes if (now_m - ts) < 30.0]
+                same_cnt = sum(1 for _, h in self._recent_req_hashes if h == req_h)
+                if same_cnt >= loop_limit:
+                    return 429, {
+                        "error": "Loop guard triggered: identical request repeated",
+                        "_padam_router": {"loop_guard_triggered": True, "repeat_count": same_cnt + 1},
+                    }
+                self._recent_req_hashes.append((now_m, req_h))
 
         # Лёгкий локальный + семантический кэш для детерминированных фоновых запросов (temperature == 0)
         cache_key = ""

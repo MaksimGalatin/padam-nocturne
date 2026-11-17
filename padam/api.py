@@ -54,8 +54,8 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
 
@@ -441,6 +441,18 @@ class Handler(BaseHTTPRequestHandler):
                 qs = parse_qs(путь.query)
                 agent = str((qs.get("agent") or ["aifa"])[0])
                 return self._send(200, _ark.wake_up_briefing(mem(), agent=agent))
+            if путь.path == "/api/v2/ark/health":
+                roles.require_owner(actor, "brain_status")
+                from . import ark as _ark
+                return self._send(200, _ark.ark_health_score(mem()))
+            if путь.path == "/api/v2/ark/audit-verify":
+                roles.require_owner(actor, "brain_status")
+                from . import audit_chain as _ac
+                return self._send(200, _ac.verify_audit_chain(mem()))
+            if путь.path == "/api/v2/ark/jobs":
+                roles.require_owner(actor, "brain_status")
+                jobs_dict = _state.setdefault("ark_jobs", {})
+                return self._send(200, {"jobs": list(jobs_dict.values())[-20:]})
             if путь.path == "/api/v2/qa-benchmark":
                 roles.require_owner(actor, "aifa_security")
                 from pathlib import Path as _Path
@@ -1129,6 +1141,45 @@ class Handler(BaseHTTPRequestHandler):
                 roles.require_owner(actor, "phoenix_drill")
                 from . import phoenix as _phx
                 return self._send(200, _phx.run_phoenix_drill(mem().store.path))
+
+            if self.path == "/api/v2/ark/genesis":
+                roles.require_owner(actor, "ark_genesis")
+                from . import ark as _ark
+                return self._send(200, _ark.create_agent_genesis(
+                    mem(),
+                    str(data.get("agent_id") or ""),
+                    str(data.get("role") or "Autonomous family agent"),
+                ))
+
+            if self.path == "/api/v2/ark/jobs":
+                roles.require_owner(actor, "ark_jobs")
+                import threading as _th
+                import uuid as _uuid
+                job_type = str(data.get("job_type") or "phoenix_drill").strip().lower()
+                if job_type not in ("phoenix_drill", "distill"):
+                    return self._send(400, {"error": f"Unsupported job_type: {job_type}"})
+                job_id = f"job-{_uuid.uuid4().hex[:10]}"
+                db_p = mem().store.path
+                uid = mem().user_id
+                jobs_dict = _state.setdefault("ark_jobs", {})
+                jobs_dict[job_id] = {"id": job_id, "job_type": job_type, "status": "running", "result": None, "error": ""}
+
+                def _run_bg():
+                    try:
+                        if job_type == "phoenix_drill":
+                            from . import phoenix as _phx
+                            res = _phx.run_phoenix_drill(db_p)
+                        else:
+                            from . import distill as _dis
+                            res = _dis.distill_personality_dataset(db_p, str(db_p) + ".distill", user_id=uid, fmt="both")
+                        jobs_dict[job_id]["status"] = "done"
+                        jobs_dict[job_id]["result"] = res
+                    except Exception as exc:
+                        jobs_dict[job_id]["status"] = "error"
+                        jobs_dict[job_id]["error"] = str(exc)
+
+                _th.Thread(target=_run_bg, daemon=True).start()
+                return self._send(202, jobs_dict[job_id])
 
             if self.path == "/api/v2/cabinet/open-upgrade":
                 roles.require_owner(actor, "cabinet_upgrade")

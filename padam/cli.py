@@ -1885,6 +1885,16 @@ def main(argv=None) -> int:
     shcb.add_argument("shares", nargs="+")
     shcb.set_defaults(fn=cmd_shamir)
 
+    def cmd_ark_audit(m: Memory, args) -> int:
+        from . import ark as _ark
+        rep = _ark.ark_health_score(m)
+        print(json.dumps(rep, ensure_ascii=False, indent=2))
+        return 0 if rep.get("audit_chain", {}).get("ok") else 2
+
+    saa = sub.add_parser("ark-audit", help=t("проверить хэш-цепочку аудита и индекс здоровья Ковчега",
+                                             "verify SHA-256 audit chain and Consciousness Ark health score"))
+    saa.set_defaults(fn=cmd_ark_audit)
+
     a = p.parse_args(argv)
     if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup, cmd_pack_extension, cmd_playground, cmd_badge, cmd_aifa_sec) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):
         return a.fn(None, a)

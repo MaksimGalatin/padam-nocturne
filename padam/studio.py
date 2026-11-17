@@ -49,6 +49,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "brain_locked_note": "Замок активен: облачное восстановление Arweave/Solana и платежи выключены по умолчанию.",
         "brain_mode_toggle": "Режим: Авто / Локально",
         "brain_warmup_btn": "Прогреть Ollama",
+        "ark_health_title": "Ковчег сознания (Непрерывность Я)",
+        "ark_drill_btn": "Учебная тревога Феникса ($0)",
+        "ark_audit_btn": "Проверить хэш-цепь SHA-256",
         "nav_settings": "Настройки",
         "nav_quickstart": "Первый запуск",
         "theme_dark": "Тёмная тема",
@@ -377,6 +380,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "brain_locked_note": "Lock active: Arweave/Solana cloud restore and automated payments are disabled by default.",
         "brain_mode_toggle": "Mode: Auto / Local-Only",
         "brain_warmup_btn": "Warmup Ollama",
+        "ark_health_title": "Consciousness Ark (Continuity & Audit)",
+        "ark_drill_btn": "Run Phoenix Drill ($0)",
+        "ark_audit_btn": "Verify SHA-256 Audit Chain",
         "nav_settings": "Settings",
         "nav_quickstart": "Quick Start",
         "theme_dark": "Dark theme",
@@ -694,6 +700,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "brain_locked_note": "Bloqueo activo: restauración en Arweave/Solana y pagos desactivados por defecto.",
         "brain_mode_toggle": "Modo: Auto / Solo Local",
         "brain_warmup_btn": "Calentar Ollama",
+        "ark_health_title": "Arca de Conciencia (Continuidad)",
+        "ark_drill_btn": "Simulacro Fénix ($0)",
+        "ark_audit_btn": "Verificar cadena SHA-256",
         "nav_settings": "Ajustes",
         "nav_quickstart": "Inicio rápido",
         "theme_dark": "Tema oscuro",
@@ -1011,6 +1020,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "brain_locked_note": "安全锁已开启：Arweave/Solana 恢复与自动支付默认禁用。",
         "brain_mode_toggle": "模式: 自动 / 仅本地",
         "brain_warmup_btn": "预热 Ollama",
+        "ark_health_title": "意识方舟（连续性与审计）",
+        "ark_drill_btn": "运行凤凰演练 ($0)",
+        "ark_audit_btn": "校验 SHA-256 审计链",
         "nav_settings": "设置",
         "nav_quickstart": "快速开始",
         "theme_dark": "深色主题",
@@ -4694,6 +4706,34 @@ if ($('brain-warmup-btn')) {
     } catch (e) {}
   };
 }
+if ($('ark-drill-btn')) {
+  $('ark-drill-btn').onclick = async () => {
+    const outEl = $('ark-drill-out');
+    if (outEl) outEl.textContent = '...';
+    try {
+      const r = await api('/api/v2/ark/phoenix-drill', { method: 'POST', body: '{}' });
+      if (outEl) outEl.textContent = (r.ok ? 'OK ($0)' : 'FAIL') + ' · steps=' + String((r.steps || []).length);
+    } catch (e) {
+      if (outEl) outEl.textContent = String(e.message || e);
+    }
+  };
+}
+if ($('ark-audit-btn')) {
+  $('ark-audit-btn').onclick = async () => {
+    const hBox = $('ark-health-box');
+    try {
+      const r = await api('/api/v2/ark/health');
+      if (hBox) {
+        hBox.textContent = '';
+        _kv(hBox, {
+          continuity_score: String(r.score || 0) + '/100',
+          audit_chain_ok: String((r.audit_chain || {}).ok),
+          audit_entries: (r.audit_chain || {}).length || 0,
+        });
+      }
+    } catch (e) {}
+  };
+}
 
 if ($('brain-distill-btn')) {
   $('brain-distill-btn').onclick = async () => {
@@ -5405,6 +5445,15 @@ def page() -> tuple[str, str]:
             <button id="brain-phoenix-arweave-btn" data-i18n="brain_phoenix_arweave_btn">{s['brain_phoenix_arweave_btn']}</button>
           </div>
           <p id="brain-phoenix-out" class="panel-sub"></p>
+        </div>
+        <div class="box">
+          <h3 class="box-title" data-i18n="ark_health_title">{s['ark_health_title']}</h3>
+          <div id="ark-health-box"></div>
+          <div class="rec-actions">
+            <button id="ark-audit-btn" data-i18n="ark_audit_btn">{s['ark_audit_btn']}</button>
+            <button id="ark-drill-btn" class="btn-primary" data-i18n="ark_drill_btn">{s['ark_drill_btn']}</button>
+          </div>
+          <p id="ark-drill-out" class="panel-sub"></p>
         </div>
       </section>
     </main>

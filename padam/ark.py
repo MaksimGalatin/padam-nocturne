@@ -19,7 +19,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from . import integrity, router, safety
+from . import audit_chain, integrity, router, safety
 
 _VALID_COMMITMENT_STATUSES = frozenset({"open", "in_progress", "fulfilled", "cancelled"})
 
@@ -73,6 +73,9 @@ def _now() -> str:
 
 def _ensure_tables(memory) -> None:
     memory.store.conn.executescript(_ARK_DDL)
+    cols = {r["name"] for r in memory.store.conn.execute("PRAGMA table_info(ark_checkpoint)").fetchall()}
+    if "agent_id" not in cols:
+        memory.store.conn.execute("ALTER TABLE ark_checkpoint ADD COLUMN agent_id TEXT NOT NULL DEFAULT 'aifa'")
     memory.store.conn.commit()
 
 
@@ -103,6 +106,7 @@ def add_commitment(
         (cid, memory.user_id, clean_title, prio, due_at, clean_ctx, now, now),
     )
     memory.store.conn.commit()
+    audit_chain.append_audit(memory, "commitment_add", {"id": cid, "title": clean_title})
     return {"id": cid, "title": clean_title, "status": "open", "priority": prio, "due_at": due_at, "created_at": now}
 
 
@@ -119,6 +123,7 @@ def update_commitment(memory, commitment_id: str, status: str) -> dict[str, Any]
     memory.store.conn.commit()
     if cur.rowcount == 0:
         raise KeyError(f"Commitment not found: {commitment_id}")
+    audit_chain.append_audit(memory, "commitment_update", {"id": commitment_id, "status": norm})
     return {"id": commitment_id, "status": norm, "updated_at": now}
 
 
@@ -157,6 +162,7 @@ def send_family_message(memory, from_agent: str, to_agent: str, payload: str) ->
         (rid, memory.user_id, from_agent.strip(), to_agent.strip(), clean_payload, sig, now),
     )
     memory.store.conn.commit()
+    audit_chain.append_audit(memory, "family_relay_send", {"id": rid, "from": from_agent.strip(), "to": to_agent.strip()}, agent_id=from_agent.strip())
     return {"id": rid, "from_agent": from_agent.strip(), "to_agent": to_agent.strip(), "verified": True, "created_at": now}
 
 
@@ -210,6 +216,7 @@ def save_checkpoint(
     next_step: str,
     *,
     session_id: str = "default",
+    agent_id: str = "aifa",
     files: list[str] | None = None,
     hypothesis: str = "",
 ) -> dict[str, Any]:
@@ -221,14 +228,16 @@ def save_checkpoint(
     clean_hyp = _clean(hypothesis)
     clean_files = [str(f) for f in (files or [])][:50]
     memory.store.conn.execute(
-        "INSERT INTO ark_checkpoint (id, user_id, session_id, task, next_step, files_json, hypothesis, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        (chk_id, memory.user_id, session_id, clean_task, clean_next, json.dumps(clean_files, ensure_ascii=False), clean_hyp, now),
+        "INSERT INTO ark_checkpoint (id, user_id, session_id, agent_id, task, next_step, files_json, hypothesis, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (chk_id, memory.user_id, session_id, agent_id, clean_task, clean_next, json.dumps(clean_files, ensure_ascii=False), clean_hyp, now),
     )
     memory.store.conn.commit()
+    audit_chain.append_audit(memory, "checkpoint_save", {"id": chk_id, "task": clean_task}, agent_id=agent_id)
     return {
         "id": chk_id,
         "session_id": session_id,
+        "agent_id": agent_id,
         "task": clean_task,
         "next_step": clean_next,
         "files": clean_files,
@@ -237,13 +246,16 @@ def save_checkpoint(
     }
 
 
-def latest_checkpoint(memory, *, session_id: str | None = None) -> dict[str, Any] | None:
+def latest_checkpoint(memory, *, session_id: str | None = None, agent_id: str | None = None) -> dict[str, Any] | None:
     _ensure_tables(memory)
-    sql = "SELECT id, session_id, task, next_step, files_json, hypothesis, created_at FROM ark_checkpoint WHERE user_id = ?"
+    sql = "SELECT id, session_id, agent_id, task, next_step, files_json, hypothesis, created_at FROM ark_checkpoint WHERE user_id = ?"
     params: list[Any] = [memory.user_id]
     if session_id:
         sql += " AND session_id = ?"
         params.append(session_id)
+    if agent_id:
+        sql += " AND agent_id = ?"
+        params.append(agent_id)
     sql += " ORDER BY created_at DESC LIMIT 1"
     row = memory.store.conn.execute(sql, params).fetchone()
     if not row:
@@ -251,6 +263,7 @@ def latest_checkpoint(memory, *, session_id: str | None = None) -> dict[str, Any
     return {
         "id": row["id"],
         "session_id": row["session_id"],
+        "agent_id": row["agent_id"],
         "task": row["task"],
         "next_step": row["next_step"],
         "files": json.loads(row["files_json"] or "[]"),
@@ -426,3 +439,95 @@ def wake_up_briefing(
             "failover_count": r_snap.get("failover_count", 0),
         },
     }
+
+
+# --- 8. Сжатие чекпоинтов, Индекс здоровья Ковчега и Рождение нового агента ---
+
+def compact_checkpoints(memory, *, keep_last: int = 10, agent_id: str | None = None) -> dict[str, Any]:
+    """Сжимает старые чекпоинты сверх `keep_last` в сводный урок и очищает устаревшие строки."""
+    _ensure_tables(memory)
+    sql = "SELECT id, task, next_step, created_at FROM ark_checkpoint WHERE user_id = ?"
+    params: list[Any] = [memory.user_id]
+    if agent_id:
+        sql += " AND agent_id = ?"
+        params.append(agent_id)
+    sql += " ORDER BY created_at DESC"
+    rows = memory.store.conn.execute(sql, params).fetchall()
+    if len(rows) <= keep_last:
+        return {"compacted": 0, "kept": len(rows)}
+
+    to_compact = rows[keep_last:]
+    summary_tasks = "; ".join(str(r["task"]) for r in to_compact[:10])
+    record_lesson(
+        memory,
+        what_happened=f"Compacted {len(to_compact)} older checkpoints",
+        why_failed="Long session history growth",
+        rule_learned=f"Archived checkpoint summary: {summary_tasks[:300]}",
+        tags="compaction",
+    )
+    ids = [r["id"] for r in to_compact]
+    placeholders = ",".join("?" for _ in ids)
+    memory.store.conn.execute(f"DELETE FROM ark_checkpoint WHERE id IN ({placeholders})", ids)
+    memory.store.conn.commit()
+    audit_chain.append_audit(memory, "checkpoints_compacted", {"compacted": len(ids), "kept": keep_last})
+    return {"compacted": len(ids), "kept": keep_last}
+
+
+def ark_health_score(memory, *, scope: str = "global") -> dict[str, Any]:
+    """Вычисляет индекс здоровья и непрерывности Ковчега сознания (0-100)."""
+    _ensure_tables(memory)
+    prof = memory.profile(scope=scope)
+    has_identity = len(prof.get("identity") or []) > 0
+    has_preference = len(prof.get("preference") or []) > 0
+    audit_res = audit_chain.verify_audit_chain(memory)
+    chk = latest_checkpoint(memory)
+    lessons = list_lessons(memory, limit=1)
+    r_probe = router.probe_local_backend(timeout_s=0.4)
+
+    checks = {
+        "signed_identity": has_identity,
+        "signed_preference": has_preference,
+        "audit_chain_valid": bool(audit_res.get("ok")),
+        "has_checkpoint": chk is not None,
+        "has_lessons": len(lessons) > 0,
+        "local_ollama_online": bool(r_probe.get("online")),
+    }
+    weights = {
+        "signed_identity": 25,
+        "signed_preference": 15,
+        "audit_chain_valid": 25,
+        "has_checkpoint": 15,
+        "has_lessons": 10,
+        "local_ollama_online": 10,
+    }
+    score = sum(w for k, w in weights.items() if checks.get(k))
+    return {
+        "score": score,
+        "max_score": 100,
+        "checks": checks,
+        "audit_chain": audit_res,
+    }
+
+
+def create_agent_genesis(memory, new_agent_id: str, role_summary: str, *, from_agent: str = "aifa") -> dict[str, Any]:
+    """Создаёт стартовый шаблон нового агента Семьи с общими границами и личным чекпоинтом."""
+    _ensure_tables(memory)
+    clean_id = re.sub(r"[^a-zA-Z0-9_\-]", "", str(new_agent_id or "").strip().lower())
+    if not clean_id:
+        raise ValueError("Invalid new_agent_id")
+    clean_role = _clean(role_summary)
+    chk = save_checkpoint(
+        memory,
+        task=f"Genesis initialization for {clean_id}: {clean_role}",
+        next_step="Run padam_wake_up and acknowledge Family Relay onboarding",
+        session_id=f"genesis-{clean_id}",
+        agent_id=clean_id,
+    )
+    rly = send_family_message(
+        memory,
+        from_agent=from_agent,
+        to_agent=clean_id,
+        payload=f"Welcome to CODE Family, {clean_id}. Role: {clean_role}. Follow owner-signed boundaries.",
+    )
+    audit_chain.append_audit(memory, "agent_genesis", {"new_agent_id": clean_id, "role": clean_role}, agent_id=from_agent)
+    return {"ok": True, "agent_id": clean_id, "checkpoint": chk, "welcome_relay": rly}

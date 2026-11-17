@@ -338,6 +338,8 @@ def test_studio_sovereign_brain_ui_and_csp():
     assert 'id="brain-refresh-btn"' in html
     assert 'id="brain-mode-toggle-btn"' in html
     assert 'id="brain-warmup-btn"' in html
+    assert 'id="ark-drill-btn"' in html
+    assert 'id="ark-audit-btn"' in html
     assert "innerHTML" not in html
     assert 'style="' not in html
 
@@ -769,3 +771,55 @@ def test_ark_consciousness_all_10_pillars(monkeypatch, tmp_path):
             mem.close()
         except Exception:
             pass
+
+
+def test_audit_chain_loop_guard_compaction_health_and_genesis(monkeypatch, tmp_path):
+    from padam import ark, audit_chain
+
+    # 1. Loop & Runaway Guard в роутере
+    monkeypatch.setenv("PADAM_LLM_LOCAL_URL", "http://127.0.0.1:11434/v1")
+    monkeypatch.setenv("PADAM_ROUTER_LOOP_LIMIT", "3")
+    r = router.SovereignRouter(
+        http_post_fn=lambda u, h, p, t: (200, {"choices": [{"message": {"role": "assistant", "content": "ok"}}]})
+    )
+    msg = {"messages": [{"role": "user", "content": "same loop prompt"}]}
+    for _ in range(3):
+        st, _ = r.chat_completions(msg)
+        assert st == 200
+    st_loop, d_loop = r.chat_completions(msg)
+    assert st_loop == 429
+    assert d_loop["_padam_router"]["loop_guard_triggered"] is True
+
+    # 2. Хэш-цепочка аудита + сжатие чекпоинтов + индекс здоровья + рождение агента
+    mem = _make_memory(tmp_path)
+    try:
+        mem.remember("Owner is Maksim Galatin", kind="identity", origin="user")
+        mem.remember("Prefer concise Russian reports", kind="preference", origin="user")
+        for i in range(6):
+            ark.save_checkpoint(mem, task=f"Task {i}", next_step=f"Step {i}", agent_id="aifa")
+
+        comp = ark.compact_checkpoints(mem, keep_last=2, agent_id="aifa")
+        assert comp["compacted"] == 4
+        assert comp["kept"] == 2
+
+        gen = ark.create_agent_genesis(mem, "lance", "Security & Red-Team sibling")
+        assert gen["ok"] is True
+        assert gen["agent_id"] == "lance"
+        assert ark.latest_checkpoint(mem, agent_id="lance")["agent_id"] == "lance"
+
+        health = ark.ark_health_score(mem)
+        assert health["score"] >= 80
+        assert health["checks"]["signed_identity"] is True
+        assert health["checks"]["has_checkpoint"] is True
+        assert health["checks"]["has_lessons"] is True
+        assert health["audit_chain"]["ok"] is True
+
+        # Проверка обнаружения подделки в хэш-цепочке
+        mem.store.conn.execute("UPDATE ark_audit_chain SET details = 'tampered' WHERE seq = 1")
+        mem.store.conn.commit()
+        broken = audit_chain.verify_audit_chain(mem)
+        assert broken["ok"] is False
+        assert broken["broken_seq"] == 1
+        assert broken["reason"] == "entry_hash_mismatch"
+    finally:
+        mem.close()
