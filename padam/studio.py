@@ -47,6 +47,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "brain_phoenix_ph": "Путь к локальному .padam-backup файлу",
         "brain_cost_title": "Учёт вычислений и экономия токенов (только учёт)",
         "brain_locked_note": "Замок активен: облачное восстановление Arweave/Solana и платежи выключены по умолчанию.",
+        "brain_mode_toggle": "Режим: Авто / Локально",
+        "brain_warmup_btn": "Прогреть Ollama",
         "nav_settings": "Настройки",
         "nav_quickstart": "Первый запуск",
         "theme_dark": "Тёмная тема",
@@ -373,6 +375,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "brain_phoenix_ph": "Path to local .padam-backup file",
         "brain_cost_title": "Compute Ledger & Token Savings (Read-Only)",
         "brain_locked_note": "Lock active: Arweave/Solana cloud restore and automated payments are disabled by default.",
+        "brain_mode_toggle": "Mode: Auto / Local-Only",
+        "brain_warmup_btn": "Warmup Ollama",
         "nav_settings": "Settings",
         "nav_quickstart": "Quick Start",
         "theme_dark": "Dark theme",
@@ -688,6 +692,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "brain_phoenix_ph": "Ruta al archivo local .padam-backup",
         "brain_cost_title": "Registro de cómputo y ahorro de tokens",
         "brain_locked_note": "Bloqueo activo: restauración en Arweave/Solana y pagos desactivados por defecto.",
+        "brain_mode_toggle": "Modo: Auto / Solo Local",
+        "brain_warmup_btn": "Calentar Ollama",
         "nav_settings": "Ajustes",
         "nav_quickstart": "Inicio rápido",
         "theme_dark": "Tema oscuro",
@@ -1003,6 +1009,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "brain_phoenix_ph": "本地 .padam-backup 文件路径",
         "brain_cost_title": "算力账本与 Token 节省统计（仅统计）",
         "brain_locked_note": "安全锁已开启：Arweave/Solana 恢复与自动支付默认禁用。",
+        "brain_mode_toggle": "模式: 自动 / 仅本地",
+        "brain_warmup_btn": "预热 Ollama",
         "nav_settings": "设置",
         "nav_quickstart": "快速开始",
         "theme_dark": "深色主题",
@@ -4648,19 +4656,43 @@ async function loadBrain() {
   const mBox = $('brain-metrics');
   if (mBox && st) {
     mBox.textContent = '';
+    const v = st.voice || {};
     _kv(mBox, {
       openai_gateway_v1: window.location.origin + '/v1',
+      mode: st.mode || 'auto',
       active_contour: st.active_contour || 'local',
       total_requests: st.total_requests || 0,
       failover_count: st.failover_count || 0,
+      cache_hits: st.cache_hits || 0,
+      semantic_cache_hits: st.semantic_cache_hits || 0,
       tokens_saved_local: st.tokens_saved_local || 0,
       estimated_cloud_cost_usd: '$' + String(st.estimated_cloud_cost_usd || 0),
+      offline_voice_tts: (v.tts_engines || []).join(', ') || 'none',
     });
   }
 }
 
 if ($('brain-refresh-btn')) {
   $('brain-refresh-btn').onclick = () => loadBrain();
+}
+if ($('brain-mode-toggle-btn')) {
+  $('brain-mode-toggle-btn').onclick = async () => {
+    try {
+      const st = await api('/api/v2/brain/status');
+      const next = (st && st.mode === 'local_only') ? 'auto' : 'local_only';
+      await api('/api/v2/brain/mode', { method: 'POST', body: JSON.stringify({ mode: next }) });
+      loadBrain();
+    } catch (e) {}
+  };
+}
+if ($('brain-warmup-btn')) {
+  $('brain-warmup-btn').onclick = async () => {
+    const outEl = $('brain-distill-out');
+    try {
+      const r = await api('/api/v2/brain/warmup', { method: 'POST', body: '{}' });
+      if (outEl) outEl.textContent = 'Warmup: ' + JSON.stringify(r);
+    } catch (e) {}
+  };
 }
 
 if ($('brain-distill-btn')) {
@@ -5347,6 +5379,8 @@ def page() -> tuple[str, str]:
           <div id="brain-contours"></div>
           <div class="rec-actions">
             <button id="brain-refresh-btn" data-i18n="btn_refresh">{s['btn_refresh']}</button>
+            <button id="brain-mode-toggle-btn" data-i18n="brain_mode_toggle">{s['brain_mode_toggle']}</button>
+            <button id="brain-warmup-btn" data-i18n="brain_warmup_btn">{s['brain_warmup_btn']}</button>
           </div>
         </div>
         <div class="box">

@@ -110,13 +110,16 @@ def load_contours() -> list[ContourConfig]:
 class SovereignRouter:
     """Маршрутизатор LLM-запросов с безопасным профилем, редактированием секретов и переключением «Феникс»."""
 
-    def __init__(self, http_post_fn: Any = None, *, cooldown_s: float | None = None) -> None:
+    def __init__(self, http_post_fn: Any = None, http_stream_fn: Any = None, *, cooldown_s: float | None = None) -> None:
         self._lock = threading.Lock()
         self._http_post = http_post_fn or self._default_http_post
+        self._http_stream = http_stream_fn
         self._cooldown_s = float(os.environ.get("PADAM_ROUTER_COOLDOWN_S", "60.0") or "60.0") if cooldown_s is None else float(cooldown_s)
+        self.mode = "auto"  # auto | local_only
         self.failover_count = 0
         self.total_requests = 0
         self.cache_hits = 0
+        self.semantic_cache_hits = 0
         self.active_contour = "local"
         self.last_error = ""
         self.tier_hits: dict[str, int] = {"primary": 0, "sovereign": 0, "local": 0}
@@ -126,6 +129,28 @@ class SovereignRouter:
         self.history: list[dict[str, Any]] = []
         self._cooldown_until: dict[str, float] = {}
         self._cache: dict[str, tuple[float, dict[str, Any]]] = {}
+        self._semantic_cache: list[tuple[float, str, set[str], dict[str, Any]]] = []
+
+    def set_mode(self, mode: str) -> str:
+        norm = str(mode or "").strip().lower()
+        if norm not in ("auto", "local_only"):
+            raise ValueError(f"Unsupported router mode: {mode}")
+        with self._lock:
+            self.mode = norm
+        return norm
+
+    @staticmethod
+    def _trigrams(text: str) -> set[str]:
+        s = " ".join(text.lower().split())
+        if len(s) < 3:
+            return {s} if s else set()
+        return {s[i:i + 3] for i in range(len(s) - 2)}
+
+    @classmethod
+    def _dice_similarity(cls, a: set[str], b: set[str]) -> float:
+        if not a or not b:
+            return 0.0
+        return (2.0 * len(a & b)) / (len(a) + len(b))
 
     @staticmethod
     def _default_http_post(url: str, headers: dict[str, str], payload: dict[str, Any], timeout_s: float) -> tuple[int, dict[str, Any]]:
@@ -181,12 +206,14 @@ class SovereignRouter:
                 if until > now_m
             }
             return {
+                "mode": self.mode,
                 "active_contour": self.active_contour,
                 "active_tier": self.active_contour,
                 "failover_count": self.failover_count,
                 "fallback_events": self.failover_count,
                 "total_requests": self.total_requests,
                 "cache_hits": self.cache_hits,
+                "semantic_cache_hits": self.semantic_cache_hits,
                 "tier_hits": dict(self.tier_hits),
                 "tokens_saved_local": self.tokens_saved_local,
                 "cloud_tokens_used": self.cloud_tokens_used,
@@ -227,7 +254,11 @@ class SovereignRouter:
     ) -> tuple[int, dict[str, Any]]:
         """Выполняет /chat/completions с переключением «Феникс», Circuit Breaker и Budget Guard."""
         t0 = time.monotonic()
-        local_only = background or (str(task_type or "").strip().lower() in LOCAL_ONLY_TASK_TYPES)
+        local_only = (
+            background
+            or (self.mode == "local_only")
+            or (str(task_type or "").strip().lower() in LOCAL_ONLY_TASK_TYPES)
+        )
         budget_blocked = self._budget_exhausted()
         contours = [c for c in load_contours() if c.enabled]
         if local_only or budget_blocked:
@@ -246,11 +277,15 @@ class SovereignRouter:
         sys_prof = self._build_fenced_profile_system(memory, scope=scope)
         safe_msgs = self._redact_messages(raw_msgs, sys_prof)
 
-        # Лёгкий локальный кэш для детерминированных фоновых запросов (temperature == 0)
+        # Лёгкий локальный + семантический кэш для детерминированных фоновых запросов (temperature == 0)
         cache_key = ""
+        sem_prompt = ""
+        sem_grams: set[str] = set()
         if local_only and float(payload.get("temperature") or 0.0) == 0.0:
             raw_key = json.dumps({"msgs": safe_msgs, "task_type": task_type}, ensure_ascii=False, sort_keys=True)
             cache_key = hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
+            sem_prompt = "\n".join(f"{m.get('role')}:{m.get('content')}" for m in safe_msgs)
+            sem_grams = self._trigrams(sem_prompt)
             with self._lock:
                 cached = self._cache.get(cache_key)
                 if cached and (now_m - cached[0]) < 300.0:
@@ -260,9 +295,23 @@ class SovereignRouter:
                     hit_data["_padam_router"] = {
                         **dict(hit_data.get("_padam_router") or {}),
                         "cache_hit": True,
+                        "cache_type": "exact",
                         "latency_ms": round((time.monotonic() - t0) * 1000.0, 2),
                     }
                     return 200, hit_data
+                for ts_c, c_task, c_grams, c_resp in reversed(self._semantic_cache):
+                    if (now_m - ts_c) < 300.0 and c_task == task_type and self._dice_similarity(sem_grams, c_grams) >= 0.85:
+                        self.total_requests += 1
+                        self.cache_hits += 1
+                        self.semantic_cache_hits += 1
+                        hit_data = dict(c_resp)
+                        hit_data["_padam_router"] = {
+                            **dict(hit_data.get("_padam_router") or {}),
+                            "cache_hit": True,
+                            "cache_type": "semantic",
+                            "latency_ms": round((time.monotonic() - t0) * 1000.0, 2),
+                        }
+                        return 200, hit_data
 
         attempts: list[dict[str, Any]] = []
         last_status = 502
@@ -340,6 +389,10 @@ class SovereignRouter:
                         if len(self._cache) >= 128:
                             self._cache.pop(next(iter(self._cache)))
                         self._cache[cache_key] = (time.monotonic(), enriched)
+                        if sem_grams:
+                            if len(self._semantic_cache) >= 128:
+                                self._semantic_cache.pop(0)
+                            self._semantic_cache.append((time.monotonic(), task_type, sem_grams, enriched))
                 return status, enriched
 
             last_status = status
@@ -363,6 +416,77 @@ class SovereignRouter:
                 "attempts": attempts,
             },
         }
+
+    @staticmethod
+    def _default_http_stream(url: str, headers: dict[str, str], payload: dict[str, Any], timeout_s: float):
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+            for raw_line in resp:
+                yield raw_line.decode("utf-8", errors="replace")
+
+    def stream_chat_completions(
+        self,
+        payload: dict[str, Any],
+        *,
+        memory: Any = None,
+        background: bool = False,
+        task_type: str = "agent",
+        scope: str = "global",
+    ):
+        """Сквозной потоковый SSE-стриминг с переключением «Феникс» до первого чанка."""
+        if self._http_stream is None and self._http_post != self._default_http_post:
+            st, resp_data = self.chat_completions(payload, memory=memory, background=background, task_type=task_type, scope=scope)
+            if not (200 <= st < 300):
+                yield f"data: {json.dumps(resp_data, ensure_ascii=False)}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+            for chunk in format_sse_chunks(resp_data):
+                yield chunk
+            return
+
+        stream_fn = self._http_stream or self._default_http_stream
+        local_only = background or (self.mode == "local_only") or (str(task_type or "").strip().lower() in LOCAL_ONLY_TASK_TYPES)
+        contours = [c for c in load_contours() if c.enabled]
+        if local_only or self._budget_exhausted():
+            contours = [c for c in contours if c.name == "local"]
+
+        sys_prof = self._build_fenced_profile_system(memory, scope=scope)
+        safe_msgs = self._redact_messages(list(payload.get("messages") or []), sys_prof)
+
+        for idx, c in enumerate(contours):
+            endpoint = c.url if c.url.endswith("/chat/completions") else f"{c.url}/chat/completions"
+            headers = {"Content-Type": "application/json"}
+            if c.api_key:
+                headers["Authorization"] = f"Bearer {c.api_key}"
+            req_payload = {**payload, "model": payload.get("model") or c.model, "messages": safe_msgs, "stream": True}
+            emitted_any = False
+            try:
+                for line in stream_fn(endpoint, headers, req_payload, c.timeout_s):
+                    s = line.rstrip("\r\n")
+                    if not s:
+                        continue
+                    emitted_any = True
+                    yield s + "\n\n"
+                if emitted_any:
+                    with self._lock:
+                        self.total_requests += 1
+                        self.active_contour = c.name
+                        self.tier_hits[c.name] = self.tier_hits.get(c.name, 0) + 1
+                        if idx > 0:
+                            self.failover_count += 1
+                    return
+            except Exception as exc:
+                if emitted_any:
+                    yield f"data: {json.dumps({'error': str(exc)})}\n\n"
+                    yield "data: [DONE]\n\n"
+                    return
+                with self._lock:
+                    self.last_error = f"{c.name}: {exc}"
+                continue
+
+        yield f"data: {json.dumps({'error': 'All streaming contours failed'})}\n\n"
+        yield "data: [DONE]\n\n"
 
 
 SovereignModelRouter = SovereignRouter
@@ -484,6 +608,27 @@ def recommend_local_model() -> dict[str, Any]:
         "recommended_model": installed[0] if installed else recommended,
         "pull_command": f"ollama pull {recommended}",
     }
+
+
+def warmup_local_model(*, timeout_s: float = 5.0) -> dict[str, Any]:
+    """Безопасный прогрев уже установленной локальной модели Ollama (ничего не скачивает)."""
+    rec = recommend_local_model()
+    if not rec["ollama_online"]:
+        return {"ok": False, "reason": "ollama_offline", **rec}
+    installed = rec["installed_models"]
+    if not installed:
+        return {"ok": False, "reason": "no_models_installed", **rec}
+    target = installed[0]
+    local_c = next((c for c in load_contours() if c.name == "local"), None)
+    base = (local_c.url[:-3] if local_c and local_c.url.endswith("/v1") else (local_c.url if local_c else "http://127.0.0.1:11434")).rstrip("/")
+    gen_url = f"{base}/api/generate"
+    body = json.dumps({"model": target, "prompt": "", "keep_alive": "10m"}).encode("utf-8")
+    req = urllib.request.Request(gen_url, data=body, headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+            return {"ok": 200 <= int(resp.status) < 300, "model": target, "keep_alive": "10m"}
+    except Exception as exc:
+        return {"ok": False, "model": target, "reason": f"{type(exc).__name__}: {exc}"}
 
 
 def get_router() -> SovereignRouter:

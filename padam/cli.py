@@ -1839,6 +1839,15 @@ def main(argv=None) -> int:
                                                "probe local Ollama, VRAM and autonomy locks ($0)"))
     sbp.set_defaults(fn=cmd_brain_probe)
 
+    def cmd_voice_status(m: Memory, args) -> int:
+        from . import voice as _voice
+        print(json.dumps(_voice.voice_status(), ensure_ascii=False, indent=2))
+        return 0
+
+    svs = sub.add_parser("voice-status", help=t("проверить локальные движки STT/TTS (оффлайн)",
+                                                "check local offline STT/TTS voice engines"))
+    svs.set_defaults(fn=cmd_voice_status)
+
     a = p.parse_args(argv)
     if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup, cmd_pack_extension, cmd_playground, cmd_badge, cmd_aifa_sec) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):
         return a.fn(None, a)

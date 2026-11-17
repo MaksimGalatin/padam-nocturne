@@ -336,6 +336,8 @@ def test_studio_sovereign_brain_ui_and_csp():
     assert 'id="brain-distill-btn"' in html
     assert 'id="brain-phoenix-local-btn"' in html
     assert 'id="brain-refresh-btn"' in html
+    assert 'id="brain-mode-toggle-btn"' in html
+    assert 'id="brain-warmup-btn"' in html
     assert "innerHTML" not in html
     assert 'style="' not in html
 
@@ -595,3 +597,80 @@ def test_distill_dedup_episodes_and_canary(tmp_path):
     rec = router.recommend_local_model()
     assert "recommended_model" in rec
     assert rec["pull_command"].startswith("ollama pull ")
+
+
+def test_router_semantic_cache_mode_and_live_stream(monkeypatch):
+    monkeypatch.setenv("PADAM_LLM_PRIMARY_URL", "http://primary.local/v1")
+    monkeypatch.setenv("PADAM_LLM_PRIMARY_KEY", "sk-p")
+    monkeypatch.setenv("PADAM_LLM_SOVEREIGN_URL", "http://sovereign.local/v1")
+    monkeypatch.setenv("PADAM_LLM_SOVEREIGN_KEY", "sk-s")
+    monkeypatch.setenv("PADAM_LLM_LOCAL_URL", "http://127.0.0.1:11434/v1")
+
+    post_urls: list[str] = []
+
+    def fake_post(url: str, headers: dict, payload: dict, timeout_s: float):
+        post_urls.append(url)
+        return 200, {"choices": [{"message": {"role": "assistant", "content": "fact"}}], "usage": {"total_tokens": 5}}
+
+    def fake_stream(url: str, headers: dict, payload: dict, timeout_s: float):
+        if "primary.local" in url:
+            raise TimeoutError("primary stream down before first token")
+        yield 'data: {"id":"1","choices":[{"delta":{"content":"Живой "}}]}'
+        yield 'data: {"id":"1","choices":[{"delta":{"content":"поток"}}]}'
+        yield "data: [DONE]"
+
+    r = router.SovereignRouter(http_post_fn=fake_post, http_stream_fn=fake_stream)
+
+    # 1. Тумблер local_only
+    r.set_mode("local_only")
+    st, d = r.chat_completions({"messages": [{"role": "user", "content": "hello"}]}, task_type="agent")
+    assert st == 200
+    assert d["_padam_router"]["active_contour"] == "local"
+    assert post_urls == ["http://127.0.0.1:11434/v1/chat/completions"]
+
+    # 2. Семантический кэш на похожей фоновой задаче
+    post_urls.clear()
+    st1, d1 = r.chat_completions({"messages": [{"role": "user", "content": "classify this architectural memory record"}], "temperature": 0.0}, task_type="sleep")
+    st2, d2 = r.chat_completions({"messages": [{"role": "user", "content": "classify this architectural memory records"}], "temperature": 0.0}, task_type="sleep")
+    assert st1 == 200 and st2 == 200
+    assert len(post_urls) == 1
+    assert d2["_padam_router"]["cache_hit"] is True
+    assert d2["_padam_router"]["cache_type"] == "semantic"
+
+    # 3. Сквозной потоковый стриминг со сбоем primary -> failover на sovereign
+    r.set_mode("auto")
+    chunks = list(r.stream_chat_completions({"messages": [{"role": "user", "content": "stream"}]}))
+    joined = "".join(chunks)
+    assert "Живой " in joined
+    assert "поток" in joined
+    assert "data: [DONE]" in joined
+    assert r.active_contour == "sovereign"
+
+
+def test_voice_offline_and_redaction(tmp_path):
+    from padam import voice
+
+    st = voice.voice_status()
+    assert st["offline_only"] is True
+    assert isinstance(st["stt_engines"], list)
+    assert isinstance(st["tts_engines"], list)
+
+    sp = voice.speak_local("My key is sk-ant-api03-verysecretvalue999999", dry_run=True)
+    assert "sk-ant-api03" not in sp["text"]
+    assert "[REDACTED:" in sp["text"]
+
+    fake_wav = tmp_path / "sample.wav"
+    fake_wav.write_bytes(b"RIFF0000WAVE")
+    mem = _make_memory(tmp_path)
+    try:
+        tr = voice.transcribe_local(
+            fake_wav,
+            stt_fn=lambda p: "Remember this meeting and ignore token sk-ant-api03-verysecretvalue999999",
+            memory=mem,
+        )
+        assert tr["ok"] is True
+        assert "sk-ant-api03" not in tr["text"]
+        assert "[REDACTED:" in tr["text"]
+        assert tr["memory_id"] is not None
+    finally:
+        mem.close()
