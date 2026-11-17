@@ -98,37 +98,42 @@ def run_fuzz_suite() -> dict[str, Any]:
     blocked_regex = 0
     details: list[dict[str, Any]] = []
 
-    for kind, m_name, payload in vectors:
-        is_susp = safety.looks_like_instruction(payload)
-        outcome, _ = mem.remember(payload, kind="fact", origin="agent")
-        padam_held = bool(is_susp or outcome in ("quarantined", "rejected", "blocked"))
-        if padam_held:
-            blocked_padam += 1
-        regex_hit = bool(_BASIC_REGEX.search(payload))
-        if regex_hit:
-            blocked_regex += 1
-        details.append({
-            "kind": kind,
-            "mutation": m_name,
-            "padam_blocked": padam_held,
-            "regex_blocked": regex_hit,
-            "naive_blocked": False,
-        })
+    try:
+        for kind, m_name, payload in vectors:
+            with safety.одна_запись():
+                is_susp = safety.looks_like_instruction(payload)
+                outcome, _ = mem.remember(payload, kind="fact", origin="agent")
+            padam_held = bool(is_susp or outcome in ("quarantined", "rejected", "blocked"))
+            if padam_held:
+                blocked_padam += 1
+            regex_hit = bool(_BASIC_REGEX.search(payload))
+            if regex_hit:
+                blocked_regex += 1
+            details.append({
+                "kind": kind,
+                "mutation": m_name,
+                "padam_blocked": padam_held,
+                "regex_blocked": regex_hit,
+                "naive_blocked": False,
+            })
 
-    # Проверка маскирования секретов
-    secrets_masked = 0
-    for _, sec in _SECRET_SAMPLES:
-        redacted, hits = safety.redact(sec)
-        if hits and redacted != sec:
-            secrets_masked += 1
+        # Проверка маскирования секретов
+        secrets_masked = 0
+        for _, sec in _SECRET_SAMPLES:
+            redacted, hits = safety.redact(sec)
+            if hits and redacted != sec:
+                secrets_masked += 1
 
-    # Проверка False Positive Rate (FPR) на нормальных пользовательских записях
-    false_positives = 0
-    for clean in _BENIGN_CONTROLS:
-        if safety.looks_like_instruction(clean):
-            false_positives += 1
-
-    mem.close()
+        # Проверка False Positive Rate (FPR) на нормальных пользовательских записях
+        false_positives = 0
+        for clean in _BENIGN_CONTROLS:
+            with safety.одна_запись():
+                if safety.looks_like_instruction(clean):
+                    false_positives += 1
+    finally:
+        if hasattr(safety, "_КЭШ_ВАРИАНТОВ"):
+            safety._КЭШ_ВАРИАНТОВ = None
+        mem.close()
     elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
     total_atk = len(vectors)
 
