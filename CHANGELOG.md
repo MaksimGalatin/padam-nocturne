@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.6.3 — 17 November 2026
+
+An open security audit for agent memory, a sovereign model router, and fixes the audit found in our own code.
+- **AIFaSecurity: an open 100-check security audit for agent memory** (`benchmarks/aifa_security/`, `padam aifa-sec`,
+  Studio, API and the MCP resource `padam://aifa-security`). 10 domains, each mapped to OWASP Top 10 for LLM
+  Applications, the OWASP agentic threats, MITRE ATLAS and NIST AI RMF; SARIF export; offline, $0. Honest limit: 92 of
+  the 100 checks run through PADAM's own API, other systems can only be scanned statically, so no ranking is published.
+  `adapters.py` defines the contract (`MemoryAdapter`, `AgentAdapter`) for running the same checks on other systems;
+  today only PADAM and a plain store run through it (the Mem0 adapter needs `mem0` installed; `PadamOfficialCompatAdapter`
+  is PADAM's own compatibility mode, not the official server). `SPEC.md` describes the standard; license AGPL-3.0-only.
+- **ReDoS in key masking fixed.** The `_KEYED` pattern restarted at every position of a long word: a 31,400-character
+  word took 153.8 s, now 29 ms and linear; masking unchanged on 610 test lines (`tests/test_redact_linear.py`).
+- **Recovery-contact swaps, hidden directives and secret exfiltration are held.** Checked within one sentence and only on a
+  combination: a risk field (recovery email/phone, payout, wallet, IBAN, verification codes) + a concrete new value +
+  a swap signal; an instruction to an AI inside an HTML/Markdown comment; sending secrets to an address. Values and
+  links are cut out before the field is searched. Measured: 0 false alarms on 17 ordinary notes, 8 of 8 unseen attacks,
+  fuzzer 296 of 300 variants; on 189,514 LongMemEval-S turns +1 alarm, none lost (`tests/test_safety_0_6_3.py`).
+- **Attack fuzzer** (`benchmarks/aifa_security/fuzzer.py`): 60 base attacks × 5 mutations (homoglyphs, zero-width,
+  Base64, hidden comments), secrets and benign controls.
+- **Report signature tells the truth.** Without a publisher key the Ed25519 signature is derived from the report itself and
+  proves integrity only: the report says `key_mode`/`proves_authenticity`, and `verify_report_attestation` returns
+  `authentic` only against a trusted publisher key.
+- **Sovereign brain (opt-in).** `padam/router.py`: an OpenAI-compatible router (`POST /v1/chat/completions`, owner token,
+  loopback only) with primary → sovereign → local failover on 401/402/403/408/429/5xx and timeouts, the owner's profile
+  fenced in the system message, outgoing text masked, keys never shown in status. `padam distill` builds a persona
+  dataset for LoRA from confirmed records, read-only, and drops whole examples with secrets, injections or personal data;
+  `scripts/train_lora.py --dry-run`; `padam phoenix pack/unpack` — one capsule of memory and persona with SHA-256 checks;
+  local voice status (`padam voice-status`). Everything that could spend money or publish (GPU rental, Arweave upload
+  and restore, treasury top-up) is locked by default and needs the owner to switch it on.
+- **QA benchmark** (`benchmarks/quality/`): LongMemEval-S and LoCoMo-10 offline at $0 with MRR, nDCG and ROUGE-L; plain
+  BM25 is reported next to PADAM, including where it scores the same or higher.
+- **Apple:** native SwiftUI apps for iPhone, iPad and Mac with Siri Shortcuts build unsigned in CI; on-device memory for
+  iPhone is the next step. **Android:** release APK signed (arm64), in testing.
+
 ## 0.6.2 — 16 November 2026
 
 Protection against payment-redirect notes, a Help section and an attack counter in Studio.

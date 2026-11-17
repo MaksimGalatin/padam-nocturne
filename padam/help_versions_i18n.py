@@ -6,6 +6,11 @@
 from __future__ import annotations
 
 TRANSLATIONS: dict[str, dict[str, str]] = {
+    "0.6.3": {
+        "ru": "Открытый аудит безопасности памяти агентов из 100 проверок, исправлена медленная маскировка ключей (ReDoS), задержка подмены почты и телефона восстановления, кошелька и реквизитов, суверенный роутер моделей и сбор датасета личности (всё платное выключено по умолчанию).",
+        "es": "Auditoría abierta de seguridad de memoria de agentes con 100 controles, corrección del enmascarado lento de claves (ReDoS), retención de cambios de correo o teléfono de recuperación, cartera y datos de pago, enrutador soberano de modelos y conjunto de datos de personalidad (todo lo de pago desactivado por defecto).",
+        "zh": "新增 100 项智能体记忆安全公开审计，修复密钥遮蔽的慢速正则问题（ReDoS），拦截篡改找回邮箱或电话、钱包与收款信息的指令，并加入自主模型路由与人格数据集构建（所有付费功能默认关闭）。",
+    },
     "0.6.2": {
         "ru": "Защита от подмены получателя платежа (задержка фраз «pay this address», «paid to 0x…»), раздел «Справка» на 4 языках и счётчик атак в Studio и padam_stats.",
         "es": "Protección contra sustitución de destinatario de pago, sección de Ayuda en 4 idiomas y contador de ataques en Studio y padam_stats.",
