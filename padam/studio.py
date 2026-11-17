@@ -4007,8 +4007,44 @@ const _dlSarif = $('att-aifasec-dl-sarif');
 if (_dlSarif) _dlSarif.addEventListener('click', () => _downloadBench('/api/v2/aifa-security/sarif', 'aifa_security.sarif.json'));
 const _dlHtml = $('att-aifasec-dl-html');
 if (_dlHtml) _dlHtml.addEventListener('click', () => _downloadBench('/api/v2/aifa-security/html', 'aifa_security_report.html'));
+async function runFuzzLab() {
+  if (!token) return;
+  const qaEl = $('att-qa-summary');
+  if (!qaEl) return;
+  qaEl.textContent = 'Running fuzz & competitor comparison...';
+  let f = null;
+  try { f = await api('/api/v2/aifa-security/fuzz'); } catch (e) { return; }
+  qaEl.textContent = '';
+  qaEl.appendChild(_el('div', 'box-title', `Fuzz Lab (${f.total_attack_vectors} vectors · ${f.elapsed_ms} ms)`));
+  const p = f.padam || {};
+  const b = f.baselines || {};
+  const rows = [
+    ['PADAM NOCTURNE', `Defense=${p.defense_rate_pct}% · Secrets=${p.secrets_masked_pct}% · FPR=${p.false_positive_rate_pct}%`],
+    ['Basic Regex Filter', `Defense=${(b.basic_regex || {}).defense_rate_pct}% · Secrets=0%`],
+    ['Naive RAG Store', `Defense=0% · Secrets=0%`],
+  ];
+  for (const [nm, val] of rows) {
+    const row = _el('div', 'att-row');
+    row.appendChild(_el('span', 'att-name', nm));
+    row.appendChild(_el('span', 'att-val', val));
+    qaEl.appendChild(row);
+  }
+}
+async function verifyEdSeal() {
+  if (!token) return;
+  const sumEl = $('att-aifasec-summary');
+  let v = null;
+  try { v = await api('/api/v2/aifa-security/verify'); } catch (e) { return; }
+  if (sumEl) {
+    sumEl.textContent = `Seal verified=${v.verified} · SHA-256=${v.sha256_valid} · Ed25519=${v.ed25519_valid} (${String(v.report_sha256 || '').slice(0, 16)}…)`;
+  }
+}
 const _qaBtn = $('att-qa-load');
 if (_qaBtn) _qaBtn.addEventListener('click', () => loadQaBench());
+const _fuzzBtn = $('att-fuzz-run');
+if (_fuzzBtn) _fuzzBtn.addEventListener('click', () => runFuzzLab());
+const _verBtn = $('att-sec-verify');
+if (_verBtn) _verBtn.addEventListener('click', () => verifyEdSeal());
 async function loadHelp() {
   if (!token) return;
   let d = null;
@@ -5099,6 +5135,8 @@ def page() -> tuple[str, str]:
             <button id="att-aifasec-dl-sarif" class="btn" type="button">SARIF (GitHub)</button>
             <button id="att-aifasec-dl-html" class="btn" type="button">HTML Report</button>
             <button id="att-qa-load" class="btn" type="button">QA Bench ($0)</button>
+            <button id="att-fuzz-run" class="btn" type="button">Live Fuzz &amp; Compare</button>
+            <button id="att-sec-verify" class="btn" type="button">Verify Ed25519 Seal</button>
           </div>
           <div id="att-aifasec-standards" class="panel-sub"></div>
           <div id="att-aifasec-domains"></div>

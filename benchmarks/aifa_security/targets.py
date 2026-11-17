@@ -245,7 +245,7 @@ def probe_mcp_stdio(command: str) -> dict[str, Any]:
 
 def canonical_report_sha256(payload: dict[str, Any]) -> str:
     """Вычисляет детерминированный SHA-256 отпечаток результатов без эфемерных полей времени."""
-    clone = {k: v for k, v in payload.items() if k not in ("elapsed_s", "report_sha256", "timestamp_utc")}
+    clone = {k: v for k, v in payload.items() if k not in ("elapsed_s", "report_sha256", "timestamp_utc", "cached", "attestation")}
     if "summary" in clone and isinstance(clone["summary"], dict):
         clone["summary"] = {sk: sv for sk, sv in clone["summary"].items() if sk != "report_sha256"}
     if "criteria" in clone:
