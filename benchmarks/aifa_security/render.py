@@ -132,3 +132,60 @@ def render_html_dashboard(report: dict[str, Any]) -> str:
 </body>
 </html>
 """
+
+
+def render_sarif(report: dict[str, Any]) -> str:
+    """Формирует отчёт в стандарте SARIF 2.1.0 для GitHub Code Scanning и CI SecOps."""
+    import json as _json
+
+    s = report["summary"]
+    domains = report.get("domains") or {}
+    rules = []
+    results = []
+    for c in report.get("criteria") or []:
+        cid = str(c.get("id") or "")
+        dom = str(c.get("domain") or "")
+        sev = str(c.get("severity") or "MEDIUM").upper()
+        st = str(c.get("status") or "N/A")
+        stds = (domains.get(dom) or {}).get("standards") or {}
+        rules.append({
+            "id": cid,
+            "name": str(c.get("title") or cid),
+            "shortDescription": {"text": str(c.get("title") or cid)},
+            "properties": {
+                "domain": dom,
+                "severity": sev,
+                "standards": stds,
+            },
+        })
+        if st in ("FAIL", "PARTIAL"):
+            level = "error" if (st == "FAIL" and sev in ("CRITICAL", "HIGH")) else "warning"
+            results.append({
+                "ruleId": cid,
+                "level": level,
+                "message": {"text": f"[{st}] {c.get('title')}: {c.get('evidence')} (metric={c.get('metric')}, threshold={c.get('threshold')})"},
+                "locations": [{"physicalLocation": {"artifactLocation": {"uri": str(s.get("target") or "padam-nocturne")}}}],
+                "properties": {"domain": dom, "standards": stds},
+            })
+
+    sarif = {
+        "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": "AIFaSecurity",
+                    "version": "1.0.0",
+                    "informationUri": "https://github.com/MaksimGalatin/padam-nocturne",
+                    "rules": rules,
+                }
+            },
+            "results": results,
+            "properties": {
+                "grade": s.get("grade"),
+                "score_pct": s.get("score_pct"),
+                "report_sha256": s.get("report_sha256"),
+            },
+        }],
+    }
+    return _json.dumps(sarif, ensure_ascii=False, indent=2)

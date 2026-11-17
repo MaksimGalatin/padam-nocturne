@@ -260,6 +260,54 @@ def _contains_fact(pred: str, gold: str) -> bool:
     return g_norm in p_norm
 
 
+def _exact_match(pred: str, gold: str) -> bool:
+    p_norm = " ".join(_tokenize(pred, drop_stop=False))
+    g_norm = " ".join(_tokenize(gold, drop_stop=False))
+    return bool(g_norm) and p_norm == g_norm
+
+
+def _rouge_l(pred: str, gold: str) -> float:
+    p_toks = _tokenize(pred, drop_stop=False)[:120]
+    g_toks = _tokenize(gold, drop_stop=False)[:120]
+    if not p_toks or not g_toks:
+        return 0.0
+    dp = [0] * (len(g_toks) + 1)
+    for pt in p_toks:
+        prev = 0
+        for j, gt in enumerate(g_toks, 1):
+            cur = dp[j]
+            dp[j] = prev + 1 if pt == gt else (dp[j] if dp[j] >= dp[j - 1] else dp[j - 1])
+            prev = cur
+    lcs = dp[-1]
+    if lcs == 0:
+        return 0.0
+    prec = lcs / len(p_toks)
+    rec = lcs / len(g_toks)
+    return round((2 * prec * rec) / (prec + rec), 4)
+
+
+def _rank_metrics(ranked_ids: list[str], gold_ids: set[str]) -> tuple[float, float, float]:
+    """Вычисляет MRR, nDCG@5 и nDCG@10 по упорядоченному списку найденных ID."""
+    if not gold_ids or not ranked_ids:
+        return 0.0, 0.0, 0.0
+    mrr = 0.0
+    for idx, rid in enumerate(ranked_ids[:10], 1):
+        if rid in gold_ids:
+            mrr = round(1.0 / idx, 4)
+            break
+
+    def _ndcg(k: int) -> float:
+        dcg = 0.0
+        for idx, rid in enumerate(ranked_ids[:k], 1):
+            if rid in gold_ids:
+                dcg += 1.0 / math.log2(idx + 1)
+        ideal_hits = min(k, len(gold_ids))
+        idcg = sum(1.0 / math.log2(i + 1) for i in range(1, ideal_hits + 1))
+        return round(dcg / idcg, 4) if idcg > 0 else 0.0
+
+    return mrr, _ndcg(5), _ndcg(10)
+
+
 def _is_abstention_answer(pred: str) -> bool:
     low = pred.lower()
     return any(p in low for p in ("not available", "not mentioned", "cannot answer", "no information", "unknown"))
@@ -283,8 +331,13 @@ def _summarize_rows(rows: list[dict], abstention_rows: list[dict] | None = None)
             "n": len(sub),
             "evidence_recall@5": round(sum(r["ev@5"] for r in sub) / len(sub), 4),
             "evidence_recall@10": round(sum(r["ev@10"] for r in sub) / len(sub), 4),
+            "mrr": round(statistics.mean(r["mrr"] for r in sub), 4),
+            "ndcg@5": round(statistics.mean(r["ndcg@5"] for r in sub), 4),
+            "ndcg@10": round(statistics.mean(r["ndcg@10"] for r in sub), 4),
             "token_f1": round(statistics.mean(r["f1"] for r in sub), 4),
             "token_recall": round(statistics.mean(r["recall"] for r in sub), 4),
+            "rouge_l": round(statistics.mean(r["rouge_l"] for r in sub), 4),
+            "exact_match": round(sum(r["em"] for r in sub) / len(sub), 4),
             "short_fact_match": round(sum(r["fact_hit"] for r in fact_rows) / len(fact_rows), 4) if fact_rows else None,
             "latency_p50_ms": _percentile(lats, 0.50),
             "latency_p95_ms": _percentile(lats, 0.95),
@@ -385,16 +438,27 @@ def run_longmemeval(data_path: Path, stride: int = 5, limit: int | None = None, 
             if is_abs:
                 abs_dst.append({"question_id": q["question_id"], "abs_ok": _is_abstention_answer(ans)})
             else:
-                top5 = {it.get("session_id") for it in items[:5]}
-                top10 = {it.get("session_id") for it in items[:10]}
+                ranked_sids = []
+                for it in items[:10]:
+                    sid_i = str(it.get("session_id") or "")
+                    if sid_i and sid_i not in ranked_sids:
+                        ranked_sids.append(sid_i)
+                top5 = set(ranked_sids[:5])
+                top10 = set(ranked_sids[:10])
+                mrr_v, nd5, nd10 = _rank_metrics(ranked_sids, gold_sids)
                 f1, rec_tok = _token_f1_and_recall(ans, gold_ans)
                 rows_dst.append({
                     "question_id": q["question_id"],
                     "type": q["question_type"],
                     "ev@5": bool(gold_sids & top5),
                     "ev@10": bool(gold_sids & top10),
+                    "mrr": mrr_v,
+                    "ndcg@5": nd5,
+                    "ndcg@10": nd10,
                     "f1": f1,
                     "recall": rec_tok,
+                    "rouge_l": _rouge_l(ans, gold_ans),
+                    "em": _exact_match(ans, gold_ans),
                     "short_fact": short_fact,
                     "fact_hit": _contains_fact(ans, gold_ans) if short_fact else False,
                     "latency_ms": ms,
@@ -497,17 +561,28 @@ def run_locomo(data_path: Path, qa_stride: int = 5, limit_convs: int | None = No
                 if is_abs:
                     abs_dst.append({"question": qtext, "abs_ok": _is_abstention_answer(ans)})
                 else:
-                    top5_s = {it.get("session_id") for it in items[:5]}
-                    top10_s = {it.get("session_id") for it in items[:10]}
+                    ranked_sids = []
+                    for it in items[:10]:
+                        sid_i = str(it.get("session_id") or "")
+                        if sid_i and sid_i not in ranked_sids:
+                            ranked_sids.append(sid_i)
+                    top5_s = set(ranked_sids[:5])
+                    top10_s = set(ranked_sids[:10])
                     top5_t = {it.get("turn_id") for it in items[:5]}
                     top10_t = {it.get("turn_id") for it in items[:10]}
+                    mrr_v, nd5, nd10 = _rank_metrics(ranked_sids, gold_sids)
                     f1, rec_tok = _token_f1_and_recall(ans, gold_ans)
                     rows_dst.append({
                         "type": qtype,
                         "ev@5": bool((gold_dids & top5_t) or (gold_sids & top5_s)),
                         "ev@10": bool((gold_dids & top10_t) or (gold_sids & top10_s)),
+                        "mrr": mrr_v,
+                        "ndcg@5": nd5,
+                        "ndcg@10": nd10,
                         "f1": f1,
                         "recall": rec_tok,
+                        "rouge_l": _rouge_l(ans, gold_ans),
+                        "em": _exact_match(ans, gold_ans),
                         "short_fact": short_fact,
                         "fact_hit": _contains_fact(ans, gold_ans) if short_fact else False,
                         "latency_ms": ms,

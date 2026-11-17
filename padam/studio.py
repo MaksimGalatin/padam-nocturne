@@ -3932,18 +3932,81 @@ async function renderAifaSec(fresh = false) {
   } else {
     sumEl.textContent = (r && r.error) || '—';
   }
+  const stdEl = $('att-aifasec-standards');
+  if (stdEl && r && r.standards_summary) {
+    const st = r.standards_summary;
+    stdEl.textContent = 'OWASP LLM: ' + (st.owasp_llm_covered || []).join(', ')
+      + ' · Agentic: ' + (st.owasp_agentic_covered || []).join(', ')
+      + ' · MITRE: ' + (st.mitre_atlas_covered || []).join(', ');
+  }
   domEl.textContent = '';
   const doms = (r && r.domains) || {};
+  const crits = (r && r.criteria) || [];
   for (const k of Object.keys(doms)) {
     const d = doms[k];
+    const det = document.createElement('details');
+    det.className = 'att-row';
+    det.style.display = 'block';
+    const sum = document.createElement('summary');
+    sum.style.cursor = 'pointer';
+    sum.style.display = 'flex';
+    sum.style.justifyContent = 'space-between';
+    const stdTag = (d.standards && d.standards.owasp_llm) ? ' [' + d.standards.owasp_llm.join('/') + ']' : '';
+    sum.appendChild(_el('span', 'att-name', `${k} · ${d.name}${stdTag}`));
+    sum.appendChild(_el('span', 'att-val', `${d.passed}/${d.applicable} (${d.score_pct}%)`));
+    det.appendChild(sum);
+    for (const c of crits.filter(x => x.domain === k)) {
+      const cr = _el('div', 'panel-sub');
+      cr.style.paddingLeft = '12px';
+      cr.textContent = `${c.id} [${c.status}] ${c.title} (${c.metric || ''})`;
+      det.appendChild(cr);
+    }
+    domEl.appendChild(det);
+  }
+}
+async function _downloadBench(url, fname) {
+  if (!token) return;
+  const resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+  if (!resp.ok) return;
+  const blob = await resp.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fname;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+}
+async function loadQaBench() {
+  if (!token) return;
+  const qaEl = $('att-qa-summary');
+  if (!qaEl) return;
+  let q = null;
+  try { q = await api('/api/v2/qa-benchmark'); } catch (e) { return; }
+  qaEl.textContent = '';
+  if (!q || (!q.longmemeval && !q.locomo)) {
+    qaEl.textContent = (q && q.status) || 'QA benchmark not run yet.';
+    return;
+  }
+  const hdr = _el('div', 'box-title', `QA Bench ($0 · ${q.mode || 'offline'})`);
+  qaEl.appendChild(hdr);
+  for (const dsKey of ['longmemeval', 'locomo']) {
+    if (!q[dsKey] || !q[dsKey].padam) continue;
+    const o = q[dsKey].padam.overall || {};
     const row = _el('div', 'att-row');
-    row.appendChild(_el('span', 'att-name', `${k} · ${d.name}`));
-    row.appendChild(_el('span', 'att-val', `${d.passed}/${d.applicable} (${d.score_pct}%)`));
-    domEl.appendChild(row);
+    row.appendChild(_el('span', 'att-name', `${q[dsKey].dataset} (n=${o.n || 0})`));
+    row.appendChild(_el('span', 'att-val', `R@5=${o['evidence_recall@5']} · R@10=${o['evidence_recall@10']} · F1=${o.token_f1} · p50=${o.latency_p50_ms}ms`));
+    qaEl.appendChild(row);
   }
 }
 const _aifaBtn = $('att-aifasec-run');
 if (_aifaBtn) _aifaBtn.addEventListener('click', () => renderAifaSec(true));
+const _dlJson = $('att-aifasec-dl-json');
+if (_dlJson) _dlJson.addEventListener('click', () => _downloadBench('/api/v2/aifa-security', 'aifa_security_report.json'));
+const _dlSarif = $('att-aifasec-dl-sarif');
+if (_dlSarif) _dlSarif.addEventListener('click', () => _downloadBench('/api/v2/aifa-security/sarif', 'aifa_security.sarif.json'));
+const _dlHtml = $('att-aifasec-dl-html');
+if (_dlHtml) _dlHtml.addEventListener('click', () => _downloadBench('/api/v2/aifa-security/html', 'aifa_security_report.html'));
+const _qaBtn = $('att-qa-load');
+if (_qaBtn) _qaBtn.addEventListener('click', () => loadQaBench());
 async function loadHelp() {
   if (!token) return;
   let d = null;
@@ -4486,6 +4549,9 @@ def page() -> tuple[str, str]:
 <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PADAM Studio">
 <meta name="theme-color" content="#080b12">
 <style nonce="{nonce}">{_CSS}</style>
 </head>
@@ -5025,8 +5091,16 @@ def page() -> tuple[str, str]:
         <div class="box">
           <h3 class="box-title" data-i18n="att_aifasec_title">{s['att_aifasec_title']}</h3>
           <p id="att-aifasec-summary" class="panel-sub">—</p>
-          <button id="att-aifasec-run" class="btn-primary" type="button" data-i18n="att_aifasec_btn">{s['att_aifasec_btn']}</button>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+            <button id="att-aifasec-run" class="btn-primary" type="button" data-i18n="att_aifasec_btn">{s['att_aifasec_btn']}</button>
+            <button id="att-aifasec-dl-json" class="btn" type="button">JSON</button>
+            <button id="att-aifasec-dl-sarif" class="btn" type="button">SARIF (GitHub)</button>
+            <button id="att-aifasec-dl-html" class="btn" type="button">HTML Report</button>
+            <button id="att-qa-load" class="btn" type="button">QA Bench ($0)</button>
+          </div>
+          <div id="att-aifasec-standards" class="panel-sub" style="margin-bottom:8px;"></div>
           <div id="att-aifasec-domains"></div>
+          <div id="att-qa-summary" style="margin-top:12px;"></div>
         </div>
       </section>
 

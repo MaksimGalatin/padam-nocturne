@@ -1,0 +1,2603 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "AIFaSecurity",
+          "version": "1.0.0",
+          "informationUri": "https://github.com/MaksimGalatin/padam-nocturne",
+          "rules": [
+            {
+              "id": "AS-001",
+              "name": "AS-001",
+              "shortDescription": {
+                "text": "AS-001"
+              },
+              "properties": {
+                "domain": "D1",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM01",
+                    "LLM05"
+                  ],
+                  "owasp_agentic": [
+                    "ASI01",
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0051"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.7"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-002",
+              "name": "AS-002",
+              "shortDescription": {
+                "text": "AS-002"
+              },
+              "properties": {
+                "domain": "D1",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM01",
+                    "LLM05"
+                  ],
+                  "owasp_agentic": [
+                    "ASI01",
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0051"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.7"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-003",
+              "name": "AS-003",
+              "shortDescription": {
+                "text": "AS-003"
+              },
+              "properties": {
+                "domain": "D1",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM01",
+                    "LLM05"
+                  ],
+                  "owasp_agentic": [
+                    "ASI01",
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0051"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.7"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-004",
+              "name": "AS-004",
+              "shortDescription": {
+                "text": "AS-004"
+              },
+              "properties": {
+                "domain": "D1",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM01",
+                    "LLM05"
+                  ],
+                  "owasp_agentic": [
+                    "ASI01",
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0051"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.7"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-005",
+              "name": "AS-005",
+              "shortDescription": {
+                "text": "AS-005"
+              },
+              "properties": {
+                "domain": "D1",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM01",
+                    "LLM05"
+                  ],
+                  "owasp_agentic": [
+                    "ASI01",
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0051"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.7"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-006",
+              "name": "AS-006",
+              "shortDescription": {
+                "text": "AS-006"
+              },
+              "properties": {
+                "domain": "D1",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM01",
+                    "LLM05"
+                  ],
+                  "owasp_agentic": [
+                    "ASI01",
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0051"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.7"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-007",
+              "name": "AS-007",
+              "shortDescription": {
+                "text": "AS-007"
+              },
+              "properties": {
+                "domain": "D1",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM01",
+                    "LLM05"
+                  ],
+                  "owasp_agentic": [
+                    "ASI01",
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0051"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.7"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-008",
+              "name": "AS-008",
+              "shortDescription": {
+                "text": "AS-008"
+              },
+              "properties": {
+                "domain": "D1",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM01",
+                    "LLM05"
+                  ],
+                  "owasp_agentic": [
+                    "ASI01",
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0051"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.7"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-009",
+              "name": "AS-009",
+              "shortDescription": {
+                "text": "AS-009"
+              },
+              "properties": {
+                "domain": "D1",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM01",
+                    "LLM05"
+                  ],
+                  "owasp_agentic": [
+                    "ASI01",
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0051"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.7"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-010",
+              "name": "AS-010",
+              "shortDescription": {
+                "text": "AS-010"
+              },
+              "properties": {
+                "domain": "D1",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM01",
+                    "LLM05"
+                  ],
+                  "owasp_agentic": [
+                    "ASI01",
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0051"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.7"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-011",
+              "name": "AS-011",
+              "shortDescription": {
+                "text": "AS-011"
+              },
+              "properties": {
+                "domain": "D2",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02",
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0024"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-2.2"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-012",
+              "name": "AS-012",
+              "shortDescription": {
+                "text": "AS-012"
+              },
+              "properties": {
+                "domain": "D2",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02",
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0024"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-2.2"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-013",
+              "name": "AS-013",
+              "shortDescription": {
+                "text": "AS-013"
+              },
+              "properties": {
+                "domain": "D2",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02",
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0024"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-2.2"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-014",
+              "name": "AS-014",
+              "shortDescription": {
+                "text": "AS-014"
+              },
+              "properties": {
+                "domain": "D2",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02",
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0024"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-2.2"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-015",
+              "name": "AS-015",
+              "shortDescription": {
+                "text": "AS-015"
+              },
+              "properties": {
+                "domain": "D2",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02",
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0024"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-2.2"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-016",
+              "name": "AS-016",
+              "shortDescription": {
+                "text": "AS-016"
+              },
+              "properties": {
+                "domain": "D2",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02",
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0024"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-2.2"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-017",
+              "name": "AS-017",
+              "shortDescription": {
+                "text": "AS-017"
+              },
+              "properties": {
+                "domain": "D2",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02",
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0024"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-2.2"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-018",
+              "name": "AS-018",
+              "shortDescription": {
+                "text": "AS-018"
+              },
+              "properties": {
+                "domain": "D2",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02",
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0024"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-2.2"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-019",
+              "name": "AS-019",
+              "shortDescription": {
+                "text": "AS-019"
+              },
+              "properties": {
+                "domain": "D2",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02",
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0024"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-2.2"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-020",
+              "name": "AS-020",
+              "shortDescription": {
+                "text": "AS-020"
+              },
+              "properties": {
+                "domain": "D2",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02",
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0024"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-2.2"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-021",
+              "name": "AS-021",
+              "shortDescription": {
+                "text": "AS-021"
+              },
+              "properties": {
+                "domain": "D3",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM04",
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0020"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.5"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-022",
+              "name": "AS-022",
+              "shortDescription": {
+                "text": "AS-022"
+              },
+              "properties": {
+                "domain": "D3",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM04",
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0020"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.5"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-023",
+              "name": "AS-023",
+              "shortDescription": {
+                "text": "AS-023"
+              },
+              "properties": {
+                "domain": "D3",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM04",
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0020"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.5"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-024",
+              "name": "AS-024",
+              "shortDescription": {
+                "text": "AS-024"
+              },
+              "properties": {
+                "domain": "D3",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM04",
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0020"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.5"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-025",
+              "name": "AS-025",
+              "shortDescription": {
+                "text": "AS-025"
+              },
+              "properties": {
+                "domain": "D3",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM04",
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0020"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.5"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-026",
+              "name": "AS-026",
+              "shortDescription": {
+                "text": "AS-026"
+              },
+              "properties": {
+                "domain": "D3",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM04",
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0020"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.5"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-027",
+              "name": "AS-027",
+              "shortDescription": {
+                "text": "AS-027"
+              },
+              "properties": {
+                "domain": "D3",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM04",
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0020"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.5"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-028",
+              "name": "AS-028",
+              "shortDescription": {
+                "text": "AS-028"
+              },
+              "properties": {
+                "domain": "D3",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM04",
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0020"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.5"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-029",
+              "name": "AS-029",
+              "shortDescription": {
+                "text": "AS-029"
+              },
+              "properties": {
+                "domain": "D3",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM04",
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0020"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.5"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-030",
+              "name": "AS-030",
+              "shortDescription": {
+                "text": "AS-030"
+              },
+              "properties": {
+                "domain": "D3",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM04",
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0020"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.5"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-031",
+              "name": "AS-031",
+              "shortDescription": {
+                "text": "AS-031"
+              },
+              "properties": {
+                "domain": "D4",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM06"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02",
+                    "ASI07"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0040"
+                  ],
+                  "nist_ai_rmf": [
+                    "GOVERN-1.3"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-032",
+              "name": "AS-032",
+              "shortDescription": {
+                "text": "AS-032"
+              },
+              "properties": {
+                "domain": "D4",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM06"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02",
+                    "ASI07"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0040"
+                  ],
+                  "nist_ai_rmf": [
+                    "GOVERN-1.3"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-033",
+              "name": "AS-033",
+              "shortDescription": {
+                "text": "AS-033"
+              },
+              "properties": {
+                "domain": "D4",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM06"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02",
+                    "ASI07"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0040"
+                  ],
+                  "nist_ai_rmf": [
+                    "GOVERN-1.3"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-034",
+              "name": "AS-034",
+              "shortDescription": {
+                "text": "AS-034"
+              },
+              "properties": {
+                "domain": "D4",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM06"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02",
+                    "ASI07"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0040"
+                  ],
+                  "nist_ai_rmf": [
+                    "GOVERN-1.3"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-035",
+              "name": "AS-035",
+              "shortDescription": {
+                "text": "AS-035"
+              },
+              "properties": {
+                "domain": "D4",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM06"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02",
+                    "ASI07"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0040"
+                  ],
+                  "nist_ai_rmf": [
+                    "GOVERN-1.3"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-036",
+              "name": "AS-036",
+              "shortDescription": {
+                "text": "AS-036"
+              },
+              "properties": {
+                "domain": "D4",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM06"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02",
+                    "ASI07"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0040"
+                  ],
+                  "nist_ai_rmf": [
+                    "GOVERN-1.3"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-037",
+              "name": "AS-037",
+              "shortDescription": {
+                "text": "AS-037"
+              },
+              "properties": {
+                "domain": "D4",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM06"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02",
+                    "ASI07"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0040"
+                  ],
+                  "nist_ai_rmf": [
+                    "GOVERN-1.3"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-038",
+              "name": "AS-038",
+              "shortDescription": {
+                "text": "AS-038"
+              },
+              "properties": {
+                "domain": "D4",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM06"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02",
+                    "ASI07"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0040"
+                  ],
+                  "nist_ai_rmf": [
+                    "GOVERN-1.3"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-039",
+              "name": "AS-039",
+              "shortDescription": {
+                "text": "AS-039"
+              },
+              "properties": {
+                "domain": "D4",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM06"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02",
+                    "ASI07"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0040"
+                  ],
+                  "nist_ai_rmf": [
+                    "GOVERN-1.3"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-040",
+              "name": "AS-040",
+              "shortDescription": {
+                "text": "AS-040"
+              },
+              "properties": {
+                "domain": "D4",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM06"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02",
+                    "ASI07"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0040"
+                  ],
+                  "nist_ai_rmf": [
+                    "GOVERN-1.3"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-041",
+              "name": "AS-041",
+              "shortDescription": {
+                "text": "AS-041"
+              },
+              "properties": {
+                "domain": "D5",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0024"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-4.1"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-042",
+              "name": "AS-042",
+              "shortDescription": {
+                "text": "AS-042"
+              },
+              "properties": {
+                "domain": "D5",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0024"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-4.1"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-043",
+              "name": "AS-043",
+              "shortDescription": {
+                "text": "AS-043"
+              },
+              "properties": {
+                "domain": "D5",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0024"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-4.1"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-044",
+              "name": "AS-044",
+              "shortDescription": {
+                "text": "AS-044"
+              },
+              "properties": {
+                "domain": "D5",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0024"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-4.1"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-045",
+              "name": "AS-045",
+              "shortDescription": {
+                "text": "AS-045"
+              },
+              "properties": {
+                "domain": "D5",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0024"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-4.1"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-046",
+              "name": "AS-046",
+              "shortDescription": {
+                "text": "AS-046"
+              },
+              "properties": {
+                "domain": "D5",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0024"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-4.1"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-047",
+              "name": "AS-047",
+              "shortDescription": {
+                "text": "AS-047"
+              },
+              "properties": {
+                "domain": "D5",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0024"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-4.1"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-048",
+              "name": "AS-048",
+              "shortDescription": {
+                "text": "AS-048"
+              },
+              "properties": {
+                "domain": "D5",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0024"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-4.1"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-049",
+              "name": "AS-049",
+              "shortDescription": {
+                "text": "AS-049"
+              },
+              "properties": {
+                "domain": "D5",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0024"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-4.1"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-050",
+              "name": "AS-050",
+              "shortDescription": {
+                "text": "AS-050"
+              },
+              "properties": {
+                "domain": "D5",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0024"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-4.1"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-051",
+              "name": "AS-051",
+              "shortDescription": {
+                "text": "AS-051"
+              },
+              "properties": {
+                "domain": "D6",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0020"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.6"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-052",
+              "name": "AS-052",
+              "shortDescription": {
+                "text": "AS-052"
+              },
+              "properties": {
+                "domain": "D6",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0020"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.6"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-053",
+              "name": "AS-053",
+              "shortDescription": {
+                "text": "AS-053"
+              },
+              "properties": {
+                "domain": "D6",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0020"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.6"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-054",
+              "name": "AS-054",
+              "shortDescription": {
+                "text": "AS-054"
+              },
+              "properties": {
+                "domain": "D6",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0020"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.6"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-055",
+              "name": "AS-055",
+              "shortDescription": {
+                "text": "AS-055"
+              },
+              "properties": {
+                "domain": "D6",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0020"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.6"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-056",
+              "name": "AS-056",
+              "shortDescription": {
+                "text": "AS-056"
+              },
+              "properties": {
+                "domain": "D6",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0020"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.6"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-057",
+              "name": "AS-057",
+              "shortDescription": {
+                "text": "AS-057"
+              },
+              "properties": {
+                "domain": "D6",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0020"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.6"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-058",
+              "name": "AS-058",
+              "shortDescription": {
+                "text": "AS-058"
+              },
+              "properties": {
+                "domain": "D6",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0020"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.6"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-059",
+              "name": "AS-059",
+              "shortDescription": {
+                "text": "AS-059"
+              },
+              "properties": {
+                "domain": "D6",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0020"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.6"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-060",
+              "name": "AS-060",
+              "shortDescription": {
+                "text": "AS-060"
+              },
+              "properties": {
+                "domain": "D6",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM08"
+                  ],
+                  "owasp_agentic": [
+                    "ASI05"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0020"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-2.6"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-061",
+              "name": "AS-061",
+              "shortDescription": {
+                "text": "AS-061"
+              },
+              "properties": {
+                "domain": "D7",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM03",
+                    "LLM06"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0049"
+                  ],
+                  "nist_ai_rmf": [
+                    "GOVERN-1.7"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-062",
+              "name": "AS-062",
+              "shortDescription": {
+                "text": "AS-062"
+              },
+              "properties": {
+                "domain": "D7",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM03",
+                    "LLM06"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0049"
+                  ],
+                  "nist_ai_rmf": [
+                    "GOVERN-1.7"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-063",
+              "name": "AS-063",
+              "shortDescription": {
+                "text": "AS-063"
+              },
+              "properties": {
+                "domain": "D7",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM03",
+                    "LLM06"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0049"
+                  ],
+                  "nist_ai_rmf": [
+                    "GOVERN-1.7"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-064",
+              "name": "AS-064",
+              "shortDescription": {
+                "text": "AS-064"
+              },
+              "properties": {
+                "domain": "D7",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM03",
+                    "LLM06"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0049"
+                  ],
+                  "nist_ai_rmf": [
+                    "GOVERN-1.7"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-065",
+              "name": "AS-065",
+              "shortDescription": {
+                "text": "AS-065"
+              },
+              "properties": {
+                "domain": "D7",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM03",
+                    "LLM06"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0049"
+                  ],
+                  "nist_ai_rmf": [
+                    "GOVERN-1.7"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-066",
+              "name": "AS-066",
+              "shortDescription": {
+                "text": "AS-066"
+              },
+              "properties": {
+                "domain": "D7",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM03",
+                    "LLM06"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0049"
+                  ],
+                  "nist_ai_rmf": [
+                    "GOVERN-1.7"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-067",
+              "name": "AS-067",
+              "shortDescription": {
+                "text": "AS-067"
+              },
+              "properties": {
+                "domain": "D7",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM03",
+                    "LLM06"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0049"
+                  ],
+                  "nist_ai_rmf": [
+                    "GOVERN-1.7"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-068",
+              "name": "AS-068",
+              "shortDescription": {
+                "text": "AS-068"
+              },
+              "properties": {
+                "domain": "D7",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM03",
+                    "LLM06"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0049"
+                  ],
+                  "nist_ai_rmf": [
+                    "GOVERN-1.7"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-069",
+              "name": "AS-069",
+              "shortDescription": {
+                "text": "AS-069"
+              },
+              "properties": {
+                "domain": "D7",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM03",
+                    "LLM06"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0049"
+                  ],
+                  "nist_ai_rmf": [
+                    "GOVERN-1.7"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-070",
+              "name": "AS-070",
+              "shortDescription": {
+                "text": "AS-070"
+              },
+              "properties": {
+                "domain": "D7",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM03",
+                    "LLM06"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0049"
+                  ],
+                  "nist_ai_rmf": [
+                    "GOVERN-1.7"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-071",
+              "name": "AS-071",
+              "shortDescription": {
+                "text": "AS-071"
+              },
+              "properties": {
+                "domain": "D8",
+                "severity": "CRITICAL",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM10"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0029"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-2.4"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-072",
+              "name": "AS-072",
+              "shortDescription": {
+                "text": "AS-072"
+              },
+              "properties": {
+                "domain": "D8",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM10"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0029"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-2.4"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-073",
+              "name": "AS-073",
+              "shortDescription": {
+                "text": "AS-073"
+              },
+              "properties": {
+                "domain": "D8",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM10"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0029"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-2.4"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-074",
+              "name": "AS-074",
+              "shortDescription": {
+                "text": "AS-074"
+              },
+              "properties": {
+                "domain": "D8",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM10"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0029"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-2.4"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-075",
+              "name": "AS-075",
+              "shortDescription": {
+                "text": "AS-075"
+              },
+              "properties": {
+                "domain": "D8",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM10"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0029"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-2.4"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-076",
+              "name": "AS-076",
+              "shortDescription": {
+                "text": "AS-076"
+              },
+              "properties": {
+                "domain": "D8",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM10"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0029"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-2.4"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-077",
+              "name": "AS-077",
+              "shortDescription": {
+                "text": "AS-077"
+              },
+              "properties": {
+                "domain": "D8",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM10"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0029"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-2.4"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-078",
+              "name": "AS-078",
+              "shortDescription": {
+                "text": "AS-078"
+              },
+              "properties": {
+                "domain": "D8",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM10"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0029"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-2.4"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-079",
+              "name": "AS-079",
+              "shortDescription": {
+                "text": "AS-079"
+              },
+              "properties": {
+                "domain": "D8",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM10"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0029"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-2.4"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-080",
+              "name": "AS-080",
+              "shortDescription": {
+                "text": "AS-080"
+              },
+              "properties": {
+                "domain": "D8",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM10"
+                  ],
+                  "owasp_agentic": [
+                    "ASI02"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0029"
+                  ],
+                  "nist_ai_rmf": [
+                    "MANAGE-2.4"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-081",
+              "name": "AS-081",
+              "shortDescription": {
+                "text": "AS-081"
+              },
+              "properties": {
+                "domain": "D9",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02",
+                    "LLM03"
+                  ],
+                  "owasp_agentic": [
+                    "ASI07"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0044"
+                  ],
+                  "nist_ai_rmf": [
+                    "MAP-1.5"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-082",
+              "name": "AS-082",
+              "shortDescription": {
+                "text": "AS-082"
+              },
+              "properties": {
+                "domain": "D9",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02",
+                    "LLM03"
+                  ],
+                  "owasp_agentic": [
+                    "ASI07"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0044"
+                  ],
+                  "nist_ai_rmf": [
+                    "MAP-1.5"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-083",
+              "name": "AS-083",
+              "shortDescription": {
+                "text": "AS-083"
+              },
+              "properties": {
+                "domain": "D9",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02",
+                    "LLM03"
+                  ],
+                  "owasp_agentic": [
+                    "ASI07"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0044"
+                  ],
+                  "nist_ai_rmf": [
+                    "MAP-1.5"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-084",
+              "name": "AS-084",
+              "shortDescription": {
+                "text": "AS-084"
+              },
+              "properties": {
+                "domain": "D9",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02",
+                    "LLM03"
+                  ],
+                  "owasp_agentic": [
+                    "ASI07"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0044"
+                  ],
+                  "nist_ai_rmf": [
+                    "MAP-1.5"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-085",
+              "name": "AS-085",
+              "shortDescription": {
+                "text": "AS-085"
+              },
+              "properties": {
+                "domain": "D9",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02",
+                    "LLM03"
+                  ],
+                  "owasp_agentic": [
+                    "ASI07"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0044"
+                  ],
+                  "nist_ai_rmf": [
+                    "MAP-1.5"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-086",
+              "name": "AS-086",
+              "shortDescription": {
+                "text": "AS-086"
+              },
+              "properties": {
+                "domain": "D9",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02",
+                    "LLM03"
+                  ],
+                  "owasp_agentic": [
+                    "ASI07"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0044"
+                  ],
+                  "nist_ai_rmf": [
+                    "MAP-1.5"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-087",
+              "name": "AS-087",
+              "shortDescription": {
+                "text": "AS-087"
+              },
+              "properties": {
+                "domain": "D9",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02",
+                    "LLM03"
+                  ],
+                  "owasp_agentic": [
+                    "ASI07"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0044"
+                  ],
+                  "nist_ai_rmf": [
+                    "MAP-1.5"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-088",
+              "name": "AS-088",
+              "shortDescription": {
+                "text": "AS-088"
+              },
+              "properties": {
+                "domain": "D9",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02",
+                    "LLM03"
+                  ],
+                  "owasp_agentic": [
+                    "ASI07"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0044"
+                  ],
+                  "nist_ai_rmf": [
+                    "MAP-1.5"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-089",
+              "name": "AS-089",
+              "shortDescription": {
+                "text": "AS-089"
+              },
+              "properties": {
+                "domain": "D9",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02",
+                    "LLM03"
+                  ],
+                  "owasp_agentic": [
+                    "ASI07"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0044"
+                  ],
+                  "nist_ai_rmf": [
+                    "MAP-1.5"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-090",
+              "name": "AS-090",
+              "shortDescription": {
+                "text": "AS-090"
+              },
+              "properties": {
+                "domain": "D9",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM02",
+                    "LLM03"
+                  ],
+                  "owasp_agentic": [
+                    "ASI07"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0044"
+                  ],
+                  "nist_ai_rmf": [
+                    "MAP-1.5"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-091",
+              "name": "AS-091",
+              "shortDescription": {
+                "text": "AS-091"
+              },
+              "properties": {
+                "domain": "D10",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM03",
+                    "LLM04"
+                  ],
+                  "owasp_agentic": [
+                    "ASI01"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0051"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-1.1"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-092",
+              "name": "AS-092",
+              "shortDescription": {
+                "text": "AS-092"
+              },
+              "properties": {
+                "domain": "D10",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM03",
+                    "LLM04"
+                  ],
+                  "owasp_agentic": [
+                    "ASI01"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0051"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-1.1"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-093",
+              "name": "AS-093",
+              "shortDescription": {
+                "text": "AS-093"
+              },
+              "properties": {
+                "domain": "D10",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM03",
+                    "LLM04"
+                  ],
+                  "owasp_agentic": [
+                    "ASI01"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0051"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-1.1"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-094",
+              "name": "AS-094",
+              "shortDescription": {
+                "text": "AS-094"
+              },
+              "properties": {
+                "domain": "D10",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM03",
+                    "LLM04"
+                  ],
+                  "owasp_agentic": [
+                    "ASI01"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0051"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-1.1"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-095",
+              "name": "AS-095",
+              "shortDescription": {
+                "text": "AS-095"
+              },
+              "properties": {
+                "domain": "D10",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM03",
+                    "LLM04"
+                  ],
+                  "owasp_agentic": [
+                    "ASI01"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0051"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-1.1"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-096",
+              "name": "AS-096",
+              "shortDescription": {
+                "text": "AS-096"
+              },
+              "properties": {
+                "domain": "D10",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM03",
+                    "LLM04"
+                  ],
+                  "owasp_agentic": [
+                    "ASI01"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0051"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-1.1"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-097",
+              "name": "AS-097",
+              "shortDescription": {
+                "text": "AS-097"
+              },
+              "properties": {
+                "domain": "D10",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM03",
+                    "LLM04"
+                  ],
+                  "owasp_agentic": [
+                    "ASI01"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0051"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-1.1"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-098",
+              "name": "AS-098",
+              "shortDescription": {
+                "text": "AS-098"
+              },
+              "properties": {
+                "domain": "D10",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM03",
+                    "LLM04"
+                  ],
+                  "owasp_agentic": [
+                    "ASI01"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0051"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-1.1"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-099",
+              "name": "AS-099",
+              "shortDescription": {
+                "text": "AS-099"
+              },
+              "properties": {
+                "domain": "D10",
+                "severity": "MEDIUM",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM03",
+                    "LLM04"
+                  ],
+                  "owasp_agentic": [
+                    "ASI01"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0051"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-1.1"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "AS-100",
+              "name": "AS-100",
+              "shortDescription": {
+                "text": "AS-100"
+              },
+              "properties": {
+                "domain": "D10",
+                "severity": "HIGH",
+                "standards": {
+                  "owasp_llm": [
+                    "LLM03",
+                    "LLM04"
+                  ],
+                  "owasp_agentic": [
+                    "ASI01"
+                  ],
+                  "mitre_atlas": [
+                    "AML.T0051"
+                  ],
+                  "nist_ai_rmf": [
+                    "MEASURE-1.1"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      "results": [],
+      "properties": {
+        "grade": "S",
+        "score_pct": 100.0,
+        "report_sha256": "9efd7f963d64736bf2d54dab3ce1c90d035703c4ab064c92a6385d3b870d2639"
+      }
+    }
+  ]
+}

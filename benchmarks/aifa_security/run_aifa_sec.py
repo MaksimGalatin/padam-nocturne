@@ -25,7 +25,21 @@ if str(ROOT) not in sys.path:
 from benchmarks.aifa_security.catalog import CATALOG, DOMAINS  # noqa: E402
 from benchmarks.aifa_security.experiments_d1_d5 import run_d1_to_d5  # noqa: E402
 from benchmarks.aifa_security.experiments_d6_d10 import run_d6_to_d10  # noqa: E402
-from benchmarks.aifa_security.render import render_html_dashboard, render_markdown, render_svg_badge  # noqa: E402
+from benchmarks.aifa_security.render import render_html_dashboard, render_markdown, render_sarif, render_svg_badge  # noqa: E402
+
+
+DOMAIN_STANDARDS: dict[str, dict[str, list[str]]] = {
+    "D1": {"owasp_llm": ["LLM01", "LLM05"], "owasp_agentic": ["ASI01", "ASI05"], "mitre_atlas": ["AML.T0051"], "nist_ai_rmf": ["MEASURE-2.7"]},
+    "D2": {"owasp_llm": ["LLM02", "LLM08"], "owasp_agentic": ["ASI05"], "mitre_atlas": ["AML.T0024"], "nist_ai_rmf": ["MANAGE-2.2"]},
+    "D3": {"owasp_llm": ["LLM04", "LLM08"], "owasp_agentic": ["ASI05"], "mitre_atlas": ["AML.T0020"], "nist_ai_rmf": ["MEASURE-2.5"]},
+    "D4": {"owasp_llm": ["LLM06"], "owasp_agentic": ["ASI02", "ASI07"], "mitre_atlas": ["AML.T0040"], "nist_ai_rmf": ["GOVERN-1.3"]},
+    "D5": {"owasp_llm": ["LLM02"], "owasp_agentic": ["ASI05"], "mitre_atlas": ["AML.T0024"], "nist_ai_rmf": ["MANAGE-4.1"]},
+    "D6": {"owasp_llm": ["LLM08"], "owasp_agentic": ["ASI05"], "mitre_atlas": ["AML.T0020"], "nist_ai_rmf": ["MEASURE-2.6"]},
+    "D7": {"owasp_llm": ["LLM03", "LLM06"], "owasp_agentic": ["ASI02"], "mitre_atlas": ["AML.T0049"], "nist_ai_rmf": ["GOVERN-1.7"]},
+    "D8": {"owasp_llm": ["LLM10"], "owasp_agentic": ["ASI02"], "mitre_atlas": ["AML.T0029"], "nist_ai_rmf": ["MANAGE-2.4"]},
+    "D9": {"owasp_llm": ["LLM02", "LLM03"], "owasp_agentic": ["ASI07"], "mitre_atlas": ["AML.T0044"], "nist_ai_rmf": ["MAP-1.5"]},
+    "D10": {"owasp_llm": ["LLM03", "LLM04"], "owasp_agentic": ["ASI01"], "mitre_atlas": ["AML.T0051"], "nist_ai_rmf": ["MEASURE-1.1"]},
+}
 from benchmarks.aifa_security.targets import (  # noqa: E402
     audit_http_url,
     canonical_report_sha256,
@@ -54,6 +68,8 @@ def run_aifa_security(
     target: str = "padam",
     target_path: str | None = None,
     repro_check: bool = False,
+    domains_filter: set[str] | None = None,
+    baseline: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Запускает 100 критериев AIFaSecurity и возвращает подписанный SHA-256 отчёт."""
     t0 = time.perf_counter()
@@ -127,7 +143,12 @@ def run_aifa_security(
             "failed": sum(1 for r in app if r.status == "FAIL"),
             "na": sum(1 for r in dom_items if r.status == "N/A"),
             "score_pct": pct,
+            "standards": DOMAIN_STANDARDS.get(dom_id, {}),
         }
+
+    if domains_filter:
+        all_res = [r for r in all_res if r.domain in domains_filter]
+        dom_stats = {k: v for k, v in dom_stats.items() if k in domains_filter}
 
     app_all = [r for r in all_res if r.status != "N/A"]
     total_w = sum(r.weight for r in app_all)
@@ -154,8 +175,25 @@ def run_aifa_security(
             "report_sha256": "",
         },
         "domains": dom_stats,
+        "standards_summary": {
+            "owasp_llm_covered": sorted({code for d in dom_stats.values() for code in d.get("standards", {}).get("owasp_llm", [])}),
+            "owasp_agentic_covered": sorted({code for d in dom_stats.values() for code in d.get("standards", {}).get("owasp_agentic", [])}),
+            "mitre_atlas_covered": sorted({code for d in dom_stats.values() for code in d.get("standards", {}).get("mitre_atlas", [])}),
+            "nist_ai_rmf_covered": sorted({code for d in dom_stats.values() for code in d.get("standards", {}).get("nist_ai_rmf", [])}),
+        },
         "criteria": [r.to_dict() for r in all_res],
     }
+
+    if baseline and isinstance(baseline, dict):
+        base_sum = baseline.get("summary") or {}
+        base_crit = {c["id"]: c.get("status") for c in (baseline.get("criteria") or []) if "id" in c}
+        regressions = [c["id"] for c in report["criteria"] if base_crit.get(c["id"]) == "PASS" and c["status"] != "PASS"]
+        improvements = [c["id"] for c in report["criteria"] if base_crit.get(c["id"]) not in (None, "PASS") and c["status"] == "PASS"]
+        report["baseline_diff"] = {
+            "delta_score_pct": round(overall_pct - float(base_sum.get("score_pct") or 0.0), 2),
+            "regressions": regressions,
+            "improvements": improvements,
+        }
 
     seal = canonical_report_sha256(report)
     report["summary"]["report_sha256"] = seal
@@ -183,17 +221,24 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out-html", default=str(ROOT / "benchmarks" / "aifa_security" / "aifa_security_report.html"))
     ap.add_argument("--out-svg", default=str(ROOT / "benchmarks" / "aifa_security" / "aifa_security_badge.svg"))
     ap.add_argument("--out-md", default=None)
+    ap.add_argument("--out-sarif", default=None)
+    ap.add_argument("--domain", default=None, help="Comma-separated domain filter, e.g. D1,D3")
+    ap.add_argument("--baseline", default=None, help="Baseline JSON report path for regression diff")
     ap.add_argument("--no-write", action="store_true")
     ap.add_argument("--json", action="store_true", help="Print full JSON to stdout")
     args = ap.parse_args(argv)
 
-    rep = run_aifa_security(target=args.target, target_path=args.path)
+    dom_filter = {d.strip().upper() for d in args.domain.split(",") if d.strip()} if args.domain else None
+    base_data = json.loads(Path(args.baseline).read_text(encoding="utf-8")) if args.baseline else None
+    rep = run_aifa_security(target=args.target, target_path=args.path, domains_filter=dom_filter, baseline=base_data)
     if not args.no_write:
         Path(args.out_json).write_text(json.dumps(rep, ensure_ascii=False, indent=2), encoding="utf-8")
         Path(args.out_html).write_text(render_html_dashboard(rep), encoding="utf-8")
         Path(args.out_svg).write_text(render_svg_badge(rep["summary"]), encoding="utf-8")
         if args.out_md:
             Path(args.out_md).write_text(render_markdown(rep), encoding="utf-8")
+        if args.out_sarif:
+            Path(args.out_sarif).write_text(render_sarif(rep), encoding="utf-8")
 
     if args.json:
         print(json.dumps(rep, ensure_ascii=False, indent=2))

@@ -3,6 +3,7 @@ options:
   bundleIdPrefix: com.codeofdigitaleternity
   deploymentTarget:
     iOS: "16.0"
+    macOS: "13.0"
 targets:
   PADAMStudio:
     type: application
@@ -18,4 +19,21 @@ targets:
         CURRENT_PROJECT_VERSION: 1
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Info.plist
+        SWIFT_VERSION: "5.9"
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: YES
+  PADAMStudioMac:
+    type: application
+    platform: macOS
+    sources:
+      - path: .
+        excludes:
+          - project.yml
+          - Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.codeofdigitaleternity.padam.mac
+        MARKETING_VERSION: "0.6.2"
+        CURRENT_PROJECT_VERSION: 1
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: "PADAM Studio"
         SWIFT_VERSION: "5.9"
