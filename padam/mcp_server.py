@@ -3383,8 +3383,22 @@ def _held_for_review_note(structured: dict | None) -> str:
             + ". The owner approves or rejects them in `padam console`; do not retry the same write.")
 
 
+# 17.11.2026: инструмент, скрытый флагом из tools/list, не должен исполняться и по прямому вызову по имени.
+# Раньше padam_cabinet, padam_brain_status, padam_rollback и инструменты Ковчега работали при выключенном флаге.
+_ФЛАГ_ИНСТРУМЕНТА = {
+    "padam_rollback": ("PADAM_MCP_ROLLBACK_TOOL", config.mcp_rollback_tool_enabled),
+    "padam_cabinet": ("PADAM_MCP_CABINET_TOOL", config.mcp_cabinet_tool_enabled),
+    "padam_brain_status": ("PADAM_MCP_BRAIN_STATUS_TOOL", config.mcp_brain_status_tool_enabled),
+    **{_n: ("PADAM_MCP_ARK_TOOLS", config.mcp_ark_tools_enabled) for _n in (
+        "padam_wake_up", "padam_commitments", "padam_family_relay", "padam_checkpoint", "padam_ark_timeline", "padam_lesson")},
+}
+
+
 def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
     m = mem()
+    _флаг = _ФЛАГ_ИНСТРУМЕНТА.get(name)
+    if _флаг and not _флаг[1]():
+        raise ValueError(f"{name} is disabled by default; set {_флаг[0]}=1 to enable it")
     actor = _current_actor(m)
     if config.mcp_app_acl_enabled():
         from . import app_acl

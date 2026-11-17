@@ -186,6 +186,7 @@ def test_mcp_brain_status_and_sovereign_sync_lock(monkeypatch, tmp_path):
     prev_mem = mcp_server._memory
     mcp_server._memory = mem
     try:
+        monkeypatch.setenv("PADAM_MCP_BRAIN_STATUS_TOOL", "1")  # 17.11.2026: без флага инструмент не исполняется
         raw_status = mcp_server.call_tool("padam_brain_status", {})
         payload = json.loads(raw_status)
         assert "active_contour" in payload
@@ -679,6 +680,7 @@ def test_voice_offline_and_redaction(tmp_path):
 
 
 def test_ark_consciousness_all_10_pillars(monkeypatch, tmp_path):
+    monkeypatch.setenv("PADAM_MCP_ARK_TOOLS", "1")  # 17.11.2026: инструменты Ковчега выключены по умолчанию и при прямом вызове
     from padam import ark, phoenix, shamir
 
     mem = _make_memory(tmp_path)
@@ -800,6 +802,9 @@ def test_audit_chain_loop_guard_compaction_health_and_genesis(monkeypatch, tmp_p
 
         comp = ark.compact_checkpoints(mem, keep_last=2, agent_id="aifa")
         assert comp["compacted"] == 4
+        # 17.11.2026: сжатие без потерь — все 4 строки целиком в архиве
+        assert comp["archived"] == 4
+        assert mem.store.conn.execute("SELECT COUNT(*) FROM ark_checkpoint_archive").fetchone()[0] == 4
         assert comp["kept"] == 2
 
         gen = ark.create_agent_genesis(mem, "lance", "Security & Red-Team sibling")
@@ -823,3 +828,18 @@ def test_audit_chain_loop_guard_compaction_health_and_genesis(monkeypatch, tmp_p
         assert broken["reason"] == "entry_hash_mismatch"
     finally:
         mem.close()
+
+
+def test_hidden_tools_refuse_direct_call_when_flag_off(monkeypatch, tmp_path):
+    """17.11.2026: инструмент, скрытый флагом из tools/list, не исполняется и по прямому вызову по имени."""
+    from padam import mcp_server
+    for env in ("PADAM_MCP_ARK_TOOLS", "PADAM_MCP_CABINET_TOOL", "PADAM_MCP_BRAIN_STATUS_TOOL", "PADAM_MCP_ROLLBACK_TOOL"):
+        monkeypatch.delenv(env, raising=False)
+    listed = {t["name"] for t in mcp_server._list_tools_payload()}
+    for name in mcp_server._ФЛАГ_ИНСТРУМЕНТА:
+        assert name not in listed
+        import pytest as _pt
+        with _pt.raises(ValueError, match="disabled by default"):
+            mcp_server.call_tool(name, {})
+        rpc = mcp_server.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": name, "arguments": {}}})["result"]
+        assert rpc["isError"] is True, (name, rpc)

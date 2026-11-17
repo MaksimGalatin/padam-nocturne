@@ -444,7 +444,7 @@ def wake_up_briefing(
 # --- 8. Сжатие чекпоинтов, Индекс здоровья Ковчега и Рождение нового агента ---
 
 def compact_checkpoints(memory, *, keep_last: int = 10, agent_id: str | None = None) -> dict[str, Any]:
-    """Сжимает старые чекпоинты сверх `keep_last` в сводный урок и очищает устаревшие строки."""
+    """Сжимает старые чекпоинты сверх `keep_last`: сводный урок + перенос строк целиком в ark_checkpoint_archive (без потерь)."""
     _ensure_tables(memory)
     sql = "SELECT id, task, next_step, created_at FROM ark_checkpoint WHERE user_id = ?"
     params: list[Any] = [memory.user_id]
@@ -467,10 +467,25 @@ def compact_checkpoints(memory, *, keep_last: int = 10, agent_id: str | None = N
     )
     ids = [r["id"] for r in to_compact]
     placeholders = ",".join("?" for _ in ids)
-    memory.store.conn.execute(f"DELETE FROM ark_checkpoint WHERE id IN ({placeholders})", ids)
-    memory.store.conn.commit()
+    # 17.11.2026: память не теряется — старые чекпоинты целиком уходят в ark_checkpoint_archive, рабочая таблица
+    # остаётся короткой для быстрого padam_wake_up. Раньше строки удалялись, а в урок попадали 10 задач и 300 знаков.
+    conn = memory.store.conn
+    cols = [c[1] for c in conn.execute("PRAGMA table_info(ark_checkpoint)").fetchall()]
+    conn.execute("CREATE TABLE IF NOT EXISTS ark_checkpoint_archive AS SELECT * FROM ark_checkpoint WHERE 0")
+    have = {c[1] for c in conn.execute("PRAGMA table_info(ark_checkpoint_archive)").fetchall()}
+    for c in cols:
+        if c not in have:
+            conn.execute(f'ALTER TABLE ark_checkpoint_archive ADD COLUMN "{c}" TEXT')
+    col_sql = ",".join(f'"{c}"' for c in cols)
+    conn.execute(f"INSERT INTO ark_checkpoint_archive ({col_sql}) SELECT {col_sql} FROM ark_checkpoint WHERE id IN ({placeholders})", ids)
+    archived = conn.execute(f"SELECT COUNT(*) FROM ark_checkpoint_archive WHERE id IN ({placeholders})", ids).fetchone()[0]
+    if archived < len(ids):
+        conn.rollback()
+        raise RuntimeError(f"checkpoint archive incomplete: {archived} of {len(ids)}; nothing removed")
+    conn.execute(f"DELETE FROM ark_checkpoint WHERE id IN ({placeholders})", ids)
+    conn.commit()
     audit_chain.append_audit(memory, "checkpoints_compacted", {"compacted": len(ids), "kept": keep_last})
-    return {"compacted": len(ids), "kept": keep_last}
+    return {"compacted": len(ids), "kept": keep_last, "archived": len(ids), "archive_table": "ark_checkpoint_archive"}
 
 
 def ark_health_score(memory, *, scope: str = "global") -> dict[str, Any]:

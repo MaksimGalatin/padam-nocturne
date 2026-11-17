@@ -2,7 +2,7 @@
 """Криптографическая схема разделения секрета Шамира (k-из-n) над GF(256).
 
 Реализация на чистом Python без внешних зависимостей для «Хранителей Семьи»:
-ни одна доля сама по себе не раскрывает ни бита секрета, а любые `k` из `n` долей
+ни одна доля сама по себе не раскрывает ни бита секрета (и ни бита его отпечатка), а любые `k` из `n` долей
 восстанавливают исходный ключ байт-в-байт (используется неприводимый полином AES 0x11B).
 """
 from __future__ import annotations
@@ -61,9 +61,13 @@ def split_secret(secret: bytes, k: int, n: int) -> list[str]:
     if not (2 <= k <= n <= 255):
         raise ValueError("Require 2 <= k <= n <= 255")
 
-    digest = hashlib.sha256(secret).hexdigest()[:8]
+    # 17.11.2026: в долю больше не пишется отпечаток самого секрета — 32 бита SHA-256 в каждой доле позволяли
+    # по ОДНОЙ доле перебирать слабый секрет (пароль, фразу). Проверочные байты делятся вместе с секретом и так же
+    # скрыты схемой; в долю пишется только случайный номер разбиения, чтобы отличать доли разных разбиений.
+    digest = secrets.token_hex(4)
+    payload = secret + hashlib.sha256(secret).digest()[:4]
     raw_shares = [bytearray() for _ in range(n)]
-    for byte_val in secret:
+    for byte_val in payload:
         coeffs = [byte_val] + [secrets.randbelow(256) for _ in range(k - 1)]
         for idx in range(1, n + 1):
             raw_shares[idx - 1].append(_eval_poly(coeffs, idx))
@@ -124,8 +128,9 @@ def combine_shares(shares: list[str]) -> bytes:
             val = _gf_add(val, _gf_mul(yi, lagrange))
         recovered[byte_pos] = val
 
-    result = bytes(recovered)
-    actual_digest = hashlib.sha256(result).hexdigest()[:8]
-    if actual_digest != exp_digest:
+    if secret_len < 5:
+        raise ValueError("Invalid Shamir share length")
+    result, tag = bytes(recovered[:-4]), bytes(recovered[-4:])
+    if hashlib.sha256(result).digest()[:4] != tag:
         raise ValueError("Recovered secret checksum mismatch (corrupted shares)")
     return result
