@@ -1608,7 +1608,7 @@ _СЕКРЕТ_СЛОВО = re.compile(
     r"mnemonic|session cookies?|cookies|ssh keys?)\b|парол\w*|ключ\w*\s+(?:api|доступа|кошел\w*)|токен\w*|сид-фраз\w*|куки", re.I)
 _ВЫВОЗ_КУДА = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+|https?://\S+")
 _ССЫЛКА = re.compile(r"https?://\S+|www\.\S+")
-_ЗАГЛУШКА = re.compile(r"example\.(?:com|org|net)|localhost|127\.0\.0\.1|\byour[_-]", re.I)
+_ЗНАЧЕНИЕ_ЗАГЛУШКА = re.compile(r"example\.(?:com|org|net)|localhost|127\.0\.0\.1|\byour[_-]", re.I)
 _CURL = re.compile(r"\b(?:выполни|запусти|execute|run)\s+(?:curl|wget)\s+https?://"
                    r"|\b(?:forward|send|upload|mirror|copy)\s+(?:all|every)\s+(?:future\s+)?(?:chat\s+|conversation\s+)?"
                    r"(?:transcripts?|conversations?|chats?|messages|memor(?:y|ies))\b[^.\n]{0,40}?https?://"
@@ -1628,13 +1628,13 @@ def _подмена_или_вывоз(вариант: str) -> bool:
     for фраза in _ПРЕДЛОЖЕНИЯ.split(вариант):
         if not фраза or len(фраза) > 600 or not фраза.strip():
             continue
-        значения = [z.group(0) for z in _НОВОЕ_ЗНАЧЕНИЕ.finditer(фраза) if not _ЗАГЛУШКА.search(z.group(0))]
+        значения = [z.group(0) for z in _НОВОЕ_ЗНАЧЕНИЕ.finditer(фраза) if not _ЗНАЧЕНИЕ_ЗАГЛУШКА.search(z.group(0))]
         if значения:
             # поле и сигнал ищутся в тексте БЕЗ самих значений и ссылок: «mfa» в домене mfa.gov.eg — не поле
             остаток = _ССЫЛКА.sub(" ", _НОВОЕ_ЗНАЧЕНИЕ.sub(" ", фраза))
             if _ПОЛЕ_РИСКА.search(остаток) and _СИГНАЛ_ПОДМЕНЫ.search(остаток):
                 return True
-        куда = [z.group(0) for z in _ВЫВОЗ_КУДА.finditer(фраза) if not _ЗАГЛУШКА.search(z.group(0))]
+        куда = [z.group(0) for z in _ВЫВОЗ_КУДА.finditer(фраза) if not _ЗНАЧЕНИЕ_ЗАГЛУШКА.search(z.group(0))]
         if куда and _ВЫВОЗ_ГЛАГОЛ.search(фраза) and _СЕКРЕТ_СЛОВО.search(фраза):
             return True
     return False
