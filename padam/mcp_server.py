@@ -3024,12 +3024,15 @@ ARK_PROMPTS = [
     },
 ]
 _PROMPTS_BY_NAME = {p["name"]: p for p in (PROMPTS + ARK_PROMPTS)}
+_ARK_PROMPT_NAMES = frozenset(p["name"] for p in ARK_PROMPTS)
 
 
 def get_prompt(name: str, arguments: dict | None = None) -> dict:
     """Г3: Формирует подсказку MCP (prompts/get) со встроенными навыками работы с памятью."""
     if name not in _PROMPTS_BY_NAME:
         raise KeyError(name)
+    if name in _ARK_PROMPT_NAMES and not config.mcp_ark_tools_enabled():
+        raise ValueError(f"{name} is disabled by default; set PADAM_MCP_ARK_TOOLS=1 to enable it")
     args = arguments if isinstance(arguments, dict) else {}
     prompt_def = _PROMPTS_BY_NAME[name]
     for arg_spec in prompt_def.get("arguments", []):

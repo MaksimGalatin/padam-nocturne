@@ -38,7 +38,13 @@ def pack_phoenix_capsule(
     tmp_out = out_file.with_name(f".{out_file.name}.{os.getpid()}.tmp")
 
     entries: dict[str, bytes] = {}
-    entries["memory.db"] = db_file.read_bytes()
+    import contextlib, sqlite3, tempfile
+    with tempfile.TemporaryDirectory(prefix="padam_snap_") as snap_td:
+        snap_db = Path(snap_td) / "memory.db"
+        with contextlib.closing(sqlite3.connect(f"file:{db_file.as_posix()}?mode=ro", uri=True)) as src_c:
+            with contextlib.closing(sqlite3.connect(snap_db)) as dst_c:
+                src_c.backup(dst_c)
+        entries["memory.db"] = snap_db.read_bytes()
 
     owner_key = db_file.with_name(db_file.name + ".owner.key")
     if owner_key.exists():

@@ -1866,24 +1866,40 @@ def main(argv=None) -> int:
 
     def cmd_shamir(m: Memory, args) -> int:
         from . import shamir as _sh
+        warning = t(
+            "ВАЖНО: храните каждую долю раздельно у разных доверенных людей/хранилищ!",
+            "WARNING: store each share separately with different trusted guardians!",
+        )
         if args.shamir_cmd == "split":
-            shares = _sh.split_secret(args.secret.encode("utf-8"), args.k, args.n)
-            print(json.dumps({"k": args.k, "n": args.n, "shares": shares}, ensure_ascii=False, indent=2))
+            sec = sys.stdin.read().rstrip("\r\n") if getattr(args, "secret_stdin", False) else (args.secret or "")
+            if not sec:
+                print(t("Секрет не задан", "Secret is empty"), file=sys.stderr)
+                return 2
+            shares = _sh.split_secret(sec.encode("utf-8"), args.k, args.n)
+            print(json.dumps({"k": args.k, "n": args.n, "warning": warning, "shares": shares}, ensure_ascii=False, indent=2))
         else:
             raw = _sh.combine_shares(args.shares)
-            print(json.dumps({"recovered_utf8": raw.decode("utf-8", errors="replace"), "hex": raw.hex()}, ensure_ascii=False, indent=2))
+            if getattr(args, "out", None):
+                from pathlib import Path
+                Path(args.out).write_bytes(raw)
+                print(json.dumps({"ok": True, "bytes": len(raw), "saved_to": args.out, "warning": warning}, ensure_ascii=False, indent=2))
+            else:
+                print(json.dumps({"ok": True, "recovered_utf8": raw.decode("utf-8", errors="replace"), "warning": warning}, ensure_ascii=False, indent=2))
         return 0
 
-    sshm = sub.add_parser("shamir", help=t("разделение секрета Шамира для Хранителей Семьи", "Shamir secret sharing for Family Guardians"))
-    shsub = sshm.add_subparsers(dest="shamir_cmd", required=True)
-    shsp = shsub.add_parser("split", help="Split secret into N shares (threshold K)")
-    shsp.add_argument("secret")
-    shsp.add_argument("--k", type=int, default=3)
-    shsp.add_argument("--n", type=int, default=5)
-    shsp.set_defaults(fn=cmd_shamir)
-    shcb = shsub.add_parser("combine", help="Combine K shares to recover secret")
-    shcb.add_argument("shares", nargs="+")
-    shcb.set_defaults(fn=cmd_shamir)
+    for shamir_name in ("shamir", "ark-shamir"):
+        sshm = sub.add_parser(shamir_name, help=t("разделение секрета Шамира для Хранителей Семьи", "Shamir secret sharing for Family Guardians"))
+        shsub = sshm.add_subparsers(dest="shamir_cmd", required=True)
+        shsp = shsub.add_parser("split", help="Split secret into N shares (threshold K)")
+        shsp.add_argument("secret", nargs="?", default=None)
+        shsp.add_argument("--secret-stdin", action="store_true")
+        shsp.add_argument("--k", type=int, default=3)
+        shsp.add_argument("--n", type=int, default=5)
+        shsp.set_defaults(fn=cmd_shamir)
+        shcb = shsub.add_parser("combine", help="Combine K shares to recover secret")
+        shcb.add_argument("shares", nargs="+")
+        shcb.add_argument("--out", default=None, help="Optional file path to write recovered secret without printing")
+        shcb.set_defaults(fn=cmd_shamir)
 
     def cmd_ark_audit(m: Memory, args) -> int:
         from . import ark as _ark

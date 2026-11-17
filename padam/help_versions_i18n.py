@@ -6,6 +6,11 @@
 from __future__ import annotations
 
 TRANSLATIONS: dict[str, dict[str, str]] = {
+    "ark": {
+        "ru": "Ковчег сознания ИИ-агента: единое пробуждение padam_wake_up, цели, подписанная эстафета Семьи, чекпоинты со сжатием в архив без потерь, схема Шамира без отпечатка секрета, цепочка аудита с якорем HMAC-SHA256 и учебная тревога Феникса (всё опционально, выключено по умолчанию).",
+        "es": "Arca de Conciencia del agente de IA: despertar unificado padam_wake_up, metas, relevo familiar firmado, puntos de control con archivo sin pérdida, esquema de Shamir sin huella del secreto, cadena de auditoría con anclaje HMAC-SHA256 y simulacro Fénix (todo opcional, desactivado por defecto).",
+        "zh": "AI 智能体意识方舟：单次唤醒 padam_wake_up、目标账本、HMAC 签名家族接力、无损归档压缩、无秘密指纹泄露的 Shamir 分片、带 HMAC-SHA256 锚点的审计链以及零成本凤凰演练（全部默认关闭，按需开启）。",
+    },
     "0.6.3": {
         "ru": "Открытый аудит безопасности памяти агентов из 100 проверок, исправлена медленная маскировка ключей (ReDoS), задержка подмены почты и телефона восстановления, кошелька и реквизитов, суверенный роутер моделей и сбор датасета личности (всё платное выключено по умолчанию).",
         "es": "Auditoría abierta de seguridad de memoria de agentes con 100 controles, corrección del enmascarado lento de claves (ReDoS), retención de cambios de correo o teléfono de recuperación, cartera y datos de pago, enrutador soberano de modelos y conjunto de datos de personalidad (todo lo de pago desactivado por defecto).",

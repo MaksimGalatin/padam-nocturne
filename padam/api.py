@@ -54,7 +54,7 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split"}
 OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
@@ -1142,6 +1142,21 @@ class Handler(BaseHTTPRequestHandler):
                 from . import phoenix as _phx
                 return self._send(200, _phx.run_phoenix_drill(mem().store.path))
 
+            if self.path == "/api/v2/ark/shamir-split":
+                roles.require_owner(actor, "ark_shamir")
+                from . import integrity as _int, shamir as _sh
+                k = max(2, min(10, int(data.get("k") or 3)))
+                n = max(k, min(15, int(data.get("n") or 5)))
+                key_bytes, _ = _int.owner_key(mem().store)
+                shares = _sh.split_secret(key_bytes, k, n)
+                return self._send(200, {
+                    "ok": True,
+                    "k": k,
+                    "n": n,
+                    "warning": "Store each share separately with different trusted guardians!",
+                    "shares": shares,
+                })
+
             if self.path == "/api/v2/ark/genesis":
                 roles.require_owner(actor, "ark_genesis")
                 from . import ark as _ark
@@ -1162,7 +1177,14 @@ class Handler(BaseHTTPRequestHandler):
                 db_p = mem().store.path
                 uid = mem().user_id
                 jobs_dict = _state.setdefault("ark_jobs", {})
-                jobs_dict[job_id] = {"id": job_id, "job_type": job_type, "status": "running", "result": None, "error": ""}
+                jobs_lock = _state.setdefault("ark_jobs_lock", _th.Lock())
+                with jobs_lock:
+                    running_cnt = sum(1 for j in jobs_dict.values() if j.get("status") == "running")
+                    if running_cnt >= 2:
+                        return self._send(429, {"error": "too many concurrent ark jobs (max 2)"})
+                    while len(jobs_dict) >= 50:
+                        jobs_dict.pop(next(iter(jobs_dict)), None)
+                    jobs_dict[job_id] = {"id": job_id, "job_type": job_type, "status": "running", "result": None, "error": ""}
 
                 def _run_bg():
                     try:

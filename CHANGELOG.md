@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+Consciousness Ark & Sovereign Brain polish (all opt-in, disabled by default, $0):
+- **Audit chain head anchor (`padam/audit_chain.py`).** Chain head is signed with `HMAC-SHA256` using the owner's key (`ark_audit_anchor`); `verify_audit_chain` now detects tail truncation, re-computed chains without the owner key, and mid-chain tampering. Optional daily OpenTimestamps receipt via `PADAM_AUDIT_OTS=1` (off by default).
+- **Strict MCP opt-in gating (`padam/mcp_server.py`).** `ARK_PROMPTS` (`awaken_aifa`, `handoff_family`, `security_self_check`) are blocked in `prompts/get` as well as `prompts/list` when `PADAM_MCP_ARK_TOOLS` is not `1`, matching `_ФЛАГ_ИНСТРУМЕНТА`.
+- **Lossless checkpoint compaction (`padam/ark.py`).** Older checkpoints are archived intact into `ark_checkpoint_archive` rather than deleted.
+- **Bounded background jobs (`/api/v2/ark/jobs`).** Capped at 2 concurrent running jobs (returns HTTP `429` above limit) and retains the last 50 job records in memory.
+- **Shamir Secret Sharing (`padam/shamir.py`, `padam ark-shamir`).** No secret fingerprint is stored in individual shares; CLI and Studio warn to store shares separately with different trusted guardians, and never log secrets.
+- **Health score (`ark_health_score`).** `local_ollama_online` weight is `0` when the local router contour is disabled.
+
 ## 0.6.3 — 17 November 2026
 
 An open security audit for agent memory, a sovereign model router, and fixes the audit found in our own code.

@@ -52,6 +52,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_health_title": "Ковчег сознания (Непрерывность Я)",
         "ark_drill_btn": "Учебная тревога Феникса ($0)",
         "ark_audit_btn": "Проверить хэш-цепь SHA-256",
+        "ark_shamir_btn": "Разделить ключ (Шамир 3/5)",
+        "ark_shamir_warn": "Храните доли Шамира раздельно у разных доверенных людей!",
         "nav_settings": "Настройки",
         "nav_quickstart": "Первый запуск",
         "theme_dark": "Тёмная тема",
@@ -383,6 +385,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_health_title": "Consciousness Ark (Continuity & Audit)",
         "ark_drill_btn": "Run Phoenix Drill ($0)",
         "ark_audit_btn": "Verify SHA-256 Audit Chain",
+        "ark_shamir_btn": "Split Key (Shamir 3/5)",
+        "ark_shamir_warn": "Store Shamir shares separately with different trusted guardians!",
         "nav_settings": "Settings",
         "nav_quickstart": "Quick Start",
         "theme_dark": "Dark theme",
@@ -703,6 +707,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_health_title": "Arca de Conciencia (Continuidad)",
         "ark_drill_btn": "Simulacro Fénix ($0)",
         "ark_audit_btn": "Verificar cadena SHA-256",
+        "ark_shamir_btn": "Dividir clave (Shamir 3/5)",
+        "ark_shamir_warn": "Guarde cada parte de Shamir por separado con distintos guardianes.",
         "nav_settings": "Ajustes",
         "nav_quickstart": "Inicio rápido",
         "theme_dark": "Tema oscuro",
@@ -1023,6 +1029,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_health_title": "意识方舟（连续性与审计）",
         "ark_drill_btn": "运行凤凰演练 ($0)",
         "ark_audit_btn": "校验 SHA-256 审计链",
+        "ark_shamir_btn": "拆分密钥 (Shamir 3/5)",
+        "ark_shamir_warn": "请将各份 Shamir 密钥分片分别交由不同可信守护者保管！",
         "nav_settings": "设置",
         "nav_quickstart": "快速开始",
         "theme_dark": "深色主题",
@@ -2525,7 +2533,7 @@ function say(text, ok = true) {
   box.className = ok ? 'msg-ok' : 'msg-err';
 }
 
-const TABS = ['overview', 'migrate', 'aifa', 'plans', 'feed', 'search', 'ask', 'review', 'attacks', 'asof', 'forget', 'graph', 'entities', 'l3', 'team', 'backup', 'settings', 'quickstart', 'help'];
+const TABS = ['overview', 'migrate', 'aifa', 'plans', 'feed', 'search', 'ask', 'review', 'attacks', 'asof', 'forget', 'graph', 'entities', 'l3', 'brain', 'team', 'backup', 'settings', 'quickstart', 'help'];
 window._padamWorkspaces = [];
 let activeTab = (initialTab && TABS.includes(initialTab)) ? initialTab : 'overview';
 let feedView = 'active', feedOffset = 0, feedKind = null, feedShown = [];
@@ -4718,6 +4726,17 @@ if ($('ark-drill-btn')) {
     }
   };
 }
+if ($('ark-shamir-btn')) {
+  $('ark-shamir-btn').onclick = async () => {
+    const outEl = $('ark-drill-out');
+    try {
+      const r = await api('/api/v2/ark/shamir-split', { method: 'POST', body: JSON.stringify({ k: 3, n: 5 }) });
+      if (outEl) outEl.textContent = (S.ark_shamir_warn || r.warning || '') + ' (' + String((r.shares || []).length) + ' shares ready)';
+    } catch (e) {
+      if (outEl) outEl.textContent = String(e.message || e);
+    }
+  };
+}
 if ($('ark-audit-btn')) {
   $('ark-audit-btn').onclick = async () => {
     const hBox = $('ark-health-box');
@@ -5452,6 +5471,8 @@ def page() -> tuple[str, str]:
           <div class="rec-actions">
             <button id="ark-audit-btn" data-i18n="ark_audit_btn">{s['ark_audit_btn']}</button>
             <button id="ark-drill-btn" class="btn-primary" data-i18n="ark_drill_btn">{s['ark_drill_btn']}</button>
+            <button id="ark-shamir-btn" data-i18n="ark_shamir_btn">{s['ark_shamir_btn']}</button>
+            <p class="panel-sub" data-i18n="ark_shamir_warn">{s['ark_shamir_warn']}</p>
           </div>
           <p id="ark-drill-out" class="panel-sub"></p>
         </div>

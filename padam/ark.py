@@ -407,7 +407,7 @@ def wake_up_briefing(
     raw_sections: list[str] = []
     for item in (prof.get("identity") or []):
         raw_sections.append(f"[identity] {item.get('content') or ''}")
-    for item in (prof.get("preference") or []):
+    for item in (prof.get("preferences") or prof.get("preference") or []):
         raw_sections.append(f"[preference] {item.get('content') or ''}")
     if commitments:
         raw_sections.append("[commitments] " + "; ".join(f"{c['id']}:{c['title']}({c['status']})" for c in commitments))
@@ -427,7 +427,7 @@ def wake_up_briefing(
         "fenced_briefing": safety.fence(body_text) if body_text else "",
         "profile_counts": {
             "identity": len(prof.get("identity") or []),
-            "preference": len(prof.get("preference") or []),
+            "preference": len(prof.get("preferences") or prof.get("preference") or []),
         },
         "open_commitments": commitments,
         "family_inbox": inbox,
@@ -493,11 +493,13 @@ def ark_health_score(memory, *, scope: str = "global") -> dict[str, Any]:
     _ensure_tables(memory)
     prof = memory.profile(scope=scope)
     has_identity = len(prof.get("identity") or []) > 0
-    has_preference = len(prof.get("preference") or []) > 0
+    has_preference = len(prof.get("preferences") or prof.get("preference") or []) > 0
     audit_res = audit_chain.verify_audit_chain(memory)
     chk = latest_checkpoint(memory)
     lessons = list_lessons(memory, limit=1)
-    r_probe = router.probe_local_backend(timeout_s=0.4)
+    local_c = next((c for c in router.load_contours() if c.name == "local"), None)
+    local_enabled = bool(local_c and local_c.enabled)
+    r_probe = router.probe_local_backend(timeout_s=0.4) if local_enabled else {"online": False}
 
     checks = {
         "signed_identity": has_identity,
@@ -505,7 +507,7 @@ def ark_health_score(memory, *, scope: str = "global") -> dict[str, Any]:
         "audit_chain_valid": bool(audit_res.get("ok")),
         "has_checkpoint": chk is not None,
         "has_lessons": len(lessons) > 0,
-        "local_ollama_online": bool(r_probe.get("online")),
+        "local_ollama_online": bool(r_probe.get("online")) if local_enabled else None,
     }
     weights = {
         "signed_identity": 25,
@@ -513,13 +515,16 @@ def ark_health_score(memory, *, scope: str = "global") -> dict[str, Any]:
         "audit_chain_valid": 25,
         "has_checkpoint": 15,
         "has_lessons": 10,
-        "local_ollama_online": 10,
+        "local_ollama_online": 10 if local_enabled else 0,
     }
-    score = sum(w for k, w in weights.items() if checks.get(k))
+    total_w = sum(weights.values()) or 100
+    raw_score = sum(w for k, w in weights.items() if checks.get(k))
+    score = round((raw_score * 100) / total_w)
     return {
         "score": score,
         "max_score": 100,
         "checks": checks,
+        "weights": weights,
         "audit_chain": audit_res,
     }
 
