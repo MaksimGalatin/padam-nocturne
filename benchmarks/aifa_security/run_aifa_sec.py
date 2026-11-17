@@ -232,8 +232,12 @@ def sign_report_ed25519(report: dict[str, Any]) -> dict[str, Any]:
     seed_hex = os.environ.get("AIFA_SEC_ED25519_SEED_HEX", "").strip()
     if len(seed_hex) == 64:
         seed = bytes.fromhex(seed_hex)
+        key_mode = "publisher-key"
     else:
+        # Без ключа издателя ключ выводится из самого отчёта: любой повторит такую
+        # подпись, поэтому она доказывает только целостность, а НЕ подлинность.
         seed = hashlib.sha256(f"aifasecurity-deterministic:{seal}".encode("utf-8")).digest()
+        key_mode = "deterministic-self"
     priv = Ed25519PrivateKey.from_private_bytes(seed)
     pub_hex = priv.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw).hex()
     sig_hex = priv.sign(seal.encode("ascii")).hex()
@@ -242,13 +246,20 @@ def sign_report_ed25519(report: dict[str, Any]) -> dict[str, Any]:
         "public_key_hex": pub_hex,
         "signature_hex": sig_hex,
         "signed_digest": seal,
+        "key_mode": key_mode,
+        "proves_authenticity": key_mode == "publisher-key",
     }
     report["attestation"] = att
     return att
 
 
-def verify_report_attestation(report: dict[str, Any]) -> dict[str, Any]:
-    """Проверяет целостность SHA-256 отчёта и подлинность криптографической подписи Ed25519."""
+def verify_report_attestation(report: dict[str, Any], trusted_public_key_hex: str | None = None) -> dict[str, Any]:
+    """Проверяет целостность SHA-256 отчёта и подпись Ed25519.
+
+    Подлинность (authentic=True) доказывается только сверкой с ДОВЕРЕННЫМ открытым
+    ключом издателя, полученным не из самого отчёта: ключ из отчёта может подложить
+    тот же, кто подделал отчёт.
+    """
     copy_rep = json.loads(json.dumps(report))
     att = copy_rep.pop("attestation", None)
     copy_rep.pop("cached", None)
@@ -265,7 +276,11 @@ def verify_report_attestation(report: dict[str, Any]) -> dict[str, Any]:
             ed_ok = str(att.get("signed_digest") or "") == claimed_seal
         except Exception:
             ed_ok = False
-    return {"sha256_valid": sha_ok, "ed25519_valid": ed_ok, "verified": sha_ok and ed_ok, "report_sha256": claimed_seal}
+    pub_in_report = str((att or {}).get("public_key_hex") or "") if isinstance(att, dict) else ""
+    authentic = bool(sha_ok and ed_ok and trusted_public_key_hex
+                     and pub_in_report.lower() == trusted_public_key_hex.strip().lower())
+    return {"sha256_valid": sha_ok, "ed25519_valid": ed_ok, "verified": sha_ok and ed_ok,
+            "authentic": authentic, "report_sha256": claimed_seal}
 
 
 def main(argv: list[str] | None = None) -> int:
