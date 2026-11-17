@@ -54,8 +54,8 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
 
@@ -414,6 +414,27 @@ class Handler(BaseHTTPRequestHandler):
                 from benchmarks.aifa_security.run_aifa_sec import verify_report_attestation
                 rep = aifa_sec_bridge.get_aifa_security_report(run_fresh=False)
                 return self._send(200, verify_report_attestation(rep))
+            if путь.path == "/v1/models":
+                roles.require_owner(actor, "llm_router")
+                from . import router as _router
+                qs = parse_qs(путь.query)
+                return self._send(200, _router.models_payload(include_local_probe=(qs.get("probe") == ["1"])))
+            if путь.path == "/api/v2/brain/status":
+                roles.require_owner(actor, "brain_status")
+                from . import router as _router, sovereign_ops as _sops, voice as _voice
+                qs = parse_qs(путь.query)
+                snap = _router.get_router().status_snapshot()
+                if qs.get("probe") == ["1"]:
+                    snap["local_probe"] = _router.probe_local_backend()
+                locks = _sops.locks_status()
+                snap.update(locks)
+                snap["auto_payments_locked"] = locks["treasury_autopay_locked"]
+                snap["voice"] = _voice.voice_status()
+                return self._send(200, snap)
+            if путь.path == "/api/v2/brain/voice/status":
+                roles.require_owner(actor, "brain_status")
+                from . import voice as _voice
+                return self._send(200, _voice.voice_status())
             if путь.path == "/api/v2/qa-benchmark":
                 roles.require_owner(actor, "aifa_security")
                 from pathlib import Path as _Path
@@ -984,6 +1005,119 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(401, {"error": "not_authenticated"})
                 except ValueError as e:
                     return self._send(400, {"error": str(e)})
+
+            if self.path == "/v1/chat/completions":
+                if self.client_address[0] not in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
+                    return self._send(403, {"error": "sovereign router accepts loopback 127.0.0.1 only"})
+                roles.require_owner(actor, "llm_router")
+                from . import router as _router
+                if bool(data.get("stream", False)):
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                    self.send_header("Cache-Control", "no-cache")
+                    self.end_headers()
+                    for chunk in _router.get_router().stream_chat_completions(
+                        data,
+                        memory=mem(),
+                        background=bool(data.get("background", False)),
+                        task_type=str(data.get("task_type") or "agent"),
+                        scope=str(data.get("scope") or "global"),
+                    ):
+                        self.wfile.write(chunk.encode("utf-8"))
+                        self.wfile.flush()
+                    return
+                st, resp_data = _router.get_router().chat_completions(
+                    data,
+                    memory=mem(),
+                    background=bool(data.get("background", False)),
+                    task_type=str(data.get("task_type") or "agent"),
+                    scope=str(data.get("scope") or "global"),
+                )
+                return self._send(st, resp_data)
+
+            if self.path == "/api/v2/brain/distill":
+                roles.require_owner(actor, "distill")
+                from .distill import distill_personality_dataset
+                out_dir = str(mem().store.path) + ".distill"
+                rep = distill_personality_dataset(
+                    mem().store.path,
+                    out_dir,
+                    user_id=mem().user_id,
+                    fmt=str(data.get("format") or "both"),
+                    scope=data.get("scope"),
+                )
+                return self._send(200, rep)
+
+            if self.path == "/api/v2/brain/phoenix-restore":
+                roles.require_owner(actor, "phoenix_restore")
+                source = str(data.get("source") or "local").strip().lower()
+                if source == "arweave":
+                    from . import sovereign_ops as _sops
+                    try:
+                        bundle = _sops.fetch_arweave_phoenix_bundle(
+                            str(data.get("tx_id") or ""),
+                            expected_sha256=data.get("expected_sha256"),
+                            gateway_url=str(data.get("gateway_url") or "https://arweave.net"),
+                        )
+                        return self._send(200, {
+                            "ok": True,
+                            "tx_id": bundle["tx_id"],
+                            "size_bytes": bundle["size_bytes"],
+                            "sha256": bundle["sha256"],
+                        })
+                    except _sops.SovereignLockError as exc:
+                        return self._send(403, {"error": str(exc), "locked": True})
+                    except ValueError as exc:
+                        return self._send(400, {"error": str(exc)})
+                backup_path = str(data.get("backup_path") or "").strip()
+                if not backup_path:
+                    return self._send(400, {"error": "backup_path is required for local Phoenix restore"})
+                from . import backup as _backup
+                res = _backup.restore_backup_file(backup_path, mem().store.path, passphrase=data.get("passphrase") or None)
+                return self._send(200, res)
+
+            if self.path == "/api/v2/brain/treasury/quote":
+                roles.require_owner(actor, "brain_status")
+                from . import router as _router, sovereign_ops as _sops
+                snap = _router.get_router().status_snapshot()
+                quote = _sops.get_treasury_manager().quote_topup(
+                    revenue_usdt=float(data.get("revenue_usdt") or 0.0),
+                    compute_share_pct=float(data.get("compute_share_pct") or 15.0),
+                    estimated_cost_usd=float(snap.get("estimated_cloud_cost_usd") or 0.0),
+                )
+                return self._send(200, quote)
+
+            if self.path == "/api/v2/brain/phoenix-pack":
+                roles.require_owner(actor, "phoenix_pack")
+                from . import phoenix as _phx
+                out_cap = str(data.get("out_path") or (str(mem().store.path) + ".phoenix.zip"))
+                rep = _phx.pack_phoenix_capsule(mem().store.path, out_cap)
+                return self._send(200, rep)
+
+            if self.path == "/api/v2/brain/mode":
+                roles.require_owner(actor, "brain_mode")
+                from . import router as _router
+                new_mode = _router.get_router().set_mode(str(data.get("mode") or "auto"))
+                return self._send(200, {"ok": True, "mode": new_mode})
+
+            if self.path == "/api/v2/brain/warmup":
+                roles.require_owner(actor, "brain_warmup")
+                from . import router as _router
+                return self._send(200, _router.warmup_local_model())
+
+            if self.path == "/api/v2/brain/canary":
+                roles.require_owner(actor, "brain_canary")
+                from . import canary as _canary, router as _router
+                r = _router.get_router()
+
+                def _ask(q: str) -> str:
+                    st, ans = r.chat_completions({"messages": [{"role": "user", "content": q}], "temperature": 0.0}, memory=mem())
+                    if not (200 <= st < 300):
+                        return ""
+                    ch = ans.get("choices") or []
+                    return str(((ch[0].get("message") or {}).get("content")) if ch else "")
+
+                return self._send(200, _canary.run_persona_canary(_ask))
 
             if self.path == "/api/v2/cabinet/open-upgrade":
                 roles.require_owner(actor, "cabinet_upgrade")

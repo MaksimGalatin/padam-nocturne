@@ -1033,6 +1033,49 @@ def cmd_l3(m: Memory, a) -> int:
         uploader=(lambda data, tags: anchor.turbo_upload(data, wallet, tags, a.turbo_sdk)) if wallet else None,
         anchorer=(lambda memo: anchor.solana_memo(memo, keypair, a.network)) if keypair else None,
         stamper=None if a.no_bitcoin else _ots_stamper())
+    if getattr(a, "with_lora", None):
+        import hashlib
+        from pathlib import Path
+        lora_path = Path(a.with_lora)
+        if not lora_path.exists():
+            print(t(f"Файл LoRA не найден: {lora_path}", f"LoRA file not found: {lora_path}"))
+            return 2
+        h = hashlib.sha256()
+        with lora_path.open("rb") as lf:
+            while True:
+                chunk = lf.read(65536)
+                if not chunk:
+                    break
+                h.update(chunk)
+        lora_sha256 = h.hexdigest()
+        lora_meta = {
+            "file": lora_path.name,
+            "size_bytes": lora_path.stat().st_size,
+            "sha256": lora_sha256,
+            "arweave_upload_locked": True,
+            "arweave_tx_id": None,
+        }
+        if os.environ.get("PADAM_ARWEAVE_LORA_UPLOAD") == "1" and not a.dry_run and wallet:
+            lora_meta["arweave_upload_locked"] = False
+            tx_id = anchor.turbo_upload(
+                lora_path.read_bytes(),
+                wallet,
+                {"App-Name": "PADAM-Nocturne", "Content-Type": "application/octet-stream", "LoRA-SHA256": lora_sha256},
+                a.turbo_sdk,
+            )
+            lora_meta["arweave_tx_id"] = tx_id
+            if keypair:
+                lora_meta["solana_memo_tx"] = anchor.solana_memo(
+                    f"PADAM-LORA:{lora_sha256}:{tx_id}",
+                    keypair,
+                    a.network,
+                )
+        Path(save_dir).mkdir(parents=True, exist_ok=True)
+        (Path(save_dir) / "lora_manifest.json").write_text(
+            json.dumps(lora_meta, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        rep["lora"] = lora_meta
     print(json.dumps(rep, ensure_ascii=False, indent=2))
     return 0
 
@@ -1373,6 +1416,9 @@ def main(argv=None) -> int:
     s.add_argument("--no-bitcoin", action="store_true",
                    help=t("не штамповать пакет в Bitcoin через OpenTimestamps (бесплатно; по умолчанию штампуется)",
                           "do not timestamp the bundle in Bitcoin via OpenTimestamps (free; on by default)"))
+    s.add_argument("--with-lora", default=None,
+                   help=t("путь к .safetensors LoRA-адаптеру (локально якорит SHA-256; Arweave выключен)",
+                          "path to .safetensors LoRA adapter (anchors SHA-256 locally; Arweave upload locked)"))
     s.set_defaults(fn=cmd_l3)
 
     s = sub.add_parser("l3-ots-upgrade", help=t("штампы Bitcoin: спросить календари о номере блока",
@@ -1719,6 +1765,88 @@ def main(argv=None) -> int:
     ssec.add_argument("--no-write", action="store_true")
     ssec.add_argument("--json", dest="json_out", action="store_true")
     ssec.set_defaults(fn=cmd_aifa_sec)
+
+    def cmd_distill(m: Memory, args) -> int:
+        from .distill import distill_personality_dataset
+        rep = distill_personality_dataset(
+            m.store.path,
+            args.out,
+            user_id=args.user,
+            fmt=args.format,
+            scope=args.scope,
+            min_confidence=args.min_confidence,
+            min_importance=args.min_importance,
+            include_unconfirmed=args.include_unconfirmed,
+        )
+        print(json.dumps(rep, ensure_ascii=False, indent=2))
+        return 0
+
+    sdis = sub.add_parser("distill", help=t("экспортировать очищенный датасет личности для LoRA (только чтение БД)",
+                                            "export sanitized LoRA personality dataset (read-only DB)"))
+    sdis.add_argument("--out", default="padam_persona_dataset")
+    sdis.add_argument("--format", default="chatml", choices=("chatml", "sharegpt", "both"))
+    sdis.add_argument("--scope", default=None)
+    sdis.add_argument("--min-confidence", type=float, default=0.7)
+    sdis.add_argument("--min-importance", type=float, default=0.3)
+    sdis.add_argument("--include-unconfirmed", action="store_true")
+    sdis.set_defaults(fn=cmd_distill)
+
+    def cmd_serve_llm(m: Memory, args) -> int:
+        from . import api as _api
+        _api.serve(host=args.host, port=args.port, db_path=str(m.store.path), token=args.token)
+        return 0
+
+    sllm = sub.add_parser("serve-llm", help=t("запустить локальный OpenAI-совместимый шлюз Суверенного мозга (127.0.0.1)",
+                                              "start local OpenAI-compatible Sovereign Brain router proxy (127.0.0.1)"))
+    sllm.add_argument("--host", default="127.0.0.1")
+    sllm.add_argument("--port", type=int, default=8765)
+    sllm.add_argument("--token", default=None)
+    sllm.set_defaults(fn=cmd_serve_llm)
+
+    def cmd_phoenix(m: Memory, args) -> int:
+        from . import phoenix as _phx
+        if args.phoenix_cmd == "pack":
+            rep = _phx.pack_phoenix_capsule(m.store.path, args.out, lora_path=args.lora)
+        else:
+            target = args.target_db or str(m.store.path)
+            rep = _phx.unpack_phoenix_capsule(args.capsule, target)
+        print(json.dumps(rep, ensure_ascii=False, indent=2))
+        return 0
+
+    sphx = sub.add_parser("phoenix", help=t("единая «Феникс-Капсула» личности и памяти (pack / unpack)",
+                                            "unified Phoenix Capsule for memory & identity (pack / unpack)"))
+    psub = sphx.add_subparsers(dest="phoenix_cmd", required=True)
+    ppk = psub.add_parser("pack", help=t("упаковать память, ключи и манифесты в капсулу", "pack memory, keys and manifests"))
+    ppk.add_argument("out", help="Output .phoenix.zip path")
+    ppk.add_argument("--lora", default=None, help="Optional .safetensors LoRA adapter path")
+    ppk.set_defaults(fn=cmd_phoenix)
+    pup = psub.add_parser("unpack", help=t("проверить SHA-256 и развернуть капсулу", "verify SHA-256 and unpack capsule"))
+    pup.add_argument("capsule", help="Input .phoenix.zip path")
+    pup.add_argument("--target-db", default=None, help="Target SQLite path")
+    pup.set_defaults(fn=cmd_phoenix)
+
+    def cmd_brain_probe(m: Memory, args) -> int:
+        from . import router as _router, sovereign_ops as _sops
+        rep = {
+            "local_recommendation": _router.recommend_local_model(),
+            "locks": _sops.locks_status(),
+            "router": _router.get_router().status_snapshot(),
+        }
+        print(json.dumps(rep, ensure_ascii=False, indent=2))
+        return 0
+
+    sbp = sub.add_parser("brain-probe", help=t("проверить локальный Ollama, VRAM и замки автономии ($0)",
+                                               "probe local Ollama, VRAM and autonomy locks ($0)"))
+    sbp.set_defaults(fn=cmd_brain_probe)
+
+    def cmd_voice_status(m: Memory, args) -> int:
+        from . import voice as _voice
+        print(json.dumps(_voice.voice_status(), ensure_ascii=False, indent=2))
+        return 0
+
+    svs = sub.add_parser("voice-status", help=t("проверить локальные движки STT/TTS (оффлайн)",
+                                                "check local offline STT/TTS voice engines"))
+    svs.set_defaults(fn=cmd_voice_status)
 
     a = p.parse_args(argv)
     if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup, cmd_pack_extension, cmd_playground, cmd_badge, cmd_aifa_sec) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):

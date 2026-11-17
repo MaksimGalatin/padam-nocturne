@@ -351,6 +351,16 @@ def mcp_cabinet_tool_enabled() -> bool:
     return os.environ.get("PADAM_MCP_CABINET_TOOL", "0").strip() == "1"
 
 
+def mcp_brain_status_tool_enabled() -> bool:
+    """Включает публикацию MCP-инструмента padam_brain_status (только чтение) в tools/list."""
+    return os.environ.get("PADAM_MCP_BRAIN_STATUS_TOOL", "0").strip() == "1"
+
+
+def mcp_sovereign_sync_tool_enabled() -> bool:
+    """Включает публикацию MCP-инструмента padam_sovereign_sync (постановка в Review Queue при 500+ записей)."""
+    return os.environ.get("PADAM_MCP_SOVEREIGN_SYNC_TOOL", "0").strip() == "1"
+
+
 # --- Легенда Шаг 3: Превентивный Семантический Фаервол (DLP & Zero-Leak Shield, выключено по умолчанию) ---
 def mcp_dlp_shield_enabled() -> bool:
     """Включает токенизацию секретов в [PADAM_SECRET_ID_N] и локальный DLP-прокси-щит."""
