@@ -97,3 +97,35 @@ def export_portable_ark(
         "passport_path": str(passport_path),
         "capsule_sha256": cap_sha,
     }
+
+
+def export_portable_ark_with_new_keys(memory, target_dir: str | Path) -> dict[str, Any]:
+    """Создаёт переносимый Ковчег с НОВОЙ парой ключей X-Wing; закрытые ключи — отдельным файлом РЯДОМ с папкой.
+
+    Общая точка для команды `padam ark-portable` и Studio (17.11.2026). В саму папку ключи не попадают:
+    флешку можно потерять, а файл ключей владелец уносит отдельно (или делит по Шамиру).
+    Папка должна быть новой или пустой — чтобы не смешать Ковчег с чужими файлами.
+    """
+    import base64
+    import json
+
+    from . import pqc_mlkem
+
+    out_dir = Path(target_dir).expanduser()
+    if not out_dir.is_absolute():
+        raise ValueError("target_dir must be an absolute path")
+    out_dir = out_dir.resolve()
+    if out_dir.exists() and (not out_dir.is_dir() or any(out_dir.iterdir())):
+        raise ValueError("target_dir must be a new or empty folder")
+    kp = pqc_mlkem.generate_xwing_keypair()
+    rep = export_portable_ark(
+        memory, out_dir,
+        mlkem_public=bytes(kp["mlkem_public"]),
+        x25519_public=bytes(kp["x25519_public"]),
+    )
+    key_out = out_dir.parent / (out_dir.name + ".owner_keys.json")
+    key_out.write_text(json.dumps({
+        "mlkem_seed64_b64": base64.b64encode(bytes(kp["mlkem_private"])).decode("ascii"),
+        "x25519_priv_b64": base64.b64encode(bytes(kp["x25519_private"])).decode("ascii"),
+    }, indent=2) + "\n", encoding="utf-8")
+    return {**rep, "private_keys_saved_separately_to": str(key_out), "backend": kp.get("backend")}

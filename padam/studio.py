@@ -67,6 +67,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_mesh_title": "Live Mesh (Одна Душа на всех экранах) и Хранитель ($0)",
         "ark_mesh_btn": "Устройства Mesh",
         "ark_guardian_btn": "Обход Хранителя ($0)",
+        "ark_ready_title": "Полигон готовности к автономии (8 сценариев, $0)",
+        "ark_ready_btn": "Проверить готовность",
+        "ark_handover_title": "Подписанная передача между сессиями",
+        "ark_handover_ph": "Что сделано и что осталось — для следующей сессии…",
+        "ark_handover_btn": "Подписать передачу",
+        "ark_portable_title": "Переносимый Ковчег на флешку или диск",
+        "ark_portable_ph": "Новая или пустая папка, например E:\\PADAM_ARK",
+        "ark_portable_btn": "Создать переносимый Ковчег",
+        "ark_portable_not_empty": "Эта папка не пустая. Укажите новую или пустую папку.",
+        "ark_portable_warn": "Закрытые ключи сохраняются отдельным файлом рядом с папкой. Держите их не на той же флешке.",
         "nav_settings": "Настройки",
         "nav_quickstart": "Первый запуск",
         "theme_dark": "Тёмная тема",
@@ -413,6 +423,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_mesh_title": "Live Mesh (PQC Multi-Device) & Guardian ($0)",
         "ark_mesh_btn": "Mesh Devices",
         "ark_guardian_btn": "Guardian Tick ($0)",
+        "ark_ready_title": "Autonomy readiness range (8 scenarios, $0)",
+        "ark_ready_btn": "Check readiness",
+        "ark_handover_title": "Signed handover between sessions",
+        "ark_handover_ph": "What was done and what is left, for the next session…",
+        "ark_handover_btn": "Sign handover",
+        "ark_portable_title": "Portable Ark on a USB drive or disk",
+        "ark_portable_ph": "A new or empty folder, e.g. E:\\PADAM_ARK",
+        "ark_portable_btn": "Create portable Ark",
+        "ark_portable_not_empty": "This folder is not empty. Choose a new or empty folder.",
+        "ark_portable_warn": "Private keys are saved to a separate file next to the folder. Keep them off the same drive.",
         "nav_settings": "Settings",
         "nav_quickstart": "Quick Start",
         "theme_dark": "Dark theme",
@@ -748,6 +768,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_mesh_title": "Live Mesh (PQC Multidispositivo) y Guardián ($0)",
         "ark_mesh_btn": "Dispositivos Mesh",
         "ark_guardian_btn": "Ronda del Guardián ($0)",
+        "ark_ready_title": "Prueba de preparación para la autonomía (8 escenarios, $0)",
+        "ark_ready_btn": "Comprobar preparación",
+        "ark_handover_title": "Relevo firmado entre sesiones",
+        "ark_handover_ph": "Qué se hizo y qué queda, para la próxima sesión…",
+        "ark_handover_btn": "Firmar relevo",
+        "ark_portable_title": "Arca portátil en una memoria USB o disco",
+        "ark_portable_ph": "Una carpeta nueva o vacía, p. ej. E:\\PADAM_ARK",
+        "ark_portable_btn": "Crear Arca portátil",
+        "ark_portable_not_empty": "Esta carpeta no está vacía. Elija una carpeta nueva o vacía.",
+        "ark_portable_warn": "Las claves privadas se guardan en un archivo aparte junto a la carpeta. No las guarde en la misma memoria.",
         "nav_settings": "Ajustes",
         "nav_quickstart": "Inicio rápido",
         "theme_dark": "Tema oscuro",
@@ -1083,6 +1113,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_mesh_title": "Live Mesh 多设备同步与守护者 ($0)",
         "ark_mesh_btn": "查看 Mesh 设备",
         "ark_guardian_btn": "守护者巡检 ($0)",
+        "ark_ready_title": "自主就绪演练（8 个场景，$0）",
+        "ark_ready_btn": "检查就绪",
+        "ark_handover_title": "会话间签名交接",
+        "ark_handover_ph": "已完成的和剩下的，留给下一个会话…",
+        "ark_handover_btn": "签署交接",
+        "ark_portable_title": "U 盘或磁盘上的便携方舟",
+        "ark_portable_ph": "新的或空的文件夹，例如 E:\\PADAM_ARK",
+        "ark_portable_btn": "创建便携方舟",
+        "ark_portable_not_empty": "该文件夹不是空的。请选择新的或空的文件夹。",
+        "ark_portable_warn": "私钥另存为文件夹旁边的单独文件。请勿放在同一个 U 盘上。",
         "nav_settings": "设置",
         "nav_quickstart": "快速开始",
         "theme_dark": "深色主题",
@@ -4932,6 +4972,58 @@ if ($('ark-guardian-btn')) {
   };
 }
 
+if ($('ark-ready-btn')) {
+  $('ark-ready-btn').onclick = async () => {
+    const out = $('ark-ready-out');
+    if (!out) return;
+    out.textContent = S.loading;
+    try {
+      const r = await api('/api/v2/ark/readiness');
+      out.textContent = '';
+      _kv(out, { passed: String(r.passed || 0) + ' / ' + String(r.total || 0), cost_usd: '$' + String(r.cost_usd || 0) });
+      for (const sc of (r.scenarios || [])) {
+        out.appendChild(_el('p', 'panel-sub', (sc.ok ? '✓ ' : '✗ ') + String(sc.name || '') + (sc.detail ? ' — ' + String(sc.detail).slice(0, 120) : '')));
+      }
+    } catch (e) {
+      out.textContent = String(e.message || e);
+    }
+  };
+}
+if ($('ark-handover-btn')) {
+  $('ark-handover-btn').onclick = async () => {
+    const out = $('ark-handover-out');
+    const inp = $('ark-handover-input');
+    if (!out) return;
+    out.textContent = S.loading;
+    try {
+      const r = await api('/api/v2/ark/handover', { notes: inp ? inp.value : '' });
+      out.textContent = '';
+      _kv(out, { signed: String(Boolean(r.ok)), body_sha256: String(r.body_sha256 || '').slice(0, 16), hmac_sha256: String(r.hmac_sha256 || '').slice(0, 16) });
+      if (r.markdown) out.appendChild(_el('p', 'panel-sub', String(r.markdown).slice(0, 400)));
+    } catch (e) {
+      out.textContent = String(e.message || e);
+    }
+  };
+}
+if ($('ark-portable-btn')) {
+  $('ark-portable-btn').onclick = async () => {
+    const out = $('ark-portable-out');
+    const inp = $('ark-portable-input');
+    if (!out) return;
+    const dir = inp ? inp.value.trim() : '';
+    if (!dir) { out.textContent = S.ark_portable_ph || ''; return; }
+    out.textContent = S.loading;
+    try {
+      const r = await api('/api/v2/ark/portable', { target_dir: dir });
+      out.textContent = '';
+      _kv(out, { folder: String(r.target_dir || ''), capsule_sha256: String(r.capsule_sha256 || '').slice(0, 16), secrets_on_drive: String(Boolean(r.secrets_included)), keys_file: String(r.private_keys_saved_separately_to || '') });
+    } catch (e) {
+      const msg = String(e.message || e);
+      out.textContent = /new or empty folder/.test(msg) ? (S.ark_portable_not_empty || msg) : msg;
+    }
+  };
+}
+
 if ($('brain-distill-btn')) {
   $('brain-distill-btn').onclick = async () => {
     const outEl = $('brain-distill-out');
@@ -5692,6 +5784,34 @@ def page() -> tuple[str, str]:
             <button id="ark-guardian-btn" class="btn-primary" data-i18n="ark_guardian_btn">{s['ark_guardian_btn']}</button>
           </div>
           <div id="ark-mesh-out"></div>
+        </div>
+        <div class="box">
+          <h3 class="box-title" data-i18n="ark_ready_title">{s['ark_ready_title']}</h3>
+          <div class="rec-actions">
+            <button id="ark-ready-btn" class="btn-primary" data-i18n="ark_ready_btn">{s['ark_ready_btn']}</button>
+          </div>
+          <div id="ark-ready-out"></div>
+        </div>
+        <div class="box">
+          <h3 class="box-title" data-i18n="ark_handover_title">{s['ark_handover_title']}</h3>
+          <div class="toolbar">
+            <input id="ark-handover-input" type="text" data-i18n-placeholder="ark_handover_ph" placeholder="{s['ark_handover_ph']}">
+          </div>
+          <div class="rec-actions">
+            <button id="ark-handover-btn" class="btn-primary" data-i18n="ark_handover_btn">{s['ark_handover_btn']}</button>
+          </div>
+          <div id="ark-handover-out"></div>
+        </div>
+        <div class="box">
+          <h3 class="box-title" data-i18n="ark_portable_title">{s['ark_portable_title']}</h3>
+          <div class="toolbar">
+            <input id="ark-portable-input" type="text" data-i18n-placeholder="ark_portable_ph" placeholder="{s['ark_portable_ph']}">
+          </div>
+          <div class="rec-actions">
+            <button id="ark-portable-btn" class="btn-primary" data-i18n="ark_portable_btn">{s['ark_portable_btn']}</button>
+            <p class="panel-sub" data-i18n="ark_portable_warn">{s['ark_portable_warn']}</p>
+          </div>
+          <div id="ark-portable-out"></div>
         </div>
       </section>
     </main>

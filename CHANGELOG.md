@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Studio buttons for the autonomy range, signed handover and Portable Ark** (Brain tab, 4 languages, checked at 1280 and 390 px). The Portable Ark button writes to a new or empty absolute folder only, from this computer only (`/api/v2/ark/portable`, loopback); private keys go to a separate `<folder>.owner_keys.json` next to it, never inside. A signed handover now records the agent name from `PADAM_AGENT_ID` (`tests/test_studio_ark_buttons_1711.py`).
+- **Browser extension archives rebuilt from source** (`scripts/pack_browser_extensions.py`): the store zips were still version 0.5.2; the script refuses to build when the manifest and the package versions differ.
 - **Family Council of six** (`padam/swarm_council.py`, Studio, `padam ark-council`, `padam_family_council`): two new
   roles from the PADAM book. **ARC-7** guards the boundary: a task that sends something to an outside address (a URL
   other than localhost, or an email) together with a send/upload/publish verb is held for the owner. **BEAR** guards

@@ -52,6 +52,6 @@
 
 1. Откройте Developer Hub Firefox Add-ons: `https://addons.mozilla.org/developers/`
 2. Нажмите **Submit a New Add-on** → **On this site** (публикация в каталоге AMO) или **On your own** (подпись `.xpi` для самостоятельного распространения).
-3. Загрузите архив `extensions/dist/padam-memory-guard-firefox.zip` (проверен локально через `web-ext lint` — `0 errors`, содержит `browser_specific_settings.gecko.id = "padam-memory-guard@codeofdigitaleternity.com"`, `strict_min_version = "121.0"` и `data_collection_permissions.required = ["none"]`).
+3. Загрузите архив `extensions/dist/padam-memory-guard-firefox.zip` (архив 0.6.4 собран `scripts/pack_browser_extensions.py` 17.11.2026; `web-ext lint` для этой сборки ещё не запускался; содержит `browser_specific_settings.gecko.id = "padam-memory-guard@codeofdigitaleternity.com"`, `strict_min_version = "140.0"` (Firefox для Android — `142.0`) и `data_collection_permissions.required = ["none"]`).
 4. На вопрос **«Does your add-on require source code submission?»** выберите **No** (код в `background.js` и `popup.js` полностью читаемый, без минификации, обфускации и сборщиков).
 5. Добавьте 3 снимка `1280×800` из `extensions/screenshots/` и отправьте на модерацию.

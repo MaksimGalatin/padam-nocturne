@@ -1960,20 +1960,9 @@ def main(argv=None) -> int:
 
     def cmd_ark_portable(m: Memory, args) -> int:
         from pathlib import Path as _P
-        from . import portable_ark as _pa, pqc_mlkem as _pqc
-        kp = _pqc.generate_xwing_keypair()
-        rep = _pa.export_portable_ark(
-            m, args.target_dir,
-            mlkem_public=bytes(kp["mlkem_public"]),
-            x25519_public=bytes(kp["x25519_public"]),
-        )
-        key_out = _P(args.target_dir).resolve().parent / ( _P(args.target_dir).name + ".owner_keys.json" )
-        import base64 as _b64
-        key_out.write_text(json.dumps({
-            "mlkem_seed64_b64": _b64.b64encode(bytes(kp["mlkem_private"])).decode("ascii"),
-            "x25519_priv_b64": _b64.b64encode(bytes(kp["x25519_private"])).decode("ascii"),
-        }, indent=2) + "\n", encoding="utf-8")
-        print(json.dumps({**rep, "private_keys_saved_separately_to": str(key_out)}, ensure_ascii=False, indent=2))
+        from . import portable_ark as _pa
+        rep = _pa.export_portable_ark_with_new_keys(m, _P(args.target_dir).resolve())
+        print(json.dumps(rep, ensure_ascii=False, indent=2))
         return 0
 
     sap = sub.add_parser("ark-portable", help="Export PQC encrypted Portable Sovereign Ark (zero secrets inside target_dir)")
