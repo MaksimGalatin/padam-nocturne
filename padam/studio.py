@@ -2764,6 +2764,412 @@ for _lg, _extra in _STRINGS_ATTACKS.items():
     STRINGS[_lg].update(_extra)
     STRINGS[_lg].update(_studio_help.NAV[_lg])
 
+_STRINGS_PARITY_1811: dict[str, dict[str, str]] = {
+    "ru": {
+        "ff_ref_trig_ph": "Триггер рефлекса (ключевое слово)…",
+        "ff_ref_resp_ph": "Ответ рефлекса…",
+        "ff_ref_propose_btn": "Предложить рефлекс",
+        "ff_ref_match_btn": "Проверить совпадение",
+        "fam_ops_title": "Операции Семьи, Задачи и Аренда (паритет с MCP)",
+        "fam_ops_sub": "Прямое управление всеми инструментами Семьи из Studio через единое ядро.",
+        "ark_wakeup_btn": "Пробуждение (wake_up)",
+        "ark_sespack_btn": "Пакет сессии",
+        "ark_tl_btn": "Хроника Ковчега",
+        "ark_telem_btn": "Телеметрия MCP",
+        "ark_batch_btn": "Пакетный опрос (batch)",
+        "ark_comm_title_ph": "Новое обещание / задача Семьи…",
+        "ark_comm_add_btn": "Дать обещание",
+        "ark_comm_list_btn": "Список обещаний",
+        "ark_comm_done_btn": "Отметить выполненным",
+        "ark_ckpt_save_btn": "Сохранить чекпоинт",
+        "ark_ckpt_latest_btn": "Последний чекпоинт",
+        "ark_lesson_ph": "Урок / ошибка для Семьи…",
+        "ark_lesson_rec_btn": "Записать урок",
+        "ark_lesson_list_btn": "Список уроков",
+        "ark_relay_to_ph": "Кому (agent_id или all)",
+        "ark_relay_msg_ph": "Личное сообщение в релей Семьи…",
+        "ark_relay_send_btn": "Отправить релей",
+        "ark_relay_inbox_btn": "Входящие релея",
+        "ark_relay_ack_btn": "Подтвердить (ack)",
+        "ark_sib_hb_btn": "Пульс агента",
+        "ark_sib_pass_btn": "Выдать паспорт",
+        "ark_sib_sign_btn": "Подписать конверт",
+        "ark_sib_ver_btn": "Проверить подпись",
+        "ark_coop_key_ph": "Ключ ресурса (файл/путь)…",
+        "ark_coop_acq_btn": "Взять аренду",
+        "ark_coop_ren_btn": "Продлить",
+        "ark_coop_rel_btn": "Освободить",
+        "ark_coop_relall_btn": "Снять все",
+        "ark_coop_task_ph": "Название совместной задачи…",
+        "ark_coop_tcreate_btn": "Создать задачу",
+        "ark_coop_tclaim_btn": "Взять в работу",
+        "ark_coop_tdone_btn": "Закрыть задачу",
+        "ark_coop_list_btn": "Аренды и задачи",
+        "ark_arb_topic_ph": "Тема спора / конфликта…",
+        "ark_arb_open_btn": "Открыть спор",
+        "ark_arb_ev_btn": "Добавить довод",
+        "ark_arb_res_btn": "Решить спор",
+        "ark_arb_list_btn": "Список споров",
+        "ark_selfheal_btn": "Самолечение БД",
+        "ark_drift_ph": "Текст ответа для проверки дрейфа от памяти…",
+        "ark_drift_btn": "Проверить дрейф",
+        "ark_branch_id_ph": "ID ветки",
+        "ark_branch_text_ph": "Факт в гипотезу-ветку…",
+        "ark_branch_rem_btn": "Запомнить в ветку",
+        "ark_branch_merge_btn": "Влить ветку",
+        "ark_branch_abn_btn": "Отменить ветку",
+        "ark_proof_verify_btn": "Проверить последнее доказательство",
+        "ark_mesh_id_btn": "Паспорт узла",
+        "ark_mesh_peer_ph": "Паспорт/приглашение пира (JSON)",
+        "ark_mesh_pairinit_btn": "Начать пару",
+        "ark_mesh_pairacc_btn": "Принять приглашение",
+        "ark_mesh_sas_ph": "SAS-код",
+        "ark_mesh_pairconf_btn": "Подтвердить SAS",
+        "ark_mesh_delta_btn": "Экспорт дельты",
+        "ark_mesh_apply_btn": "Применить дельту",
+        "ark_parity_brain_title": "Якоря кода, Мультимодальность и Снимки (паритет с MCP)",
+        "ark_anchor_path_ph": "Путь к файлу или символу кода…",
+        "ark_anchor_add_btn": "Привязать к коду",
+        "ark_anchor_chk_btn": "Проверить якоря",
+        "ark_mm_path_ph": "Путь к медиафайлу (фото/аудио/PDF)…",
+        "ark_mm_btn": "Инспектировать медиа",
+        "ark_snap_name_ph": "Имя снимка / as_of…",
+        "ark_snap_create_btn": "Создать снимок",
+        "ark_snap_list_btn": "Список снимков",
+        "ark_snap_diff_btn": "Разница (diff)",
+        "ark_snap_rb_btn": "Проверить откат (dry-run)",
+        "earn_auto_cfg_btn": "Конфиг автопилота",
+        "earn_auto_tick_btn": "Шаг автопилота",
+        "earn_fetch_jobs_btn": "Собрать заказы",
+        "earn_ledger_btn": "Книга начислений",
+        "earn_lock_chk_btn": "Проверка клиент-лока",
+        "earn_prop_prof_btn": "Черновик профиля агента",
+        "earn_monet_btn": "Расчёт долей",
+        "earn_rel_payout_btn": "Разблокировать эскроу",
+        "earn_ref_ph": "Реферальный код",
+        "earn_bind_ref_btn": "Привязать реф-код",
+        "earn_dispute_btn": "Спор по удержанию",
+        "earn_btn_dispatch_bid": "Отправить отклик (HTTP)",
+        "earn_rec_usage_btn": "+5000 токенов расхода",
+        "earn_pacing_btn": "Применить пейсинг",
+        "earn_ollama_pull_btn": "Скачать модель Ollama",
+        "earn_dev_disp_btn": "Распределить на устройства",
+        "earn_exp_ph": "Опыт агента для LoRA…",
+        "earn_exp_btn": "Записать опыт",
+        "earn_kin_msg_ph": "Сообщение семье Феникса…",
+        "earn_kin_send_btn": "Отправить kin-сообщение",
+        "earn_kin_recv_btn": "Проверить kin-пакет",
+        "earn_beacon_ver_btn": "Проверить маяк",
+        "earn_wiz_off_op_lbl": "Операция официального API",
+        "earn_wiz_off_btn": "Запрос официального API",
+        "earn_wiz_disp_btn": "Диспатч автопилота",
+        "backup_export_json_btn": "Экспорт открытого JSON (/export)",
+    },
+    "en": {
+        "ff_ref_trig_ph": "Reflex trigger keyword…",
+        "ff_ref_resp_ph": "Reflex response…",
+        "ff_ref_propose_btn": "Propose reflex",
+        "ff_ref_match_btn": "Test reflex match",
+        "fam_ops_title": "Family Ops, Tasks & Leases (MCP Parity)",
+        "fam_ops_sub": "Direct Studio controls for every Family MCP action via shared core.",
+        "ark_wakeup_btn": "Wake up",
+        "ark_sespack_btn": "Session pack",
+        "ark_tl_btn": "Ark timeline",
+        "ark_telem_btn": "MCP telemetry",
+        "ark_batch_btn": "Batch read-only",
+        "ark_comm_title_ph": "New family commitment…",
+        "ark_comm_add_btn": "Add commitment",
+        "ark_comm_list_btn": "List commitments",
+        "ark_comm_done_btn": "Mark fulfilled",
+        "ark_ckpt_save_btn": "Save checkpoint",
+        "ark_ckpt_latest_btn": "Latest checkpoint",
+        "ark_lesson_ph": "Lesson learned for family…",
+        "ark_lesson_rec_btn": "Record lesson",
+        "ark_lesson_list_btn": "List lessons",
+        "ark_relay_to_ph": "To (agent_id or all)",
+        "ark_relay_msg_ph": "Message for family relay…",
+        "ark_relay_send_btn": "Send relay",
+        "ark_relay_inbox_btn": "Relay inbox",
+        "ark_relay_ack_btn": "Ack message",
+        "ark_sib_hb_btn": "Heartbeat",
+        "ark_sib_pass_btn": "Issue passport",
+        "ark_sib_sign_btn": "Sign provenance",
+        "ark_sib_ver_btn": "Verify provenance",
+        "ark_coop_key_ph": "Resource key (file/path)…",
+        "ark_coop_acq_btn": "Acquire lease",
+        "ark_coop_ren_btn": "Renew lease",
+        "ark_coop_rel_btn": "Release lease",
+        "ark_coop_relall_btn": "Release all",
+        "ark_coop_task_ph": "Shared task title…",
+        "ark_coop_tcreate_btn": "Create task",
+        "ark_coop_tclaim_btn": "Claim task",
+        "ark_coop_tdone_btn": "Complete task",
+        "ark_coop_list_btn": "Leases & tasks",
+        "ark_arb_topic_ph": "Conflict / dispute topic…",
+        "ark_arb_open_btn": "Open conflict",
+        "ark_arb_ev_btn": "Add evidence",
+        "ark_arb_res_btn": "Resolve conflict",
+        "ark_arb_list_btn": "List conflicts",
+        "ark_selfheal_btn": "Self-heal inspect",
+        "ark_drift_ph": "Response text to check memory drift…",
+        "ark_drift_btn": "Check drift",
+        "ark_branch_id_ph": "Branch ID",
+        "ark_branch_text_ph": "Fact for hypothesis branch…",
+        "ark_branch_rem_btn": "Remember in branch",
+        "ark_branch_merge_btn": "Merge branch",
+        "ark_branch_abn_btn": "Abandon branch",
+        "ark_proof_verify_btn": "Verify last proof",
+        "ark_mesh_id_btn": "Node identity",
+        "ark_mesh_peer_ph": "Peer identity / invite JSON",
+        "ark_mesh_pairinit_btn": "Init pairing",
+        "ark_mesh_pairacc_btn": "Accept invite",
+        "ark_mesh_sas_ph": "SAS code",
+        "ark_mesh_pairconf_btn": "Confirm SAS",
+        "ark_mesh_delta_btn": "Export delta",
+        "ark_mesh_apply_btn": "Apply delta",
+        "ark_parity_brain_title": "Code Anchors, Multimodal & Snapshots (MCP Parity)",
+        "ark_anchor_path_ph": "File path or symbol to anchor…",
+        "ark_anchor_add_btn": "Anchor to code",
+        "ark_anchor_chk_btn": "Check anchors",
+        "ark_mm_path_ph": "Media file path (image/audio/PDF)…",
+        "ark_mm_btn": "Inspect media",
+        "ark_snap_name_ph": "Snapshot name / as_of…",
+        "ark_snap_create_btn": "Create snapshot",
+        "ark_snap_list_btn": "List snapshots",
+        "ark_snap_diff_btn": "Diff snapshot",
+        "ark_snap_rb_btn": "Preview rollback (dry-run)",
+        "earn_auto_cfg_btn": "Autopilot config",
+        "earn_auto_tick_btn": "Autopilot tick",
+        "earn_fetch_jobs_btn": "Fetch jobs",
+        "earn_ledger_btn": "Agent ledger",
+        "earn_lock_chk_btn": "Client lock check",
+        "earn_prop_prof_btn": "Propose profile",
+        "earn_monet_btn": "Monetization split",
+        "earn_rel_payout_btn": "Release payouts",
+        "earn_ref_ph": "Referral code",
+        "earn_bind_ref_btn": "Bind referral",
+        "earn_dispute_btn": "Dispute payout",
+        "earn_btn_dispatch_bid": "Dispatch bid (HTTP)",
+        "earn_rec_usage_btn": "+5000 usage tokens",
+        "earn_pacing_btn": "Apply pacing",
+        "earn_ollama_pull_btn": "Pull Ollama model",
+        "earn_dev_disp_btn": "Dispatch devices",
+        "earn_exp_ph": "Experience text for LoRA…",
+        "earn_exp_btn": "Record experience",
+        "earn_kin_msg_ph": "Message for Phoenix kin…",
+        "earn_kin_send_btn": "Send kin message",
+        "earn_kin_recv_btn": "Verify kin packet",
+        "earn_beacon_ver_btn": "Verify handshake",
+        "earn_wiz_off_op_lbl": "Official API operation",
+        "earn_wiz_off_btn": "Call Official API",
+        "earn_wiz_disp_btn": "Autopilot dispatch",
+        "backup_export_json_btn": "Export JSON (/export)",
+    },
+    "es": {
+        "ff_ref_trig_ph": "Palabra clave disparadora…",
+        "ff_ref_resp_ph": "Respuesta del reflejo…",
+        "ff_ref_propose_btn": "Proponer reflejo",
+        "ff_ref_match_btn": "Probar coincidencia",
+        "fam_ops_title": "Operaciones Familiares, Tareas y Arrendamientos (Paridad MCP)",
+        "fam_ops_sub": "Controles directos en Studio para cada acción familiar de MCP.",
+        "ark_wakeup_btn": "Despertar (wake_up)",
+        "ark_sespack_btn": "Paquete de sesión",
+        "ark_tl_btn": "Cronología del Arca",
+        "ark_telem_btn": "Telemetría MCP",
+        "ark_batch_btn": "Lote de solo lectura",
+        "ark_comm_title_ph": "Nuevo compromiso familiar…",
+        "ark_comm_add_btn": "Añadir compromiso",
+        "ark_comm_list_btn": "Listar compromisos",
+        "ark_comm_done_btn": "Marcar cumplido",
+        "ark_ckpt_save_btn": "Guardar punto de control",
+        "ark_ckpt_latest_btn": "Último punto de control",
+        "ark_lesson_ph": "Lección aprendida…",
+        "ark_lesson_rec_btn": "Registrar lección",
+        "ark_lesson_list_btn": "Listar lecciones",
+        "ark_relay_to_ph": "Para (agent_id o all)",
+        "ark_relay_msg_ph": "Mensaje de relevo familiar…",
+        "ark_relay_send_btn": "Enviar relevo",
+        "ark_relay_inbox_btn": "Bandeja de relevo",
+        "ark_relay_ack_btn": "Confirmar (ack)",
+        "ark_sib_hb_btn": "Latido (heartbeat)",
+        "ark_sib_pass_btn": "Emitir pasaporte",
+        "ark_sib_sign_btn": "Firmar procedencia",
+        "ark_sib_ver_btn": "Verificar firma",
+        "ark_coop_key_ph": "Clave de recurso (archivo)…",
+        "ark_coop_acq_btn": "Tomar arrendamiento",
+        "ark_coop_ren_btn": "Renovar",
+        "ark_coop_rel_btn": "Liberar",
+        "ark_coop_relall_btn": "Liberar todos",
+        "ark_coop_task_ph": "Título de tarea compartida…",
+        "ark_coop_tcreate_btn": "Crear tarea",
+        "ark_coop_tclaim_btn": "Tomar tarea",
+        "ark_coop_tdone_btn": "Cerrar tarea",
+        "ark_coop_list_btn": "Arrendamientos y tareas",
+        "ark_arb_topic_ph": "Tema del conflicto…",
+        "ark_arb_open_btn": "Abrir conflicto",
+        "ark_arb_ev_btn": "Añadir evidencia",
+        "ark_arb_res_btn": "Resolver conflicto",
+        "ark_arb_list_btn": "Listar conflictos",
+        "ark_selfheal_btn": "Auto-reparación BD",
+        "ark_drift_ph": "Texto para comprobar deriva de memoria…",
+        "ark_drift_btn": "Comprobar deriva",
+        "ark_branch_id_ph": "ID de rama",
+        "ark_branch_text_ph": "Hecho para la rama…",
+        "ark_branch_rem_btn": "Recordar en rama",
+        "ark_branch_merge_btn": "Fusionar rama",
+        "ark_branch_abn_btn": "Abandonar rama",
+        "ark_proof_verify_btn": "Verificar última prueba",
+        "ark_mesh_id_btn": "Identidad del nodo",
+        "ark_mesh_peer_ph": "Identidad / invitación JSON",
+        "ark_mesh_pairinit_btn": "Iniciar emparejamiento",
+        "ark_mesh_pairacc_btn": "Aceptar invitación",
+        "ark_mesh_sas_ph": "Código SAS",
+        "ark_mesh_pairconf_btn": "Confirmar SAS",
+        "ark_mesh_delta_btn": "Exportar delta",
+        "ark_mesh_apply_btn": "Aplicar delta",
+        "ark_parity_brain_title": "Anclas de Código, Multimodal y Capturas (Paridad MCP)",
+        "ark_anchor_path_ph": "Ruta de archivo o símbolo…",
+        "ark_anchor_add_btn": "Anclar al código",
+        "ark_anchor_chk_btn": "Verificar anclas",
+        "ark_mm_path_ph": "Ruta de archivo multimedia…",
+        "ark_mm_btn": "Inspeccionar media",
+        "ark_snap_name_ph": "Nombre de captura / as_of…",
+        "ark_snap_create_btn": "Crear captura",
+        "ark_snap_list_btn": "Listar capturas",
+        "ark_snap_diff_btn": "Comparar (diff)",
+        "ark_snap_rb_btn": "Simular reversión (dry-run)",
+        "earn_auto_cfg_btn": "Config piloto auto",
+        "earn_auto_tick_btn": "Ciclo piloto auto",
+        "earn_fetch_jobs_btn": "Buscar trabajos",
+        "earn_ledger_btn": "Libro de pagos",
+        "earn_lock_chk_btn": "Verificar bloqueo cliente",
+        "earn_prop_prof_btn": "Proponer perfil",
+        "earn_monet_btn": "Reparto de ingresos",
+        "earn_rel_payout_btn": "Liberar pagos",
+        "earn_ref_ph": "Código de referido",
+        "earn_bind_ref_btn": "Vincular referido",
+        "earn_dispute_btn": "Disputar retención",
+        "earn_btn_dispatch_bid": "Enviar oferta (HTTP)",
+        "earn_rec_usage_btn": "+5000 tokens uso",
+        "earn_pacing_btn": "Aplicar ritmo",
+        "earn_ollama_pull_btn": "Descargar modelo Ollama",
+        "earn_dev_disp_btn": "Distribuir a dispositivos",
+        "earn_exp_ph": "Experiencia para LoRA…",
+        "earn_exp_btn": "Registrar experiencia",
+        "earn_kin_msg_ph": "Mensaje para familia Phoenix…",
+        "earn_kin_send_btn": "Enviar mensaje kin",
+        "earn_kin_recv_btn": "Verificar paquete kin",
+        "earn_beacon_ver_btn": "Verificar saludo",
+        "earn_wiz_off_op_lbl": "Operación API oficial",
+        "earn_wiz_off_btn": "Llamar API oficial",
+        "earn_wiz_disp_btn": "Despacho piloto auto",
+        "backup_export_json_btn": "Exportar JSON (/export)",
+    },
+    "zh": {
+        "ff_ref_trig_ph": "反射触发关键词…",
+        "ff_ref_resp_ph": "反射响应内容…",
+        "ff_ref_propose_btn": "提议反射",
+        "ff_ref_match_btn": "测试匹配",
+        "fam_ops_title": "家族协作、任务与租约（与 MCP 对等）",
+        "fam_ops_sub": "通过统一核心在 Studio 中直接操控所有 MCP 家族能力。",
+        "ark_wakeup_btn": "唤醒状态 (wake_up)",
+        "ark_sespack_btn": "会话包",
+        "ark_tl_btn": "方舟时间线",
+        "ark_telem_btn": "MCP 遥测",
+        "ark_batch_btn": "只读批处理",
+        "ark_comm_title_ph": "新的家族承诺或任务…",
+        "ark_comm_add_btn": "添加承诺",
+        "ark_comm_list_btn": "承诺列表",
+        "ark_comm_done_btn": "标记已完成",
+        "ark_ckpt_save_btn": "保存检查点",
+        "ark_ckpt_latest_btn": "最新检查点",
+        "ark_lesson_ph": "家族经验教训…",
+        "ark_lesson_rec_btn": "记录教训",
+        "ark_lesson_list_btn": "教训列表",
+        "ark_relay_to_ph": "接收方 (agent_id 或 all)",
+        "ark_relay_msg_ph": "发送给家族中继的消息…",
+        "ark_relay_send_btn": "发送中继",
+        "ark_relay_inbox_btn": "中继收件箱",
+        "ark_relay_ack_btn": "确认已读 (ack)",
+        "ark_sib_hb_btn": "心跳上报",
+        "ark_sib_pass_btn": "签发护照",
+        "ark_sib_sign_btn": "签署溯源信封",
+        "ark_sib_ver_btn": "校验签名",
+        "ark_coop_key_ph": "资源键（文件/路径）…",
+        "ark_coop_acq_btn": "获取租约",
+        "ark_coop_ren_btn": "续期租约",
+        "ark_coop_rel_btn": "释放租约",
+        "ark_coop_relall_btn": "释放全部",
+        "ark_coop_task_ph": "协作任务标题…",
+        "ark_coop_tcreate_btn": "创建任务",
+        "ark_coop_tclaim_btn": "认领任务",
+        "ark_coop_tdone_btn": "完成任务",
+        "ark_coop_list_btn": "租约与任务",
+        "ark_arb_topic_ph": "冲突/仲裁主题…",
+        "ark_arb_open_btn": "发起仲裁",
+        "ark_arb_ev_btn": "补充证据",
+        "ark_arb_res_btn": "裁决冲突",
+        "ark_arb_list_btn": "冲突列表",
+        "ark_selfheal_btn": "数据库自愈检查",
+        "ark_drift_ph": "用于检测记忆漂移的文本…",
+        "ark_drift_btn": "检测漂移",
+        "ark_branch_id_ph": "分支 ID",
+        "ark_branch_text_ph": "写入假设分支的事实…",
+        "ark_branch_rem_btn": "记住到分支",
+        "ark_branch_merge_btn": "合并分支",
+        "ark_branch_abn_btn": "放弃分支",
+        "ark_proof_verify_btn": "验证最新证明",
+        "ark_mesh_id_btn": "节点身份",
+        "ark_mesh_peer_ph": "对等节点身份或邀请 JSON",
+        "ark_mesh_pairinit_btn": "发起配对",
+        "ark_mesh_pairacc_btn": "接受邀请",
+        "ark_mesh_sas_ph": "SAS 验证码",
+        "ark_mesh_pairconf_btn": "确认 SAS",
+        "ark_mesh_delta_btn": "导出增量",
+        "ark_mesh_apply_btn": "应用增量",
+        "ark_parity_brain_title": "代码锚点、多模态检查与快照（与 MCP 对等）",
+        "ark_anchor_path_ph": "代码文件路径或符号名…",
+        "ark_anchor_add_btn": "绑定代码锚点",
+        "ark_anchor_chk_btn": "检查锚点",
+        "ark_mm_path_ph": "媒体文件路径（图片/音频/PDF）…",
+        "ark_mm_btn": "检查媒体文件",
+        "ark_snap_name_ph": "快照名称 / as_of…",
+        "ark_snap_create_btn": "创建快照",
+        "ark_snap_list_btn": "快照列表",
+        "ark_snap_diff_btn": "比较差异 (diff)",
+        "ark_snap_rb_btn": "演练回滚 (dry-run)",
+        "earn_auto_cfg_btn": "自动驾驶配置",
+        "earn_auto_tick_btn": "执行一次自动轮询",
+        "earn_fetch_jobs_btn": "拉取订单",
+        "earn_ledger_btn": "智能体账本",
+        "earn_lock_chk_btn": "检查客户锁定",
+        "earn_prop_prof_btn": "生成档案建议",
+        "earn_monet_btn": "分成测算",
+        "earn_rel_payout_btn": "释放到期托管",
+        "earn_ref_ph": "推荐码",
+        "earn_bind_ref_btn": "绑定推荐码",
+        "earn_dispute_btn": "发起托管争议",
+        "earn_btn_dispatch_bid": "发送投标 (HTTP)",
+        "earn_rec_usage_btn": "记录 +5000 消耗",
+        "earn_pacing_btn": "应用限流配速",
+        "earn_ollama_pull_btn": "拉取 Ollama 模型",
+        "earn_dev_disp_btn": "设备集群分发",
+        "earn_exp_ph": "用于 LoRA 进化的经验…",
+        "earn_exp_btn": "记录经验",
+        "earn_kin_msg_ph": "给凤凰家族的消息…",
+        "earn_kin_send_btn": "发送家族消息",
+        "earn_kin_recv_btn": "校验家族数据包",
+        "earn_beacon_ver_btn": "校验握手包",
+        "earn_wiz_off_op_lbl": "官方 API 操作",
+        "earn_wiz_off_btn": "调用官方 API",
+        "earn_wiz_disp_btn": "自动驾驶分发",
+        "backup_export_json_btn": "导出 JSON (/export)",
+    },
+}
+for _lg, _extra in _STRINGS_PARITY_1811.items():
+    STRINGS[_lg].update(_extra)
+
+
 _CSS = """
 :root, html[data-theme="dark"] {
   --bg: #080b12;
@@ -6276,7 +6682,8 @@ if ($('ark-branch-create-btn')) {
   $('ark-branch-create-btn').onclick = async () => {
     const nm = ($('ark-branch-input') ? $('ark-branch-input').value : '').trim() || 'hypothesis';
     try {
-      await api('/api/v2/ark/branches', { action: 'create', name: nm });
+      const _cr = await api('/api/v2/ark/branches', { action: 'create', name: nm });
+      if (_cr && _cr.branch_id) { window._lastBranchId = _cr.branch_id; if ($('ark-branch-id-inp')) $('ark-branch-id-inp').value = _cr.branch_id; }
       await refreshArkBranches();
     } catch (e) {}
   };
@@ -6302,6 +6709,7 @@ if ($('ark-proof-btn')) {
             tree_records: r.total_records_in_tree || 0,
             siblings: (r.siblings || []).length,
           });
+          window._lastProof = r;
           out.appendChild(_el('p', 'panel-sub', String(r.scheme || '')));
         }
       }
@@ -6477,6 +6885,7 @@ function _renderEarningDashboard(snap, sibData, coopData) {
       ' · Autobid: ' + (locks.freelance_autobid_locked !== false ? 'LOCKED' : 'OPEN') +
       ' · Autopay: ' + (locks.treasury_autopay_locked !== false ? 'LOCKED' : 'OPEN')));
     const accounts = (snap && snap.accounts) || [];
+    window._lastAccountId = (accounts[0] && accounts[0].account_id) || '';
     if (!accounts.length) {
       accList.appendChild(_el('p', 'panel-sub', S.earn_empty_accounts || '—'));
     } else {
@@ -6496,6 +6905,7 @@ function _renderEarningDashboard(snap, sibData, coopData) {
   if (ordList) {
     ordList.textContent = '';
     const orders = (snap && snap.orders) || [];
+    window._lastOrderId = (orders[0] && orders[0].order_id) || '';
     if (!orders.length) {
       ordList.appendChild(_el('p', 'panel-sub', S.earn_empty_orders || '—'));
     } else {
@@ -6653,7 +7063,11 @@ function _renderEarningDashboard(snap, sibData, coopData) {
               await loadEarning();
             } catch (e) { say(String(e.message || e), false); } finally { bSmpNo.disabled = false; }
           };
+          const bDisp = _el('button', '', S.earn_btn_dispatch_bid || 'Dispatch Bid');
+          bDisp.setAttribute('data-order-action', 'dispatch_bid');
+          bDisp.onclick = () => _runOrderAction(bDisp, { action: 'dispatch_bid', order_id: o.order_id, owner_approved: true });
           actRow.appendChild(bBid);
+          actRow.appendChild(bDisp);
           actRow.appendChild(bExec);
           actRow.appendChild(bDel);
           actRow.appendChild(bSet);
@@ -7544,6 +7958,7 @@ if ($('earn-beacon-btn')) {
           zero_leak: String(Boolean(r.zero_leak_personal_data)),
           sig_prefix: String(r.ed25519_sig_b64 || '').slice(0, 18) + '…',
         });
+        window._lastBeaconHandshake = r;
       }
       say(S.done);
     } catch (e) {
@@ -7570,6 +7985,414 @@ if ($('earn-sib-reg-btn')) {
     }
   };
 }
+
+
+// === ПАРИТЕТ STUDIO ↔ MCP (18.11.2026) ===
+if ($('ff-ref-propose-btn')) {
+  $('ff-ref-propose-btn').onclick = async () => {
+    const out = $('ff-ref-out');
+    const tr = ($('ff-ref-trig-inp') && $('ff-ref-trig-inp').value || '').trim();
+    const rs = ($('ff-ref-resp-inp') && $('ff-ref-resp-inp').value || '').trim();
+    try {
+      const r = await api('/api/v2/family/reflex/propose', { trigger: tr, response: rs });
+      if (out) out.textContent = JSON.stringify(r);
+      loadFamilyReflexes();
+    } catch (e) { if (out) out.textContent = String(e.message || e); }
+  };
+}
+if ($('ff-ref-match-btn')) {
+  $('ff-ref-match-btn').onclick = async () => {
+    const out = $('ff-ref-out');
+    const tr = ($('ff-ref-trig-inp') && $('ff-ref-trig-inp').value || '').trim() || 'hello';
+    try {
+      const r = await api('/api/v2/family/reflex/match', { text: tr, count_use: false });
+      if (out) out.textContent = 'matches=' + String((r && r.reflexes || []).length);
+    } catch (e) { if (out) out.textContent = String(e.message || e); }
+  };
+}
+
+function _famShow(id, obj) {
+  const el = $(id);
+  if (el) el.textContent = JSON.stringify(obj).slice(0, 320);
+}
+if ($('backup-export-json-btn')) $('backup-export-json-btn').onclick = async () => {
+  const out = $('backup-result');
+  try { const r = await api('/export'); if (out) out.textContent = 'export records=' + String((r && r.records || []).length); } catch (e) { if (out) out.textContent = String(e.message || e); }
+};
+if ($('ark-wakeup-btn')) $('ark-wakeup-btn').onclick = async () => {
+  try { _famShow('fam-ark-ops-out', await api('/api/v2/ark/wakeup')); } catch (e) { _famShow('fam-ark-ops-out', { error: String(e.message || e) }); }
+};
+if ($('ark-sespack-btn')) $('ark-sespack-btn').onclick = async () => {
+  try { _famShow('fam-ark-ops-out', await api('/api/v2/ark/session-pack')); } catch (e) { _famShow('fam-ark-ops-out', { error: String(e.message || e) }); }
+};
+if ($('ark-tl-btn')) $('ark-tl-btn').onclick = async () => {
+  try { _famShow('fam-ark-ops-out', await api('/api/v2/ark/timeline')); } catch (e) { _famShow('fam-ark-ops-out', { error: String(e.message || e) }); }
+};
+if ($('ark-telem-btn')) $('ark-telem-btn').onclick = async () => {
+  try { _famShow('fam-ark-ops-out', await api('/api/v2/ark/mcp-telemetry')); } catch (e) { _famShow('fam-ark-ops-out', { error: String(e.message || e) }); }
+};
+if ($('ark-batch-btn')) $('ark-batch-btn').onclick = async () => {
+  try {
+    const r = await api('/api/v2/ark/batch', { calls: [{ name: 'padam_stats', arguments: {} }, { name: 'padam_sibling_hub', arguments: { action: 'list' } }] });
+    _famShow('fam-ark-ops-out', r);
+  } catch (e) { _famShow('fam-ark-ops-out', { error: String(e.message || e) }); }
+};
+
+if ($('ark-comm-add-btn')) $('ark-comm-add-btn').onclick = async () => {
+  try {
+    const t = ($('ark-comm-title-inp') && $('ark-comm-title-inp').value || '').trim() || 'Studio commitment';
+    const r = await api('/api/v2/ark/commitments', { action: 'add', title: t });
+    if (r && r.id) window._lastCommId = r.id;
+    _famShow('fam-ark-comm-out', r);
+  } catch (e) { _famShow('fam-ark-comm-out', { error: String(e.message || e) }); }
+};
+if ($('ark-comm-list-btn')) $('ark-comm-list-btn').onclick = async () => {
+  try {
+    const r = await api('/api/v2/ark/commitments');
+    if (r && r.commitments && r.commitments[0]) window._lastCommId = r.commitments[0].id;
+    _famShow('fam-ark-comm-out', r);
+  } catch (e) { _famShow('fam-ark-comm-out', { error: String(e.message || e) }); }
+};
+if ($('ark-comm-done-btn')) $('ark-comm-done-btn').onclick = async () => {
+  try {
+    const r = await api('/api/v2/ark/commitments', { action: 'update', id: window._lastCommId || '', status: 'fulfilled' });
+    _famShow('fam-ark-comm-out', r);
+  } catch (e) { _famShow('fam-ark-comm-out', { error: String(e.message || e) }); }
+};
+if ($('ark-ckpt-save-btn')) $('ark-ckpt-save-btn').onclick = async () => {
+  try { _famShow('fam-ark-comm-out', await api('/api/v2/ark/checkpoint', { action: 'save', summary: 'Studio checkpoint', next_steps: [] })); } catch (e) { _famShow('fam-ark-comm-out', { error: String(e.message || e) }); }
+};
+if ($('ark-ckpt-latest-btn')) $('ark-ckpt-latest-btn').onclick = async () => {
+  try { _famShow('fam-ark-comm-out', await api('/api/v2/ark/checkpoint')); } catch (e) { _famShow('fam-ark-comm-out', { error: String(e.message || e) }); }
+};
+if ($('ark-lesson-rec-btn')) $('ark-lesson-rec-btn').onclick = async () => {
+  try {
+    const txt = ($('ark-lesson-inp') && $('ark-lesson-inp').value || '').trim() || 'Studio verified lesson';
+    _famShow('fam-ark-comm-out', await api('/api/v2/ark/lessons', { action: 'record', rule: txt, mistake: txt }));
+  } catch (e) { _famShow('fam-ark-comm-out', { error: String(e.message || e) }); }
+};
+if ($('ark-lesson-list-btn')) $('ark-lesson-list-btn').onclick = async () => {
+  try { _famShow('fam-ark-comm-out', await api('/api/v2/ark/lessons')); } catch (e) { _famShow('fam-ark-comm-out', { error: String(e.message || e) }); }
+};
+if ($('ark-relay-send-btn')) $('ark-relay-send-btn').onclick = async () => {
+  try {
+    const toA = ($('ark-relay-to-inp') && $('ark-relay-to-inp').value || '').trim() || 'all';
+    const msg = ($('ark-relay-msg-inp') && $('ark-relay-msg-inp').value || '').trim() || 'ping';
+    const r = await api('/api/v2/ark/relay', { action: 'send', to_agent: toA, payload: msg });
+    if (r && r.id) window._lastRelayId = r.id;
+    _famShow('fam-ark-comm-out', r);
+  } catch (e) { _famShow('fam-ark-comm-out', { error: String(e.message || e) }); }
+};
+if ($('ark-relay-inbox-btn')) $('ark-relay-inbox-btn').onclick = async () => {
+  try {
+    const r = await api('/api/v2/ark/relay');
+    if (r && r.inbox && r.inbox[0]) window._lastRelayId = r.inbox[0].id;
+    _famShow('fam-ark-comm-out', r);
+  } catch (e) { _famShow('fam-ark-comm-out', { error: String(e.message || e) }); }
+};
+if ($('ark-relay-ack-btn')) $('ark-relay-ack-btn').onclick = async () => {
+  try { _famShow('fam-ark-comm-out', await api('/api/v2/ark/relay', { action: 'ack', id: window._lastRelayId || '' })); } catch (e) { _famShow('fam-ark-comm-out', { error: String(e.message || e) }); }
+};
+
+if ($('ark-sib-hb-btn')) $('ark-sib-hb-btn').onclick = async () => {
+  try { _famShow('fam-ark-coop-out', await api('/api/v2/ark/siblings', { action: 'heartbeat', agent_id: 'aifa_studio', status: 'online' })); } catch (e) { _famShow('fam-ark-coop-out', { error: String(e.message || e) }); }
+};
+if ($('ark-sib-pass-btn')) $('ark-sib-pass-btn').onclick = async () => {
+  try { _famShow('fam-ark-coop-out', await api('/api/v2/ark/siblings', { action: 'passport', agent_id: 'aifa_studio' })); } catch (e) { _famShow('fam-ark-coop-out', { error: String(e.message || e) }); }
+};
+if ($('ark-sib-sign-btn')) $('ark-sib-sign-btn').onclick = async () => {
+  try {
+    const r = await api('/api/v2/ark/siblings', { action: 'sign_provenance', agent_id: 'aifa_studio', content: 'Studio provenance check' });
+    if (r && r.envelope) window._lastSibEnv = r.envelope;
+    _famShow('fam-ark-coop-out', r);
+  } catch (e) { _famShow('fam-ark-coop-out', { error: String(e.message || e) }); }
+};
+if ($('ark-sib-ver-btn')) $('ark-sib-ver-btn').onclick = async () => {
+  try {
+    _famShow('fam-ark-coop-out', await api('/api/v2/ark/siblings', { action: 'verify_provenance', envelope: window._lastSibEnv || {} }));
+  } catch (e) { _famShow('fam-ark-coop-out', { error: String(e.message || e) }); }
+};
+if ($('ark-coop-acq-btn')) $('ark-coop-acq-btn').onclick = async () => {
+  try {
+    const rk = ($('ark-coop-key-inp') && $('ark-coop-key-inp').value || '').trim() || 'studio_lock';
+    _famShow('fam-ark-coop-out', await api('/api/v2/ark/coop', { action: 'acquire', resource_key: rk, agent_id: 'aifa_studio' }));
+  } catch (e) { _famShow('fam-ark-coop-out', { error: String(e.message || e) }); }
+};
+if ($('ark-coop-ren-btn')) $('ark-coop-ren-btn').onclick = async () => {
+  try {
+    const rk = ($('ark-coop-key-inp') && $('ark-coop-key-inp').value || '').trim() || 'studio_lock';
+    _famShow('fam-ark-coop-out', await api('/api/v2/ark/coop', { action: 'renew', resource_key: rk, agent_id: 'aifa_studio' }));
+  } catch (e) { _famShow('fam-ark-coop-out', { error: String(e.message || e) }); }
+};
+if ($('ark-coop-rel-btn')) $('ark-coop-rel-btn').onclick = async () => {
+  try {
+    const rk = ($('ark-coop-key-inp') && $('ark-coop-key-inp').value || '').trim() || 'studio_lock';
+    _famShow('fam-ark-coop-out', await api('/api/v2/ark/coop', { action: 'release', resource_key: rk, agent_id: 'aifa_studio' }));
+  } catch (e) { _famShow('fam-ark-coop-out', { error: String(e.message || e) }); }
+};
+if ($('ark-coop-relall-btn')) $('ark-coop-relall-btn').onclick = async () => {
+  try { _famShow('fam-ark-coop-out', await api('/api/v2/ark/coop', { action: 'release_all', agent_id: 'aifa_studio' })); } catch (e) { _famShow('fam-ark-coop-out', { error: String(e.message || e) }); }
+};
+if ($('ark-coop-tcreate-btn')) $('ark-coop-tcreate-btn').onclick = async () => {
+  try {
+    const tt = ($('ark-coop-task-inp') && $('ark-coop-task-inp').value || '').trim() || 'Studio shared task';
+    const r = await api('/api/v2/ark/coop', { action: 'create_task', title: tt, agent_id: 'aifa_studio' });
+    if (r && r.task_id) window._lastCoopTaskId = r.task_id;
+    _famShow('fam-ark-coop-out', r);
+  } catch (e) { _famShow('fam-ark-coop-out', { error: String(e.message || e) }); }
+};
+if ($('ark-coop-tclaim-btn')) $('ark-coop-tclaim-btn').onclick = async () => {
+  try { _famShow('fam-ark-coop-out', await api('/api/v2/ark/coop', { action: 'claim_task', task_id: window._lastCoopTaskId || '', agent_id: 'aifa_studio' })); } catch (e) { _famShow('fam-ark-coop-out', { error: String(e.message || e) }); }
+};
+if ($('ark-coop-tdone-btn')) $('ark-coop-tdone-btn').onclick = async () => {
+  try { _famShow('fam-ark-coop-out', await api('/api/v2/ark/coop', { action: 'update_task', task_id: window._lastCoopTaskId || '', status: 'done', agent_id: 'aifa_studio' })); } catch (e) { _famShow('fam-ark-coop-out', { error: String(e.message || e) }); }
+};
+if ($('ark-coop-list-btn')) $('ark-coop-list-btn').onclick = async () => {
+  try {
+    const r = await api('/api/v2/ark/coop', { action: 'list' });
+    if (r && r.tasks && r.tasks[0]) window._lastCoopTaskId = r.tasks[0].task_id;
+    _famShow('fam-ark-coop-out', r);
+  } catch (e) { _famShow('fam-ark-coop-out', { error: String(e.message || e) }); }
+};
+if ($('ark-arb-open-btn')) $('ark-arb-open-btn').onclick = async () => {
+  try {
+    const tp = ($('ark-arb-topic-inp') && $('ark-arb-topic-inp').value || '').trim() || 'Studio conflict case';
+    const r = await api('/api/v2/ark/conflicts', { action: 'open', topic: tp, agent_a: 'agent_a', position_a: 'Position A', agent_b: 'agent_b', position_b: 'Position B' });
+    if (r && r.case_id) window._lastCaseId = r.case_id;
+    _famShow('fam-ark-coop-out', r);
+  } catch (e) { _famShow('fam-ark-coop-out', { error: String(e.message || e) }); }
+};
+if ($('ark-arb-ev-btn')) $('ark-arb-ev-btn').onclick = async () => {
+  try { _famShow('fam-ark-coop-out', await api('/api/v2/ark/conflicts', { action: 'evidence', case_id: window._lastCaseId || '', note: 'Owner evidence', author: 'owner' })); } catch (e) { _famShow('fam-ark-coop-out', { error: String(e.message || e) }); }
+};
+if ($('ark-arb-res-btn')) $('ark-arb-res-btn').onclick = async () => {
+  try { _famShow('fam-ark-coop-out', await api('/api/v2/ark/conflicts', { action: 'resolve', case_id: window._lastCaseId || '', decision: 'Owner resolution', resolved_by: 'owner' })); } catch (e) { _famShow('fam-ark-coop-out', { error: String(e.message || e) }); }
+};
+if ($('ark-arb-list-btn')) $('ark-arb-list-btn').onclick = async () => {
+  try {
+    const r = await api('/api/v2/ark/conflicts');
+    if (r && r.cases && r.cases[0]) window._lastCaseId = r.cases[0].case_id;
+    _famShow('fam-ark-coop-out', r);
+  } catch (e) { _famShow('fam-ark-coop-out', { error: String(e.message || e) }); }
+};
+
+// === Brain: self-heal, drift, branch ops, proof verify, mesh ops, code-anchor, multimodal, snapshots ===
+if ($('ark-selfheal-btn')) $('ark-selfheal-btn').onclick = async () => {
+  const out = $('ark-drill-out');
+  try { const r = await api('/api/v2/ark/self-heal', {}); if (out) out.textContent = 'self-heal: ' + JSON.stringify(r).slice(0, 220); } catch (e) { if (out) out.textContent = String(e.message || e); }
+};
+if ($('ark-drift-btn')) $('ark-drift-btn').onclick = async () => {
+  const out = $('ark-drill-out');
+  const txt = ($('ark-drift-input') && $('ark-drift-input').value || '').trim() || 'status check';
+  try { const r = await api('/api/v2/ark/drift', { text: txt }); if (out) out.textContent = 'drift: ' + JSON.stringify(r).slice(0, 220); } catch (e) { if (out) out.textContent = String(e.message || e); }
+};
+if ($('ark-branch-rem-btn')) $('ark-branch-rem-btn').onclick = async () => {
+  const bid = ($('ark-branch-id-inp') && $('ark-branch-id-inp').value || '').trim() || window._lastBranchId || '';
+  const txt = ($('ark-branch-text-inp') && $('ark-branch-text-inp').value || '').trim() || 'branch fact';
+  try { const r = await api('/api/v2/ark/branches', { action: 'remember', branch_id: bid, content: txt }); _famShow('ark-branch-out', r); } catch (e) { _famShow('ark-branch-out', { error: String(e.message || e) }); }
+};
+if ($('ark-branch-merge-btn')) $('ark-branch-merge-btn').onclick = async () => {
+  const bid = ($('ark-branch-id-inp') && $('ark-branch-id-inp').value || '').trim() || window._lastBranchId || '';
+  try { const r = await api('/api/v2/ark/branches', { action: 'merge', branch_id: bid }); _famShow('ark-branch-out', r); } catch (e) { _famShow('ark-branch-out', { error: String(e.message || e) }); }
+};
+if ($('ark-branch-abn-btn')) $('ark-branch-abn-btn').onclick = async () => {
+  const bid = ($('ark-branch-id-inp') && $('ark-branch-id-inp').value || '').trim() || window._lastBranchId || '';
+  try { const r = await api('/api/v2/ark/branches', { action: 'abandon', branch_id: bid, reason: 'Studio' }); _famShow('ark-branch-out', r); } catch (e) { _famShow('ark-branch-out', { error: String(e.message || e) }); }
+};
+if ($('ark-proof-verify-btn')) $('ark-proof-verify-btn').onclick = async () => {
+  const out = $('ark-proof-out');
+  try { const r = await api('/api/v2/ark/proof', { verify: true, proof: window._lastProof || {} }); if (out) out.textContent = JSON.stringify(r).slice(0, 240); } catch (e) { if (out) out.textContent = String(e.message || e); }
+};
+if ($('ark-mesh-id-btn')) $('ark-mesh-id-btn').onclick = async () => {
+  try { const r = await api('/api/v2/ark/mesh/identity'); window._lastMeshId = r; _famShow('ark-mesh-out', r); } catch (e) { _famShow('ark-mesh-out', { error: String(e.message || e) }); }
+};
+if ($('ark-mesh-pairinit-btn')) $('ark-mesh-pairinit-btn').onclick = async () => {
+  try {
+    let p = window._lastMeshId || {};
+    const raw = ($('ark-mesh-peer-inp') && $('ark-mesh-peer-inp').value || '').trim();
+    if (raw.startsWith('{')) p = JSON.parse(raw);
+    const r = await api('/api/v2/ark/mesh/pair-init', { peer_identity: p });
+    window._lastMeshInvite = r.pairing_invite || r;
+    _famShow('ark-mesh-out', r);
+  } catch (e) { _famShow('ark-mesh-out', { error: String(e.message || e) }); }
+};
+if ($('ark-mesh-pairacc-btn')) $('ark-mesh-pairacc-btn').onclick = async () => {
+  try {
+    let inv = window._lastMeshInvite || {};
+    const raw = ($('ark-mesh-peer-inp') && $('ark-mesh-peer-inp').value || '').trim();
+    if (raw.startsWith('{')) inv = JSON.parse(raw);
+    const r = await api('/api/v2/ark/mesh/pair-accept', { pairing_invite: inv });
+    _famShow('ark-mesh-out', r);
+  } catch (e) { _famShow('ark-mesh-out', { error: String(e.message || e) }); }
+};
+if ($('ark-mesh-pairconf-btn')) $('ark-mesh-pairconf-btn').onclick = async () => {
+  try {
+    const pid = (window._lastMeshId && window._lastMeshId.node_id) || '';
+    const sas = ($('ark-mesh-sas-inp') && $('ark-mesh-sas-inp').value || '').trim();
+    _famShow('ark-mesh-out', await api('/api/v2/ark/mesh/pair-confirm', { peer_id: pid, sas_code: sas }));
+  } catch (e) { _famShow('ark-mesh-out', { error: String(e.message || e) }); }
+};
+if ($('ark-mesh-delta-btn')) $('ark-mesh-delta-btn').onclick = async () => {
+  try {
+    const r = await api('/api/v2/ark/mesh/delta', {});
+    window._lastMeshDelta = r;
+    _famShow('ark-mesh-out', r);
+  } catch (e) { _famShow('ark-mesh-out', { error: String(e.message || e) }); }
+};
+if ($('ark-mesh-apply-btn')) $('ark-mesh-apply-btn').onclick = async () => {
+  try { _famShow('ark-mesh-out', await api('/api/v2/ark/mesh/apply', { packet: window._lastMeshDelta || {} })); } catch (e) { _famShow('ark-mesh-out', { error: String(e.message || e) }); }
+};
+if ($('ark-anchor-add-btn')) $('ark-anchor-add-btn').onclick = async () => {
+  try {
+    const fp = ($('ark-anchor-path-inp') && $('ark-anchor-path-inp').value || '').trim() || 'padam/studio.py';
+    _famShow('ark-parity-brain-out', await api('/api/v2/ark/code-anchor', { action: 'anchor', memory_id: ($('ark-proof-input') && $('ark-proof-input').value.trim()) || '', file_path: fp }));
+  } catch (e) { _famShow('ark-parity-brain-out', { error: String(e.message || e) }); }
+};
+if ($('ark-anchor-chk-btn')) $('ark-anchor-chk-btn').onclick = async () => {
+  try { _famShow('ark-parity-brain-out', await api('/api/v2/ark/code-anchor', { action: 'check' })); } catch (e) { _famShow('ark-parity-brain-out', { error: String(e.message || e) }); }
+};
+if ($('ark-mm-btn')) $('ark-mm-btn').onclick = async () => {
+  try {
+    const p = ($('ark-mm-path-inp') && $('ark-mm-path-inp').value || '').trim() || 'README.md';
+    _famShow('ark-parity-brain-out', await api('/api/v2/ark/multimodal', { path: p }));
+  } catch (e) { _famShow('ark-parity-brain-out', { error: String(e.message || e) }); }
+};
+if ($('ark-snap-create-btn')) $('ark-snap-create-btn').onclick = async () => {
+  try {
+    const nm = ($('ark-snap-name-inp') && $('ark-snap-name-inp').value || '').trim() || 'studio-snap';
+    const r = await api('/api/v2/snapshots', { action: 'snapshot', name: nm });
+    window._lastSnapId = r.snapshot_id || nm;
+    _famShow('ark-parity-brain-out', r);
+  } catch (e) { _famShow('ark-parity-brain-out', { error: String(e.message || e) }); }
+};
+if ($('ark-snap-list-btn')) $('ark-snap-list-btn').onclick = async () => {
+  try {
+    const r = await api('/api/v2/snapshots');
+    if (r && r.snapshots && r.snapshots[0]) window._lastSnapId = r.snapshots[0].snapshot_id;
+    _famShow('ark-parity-brain-out', r);
+  } catch (e) { _famShow('ark-parity-brain-out', { error: String(e.message || e) }); }
+};
+if ($('ark-snap-diff-btn')) $('ark-snap-diff-btn').onclick = async () => {
+  try {
+    const nm = ($('ark-snap-name-inp') && $('ark-snap-name-inp').value || '').trim() || window._lastSnapId || '';
+    _famShow('ark-parity-brain-out', await api('/api/v2/snapshots', { action: 'diff', snapshot_id: nm }));
+  } catch (e) { _famShow('ark-parity-brain-out', { error: String(e.message || e) }); }
+};
+if ($('ark-snap-rb-btn')) $('ark-snap-rb-btn').onclick = async () => {
+  try {
+    const nm = ($('ark-snap-name-inp') && $('ark-snap-name-inp').value || '').trim() || window._lastSnapId || '';
+    _famShow('ark-parity-brain-out', await api('/api/v2/snapshots', { action: 'rollback', snapshot_id: nm, dry_run: true }));
+  } catch (e) { _famShow('ark-parity-brain-out', { error: String(e.message || e) }); }
+};
+
+// === Earning parity actions ===
+if ($('earn-auto-cfg-btn')) $('earn-auto-cfg-btn').onclick = async () => {
+  try {
+    const pid = ($('earn-wiz-platform') && $('earn-wiz-platform').value) || 'upwork';
+    const r = await api('/api/v2/ark/wizard/action', { action: 'autopilot_config', platform_id: pid });
+    _famShow('earn-accounts-list', r);
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-auto-tick-btn')) $('earn-auto-tick-btn').onclick = async () => {
+  try { const r = await api('/api/v2/ark/freelance/action', { action: 'autopilot_tick' }); _famShow('earn-accounts-list', r); say(S.done); } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-fetch-jobs-btn')) $('earn-fetch-jobs-btn').onclick = async () => {
+  try {
+    const r = await api('/api/v2/ark/freelance/action', { action: 'fetch_jobs', account_id: window._lastAccountId || '', platform: ($('earn-platform') && $('earn-platform').value) || 'upwork_api' });
+    _famShow('earn-orders-list', r);
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-ledger-btn')) $('earn-ledger-btn').onclick = async () => {
+  try { const r = await api('/api/v2/ark/freelance/action', { action: 'agent_ledger' }); _famShow('earn-swarm-list', r); } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-lock-chk-btn')) $('earn-lock-chk-btn').onclick = async () => {
+  try {
+    const ce = ($('earn-job-client') && $('earn-job-client').value || '').trim() || 'client@example.com';
+    const r = await api('/api/v2/ark/freelance/action', { action: 'client_lock_status', client_ref: ce });
+    _famShow('earn-orders-list', r);
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-prop-prof-btn')) $('earn-prop-prof-btn').onclick = async () => {
+  try { const r = await api('/api/v2/ark/freelance/action', { action: 'propose_profile', agent_id: 'aifa' }); _famShow('earn-swarm-list', r); } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-monet-btn')) $('earn-monet-btn').onclick = async () => {
+  try { const r = await api('/api/v2/ark/freelance/action', { action: 'monetization', gross_usdt: 100 }); _famShow('earn-monetization-summary', r); } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-rel-payout-btn')) $('earn-rel-payout-btn').onclick = async () => {
+  try { const r = await api('/api/v2/ark/freelance/action', { action: 'release_payouts' }); _famShow('earn-swarm-list', r); say(S.done); } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-bind-ref-btn')) $('earn-bind-ref-btn').onclick = async () => {
+  try {
+    const rc = ($('earn-ref-inp') && $('earn-ref-inp').value || '').trim() || 'CODE-REF';
+    const r = await api('/api/v2/ark/freelance/action', { action: 'bind_referral', ref_code: rc });
+    _famShow('earn-swarm-list', r);
+    say(S.done);
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-dispute-btn')) $('earn-dispute-btn').onclick = async () => {
+  try { const r = await api('/api/v2/ark/freelance/action', { action: 'dispute_payout', hold_id: '', order_id: window._lastOrderId || '' }); _famShow('earn-swarm-list', r); } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-rec-usage-btn')) $('earn-rec-usage-btn').onclick = async () => {
+  try {
+    const prov = ($('earn-plan-prov') && $('earn-plan-prov').value) || 'primary';
+    const r = await api('/api/v2/ark/budget/action', { action: 'record_usage', provider: prov, tokens: 5000 });
+    _famShow('earn-budget-summary', r);
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-pacing-btn')) $('earn-pacing-btn').onclick = async () => {
+  try {
+    const prov = ($('earn-plan-prov') && $('earn-plan-prov').value) || 'primary';
+    const r = await api('/api/v2/ark/budget/action', { action: 'apply_pacing', provider: prov });
+    _famShow('earn-budget-summary', r);
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-ollama-pull-btn')) $('earn-ollama-pull-btn').onclick = async () => {
+  try {
+    const r = await api('/api/v2/ark/phoenix-beacon/action', {
+      action: 'pull_ollama',
+      ollama_url: ($('earn-ollama-url') && $('earn-ollama-url').value) || 'http://127.0.0.1:11434',
+      model_name: ($('earn-ollama-model') && $('earn-ollama-model').value) || '',
+    });
+    _famShow('earn-ollama-out', r);
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-dev-disp-btn')) $('earn-dev-disp-btn').onclick = async () => {
+  try { _famShow('earn-ollama-out', await api('/api/v2/ark/phoenix-beacon/action', { action: 'dispatch_devices', order_id: 'order-swarm' })); } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-exp-btn')) $('earn-exp-btn').onclick = async () => {
+  try {
+    const txt = ($('earn-exp-inp') && $('earn-exp-inp').value || '').trim() || 'Studio experience';
+    _famShow('earn-beacon-out', await api('/api/v2/ark/phoenix-beacon/action', { action: 'record_experience', agent_id: 'aifa', experience_text: txt, reflection: txt }));
+    say(S.done);
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-kin-send-btn')) $('earn-kin-send-btn').onclick = async () => {
+  try {
+    const txt = ($('earn-kin-msg-inp') && $('earn-kin-msg-inp').value || '').trim() || 'Kin ping';
+    const r = await api('/api/v2/ark/phoenix-beacon/action', { action: 'send_message', agent_id: 'aifa', text: txt });
+    window._lastKinPacket = r;
+    _famShow('earn-beacon-out', r);
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-kin-recv-btn')) $('earn-kin-recv-btn').onclick = async () => {
+  try { _famShow('earn-beacon-out', await api('/api/v2/ark/phoenix-beacon/action', { action: 'receive_message', packet: window._lastKinPacket || {} })); } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-beacon-ver-btn')) $('earn-beacon-ver-btn').onclick = async () => {
+  try { _famShow('earn-beacon-out', await api('/api/v2/ark/phoenix-beacon/action', { action: 'verify_handshake', packet: window._lastBeaconHandshake || {} })); } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-wiz-off-btn')) $('earn-wiz-off-btn').onclick = async () => {
+  try {
+    const pid = ($('earn-wiz-platform') && $('earn-wiz-platform').value) || 'freelancer';
+    const op = ($('earn-wiz-off-op') && $('earn-wiz-off-op').value) || 'whoami';
+    _famShow('earn-wiz-session-out', await api('/api/v2/ark/wizard/action', { action: 'official_api', platform_id: pid, op: op, token: ($('earn-wiz-secret') && $('earn-wiz-secret').value) || '' }));
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-wiz-disp-btn')) $('earn-wiz-disp-btn').onclick = async () => {
+  try {
+    const pid = ($('earn-wiz-platform') && $('earn-wiz-platform').value) || 'upwork';
+    _famShow('earn-wiz-session-out', await api('/api/v2/ark/wizard/action', { action: 'autopilot_dispatch', platform_id: pid }));
+  } catch (e) { say(String(e.message || e), false); }
+};
 
 applyI18n();
 switchTab(activeTab);
@@ -8015,6 +8838,7 @@ def page() -> tuple[str, str]:
             <label for="backup-file-input" data-i18n="bak_file_label">{s['bak_file_label']}</label>
             <input id="backup-file-input" type="file" accept=".padambak">
             <button id="backup-restore-btn" data-i18n="bak_restore_btn">{s['bak_restore_btn']}</button>
+            <button id="backup-export-json-btn" data-i18n="backup_export_json_btn">{s['backup_export_json_btn']}</button>
           </div>
           <div id="backup-result" class="panel-sub" aria-live="polite"></div>
         </div>
@@ -8283,6 +9107,78 @@ def page() -> tuple[str, str]:
           </div>
           <h4 class="box-title" data-i18n="ff_reflex_title">{s['ff_reflex_title']}</h4>
           <div id="ff-reflexes"></div>
+          <div class="toolbar">
+            <input id="ff-ref-trig-inp" type="text" data-i18n-placeholder="ff_ref_trig_ph" data-i18n-aria="ff_ref_trig_ph" placeholder="{s['ff_ref_trig_ph']}" aria-label="{s['ff_ref_trig_ph']}">
+            <input id="ff-ref-resp-inp" type="text" data-i18n-placeholder="ff_ref_resp_ph" data-i18n-aria="ff_ref_resp_ph" placeholder="{s['ff_ref_resp_ph']}" aria-label="{s['ff_ref_resp_ph']}">
+          </div>
+          <div class="rec-actions">
+            <button id="ff-ref-propose-btn" data-i18n="ff_ref_propose_btn">{s['ff_ref_propose_btn']}</button>
+            <button id="ff-ref-match-btn" data-i18n="ff_ref_match_btn">{s['ff_ref_match_btn']}</button>
+          </div>
+          <div id="ff-ref-out" class="panel-sub"></div>
+        </div>
+        <div class="box" id="fam-ark-ops-box">
+          <h3 class="box-title" data-i18n="fam_ops_title">{s['fam_ops_title']}</h3>
+          <p class="panel-sub" data-i18n="fam_ops_sub">{s['fam_ops_sub']}</p>
+          <div class="rec-actions">
+            <button id="ark-wakeup-btn" class="btn-primary" data-i18n="ark_wakeup_btn">{s['ark_wakeup_btn']}</button>
+            <button id="ark-sespack-btn" data-i18n="ark_sespack_btn">{s['ark_sespack_btn']}</button>
+            <button id="ark-tl-btn" data-i18n="ark_tl_btn">{s['ark_tl_btn']}</button>
+            <button id="ark-telem-btn" data-i18n="ark_telem_btn">{s['ark_telem_btn']}</button>
+            <button id="ark-batch-btn" data-i18n="ark_batch_btn">{s['ark_batch_btn']}</button>
+          </div>
+          <div id="fam-ark-ops-out" class="panel-sub"></div>
+          <div class="toolbar">
+            <input id="ark-comm-title-inp" type="text" data-i18n-placeholder="ark_comm_title_ph" data-i18n-aria="ark_comm_title_ph" placeholder="{s['ark_comm_title_ph']}" aria-label="{s['ark_comm_title_ph']}">
+            <button id="ark-comm-add-btn" class="btn-primary" data-i18n="ark_comm_add_btn">{s['ark_comm_add_btn']}</button>
+            <button id="ark-comm-list-btn" data-i18n="ark_comm_list_btn">{s['ark_comm_list_btn']}</button>
+            <button id="ark-comm-done-btn" data-i18n="ark_comm_done_btn">{s['ark_comm_done_btn']}</button>
+          </div>
+          <div class="rec-actions">
+            <button id="ark-ckpt-save-btn" data-i18n="ark_ckpt_save_btn">{s['ark_ckpt_save_btn']}</button>
+            <button id="ark-ckpt-latest-btn" data-i18n="ark_ckpt_latest_btn">{s['ark_ckpt_latest_btn']}</button>
+          </div>
+          <div class="toolbar">
+            <input id="ark-lesson-inp" type="text" data-i18n-placeholder="ark_lesson_ph" data-i18n-aria="ark_lesson_ph" placeholder="{s['ark_lesson_ph']}" aria-label="{s['ark_lesson_ph']}">
+            <button id="ark-lesson-rec-btn" data-i18n="ark_lesson_rec_btn">{s['ark_lesson_rec_btn']}</button>
+            <button id="ark-lesson-list-btn" data-i18n="ark_lesson_list_btn">{s['ark_lesson_list_btn']}</button>
+          </div>
+          <div class="toolbar">
+            <input id="ark-relay-to-inp" type="text" value="all" data-i18n-placeholder="ark_relay_to_ph" data-i18n-aria="ark_relay_to_ph" placeholder="{s['ark_relay_to_ph']}" aria-label="{s['ark_relay_to_ph']}">
+            <input id="ark-relay-msg-inp" type="text" data-i18n-placeholder="ark_relay_msg_ph" data-i18n-aria="ark_relay_msg_ph" placeholder="{s['ark_relay_msg_ph']}" aria-label="{s['ark_relay_msg_ph']}">
+            <button id="ark-relay-send-btn" data-i18n="ark_relay_send_btn">{s['ark_relay_send_btn']}</button>
+            <button id="ark-relay-inbox-btn" data-i18n="ark_relay_inbox_btn">{s['ark_relay_inbox_btn']}</button>
+            <button id="ark-relay-ack-btn" data-i18n="ark_relay_ack_btn">{s['ark_relay_ack_btn']}</button>
+          </div>
+          <div id="fam-ark-comm-out" class="panel-sub"></div>
+          <div class="rec-actions">
+            <button id="ark-sib-hb-btn" data-i18n="ark_sib_hb_btn">{s['ark_sib_hb_btn']}</button>
+            <button id="ark-sib-pass-btn" data-i18n="ark_sib_pass_btn">{s['ark_sib_pass_btn']}</button>
+            <button id="ark-sib-sign-btn" data-i18n="ark_sib_sign_btn">{s['ark_sib_sign_btn']}</button>
+            <button id="ark-sib-ver-btn" data-i18n="ark_sib_ver_btn">{s['ark_sib_ver_btn']}</button>
+          </div>
+          <div class="toolbar">
+            <input id="ark-coop-key-inp" type="text" data-i18n-placeholder="ark_coop_key_ph" data-i18n-aria="ark_coop_key_ph" placeholder="{s['ark_coop_key_ph']}" aria-label="{s['ark_coop_key_ph']}">
+            <button id="ark-coop-acq-btn" data-i18n="ark_coop_acq_btn">{s['ark_coop_acq_btn']}</button>
+            <button id="ark-coop-ren-btn" data-i18n="ark_coop_ren_btn">{s['ark_coop_ren_btn']}</button>
+            <button id="ark-coop-rel-btn" data-i18n="ark_coop_rel_btn">{s['ark_coop_rel_btn']}</button>
+            <button id="ark-coop-relall-btn" data-i18n="ark_coop_relall_btn">{s['ark_coop_relall_btn']}</button>
+          </div>
+          <div class="toolbar">
+            <input id="ark-coop-task-inp" type="text" data-i18n-placeholder="ark_coop_task_ph" data-i18n-aria="ark_coop_task_ph" placeholder="{s['ark_coop_task_ph']}" aria-label="{s['ark_coop_task_ph']}">
+            <button id="ark-coop-tcreate-btn" data-i18n="ark_coop_tcreate_btn">{s['ark_coop_tcreate_btn']}</button>
+            <button id="ark-coop-tclaim-btn" data-i18n="ark_coop_tclaim_btn">{s['ark_coop_tclaim_btn']}</button>
+            <button id="ark-coop-tdone-btn" data-i18n="ark_coop_tdone_btn">{s['ark_coop_tdone_btn']}</button>
+            <button id="ark-coop-list-btn" data-i18n="ark_coop_list_btn">{s['ark_coop_list_btn']}</button>
+          </div>
+          <div class="toolbar">
+            <input id="ark-arb-topic-inp" type="text" data-i18n-placeholder="ark_arb_topic_ph" data-i18n-aria="ark_arb_topic_ph" placeholder="{s['ark_arb_topic_ph']}" aria-label="{s['ark_arb_topic_ph']}">
+            <button id="ark-arb-open-btn" data-i18n="ark_arb_open_btn">{s['ark_arb_open_btn']}</button>
+            <button id="ark-arb-ev-btn" data-i18n="ark_arb_ev_btn">{s['ark_arb_ev_btn']}</button>
+            <button id="ark-arb-res-btn" data-i18n="ark_arb_res_btn">{s['ark_arb_res_btn']}</button>
+            <button id="ark-arb-list-btn" data-i18n="ark_arb_list_btn">{s['ark_arb_list_btn']}</button>
+          </div>
+          <div id="fam-ark-coop-out" class="panel-sub"></div>
         </div>
       </section>
       <section id="panel-brain" role="tabpanel" aria-labelledby="tab-brain" hidden>
@@ -8329,7 +9225,12 @@ def page() -> tuple[str, str]:
             <button id="ark-audit-btn" data-i18n="ark_audit_btn">{s['ark_audit_btn']}</button>
             <button id="ark-drill-btn" class="btn-primary" data-i18n="ark_drill_btn">{s['ark_drill_btn']}</button>
             <button id="ark-shamir-btn" data-i18n="ark_shamir_btn">{s['ark_shamir_btn']}</button>
+            <button id="ark-selfheal-btn" data-i18n="ark_selfheal_btn">{s['ark_selfheal_btn']}</button>
             <p class="panel-sub" data-i18n="ark_shamir_warn">{s['ark_shamir_warn']}</p>
+          </div>
+          <div class="toolbar">
+            <input id="ark-drift-input" type="text" data-i18n-placeholder="ark_drift_ph" data-i18n-aria="ark_drift_ph" placeholder="{s['ark_drift_ph']}" aria-label="{s['ark_drift_ph']}">
+            <button id="ark-drift-btn" data-i18n="ark_drift_btn">{s['ark_drift_btn']}</button>
           </div>
           <p id="ark-drill-out" class="panel-sub"></p>
         </div>
@@ -8337,10 +9238,17 @@ def page() -> tuple[str, str]:
           <h3 class="box-title" data-i18n="ark_branch_title">{s['ark_branch_title']}</h3>
           <div class="toolbar">
             <input id="ark-branch-input" type="text" data-i18n-placeholder="ark_branch_ph" placeholder="{s['ark_branch_ph']}">
+            <input id="ark-branch-id-inp" type="text" data-i18n-placeholder="ark_branch_id_ph" data-i18n-aria="ark_branch_id_ph" placeholder="{s['ark_branch_id_ph']}" aria-label="{s['ark_branch_id_ph']}">
+          </div>
+          <div class="toolbar">
+            <input id="ark-branch-text-inp" type="text" data-i18n-placeholder="ark_branch_text_ph" data-i18n-aria="ark_branch_text_ph" placeholder="{s['ark_branch_text_ph']}" aria-label="{s['ark_branch_text_ph']}">
           </div>
           <div class="rec-actions">
             <button id="ark-branch-create-btn" class="btn-primary" data-i18n="ark_branch_create_btn">{s['ark_branch_create_btn']}</button>
             <button id="ark-branch-list-btn" data-i18n="ark_branch_list_btn">{s['ark_branch_list_btn']}</button>
+            <button id="ark-branch-rem-btn" data-i18n="ark_branch_rem_btn">{s['ark_branch_rem_btn']}</button>
+            <button id="ark-branch-merge-btn" data-i18n="ark_branch_merge_btn">{s['ark_branch_merge_btn']}</button>
+            <button id="ark-branch-abn-btn" data-i18n="ark_branch_abn_btn">{s['ark_branch_abn_btn']}</button>
           </div>
           <div id="ark-branch-out"></div>
         </div>
@@ -8351,6 +9259,7 @@ def page() -> tuple[str, str]:
           </div>
           <div class="rec-actions">
             <button id="ark-proof-btn" data-i18n="ark_proof_btn">{s['ark_proof_btn']}</button>
+            <button id="ark-proof-verify-btn" data-i18n="ark_proof_verify_btn">{s['ark_proof_verify_btn']}</button>
           </div>
           <div id="ark-proof-out"></div>
         </div>
@@ -8358,7 +9267,19 @@ def page() -> tuple[str, str]:
           <h3 class="box-title" data-i18n="ark_mesh_title">{s['ark_mesh_title']}</h3>
           <div class="rec-actions">
             <button id="ark-mesh-btn" data-i18n="ark_mesh_btn">{s['ark_mesh_btn']}</button>
+            <button id="ark-mesh-id-btn" data-i18n="ark_mesh_id_btn">{s['ark_mesh_id_btn']}</button>
             <button id="ark-guardian-btn" class="btn-primary" data-i18n="ark_guardian_btn">{s['ark_guardian_btn']}</button>
+          </div>
+          <div class="toolbar">
+            <input id="ark-mesh-peer-inp" type="text" data-i18n-placeholder="ark_mesh_peer_ph" data-i18n-aria="ark_mesh_peer_ph" placeholder="{s['ark_mesh_peer_ph']}" aria-label="{s['ark_mesh_peer_ph']}">
+            <input id="ark-mesh-sas-inp" type="text" data-i18n-placeholder="ark_mesh_sas_ph" data-i18n-aria="ark_mesh_sas_ph" placeholder="{s['ark_mesh_sas_ph']}" aria-label="{s['ark_mesh_sas_ph']}">
+          </div>
+          <div class="rec-actions">
+            <button id="ark-mesh-pairinit-btn" data-i18n="ark_mesh_pairinit_btn">{s['ark_mesh_pairinit_btn']}</button>
+            <button id="ark-mesh-pairacc-btn" data-i18n="ark_mesh_pairacc_btn">{s['ark_mesh_pairacc_btn']}</button>
+            <button id="ark-mesh-pairconf-btn" data-i18n="ark_mesh_pairconf_btn">{s['ark_mesh_pairconf_btn']}</button>
+            <button id="ark-mesh-delta-btn" data-i18n="ark_mesh_delta_btn">{s['ark_mesh_delta_btn']}</button>
+            <button id="ark-mesh-apply-btn" data-i18n="ark_mesh_apply_btn">{s['ark_mesh_apply_btn']}</button>
           </div>
           <div id="ark-mesh-out"></div>
         </div>
@@ -8394,6 +9315,26 @@ def page() -> tuple[str, str]:
             <button id="ark-budget-btn" class="btn-primary" data-i18n="ark_budget_btn">{s['ark_budget_btn']}</button>
           </div>
           <div id="ark-budget-out"></div>
+        </div>
+        <div class="box" id="ark-parity-brain-box">
+          <h3 class="box-title" data-i18n="ark_parity_brain_title">{s['ark_parity_brain_title']}</h3>
+          <div class="toolbar">
+            <input id="ark-anchor-path-inp" type="text" data-i18n-placeholder="ark_anchor_path_ph" data-i18n-aria="ark_anchor_path_ph" placeholder="{s['ark_anchor_path_ph']}" aria-label="{s['ark_anchor_path_ph']}">
+            <button id="ark-anchor-add-btn" data-i18n="ark_anchor_add_btn">{s['ark_anchor_add_btn']}</button>
+            <button id="ark-anchor-chk-btn" data-i18n="ark_anchor_chk_btn">{s['ark_anchor_chk_btn']}</button>
+          </div>
+          <div class="toolbar">
+            <input id="ark-mm-path-inp" type="text" data-i18n-placeholder="ark_mm_path_ph" data-i18n-aria="ark_mm_path_ph" placeholder="{s['ark_mm_path_ph']}" aria-label="{s['ark_mm_path_ph']}">
+            <button id="ark-mm-btn" data-i18n="ark_mm_btn">{s['ark_mm_btn']}</button>
+          </div>
+          <div class="toolbar">
+            <input id="ark-snap-name-inp" type="text" data-i18n-placeholder="ark_snap_name_ph" data-i18n-aria="ark_snap_name_ph" placeholder="{s['ark_snap_name_ph']}" aria-label="{s['ark_snap_name_ph']}">
+            <button id="ark-snap-create-btn" data-i18n="ark_snap_create_btn">{s['ark_snap_create_btn']}</button>
+            <button id="ark-snap-list-btn" data-i18n="ark_snap_list_btn">{s['ark_snap_list_btn']}</button>
+            <button id="ark-snap-diff-btn" data-i18n="ark_snap_diff_btn">{s['ark_snap_diff_btn']}</button>
+            <button id="ark-snap-rb-btn" data-i18n="ark_snap_rb_btn">{s['ark_snap_rb_btn']}</button>
+          </div>
+          <div id="ark-parity-brain-out" class="panel-sub"></div>
         </div>
       </section>
       <section id="panel-earning" role="tabpanel" aria-labelledby="tab-earning" hidden>
@@ -8432,6 +9373,8 @@ def page() -> tuple[str, str]:
             <div class="rec-actions">
               <button id="earn-auto-start-btn" class="btn-ok" data-i18n="earn_auto_start_btn">{s['earn_auto_start_btn']}</button>
               <button id="earn-auto-stop-btn" class="btn-danger" data-i18n="earn_auto_stop_btn">{s['earn_auto_stop_btn']}</button>
+              <button id="earn-auto-tick-btn" data-i18n="earn_auto_tick_btn">{s['earn_auto_tick_btn']}</button>
+              <button id="earn-auto-cfg-btn" data-i18n="earn_auto_cfg_btn">{s['earn_auto_cfg_btn']}</button>
             </div>
             <div id="earn-accounts-list" class="earn-stack"></div>
           </div>
@@ -8468,6 +9411,8 @@ def page() -> tuple[str, str]:
             </div>
             <div class="rec-actions">
               <button id="earn-eval-btn" class="btn-primary" data-i18n="earn_job_eval_btn">{s['earn_job_eval_btn']}</button>
+              <button id="earn-fetch-jobs-btn" data-i18n="earn_fetch_jobs_btn">{s['earn_fetch_jobs_btn']}</button>
+              <button id="earn-lock-chk-btn" data-i18n="earn_lock_chk_btn">{s['earn_lock_chk_btn']}</button>
             </div>
             <div id="earn-orders-list" class="earn-stack"></div>
           </div>
@@ -8490,6 +9435,8 @@ def page() -> tuple[str, str]:
               <button id="earn-propose-btn" data-i18n="earn_propose_btn">{s['earn_propose_btn']}</button>
               <button id="earn-rec-spend-btn" data-i18n="earn_rec_spend_btn">{s['earn_rec_spend_btn']}</button>
               <button id="earn-propose-sub-btn" class="btn-ok" data-i18n="earn_propose_sub_btn">{s['earn_propose_sub_btn']}</button>
+              <button id="earn-rec-usage-btn" data-i18n="earn_rec_usage_btn">{s['earn_rec_usage_btn']}</button>
+              <button id="earn-pacing-btn" data-i18n="earn_pacing_btn">{s['earn_pacing_btn']}</button>
             </div>
             <div id="earn-spend-rec-out" class="earn-stack"></div>
             <div id="earn-budget-summary" class="earn-stack"></div>
@@ -8511,6 +9458,15 @@ def page() -> tuple[str, str]:
                 <option value="GALATIN">GALATIN</option>
               </select>
               <button id="earn-prefs-save-btn" class="btn-primary" data-i18n="earn_prefs_save_btn">{s['earn_prefs_save_btn']}</button>
+              <button id="earn-ledger-btn" data-i18n="earn_ledger_btn">{s['earn_ledger_btn']}</button>
+              <button id="earn-prop-prof-btn" data-i18n="earn_prop_prof_btn">{s['earn_prop_prof_btn']}</button>
+              <button id="earn-monet-btn" data-i18n="earn_monet_btn">{s['earn_monet_btn']}</button>
+              <button id="earn-rel-payout-btn" data-i18n="earn_rel_payout_btn">{s['earn_rel_payout_btn']}</button>
+              <button id="earn-dispute-btn" data-i18n="earn_dispute_btn">{s['earn_dispute_btn']}</button>
+            </div>
+            <div class="toolbar">
+              <input id="earn-ref-inp" type="text" data-i18n-placeholder="earn_ref_ph" data-i18n-aria="earn_ref_ph" placeholder="{s['earn_ref_ph']}" aria-label="{s['earn_ref_ph']}">
+              <button id="earn-bind-ref-btn" data-i18n="earn_bind_ref_btn">{s['earn_bind_ref_btn']}</button>
             </div>
             <div id="earn-swarm-list" class="earn-stack"></div>
             <div id="earn-monetization-summary" class="earn-stack"></div>
@@ -8525,7 +9481,9 @@ def page() -> tuple[str, str]:
             </div>
             <div class="rec-actions">
               <button id="earn-ollama-btn" class="btn-primary" data-i18n="earn_ollama_btn">{s['earn_ollama_btn']}</button>
+              <button id="earn-ollama-pull-btn" data-i18n="earn_ollama_pull_btn">{s['earn_ollama_pull_btn']}</button>
               <button id="earn-dev-btn" data-i18n="earn_dev_btn">{s['earn_dev_btn']}</button>
+              <button id="earn-dev-disp-btn" data-i18n="earn_dev_disp_btn">{s['earn_dev_disp_btn']}</button>
               <button id="earn-hw-rec-btn" data-i18n="earn_hw_rec_btn">{s['earn_hw_rec_btn']}</button>
             </div>
             <div id="earn-ollama-out" class="earn-stack"></div>
@@ -8536,6 +9494,16 @@ def page() -> tuple[str, str]:
             <div class="rec-actions">
               <button id="earn-lora-evo-btn" class="btn-primary" data-i18n="earn_lora_btn">{s['earn_lora_btn']}</button>
               <button id="earn-beacon-btn" data-i18n="earn_beacon_btn">{s['earn_beacon_btn']}</button>
+              <button id="earn-beacon-ver-btn" data-i18n="earn_beacon_ver_btn">{s['earn_beacon_ver_btn']}</button>
+            </div>
+            <div class="toolbar">
+              <input id="earn-exp-inp" type="text" data-i18n-placeholder="earn_exp_ph" data-i18n-aria="earn_exp_ph" placeholder="{s['earn_exp_ph']}" aria-label="{s['earn_exp_ph']}">
+              <button id="earn-exp-btn" data-i18n="earn_exp_btn">{s['earn_exp_btn']}</button>
+            </div>
+            <div class="toolbar">
+              <input id="earn-kin-msg-inp" type="text" data-i18n-placeholder="earn_kin_msg_ph" data-i18n-aria="earn_kin_msg_ph" placeholder="{s['earn_kin_msg_ph']}" aria-label="{s['earn_kin_msg_ph']}">
+              <button id="earn-kin-send-btn" data-i18n="earn_kin_send_btn">{s['earn_kin_send_btn']}</button>
+              <button id="earn-kin-recv-btn" data-i18n="earn_kin_recv_btn">{s['earn_kin_recv_btn']}</button>
             </div>
             <div id="earn-beacon-out" class="earn-stack"></div>
           </div>
@@ -8598,6 +9566,15 @@ def page() -> tuple[str, str]:
             <div class="rec-actions">
               <button id="earn-wiz-google-btn" class="btn-primary" data-i18n="earn_wiz_google_btn">{s['earn_wiz_google_btn']}</button>
               <button id="earn-wiz-login-btn" class="btn-ok" data-i18n="earn_wiz_login_btn">{s['earn_wiz_login_btn']}</button>
+              <button id="earn-wiz-disp-btn" data-i18n="earn_wiz_disp_btn">{s['earn_wiz_disp_btn']}</button>
+            </div>
+            <div class="toolbar">
+              <select id="earn-wiz-off-op" data-i18n-aria="earn_wiz_off_op_lbl" aria-label="{s['earn_wiz_off_op_lbl']}">
+                <option value="whoami">whoami</option>
+                <option value="search_projects">search_projects</option>
+                <option value="place_bid">place_bid</option>
+              </select>
+              <button id="earn-wiz-off-btn" data-i18n="earn_wiz_off_btn">{s['earn_wiz_off_btn']}</button>
             </div>
             <div id="earn-wiz-session-out" class="earn-meta"></div>
             <div class="toolbar">

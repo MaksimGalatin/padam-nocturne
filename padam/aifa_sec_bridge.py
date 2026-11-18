@@ -34,6 +34,15 @@ def get_aifa_security_report(*, run_fresh: bool = False, target: str = "padam", 
             "error": "benchmarks/aifa_security package not found in this distribution",
         }
 
-    rep = run_aifa_sec.run_aifa_security(target=target, target_path=target_path)
+    saved_api_state = None
+    _api_mod = sys.modules.get("padam.api")
+    if _api_mod is not None and hasattr(_api_mod, "_state"):
+        saved_api_state = dict(_api_mod._state)
+    try:
+        rep = run_aifa_sec.run_aifa_security(target=target, target_path=target_path)
+    finally:
+        if _api_mod is not None and saved_api_state is not None:
+            _api_mod._state.clear()
+            _api_mod._state.update(saved_api_state)
     rep["cached"] = False
     return rep

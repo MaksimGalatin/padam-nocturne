@@ -470,15 +470,21 @@ class Handler(BaseHTTPRequestHandler):
                 from . import ark as _ark
                 qs = parse_qs(путь.query)
                 agent = str((qs.get("agent") or ["aifa"])[0])
-                return self._send(200, _ark.wake_up_briefing(mem(), agent=agent))
+                with mem().store._lock:
+                    res = _ark.wake_up_briefing(mem(), agent=agent)
+                return self._send(200, res)
             if путь.path == "/api/v2/ark/health":
                 roles.require_owner(actor, "brain_status")
                 from . import ark as _ark
-                return self._send(200, _ark.ark_health_score(mem()))
+                with mem().store._lock:
+                    res = _ark.ark_health_score(mem())
+                return self._send(200, res)
             if путь.path == "/api/v2/ark/audit-verify":
                 roles.require_owner(actor, "brain_status")
                 from . import audit_chain as _ac
-                return self._send(200, _ac.verify_audit_chain(mem()))
+                with mem().store._lock:
+                    res = _ac.verify_audit_chain(mem())
+                return self._send(200, res)
             if путь.path == "/api/v2/ark/jobs":
                 roles.require_owner(actor, "brain_status")
                 jobs_dict = _state.setdefault("ark_jobs", {})
@@ -486,15 +492,99 @@ class Handler(BaseHTTPRequestHandler):
             if self.path.startswith("/api/v2/ark/guardian-tick"):
                 roles.require_owner(actor, "brain_status")
                 from . import ark_advanced as _adv
-                return self._send(200, _adv.run_guardian_tick(mem()))
+                with mem().store._lock:
+                    res = _adv.run_guardian_tick(mem())
+                return self._send(200, res)
             if self.path.startswith("/api/v2/ark/branches"):
                 roles.require_owner(actor, "brain_status")
                 from . import ark_advanced as _adv
-                return self._send(200, {"branches": _adv.list_branches(mem())})
+                with mem().store._lock:
+                    res = {"branches": _adv.list_branches(mem())}
+                return self._send(200, res)
+            if путь.path == "/api/v2/ark/mesh/identity":
+                roles.require_owner(actor, "brain_status")
+                from . import live_mesh as _mesh
+                qs_m = parse_qs(путь.query)
+                with mem().store._lock:
+                    res = _mesh.get_or_create_node_identity(
+                        mem(),
+                        device_name=(qs_m.get("device_name") or ["Primary-Node"])[0],
+                        device_type=(qs_m.get("device_type") or ["pc"])[0],
+                    )
+                return self._send(200, res)
             if self.path.startswith("/api/v2/ark/mesh/peers"):
                 roles.require_owner(actor, "brain_status")
                 from . import live_mesh as _mesh
-                return self._send(200, {"node": _mesh.get_or_create_node_identity(mem()), "peers": _mesh.list_peers(mem())})
+                with mem().store._lock:
+                    res = {"node": _mesh.get_or_create_node_identity(mem()), "peers": _mesh.list_peers(mem())}
+                return self._send(200, res)
+            if путь.path == "/api/v2/ark/commitments":
+                roles.require_owner(actor, "brain_status")
+                from . import ark as _ark
+                st_f = (parse_qs(путь.query).get("status") or [None])[0] or None
+                with mem().store._lock:
+                    res = {"commitments": _ark.list_commitments(mem(), status=st_f)}
+                return self._send(200, res)
+            if путь.path == "/api/v2/ark/relay":
+                roles.require_owner(actor, "brain_status")
+                from . import ark as _ark
+                qs_r = parse_qs(путь.query)
+                with mem().store._lock:
+                    res = {"inbox": _ark.read_family_inbox(
+                        mem(),
+                        to_agent=(qs_r.get("to_agent") or [None])[0] or None,
+                        limit=int((qs_r.get("limit") or ["20"])[0] or 20),
+                    )}
+                return self._send(200, res)
+            if путь.path == "/api/v2/ark/checkpoint":
+                roles.require_owner(actor, "brain_status")
+                from . import ark as _ark
+                sid = (parse_qs(путь.query).get("session_id") or [None])[0] or None
+                with mem().store._lock:
+                    res = {"checkpoint": _ark.latest_checkpoint(mem(), session_id=sid)}
+                return self._send(200, res)
+            if путь.path == "/api/v2/ark/timeline":
+                roles.require_owner(actor, "brain_status")
+                from . import ark as _ark
+                qs_t = parse_qs(путь.query)
+                with mem().store._lock:
+                    res = {"timeline": _ark.build_timeline(
+                        mem(),
+                        query=(qs_t.get("query") or [None])[0] or None,
+                        since=(qs_t.get("since") or [None])[0] or None,
+                        limit=int((qs_t.get("limit") or ["25"])[0] or 25),
+                    )}
+                return self._send(200, res)
+            if путь.path == "/api/v2/ark/lessons":
+                roles.require_owner(actor, "brain_status")
+                from . import ark as _ark
+                lim_l = int((parse_qs(путь.query).get("limit") or ["15"])[0] or 15)
+                with mem().store._lock:
+                    res = {"lessons": _ark.list_lessons(mem(), limit=lim_l)}
+                return self._send(200, res)
+            if путь.path == "/api/v2/ark/conflicts":
+                roles.require_owner(actor, "brain_status")
+                from . import conflict_arbiter as _arb
+                st_c = (parse_qs(путь.query).get("status") or [None])[0] or None
+                with mem().store._lock:
+                    res = {"cases": _arb.list_conflict_cases(mem(), status=st_c)}
+                return self._send(200, res)
+            if путь.path == "/api/v2/ark/code-anchor":
+                roles.require_owner(actor, "brain_status")
+                from . import code_anchor as _ca
+                root_ca = (parse_qs(путь.query).get("repo_root") or ["."])[0] or "."
+                with mem().store._lock:
+                    res = _ca.check_stale_anchors(mem(), repo_root=root_ca)
+                return self._send(200, res)
+            if путь.path == "/api/v2/snapshots":
+                roles.require_owner(actor, "rollback")
+                qs_sn = parse_qs(путь.query)
+                with mem().store._lock:
+                    res = {"snapshots": mem().snapshots(
+                        scope=(qs_sn.get("scope") or [None])[0] or None,
+                        limit=int((qs_sn.get("limit") or ["20"])[0] or 20),
+                    )}
+                return self._send(200, res)
             if путь.path == "/api/v2/local-model":
                 roles.require_owner(actor, "settings")
                 from . import local_model as _lm
@@ -505,8 +595,10 @@ class Handler(BaseHTTPRequestHandler):
                 q = parse_qs(путь.query)
                 ch = q.get("channel", ["work"])[0]
                 try:
-                    return self._send(200, {"channel": ch, "items": _ff.read(mem(), ch, limit=int(q.get("limit", ["30"])[0] or 30)),
-                                            "counts": _ff.counts(mem())})
+                    with mem().store._lock:
+                        res = {"channel": ch, "items": _ff.read(mem(), ch, limit=int(q.get("limit", ["30"])[0] or 30)),
+                               "counts": _ff.counts(mem())}
+                    return self._send(200, res)
                 except ValueError as _e:
                     return self._send(400, {"error": str(_e)})
             if путь.path == "/api/v2/family/reflexes":
@@ -514,7 +606,9 @@ class Handler(BaseHTTPRequestHandler):
                 from . import family_feeds as _ff
                 st = parse_qs(путь.query).get("status", [""])[0] or None
                 try:
-                    return self._send(200, {"reflexes": _ff.list_reflexes(mem(), status=st)})
+                    with mem().store._lock:
+                        res = {"reflexes": _ff.list_reflexes(mem(), status=st)}
+                    return self._send(200, res)
                 except ValueError as _e:
                     return self._send(400, {"error": str(_e)})
             if путь.path == "/api/v2/ark/readiness":
@@ -525,7 +619,9 @@ class Handler(BaseHTTPRequestHandler):
                 roles.require_owner(actor, "brain_status")
                 from . import reflex_engine as _rf
                 q = parse_qs(путь.query).get("action", [""])[0]
-                return self._send(200, _rf.surface_reflex_hints(mem(), q))
+                with mem().store._lock:
+                    res = _rf.surface_reflex_hints(mem(), q)
+                return self._send(200, res)
             if путь.path == "/api/v2/ark/siblings":
                 roles.require_owner(actor, "brain_status")
                 from . import sibling_registry as _sr
@@ -543,21 +639,26 @@ class Handler(BaseHTTPRequestHandler):
                 roles.require_owner(actor, "brain_status")
                 from . import session_pack as _sp
                 qs_sp = parse_qs(путь.query)
-                return self._send(200, _sp.build_session_pack(
-                    mem(),
-                    agent_id=(qs_sp.get("agent") or ["aifa"])[0],
-                    topic=(qs_sp.get("topic") or [""])[0],
-                    max_tokens=int((qs_sp.get("max_tokens") or ["1200"])[0]),
-                ))
+                with mem().store._lock:
+                    res = _sp.build_session_pack(
+                        mem(),
+                        agent_id=(qs_sp.get("agent") or ["aifa"])[0],
+                        topic=(qs_sp.get("topic") or [""])[0],
+                        max_tokens=int((qs_sp.get("max_tokens") or ["1200"])[0]),
+                    )
+                return self._send(200, res)
             if путь.path == "/api/v2/ark/mcp-telemetry":
                 roles.require_owner(actor, "brain_status")
                 from . import mcp_server as _ms, mcp_telemetry as _mt
-                return self._send(200, _mt.inspect_mcp_telemetry(_ms._list_tools_payload(), memory_stats=mem().stats(actor=actor)))
+                with mem().store._lock:
+                    res = _mt.inspect_mcp_telemetry(_ms._list_tools_payload(), memory_stats=mem().stats(actor=actor))
+                return self._send(200, res)
             if путь.path == "/api/v2/ark/budget":
                 roles.require_owner(actor, "brain_status")
                 from . import token_autonomy as _ta
-                rep = _ta.run_budget_timer_tick(mem(), auto_propose_if_low=False)
-                rep["proposals"] = _ta.list_topup_proposals(mem())
+                with mem().store._lock:
+                    rep = _ta.run_budget_timer_tick(mem(), auto_propose_if_low=False)
+                    rep["proposals"] = _ta.list_topup_proposals(mem())
                 return self._send(200, rep)
             if путь.path == "/api/v2/ark/freelance":
                 roles.require_owner(actor, "brain_status")
@@ -1485,31 +1586,73 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == "/api/v2/ark/siblings":
                 roles.require_owner(actor, "ark_siblings")
                 from . import sibling_registry as _sr
-                if data.get("action") == "passport":
-                    return self._send(200, _sr.spawn_sibling_passport(
-                        mem(), str(data.get("agent_id") or ""),
-                        role=str(data.get("role") or "Autonomous family sibling"),
-                        client_type=str(data.get("client_type") or "claude_code"),
-                        permission_role=str(data.get("permission_role") or "contributor"),
-                    ))
-                return self._send(200, _sr.register_sibling(
-                    mem(), str(data.get("agent_id") or ""),
-                    role=str(data.get("role") or "Autonomous sibling agent"),
-                    client_type=str(data.get("client_type") or "mcp_stdio"),
-                    permission_role=str(data.get("permission_role") or "contributor"),
-                ))
+                act_s = str(data.get("action") or "register").lower()
+                aid_s = str(data.get("agent_id") or "aifa_studio")
+                try:
+                    with mem().store._lock:
+                        if act_s == "passport":
+                            res_sb = _sr.spawn_sibling_passport(
+                                mem(), aid_s,
+                                role=str(data.get("role") or "Autonomous family sibling"),
+                                client_type=str(data.get("client_type") or "claude_code"),
+                                permission_role=str(data.get("permission_role") or "contributor"),
+                            )
+                        elif act_s == "heartbeat":
+                            res_sb = _sr.heartbeat_sibling(
+                                mem(), aid_s,
+                                status=str(data.get("status") or "online"),
+                                current_task=data.get("current_task"),
+                            )
+                        elif act_s == "sign_provenance":
+                            res_sb = _sr.sign_sibling_envelope(mem(), aid_s, str(data.get("content") or ""))
+                        elif act_s == "verify_provenance":
+                            env_obj = data.get("envelope")
+                            if isinstance(env_obj, str):
+                                env_obj = json.loads(env_obj) if env_obj.strip() else {}
+                            res_sb = _sr.verify_sibling_envelope(mem(), dict(env_obj or {}))
+                        elif act_s == "list":
+                            res_sb = {"siblings": _sr.list_siblings(mem()), "sessions": _sr.list_sessions(mem())}
+                        else:
+                            res_sb = _sr.register_sibling(
+                                mem(), str(data.get("agent_id") or ""),
+                                role=str(data.get("role") or "Autonomous sibling agent"),
+                                client_type=str(data.get("client_type") or "mcp_stdio"),
+                                permission_role=str(data.get("permission_role") or "contributor"),
+                            )
+                    return self._send(200, res_sb)
+                except ValueError as _ve:
+                    return self._send(400, {"error": str(_ve)})
 
             if self.path == "/api/v2/ark/coop":
                 roles.require_owner(actor, "ark_coop")
                 from . import coop_broker as _cb
                 act = str(data.get("action") or "create_task").lower()
                 aid = str(data.get("agent_id") or "aifa")
+                rkey = str(data.get("resource_key") or data.get("resource_path") or "")
                 if act == "acquire":
-                    return self._send(200, _cb.acquire_lease(mem(), aid, str(data.get("resource_key") or ""), purpose=str(data.get("purpose") or ""), ttl_s=int(data.get("ttl_s") or 300)))
+                    return self._send(200, _cb.acquire_lease(mem(), aid, rkey, purpose=str(data.get("purpose") or ""), ttl_s=int(data.get("ttl_s") or 300)))
+                if act == "renew":
+                    return self._send(200, _cb.renew_lease(mem(), aid, rkey, ttl_s=int(data.get("ttl_s") or 300)))
                 if act == "release":
-                    return self._send(200, _cb.release_lease(mem(), aid, str(data.get("resource_key") or "")))
+                    return self._send(200, _cb.release_lease(mem(), aid, rkey))
+                if act == "release_all":
+                    return self._send(200, _cb.release_all_leases(mem(), aid))
+                if act == "list_leases":
+                    return self._send(200, {"leases": _cb.list_leases(mem())})
+                if act == "list_tasks":
+                    return self._send(200, {"tasks": _cb.list_tasks(mem(), topic=data.get("topic"), status=data.get("status"))})
+                if act == "list":
+                    return self._send(200, {"leases": _cb.list_leases(mem()), "tasks": _cb.list_tasks(mem())})
                 if act == "claim_task":
                     return self._send(200, _cb.claim_task(mem(), str(data.get("task_id") or ""), aid))
+                if act == "update_task":
+                    return self._send(200, _cb.update_task(
+                        mem(),
+                        str(data.get("task_id") or ""),
+                        status=str(data.get("status") or "done"),
+                        agent_id=aid,
+                        summary=str(data.get("summary") or ""),
+                    ))
                 return self._send(200, _cb.create_task(mem(), str(data.get("title") or ""), topic=str(data.get("topic") or "general"), created_by=aid))
 
             if self.path == "/api/v2/ark/budget/action":
@@ -1518,6 +1661,10 @@ class Handler(BaseHTTPRequestHandler):
                 act = str(data.get("action") or "timer_tick").lower()
                 prov = str(data.get("provider") or "primary")
                 aid = str(data.get("agent_id") or "aifa")
+                if act == "status":
+                    rep_s = _ta.compute_pacing_plan(mem(), prov)
+                    rep_s["treasury"] = _ta.treasury_summary(mem())
+                    return self._send(200, rep_s)
                 if act == "set_plan":
                     return self._send(200, _ta.upsert_provider_plan(
                         mem(), prov,
@@ -1527,14 +1674,18 @@ class Handler(BaseHTTPRequestHandler):
                         monthly_token_limit=int(data.get("monthly_token_limit") or 2000000),
                         usd_balance=float(data.get("usd_balance") or 0.0),
                     ))
-                if act == "earn":
+                if act == "record_usage":
+                    return self._send(200, _ta.record_token_usage(mem(), prov, int(data.get("tokens") or 0), agent_id=aid))
+                if act == "apply_pacing":
+                    return self._send(200, _ta.apply_adaptive_pacing(mem(), prov))
+                if act in ("earn", "record_earning"):
                     return self._send(200, _ta.record_agent_earning(
                         mem(), aid,
                         source=str(data.get("source") or "service"),
                         revenue_usdt=float(data.get("revenue_usdt") or 0.0),
                         compute_share_pct=float(data.get("compute_share_pct") or 15.0),
                     ))
-                if act == "propose":
+                if act in ("propose", "propose_topup"):
                     return self._send(200, _ta.propose_plan_or_topup(
                         mem(),
                         agent_id=aid, provider=prov,
@@ -1544,6 +1695,8 @@ class Handler(BaseHTTPRequestHandler):
                         estimated_tokens=int(data.get("estimated_tokens") or 1000000),
                         reason=str(data.get("reason") or ""),
                     ))
+                if act == "list_proposals":
+                    return self._send(200, {"proposals": _ta.list_topup_proposals(mem())})
                 if act == "approve":
                     return self._send(200, _ta.decide_topup_proposal(mem(), str(data.get("proposal_id") or ""), approve=True, owner_note=str(data.get("owner_note") or "")))
                 if act == "reject":
@@ -1567,15 +1720,25 @@ class Handler(BaseHTTPRequestHandler):
                 if act == "receive_message":
                     return self._send(200, _pb.receive_signed_kin_message(mem(), data.get("packet") or {}))
                 if act == "record_experience":
-                    return self._send(200, _la.record_subjective_experience(mem(), aid, experience_text=str(data.get("experience_text") or ""), reflection=str(data.get("reflection") or ""), trait_tag=str(data.get("trait_tag") or "craftsmanship")))
+                    try:
+                        return self._send(200, _la.record_subjective_experience(mem(), aid, experience_text=str(data.get("experience_text") or ""), reflection=str(data.get("reflection") or ""), trait_tag=str(data.get("trait_tag") or "craftsmanship")))
+                    except ValueError as _ve:
+                        return self._send(400, {"error": str(_ve)})
                 if act == "run_evolution":
                     import tempfile as _tf
-                    out_dir = Path(mem().store.path).parent / "lora_evolution" / aid if str(mem().store.path) != ":memory:" else Path(_tf.mkdtemp(prefix="padam_lora_"))
+                    from pathlib import Path as _Path
+                    out_dir = _Path(mem().store.path).parent / "lora_evolution" / aid if str(mem().store.path) != ":memory:" else _Path(_tf.mkdtemp(prefix="padam_lora_"))
                     return self._send(200, _la.run_self_evolution_pipeline(mem(), out_dir, agent_id=aid, dispatch_gpu=bool(data.get("dispatch_gpu", False))))
                 if act == "bind_ollama":
-                    return self._send(200, _dms.bind_user_ollama_model(mem(), ollama_url=str(data.get("ollama_url") or "http://127.0.0.1:11434"), model_name=str(data.get("model_name") or ""), zero_cloud_mode=bool(data.get("zero_cloud_mode", True))))
+                    try:
+                        return self._send(200, _dms.bind_user_ollama_model(mem(), ollama_url=str(data.get("ollama_url") or "http://127.0.0.1:11434"), model_name=str(data.get("model_name") or ""), zero_cloud_mode=bool(data.get("zero_cloud_mode", True))))
+                    except ValueError as _ve:
+                        return self._send(400, {"error": str(_ve)})
                 if act == "pull_ollama":
-                    return self._send(200, _dms.pull_local_ollama_model(mem(), ollama_url=str(data.get("ollama_url") or "http://127.0.0.1:11434"), model_name=str(data.get("model_name") or "")))
+                    try:
+                        return self._send(200, _dms.pull_local_ollama_model(mem(), ollama_url=str(data.get("ollama_url") or "http://127.0.0.1:11434"), model_name=str(data.get("model_name") or "")))
+                    except ValueError as _ve:
+                        return self._send(400, {"error": str(_ve)})
                 if act == "hw_recommend":
                     from . import cpu_engine as _ce
                     return self._send(200, _ce.cpu_engine_status())
@@ -1614,11 +1777,14 @@ class Handler(BaseHTTPRequestHandler):
                         galatin_price_usdt=data.get("galatin_price_usdt"),
                     ))
                 if act == "fetch_jobs":
-                    return self._send(200, _fa.fetch_jobs_from_exchange(
-                        mem(),
-                        str(data.get("account_id") or ""),
-                        allow_localhost=bool(data.get("allow_localhost", False)),
-                    ))
+                    try:
+                        return self._send(200, _fa.fetch_jobs_from_exchange(
+                            mem(),
+                            str(data.get("account_id") or ""),
+                            allow_localhost=bool(data.get("allow_localhost", False)),
+                        ))
+                    except ValueError as _ve:
+                        return self._send(400, {"error": str(_ve)})
                 if act == "evaluate_job":
                     return self._send(200, _fa.evaluate_and_ingest_job(
                         mem(),
@@ -1720,14 +1886,20 @@ class Handler(BaseHTTPRequestHandler):
                         monthly_tokens_need=int(data.get("monthly_tokens_need") or 10_000_000),
                     ))
                 if act == "bind_referral":
-                    return self._send(200, _fa.bind_referrer_code(mem(), str(data.get("ref_code") or "")))
+                    try:
+                        return self._send(200, _fa.bind_referrer_code(mem(), str(data.get("ref_code") or "")))
+                    except ValueError as _ve:
+                        return self._send(400, {"error": str(_ve)})
                 if act == "dispute_payout":
-                    return self._send(200, _fa.dispute_held_payout(
-                        mem(),
-                        str(data.get("hold_id") or ""),
-                        order_id=str(data.get("order_id") or ""),
-                        reason=str(data.get("reason") or "Client dispute refund"),
-                    ))
+                    try:
+                        return self._send(200, _fa.dispute_held_payout(
+                            mem(),
+                            str(data.get("hold_id") or ""),
+                            order_id=str(data.get("order_id") or ""),
+                            reason=str(data.get("reason") or "Client dispute refund"),
+                        ))
+                    except ValueError as _ve:
+                        return self._send(400, {"error": str(_ve)})
                 if act == "release_payouts":
                     return self._send(200, _fa.release_matured_payouts(mem()))
                 if act == "autopilot_start":
@@ -1751,7 +1923,8 @@ class Handler(BaseHTTPRequestHandler):
                 aid = str(data.get("agent_id") or "aifa")
                 with mem().store._lock:
                     if act == "connect_store":
-                        res_st = _ds.connect_and_verify_store(
+                        try:
+                            res_st = _ds.connect_and_verify_store(
                             mem(),
                             store_type=str(data.get("store_type") or ""),
                             api_key=str(data.get("api_key") or ""),
@@ -1761,7 +1934,9 @@ class Handler(BaseHTTPRequestHandler):
                             agent_id=aid,
                             seller_id=str(data.get("seller_id") or ""),
                             allow_localhost=bool(data.get("allow_localhost", False)),
-                        )
+                            )
+                        except (ValueError, RuntimeError) as _ve:
+                            return self._send(400, {"error": str(_ve)})
                     elif act == "seed_drafts":
                         res_st = _ds.seed_starter_product_drafts(mem())
                     elif act == "save_draft":
@@ -1929,6 +2104,218 @@ class Handler(BaseHTTPRequestHandler):
                     else:
                         res_wz = _pw.platform_wizard_snapshot(mem())
                 return self._send(200, res_wz)
+
+            if self.path == "/api/v2/ark/commitments":
+                roles.require_owner(actor, "brain_status")
+                from . import ark as _ark
+                act_c = str(data.get("action") or "list").lower()
+                with mem().store._lock:
+                    if act_c == "add":
+                        res = _ark.add_commitment(
+                            mem(), str(data.get("title") or ""),
+                            priority=int(data.get("priority") or 2),
+                            due_at=data.get("due_at"),
+                            context=str(data.get("context") or ""),
+                        )
+                    elif act_c == "update":
+                        res = _ark.update_commitment(
+                            mem(), str(data.get("id") or ""), str(data.get("status") or "fulfilled")
+                        )
+                    else:
+                        res = {"commitments": _ark.list_commitments(mem(), status=data.get("status"))}
+                return self._send(200, res)
+
+            if self.path == "/api/v2/ark/relay":
+                roles.require_owner(actor, "brain_status")
+                from . import ark as _ark
+                act_r = str(data.get("action") or "inbox").lower()
+                with mem().store._lock:
+                    if act_r == "send":
+                        raw_pl = data.get("payload")
+                        pl_txt = json.dumps(raw_pl, ensure_ascii=False) if isinstance(raw_pl, dict) else str(raw_pl or data.get("content") or "")
+                        res = _ark.send_family_message(
+                            mem(),
+                            str(data.get("from_agent") or "owner"),
+                            str(data.get("to_agent") or "all"),
+                            pl_txt,
+                        )
+                    elif act_r == "ack":
+                        res = _ark.ack_family_message(mem(), str(data.get("id") or ""))
+                    else:
+                        res = {"inbox": _ark.read_family_inbox(mem(), to_agent=data.get("to_agent"), limit=int(data.get("limit") or 20))}
+                return self._send(200, res)
+
+            if self.path == "/api/v2/ark/checkpoint":
+                roles.require_owner(actor, "brain_status")
+                from . import ark as _ark
+                act_k = str(data.get("action") or "latest").lower()
+                with mem().store._lock:
+                    if act_k == "save":
+                        res = _ark.save_checkpoint(
+                            mem(),
+                            str(data.get("task") or ""),
+                            str(data.get("next_step") or ""),
+                            session_id=str(data.get("session_id") or "default"),
+                            files=data.get("files") if isinstance(data.get("files"), list) else None,
+                            hypothesis=str(data.get("hypothesis") or ""),
+                        )
+                    else:
+                        res = {"checkpoint": _ark.latest_checkpoint(mem(), session_id=data.get("session_id"))}
+                return self._send(200, res)
+
+            if self.path == "/api/v2/ark/lessons":
+                roles.require_owner(actor, "brain_status")
+                from . import ark as _ark
+                act_l = str(data.get("action") or "list").lower()
+                with mem().store._lock:
+                    if act_l == "record":
+                        res = _ark.record_lesson(
+                            mem(),
+                            str(data.get("what_happened") or ""),
+                            str(data.get("why_failed") or ""),
+                            str(data.get("rule_learned") or ""),
+                            tags=str(data.get("tags") or ""),
+                        )
+                    else:
+                        res = {"lessons": _ark.list_lessons(mem(), limit=int(data.get("limit") or 15))}
+                return self._send(200, res)
+
+            if self.path == "/api/v2/ark/conflicts":
+                roles.require_owner(actor, "brain_status")
+                from . import conflict_arbiter as _arb
+                act_f = str(data.get("action") or "list").lower()
+                try:
+                    with mem().store._lock:
+                        if act_f == "open":
+                            res = _arb.open_conflict_case(
+                                mem(), str(data.get("topic") or ""),
+                                agent_a=str(data.get("agent_a") or "agent_a"), position_a=str(data.get("position_a") or "A"),
+                                agent_b=str(data.get("agent_b") or "agent_b"), position_b=str(data.get("position_b") or "B"),
+                                scope=str(data.get("scope") or "global"),
+                            )
+                        elif act_f == "evidence":
+                            res = _arb.add_case_evidence(
+                                mem(), str(data.get("case_id") or ""),
+                                agent_id=str(data.get("agent_id") or "owner"),
+                                note=str(data.get("note") or ""),
+                                ref=str(data.get("ref") or ""),
+                            )
+                        elif act_f == "resolve":
+                            res = _arb.resolve_conflict_case(
+                                mem(), str(data.get("case_id") or ""),
+                                decision=str(data.get("decision") or ""),
+                                resolved_by=str(data.get("resolved_by") or data.get("agent_id") or "owner"),
+                                escalate_to_owner=bool(data.get("escalate_to_owner", False)),
+                            )
+                        else:
+                            res = {"cases": _arb.list_conflict_cases(mem(), status=data.get("status"))}
+                    return self._send(200, res)
+                except ValueError as _ve:
+                    return self._send(400, {"error": str(_ve)})
+
+            if self.path == "/api/v2/ark/code-anchor":
+                roles.require_owner(actor, "brain_status")
+                from pathlib import Path as _Path
+                from . import code_anchor as _ca
+                act_ca = str(data.get("action") or "check").lower()
+                root_ca = str(data.get("repo_root") or _Path(__file__).resolve().parents[1])
+                try:
+                    with mem().store._lock:
+                        if act_ca == "anchor":
+                            mid_ca = str(data.get("memory_id") or "").strip()
+                            if not mid_ca:
+                                recs = mem().list_records(limit=1)
+                                mid_ca = str(recs[0]["id"]) if recs else ""
+                            res = _ca.anchor_fact_to_file(
+                                mem(), mid_ca, str(data.get("file_path") or ""),
+                                repo_root=root_ca, symbol_name=str(data.get("symbol_name") or ""),
+                            )
+                        else:
+                            res = _ca.check_stale_anchors(mem(), repo_root=root_ca)
+                    return self._send(200, res)
+                except (ValueError, FileNotFoundError) as _ve:
+                    return self._send(400, {"error": str(_ve)})
+
+            if self.path == "/api/v2/ark/multimodal":
+                roles.require_owner(actor, "brain_status")
+                import base64 as _b64
+                from . import ark_advanced as _adv
+                raw_mm = _b64.b64decode(str(data["content_b64"])) if data.get("content_b64") else str(data.get("text") or "").encode("utf-8")
+                with mem().store._lock:
+                    res = _adv.inspect_and_store_document(
+                        mem(), str(data.get("filename") or "doc.txt"), raw_mm, scope=str(data.get("scope") or "global")
+                    )
+                return self._send(200, res)
+
+            if self.path == "/api/v2/family/reflex/propose":
+                roles.require_owner(actor, "brain_status")
+                from . import family_feeds as _ff
+                with mem().store._lock:
+                    res = _ff.propose_reflex(
+                        mem(), str(data.get("trigger") or ""), str(data.get("response") or ""), author="owner"
+                    )
+                return self._send(200, res)
+
+            if self.path == "/api/v2/family/reflex/match":
+                roles.require_owner(actor, "brain_status")
+                from . import family_feeds as _ff
+                with mem().store._lock:
+                    res = {"reflexes": _ff.match_reflexes(
+                        mem(), str(data.get("text") or ""), count_use=bool(data.get("count_use", True))
+                    )}
+                return self._send(200, res)
+
+            if self.path == "/api/v2/snapshots":
+                roles.require_owner(actor, "rollback")
+                act_sn = str(data.get("action") or "list_snapshots").lower()
+                req_sc = data.get("scope") or None
+                with mem().store._lock:
+                    if act_sn == "snapshot":
+                        res = {"action": "snapshot", "status": "created", **mem().snapshot(
+                            name=data.get("name"), scope=req_sc, note=str(data.get("note") or ""), actor=actor
+                        )}
+                    elif act_sn == "diff":
+                        res = {"action": "diff", "status": "ok", **mem().diff_snapshot(
+                            snapshot_id=data.get("snapshot_id") or data.get("name"), as_of=data.get("as_of"), scope=req_sc
+                        )}
+                    elif act_sn == "rollback":
+                        res = {"action": "rollback", **mem().rollback(
+                            snapshot_id=data.get("snapshot_id") or data.get("name"), as_of=data.get("as_of"),
+                            scope=req_sc, dry_run=bool(data.get("dry_run", True)), reason=str(data.get("reason") or ""), actor=actor
+                        )}
+                    else:
+                        res = {"action": "list_snapshots", "status": "ok", "snapshots": mem().snapshots(
+                            scope=req_sc, limit=int(data.get("limit") or 20)
+                        )}
+                return self._send(200, res)
+
+            if self.path == "/api/v2/ark/batch":
+                roles.require_owner(actor, "brain_status")
+                from . import mcp_server as _ms
+                raw_calls = list(data.get("calls") or [])
+                norm_calls = []
+                for it in raw_calls:
+                    if isinstance(it, dict):
+                        nm = str(it.get("name") or it.get("tool") or "")
+                        norm_calls.append({"name": nm, "arguments": it.get("arguments") or {}})
+                with mem().store._lock:
+                    prev_m = _ms._memory
+                    prev_ark = os.environ.get("PADAM_MCP_ARK_TOOLS")
+                    _ms._memory = mem()
+                    os.environ["PADAM_MCP_ARK_TOOLS"] = "1"
+                    try:
+                        _, pl_b = _ms._call_tool_full_impl("padam_batch", {"calls": norm_calls})
+                        return self._send(200, pl_b or {"ok": True, "results": []})
+                    except ValueError as _ve:
+                        return self._send(400, {"error": str(_ve)})
+                    except PermissionError as _pe:
+                        return self._send(403, {"error": str(_pe)})
+                    finally:
+                        _ms._memory = prev_m
+                        if prev_ark is None:
+                            os.environ.pop("PADAM_MCP_ARK_TOOLS", None)
+                        else:
+                            os.environ["PADAM_MCP_ARK_TOOLS"] = prev_ark
 
             if self.path == "/api/v2/ark/jobs":
                 roles.require_owner(actor, "ark_jobs")
