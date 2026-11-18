@@ -308,6 +308,10 @@ def _ensure(memory) -> None:
             ("agent_payout_status", "TEXT NOT NULL DEFAULT ''"),
             ("payout_cancel_reason", "TEXT NOT NULL DEFAULT ''"),
             ("sale_verified", "INTEGER NOT NULL DEFAULT 1"),
+            ("sample_stage", "TEXT NOT NULL DEFAULT ''"),
+            ("sample_mode", "TEXT NOT NULL DEFAULT ''"),
+            ("sample_milestone_usdt", "REAL NOT NULL DEFAULT 0.0"),
+            ("sample_deliverable", "TEXT NOT NULL DEFAULT ''"),
         ):
             if col not in order_cols:
                 conn.execute(f"ALTER TABLE ark_freelance_order ADD COLUMN {col} {col_def}")

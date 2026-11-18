@@ -628,6 +628,7 @@ FREELANCE_HUB_TOOL_DEF = {
             "propose_profile", "monetization", "set_prefs", "fetch_jobs", "recommend_spend", "propose_subscription",
             "stores_status", "connect_store", "create_product_draft", "publish_product", "sync_store_sales",
             "wizard_catalog", "wizard_connect", "wizard_questionnaire", "wizard_publish_profile", "wizard_autopick_jobs",
+            "signup", "login", "set_autopilot", "autopilot_dispatch", "sample_prepare", "sample_accept", "sample_reject",
         ], "default": "dashboard", "description": "evaluate_job(title,brief)|deliver(order_id,deliverable_text)|connect_store(store_type,api_key)|wizard_connect(platform)|wizard_questionnaire(platform,specializations)|wizard_publish_profile(draft_id)"},
         "platform": {**_S, "description": "Platform"}, "mode": {"type": "string", "enum": ["oauth_api", "desk", "webhook"], "description": "Mode"},
         "account_label": _S, "agent_id": _S, "skills": {**_SA, "description": "Skills"},
@@ -678,6 +679,18 @@ LOCAL_MODEL_TOOL_DEF = {
     }},
     "annotations": _IDEM,
 }
+PLATFORM_CONNECT_TOOL_DEF = {
+    "name": "padam_platform_connect", "title": "Platform Connect", "description": "1-click Google signup or login",
+    "inputSchema": {"type": "object", "properties": {
+        "action": {"type": "string", "enum": ["signup", "login", "set_autopilot", "autopilot_dispatch", "sample_prepare", "sample_accept", "sample_reject"], "default": "login", "description": "signup(platform_id)|login(platform_id)|set_autopilot(platform_id)"},
+        "platform_id": {**_S, "description": "Platform id"}, "account_label": _S, "agent_id": _S,
+        "autopilot_enabled": {"type": "boolean", "description": "Autopilot 20%"},
+        "daily_bid_limit": {**_I, "description": "Daily limit"}, "min_pause_s": {**_N, "description": "Pause s"},
+        "order_id": _S, "title": _S, "brief": _S, "budget_usdt": _N,
+        "paid_action_cost_usdt": {**_N, "description": "Paid cost"}, "owner_approved_paid_usdt": {**_N, "description": "Owner approved $"},
+    }},
+    "annotations": _RW,
+}
 _ALL_TOOLS_BY_NAME = {
     **_TOOLS_BY_NAME,
     "padam_recent": RECENT_TOOL_DEF,
@@ -710,6 +723,7 @@ _ALL_TOOLS_BY_NAME = {
     "padam_freelance_hub": FREELANCE_HUB_TOOL_DEF,
     "padam_phoenix_family": PHOENIX_FAMILY_TOOL_DEF,
     "padam_local_model": LOCAL_MODEL_TOOL_DEF,
+    "padam_platform_connect": PLATFORM_CONNECT_TOOL_DEF,
 }
 
 
@@ -756,6 +770,20 @@ _ACTION_REQUIRED: dict[str, dict[str, tuple[str, ...]]] = {
         "wizard_questionnaire": ("platform", "specializations"),
         "wizard_publish_profile": ("draft_id",),
         "wizard_autopick_jobs": ("platform",),
+        "signup": ("platform",),
+        "login": ("platform",),
+        "sample_prepare": ("order_id",),
+        "sample_accept": ("order_id",),
+        "sample_reject": ("order_id",),
+    },
+    "padam_platform_connect": {
+        "signup": ("platform_id",),
+        "login": ("platform_id",),
+        "set_autopilot": ("platform_id",),
+        "autopilot_dispatch": ("platform_id",),
+        "sample_prepare": ("order_id",),
+        "sample_accept": ("order_id",),
+        "sample_reject": ("order_id",),
     },
     "padam_phoenix_family": {
         "bind_ollama": ("model_name",),
@@ -4818,8 +4846,92 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 platform_id=str(args.get("platform") or args.get("store_type") or ""),
                 agent_id=aid,
             )
+        elif act in ("signup", "login"):
+            from . import platform_wizard as _pw
+            payload = _pw.one_click_platform_auth(
+                m,
+                platform_id=str(args.get("platform") or args.get("store_type") or ""),
+                action=act,
+                account_label=str(args.get("account_label") or ""),
+                agent_id=aid,
+            )
+        elif act == "set_autopilot":
+            from . import platform_wizard as _pw
+            payload = _pw.set_platform_autopilot(
+                m,
+                platform_id=str(args.get("platform") or args.get("store_type") or "upwork"),
+                autopilot_enabled=bool(args.get("status") == "on" or args.get("work_mode") == "autopilot"),
+            )
+        elif act == "autopilot_dispatch":
+            from . import platform_wizard as _pw
+            payload = _pw.dispatch_platform_autopilot_action(
+                m,
+                platform_id=str(args.get("platform") or args.get("store_type") or "upwork"),
+                order_id=str(args.get("order_id") or ""),
+                title=str(args.get("title") or "Autopilot Job"),
+                brief=str(args.get("brief") or "Build AI website"),
+                budget_usdt=float(args.get("budget_usdt") or 300.0),
+                agent_id=aid,
+            )
+        elif act == "sample_prepare":
+            from . import platform_wizard as _pw
+            payload = _pw.prepare_10pct_sample(
+                m,
+                str(args.get("order_id") or ""),
+                sample_deliverable=str(args.get("deliverable_text") or ""),
+            )
+        elif act == "sample_accept":
+            from . import platform_wizard as _pw
+            payload = _pw.accept_10pct_sample(m, str(args.get("order_id") or ""))
+        elif act == "sample_reject":
+            from . import platform_wizard as _pw
+            payload = _pw.reject_10pct_sample(m, str(args.get("order_id") or ""))
         else:
             payload = _fa.freelance_dashboard_snapshot(m)
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
+    if name == "padam_platform_connect":
+        from . import platform_wizard as _pw
+        act = str(args.get("action") or "login").lower()
+        pid = str(args.get("platform_id") or args.get("platform") or "")
+        aid = str(args.get("agent_id") or _default_agent_id())
+        if act in ("signup", "login", "signup_google"):
+            payload = _pw.one_click_platform_auth(
+                m,
+                platform_id=pid,
+                action=act,
+                account_label=str(args.get("account_label") or ""),
+                agent_id=aid,
+            )
+        elif act == "set_autopilot":
+            payload = _pw.set_platform_autopilot(
+                m,
+                platform_id=pid,
+                autopilot_enabled=bool(args.get("autopilot_enabled", False)),
+                daily_bid_limit=int(args.get("daily_bid_limit") or 10),
+                min_pause_s=float(args.get("min_pause_s") if args.get("min_pause_s") is not None else 30.0),
+                approved_paid_usdt=float(args["owner_approved_paid_usdt"]) if args.get("owner_approved_paid_usdt") is not None else None,
+            )
+        elif act == "autopilot_dispatch":
+            payload = _pw.dispatch_platform_autopilot_action(
+                m,
+                platform_id=pid,
+                order_id=str(args.get("order_id") or ""),
+                title=str(args.get("title") or "Autopilot Job"),
+                brief=str(args.get("brief") or "Build AI website"),
+                budget_usdt=float(args.get("budget_usdt") or 300.0),
+                paid_action_cost_usdt=float(args.get("paid_action_cost_usdt") or 0.0),
+                owner_approved_paid_usdt=float(args.get("owner_approved_paid_usdt") or 0.0),
+                agent_id=aid,
+            )
+        elif act == "sample_prepare":
+            payload = _pw.prepare_10pct_sample(m, str(args.get("order_id") or ""))
+        elif act == "sample_accept":
+            payload = _pw.accept_10pct_sample(m, str(args.get("order_id") or ""))
+        elif act == "sample_reject":
+            payload = _pw.reject_10pct_sample(m, str(args.get("order_id") or ""))
+        else:
+            payload = _pw.get_platform_autopilot_config(m, pid or "upwork")
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
 
     if name == "padam_phoenix_family":

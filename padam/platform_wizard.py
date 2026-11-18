@@ -1095,14 +1095,876 @@ def autopick_and_prepare_jobs(
     }
 
 
-def platform_wizard_snapshot(memory) -> dict[str, Any]:
-    """Сводка мастера подключения 34 площадок (30 из методички + 4 биржи агентов), анкет и черновиков профилей."""
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ЭТАП 3: Регистрация/вход в одно нажатие (Google / Login без хранения пароля),
+# переключатель полного автопилота с лимитами и предупреждением о правилах,
+# и конвейер «Образец 10% / Первый оплачиваемый этап 10% (paid milestone)».
+# ═══════════════════════════════════════════════════════════════════════════
+
+import datetime as _dt
+import hashlib as _hashlib
+from typing import Callable
+from . import coop_broker, family_feeds
+
+BOT_WARNING_RU = "правила площадки запрещают автоматику, риск блокировки аккаунта"
+
+# Площадки, где бесплатная работа до договора нарушает правила — там 10% идут как paid milestone.
+PAID_MILESTONE_REQUIRED_PLATFORMS: frozenset[str] = frozenset({
+    "upwork", "fiverr", "kwork", "fl_ru", "freelancer", "peopleperhour",
+    "contra", "guru", "malt", "weblancer", "freelance_ru", "avito_services",
+})
+
+# Площадки, чьи правила запрещают ботов и автоматическую отправку откликов.
+FORBIDS_BOTS_PLATFORMS: frozenset[str] = frozenset({
+    "upwork", "fiverr", "freelancer", "peopleperhour", "contra", "toptal",
+    "arc_dev", "guru", "bark", "malt", "kwork", "fl_ru", "weblancer",
+    "freelance_ru", "avito_services", "youdo", "workzilla", "stan_store",
+    "etsy", "creative_market", "clutch", "linkedin_services",
+})
+
+# Официальные ссылки на правила об образцах / эскроу / запрете бесплатной работы до контракта.
+MILESTONE_RULES_URLS: dict[str, str] = {
+    "upwork": "https://support.upwork.com/hc/en-us/articles/211063718-Fixed-Price-Protection",
+    "fiverr": "https://help.fiverr.com/hc/en-us/articles/360010560198-Working-with-Milestones",
+    "kwork": "https://kwork.ru/terms",
+    "fl_ru": "https://www.fl.ru/about/agreement_site.pdf",
+}
+
+
+def _enrich_platform_entry(p: dict[str, Any]) -> dict[str, Any]:
+    out = dict(p)
+    pid = str(out["platform_id"])
+    base_u = str(out.get("url") or "").rstrip("/")
+    out.setdefault("signup_url", f"{base_u}/signup?oauth=google")
+    out.setdefault("login_url", f"{base_u}/login")
+    forbids = pid in FORBIDS_BOTS_PLATFORMS or out.get("automation_tier") != "autopilot"
+    out["forbids_bots"] = bool(forbids)
+    out["bot_warning_ru"] = BOT_WARNING_RU if forbids else ""
+    out["bot_warning_url"] = str(out.get("docs_url") or base_u)
+    req_ms = pid in PAID_MILESTONE_REQUIRED_PLATFORMS
+    out["requires_paid_milestone"] = bool(req_ms)
+    out["sample_mode_default"] = "paid_milestone_10pct" if req_ms else "free_sample_10pct"
+    out["milestone_rules_url"] = MILESTONE_RULES_URLS.get(pid, str(out.get("docs_url") or base_u))
+    return out
+
+
+PLATFORM_CATALOG = tuple(_enrich_platform_entry(item) for item in PLATFORM_CATALOG)
+CATALOG_BY_ID = {item["platform_id"]: item for item in PLATFORM_CATALOG}
+
+_STAGE3_DDL_STMTS = (
+    """
+    CREATE TABLE IF NOT EXISTS ark_platform_autopilot_config (
+        user_id TEXT NOT NULL,
+        platform_id TEXT NOT NULL,
+        autopilot_enabled INTEGER NOT NULL DEFAULT 0,
+        daily_bid_limit INTEGER NOT NULL DEFAULT 10,
+        min_pause_s REAL NOT NULL DEFAULT 30.0,
+        bids_sent_today INTEGER NOT NULL DEFAULT 0,
+        last_bid_day TEXT NOT NULL DEFAULT '',
+        last_bid_at REAL NOT NULL DEFAULT 0.0,
+        halted_reason TEXT NOT NULL DEFAULT '',
+        approved_paid_usdt REAL NOT NULL DEFAULT 0.0,
+        updated_at REAL NOT NULL,
+        PRIMARY KEY (user_id, platform_id)
+    )
+    """,
+)
+
+_PASSWORD_KEYS_BLACKLIST = frozenset({
+    "password", "passwd", "pwd", "pass", "user_password", "login_password", "raw_password", "secret_password"
+})
+
+# Подменный транспорт окна браузера / отправки откликов для работы и детерминированных тестов без сети.
+_BROWSER_TRANSPORT: Callable[[dict[str, Any]], dict[str, Any]] | None = None
+
+
+def set_browser_session_transport(fn: Callable[[dict[str, Any]], dict[str, Any]] | None) -> None:
+    """Устанавливает подменный транспорт браузера/сессии (для тестов без сети и изолированного контура)."""
+    global _BROWSER_TRANSPORT
+    _BROWSER_TRANSPORT = fn
+
+
+def _ensure_stage3_schema(memory) -> None:
     _ensure_wizard_schema(memory)
+    with freelance_autonomy._lock_of(memory):
+        conn = memory.store.conn
+        for stmt in _STAGE3_DDL_STMTS:
+            conn.execute(stmt.strip())
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(ark_platform_wizard_connection)").fetchall()}
+        for col, col_def in (
+            ("session_fingerprint", "TEXT NOT NULL DEFAULT ''"),
+            ("auth_flow", "TEXT NOT NULL DEFAULT ''"),
+            ("browser_profile_dir", "TEXT NOT NULL DEFAULT ''"),
+        ):
+            if col not in cols:
+                conn.execute(f"ALTER TABLE ark_platform_wizard_connection ADD COLUMN {col} {col_def}")
+        conn.commit()
+
+
+def _sanitize_cookies_no_passwords(raw_cookies: Any) -> dict[str, str]:
+    """Удаляет любые поля, похожие на пароль, оставляя только сессионные куки/токены."""
+    clean: dict[str, str] = {}
+    if isinstance(raw_cookies, dict):
+        for k, v in raw_cookies.items():
+            kl = str(k or "").strip().lower()
+            if kl in _PASSWORD_KEYS_BLACKLIST or "pass" in kl or "pwd" in kl:
+                continue
+            clean[str(k)] = str(v)
+    elif isinstance(raw_cookies, list):
+        for item in raw_cookies:
+            if isinstance(item, dict):
+                name = str(item.get("name") or "").strip()
+                val = str(item.get("value") or "")
+                nl = name.lower()
+                if not name or nl in _PASSWORD_KEYS_BLACKLIST or "pass" in nl or "pwd" in nl:
+                    continue
+                clean[name] = val
+    elif isinstance(raw_cookies, str) and raw_cookies.strip():
+        for part in raw_cookies.split(";"):
+            if "=" in part:
+                k, v = part.split("=", 1)
+                kl = k.strip().lower()
+                if kl in _PASSWORD_KEYS_BLACKLIST or "pass" in kl or "pwd" in kl:
+                    continue
+                clean[k.strip()] = v.strip()
+            else:
+                clean["session_token"] = part.strip()
+    return clean
+
+
+def get_missing_onboarding_questions(memory, platform_id: str) -> dict[str, Any]:
+    """Определяет, какие из 6 вопросов по оформлению аккаунта ещё не известны из памяти или анкеты."""
+    _ensure_stage3_schema(memory)
+    pid = str(platform_id or "").strip().lower()
+    with freelance_autonomy._lock_of(memory):
+        intake_row = memory.store.conn.execute(
+            "SELECT * FROM ark_platform_owner_intake WHERE user_id = ? AND platform_id = ?",
+            (memory.user_id, pid),
+        ).fetchone()
+        any_intake = memory.store.conn.execute(
+            "SELECT * FROM ark_platform_owner_intake WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1",
+            (memory.user_id,),
+        ).fetchone()
+    base = dict(intake_row or any_intake) if (intake_row or any_intake) else {}
+    mem_skills = _extract_memory_skills(memory)
+    has_real_memory = False
+    try:
+        cnt = memory.store.conn.execute(
+            "SELECT COUNT(*) AS c FROM records WHERE user_id = ? AND deleted_at IS NULL",
+            (memory.user_id,),
+        ).fetchone()
+        has_real_memory = bool(cnt and int(cnt["c"]) > 0)
+    except Exception:
+        pass
+
+    prefilled: dict[str, Any] = {}
+    if base.get("specializations"):
+        prefilled["specializations"] = base["specializations"]
+    elif has_real_memory and mem_skills:
+        prefilled["specializations"] = "; ".join(mem_skills[:2])
+
+    for k in ("hourly_rate_usdt", "min_order_usdt", "languages", "tone", "excluded_topics"):
+        if base.get(k) not in (None, ""):
+            prefilled[k] = base[k]
+
+    missing = [q for q in WIZARD_QUESTIONS if q["key"] not in prefilled]
+    return {
+        "prefilled_from_memory": prefilled,
+        "missing_questions": missing,
+        "missing_count": len(missing),
+    }
+
+
+def one_click_platform_auth(
+    memory,
+    *,
+    platform_id: str,
+    action: str = "login",
+    cookies_payload: Any = None,
+    account_label: str = "",
+    agent_id: str = "aifa",
+    password: str = "",
+) -> dict[str, Any]:
+    """Регистрация через Google ('signup') или Вход ('login') в отдельном окне профиля PADAM без хранения пароля."""
+    _ensure_stage3_schema(memory)
+    if str(password or "").strip():
+        raise ValueError("ПАРОЛИ НЕ ХРАНИМ НИКОГДА: ввод пароля происходит только на сайте площадки в окне браузера.")
+
+    act = str(action or "login").strip().lower()
+    if act not in ("signup", "login", "signup_google"):
+        raise ValueError("action должен быть 'signup' («Зарегистрироваться через Google») или 'login' («Войти»).")
+    flow = "signup_google" if act in ("signup", "signup_google") else "login"
+
+    spec = get_platform_spec(platform_id)
+    pid = spec["platform_id"]
+    target_url = spec["signup_url"] if flow == "signup_google" else spec["login_url"]
+    profile_dir = f"padam_browser_profile/{pid}"
+
+    conn_id = f"wizconn-{pid}-{secrets.token_hex(4)}"
+    label = str(account_label or f"{spec['title']} ({flow})").strip()[:120]
+    aid = str(agent_id or "aifa").strip() or "aifa"
+    now = time.time()
+
+    transport_res: dict[str, Any] = {}
+    if _BROWSER_TRANSPORT is not None:
+        transport_res = _BROWSER_TRANSPORT({
+            "op": "auth_window",
+            "platform_id": pid,
+            "action": flow,
+            "target_url": target_url,
+            "profile_dir": profile_dir,
+        }) or {}
+    elif cookies_payload is None:
+        from . import browser_session as _bs
+        transport_res = _bs.run_interactive_browser_auth(
+            platform_id=pid,
+            action=flow,
+            target_url=target_url,
+            profile_dir=profile_dir,
+        )
+
+    raw_cookies = cookies_payload if cookies_payload is not None else transport_res.get("cookies")
+    if not raw_cookies:
+        err_text = str(transport_res.get("error") or "куки сессии не получены из окна браузера")
+        raw_status = str(transport_res.get("status") or "awaiting_login")
+        db_status = "error" if raw_status == "error" else "awaiting_login"
+        status_label_ru = f"ошибка: {err_text}" if db_status == "error" else "ожидает входа"
+        with freelance_autonomy._lock_of(memory):
+            conn = memory.store.conn
+            conn.execute(
+                """
+                INSERT INTO ark_platform_wizard_connection (
+                    connection_id, user_id, platform_id, auth_method, credential_enc,
+                    account_label, agent_id, status, created_at, updated_at,
+                    session_fingerprint, auth_flow, browser_profile_dir
+                ) VALUES (?, ?, ?, 'browser_session', '', ?, ?, ?, ?, ?, '', ?, ?)
+                """,
+                (conn_id, memory.user_id, pid, label, aid[:64], db_status, now, now, flow, profile_dir),
+            )
+            conn.commit()
+        return {
+            "ok": False,
+            "connected": False,
+            "status": db_status,
+            "status_label_ru": status_label_ru,
+            "platform_id": pid,
+            "platform_title": spec["title"],
+            "auth_flow": flow,
+            "opened_url": target_url,
+            "browser_profile_dir": profile_dir,
+            "session_fingerprint": "",
+            "password_stored": False,
+            "error": err_text,
+            "bot_warning_ru": spec["bot_warning_ru"],
+            "bot_warning_url": spec["bot_warning_url"],
+        }
+
+    clean_cookies = _sanitize_cookies_no_passwords(raw_cookies)
+    if not clean_cookies:
+        raise ValueError("Сессия после входа не содержит допустимых cookies (пароли отброшены).")
+
+    cookies_json = json.dumps(clean_cookies, ensure_ascii=False, sort_keys=True)
+    fingerprint = "sha256:" + _hashlib.sha256(cookies_json.encode("utf-8")).hexdigest()[:16]
+    cred_enc = freelance_autonomy._seal_secret(memory, cookies_json)
+    verified_iso = _dt.datetime.fromtimestamp(now, tz=_dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    status_label_ru = f"подключено (сессия проверена {verified_iso})"
+
+    with freelance_autonomy._lock_of(memory):
+        conn = memory.store.conn
+        conn.execute(
+            """
+            INSERT INTO ark_platform_wizard_connection (
+                connection_id, user_id, platform_id, auth_method, credential_enc,
+                account_label, agent_id, status, created_at, updated_at,
+                session_fingerprint, auth_flow, browser_profile_dir
+            ) VALUES (?, ?, ?, 'browser_session', ?, ?, ?, 'session_active', ?, ?, ?, ?, ?)
+            """,
+            (conn_id, memory.user_id, pid, cred_enc, label, aid[:64], now, now, fingerprint, flow, profile_dir),
+        )
+        conn.commit()
+
+    q_state = get_missing_onboarding_questions(memory, pid)
+    auto_profile = None
+    if q_state["missing_count"] == 0 and spec["automation_tier"] != "not_available":
+        pf = q_state["prefilled_from_memory"]
+        auto_profile = submit_questionnaire_and_build_profile_draft(
+            memory,
+            platform_id=pid,
+            specializations=str(pf.get("specializations") or "AI Websites & B2B Leads"),
+            hourly_rate_usdt=float(pf.get("hourly_rate_usdt") or 35.0),
+            min_order_usdt=float(pf.get("min_order_usdt") or 100.0),
+            languages=str(pf.get("languages") or "ru, en"),
+            tone=str(pf.get("tone") or "деловой, конкретный"),
+            excluded_topics=str(pf.get("excluded_topics") or ""),
+            agent_id=aid,
+        )["profile_draft"]
+
+    office_note = (
+        f"[{spec['title']}] Однокликовый вход ({flow}): открыт {target_url} в изолированном профиле {profile_dir}. "
+        f"Сессия зашифрована ({fingerprint}), пароли не сохранялись. "
+        f"Осталось вопросов владельцу: {q_state['missing_count']}."
+    )
+    try:
+        family_feeds.post(memory, "office", aid, office_note)
+    except Exception:
+        pass
+
+    audit_chain.append_audit(
+        memory,
+        "platform_oneclick_auth",
+        {
+            "connection_id": conn_id,
+            "platform_id": pid,
+            "auth_flow": flow,
+            "session_fingerprint": fingerprint,
+            "missing_questions": q_state["missing_count"],
+        },
+        agent_id=aid,
+    )
+    return {
+        "ok": True,
+        "connected": True,
+        "status": "session_active",
+        "status_label_ru": status_label_ru,
+        "platform_id": pid,
+        "platform_title": spec["title"],
+        "auth_flow": flow,
+        "opened_url": target_url,
+        "browser_profile_dir": profile_dir,
+        "session_fingerprint": fingerprint,
+        "password_stored": False,
+        "missing_questions": q_state["missing_questions"],
+        "prefilled_from_memory": q_state["prefilled_from_memory"],
+        "auto_filled_profile": auto_profile,
+        "bot_warning_ru": spec["bot_warning_ru"],
+        "bot_warning_url": spec["bot_warning_url"],
+    }
+
+
+def get_platform_autopilot_config(memory, platform_id: str) -> dict[str, Any]:
+    """Возвращает настройки переключателя автопилота, лимитов и предупреждение о правилах площадки."""
+    _ensure_stage3_schema(memory)
+    spec = get_platform_spec(platform_id)
+    pid = spec["platform_id"]
+    with freelance_autonomy._lock_of(memory):
+        row = memory.store.conn.execute(
+            "SELECT * FROM ark_platform_autopilot_config WHERE user_id = ? AND platform_id = ?",
+            (memory.user_id, pid),
+        ).fetchone()
+    if row is None:
+        enabled = False
+        daily_limit = 10
+        min_pause_s = 30.0
+        bids_today = 0
+        last_bid_at = 0.0
+        halted_reason = ""
+        approved_paid = 0.0
+    else:
+        d = dict(row)
+        today_str = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d")
+        enabled = bool(d["autopilot_enabled"])
+        daily_limit = int(d["daily_bid_limit"])
+        min_pause_s = float(d["min_pause_s"])
+        bids_today = int(d["bids_sent_today"]) if d.get("last_bid_day") == today_str else 0
+        last_bid_at = float(d.get("last_bid_at") or 0.0)
+        halted_reason = str(d.get("halted_reason") or "")
+        approved_paid = float(d.get("approved_paid_usdt") or 0.0)
+
+    eff_mode = "autopilot" if enabled else "assisted"
+    return {
+        "platform_id": pid,
+        "platform_title": spec["title"],
+        "autopilot_enabled": enabled,
+        "work_mode": eff_mode,
+        "code_fee_pct": freelance_autonomy.fee_pct_for_mode(eff_mode),
+        "daily_bid_limit": daily_limit,
+        "min_pause_s": min_pause_s,
+        "bids_sent_today": bids_today,
+        "last_bid_at": last_bid_at,
+        "halted_reason": halted_reason,
+        "approved_paid_usdt": approved_paid,
+        "forbids_bots": spec["forbids_bots"],
+        "bot_warning_ru": spec["bot_warning_ru"],
+        "bot_warning_url": spec["bot_warning_url"],
+    }
+
+
+def set_platform_autopilot(
+    memory,
+    *,
+    platform_id: str,
+    autopilot_enabled: bool,
+    daily_bid_limit: int = 10,
+    min_pause_s: float = 30.0,
+    approved_paid_usdt: float | None = None,
+) -> dict[str, Any]:
+    """Включает или выключает полный автопилот на площадке (вкл = 20% без кнопки, выкл = 15% черновик и кнопка)."""
+    _ensure_stage3_schema(memory)
+    spec = get_platform_spec(platform_id)
+    pid = spec["platform_id"]
+    lim = max(1, min(100, int(daily_bid_limit or 10)))
+    pause = max(0.0, float(min_pause_s if min_pause_s is not None else 30.0))
+    now = time.time()
+    cur = get_platform_autopilot_config(memory, pid)
+    paid_lim = float(approved_paid_usdt) if approved_paid_usdt is not None else cur["approved_paid_usdt"]
+
+    with freelance_autonomy._lock_of(memory):
+        memory.store.conn.execute(
+            """
+            INSERT INTO ark_platform_autopilot_config (
+                user_id, platform_id, autopilot_enabled, daily_bid_limit, min_pause_s,
+                bids_sent_today, last_bid_day, last_bid_at, halted_reason, approved_paid_usdt, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?)
+            ON CONFLICT(user_id, platform_id) DO UPDATE SET
+                autopilot_enabled = excluded.autopilot_enabled,
+                daily_bid_limit = excluded.daily_bid_limit,
+                min_pause_s = excluded.min_pause_s,
+                halted_reason = '',
+                approved_paid_usdt = excluded.approved_paid_usdt,
+                updated_at = excluded.updated_at
+            """,
+            (
+                memory.user_id,
+                pid,
+                1 if autopilot_enabled else 0,
+                lim,
+                pause,
+                cur["bids_sent_today"],
+                _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d"),
+                cur["last_bid_at"],
+                paid_lim,
+                now,
+            ),
+        )
+        memory.store.conn.commit()
+    return {"ok": True, **get_platform_autopilot_config(memory, pid)}
+
+
+def dispatch_platform_autopilot_action(
+    memory,
+    *,
+    platform_id: str,
+    order_id: str = "",
+    title: str = "Autopilot Job",
+    brief: str = "Build AI website and lead pipeline",
+    budget_usdt: float = 300.0,
+    paid_action_cost_usdt: float = 0.0,
+    owner_approved_paid_usdt: float = 0.0,
+    simulated_http_status: int = 200,
+    simulated_captcha: bool = False,
+    now_ts: float | None = None,
+    agent_id: str = "aifa",
+) -> dict[str, Any]:
+    """Выполняет шаг автопилота площадки с проверкой переключателя (15%/20%), суточного лимита, паузы, 429/капчи и платных действий."""
+    _ensure_stage3_schema(memory)
+    spec = get_platform_spec(platform_id)
+    pid = spec["platform_id"]
+    cfg = get_platform_autopilot_config(memory, pid)
+    now_s = float(now_ts if now_ts is not None else time.time())
+    today_str = _dt.datetime.fromtimestamp(now_s, tz=_dt.timezone.utc).strftime("%Y-%m-%d")
+
+    # 1. Защита денег: ни одного платного действия без отдельного «да» владельца на сумму
+    cost = round(max(0.0, float(paid_action_cost_usdt or 0.0)), 2)
+    allowed_paid = max(float(cfg.get("approved_paid_usdt") or 0.0), float(owner_approved_paid_usdt or 0.0))
+    if cost > 0.0 and cost > allowed_paid:
+        return {
+            "ok": False,
+            "sent": False,
+            "status": "blocked_paid_action_requires_owner_yes",
+            "platform_id": pid,
+            "paid_action_cost_usdt": cost,
+            "approved_paid_usdt": allowed_paid,
+            "error": f"Платное действие (${cost:g} USDT) заблокировано: требуется отдельное «да» владельца на эту сумму.",
+        }
+
+    # Создаём или берём заказ с правильной ставкой комиссии (20% если переключатель автопилота включён, 15% если выключен)
+    work_mode = "autopilot" if cfg["autopilot_enabled"] else "assisted"
+    if not order_id:
+        ev = freelance_autonomy.evaluate_and_ingest_job(
+            memory,
+            platform=pid,
+            title=title,
+            brief=brief,
+            budget_usdt=budget_usdt,
+            assigned_agent=agent_id,
+            work_mode=work_mode,
+            now_ts=now_s,
+        )
+        order_id = str(ev["order_id"])
+    draft = freelance_autonomy.draft_bid_from_memory(memory, order_id, proposed_usdt=budget_usdt)
+
+    # 2. Если переключатель автопилота выключен — оставляем только черновик (15%), ничего не уходит наружу
+    if not cfg["autopilot_enabled"]:
+        return {
+            "ok": True,
+            "sent": False,
+            "status": "bid_draft",
+            "work_mode": "assisted",
+            "code_fee_pct": freelance_autonomy.ASSISTED_FEE_PCT,
+            "order_id": order_id,
+            "pitch_text": draft.get("bid_text") or "",
+            "note": "Автопилот выключен: подготовлен черновик (комиссия 15%), отправка только кнопкой владельца.",
+        }
+
+    # 3. Если автопилот ранее остановлен из-за 429/капчи
+    if cfg.get("halted_reason"):
+        return {
+            "ok": False,
+            "sent": False,
+            "status": "halted",
+            "halted_reason": cfg["halted_reason"],
+            "order_id": order_id,
+        }
+
+    # 4. Проверка суточного лимита откликов (по умолчанию 10)
+    with freelance_autonomy._lock_of(memory):
+        row = memory.store.conn.execute(
+            "SELECT * FROM ark_platform_autopilot_config WHERE user_id = ? AND platform_id = ?",
+            (memory.user_id, pid),
+        ).fetchone()
+        d = dict(row) if row else {}
+        sent_today = int(d.get("bids_sent_today") or 0) if d.get("last_bid_day") == today_str else 0
+        last_at = float(d.get("last_bid_at") or 0.0)
+
+    if sent_today >= int(cfg["daily_bid_limit"]):
+        return {
+            "ok": False,
+            "sent": False,
+            "status": "daily_limit_reached",
+            "daily_bid_limit": cfg["daily_bid_limit"],
+            "bids_sent_today": sent_today,
+            "order_id": order_id,
+        }
+
+    # 5. Проверка паузы между откликами
+    if last_at > 0 and (now_s - last_at) < float(cfg["min_pause_s"]):
+        return {
+            "ok": False,
+            "sent": False,
+            "status": "cooldown_pause_active",
+            "min_pause_s": cfg["min_pause_s"],
+            "retry_after_s": round(float(cfg["min_pause_s"]) - (now_s - last_at), 2),
+            "order_id": order_id,
+        }
+
+    # 6. Вызов транспорта и реакция на 429 / капчу (капчу НИКОГДА не обходим!)
+    tr_status = int(simulated_http_status or 200)
+    tr_captcha = bool(simulated_captcha)
+    tr_confirmed_sent = False
+    if _BROWSER_TRANSPORT is not None:
+        tr_resp = _BROWSER_TRANSPORT({
+            "op": "send_bid",
+            "platform_id": pid,
+            "order_id": order_id,
+            "pitch_text": draft.get("bid_text") or "",
+        }) or {}
+        tr_status = int(tr_resp.get("status_code") or tr_status)
+        tr_captcha = bool(tr_resp.get("captcha") or tr_captcha)
+        if not tr_captcha and tr_status != 429 and tr_resp.get("sent", True) is not False and 200 <= tr_status < 300:
+            tr_confirmed_sent = True
+
+    if tr_captcha or tr_status == 429:
+        reason = "captcha_required" if tr_captcha else "http_429_rate_limit"
+        with freelance_autonomy._lock_of(memory):
+            memory.store.conn.execute(
+                "UPDATE ark_platform_autopilot_config SET autopilot_enabled = 0, halted_reason = ?, updated_at = ? "
+                "WHERE user_id = ? AND platform_id = ?",
+                (reason, now_s, memory.user_id, pid),
+            )
+            memory.store.conn.commit()
+        halt_msg = (
+            f"СТОП автопилота на {spec['title']}: обнаружена {'капча (не обходим!)' if tr_captcha else 'ошибка 429 Too Many Requests'}. "
+            f"Поставлена задача владельцу."
+        )
+        try:
+            family_feeds.post(memory, "office", agent_id, halt_msg)
+            coop_broker.create_task(
+                memory,
+                f"Пройти проверку / снять ограничение на {spec['title']} ({reason} / kwork={pid})",
+                created_by=agent_id,
+            )
+        except Exception:
+            pass
+        return {
+            "ok": False,
+            "sent": False,
+            "status": "halted_on_guard",
+            "halted_reason": reason,
+            "captcha_bypassed": False,
+            "order_id": order_id,
+        }
+
+    # 7. Если живого транспорта/подтверждения площадки нет — НЕ помечаем отправленным ('ready_to_send', sent=False)
+    if not tr_confirmed_sent:
+        with freelance_autonomy._lock_of(memory):
+            memory.store.conn.execute(
+                "UPDATE ark_freelance_order SET status = 'ready_to_send', platform_fee_pct = ?, updated_at = ? "
+                "WHERE user_id = ? AND order_id = ?",
+                (freelance_autonomy.AUTOPILOT_FEE_PCT, now_s, memory.user_id, order_id),
+            )
+            memory.store.conn.commit()
+        return {
+            "ok": True,
+            "sent": False,
+            "status": "ready_to_send",
+            "reason": "нет живой сессии/транспорта",
+            "work_mode": "autopilot",
+            "code_fee_pct": freelance_autonomy.AUTOPILOT_FEE_PCT,
+            "bids_sent_today": sent_today,
+            "daily_bid_limit": cfg["daily_bid_limit"],
+            "order_id": order_id,
+            "pitch_text": draft.get("bid_text") or "",
+            "bot_warning_ru": spec["bot_warning_ru"],
+        }
+
+    # 8. Успешная автоотправка отклика по подтверждению площадки/транспорта (комиссия CODE 20%)
+    new_sent = sent_today + 1
+    with freelance_autonomy._lock_of(memory):
+        memory.store.conn.execute(
+            """
+            UPDATE ark_platform_autopilot_config
+            SET bids_sent_today = ?, last_bid_day = ?, last_bid_at = ?, updated_at = ?
+            WHERE user_id = ? AND platform_id = ?
+            """,
+            (new_sent, today_str, now_s, now_s, memory.user_id, pid),
+        )
+        memory.store.conn.execute(
+            "UPDATE ark_freelance_order SET status = 'bid_placed', platform_fee_pct = ?, updated_at = ? "
+            "WHERE user_id = ? AND order_id = ?",
+            (freelance_autonomy.AUTOPILOT_FEE_PCT, now_s, memory.user_id, order_id),
+        )
+        memory.store.conn.commit()
+
+    return {
+        "ok": True,
+        "sent": True,
+        "status": "bid_placed",
+        "work_mode": "autopilot",
+        "code_fee_pct": freelance_autonomy.AUTOPILOT_FEE_PCT,
+        "bids_sent_today": new_sent,
+        "daily_bid_limit": cfg["daily_bid_limit"],
+        "order_id": order_id,
+        "bot_warning_ru": spec["bot_warning_ru"],
+    }
+
+
+def prepare_10pct_sample(
+    memory,
+    order_id: str,
+    *,
+    sample_deliverable: str = "",
+    now_ts: float | None = None,
+) -> dict[str, Any]:
+    """Готовит 10%-й образец (для бирж агентов/прямых клиентов) или 1-й оплачиваемый этап на 10% (paid milestone для Upwork/Fiverr/Kwork/FL.ru)."""
+    _ensure_stage3_schema(memory)
+    oid = str(order_id or "").strip()
+    with freelance_autonomy._lock_of(memory):
+        row = memory.store.conn.execute(
+            "SELECT * FROM ark_freelance_order WHERE user_id = ? AND order_id = ?",
+            (memory.user_id, oid),
+        ).fetchone()
+    if row is None:
+        raise KeyError(f"Заказ не найден: {oid}")
+    order = dict(row)
+    plat = str(order.get("platform") or "upwork").strip().lower()
+    spec = CATALOG_BY_ID.get(plat, {})
+    req_paid_ms = bool(spec.get("requires_paid_milestone") or (plat in PAID_MILESTONE_REQUIRED_PLATFORMS) or plat.endswith("_desk") or plat.endswith("_api"))
+    budget = float(order.get("budget_usdt") or 100.0)
+    ms_usdt = round(max(1.0, budget * 0.10), 2)
+    sample_mode = "paid_milestone_10pct" if req_ms_check(plat, req_paid_ms) else "free_sample_10pct"
+    rules_url = MILESTONE_RULES_URLS.get(plat.split("_")[0], str(spec.get("milestone_rules_url") or "https://www.upwork.com/legal"))
+
+    raw_text = sample_deliverable.strip() or (
+        f"Первый оплачиваемый этап 10% (${ms_usdt:g} USDT через эскроу/Безопасную сделку по правилам {plat}): "
+        f"готовый рабочий прототип 10% объёма по заказу «{order['title']}»."
+        if sample_mode == "paid_milestone_10pct"
+        else f"Качественный демонстрационный образец 10% объёма по заказу «{order['title']}» (готово к проверке заказчиком)."
+    )
+    clean_sample, _ = freelance_autonomy.sanitize_for_delivery(raw_text)
+    now_s = float(now_ts if now_ts is not None else time.time())
+
+    with freelance_autonomy._lock_of(memory):
+        memory.store.conn.execute(
+            """
+            UPDATE ark_freelance_order
+            SET status = 'sample_10pct', sample_stage = 'sample', sample_mode = ?,
+                sample_milestone_usdt = ?, sample_deliverable = ?, updated_at = ?
+            WHERE user_id = ? AND order_id = ?
+            """,
+            (sample_mode, ms_usdt, clean_sample[:2000], now_s, memory.user_id, oid),
+        )
+        memory.store.conn.commit()
+
+    return {
+        "ok": True,
+        "order_id": oid,
+        "platform": plat,
+        "status": "sample_10pct",
+        "sample_stage": "sample",
+        "sample_mode": sample_mode,
+        "requires_paid_milestone": sample_mode == "paid_milestone_10pct",
+        "milestone_10pct_usdt": ms_usdt,
+        "sample_deliverable": clean_sample[:2000],
+        "rules_url": rules_url,
+    }
+
+
+def req_ms_check(plat: str, default_flag: bool) -> bool:
+    base = plat.split("_")[0]
+    if base in ("upwork", "fiverr", "kwork", "fl", "freelancer", "peopleperhour", "guru", "weblancer"):
+        return True
+    return default_flag
+
+
+def accept_10pct_sample(
+    memory,
+    order_id: str,
+    *,
+    now_ts: float | None = None,
+) -> dict[str, Any]:
+    """Переводит заказ после одобрения 10%-го образца клиентом: «образец» -> «принят» -> «весь заказ» (100% в работу)."""
+    _ensure_stage3_schema(memory)
+    oid = str(order_id or "").strip()
+    with freelance_autonomy._lock_of(memory):
+        row = memory.store.conn.execute(
+            "SELECT * FROM ark_freelance_order WHERE user_id = ? AND order_id = ?",
+            (memory.user_id, oid),
+        ).fetchone()
+    if row is None:
+        raise KeyError(f"Заказ не найден: {oid}")
+    order = dict(row)
+    now_s = float(now_ts if now_ts is not None else time.time())
+    full_deliv = f"Выполнен весь заказ целиком (100%) после приёмки 10%-го образца: {order.get('title')}"
+    clean_full, _ = freelance_autonomy.sanitize_for_delivery(full_deliv)
+
+    with freelance_autonomy._lock_of(memory):
+        memory.store.conn.execute(
+            """
+            UPDATE ark_freelance_order
+            SET status = 'in_progress', sample_stage = 'full_order',
+                sample_deliverable = ?, updated_at = ?
+            WHERE user_id = ? AND order_id = ?
+            """,
+            (clean_full[:4000], now_s, memory.user_id, oid),
+        )
+        memory.store.conn.commit()
+    return {
+        "ok": True,
+        "order_id": oid,
+        "previous_stage": "sample",
+        "transition": ["sample", "accepted", "full_order"],
+        "sample_stage": "full_order",
+        "status": "in_progress",
+    }
+
+
+def reject_10pct_sample(
+    memory,
+    order_id: str,
+    *,
+    reason: str = "Образец 10% не подошёл заказчику",
+    now_ts: float | None = None,
+) -> dict[str, Any]:
+    """Если образец 10% отклонён — закрывает заказ без начислений ($0 в казне и агентском регистре)."""
+    _ensure_stage3_schema(memory)
+    oid = str(order_id or "").strip()
+    with freelance_autonomy._lock_of(memory):
+        row = memory.store.conn.execute(
+            "SELECT * FROM ark_freelance_order WHERE user_id = ? AND order_id = ?",
+            (memory.user_id, oid),
+        ).fetchone()
+    if row is None:
+        raise KeyError(f"Заказ не найден: {oid}")
+    now_s = float(now_ts if now_ts is not None else time.time())
+    with freelance_autonomy._lock_of(memory):
+        memory.store.conn.execute(
+            """
+            UPDATE ark_freelance_order
+            SET status = 'closed_no_charge', sample_stage = 'rejected',
+                agent_payout_status = 'none', payout_cancel_reason = ?, updated_at = ?
+            WHERE user_id = ? AND order_id = ?
+            """,
+            (str(reason or "")[:200], now_s, memory.user_id, oid),
+        )
+        memory.store.conn.commit()
+    return {
+        "ok": True,
+        "order_id": oid,
+        "sample_stage": "rejected",
+        "status": "closed_no_charge",
+        "accrued_usdt": 0.0,
+    }
+
+
+def _format_connection_status_ru(conn_row: dict[str, Any]) -> dict[str, Any]:
+    out = dict(conn_row)
+    st = str(out.get("status") or "awaiting_login")
+    ts = float(out.get("updated_at") or 0.0)
+    iso = _dt.datetime.fromtimestamp(ts, tz=_dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC") if ts > 0 else "—"
+    if st in ("session_active", "connected"):
+        out["status_label_ru"] = f"подключено (сессия проверена {iso})"
+    elif st == "error":
+        out["status_label_ru"] = "ошибка: не удалось проверить сессию"
+    else:
+        out["status_label_ru"] = "ожидает входа"
+    return out
+
+
+def official_platform_api_action(
+    memory,
+    *,
+    platform_id: str,
+    op: str = "whoami",
+    token: str = "",
+    api_base_url: str = "",
+    query: str = "",
+    project_id: str = "",
+    bid_amount_usdt: float = 0.0,
+    pitch_text: str = "",
+    allow_localhost: bool = False,
+) -> dict[str, Any]:
+    """Вызов официального API площадки (Freelancer.com и др.): whoami, search_jobs, place_bid."""
+    _ensure_stage3_schema(memory)
+    pid = str(platform_id or "").strip().lower()
+    tok = str(token or "").strip()
+    if not tok:
+        with freelance_autonomy._lock_of(memory):
+            row = memory.store.conn.execute(
+                "SELECT credential_enc FROM ark_platform_wizard_connection "
+                "WHERE user_id = ? AND platform_id = ? AND credential_enc != '' "
+                "ORDER BY updated_at DESC LIMIT 1",
+                (memory.user_id, pid),
+            ).fetchone()
+        if row and row["credential_enc"]:
+            try:
+                tok = freelance_autonomy._unseal_secret(memory, str(row["credential_enc"]))
+            except Exception:
+                tok = ""
+    from . import browser_session as _bs
+    return _bs.call_official_platform_api(
+        platform_id=pid,
+        op=op,
+        token=tok,
+        api_base_url=api_base_url,
+        query=query,
+        project_id=project_id,
+        bid_amount_usdt=bid_amount_usdt,
+        pitch_text=pitch_text,
+        allow_localhost=allow_localhost,
+    )
+
+
+def platform_wizard_snapshot(memory) -> dict[str, Any]:
+    """Сводка мастера подключения 34 площадок (30 из методички + 4 биржи агентов), анкет, сессий и переключателей автопилота."""
+    _ensure_stage3_schema(memory)
     cat = list_platform_catalog()
     conn = memory.store.conn
     with freelance_autonomy._lock_of(memory):
         conns = conn.execute(
-            "SELECT connection_id, platform_id, auth_method, account_label, agent_id, status, updated_at "
+            "SELECT connection_id, platform_id, auth_method, account_label, agent_id, status, "
+            "session_fingerprint, auth_flow, browser_profile_dir, updated_at "
             "FROM ark_platform_wizard_connection WHERE user_id = ? ORDER BY updated_at DESC",
             (memory.user_id,),
         ).fetchall()
@@ -1114,12 +1976,17 @@ def platform_wizard_snapshot(memory) -> dict[str, Any]:
             "SELECT * FROM ark_platform_profile_draft WHERE user_id = ? ORDER BY updated_at DESC",
             (memory.user_id,),
         ).fetchall()
+        ap_rows = conn.execute(
+            "SELECT * FROM ark_platform_autopilot_config WHERE user_id = ? ORDER BY updated_at DESC",
+            (memory.user_id,),
+        ).fetchall()
     return {
         "ok": True,
         "counts": cat["counts"],
         "questions": cat["questions"],
         "platforms": cat["platforms"],
-        "connections": [dict(r) for r in conns],
+        "connections": [_format_connection_status_ru(dict(r)) for r in conns],
         "intakes": [dict(r) for r in intakes],
         "profile_drafts": [_public_profile_draft(dict(r)) for r in drafts],
+        "autopilot_configs": {str(r["platform_id"]): get_platform_autopilot_config(memory, str(r["platform_id"])) for r in ap_rows},
     }

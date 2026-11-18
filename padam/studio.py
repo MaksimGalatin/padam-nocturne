@@ -229,6 +229,13 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_wiz_profile_btn": "2. Собрать черновик профиля из памяти",
         "earn_wiz_autopick_btn": "3. Найти посильные заказы и черновик отклика",
         "earn_wiz_pub_profile_btn": "Опубликовать профиль (одобрено владельцем)",
+        "earn_wiz_google_btn": "Зарегистрироваться через Google",
+        "earn_wiz_login_btn": "Войти",
+        "earn_wiz_autopilot_lbl": "Автопилот: отклики и публикации без кнопки (комиссия CODE 20%)",
+        "earn_wiz_bot_warn_lbl": "правила площадки запрещают автоматику, риск блокировки аккаунта",
+        "earn_btn_sample10": "Образец 10% / Этап 10%",
+        "earn_btn_sample_accept": "Образец принят → весь заказ",
+        "earn_btn_sample_reject": "Образец отклонён ($0)",
         "nav_settings": "Настройки",
         "nav_quickstart": "Первый запуск",
         "theme_dark": "Тёмная тема",
@@ -752,6 +759,13 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_wiz_profile_btn": "2. Draft Profile from Memory",
         "earn_wiz_autopick_btn": "3. Autopick Jobs & Draft Bid",
         "earn_wiz_pub_profile_btn": "Approve & Publish Profile",
+        "earn_wiz_google_btn": "Sign Up with Google",
+        "earn_wiz_login_btn": "Sign In",
+        "earn_wiz_autopilot_lbl": "Autopilot: bids & posts without button (20% CODE fee)",
+        "earn_wiz_bot_warn_lbl": "правила площадки запрещают автоматику, риск блокировки аккаунта",
+        "earn_btn_sample10": "10% Sample / Paid Milestone",
+        "earn_btn_sample_accept": "Sample Accepted → Full Order",
+        "earn_btn_sample_reject": "Sample Rejected ($0)",
         "nav_settings": "Settings",
         "nav_quickstart": "Quick Start",
         "theme_dark": "Dark theme",
@@ -1264,6 +1278,13 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_wiz_profile_btn": "2. Crear Borrador de Perfil desde Memoria",
         "earn_wiz_autopick_btn": "3. Buscar Pedidos y Borrador de Oferta",
         "earn_wiz_pub_profile_btn": "Aprobar y Publicar Perfil",
+        "earn_wiz_google_btn": "Registrarse con Google",
+        "earn_wiz_login_btn": "Iniciar Sesion",
+        "earn_wiz_autopilot_lbl": "Piloto automatico: ofertas y publicaciones sin boton (20% CODE)",
+        "earn_wiz_bot_warn_lbl": "правила площадки запрещают автоматику, риск блокировки аккаунта",
+        "earn_btn_sample10": "Muestra 10% / Hito 10%",
+        "earn_btn_sample_accept": "Muestra Aceptada → Pedido Completo",
+        "earn_btn_sample_reject": "Muestra Rechazada ($0)",
         "nav_settings": "Ajustes",
         "nav_quickstart": "Inicio rápido",
         "theme_dark": "Tema oscuro",
@@ -1776,6 +1797,13 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_wiz_profile_btn": "2. 从记忆生成档案草稿",
         "earn_wiz_autopick_btn": "3. 筛选合适订单并生成投标草稿",
         "earn_wiz_pub_profile_btn": "批准并发布平台档案",
+        "earn_wiz_google_btn": "通过 Google 注册",
+        "earn_wiz_login_btn": "登录",
+        "earn_wiz_autopilot_lbl": "自动驾驶：无需按钮自动投标与发布（20% CODE 费率）",
+        "earn_wiz_bot_warn_lbl": "правила площадки запрещают автоматику, риск блокировки аккаунта",
+        "earn_btn_sample10": "10% 样品 / 付费里程碑",
+        "earn_btn_sample_accept": "样品通过 → 执行全单",
+        "earn_btn_sample_reject": "样品拒绝 ($0)",
         "nav_settings": "设置",
         "nav_quickstart": "快速开始",
         "theme_dark": "深色主题",
@@ -6134,6 +6162,14 @@ function _renderEarningDashboard(snap, sibData, coopData) {
           ' · tokens~' + String(o.est_tokens) +
           ' · ' + String(o.security_note || '')
         ));
+        if (o.sample_stage) {
+          const smpLine = _el('div', 'earn-meta',
+            'Этап 10%: ' + String(o.sample_stage) +
+            (o.sample_mode ? ' (' + String(o.sample_mode) + (o.sample_milestone_usdt ? ' $' + String(o.sample_milestone_usdt) : '') + ')' : '')
+          );
+          smpLine.setAttribute('data-order-sample-stage', String(o.sample_stage));
+          card.appendChild(smpLine);
+        }
         if (o.verified === false || o.status === 'unverified_payout') {
           const unvLine = _el('div', 'earn-meta', S.earn_sale_unverified_badge || 'Unverified (Payhip: confirm payout first)');
           unvLine.setAttribute('data-order-unverified', '1');
@@ -6233,11 +6269,44 @@ function _renderEarningDashboard(snap, sibData, coopData) {
           const bAcc = _el('button', '', S.earn_btn_accept || 'Accepted');
           bAcc.setAttribute('data-order-action', 'accept_delivery');
           bAcc.onclick = () => _runOrderAction(bAcc, { action: 'accept_delivery', order_id: o.order_id });
+          const bSmp = _el('button', '', S.earn_btn_sample10 || '10% Sample');
+          bSmp.setAttribute('data-order-action', 'sample_prepare');
+          bSmp.onclick = async () => {
+            bSmp.disabled = true;
+            try {
+              await api('/api/v2/ark/wizard/action', { action: 'sample_prepare', order_id: o.order_id });
+              say(S.done);
+              await loadEarning();
+            } catch (e) { say(String(e.message || e), false); } finally { bSmp.disabled = false; }
+          };
+          const bSmpOk = _el('button', 'btn-ok', S.earn_btn_sample_accept || 'Sample Accepted');
+          bSmpOk.setAttribute('data-order-action', 'sample_accept');
+          bSmpOk.onclick = async () => {
+            bSmpOk.disabled = true;
+            try {
+              await api('/api/v2/ark/wizard/action', { action: 'sample_accept', order_id: o.order_id });
+              say(S.done);
+              await loadEarning();
+            } catch (e) { say(String(e.message || e), false); } finally { bSmpOk.disabled = false; }
+          };
+          const bSmpNo = _el('button', 'btn-danger', S.earn_btn_sample_reject || 'Sample Rejected');
+          bSmpNo.setAttribute('data-order-action', 'sample_reject');
+          bSmpNo.onclick = async () => {
+            bSmpNo.disabled = true;
+            try {
+              await api('/api/v2/ark/wizard/action', { action: 'sample_reject', order_id: o.order_id });
+              say(S.done);
+              await loadEarning();
+            } catch (e) { say(String(e.message || e), false); } finally { bSmpNo.disabled = false; }
+          };
           actRow.appendChild(bBid);
           actRow.appendChild(bExec);
           actRow.appendChild(bDel);
           actRow.appendChild(bSet);
           actRow.appendChild(bAcc);
+          actRow.appendChild(bSmp);
+          actRow.appendChild(bSmpOk);
+          actRow.appendChild(bSmpNo);
           if (o.agent_payout_status !== 'cancelled' && o.status !== 'refunded' && (o.status === 'paid' || o.status === 'accepted' || o.status === 'delivered')) {
             const bRef = _el('button', 'btn-danger', S.earn_btn_refund || 'Refund');
             bRef.setAttribute('data-order-action', 'refund');
@@ -6537,6 +6606,38 @@ function _renderEarningDashboard(snap, sibData, coopData) {
       infoEl.textContent = '[' + _wizTier(curSpec.automation_tier, curSpec.automation_label_ru) + '] '
         + String(curSpec.auth_hint_ru || '') + ' — ' + String(curSpec.reason_ru || '');
     }
+    const apCfgs = pw.autopilot_configs || {};
+    const curAp = (curSpec && apCfgs[curSpec.platform_id]) || {};
+    if ($('earn-wiz-autopilot-chk')) {
+      $('earn-wiz-autopilot-chk').checked = Boolean(curAp.autopilot_enabled);
+    }
+    if ($('earn-wiz-daily-limit') && curAp.daily_bid_limit) {
+      $('earn-wiz-daily-limit').value = String(curAp.daily_bid_limit);
+    }
+    const warnEl = $('earn-wiz-bot-warn');
+    if (warnEl && curSpec) {
+      warnEl.textContent = '';
+      if (curSpec.forbids_bots) {
+        warnEl.appendChild(_el('span', '', (S.earn_wiz_bot_warn_lbl || curSpec.bot_warning_ru) + ' · '));
+        const lnk = _el('a', '', String(curSpec.bot_warning_url || curSpec.docs_url || ''));
+        lnk.href = String(curSpec.bot_warning_url || curSpec.docs_url || '#');
+        lnk.target = '_blank';
+        lnk.rel = 'noopener noreferrer';
+        warnEl.appendChild(lnk);
+      }
+    }
+  }
+  const sessOut = $('earn-wiz-session-out');
+  if (sessOut) {
+    const conns = pw.connections || [];
+    if (conns.length) {
+      const c0 = conns[0];
+      const stLbl = String(c0.status_label_ru || (c0.status === 'session_active' ? 'подключено' : 'ожидает входа'));
+      sessOut.textContent = String(c0.platform_id) + ' · ' + stLbl
+        + (c0.session_fingerprint ? ' · ' + String(c0.session_fingerprint) : '');
+    } else {
+      sessOut.textContent = 'ожидает входа';
+    }
   }
   const profListEl = $('earn-wiz-profiles-list');
   if (profListEl) {
@@ -6570,6 +6671,43 @@ function _renderEarningDashboard(snap, sibData, coopData) {
       item.setAttribute('data-automation-tier', String(p.automation_tier));
       item.appendChild(_el('strong', '', '#' + String(p.num) + ' ' + String(p.title) + ' (' + String(p.score) + '/10) — ' + _wizTier(p.automation_tier, p.automation_label_ru)));
       item.appendChild(_el('div', 'earn-meta', String(p.auth_hint_ru) + ' · ' + String(p.reason_ru)));
+      if (p.forbids_bots) {
+        const wLine = _el('div', 'earn-meta', String(p.bot_warning_ru || S.earn_wiz_bot_warn_lbl) + ' (' + String(p.bot_warning_url || p.docs_url) + ')');
+        wLine.setAttribute('data-bot-warning', '1');
+        item.appendChild(wLine);
+      }
+      const actRow = _el('div', 'att-row');
+      const bGoog = _el('button', 'btn-primary', S.earn_wiz_google_btn || 'Sign Up with Google');
+      bGoog.setAttribute('data-wiz-action', 'signup');
+      bGoog.onclick = async () => {
+        bGoog.disabled = true;
+        try {
+          const r = await api('/api/v2/ark/wizard/action', { action: 'signup', platform_id: p.platform_id });
+          if ($('earn-wiz-session-out') && r) {
+            const lbl = String(r.status_label_ru || (r.ok ? 'подключено' : ('ошибка: ' + String(r.error || 'ожидает входа'))));
+            $('earn-wiz-session-out').textContent = String(r.platform_id) + ' · ' + lbl + (r.session_fingerprint ? ' · ' + String(r.session_fingerprint) : '');
+          }
+          say(r && r.ok === false ? String(r.status_label_ru || r.error) : S.done, !(r && r.ok === false));
+          await loadEarning();
+        } catch (e) { say(String(e.message || e), false); } finally { bGoog.disabled = false; }
+      };
+      const bLog = _el('button', '', S.earn_wiz_login_btn || 'Sign In');
+      bLog.setAttribute('data-wiz-action', 'login');
+      bLog.onclick = async () => {
+        bLog.disabled = true;
+        try {
+          const r = await api('/api/v2/ark/wizard/action', { action: 'login', platform_id: p.platform_id });
+          if ($('earn-wiz-session-out') && r) {
+            const lbl = String(r.status_label_ru || (r.ok ? 'подключено' : ('ошибка: ' + String(r.error || 'ожидает входа'))));
+            $('earn-wiz-session-out').textContent = String(r.platform_id) + ' · ' + lbl + (r.session_fingerprint ? ' · ' + String(r.session_fingerprint) : '');
+          }
+          say(r && r.ok === false ? String(r.status_label_ru || r.error) : S.done, !(r && r.ok === false));
+          await loadEarning();
+        } catch (e) { say(String(e.message || e), false); } finally { bLog.disabled = false; }
+      };
+      actRow.appendChild(bGoog);
+      actRow.appendChild(bLog);
+      item.appendChild(actRow);
       catListEl.appendChild(item);
     }
   }
@@ -6877,6 +7015,49 @@ if ($('earn-wiz-platform')) {
       infoEl.textContent = '[' + _wizTier(curSpec.automation_tier, curSpec.automation_label_ru) + '] '
         + String(curSpec.auth_hint_ru || '') + ' — ' + String(curSpec.reason_ru || '');
     }
+  };
+}
+if ($('earn-wiz-google-btn')) {
+  $('earn-wiz-google-btn').onclick = async () => {
+    try {
+      const pid = ($('earn-wiz-platform') && $('earn-wiz-platform').value) || 'upwork';
+      const r = await api('/api/v2/ark/wizard/action', { action: 'signup', platform_id: pid });
+      if ($('earn-wiz-session-out') && r) {
+        const lbl = String(r.status_label_ru || (r.ok ? 'подключено' : ('ошибка: ' + String(r.error || 'ожидает входа'))));
+        $('earn-wiz-session-out').textContent = String(r.platform_id) + ' · ' + lbl + (r.session_fingerprint ? ' · ' + String(r.session_fingerprint) : '');
+      }
+      say(r && r.ok === false ? String(r.status_label_ru || r.error) : S.done, !(r && r.ok === false));
+      await loadEarning();
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
+if ($('earn-wiz-login-btn')) {
+  $('earn-wiz-login-btn').onclick = async () => {
+    try {
+      const pid = ($('earn-wiz-platform') && $('earn-wiz-platform').value) || 'upwork';
+      const r = await api('/api/v2/ark/wizard/action', { action: 'login', platform_id: pid });
+      if ($('earn-wiz-session-out') && r) {
+        const lbl = String(r.status_label_ru || (r.ok ? 'подключено' : ('ошибка: ' + String(r.error || 'ожидает входа'))));
+        $('earn-wiz-session-out').textContent = String(r.platform_id) + ' · ' + lbl + (r.session_fingerprint ? ' · ' + String(r.session_fingerprint) : '');
+      }
+      say(r && r.ok === false ? String(r.status_label_ru || r.error) : S.done, !(r && r.ok === false));
+      await loadEarning();
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
+if ($('earn-wiz-autopilot-chk')) {
+  $('earn-wiz-autopilot-chk').onchange = async () => {
+    try {
+      const pid = ($('earn-wiz-platform') && $('earn-wiz-platform').value) || 'upwork';
+      await api('/api/v2/ark/wizard/action', {
+        action: 'set_autopilot',
+        platform_id: pid,
+        autopilot_enabled: Boolean($('earn-wiz-autopilot-chk').checked),
+        daily_bid_limit: Number(($('earn-wiz-daily-limit') && $('earn-wiz-daily-limit').value) || 10),
+      });
+      say(S.done);
+      await loadEarning();
+    } catch (e) { say(String(e.message || e), false); }
   };
 }
 if ($('earn-wiz-connect-btn')) {
@@ -8027,6 +8208,19 @@ def page() -> tuple[str, str]:
               </select>
             </div>
             <div id="earn-wiz-spec-info" class="earn-meta"></div>
+            <div class="rec-actions">
+              <button id="earn-wiz-google-btn" class="btn-primary" data-i18n="earn_wiz_google_btn">{s['earn_wiz_google_btn']}</button>
+              <button id="earn-wiz-login-btn" class="btn-ok" data-i18n="earn_wiz_login_btn">{s['earn_wiz_login_btn']}</button>
+            </div>
+            <div id="earn-wiz-session-out" class="earn-meta"></div>
+            <div class="toolbar">
+              <label for="earn-wiz-autopilot-chk">
+                <input id="earn-wiz-autopilot-chk" type="checkbox">
+                <span data-i18n="earn_wiz_autopilot_lbl">{s['earn_wiz_autopilot_lbl']}</span>
+              </label>
+              <input id="earn-wiz-daily-limit" class="earn-num-input" type="number" value="10" min="1" max="100" step="1" aria-label="Daily bid limit">
+            </div>
+            <div id="earn-wiz-bot-warn" class="earn-meta" data-bot-warn-box="1"></div>
             <div class="toolbar">
               <input id="earn-wiz-secret" type="password" data-i18n-placeholder="earn_wiz_secret_ph" placeholder="{s['earn_wiz_secret_ph']}">
               <button id="earn-wiz-connect-btn" class="btn-primary" data-i18n="earn_wiz_connect_btn">{s['earn_wiz_connect_btn']}</button>

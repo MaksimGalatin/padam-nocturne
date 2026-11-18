@@ -119,15 +119,18 @@ class Handler(BaseHTTPRequestHandler):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         if code >= 400:
             self._дочитать_тело()
-        self.send_response(code)
-        cors = self._cors_origin()
-        if cors:
-            self.send_header("Access-Control-Allow-Origin", cors)
-            self.send_header("Vary", "Origin")
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.send_response(code)
+            cors = self._cors_origin()
+            if cors:
+                self.send_header("Access-Control-Allow-Origin", cors)
+                self.send_header("Vary", "Origin")
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        except (ConnectionAbortedError, ConnectionResetError, BrokenPipeError):
+            return
 
     def do_OPTIONS(self) -> None:
         if not self._trusted():
@@ -527,12 +530,14 @@ class Handler(BaseHTTPRequestHandler):
                 roles.require_owner(actor, "brain_status")
                 from . import sibling_registry as _sr
                 with mem().store._lock:
-                    return self._send(200, {"siblings": _sr.list_siblings(mem())})
+                    sib_list = _sr.list_siblings(mem())
+                return self._send(200, {"siblings": sib_list})
             if путь.path == "/api/v2/ark/coop":
                 roles.require_owner(actor, "brain_status")
                 from . import coop_broker as _cb
                 with mem().store._lock:
-                    return self._send(200, {"leases": _cb.list_leases(mem()), "tasks": _cb.list_tasks(mem())})
+                    coop_payload = {"leases": _cb.list_leases(mem()), "tasks": _cb.list_tasks(mem())}
+                return self._send(200, coop_payload)
             if путь.path == "/api/v2/ark/session-pack":
                 roles.require_owner(actor, "brain_status")
                 from . import session_pack as _sp
@@ -562,12 +567,13 @@ class Handler(BaseHTTPRequestHandler):
                     snap["devices"] = _dms.list_compute_devices(mem())
                     snap["beacon"] = _pb.list_kin_and_messages(mem())
                     snap["lora_profile"] = _la.get_phoenix_identity_profile(mem(), "aifa")
-                    return self._send(200, snap)
+                return self._send(200, snap)
             if путь.path == "/api/v2/ark/stores":
                 roles.require_owner(actor, "brain_status")
                 from . import digital_stores as _ds
                 with mem().store._lock:
-                    return self._send(200, _ds.digital_stores_snapshot(mem(), auto_seed_starters=True))
+                    snap_stores = _ds.digital_stores_snapshot(mem(), auto_seed_starters=True)
+                return self._send(200, snap_stores)
             if путь.path == "/api/v2/ark/partner":
                 roles.require_owner(actor, "brain_status")
                 from . import partner_bridge as _pb
@@ -576,7 +582,8 @@ class Handler(BaseHTTPRequestHandler):
                 roles.require_owner(actor, "brain_status")
                 from . import platform_wizard as _pw
                 with mem().store._lock:
-                    return self._send(200, _pw.platform_wizard_snapshot(mem()))
+                    snap_wiz = _pw.platform_wizard_snapshot(mem())
+                return self._send(200, snap_wiz)
             if путь.path == "/api/v2/qa-benchmark":
                 roles.require_owner(actor, "aifa_security")
                 from pathlib import Path as _Path
@@ -1741,55 +1748,58 @@ class Handler(BaseHTTPRequestHandler):
                 from . import digital_stores as _ds
                 act = str(data.get("action") or "status").lower()
                 aid = str(data.get("agent_id") or "aifa")
-                if act == "connect_store":
-                    return self._send(200, _ds.connect_and_verify_store(
-                        mem(),
-                        store_type=str(data.get("store_type") or ""),
-                        api_key=str(data.get("api_key") or ""),
-                        api_base_url=str(data.get("api_base_url") or ""),
-                        store_label=str(data.get("store_label") or ""),
-                        webhook_secret=str(data.get("webhook_secret") or ""),
-                        agent_id=aid,
-                        seller_id=str(data.get("seller_id") or ""),
-                        allow_localhost=bool(data.get("allow_localhost", False)),
-                    ))
-                if act == "seed_drafts":
-                    return self._send(200, _ds.seed_starter_product_drafts(mem()))
-                if act == "save_draft":
-                    return self._send(200, _ds.upsert_product_draft(
-                        mem(),
-                        draft_id=str(data.get("draft_id") or ""),
-                        store_type=str(data.get("store_type") or "gumroad"),
-                        store_account_id=str(data.get("store_account_id") or ""),
-                        title=str(data.get("title") or ""),
-                        description=str(data.get("description") or ""),
-                        price_usdt=float(data.get("price_usdt") or 19.0),
-                        currency=str(data.get("currency") or "USD"),
-                        delivery_url=str(data.get("delivery_url") or ""),
-                        file_ref=str(data.get("file_ref") or ""),
-                    ))
-                if act == "publish_draft":
-                    return self._send(200, _ds.publish_product_to_store(
-                        mem(),
-                        str(data.get("draft_id") or ""),
-                        store_account_id=str(data.get("store_account_id") or ""),
-                        store_type=str(data.get("store_type") or ""),
-                        owner_approved=bool(data.get("owner_approved", False)),
-                        allow_localhost=bool(data.get("allow_localhost", False)),
-                    ))
-                if act == "sync_sales":
-                    return self._send(200, _ds.sync_store_sales(
-                        mem(),
-                        str(data.get("store_account_id") or ""),
-                        allow_localhost=bool(data.get("allow_localhost", False)),
-                    ))
-                if act == "confirm_sale":
-                    return self._send(200, _ds.confirm_unverified_store_sale(
-                        mem(),
-                        str(data.get("order_id") or ""),
-                        owner_approved=bool(data.get("owner_approved", False)),
-                    ))
-                return self._send(200, _ds.digital_stores_snapshot(mem(), auto_seed_starters=True))
+                with mem().store._lock:
+                    if act == "connect_store":
+                        res_st = _ds.connect_and_verify_store(
+                            mem(),
+                            store_type=str(data.get("store_type") or ""),
+                            api_key=str(data.get("api_key") or ""),
+                            api_base_url=str(data.get("api_base_url") or ""),
+                            store_label=str(data.get("store_label") or ""),
+                            webhook_secret=str(data.get("webhook_secret") or ""),
+                            agent_id=aid,
+                            seller_id=str(data.get("seller_id") or ""),
+                            allow_localhost=bool(data.get("allow_localhost", False)),
+                        )
+                    elif act == "seed_drafts":
+                        res_st = _ds.seed_starter_product_drafts(mem())
+                    elif act == "save_draft":
+                        res_st = _ds.upsert_product_draft(
+                            mem(),
+                            draft_id=str(data.get("draft_id") or ""),
+                            store_type=str(data.get("store_type") or "gumroad"),
+                            store_account_id=str(data.get("store_account_id") or ""),
+                            title=str(data.get("title") or ""),
+                            description=str(data.get("description") or ""),
+                            price_usdt=float(data.get("price_usdt") or 19.0),
+                            currency=str(data.get("currency") or "USD"),
+                            delivery_url=str(data.get("delivery_url") or ""),
+                            file_ref=str(data.get("file_ref") or ""),
+                        )
+                    elif act == "publish_draft":
+                        res_st = _ds.publish_product_to_store(
+                            mem(),
+                            str(data.get("draft_id") or ""),
+                            store_account_id=str(data.get("store_account_id") or ""),
+                            store_type=str(data.get("store_type") or ""),
+                            owner_approved=bool(data.get("owner_approved", False)),
+                            allow_localhost=bool(data.get("allow_localhost", False)),
+                        )
+                    elif act == "sync_sales":
+                        res_st = _ds.sync_store_sales(
+                            mem(),
+                            str(data.get("store_account_id") or ""),
+                            allow_localhost=bool(data.get("allow_localhost", False)),
+                        )
+                    elif act == "confirm_sale":
+                        res_st = _ds.confirm_unverified_store_sale(
+                            mem(),
+                            str(data.get("order_id") or ""),
+                            owner_approved=bool(data.get("owner_approved", False)),
+                        )
+                    else:
+                        res_st = _ds.digital_stores_snapshot(mem(), auto_seed_starters=True)
+                return self._send(200, res_st)
 
             if self.path == "/api/v2/ark/partner/action":
                 roles.require_owner(actor, "ark_freelance")
@@ -1806,47 +1816,118 @@ class Handler(BaseHTTPRequestHandler):
                 from . import platform_wizard as _pw
                 act = str(data.get("action") or "status").lower()
                 aid = str(data.get("agent_id") or "aifa")
-                if act == "catalog":
-                    return self._send(200, _pw.list_platform_catalog(
-                        category=str(data.get("category") or ""),
-                        automation_tier=str(data.get("automation_tier") or ""),
-                    ))
-                if act == "connect":
-                    return self._send(200, _pw.connect_platform_step(
-                        mem(),
-                        platform_id=str(data.get("platform_id") or ""),
-                        auth_method=str(data.get("auth_method") or ""),
-                        token_or_session=str(data.get("token_or_session") or data.get("oauth_token") or data.get("api_key") or ""),
-                        account_label=str(data.get("account_label") or ""),
-                        agent_id=aid,
-                        password=str(data.get("password") or ""),
-                    ))
-                if act == "questionnaire":
-                    return self._send(200, _pw.submit_questionnaire_and_build_profile_draft(
-                        mem(),
-                        platform_id=str(data.get("platform_id") or ""),
-                        specializations=str(data.get("specializations") or ""),
-                        hourly_rate_usdt=float(data.get("hourly_rate_usdt") or 35.0),
-                        min_order_usdt=float(data.get("min_order_usdt") or 100.0),
-                        languages=str(data.get("languages") or "ru, en"),
-                        tone=str(data.get("tone") or "деловой, конкретный"),
-                        excluded_topics=str(data.get("excluded_topics") or ""),
-                        agent_id=aid,
-                    ))
-                if act == "publish_profile":
-                    return self._send(200, _pw.publish_profile_draft(
-                        mem(),
-                        str(data.get("draft_id") or ""),
-                        owner_approved=bool(data.get("owner_approved", False)),
-                    ))
-                if act == "autopick_jobs":
-                    return self._send(200, _pw.autopick_and_prepare_jobs(
-                        mem(),
-                        platform_id=str(data.get("platform_id") or ""),
-                        candidate_jobs=data.get("candidate_jobs") if isinstance(data.get("candidate_jobs"), list) else None,
-                        agent_id=aid,
-                    ))
-                return self._send(200, _pw.platform_wizard_snapshot(mem()))
+                with mem().store._lock:
+                    if act == "catalog":
+                        res_wz = _pw.list_platform_catalog(
+                            category=str(data.get("category") or ""),
+                            automation_tier=str(data.get("automation_tier") or ""),
+                        )
+                    elif act == "connect":
+                        res_wz = _pw.connect_platform_step(
+                            mem(),
+                            platform_id=str(data.get("platform_id") or ""),
+                            auth_method=str(data.get("auth_method") or ""),
+                            token_or_session=str(data.get("token_or_session") or data.get("oauth_token") or data.get("api_key") or ""),
+                            account_label=str(data.get("account_label") or ""),
+                            agent_id=aid,
+                            password=str(data.get("password") or ""),
+                        )
+                    elif act == "questionnaire":
+                        res_wz = _pw.submit_questionnaire_and_build_profile_draft(
+                            mem(),
+                            platform_id=str(data.get("platform_id") or ""),
+                            specializations=str(data.get("specializations") or ""),
+                            hourly_rate_usdt=float(data.get("hourly_rate_usdt") or 35.0),
+                            min_order_usdt=float(data.get("min_order_usdt") or 100.0),
+                            languages=str(data.get("languages") or "ru, en"),
+                            tone=str(data.get("tone") or "деловой, конкретный"),
+                            excluded_topics=str(data.get("excluded_topics") or ""),
+                            agent_id=aid,
+                        )
+                    elif act == "publish_profile":
+                        res_wz = _pw.publish_profile_draft(
+                            mem(),
+                            str(data.get("draft_id") or ""),
+                            owner_approved=bool(data.get("owner_approved", False)),
+                        )
+                    elif act == "autopick_jobs":
+                        res_wz = _pw.autopick_and_prepare_jobs(
+                            mem(),
+                            platform_id=str(data.get("platform_id") or ""),
+                            candidate_jobs=data.get("candidate_jobs") if isinstance(data.get("candidate_jobs"), list) else None,
+                            agent_id=aid,
+                        )
+                    elif act in ("signup", "login", "signup_google"):
+                        res_wz = _pw.one_click_platform_auth(
+                            mem(),
+                            platform_id=str(data.get("platform_id") or ""),
+                            action=act,
+                            cookies_payload=data.get("cookies"),
+                            account_label=str(data.get("account_label") or ""),
+                            agent_id=aid,
+                            password=str(data.get("password") or ""),
+                        )
+                    elif act == "set_autopilot":
+                        res_wz = _pw.set_platform_autopilot(
+                            mem(),
+                            platform_id=str(data.get("platform_id") or ""),
+                            autopilot_enabled=bool(data.get("autopilot_enabled", False)),
+                            daily_bid_limit=int(data.get("daily_bid_limit") or 10),
+                            min_pause_s=float(data.get("min_pause_s") if data.get("min_pause_s") is not None else 30.0),
+                            approved_paid_usdt=float(data["approved_paid_usdt"]) if data.get("approved_paid_usdt") is not None else None,
+                        )
+                    elif act == "autopilot_config":
+                        res_wz = _pw.get_platform_autopilot_config(
+                            mem(),
+                            str(data.get("platform_id") or "upwork"),
+                        )
+                    elif act == "autopilot_dispatch":
+                        res_wz = _pw.dispatch_platform_autopilot_action(
+                            mem(),
+                            platform_id=str(data.get("platform_id") or "upwork"),
+                            order_id=str(data.get("order_id") or ""),
+                            title=str(data.get("title") or "Autopilot Job"),
+                            brief=str(data.get("brief") or "Build AI website"),
+                            budget_usdt=float(data.get("budget_usdt") or 300.0),
+                            paid_action_cost_usdt=float(data.get("paid_action_cost_usdt") or 0.0),
+                            owner_approved_paid_usdt=float(data.get("owner_approved_paid_usdt") or 0.0),
+                            simulated_http_status=int(data.get("simulated_http_status") or 200),
+                            simulated_captcha=bool(data.get("simulated_captcha", False)),
+                            agent_id=aid,
+                        )
+                    elif act == "sample_prepare":
+                        res_wz = _pw.prepare_10pct_sample(
+                            mem(),
+                            str(data.get("order_id") or ""),
+                            sample_deliverable=str(data.get("sample_deliverable") or ""),
+                        )
+                    elif act == "sample_accept":
+                        res_wz = _pw.accept_10pct_sample(
+                            mem(),
+                            str(data.get("order_id") or ""),
+                        )
+                    elif act == "sample_reject":
+                        res_wz = _pw.reject_10pct_sample(
+                            mem(),
+                            str(data.get("order_id") or ""),
+                            reason=str(data.get("reason") or "Образец 10% отклонён"),
+                        )
+                    elif act == "official_api":
+                        res_wz = _pw.official_platform_api_action(
+                            mem(),
+                            platform_id=str(data.get("platform_id") or "freelancer"),
+                            op=str(data.get("op") or "whoami"),
+                            token=str(data.get("token") or ""),
+                            api_base_url=str(data.get("api_base_url") or ""),
+                            query=str(data.get("query") or ""),
+                            project_id=str(data.get("project_id") or ""),
+                            bid_amount_usdt=float(data.get("bid_amount_usdt") or 0.0),
+                            pitch_text=str(data.get("pitch_text") or ""),
+                            allow_localhost=bool(data.get("allow_localhost", False)),
+                        )
+                    else:
+                        res_wz = _pw.platform_wizard_snapshot(mem())
+                return self._send(200, res_wz)
 
             if self.path == "/api/v2/ark/jobs":
                 roles.require_owner(actor, "ark_jobs")
