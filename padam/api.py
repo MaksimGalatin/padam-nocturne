@@ -531,7 +531,8 @@ class Handler(BaseHTTPRequestHandler):
                 from . import sibling_registry as _sr
                 with mem().store._lock:
                     sib_list = _sr.list_siblings(mem())
-                return self._send(200, {"siblings": sib_list})
+                    ses_list = _sr.list_sessions(mem())
+                return self._send(200, {"siblings": sib_list, "sessions": ses_list})
             if путь.path == "/api/v2/ark/coop":
                 roles.require_owner(actor, "brain_status")
                 from . import coop_broker as _cb

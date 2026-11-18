@@ -68,6 +68,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "mem_title": "Последнее в памяти",
         "mem_all": "Вся память",
         "mem_empty": "Память пока пуста — здесь появятся решения, факты и итоги работы Семьи.",
+        "fam_sessions": "Сессии",
+        "fam_ses_live": "работает",
+        "fam_ses_idle": "тихо",
+        "fam_ses_calls": "действий",
+        "fam_ses_last": "последнее",
         "nav_overview": "Обзор",
         "nav_feed": "Лента памяти",
         "nav_search": "Поиск",
@@ -639,6 +644,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "mem_title": "Latest in memory",
         "mem_all": "All memory",
         "mem_empty": "Memory is empty yet — decisions, facts and the Family's work results will appear here.",
+        "fam_sessions": "Sessions",
+        "fam_ses_live": "working",
+        "fam_ses_idle": "quiet",
+        "fam_ses_calls": "actions",
+        "fam_ses_last": "last",
         "nav_overview": "Overview",
         "nav_feed": "Memory Feed",
         "nav_search": "Search",
@@ -1199,6 +1209,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "mem_title": "Lo último en memoria",
         "mem_all": "Toda la memoria",
         "mem_empty": "La memoria aún está vacía: aquí aparecerán decisiones, hechos y resultados de la Familia.",
+        "fam_sessions": "Sesiones",
+        "fam_ses_live": "trabajando",
+        "fam_ses_idle": "en calma",
+        "fam_ses_calls": "acciones",
+        "fam_ses_last": "última",
         "nav_overview": "Resumen",
         "nav_feed": "Línea de memoria",
         "nav_search": "Búsqueda",
@@ -1759,6 +1774,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "mem_title": "最新记忆",
         "mem_all": "全部记忆",
         "mem_empty": "记忆暂时为空 — 家族的决定、事实和工作成果将显示在这里。",
+        "fam_sessions": "会话",
+        "fam_ses_live": "工作中",
+        "fam_ses_idle": "空闲",
+        "fam_ses_calls": "次操作",
+        "fam_ses_last": "最近",
         "nav_overview": "概览",
         "nav_feed": "记忆流",
         "nav_search": "搜索",
@@ -5973,7 +5993,10 @@ async function loadFamily() {
       api('/api/v2/ark/siblings').catch(() => ({ siblings: [] })),
       api('/api/v2/brain/status?probe=1').catch(() => ({})),
     ]);
-    const list = (sib && sib.siblings) || [];
+    const list = ((sib && sib.siblings) || []).slice();
+    const sessions = (sib && sib.sessions) || [];
+    // агент, у которого есть сессии, но нет карточки в реестре, тоже показывается
+    for (const ss of sessions) if (!list.some(a => a.agent_id === ss.agent_id)) list.push({ agent_id: ss.agent_id, display_name: ss.client_name || ss.agent_id, role: '', status: 'online', last_heartbeat_at: ss.last_seen_at });
     if (!list.length) box.appendChild(_el('p', 'panel-sub', S.fam_agents_empty));
     for (const a of list) {
       const item = _el('div', 'earn-item');
@@ -5984,6 +6007,18 @@ async function loadFamily() {
       const when = isFinite(seen) ? new Date(seen).toLocaleString(currentLang === 'zh' ? 'zh-CN' : currentLang, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
       item.appendChild(_el('div', 'earn-meta', quiet ? ('⏸ ' + S.fam_quiet + ' ' + when) : ('🟢 ' + S.fam_status + ': ' + String(a.status || '') + ' · ' + S.fam_seen + ': ' + when)));
       if (a.current_task) item.appendChild(_el('div', 'earn-meta', S.fam_task + ': ' + String(a.current_task)));
+      const mine = sessions.filter(ss => ss.agent_id === a.agent_id);
+      if (mine.length) {
+        item.appendChild(_el('div', 'earn-meta', S.fam_sessions + ': ' + mine.length));
+        const ul = _el('ul', 'fam-sessions');
+        for (const ss of mine) {
+          const t2 = Date.parse(String(ss.last_seen_at || ''));
+          const live = isFinite(t2) && (Date.now() - t2) < 10 * 60 * 1000;
+          const w2 = isFinite(t2) ? new Date(t2).toLocaleString(currentLang === 'zh' ? 'zh-CN' : currentLang, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+          ul.appendChild(_el('li', '', (live ? '🟢 ' + S.fam_ses_live : '⏸ ' + S.fam_ses_idle) + ' · ' + String(ss.client_name || '') + ' #' + String(ss.session_id || '').split('@')[0] + ' · ' + w2 + ' · ' + S.fam_ses_last + ': ' + String(ss.last_action || '—') + ' · ' + String(ss.calls || 0) + ' ' + S.fam_ses_calls));
+        }
+        item.appendChild(ul);
+      }
       box.appendChild(item);
     }
     const probe = (st && st.local_probe) || null;

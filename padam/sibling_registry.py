@@ -280,3 +280,70 @@ def spawn_sibling_passport(
         "mcp_config_snippet": {"mcpServers": {"padam": mcp_server_entry}},
         "onboarding_prompt": onboarding_prompt,
     }
+
+
+# ---------- Параллельные сессии одного агента (18.11.2026, слово Папы: «как будут отображаться несколько сессий») ----------
+# Каждый процесс MCP = одна сессия. Сервер сам отмечает её пульс и последнее действие (имя инструмента, не аргументы),
+# поэтому статус живой без участия агента. Три сессии Claude Code видны тремя строками под одной карточкой агента.
+
+_DDL_SESSION = """
+CREATE TABLE IF NOT EXISTS ark_sibling_session (
+    session_id     TEXT PRIMARY KEY,
+    user_id        TEXT NOT NULL,
+    agent_id       TEXT NOT NULL,
+    client_name    TEXT NOT NULL DEFAULT '',
+    client_version TEXT NOT NULL DEFAULT '',
+    pid            INTEGER NOT NULL DEFAULT 0,
+    started_at     TEXT NOT NULL,
+    last_seen_at   TEXT NOT NULL,
+    last_action    TEXT NOT NULL DEFAULT '',
+    calls          INTEGER NOT NULL DEFAULT 0
+)
+"""
+
+
+def _ensure_sessions(memory) -> None:
+    memory.store.conn.execute(_DDL_SESSION)
+
+
+def touch_session(memory, *, session_id: str, agent_id: str, client_name: str = "", client_version: str = "",
+                  pid: int = 0, action: str = "") -> None:
+    """Отметить пульс сессии. Хранится только имя инструмента — без аргументов и текста."""
+    sid = re.sub(r"[^\w.:@-]", "", str(session_id or ""))[:80]
+    if not sid:
+        return
+    aid = _clean_agent_id(agent_id or client_name or "agent")
+    now = _now()
+    with memory.store._lock:
+        _ensure(memory)
+        _ensure_sessions(memory)
+        memory.store.conn.execute(
+            """INSERT INTO ark_sibling_session (session_id, user_id, agent_id, client_name, client_version, pid,
+                   started_at, last_seen_at, last_action, calls)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+               ON CONFLICT(session_id) DO UPDATE SET last_seen_at = excluded.last_seen_at,
+                   last_action = CASE WHEN excluded.last_action != '' THEN excluded.last_action ELSE last_action END,
+                   calls = calls + 1""",
+            (sid, memory.user_id, aid, str(client_name or "")[:60], str(client_version or "")[:30], int(pid or 0),
+             now, now, ((re.match(r"[\w.-]+", str(action or "")) or [""])[0])[:60]),
+        )
+        memory.store.conn.execute(
+            "UPDATE ark_sibling_agent SET last_heartbeat_at = ?, status = 'online' WHERE agent_id = ? AND user_id = ?",
+            (now, aid, memory.user_id),
+        )
+        memory.store.conn.commit()
+
+
+def list_sessions(memory, *, since_hours: float = 24.0) -> list[dict[str, Any]]:
+    """Сессии за последние since_hours часов, новые сверху."""
+    import datetime as _dt
+    with memory.store._lock:
+        _ensure_sessions(memory)
+        cutoff = (_dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(hours=float(since_hours))).isoformat()
+        rows = memory.store.conn.execute(
+            "SELECT session_id, agent_id, client_name, client_version, pid, started_at, last_seen_at, last_action, calls "
+            "FROM ark_sibling_session WHERE user_id = ? AND last_seen_at >= ? ORDER BY last_seen_at DESC LIMIT 200",
+            (memory.user_id, cutoff),
+        ).fetchall()
+    keys = ("session_id", "agent_id", "client_name", "client_version", "pid", "started_at", "last_seen_at", "last_action", "calls")
+    return [dict(zip(keys, r)) for r in rows]

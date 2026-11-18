@@ -28,6 +28,7 @@ from __future__ import annotations
 import contextvars
 import json
 import os
+import time
 import re
 import sys
 import threading
@@ -3394,6 +3395,33 @@ def complete_argument(ref: dict, argument: dict, context: dict | None = None) ->
     return {"completion": {"values": capped, "total": total, "hasMore": total > len(capped)}}
 
 
+# ---------- Сессия этого процесса MCP (18.11.2026): пульс и последнее действие видны в «Семье» ----------
+_SESSION_CLIENT: dict[str, str] = {}
+_SESSION_ID = f"{os.getpid()}@{int(time.time())}"
+_SESSION_LAST_TOUCH = [0.0, ""]
+
+
+def _remember_client(info) -> None:
+    if isinstance(info, dict):
+        _SESSION_CLIENT["name"] = str(info.get("name") or "")[:60]
+        _SESSION_CLIENT["version"] = str(info.get("version") or "")[:30]
+
+
+def _touch_session(action: str) -> None:
+    """Не чаще раза в 15 с (или при смене инструмента). Ошибка учёта никогда не ломает вызов инструмента."""
+    now = time.time()
+    if now - _SESSION_LAST_TOUCH[0] < 15 and action == _SESSION_LAST_TOUCH[1]:
+        return
+    _SESSION_LAST_TOUCH[0], _SESSION_LAST_TOUCH[1] = now, action
+    try:
+        from . import sibling_registry as _sr
+        agent = os.environ.get("PADAM_AGENT_ID") or _SESSION_CLIENT.get("name") or "agent"
+        _sr.touch_session(mem(), session_id=_SESSION_ID, agent_id=agent, client_name=_SESSION_CLIENT.get("name", ""),
+                          client_version=_SESSION_CLIENT.get("version", ""), pid=os.getpid(), action=action)
+    except Exception:
+        pass
+
+
 def call_tool(name: str, args: dict) -> str:
     text, _ = _call_tool_full(name, args)
     return text
@@ -5493,6 +5521,7 @@ def _handle_legacy(req: dict) -> dict | None:
         with _state_lock:
             _cancelled_request_ids.clear()
         set_client_capabilities(params.get("capabilities") if isinstance(params, dict) else None)
+        _remember_client(params.get("clientInfo") if isinstance(params, dict) else None)
         if config.mcp_roots_enabled() and isinstance(params, dict) and isinstance(params.get("roots"), list):
             set_client_roots(params["roots"])
         return ok({
@@ -5543,6 +5572,7 @@ def _handle_legacy(req: dict) -> dict | None:
             return err(-32602, f"unknown tool: {name}", key="unknown_tool", detail=str(name))
         if not isinstance(args, dict):
             return err(-32602, "arguments must be an object", key="invalid_argument", detail="arguments must be an object")
+        _touch_session(name)
         # Часть клиентов шлёт null вместо пропущенного необязательного поля: это то же, что поля нет.
         args = {к: з for к, з in args.items() if з is not None}
         if name == "padam_write" and _is_empty_arg(args.get("content")) and not _is_empty_arg(args.get("text")):
