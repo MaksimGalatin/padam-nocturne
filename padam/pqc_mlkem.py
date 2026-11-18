@@ -1,16 +1,28 @@
 # -*- coding: utf-8 -*-
-"""Чистая реализация NIST FIPS 203 ML-KEM-768 (Kyber-768) на стандартном Python.
+"""Постквантовый гибридный обмен ключами X-Wing (ML-KEM-768 + X25519) по стандарту NIST FIPS 203.
 
-Зачем: на Android (Chaquopy) и ряде систем установлена `cryptography < 48`, где нет
-встроенного `mlkem`. Этот модуль реализует математику кольца R_q = Z_3329[X]/(X^256 + 1),
-преобразование NTT / Inverse NTT, сжатие/разжатие и KEM (KeyGen, Encaps, Decaps)
-по стандарту FIPS 203 ML-KEM-768 только на стандартном `hashlib` и `secrets`.
+Архитектура выбора движка (поправка приёмки 17.11):
+- Если в системе установлена `cryptography >= 48` с нативным `mlkem` (работает в постоянном
+  времени на OpenSSL/Rust), используется эталонный движок `cryptography`.
+- Если на платформе нет `mlkem` (например Android / Chaquopy с `cryptography 42.0.8`),
+  автоматически включается чистая математическая реализация FIPS 203 `PureMLKEM768` на Python.
+- Приватный ключ ML-KEM-768 хранится в компактном формате **seed 64 байта** (`d || z` по FIPS 203),
+  что делает один и тот же ключ совместимым между эталоном и Python-фолбеком.
+  Старый формат 2400 байт (`dk_full`) также поддерживается для полной обратной совместимости.
 """
 from __future__ import annotations
 
 import hashlib
 import hmac
 import secrets
+
+try:
+    from cryptography.hazmat.primitives.asymmetric import mlkem as _native_mlkem
+
+    HAS_NATIVE_MLKEM = hasattr(_native_mlkem, "MLKEM768PrivateKey") and hasattr(_native_mlkem, "MLKEM768PublicKey")
+except Exception:
+    _native_mlkem = None  # type: ignore[assignment]
+    HAS_NATIVE_MLKEM = False
 
 Q = 3329
 N = 256
@@ -20,7 +32,7 @@ ETA2 = 2
 DU = 10
 DV = 4
 
-# Корни из единицы в бит-реверсивном порядке для NTT по FIPS 203 (zeta = 17 mod 3329)
+
 def _bitrev7(x: int) -> int:
     res = 0
     for _ in range(7):
@@ -224,9 +236,11 @@ class PureMLKEM768PublicKey:
     def public_bytes_raw(self) -> bytes:
         return self._ek
 
-    def encapsulate(self) -> tuple[bytes, bytes]:
+    def encapsulate(self, *, _random_m: bytes | None = None) -> tuple[bytes, bytes]:
         """Возвращает (shared_key_32, ciphertext_1088) по совместимости с cryptography."""
-        m = secrets.token_bytes(32)
+        m = _random_m if _random_m is not None else secrets.token_bytes(32)
+        if len(m) != 32:
+            raise ValueError("encapsulate randomness m must be 32 bytes")
         h_ek = hashlib.sha3_256(self._ek).digest()
         kr = hashlib.sha3_512(m + h_ek).digest()
         shared_k, r = kr[:32], kr[32:]
@@ -235,26 +249,43 @@ class PureMLKEM768PublicKey:
 
 
 class PureMLKEM768PrivateKey:
-    """Приватный ключ ML-KEM-768 (2400 байт по FIPS 203)."""
+    """Приватный ключ ML-KEM-768: компактный seed (64 байта) или полный dk (2400 байт)."""
 
-    def __init__(self, dk_full: bytes) -> None:
+    def __init__(self, dk_full: bytes, *, seed64: bytes | None = None) -> None:
         if len(dk_full) != 2400:
-            raise ValueError(f"ML-KEM-768 private key must be 2400 bytes, got {len(dk_full)}")
+            raise ValueError(f"ML-KEM-768 internal key must be 2400 bytes, got {len(dk_full)}")
         self._dk = bytes(dk_full)
+        self._seed64 = bytes(seed64) if seed64 is not None else None
 
     @classmethod
     def generate(cls) -> PureMLKEM768PrivateKey:
-        d = secrets.token_bytes(32)
-        z = secrets.token_bytes(32)
+        seed64 = secrets.token_bytes(64)
+        return cls.from_seed_bytes(seed64)
+
+    @classmethod
+    def from_seed_bytes(cls, seed64: bytes) -> PureMLKEM768PrivateKey:
+        if len(seed64) != 64:
+            raise ValueError(f"ML-KEM-768 seed must be 64 bytes, got {len(seed64)}")
+        d, z = seed64[:32], seed64[32:]
         ek, dk_pke = _kpke_keygen(d)
         h_ek = hashlib.sha3_256(ek).digest()
-        return cls(dk_pke + ek + h_ek + z)
+        return cls(dk_pke + ek + h_ek + z, seed64=seed64)
 
     @classmethod
     def from_private_bytes(cls, data: bytes) -> PureMLKEM768PrivateKey:
-        return cls(data)
+        """Загружает ключ из 64-байтного seed (предпочтительно) или устаревшего 2400-байтного dk."""
+        if len(data) == 64:
+            return cls.from_seed_bytes(data)
+        if len(data) == 2400:
+            return cls(data, seed64=None)
+        raise ValueError(f"ML-KEM-768 private key must be 64-byte seed or 2400-byte dk, got {len(data)}")
 
     def private_bytes_raw(self) -> bytes:
+        """Возвращает 64-байтный seed (если доступен) или 2400-байтный dk для совместимости."""
+        return self._seed64 if self._seed64 is not None else self._dk
+
+    def full_dk_bytes(self) -> bytes:
+        """Возвращает развёрнутый 2400-байтный ключ расшифрования FIPS 203."""
         return self._dk
 
     def public_key(self) -> PureMLKEM768PublicKey:
@@ -277,34 +308,72 @@ class PureMLKEM768PrivateKey:
         return k_bar
 
 
+def active_mlkem_backend(*, prefer_native: bool = True) -> str:
+    """Сообщает активный движок ML-KEM-768 ('cryptography_native' или 'pure_python_fips203')."""
+    if prefer_native and HAS_NATIVE_MLKEM:
+        return "cryptography_native"
+    return "pure_python_fips203"
+
+
+def _load_kem_public(mlkem_public: bytes, *, prefer_native: bool = True):
+    if len(mlkem_public) != 1184:
+        raise ValueError(f"ML-KEM-768 public key must be 1184 bytes, got {len(mlkem_public)}")
+    if prefer_native and HAS_NATIVE_MLKEM and _native_mlkem is not None:
+        return _native_mlkem.MLKEM768PublicKey.from_public_bytes(mlkem_public), "cryptography_native"
+    return PureMLKEM768PublicKey.from_public_bytes(mlkem_public), "pure_python_fips203"
+
+
+def _load_kem_private(mlkem_private: bytes, *, prefer_native: bool = True):
+    """Загружает приватный ключ (64 байта seed -> эталон при наличии; 2400 байт -> PureMLKEM768)."""
+    if len(mlkem_private) == 64 and prefer_native and HAS_NATIVE_MLKEM and _native_mlkem is not None:
+        return _native_mlkem.MLKEM768PrivateKey.from_seed_bytes(mlkem_private), "cryptography_native"
+    return PureMLKEM768PrivateKey.from_private_bytes(mlkem_private), "pure_python_fips203"
+
+
 XWING_LABEL = b"\x5c\x2e\x2f\x2f\x5e\x5c"  # \.//^\ по draft-connolly-cfrg-xwing-kem
 
 
-def generate_xwing_keypair() -> dict[str, bytes]:
-    """Генерирует гибридную постквантовую пару ключей X-Wing (ML-KEM-768 + X25519) на любой платформе."""
+def generate_xwing_keypair(*, prefer_native: bool = True) -> dict[str, bytes | str]:
+    """Генерирует пару ключей X-Wing (ML-KEM-768 seed 64B + X25519), выбирая эталон когда доступен."""
     from cryptography.hazmat.primitives.asymmetric import x25519
     from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat, PublicFormat
 
-    kem_sk = PureMLKEM768PrivateKey.generate()
-    kem_pk = kem_sk.public_key()
+    if prefer_native and HAS_NATIVE_MLKEM and _native_mlkem is not None:
+        kem_sk = _native_mlkem.MLKEM768PrivateKey.generate()
+        ml_priv = kem_sk.private_bytes_raw()  # 64-байтный seed по FIPS 203
+        ml_pub = kem_sk.public_key().public_bytes_raw()
+        backend = "cryptography_native"
+    else:
+        kem_sk = PureMLKEM768PrivateKey.generate()
+        ml_priv = kem_sk.private_bytes_raw()  # 64-байтный seed по FIPS 203
+        ml_pub = kem_sk.public_key().public_bytes_raw()
+        backend = "pure_python_fips203"
+
     x_sk = x25519.X25519PrivateKey.generate()
     x_pk = x_sk.public_key()
     return {
-        "mlkem_private": kem_sk.private_bytes_raw(),
-        "mlkem_public": kem_pk.public_bytes_raw(),
+        "mlkem_private": ml_priv,
+        "mlkem_public": ml_pub,
         "x25519_private": x_sk.private_bytes(Encoding.Raw, PrivateFormat.Raw, NoEncryption()),
         "x25519_public": x_pk.public_bytes(Encoding.Raw, PublicFormat.Raw),
+        "backend": backend,
     }
 
 
-def pqc_seal_bytes(plaintext: bytes, mlkem_public: bytes, x25519_public: bytes) -> dict[str, str]:
+def pqc_seal_bytes(
+    plaintext: bytes,
+    mlkem_public: bytes,
+    x25519_public: bytes,
+    *,
+    prefer_native: bool = True,
+) -> dict[str, str]:
     """Запечатывает байты гибридным постквантовым шифром X-Wing (ML-KEM-768 + X25519) + AES-256-GCM."""
     import base64
     from cryptography.hazmat.primitives.asymmetric import x25519
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
     from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
-    kem_pk = PureMLKEM768PublicKey.from_public_bytes(mlkem_public)
+    kem_pk, backend = _load_kem_public(mlkem_public, prefer_native=prefer_native)
     ss_kem, ct_kem = kem_pk.encapsulate()
 
     peer_x_pk = x25519.X25519PublicKey.from_public_bytes(x25519_public)
@@ -317,6 +386,7 @@ def pqc_seal_bytes(plaintext: bytes, mlkem_public: bytes, x25519_public: bytes) 
     ciphertext = AESGCM(combined_key).encrypt(nonce, plaintext, XWING_LABEL)
     return {
         "scheme": "xwing-mlkem768-x25519-aes256gcm-v1",
+        "mlkem_backend": backend,
         "ct_kem_b64": base64.b64encode(ct_kem).decode("ascii"),
         "eph_x25519_b64": base64.b64encode(eph_x_pk_bytes).decode("ascii"),
         "nonce_b64": base64.b64encode(nonce).decode("ascii"),
@@ -324,8 +394,14 @@ def pqc_seal_bytes(plaintext: bytes, mlkem_public: bytes, x25519_public: bytes) 
     }
 
 
-def pqc_open_bytes(envelope: dict[str, str], mlkem_private: bytes, x25519_private: bytes) -> bytes:
-    """Распечатывает конверт X-Wing (ML-KEM-768 + X25519) + AES-256-GCM."""
+def pqc_open_bytes(
+    envelope: dict[str, str],
+    mlkem_private: bytes,
+    x25519_private: bytes,
+    *,
+    prefer_native: bool = True,
+) -> bytes:
+    """Распечатывает конверт X-Wing (читает и 64-байтный seed, и устаревший 2400-байтный dk)."""
     import base64
     from cryptography.hazmat.primitives.asymmetric import x25519
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -338,7 +414,7 @@ def pqc_open_bytes(envelope: dict[str, str], mlkem_private: bytes, x25519_privat
     nonce = base64.b64decode(envelope["nonce_b64"])
     ciphertext = base64.b64decode(envelope["ciphertext_b64"])
 
-    kem_sk = PureMLKEM768PrivateKey.from_private_bytes(mlkem_private)
+    kem_sk, _ = _load_kem_private(mlkem_private, prefer_native=prefer_native)
     ss_kem = kem_sk.decapsulate(ct_kem)
 
     x_sk = x25519.X25519PrivateKey.from_private_bytes(x25519_private)

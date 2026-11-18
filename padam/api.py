@@ -54,7 +54,7 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/proof", "/api/v2/ark/branches"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches"}
 OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
@@ -1192,11 +1192,39 @@ class Handler(BaseHTTPRequestHandler):
                     scope=str(data.get("scope") or "global"),
                 ))
 
+            if self.path == "/api/v2/ark/mesh/pair-init":
+                roles.require_owner(actor, "ark_mesh")
+                from . import live_mesh as _mesh
+                return self._send(200, _mesh.initiate_pairing(
+                    mem(),
+                    dict(data.get("peer_identity") or {}),
+                    endpoint_url=str(data.get("endpoint_url") or ""),
+                ))
+
+            if self.path == "/api/v2/ark/mesh/pair-accept":
+                roles.require_owner(actor, "ark_mesh")
+                from . import live_mesh as _mesh
+                return self._send(200, _mesh.accept_pairing_invite(
+                    mem(),
+                    dict(data.get("pairing_invite") or data),
+                    endpoint_url=str(data.get("endpoint_url") or ""),
+                ))
+
+            if self.path == "/api/v2/ark/mesh/pair-confirm":
+                roles.require_owner(actor, "ark_mesh")
+                from . import live_mesh as _mesh
+                return self._send(200, _mesh.confirm_peer_sas(
+                    mem(),
+                    str(data.get("peer_id") or ""),
+                    str(data.get("sas_code") or ""),
+                ))
+
             if self.path == "/api/v2/ark/mesh/delta":
                 roles.require_owner(actor, "ark_mesh")
                 from . import live_mesh as _mesh
                 return self._send(200, _mesh.export_mesh_delta(
                     mem(),
+                    peer_id=data.get("peer_id"),
                     since_iso=data.get("since_iso"),
                     recipient_mlkem_pub_b64=data.get("recipient_mlkem_pub_b64"),
                     recipient_x25519_pub_b64=data.get("recipient_x25519_pub_b64"),
@@ -1205,7 +1233,10 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == "/api/v2/ark/mesh/apply":
                 roles.require_owner(actor, "ark_mesh")
                 from . import live_mesh as _mesh
-                return self._send(200, _mesh.apply_mesh_delta(mem(), dict(data.get("packet") or data)))
+                pkt = dict(data.get("packet") or data)
+                if not pkt.get("encrypted"):
+                    return self._send(403, {"error": "encrypted PQC envelope required"})
+                return self._send(200, _mesh.apply_mesh_delta(mem(), pkt))
 
             if self.path == "/api/v2/ark/proof":
                 roles.require_owner(actor, "ark_proof")

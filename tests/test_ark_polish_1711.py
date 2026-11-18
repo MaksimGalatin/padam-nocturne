@@ -267,7 +267,7 @@ def test_pure_mlkem768_and_pqc_phoenix_capsule(tmp_path):
 
     kp = pqc_mlkem.generate_xwing_keypair()
     assert len(kp["mlkem_public"]) == 1184
-    assert len(kp["mlkem_private"]) == 2400
+    assert len(kp["mlkem_private"]) == 64
 
     msg = b"Phoenix PQC capsule test payload for CODE Eternal"
     env = pqc_mlkem.pqc_seal_bytes(msg, kp["mlkem_public"], kp["x25519_public"])
@@ -311,24 +311,17 @@ def test_live_mesh_multi_device_and_forget_priority(tmp_path):
         _, forget_id = pc.remember("Secret note to be forgotten everywhere", kind="fact", origin="user")
         ark.add_commitment(pc, "Finish PQC Mesh sync")
 
+        pc_node = live_mesh.get_or_create_node_identity(pc, device_name="PC-Core", device_type="pc")
         phone_node = live_mesh.get_or_create_node_identity(phone, device_name="Galaxy-AIfa", device_type="phone")
-        live_mesh.register_peer(
-            pc, phone_node["node_id"], "Galaxy-AIfa",
-            device_type="phone",
-            mlkem_public_b64=phone_node["mlkem_public_b64"],
-            x25519_public_b64=phone_node["x25519_public_b64"],
-        )
 
-        # ?????? PQC-????????????? ??????: ??? ?????? ???????? ?? ??????? (?????????? ????? ???? ????????? ??? HMAC)
-        from padam import integrity
-        pc_key_bytes, _ = integrity.owner_key(pc.store)
-        integrity.key_path(phone.store).write_text(pc_key_bytes.hex(), encoding="ascii")
+        # ?????????? ????? ?????? owner_key: ???????? ????????????????? ?????????? ? ?????? SAS
+        init_res = live_mesh.initiate_pairing(pc, phone_node)
+        acc_res = live_mesh.accept_pairing_invite(phone, init_res["pairing_invite"])
+        assert init_res["sas_code"] == acc_res["sas_code"]
+        live_mesh.confirm_peer_sas(pc, phone_node["node_id"], init_res["sas_code"])
+        live_mesh.confirm_peer_sas(phone, pc_node["node_id"], acc_res["sas_code"])
 
-        pkt1 = live_mesh.export_mesh_delta(
-            pc,
-            recipient_mlkem_pub_b64=phone_node["mlkem_public_b64"],
-            recipient_x25519_pub_b64=phone_node["x25519_public_b64"],
-        )
+        pkt1 = live_mesh.export_mesh_delta(pc, peer_id=phone_node["node_id"])
         assert pkt1["encrypted"] is True
         res1 = live_mesh.apply_mesh_delta(phone, pkt1)
         assert res1["applied_memories"] == 2
@@ -336,11 +329,7 @@ def test_live_mesh_multi_device_and_forget_priority(tmp_path):
 
         # ?????? ???????? ???????? ?????? ?? ?? ? ??????? ??? ????????? ?????? ?????? ??????? ?? ? ????
         pc.revoke(forget_id)
-        pkt2 = live_mesh.export_mesh_delta(
-            pc,
-            recipient_mlkem_pub_b64=phone_node["mlkem_public_b64"],
-            recipient_x25519_pub_b64=phone_node["x25519_public_b64"],
-        )
+        pkt2 = live_mesh.export_mesh_delta(pc, peer_id=phone_node["node_id"])
         res2 = live_mesh.apply_mesh_delta(phone, pkt2)
         assert res2["erased_forgotten"] == 1
         row_f = phone.store.conn.execute("SELECT status, content FROM memory WHERE id = ?", (forget_id,)).fetchone()
