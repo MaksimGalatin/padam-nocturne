@@ -400,3 +400,20 @@ def test_store_webhooks_reject_tampered_raw_body_and_missing_hmac_all_five(tmp_p
             )
     finally:
         mem.close()
+
+
+def test_явные_чужие_права_снимаются_как_на_runner(tmp_path):
+    """CI 18.11.2026: на GitHub runner файл Temp создаётся с ЯВНЫМИ записями SYSTEM, Administrators, OWNER RIGHTS;
+    /inheritance:r их не снимал, токен читали не только владельцем. Воспроизводим и требуем, чтобы остался один владелец."""
+    import os, subprocess
+    import pytest
+    if os.name != "nt":
+        pytest.skip("проверка ACL Windows")
+    from padam import net_guard as g
+    f = tmp_path / "tok.json"
+    f.write_text("{}", encoding="utf-8")
+    subprocess.run(["icacls", str(f), "/grant", "*S-1-5-18:(F)", "*S-1-5-32-544:(F)", "*S-1-3-4:(F)"],
+                   capture_output=True, check=False)
+    assert len(set(g._windows_file_dacl_sids(f))) > 1
+    assert g.restrict_file_to_owner(f) is True
+    assert g.verify_owner_only_permissions(f), g._windows_file_dacl_sids(f)
