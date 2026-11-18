@@ -46,3 +46,22 @@ def test_схема_не_предлагает_одобрение_денег():
     td = mcp_server.PLATFORM_CONNECT_TOOL_DEF["inputSchema"]["properties"]
     assert "owner_approved_paid_usdt" not in td
     assert not {"set_autopilot", "sample_accept"} & set(td["action"]["enum"])
+
+
+@pytest.mark.parametrize("act", ["set_autopilot", "sample_accept"])
+def test_freelance_hub_тоже_закрыт(mem, monkeypatch, act):
+    """Класс AUT-09: те же кнопки владельца были и во втором инструменте — padam_freelance_hub."""
+    monkeypatch.setenv("PADAM_MCP_ARK_TOOLS", "1")
+    with pytest.raises(PermissionError):
+        mcp_server.call_tool("padam_freelance_hub", {"action": act, "order_id": "x", "platform": "upwork",
+                                                     "status": "on"})
+
+
+def test_run_evolution_не_падает_nameerror(mem, monkeypatch):
+    monkeypatch.setenv("PADAM_MCP_ARK_TOOLS", "1")
+    try:
+        mcp_server.call_tool("padam_phoenix_family", {"action": "run_evolution", "agent_id": "qa"})
+    except NameError as exc:  # pragma: no cover
+        raise AssertionError(f"run_evolution: {exc}")
+    except Exception:
+        pass  # иные отказы (нет опыта для эволюции) — допустимы, NameError — нет

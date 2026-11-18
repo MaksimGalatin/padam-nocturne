@@ -629,7 +629,7 @@ FREELANCE_HUB_TOOL_DEF = {
             "propose_profile", "monetization", "set_prefs", "fetch_jobs", "recommend_spend", "propose_subscription",
             "stores_status", "connect_store", "create_product_draft", "publish_product", "sync_store_sales",
             "wizard_catalog", "wizard_connect", "wizard_questionnaire", "wizard_publish_profile", "wizard_autopick_jobs",
-            "signup", "login", "set_autopilot", "autopilot_dispatch", "sample_prepare", "sample_accept", "sample_reject",
+            "signup", "login", "autopilot_dispatch", "sample_prepare", "sample_reject",
         ], "default": "dashboard", "description": "evaluate_job(title,brief)|deliver(order_id,deliverable_text)|connect_store(store_type,api_key)|wizard_connect(platform)|wizard_questionnaire(platform,specializations)|wizard_publish_profile(draft_id)"},
         "platform": {**_S, "description": "Platform"}, "mode": {"type": "string", "enum": ["oauth_api", "desk", "webhook"], "description": "Mode"},
         "account_label": _S, "agent_id": _S, "skills": {**_SA, "description": "Skills"},
@@ -4920,13 +4920,10 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 account_label=str(args.get("account_label") or ""),
                 agent_id=aid,
             )
-        elif act == "set_autopilot":
-            from . import platform_wizard as _pw
-            payload = _pw.set_platform_autopilot(
-                m,
-                platform_id=str(args.get("platform") or args.get("store_type") or "upwork"),
-                autopilot_enabled=bool(args.get("status") == "on" or args.get("work_mode") == "autopilot"),
-            )
+        elif act in ("set_autopilot", "sample_accept"):
+            # Аудит GLM AUT-09, класс (18.11.2026): тот же запрет, что в padam_platform_connect — автопилот и
+            # «клиент принял образец» включает только владелец кнопкой в Studio, не агент через MCP.
+            raise PermissionError(f"padam_freelance_hub action={act} is owner-only: use the button in PADAM Studio.")
         elif act == "autopilot_dispatch":
             from . import platform_wizard as _pw
             payload = _pw.dispatch_platform_autopilot_action(
@@ -4945,9 +4942,6 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 str(args.get("order_id") or ""),
                 sample_deliverable=str(args.get("deliverable_text") or ""),
             )
-        elif act == "sample_accept":
-            from . import platform_wizard as _pw
-            payload = _pw.accept_10pct_sample(m, str(args.get("order_id") or ""))
         elif act == "sample_reject":
             from . import platform_wizard as _pw
             payload = _pw.reject_10pct_sample(m, str(args.get("order_id") or ""))
@@ -4986,8 +4980,6 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             )
         elif act == "sample_prepare":
             payload = _pw.prepare_10pct_sample(m, str(args.get("order_id") or ""))
-        elif act == "sample_accept":
-            payload = _pw.accept_10pct_sample(m, str(args.get("order_id") or ""))
         elif act == "sample_reject":
             payload = _pw.reject_10pct_sample(m, str(args.get("order_id") or ""))
         else:
@@ -5008,6 +5000,7 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
         elif act == "record_experience":
             payload = _la.record_subjective_experience(m, aid, experience_text=str(args.get("experience_text") or ""), reflection=str(args.get("reflection") or ""), trait_tag=str(args.get("trait_tag") or "craftsmanship"))
         elif act == "run_evolution":
+            from pathlib import Path  # MCP-проверка 18.11: без импорта действие падало NameError
             out_d = Path(m.store.path).parent / "lora_evolution" / aid if str(m.store.path) != ":memory:" else Path(_tf.mkdtemp(prefix="padam_lora_"))
             payload = _la.run_self_evolution_pipeline(m, out_d, agent_id=aid, dispatch_gpu=False)
         elif act == "create_handshake":
