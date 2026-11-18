@@ -21,6 +21,10 @@
 - **Studio block 9 «AIfaFocus: clients from our research»** — separate from the exchanges; the same actions as the
   `padam_partner_*` MCP tools (find clients, report link, partner link, kit, deals, email draft through the Family
   Council). The cabinet key is stored encrypted; emails are never sent by the agent — copy or open in your own mail.
+- **Platform labels checked against each platform's own rules** (18.11.2026): Datarade (manual listing, provider KYC),
+  AppSumo (application approval), Olas (crypto wallet and on-chain registration), Relevance AI (invite-only builder
+  program) and our own AIfaFocus (emails are sent by a person, CAN-SPAM) are "draft and button"; DataToLeads (paid
+  seller placement) is "not yet". The wizard now shows 6 autopilot · 21 draft and button · 7 not yet.
 - **Honest local-model status**: when Ollama sees no models, Sovereign brain says so instead of «ONLINE · 0 models».
 - **AS-055 timing check is stable on CI**: warm-up and the median of five timings per size; the 30x limit is unchanged.
 

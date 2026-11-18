@@ -91,9 +91,11 @@ def test_stage2_catalog_30_plus_4_zero_passwords_and_full_wizard_flow(tmp_path: 
         assert cat["counts"]["total"] == 34
         assert cat["counts"]["methodology_30"] == 30
         assert cat["counts"]["agent_exchanges"] == 4
-        assert cat["counts"]["autopilot"] == 12
-        assert cat["counts"]["assisted_button"] == 16
-        assert cat["counts"]["not_available"] == 6
+        # 18.11.2026: правила Datarade, AppSumo, Olas, Relevance (одобрение/KYC/крипто) и наш AIfaFocus (CAN-SPAM) —
+        # «черновик и кнопка»; DataToLeads — платное размещение, «пока нельзя».
+        assert cat["counts"]["autopilot"] == 6
+        assert cat["counts"]["assisted_button"] == 21
+        assert cat["counts"]["not_available"] == 7
         assert len(cat["questions"]) == 6
 
         for p in cat["platforms"]:
@@ -122,7 +124,7 @@ def test_stage2_catalog_30_plus_4_zero_passwords_and_full_wizard_flow(tmp_path: 
             mem, platform_id="fiverr", auth_method="browser_session", token_or_session="fiv_sess_cookie_secret"
         )
         c_olas = platform_wizard.connect_platform_step(
-            mem, platform_id="olas_mech", auth_method="api_key", token_or_session="olas_api_key_secret"
+            mem, platform_id="fetch_agentverse", auth_method="api_key", token_or_session="agentverse_api_key_secret"
         )
         assert c_upw["connected"] and c_upw["connection"]["code_fee_pct"] == 15.0
         assert c_fiv["connected"] and c_fiv["connection"]["auth_method"] == "browser_session"
