@@ -266,7 +266,7 @@ def run_cpu_completion(
             break
 
     clean_q, _ = safety.redact(user_msg)
-    used_mode = "cpu_extractive_builtin"
+    used_mode = "cpu_builtin"
 
     if str(task_type or "").lower() in ("sleep", "classify"):
         ans_text = _classify_for_sleep(clean_q)
