@@ -52,6 +52,22 @@ STRINGS: dict[str, dict[str, str]] = {
         "grp_brain": "Мозг и модели",
         "grp_more": "Ещё: переезд, копии, настройки",
         "fam_quiet": "молчит с",
+        "setup_title": "Настройка за 2 минуты",
+        "setup_sub": "Зелёное уже работает. Жёлтое — нажмите кнопку справа, она ведёт прямо туда, где это настраивается.",
+        "st_agents": "Агенты Семьи на связи",
+        "st_ollama": "Локальный мозг Ollama видит модели",
+        "st_ollama_fix": "В трее: правый клик по ламе → Quit Ollama, затем запустить Ollama снова",
+        "st_cabinet": "Вход в кабинет AIfa (разговор с AIfa с сайтов, тариф)",
+        "st_partner": "Ключ AIfaFocus (клиенты из исследования)",
+        "st_platforms": "Подключено площадок фриланса",
+        "st_stores": "Подключено магазинов цифровых товаров",
+        "st_memory": "Записей в памяти",
+        "st_review": "Ждут вашей проверки",
+        "st_open": "Открыть",
+        "st_none": "нет",
+        "mem_title": "Последнее в памяти",
+        "mem_all": "Вся память",
+        "mem_empty": "Память пока пуста — здесь появятся решения, факты и итоги работы Семьи.",
         "nav_overview": "Обзор",
         "nav_feed": "Лента памяти",
         "nav_search": "Поиск",
@@ -607,6 +623,22 @@ STRINGS: dict[str, dict[str, str]] = {
         "grp_brain": "Brain and models",
         "grp_more": "More: move in, backups, settings",
         "fam_quiet": "silent since",
+        "setup_title": "Set up in 2 minutes",
+        "setup_sub": "Green already works. Yellow — press the button on the right, it takes you straight to where it is set up.",
+        "st_agents": "Family agents online",
+        "st_ollama": "Local Ollama brain sees models",
+        "st_ollama_fix": "In the tray: right-click the llama → Quit Ollama, then start Ollama again",
+        "st_cabinet": "Signed in to the AIfa cabinet (chat with AIfa from the sites, plan)",
+        "st_partner": "AIfaFocus key (clients from the research)",
+        "st_platforms": "Freelance platforms connected",
+        "st_stores": "Digital stores connected",
+        "st_memory": "Records in memory",
+        "st_review": "Waiting for your review",
+        "st_open": "Open",
+        "st_none": "none",
+        "mem_title": "Latest in memory",
+        "mem_all": "All memory",
+        "mem_empty": "Memory is empty yet — decisions, facts and the Family's work results will appear here.",
         "nav_overview": "Overview",
         "nav_feed": "Memory Feed",
         "nav_search": "Search",
@@ -1151,6 +1183,22 @@ STRINGS: dict[str, dict[str, str]] = {
         "grp_brain": "Cerebro y modelos",
         "grp_more": "Más: mudanza, copias, ajustes",
         "fam_quiet": "en silencio desde",
+        "setup_title": "Configuración en 2 minutos",
+        "setup_sub": "Lo verde ya funciona. Lo amarillo: pulse el botón de la derecha, le lleva directamente a donde se configura.",
+        "st_agents": "Agentes de la Familia en línea",
+        "st_ollama": "El cerebro local Ollama ve modelos",
+        "st_ollama_fix": "En la bandeja: clic derecho en la llama → Quit Ollama y vuelva a iniciar Ollama",
+        "st_cabinet": "Sesión en el gabinete AIfa (chat con AIfa de los sitios, plan)",
+        "st_partner": "Clave AIfaFocus (clientes de la investigación)",
+        "st_platforms": "Plataformas freelance conectadas",
+        "st_stores": "Tiendas digitales conectadas",
+        "st_memory": "Registros en memoria",
+        "st_review": "Esperan su revisión",
+        "st_open": "Abrir",
+        "st_none": "ninguno",
+        "mem_title": "Lo último en memoria",
+        "mem_all": "Toda la memoria",
+        "mem_empty": "La memoria aún está vacía: aquí aparecerán decisiones, hechos y resultados de la Familia.",
         "nav_overview": "Resumen",
         "nav_feed": "Línea de memoria",
         "nav_search": "Búsqueda",
@@ -1695,6 +1743,22 @@ STRINGS: dict[str, dict[str, str]] = {
         "grp_brain": "大脑与模型",
         "grp_more": "更多：迁入、备份、设置",
         "fam_quiet": "静默自",
+        "setup_title": "2 分钟完成设置",
+        "setup_sub": "绿色表示已就绪。黄色请点击右侧按钮，直接跳转到设置位置。",
+        "st_agents": "在线的家族智能体",
+        "st_ollama": "本地大脑 Ollama 可见模型",
+        "st_ollama_fix": "在托盘中右键点击羊驼 → Quit Ollama，然后重新启动 Ollama",
+        "st_cabinet": "已登录 AIfa 账户（与网站上的 AIfa 对话、套餐）",
+        "st_partner": "AIfaFocus 密钥（来自研究的客户）",
+        "st_platforms": "已连接的自由职业平台",
+        "st_stores": "已连接的数字商店",
+        "st_memory": "记忆中的记录",
+        "st_review": "等待您审核",
+        "st_open": "打开",
+        "st_none": "无",
+        "mem_title": "最新记忆",
+        "mem_all": "全部记忆",
+        "mem_empty": "记忆暂时为空 — 家族的决定、事实和工作成果将显示在这里。",
         "nav_overview": "概览",
         "nav_feed": "记忆流",
         "nav_search": "搜索",
@@ -2805,10 +2869,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   font-weight: 500;
 }
 .nav-tab:hover { background: var(--card); border-color: var(--line); }
-.nav-group { display: flex; flex-direction: column; gap: 4px; }
-.nav-group-head { width: 100%; text-align: left; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: transparent; font-weight: 600; color: var(--muted, inherit); }
-.nav-group-body { display: flex; flex-direction: column; gap: 4px; padding-left: 10px; }
-.nav-group-body[hidden] { display: none; }
+.nav-hidden[hidden] { display: none; }
+.subnav { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.subnav[hidden] { display: none; }
+.subnav-chip { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); font-size: 13px; }
+.subnav-on { border-color: var(--accent); box-shadow: var(--glow); font-weight: 600; }
+.setup-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.setup-row:last-child { border-bottom: 0; }
+.setup-row .setup-state { font-weight: 600; white-space: nowrap; }
+.setup-ok { color: var(--ok, #1a7f37); } .setup-warn { color: var(--warn, #9a6700); }
 .nav-tab[aria-selected="true"] {
   background: var(--card);
   border-color: var(--accent);
@@ -3651,28 +3720,40 @@ function buildNavGroups() {
   const nav = document.querySelector('.nav-list');
   if (!nav || nav.dataset.grouped) return;
   nav.dataset.grouped = '1';
+  const hidden = _el('div', 'nav-hidden'); hidden.hidden = true;
   for (const g of NAV_GROUPS) {
     if (!g.key) { for (const tb of g.tabs) { const b = $('tab-' + tb); if (b) nav.appendChild(b); } continue; }
-    const wrap = _el('div', 'nav-group');
-    const head = _el('button', 'nav-group-head');
-    head.type = 'button';
-    head.dataset.group = g.key;
-    head.setAttribute('aria-expanded', 'false');
-    head.textContent = '▸ ' + (S[g.key] || g.key);
-    const body = _el('div', 'nav-group-body');
-    body.hidden = true;
-    for (const tb of g.tabs) { const b = $('tab-' + tb); if (b) body.appendChild(b); }
-    head.onclick = () => { const open = body.hidden; body.hidden = !open; head.setAttribute('aria-expanded', String(open)); head.textContent = (open ? '▾ ' : '▸ ') + (S[g.key] || g.key); };
-    wrap.appendChild(head); wrap.appendChild(body); nav.appendChild(wrap);
+    const gb = _el('button', 'nav-tab nav-group-btn');
+    gb.type = 'button'; gb.dataset.group = g.key; gb.setAttribute('aria-selected', 'false');
+    gb.textContent = S[g.key] || g.key;
+    gb.onclick = () => switchTab(g.last || g.tabs[0]);
+    nav.appendChild(gb);
+    for (const tb of g.tabs) { const b = $('tab-' + tb); if (b) hidden.appendChild(b); }
   }
+  nav.appendChild(hidden);
 }
 function syncNavGroups(tab) {
-  for (const g of NAV_GROUPS) {
-    if (!g.key || !g.tabs.includes(tab)) continue;
-    const head = document.querySelector('.nav-group-head[data-group="' + g.key + '"]');
-    if (head && head.nextSibling && head.nextSibling.hidden) head.click();
+  let strip = $('subnav');
+  if (!strip) { strip = _el('div', 'subnav'); strip.id = 'subnav'; strip.setAttribute('role', 'tablist'); }
+  strip.textContent = ''; strip.hidden = true;
+  for (const gb of document.querySelectorAll('.nav-group-btn')) {
+    const g = NAV_GROUPS.find(x => x.key === gb.dataset.group);
+    gb.textContent = S[g.key] || g.key;
+    const on = g.tabs.includes(tab);
+    gb.setAttribute('aria-selected', String(on));
+    if (!on) continue;
+    g.last = tab;
+    for (const tb of g.tabs) {
+      const src = $('tab-' + tb);
+      const chip = _el('button', 'subnav-chip' + (tb === tab ? ' subnav-on' : ''), src ? src.textContent.trim().split(String.fromCharCode(10))[0].trim() : tb);
+      chip.type = 'button'; chip.setAttribute('aria-pressed', String(tb === tab));
+      chip.onclick = () => switchTab(tb);
+      strip.appendChild(chip);
+    }
+    strip.hidden = false;
+    const panel = $('panel-' + tab);
+    if (panel) panel.insertBefore(strip, panel.firstChild);
   }
-  for (const h of document.querySelectorAll('.nav-group-head')) h.textContent = (h.getAttribute('aria-expanded') === 'true' ? '▾ ' : '▸ ') + (S[h.dataset.group] || h.dataset.group);
 }
 function switchTab(tab) {
   if (!TABS.includes(tab)) return;
@@ -5134,7 +5215,7 @@ function loadActiveTab() {
   else if (activeTab === 'graph') loadGraph();
   else if (activeTab === 'entities') loadEntities();
   else if (activeTab === 'l3') loadL3();
-  else if (activeTab === 'family') { loadFamily(); loadFamilyFeed(); }
+  else if (activeTab === 'family') { loadFamilySetup(); loadFamily(); loadFamilyFeed(); }
   else if (activeTab === 'brain') loadBrain();
   else if (activeTab === 'earning') loadEarning();
   else if (activeTab === 'team') loadTeam();
@@ -5831,6 +5912,58 @@ if ('serviceWorker' in navigator) {
 }
 
 // Вкладка «Семья» (18.11.2026): кто подключён к памяти, статус, текущая работа и локальный мозг Ollama.
+// «Настройка за 2 минуты» и последние записи памяти (18.11.2026): всё важное — на первом экране.
+async function loadFamilySetup() {
+  const box = $('fam-setup');
+  if (!box || !token) return;
+  const get = (u) => api(u).catch(() => null);
+  const [sib, br, cab, par, wiz, sto, stt, mem] = await Promise.all([
+    get('/api/v2/ark/siblings'), get('/api/v2/brain/status?probe=1'), get('/api/v2/cabinet/status?lang=' + encodeURIComponent(currentLang)),
+    get('/api/v2/ark/partner'), get('/api/v2/ark/wizard'), get('/api/v2/ark/stores'), get('/stats'), get('/records?view=active&limit=5&offset=0')]);
+  const now = Date.now();
+  const agents = ((sib && sib.siblings) || []);
+  const live = agents.filter(a => { const t = Date.parse(String(a.last_heartbeat_at || '')); return isFinite(t) && now - t < 3600 * 1000; }).length;
+  const probe = br && br.local_probe; const nm = probe && probe.models ? probe.models.length : 0;
+  const conns = ((wiz && wiz.connections) || []).length;
+  const stores = ((sto && sto.connected_stores) || []).length;
+  const rows = [
+    [S.st_agents, live + ' / ' + agents.length, live > 0, 'family', ''],
+    [S.st_ollama, nm ? String(nm) : S.st_none, nm > 0, 'brain', nm ? '' : S.st_ollama_fix],
+    [S.st_cabinet, (cab && cab.authenticated) ? '✓' : S.st_none, !!(cab && cab.authenticated), 'aifa', ''],
+    [S.st_partner, (par && par.configured) ? '✓' : S.st_none, !!(par && par.configured), 'earning', ''],
+    [S.st_platforms, String(conns), conns > 0, 'earning', ''],
+    [S.st_stores, String(stores), stores > 0, 'earning', ''],
+    [S.st_memory, String((stt && stt.active) || 0), ((stt && stt.active) || 0) > 0, 'overview', ''],
+    [S.st_review, String((stt && stt.quarantined) || 0), !((stt && stt.quarantined) || 0), 'review', ''],
+  ];
+  box.textContent = '';
+  for (const [label, val, ok, tab, hint] of rows) {
+    const row = _el('div', 'setup-row');
+    const left = _el('div', '');
+    left.appendChild(_el('div', '', (ok ? '✅ ' : '⚠️ ') + label));
+    if (hint) left.appendChild(_el('div', 'earn-meta', hint));
+    row.appendChild(left);
+    const right = _el('div', 'rec-actions');
+    right.appendChild(_el('span', 'setup-state ' + (ok ? 'setup-ok' : 'setup-warn'), val));
+    if (tab !== 'family') { const b = _el('button', ok ? '' : 'btn-primary', S.st_open); b.type = 'button'; b.onclick = () => switchTab(tab); right.appendChild(b); }
+    row.appendChild(right);
+    box.appendChild(row);
+  }
+  const mbox = $('fam-memory');
+  if (mbox) {
+    mbox.textContent = '';
+    const recs = (mem && (mem.records || mem.items)) || [];
+    if (!recs.length) mbox.appendChild(_el('p', 'panel-sub', S.mem_empty));
+    for (const r of recs.slice(0, 5)) {
+      const it = _el('div', 'earn-item');
+      it.appendChild(_el('div', 'earn-meta', String(r.kind || '') + ' · ' + String(r.created_at || '').replace('T', ' ').slice(0, 16) + (r.agent_id ? ' · ' + r.agent_id : '')));
+      it.appendChild(_el('div', '', String(r.content || '').slice(0, 220)));
+      mbox.appendChild(it);
+    }
+  }
+}
+if ($('fam-memory-all')) $('fam-memory-all').onclick = () => switchTab('feed');
+
 async function loadFamily() {
   const box = $('fam-agents');
   if (!box || !token) return;
@@ -8053,9 +8186,19 @@ def page() -> tuple[str, str]:
       <section id="panel-family" role="tabpanel" aria-labelledby="tab-family" hidden>
         <h2 class="panel-title" data-i18n="fam_title">{s['fam_title']}</h2>
         <p class="panel-sub" data-i18n="fam_sub">{s['fam_sub']}</p>
+        <div class="box" id="fam-setup-box">
+          <h3 class="box-title" data-i18n="setup_title">{s['setup_title']}</h3>
+          <p class="panel-sub" data-i18n="setup_sub">{s['setup_sub']}</p>
+          <div id="fam-setup" aria-live="polite"></div>
+        </div>
         <div class="box" id="fam-agents-box">
           <h3 class="box-title" data-i18n="fam_agents_title">{s['fam_agents_title']}</h3>
           <div id="fam-agents" class="earn-stack" aria-live="polite"></div>
+        </div>
+        <div class="box" id="fam-memory-box">
+          <h3 class="box-title" data-i18n="mem_title">{s['mem_title']}</h3>
+          <div id="fam-memory" class="earn-stack"></div>
+          <div class="rec-actions"><button id="fam-memory-all" type="button" data-i18n="mem_all">{s['mem_all']}</button></div>
         </div>
         <div class="box" id="fam-roles-box">
           <h3 class="box-title" data-i18n="fam_roles_title">{s['fam_roles_title']}</h3>
