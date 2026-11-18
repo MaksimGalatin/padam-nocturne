@@ -683,12 +683,12 @@ LOCAL_MODEL_TOOL_DEF = {
 PLATFORM_CONNECT_TOOL_DEF = {
     "name": "padam_platform_connect", "title": "Platform Connect", "description": "1-click Google signup or login",
     "inputSchema": {"type": "object", "properties": {
-        "action": {"type": "string", "enum": ["signup", "login", "set_autopilot", "autopilot_dispatch", "sample_prepare", "sample_accept", "sample_reject"], "default": "login", "description": "signup(platform_id)|login(platform_id)|set_autopilot(platform_id)"},
+        "action": {"type": "string", "enum": ["signup", "login", "autopilot_dispatch", "sample_prepare", "sample_reject"], "default": "login", "description": "signup(platform_id)|login(platform_id)|autopilot_dispatch|sample_prepare|sample_reject (autopilot and sample_accept are owner buttons in Studio)"},
         "platform_id": {**_S, "description": "Platform id"}, "account_label": _S, "agent_id": _S,
         "autopilot_enabled": {"type": "boolean", "description": "Autopilot 20%"},
         "daily_bid_limit": {**_I, "description": "Daily limit"}, "min_pause_s": {**_N, "description": "Pause s"},
         "order_id": _S, "title": _S, "brief": _S, "budget_usdt": _N,
-        "paid_action_cost_usdt": {**_N, "description": "Paid cost"}, "owner_approved_paid_usdt": {**_N, "description": "Owner approved $"},
+        "paid_action_cost_usdt": {**_N, "description": "Paid cost"},
     }},
     "annotations": _RW,
 }
@@ -4968,15 +4968,10 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 account_label=str(args.get("account_label") or ""),
                 agent_id=aid,
             )
-        elif act == "set_autopilot":
-            payload = _pw.set_platform_autopilot(
-                m,
-                platform_id=pid,
-                autopilot_enabled=bool(args.get("autopilot_enabled", False)),
-                daily_bid_limit=int(args.get("daily_bid_limit") or 10),
-                min_pause_s=float(args.get("min_pause_s") if args.get("min_pause_s") is not None else 30.0),
-                approved_paid_usdt=float(args["owner_approved_paid_usdt"]) if args.get("owner_approved_paid_usdt") is not None else None,
-            )
+        elif act in ("set_autopilot", "sample_accept"):
+            # Аудит GLM AUT-09 (18.11.2026): агент не одобряет сам себе деньги, автопилот и «клиент принял образец».
+            # Это кнопки владельца в Studio (/api/v2/ark/wizard/action), как settle_paid и accept_delivery.
+            raise PermissionError(f"padam_platform_connect action={act} is owner-only: use the button in PADAM Studio.")
         elif act == "autopilot_dispatch":
             payload = _pw.dispatch_platform_autopilot_action(
                 m,
@@ -4986,7 +4981,7 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 brief=str(args.get("brief") or "Build AI website"),
                 budget_usdt=float(args.get("budget_usdt") or 300.0),
                 paid_action_cost_usdt=float(args.get("paid_action_cost_usdt") or 0.0),
-                owner_approved_paid_usdt=float(args.get("owner_approved_paid_usdt") or 0.0),
+                owner_approved_paid_usdt=0.0,  # AUT-09: из MCP одобрение денег не принимается — только сохранённое владельцем
                 agent_id=aid,
             )
         elif act == "sample_prepare":
