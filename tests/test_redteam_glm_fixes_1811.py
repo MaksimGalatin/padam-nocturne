@@ -159,6 +159,8 @@ def test_ssrf_blocks_http_redirects_to_internal_and_metadata_targets():
             self.end_headers()
 
         def do_POST(self):
+            # Тело дочитывается до ответа: под Windows непрочитанные данные при закрытии сокета дают RST (WinError 10053).
+            self.rfile.read(int(self.headers.get("Content-Length") or 0))
             self.do_GET()
 
         def log_message(self, *args):

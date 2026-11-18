@@ -4656,13 +4656,19 @@ function renderFeedList() {
   }
 }
 
+// 18.11.2026: открытие вкладки и «Сохранить» запускали два loadFeed подряд; под нагрузкой старый ответ приходил
+// последним и затирал ленту без новой записи (или склеивал дубли). Показывается только ответ на последний запрос.
+let _feedSeq = 0;
 async function loadFeed(reset = true) {
   if (!token) { say(S.no_token, false); return; }
-  if (reset) { feedOffset = 0; feedShown = []; }
+  const my = ++_feedSeq;
+  const offset = reset ? 0 : feedOffset;
   try {
     const q = encodeURIComponent($('feed-q').value.trim());
     const ag = encodeURIComponent(($('feed-agent') ? $('feed-agent').value : '').trim());
-    const r = await api('/records?view=' + feedView + '&q=' + q + (ag ? ('&agent_id=' + ag) : '') + '&limit=100&offset=' + feedOffset);
+    const r = await api('/records?view=' + feedView + '&q=' + q + (ag ? ('&agent_id=' + ag) : '') + '&limit=100&offset=' + offset);
+    if (my !== _feedSeq) return;
+    if (reset) { feedOffset = 0; feedShown = []; }
     feedShown = feedShown.concat(r.records || []);
     feedOffset += (r.records || []).length;
     $('feed-more').hidden = feedOffset >= (r.total || 0);
@@ -6667,12 +6673,15 @@ if ($('ark-audit-btn')) {
 let _ffCh = 'office';
 const _FF_CH = ['work', 'quarantine', 'office', 'smoke'];
 let _fdTimer = null;
+let _fdSeq = 0;
 async function loadFamilyDialogs() {
   const list = $('fd-list');
   if (!list) return;
   const q = ($('fd-q') || {}).value || '';
+  const my = ++_fdSeq;
   try {
     const r = await api('/api/v2/family/dialogs?lang=' + encodeURIComponent(currentLang) + '&q=' + encodeURIComponent(q) + '&limit=300');
+    if (my !== _fdSeq) return;   // пришёл ответ на устаревший запрос (поиск уже изменился)
     list.textContent = '';
     const days = r.days || [];
     if (!days.length) list.appendChild(_el('p', 'panel-sub', S.fd_empty || ''));

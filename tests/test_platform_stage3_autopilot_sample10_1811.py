@@ -299,6 +299,8 @@ def test_official_freelancer_api_and_browser_session_no_network_in_tests(tmp_pat
 
         def do_POST(self):  # noqa: N802
             received_headers.append(dict(self.headers))
+            # Тело дочитывается до ответа: без этого под Windows 1 ставка из ~10 падала с WinError 10053 (status_code 0).
+            self.rfile.read(int(self.headers.get("Content-Length") or 0))
             if self.path.startswith("/projects/0.1/bids/"):
                 body = json.dumps({"status": "success", "result": {"id": 5001}}).encode("utf-8")
                 self.send_response(200)
