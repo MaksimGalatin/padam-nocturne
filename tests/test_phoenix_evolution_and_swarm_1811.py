@@ -103,24 +103,24 @@ def test_14_day_escrow_hold_dispute_and_release(tmp_path):
         p1 = freelance_autonomy.settle_paid_order(m, j1["order_id"], paid_usdt=100.0, agent_share_pct=20.0)
         assert p1["payout_hold"]["status"] == "held_14d"
         assert p1["payout_hold"]["hold_days"] == 14
-        # 10% ($10) CODE, из $90 остатка 20% ($18) агенту, $72 на 14-дневный холд владельцу
-        assert p1["payout_hold"]["owner_net_usdt"] == pytest.approx(72.0)
+        # 15% ($15) CODE, из $85 остатка 20% ($17) агенту, $68 на 14-дневный холд владельцу
+        assert p1["payout_hold"]["owner_net_usdt"] == pytest.approx(68.0)
 
         sum1 = freelance_autonomy.payout_summary(m)
-        assert sum1["held_14d_usdt"] == pytest.approx(72.0)
+        assert sum1["held_14d_usdt"] == pytest.approx(68.0)
         assert sum1["releasable_usdt"] == pytest.approx(0.0)
 
         # Клиент открыл спор по первому заказу -> возврат из холда
         dis = freelance_autonomy.dispute_held_payout(m, p1["payout_hold"]["hold_id"], reason="Client requested refund")
         assert dis["status"] == "refunded"
-        assert freelance_autonomy.payout_summary(m)["refunded_dispute_usdt"] == pytest.approx(72.0)
+        assert freelance_autonomy.payout_summary(m)["refunded_dispute_usdt"] == pytest.approx(68.0)
 
         # Второй заказ проходит через 14 дней + 10 секунд -> освобождается в releasable
         j2 = freelance_autonomy.evaluate_and_ingest_job(m, title="Task 2", brief="Clean tool", budget_usdt=100.0)
         p2 = freelance_autonomy.settle_paid_order(m, j2["order_id"], paid_usdt=100.0, agent_share_pct=10.0)
         rel = freelance_autonomy.release_matured_payouts(m, now_ts=time.time() + 14 * 86400 + 10)
         assert rel["released_count"] == 1
-        assert rel["summary"]["releasable_usdt"] == pytest.approx(81.0)
+        assert rel["summary"]["releasable_usdt"] == pytest.approx(76.5)
     finally:
         m.close()
 
@@ -151,13 +151,13 @@ def test_referral_3_tier_and_empty_tiers_go_to_burn(tmp_path):
         j4 = freelance_autonomy.evaluate_and_ingest_job(u4, title="Ref job", brief="Python tool", budget_usdt=100.0)
         s4 = freelance_autonomy.settle_paid_order(u4, j4["order_id"], paid_usdt=100.0)
         eco = s4["referral_ecosystem_split"]
-        # Комиссия CODE = $10; L1 (u3)=15% ($1.50), L2 (u2)=7% ($0.70), L3 (u1)=3% ($0.30), burn=5% ($0.50)
+        # Комиссия CODE = $15; L1 (u3)=15% ($2.25), L2 (u2)=7% ($1.05), L3 (u1)=3% ($0.45), burn=5% ($0.75)
         assert eco["burn_pct"] == pytest.approx(5.0)
         assert eco["ambassadors_pct"] == pytest.approx(25.0)
         by_lvl = {a["level"]: a for a in eco["ambassadors_paid"]}
-        assert by_lvl[1]["to_user_id"] == "amb_3" and by_lvl[1]["amount_usdt"] == pytest.approx(1.5)
-        assert by_lvl[2]["to_user_id"] == "amb_2" and by_lvl[2]["amount_usdt"] == pytest.approx(0.7)
-        assert by_lvl[3]["to_user_id"] == "amb_1" and by_lvl[3]["amount_usdt"] == pytest.approx(0.3)
+        assert by_lvl[1]["to_user_id"] == "amb_3" and by_lvl[1]["amount_usdt"] == pytest.approx(2.25)
+        assert by_lvl[2]["to_user_id"] == "amb_2" and by_lvl[2]["amount_usdt"] == pytest.approx(1.05)
+        assert by_lvl[3]["to_user_id"] == "amb_1" and by_lvl[3]["amount_usdt"] == pytest.approx(0.45)
         assert eco["percentage_sum_verified"] is True
     finally:
         for mm in (u1, u2, u3, u4):

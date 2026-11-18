@@ -5,8 +5,8 @@
 - Без автосоздания аккаунтов, без ввода паролей и без обхода CAPTCHA/Cloudflare.
 - Секретные OAuth/API-токены и секреты вебхуков никогда не хранятся открытым текстом
   в SQLite: в БД лежит только шифр AES-256-GCM (ключом от owner_key) или префикс SHA-256.
-- Фиксированная комиссия платформы CODE = 10% от всего валового дохода агентов;
-  оставшиеся 90% — пул владельца, из которого пользователь задаёт ставку агента от 1% до 100%.
+- Комиссия платформы CODE от валового дохода агентов: 15 %, когда отправляет человек, 20 % на автопилоте
+  (18.11.2026; до этого — 10 %); остаток — пул владельца, из которого пользователь задаёт ставку агента от 1% до 100%.
 - Поддержка двух фаз расчётов: Фаза 1 (USDT_TRC20) -> Фаза 2 ($GALATIN с автовыкупом с биржи).
 - Любое ТЗ (включая входящие по HTTP с биржи) проверяется на prompt-инъекции (safety.looks_like_instruction).
 - Автоставки (PADAM_FREELANCE_AUTOBID) и оплата тарифов (PADAM_TREASURY_AUTOPAY)
@@ -42,7 +42,21 @@ from . import (
     token_autonomy,
 )
 
-FIXED_PLATFORM_FEE_PCT = 10.0
+# Комиссия CODE — слово Архитектора 18.11.2026: «с тыканьем пальцем 15 %. Автопилот — 20 %».
+#   assisted  — агент считает и пишет черновик, отправляет человек (так требуют Upwork, Fiverr и др.);
+#   autopilot — продаёт и делает наша система (магазины, биржи для агентов, свои клиенты, прямые заказчики).
+# Ставка запоминается в заказе (platform_fee_pct) в момент оценки и дальше не меняется.
+ASSISTED_FEE_PCT = 15.0
+AUTOPILOT_FEE_PCT = 20.0
+WORK_MODES = ("assisted", "autopilot")
+FIXED_PLATFORM_FEE_PCT = ASSISTED_FEE_PCT  # прежнее имя оставлено для совместимости
+
+
+def fee_pct_for_mode(work_mode: str = "assisted") -> float:
+    mode = str(work_mode or "assisted").strip().lower()
+    if mode not in WORK_MODES:
+        raise ValueError(f"work_mode must be one of: {', '.join(WORK_MODES)}")
+    return AUTOPILOT_FEE_PCT if mode == "autopilot" else ASSISTED_FEE_PCT
 ESCROW_HOLD_DAYS = 14
 ESCROW_HOLD_SECONDS = ESCROW_HOLD_DAYS * 86400
 CLIENT_LOCK_DAYS = 90
@@ -474,7 +488,7 @@ def set_freelance_prefs(
     settlement_currency: str | None = None,
     galatin_price_usdt: float | None = None,
 ) -> dict[str, Any]:
-    """Сохраняет регулируемую ставку агента (1%..100% от чистых 90%) и валютную фазу (USDT_TRC20 / GALATIN)."""
+    """Сохраняет регулируемую ставку агента (1%..100% от остатка после комиссии) и валютную фазу (USDT_TRC20 / GALATIN)."""
     cur = get_freelance_prefs(memory)
     share = cur["agent_share_pct"] if agent_share_pct is None else max(1.0, min(100.0, float(agent_share_pct)))
     curr = cur["settlement_currency"] if settlement_currency is None else _clean_currency(settlement_currency)
@@ -796,6 +810,7 @@ def evaluate_and_ingest_job(
     client_external_id: str = "",
     client_ref: str = "",
     now_ts: float | None = None,
+    work_mode: str = "assisted",
 ) -> dict[str, Any]:
     """Проверяет ТЗ заказа на безопасность, считает выгоду по ставке, часам, комиссии и квотам токенов."""
     _ensure(memory)
@@ -827,7 +842,7 @@ def evaluate_and_ingest_job(
         else _DEFAULT_EXCHANGE_FEE_PCT.get(plat, 10.0),
         2,
     )
-    code_fee_pct = FIXED_PLATFORM_FEE_PCT
+    code_fee_pct = fee_pct_for_mode(work_mode)
     total_fee_pct = round(code_fee_pct + ex_fee_pct, 2)
     code_fee_usdt = round(budget * (code_fee_pct / 100.0), 4)
     exchange_fee_usdt = round(budget * (ex_fee_pct / 100.0), 4)
@@ -1433,14 +1448,15 @@ def galatin_buyback_quote(usdt_amount: float, *, galatin_price_usdt: float = 0.0
 def monetization_breakdown(
     gross_usdt: float,
     *,
+    fee_pct: float | None = None,
     agent_share_pct: float = 15.0,
     settlement_currency: str = "USDT_TRC20",
     galatin_price_usdt: float = 0.01,
     compute_share_pct: float | None = None,
 ) -> dict[str, Any]:
-    """Фиксированная ставка CODE = 10% + регулируемая ставка агента (1%..100% от оставшихся 90%) + токеномика $GALATIN."""
+    """Комиссия CODE (15 % с кнопкой, 20 % автопилот) + регулируемая ставка агента (1%..100% от остатка) + токеномика $GALATIN."""
     gross = round(max(0.0, float(gross_usdt)), 4)
-    fee_pct = FIXED_PLATFORM_FEE_PCT  # строго фиксированная ставка 10%
+    fee_pct = float(fee_pct) if fee_pct is not None else ASSISTED_FEE_PCT  # 15 % с кнопкой, 20 % автопилот
     raw_agent_pct = float(compute_share_pct if compute_share_pct is not None else agent_share_pct)
     agent_pct = round(max(1.0, min(100.0, raw_agent_pct)), 2)
     curr = _clean_currency(settlement_currency)
@@ -1449,7 +1465,8 @@ def monetization_breakdown(
     user_pool_usdt = round(max(0.0, gross - platform_fee_usdt), 4)
     agent_compute_usdt = round(user_pool_usdt * (agent_pct / 100.0), 4)
     owner_net_usdt = round(max(0.0, user_pool_usdt - agent_compute_usdt), 4)
-    effective_gross_agent_pct = round(0.9 * agent_pct, 4)
+    # 18.11.2026: было round(0.9 * agent_pct) — зашитые 90 % пула; при комиссии 15 % казна агента получала лишние 5 % от суммы.
+    effective_gross_agent_pct = round((100.0 - fee_pct) / 100.0 * agent_pct, 4)
 
     eco_shares = {
         "fund_pct": 5.0,
@@ -1507,8 +1524,10 @@ def settle_paid_order(
         )
     )
     chosen_curr = str(settlement_currency or prefs["settlement_currency"])
+    order_fee = float(order.get("platform_fee_pct") or 0.0)
     split = monetization_breakdown(
         gross,
+        fee_pct=order_fee if order_fee > 0 else ASSISTED_FEE_PCT,  # ставка, которую человек видел при оценке
         agent_share_pct=chosen_share,
         settlement_currency=chosen_curr,
         galatin_price_usdt=prefs["galatin_price_usdt"],
@@ -1796,6 +1815,7 @@ def freelance_dashboard_snapshot(memory) -> dict[str, Any]:
         "autopilot": get_autopilot_state(memory),
         "monetization_totals": {
             "fixed_platform_fee_pct": FIXED_PLATFORM_FEE_PCT,
+            "platform_fee_pct_by_mode": {"assisted": ASSISTED_FEE_PCT, "autopilot": AUTOPILOT_FEE_PCT},
             "total_gross_usdt": total_gross,
             "total_platform_fee_usdt": total_fee,
             "total_agent_compute_usdt": total_comp,

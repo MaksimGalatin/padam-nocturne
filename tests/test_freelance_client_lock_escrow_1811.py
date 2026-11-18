@@ -117,11 +117,11 @@ def test_agent_payout_only_after_accepted_plus_14d_and_refund_cancel(tmp_path: P
         # Оплата в t0, но клиент ещё НЕ принял (accepted_at=None)
         paid1 = freelance_autonomy.settle_paid_order(m, j1["order_id"], paid_usdt=100.0, agent_id="agent_one", agent_share_pct=20.0, now_ts=t0)
         assert paid1["agent_payout"]["status"] == "pending"
-        # 100 * 90% * 20% = 18.0
-        assert paid1["agent_payout"]["amount_usdt"] == pytest.approx(18.0)
+        # 100 * 85% * 20% = 17.0
+        assert paid1["agent_payout"]["amount_usdt"] == pytest.approx(17.0)
 
         led0 = freelance_autonomy.get_agent_ledger(m, agent_id="agent_one")
-        assert led0["pending_usdt"] == pytest.approx(18.0)
+        assert led0["pending_usdt"] == pytest.approx(17.0)
         assert led0["credited_usdt"] == pytest.approx(0.0)
         assert led0["cancelled_usdt"] == pytest.approx(0.0)
 
@@ -145,7 +145,7 @@ def test_agent_payout_only_after_accepted_plus_14d_and_refund_cancel(tmp_path: P
         r_after14 = freelance_autonomy.release_matured_payouts(m, now_ts=t_acc + 14 * 86400 + 1)
         assert r_after14["credited_agent_entries"] == 1
         led1 = freelance_autonomy.get_agent_ledger(m, agent_id="agent_one")
-        assert led1["credited_usdt"] == pytest.approx(18.0)
+        assert led1["credited_usdt"] == pytest.approx(17.0)
         assert led1["pending_usdt"] == pytest.approx(0.0)
 
         # Второй заказ -> отказ клиента / возврат внутри 14 дней -> отмена с записью причины
@@ -163,7 +163,7 @@ def test_agent_payout_only_after_accepted_plus_14d_and_refund_cancel(tmp_path: P
         led2 = freelance_autonomy.get_agent_ledger(m, agent_id="agent_two")
         assert led2["credited_usdt"] == pytest.approx(0.0)
         assert led2["pending_usdt"] == pytest.approx(0.0)
-        assert led2["cancelled_usdt"] == pytest.approx(90.0)
+        assert led2["cancelled_usdt"] == pytest.approx(85.0)
         assert led2["entries"][0]["cancel_reason"] == "Client requested refund on delivery"
         # Автовывод не трогался
         assert sovereign_ops.locks_status()["treasury_autopay_locked"] is True
@@ -206,7 +206,7 @@ def test_mcp_client_lock_agent_ledger_batch_readonly_and_accept_blocked(tmp_path
         ]})
         assert bat_ok["isError"] is False
         assert bat_ok["structuredContent"]["results"][0]["structured"]["locked"] is True
-        assert bat_ok["structuredContent"]["results"][1]["structured"]["pending_usdt"] == pytest.approx(13.5)
+        assert bat_ok["structuredContent"]["results"][1]["structured"]["pending_usdt"] == pytest.approx(12.75)
         assert _db_snapshot(mem.store.conn) == snap_before
 
         # accept_delivery внутри batch -> PermissionError и isError=True, БД нетронута
@@ -276,7 +276,7 @@ def test_studio_playwright_client_lock_and_agent_payout_all_langs(tmp_path: Path
                 lock_txt = lock_el.text_content() or ""
                 pay_txt = pay_el.text_content() or ""
                 assert "aifa" in lock_txt and "20" in lock_txt
-                assert "Доля агента" in pay_txt and "в ожидании" in pay_txt and "40.5" in pay_txt
+                assert "Доля агента" in pay_txt and "в ожидании" in pay_txt and "38.25" in pay_txt
 
                 if vp["width"] == 1280:
                     # Принимаем работу клиентом (accept_delivery), затем тестируем возврат (отменено) без перезагрузки

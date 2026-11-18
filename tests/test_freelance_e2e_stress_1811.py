@@ -25,21 +25,21 @@ def test_agent_share_1_to_100_fixed_10_code_and_galatin_phases(tmp_path):
     """Проверка фиксированной 10% ставки CODE, диапазона 1%-100% агенту и фаз USDT_TRC20 -> $GALATIN."""
     m = Memory(user_id="mon_u", store=Store(tmp_path / "mon.db"))
     try:
-        # 1% агенту (от чистых 90%): 10% ($10) CODE + $0.90 агенту + $89.10 владельцу
+        # 1% агенту (от чистых 85%): 15% ($15) CODE + $0.85 агенту + $84.15 владельцу
         b1 = freelance_autonomy.monetization_breakdown(100.0, agent_share_pct=1.0, settlement_currency="USDT_TRC20")
-        assert b1["platform_fee_pct"] == 10.0
-        assert b1["platform_fee_usdt"] == pytest.approx(10.0)
-        assert b1["agent_compute_usdt"] == pytest.approx(0.9)
-        assert b1["owner_net_usdt"] == pytest.approx(89.1)
+        assert b1["platform_fee_pct"] == 15.0
+        assert b1["platform_fee_usdt"] == pytest.approx(15.0)
+        assert b1["agent_compute_usdt"] == pytest.approx(0.85)
+        assert b1["owner_net_usdt"] == pytest.approx(84.15)
         assert b1["percentage_sum_verified"] is True
 
-        # 100% агенту (весь чистый пул 90% идёт на апгрейды агента): 10% ($10) CODE + $90 агенту + $0 владельцу
+        # 100% агенту (весь чистый пул 85% идёт на апгрейды агента): 15% ($15) CODE + $85 агенту + $0 владельцу
         b100 = freelance_autonomy.monetization_breakdown(100.0, agent_share_pct=100.0, settlement_currency="GALATIN", galatin_price_usdt=0.02)
-        assert b100["platform_fee_usdt"] == pytest.approx(10.0)
-        assert b100["agent_compute_usdt"] == pytest.approx(90.0)
+        assert b100["platform_fee_usdt"] == pytest.approx(15.0)
+        assert b100["agent_compute_usdt"] == pytest.approx(85.0)
         assert b100["owner_net_usdt"] == pytest.approx(0.0)
         assert b100["settlement_currency"] == "GALATIN"
-        assert b100["platform_fee_galatin"]["galatin_amount"] == pytest.approx(500.0)
+        assert b100["platform_fee_galatin"]["galatin_amount"] == pytest.approx(750.0)
         assert b100["ecosystem_shares_pct"]["treasury_pct"] == 65.0
 
         # Сохранение и чтение настроек 1..100% в БД (clamp работает на границах 0->1 и 250->100)
@@ -61,7 +61,7 @@ def test_rational_subscription_spend_over_expensive_payg(monkeypatch, tmp_path):
             m, platform="upwork_api", title="Audit API", brief="Full REST check", budget_usdt=100.0
         )
         freelance_autonomy.settle_paid_order(m, job["order_id"], paid_usdt=100.0, agent_share_pct=100.0)
-        assert token_autonomy.treasury_summary(m)["available_compute_usdt"] == pytest.approx(90.0)
+        assert token_autonomy.treasury_summary(m)["available_compute_usdt"] == pytest.approx(85.0)
 
         rec = token_autonomy.recommend_optimal_spend(m, monthly_tokens_need=10_000_000, settlement_currency="GALATIN")
         assert rec["ok"] is True
@@ -237,9 +237,9 @@ def test_real_http_exchange_stand_retries_bids_and_signed_webhook(monkeypatch, t
             wh_res = json.loads(resp.read().decode("utf-8"))
         assert wh_res["ok"] is True
         assert wh_res["status"] == "paid"
-        assert wh_res["monetization"]["platform_fee_usdt"] == pytest.approx(20.0)
-        assert wh_res["monetization"]["agent_compute_usdt"] == pytest.approx(90.0)
-        assert wh_res["treasury"]["available_compute_usdt"] == pytest.approx(90.0)
+        assert wh_res["monetization"]["platform_fee_usdt"] == pytest.approx(30.0)
+        assert wh_res["monetization"]["agent_compute_usdt"] == pytest.approx(85.0)
+        assert wh_res["treasury"]["available_compute_usdt"] == pytest.approx(85.0)
     finally:
         ex_srv.shutdown()
         ex_srv.server_close()

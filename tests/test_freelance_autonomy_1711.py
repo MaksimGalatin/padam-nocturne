@@ -120,9 +120,9 @@ def test_freelance_full_pipeline_locks_delivery_and_treasury(tmp_path, monkeypat
     assert paid["ok"] is True
     assert paid["status"] == "paid"
     assert paid["treasury"]["total_revenue_usdt"] == pytest.approx(120.0)
-    assert paid["treasury"]["available_compute_usdt"] == pytest.approx(16.2)
-    assert paid["monetization"]["platform_fee_pct"] == 10.0
-    assert paid["monetization"]["platform_fee_usdt"] == pytest.approx(12.0)
+    assert paid["treasury"]["available_compute_usdt"] == pytest.approx(15.3)
+    assert paid["monetization"]["platform_fee_pct"] == 15.0
+    assert paid["monetization"]["platform_fee_usdt"] == pytest.approx(18.0)
     assert paid["monetization"]["token_symbol"] == "$GALATIN"
     assert paid["monetization"]["percentage_sum_verified"] is True
     assert paid["profile_suggestion"]["suggestion_id"].startswith("psg-")

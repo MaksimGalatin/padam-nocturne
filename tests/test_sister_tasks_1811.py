@@ -87,9 +87,9 @@ def test_order_margin_score_uses_rate_hours_and_fees_not_99_99(tmp_path: Path):
         assert fast_high["margin_score"] < 99.0
         assert slow_low["margin_score"] < 55.0
         assert fast_high["margin_score"] > same_budget_higher_rate_target["margin_score"] > slow_low["margin_score"]
-        assert fast_high["total_fee_pct"] == 10.0
-        assert slow_low["total_fee_pct"] == 30.0
-        assert same_budget_higher_rate_target["total_fee_pct"] == 20.0
+        assert fast_high["total_fee_pct"] == 15.0
+        assert slow_low["total_fee_pct"] == 35.0
+        assert same_budget_higher_rate_target["total_fee_pct"] == 25.0
         assert fast_high["effective_hourly_usdt"] > slow_low["effective_hourly_usdt"]
     finally:
         mem.close()
@@ -194,7 +194,7 @@ def test_studio_earning_desktop_1280x800_accounts_visible_and_bid_flow_playwrigh
             assert desk_metrics["count"] == 5
             assert desk_metrics["allInsideViewportY"] is True
             assert "99.99" not in desk_metrics["ordText"]
-            assert "fee=20%" in desk_metrics["ordText"]
+            assert "fee=25%" in desk_metrics["ordText"]
             assert "/h" in desk_metrics["ordText"]
 
             # Клик по "Черновик отклика" готовит предпросмотр и НЕ меняет статус на bid_placed

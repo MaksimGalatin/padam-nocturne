@@ -60,11 +60,38 @@ NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token 
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
 
 
+def _desktop_shared_memory() -> dict:
+    """18.11.2026: общая память Семьи для настольного приложения.
+
+    Окно приложения (Tauri) умеет передать серверу только путь к базе (--db) и не умеет передать имя пользователя,
+    а пересобрать окно на машине владельца нечем. Поэтому, когда сервер запущен окном (PADAM_DESKTOP_EXE), он читает
+    %LOCALAPPDATA%\\PADAM Studio\\shared_memory.json: {"db": "<абсолютный путь>", "user": "<имя>"}. Явные PADAM_DB и
+    PADAM_USER сильнее файла. Без окна приложения файл не читается — тесты и другие запуски не затрагиваются.
+    """
+    if not os.environ.get("PADAM_DESKTOP_EXE"):
+        return {}
+    from pathlib import Path
+    try:
+        p = Path(os.environ.get("LOCALAPPDATA", "")) / "PADAM Studio" / "shared_memory.json"
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    out = {}
+    db = str(data.get("db") or "").strip()
+    if db and Path(db).is_absolute() and Path(db).is_file():
+        out["db"] = db
+    user = str(data.get("user") or "").strip()
+    if user and len(user) <= 64 and all(ch.isalnum() or ch in "-_.@" for ch in user):
+        out["user"] = user
+    return out
+
+
 def mem() -> Memory:
     if _state["memory"] is None:
+        shared = _desktop_shared_memory()
         _state["memory"] = Memory(
-            user_id=os.environ.get("PADAM_USER", "default"),
-            store=Store(os.environ.get("PADAM_DB") or None))
+            user_id=os.environ.get("PADAM_USER") or shared.get("user") or "default",
+            store=Store(os.environ.get("PADAM_DB") or shared.get("db") or None))
     return _state["memory"]
 
 
@@ -1557,6 +1584,7 @@ class Handler(BaseHTTPRequestHandler):
                         estimated_hours=float(data["estimated_hours"]) if data.get("estimated_hours") is not None else None,
                         hourly_rate_usdt=float(data.get("hourly_rate_usdt") or 25.0),
                         exchange_fee_pct=float(data["exchange_fee_pct"]) if data.get("exchange_fee_pct") is not None else None,
+                        work_mode=str(data.get("work_mode") or "assisted"),
                         account_id=str(data.get("account_id") or ""),
                         assigned_agent=aid,
                         client_email=str(data.get("client_email") or ""),
