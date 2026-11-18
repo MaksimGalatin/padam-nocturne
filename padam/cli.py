@@ -1937,6 +1937,49 @@ def main(argv=None) -> int:
     sag.add_argument("--scope", default="global")
     sag.set_defaults(fn=cmd_ark_guardian)
 
+    def cmd_ark_readiness(m: Memory, args) -> int:
+        from . import autonomy_readiness as _ar
+        rep = _ar.run_autonomy_readiness_drill()
+        print(json.dumps(rep, ensure_ascii=False, indent=2))
+        return 0 if rep.get("ok") else 2
+
+    sar = sub.add_parser("ark-readiness", help="Run isolated 8-scenario autonomy readiness self-check ($0)")
+    sar.set_defaults(fn=cmd_ark_readiness)
+
+    def cmd_ark_handover(m: Memory, args) -> int:
+        from . import session_handover as _sh
+        rep = _sh.build_signed_handover(m, notes=args.notes, agent=args.agent, out_path=args.out)
+        print(json.dumps({k: v for k, v in rep.items() if k != "markdown"}, ensure_ascii=False, indent=2))
+        return 0
+
+    sah = sub.add_parser("ark-handover", help="Generate HMAC-signed session context handover markdown")
+    sah.add_argument("--notes", default="")
+    sah.add_argument("--agent", default="aifa")
+    sah.add_argument("--out", default=None)
+    sah.set_defaults(fn=cmd_ark_handover)
+
+    def cmd_ark_portable(m: Memory, args) -> int:
+        from pathlib import Path as _P
+        from . import portable_ark as _pa, pqc_mlkem as _pqc
+        kp = _pqc.generate_xwing_keypair()
+        rep = _pa.export_portable_ark(
+            m, args.target_dir,
+            mlkem_public=bytes(kp["mlkem_public"]),
+            x25519_public=bytes(kp["x25519_public"]),
+        )
+        key_out = _P(args.target_dir).resolve().parent / ( _P(args.target_dir).name + ".owner_keys.json" )
+        import base64 as _b64
+        key_out.write_text(json.dumps({
+            "mlkem_seed64_b64": _b64.b64encode(bytes(kp["mlkem_private"])).decode("ascii"),
+            "x25519_priv_b64": _b64.b64encode(bytes(kp["x25519_private"])).decode("ascii"),
+        }, indent=2) + "\n", encoding="utf-8")
+        print(json.dumps({**rep, "private_keys_saved_separately_to": str(key_out)}, ensure_ascii=False, indent=2))
+        return 0
+
+    sap = sub.add_parser("ark-portable", help="Export PQC encrypted Portable Sovereign Ark (zero secrets inside target_dir)")
+    sap.add_argument("target_dir")
+    sap.set_defaults(fn=cmd_ark_portable)
+
     a = p.parse_args(argv)
     if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup, cmd_pack_extension, cmd_playground, cmd_badge, cmd_aifa_sec) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):
         return a.fn(None, a)
