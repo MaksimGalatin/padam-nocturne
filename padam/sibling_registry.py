@@ -24,6 +24,7 @@ from typing import Any
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
+from .store import add_column_safe as _acs
 from . import ark, audit_chain, integrity, net_guard, roles, safety
 
 _SIBLING_DDL = """
@@ -66,7 +67,7 @@ def _ensure(memory) -> None:
     memory.store.conn.executescript(_SIBLING_DDL)
     cols = {r[1] for r in memory.store.conn.execute("PRAGMA table_info(ark_sibling_agent)").fetchall()}
     if "pub_key_b64" not in cols:
-        memory.store.conn.execute("ALTER TABLE ark_sibling_agent ADD COLUMN pub_key_b64 TEXT NOT NULL DEFAULT ''")
+        _acs(memory.store.conn, "ark_sibling_agent", "pub_key_b64", "TEXT NOT NULL DEFAULT ''")
     memory.store.conn.commit()
 
 

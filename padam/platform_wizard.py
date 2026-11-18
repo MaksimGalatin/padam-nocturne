@@ -16,10 +16,12 @@ import secrets
 import time
 from typing import Any
 
+from .store import add_column_safe as _acs
 from . import audit_chain, freelance_autonomy
 
 
-_INITIALIZED_WIZ_DBS: set[int] = set()
+# 18.11.2026: кэш живёт на самом объекте хранилища, а не в словаре по id(): Python выдаёт тот же id новому объекту
+# после сборки мусора, и новая база наследовала состояние умершей (Совет видел «цепь стёрта»).
 
 WIZARD_QUESTIONS: tuple[dict[str, str], ...] = (
     {"key": "specializations", "label_ru": "1. Направления и услуги (что делаем лучше всего)"},
@@ -647,17 +649,16 @@ def _ensure_wizard_schema(memory) -> None:
     with freelance_autonomy._lock_of(memory):
         freelance_autonomy._ensure(memory)
         conn = memory.store.conn
-        key = id(conn)
-        if key in _INITIALIZED_WIZ_DBS:
+        if memory.store.__dict__.get("_padam_wiz_schema_ok"):
             try:
                 conn.execute("SELECT 1 FROM ark_platform_wizard_connection LIMIT 1")
                 return
             except Exception:
-                _INITIALIZED_WIZ_DBS.discard(key)
+                memory.store.__dict__.pop("_padam_wiz_schema_ok", None)
         for stmt in _WIZ_DDL_STMTS:
             conn.execute(stmt.strip())
         conn.commit()
-        _INITIALIZED_WIZ_DBS.add(key)
+        memory.store.__dict__["_padam_wiz_schema_ok"] = True
 
 
 def get_platform_spec(platform_id: str) -> dict[str, Any]:
@@ -667,12 +668,34 @@ def get_platform_spec(platform_id: str) -> dict[str, Any]:
     return dict(CATALOG_BY_ID[pid])
 
 
+# Grok-аудит 18.11, пп. 3/9: у каждой площадки — статус и следующий шаг понятным языком, а не только automation_tier.
+_OWNER_STATUS = {
+    "autopilot": ("Готово к автопилоту: ищу заказы и готовлю отклики сама, отправка — по вашим правилам.",
+                  "Ready for autopilot: I find jobs and draft bids; sending follows your rules.",
+                  "Подключите аккаунт во вкладке «Заработок» → «Биржи» и включите «Старт 24/7».",
+                  "Connect the account in Earning → Exchanges and switch on “Start 24/7”."),
+    "assisted_button": ("Только черновик и ваша кнопка: правила площадки запрещают ботов.",
+                        "Draft plus your click only: the platform rules forbid bots.",
+                        "Я готовлю текст отклика — вы проверяете и отправляете сами на сайте площадки.",
+                        "I prepare the bid text — you review it and send it yourself on the platform."),
+    "not_available": ("Пока недоступна: у площадки нет разрешённого способа подключения.",
+                      "Not available yet: the platform offers no permitted way to connect.",
+                      "Ничего делать не нужно — площадка в списке для полноты.",
+                      "Nothing to do — the platform is listed for completeness."),
+}
+
+
+def _owner_status(p: dict) -> dict:
+    st = _OWNER_STATUS.get(str(p.get("automation_tier") or ""), _OWNER_STATUS["not_available"])
+    return {"owner_status_ru": st[0], "owner_status_en": st[1], "next_action_ru": st[2], "next_action_en": st[3]}
+
+
 def list_platform_catalog(*, category: str = "", automation_tier: str = "") -> dict[str, Any]:
     """Возвращает полный список 30 площадок из методички + 4 бирж для ИИ-агентов с фильтрами и сводкой."""
     cat = str(category or "").strip().lower()
     tier = str(automation_tier or "").strip().lower()
     items = [
-        dict(p)
+        dict(p, **_owner_status(p))
         for p in PLATFORM_CATALOG
         if (not cat or p["category"] == cat) and (not tier or p["automation_tier"] == tier)
     ]
@@ -1222,7 +1245,7 @@ def _ensure_stage3_schema(memory) -> None:
             ("browser_profile_dir", "TEXT NOT NULL DEFAULT ''"),
         ):
             if col not in cols:
-                conn.execute(f"ALTER TABLE ark_platform_wizard_connection ADD COLUMN {col} {col_def}")
+                _acs(conn, "ark_platform_wizard_connection", col, col_def)
         conn.commit()
 
 

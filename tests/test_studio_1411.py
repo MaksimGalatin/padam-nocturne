@@ -1202,6 +1202,7 @@ def test_b13_memory_recall_rerank_and_exact_access_count(tmp_path, monkeypatch):
         assert len(off_res) == 2
         assert all("rerank" not in (r.strategies or ()) for r in off_res)
 
+        mem.store.flush()   # 18.11: статистика поиска пишется пачкой; прямое чтение conn — после сброса
         before_counts = dict(mem.store.conn.execute("SELECT id, access_count FROM memory").fetchall())
         before_sum = sum(before_counts.values())
 
@@ -1211,6 +1212,7 @@ def test_b13_memory_recall_rerank_and_exact_access_count(tmp_path, monkeypatch):
         assert on_res[0].id == target_id
         assert all("rerank" in (r.strategies or ()) for r in on_res)
 
+        mem.store.flush()   # 18.11: статистика поиска пишется пачкой; прямое чтение conn — после сброса
         after_counts = dict(mem.store.conn.execute("SELECT id, access_count FROM memory").fetchall())
         shown_ids = {r.id for r in on_res}
         assert sum(after_counts.values()) == before_sum + 2

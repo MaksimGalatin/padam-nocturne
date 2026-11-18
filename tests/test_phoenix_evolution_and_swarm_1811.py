@@ -355,6 +355,11 @@ def test_oauth_auto_refresh_and_continuous_autopilot_start_stop(monkeypatch, tmp
         assert tick["skipped"] is False
         assert state["refreshed_count"] == 1
         assert tick["accepted_orders"] == 1
+        # Grok-аудит 18.11, пп. 1–2: черновик отклика готов сразу, наружу ничего не ушло, заметка — человеческая
+        assert tick["drafted_bids"] == 1
+        assert "черновиков откликов готово 1" in tick["owner_note"] and "кнопкой" in tick["owner_note"]
+        st_ord = m.store.conn.execute("SELECT status FROM ark_freelance_order WHERE user_id = ?", ("auto_u",)).fetchall()
+        assert all(r["status"] not in ("bid_placed", "sent") for r in st_ord)
 
         # Останавливаем -> снова спит
         freelance_autonomy.set_autopilot_state(m, running=False)

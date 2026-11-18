@@ -112,8 +112,10 @@ def test_item1_and_8_context_compaction_titles_docs_and_instructions(tmp_path: P
     tools_chars = len(json.dumps(tools, ensure_ascii=False))
     total_chars = len(json.dumps(tools_res, ensure_ascii=False))
     # 18.11.2026: +padam_benchmark (слово Папы: бенчмарк на виду и в MCP) — лимит 27000 -> 27300 (+1 инструмент, ~1 %)
-    assert tools_chars <= 27300, f"tools array exceeds 27300 chars: {tools_chars}"
-    assert total_chars <= 27300, f"tools/list result exceeds 27300 chars: {total_chars}"
+    # 18.11.2026 (вечер): + 6 почтовых действий padam_freelance_hub (mail_status, connect_mail, pause_mail, send_outreach,
+    # check_inbox, add_stop) и их поля — +400 знаков, 1,5 %. Лимит 27300 -> 27800; дальше расти только с причиной.
+    assert tools_chars <= 27800, f"tools array exceeds 27800 chars: {tools_chars}"
+    assert total_chars <= 27800, f"tools/list result exceeds 27800 chars: {total_chars}"
 
     instr_tokens = set(re.findall(r"[A-Za-z0-9_]+", instr))
     missing_everywhere: list[str] = []

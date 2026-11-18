@@ -50,3 +50,23 @@ def _без_настроек_компьютера(tmp_path_factory, monkeypatch)
     monkeypatch.delenv("PADAM_CPU_GGUF_PATH", raising=False)
     monkeypatch.delenv("PADAM_CPU_POWER", raising=False)
     yield
+
+
+
+@pytest.fixture(autouse=True)
+def _сброс_общей_памяти_api():
+    """18.11.2026: тест оставлял закрытую Memory в padam.api._state, следующий подхватывал её
+    («Cannot operate on a closed database», зависело от порядка). После каждого теста общее состояние сбрасывается."""
+    yield
+    try:
+        from padam import api as _api
+        st = getattr(_api, "_state", None)
+        if isinstance(st, dict) and st.get("memory") is not None:
+            st["memory"] = None
+    except Exception:
+        pass
+    try:
+        from padam import mcp_server as _mcp
+        _mcp._memory = None          # то же у MCP-сервера: следующий тест не пишет в базу предыдущего
+    except Exception:
+        pass

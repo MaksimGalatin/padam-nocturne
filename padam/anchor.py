@@ -88,9 +88,10 @@ DESTROYED = "destroyed"
 def ensure_schema(memory: Memory) -> None:
     memory.store.script(L3_SCHEMA)
     # 0.4.12: штамп OpenTimestamps пакета (второй свидетель — Bitcoin). Столбец добавляется к прежним базам.
-    столбцы = {r[1] for r in memory.store.query("PRAGMA table_info(l3_anchor)")}
-    if "ots" not in столбцы:
-        memory.store.execute("ALTER TABLE l3_anchor ADD COLUMN ots BLOB")
+    from .store import add_column_safe
+    with memory.store._lock:
+        add_column_safe(memory.store.conn, "l3_anchor", "ots", "BLOB")
+        memory.store.conn.commit()
 
 
 # ---------------------------------------------------------------- Меркл

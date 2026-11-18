@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import threading
+import urllib.error
 import urllib.request
 
 from padam import api, email_autonomy, mcp_server, partner_bridge
@@ -127,8 +128,11 @@ def test_mail_hub_studio_api_and_business_outreach_ru(tmp_path: Path):
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=10) as r:
-            res = json.loads(r.read().decode("utf-8"))
+        try:
+            with urllib.request.urlopen(req, timeout=10) as r:
+                res = json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:   # CI 19.11: 500 без причины — показываем тело ответа сервера
+            raise AssertionError(f"mail/action {exc.code}: {exc.read().decode('utf-8', 'replace')[:800]}") from exc
         assert res["ok"] is True and res["account"]["email"] == "team@code.test"
 
         # Проверка согласования числительных (221 барьер / нарушение) в build_business_outreach

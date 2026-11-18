@@ -166,8 +166,8 @@ def test_счётчики_поиска_одной_транзакцией(tmp_pat
         m.remember("The team chose Postgres for billing", kind="decision", scope="work")
         m.remember("Postgres backups run nightly", kind="fact", scope="home")
         вызовы = []
-        исходный = m.store.counters
-        m.store.counters = lambda ops: (вызовы.append(len(ops)), исходный(ops))[1]
+        исходный = m.store.search_stats_later   # 18.11: статистика поиска — отдельной пачкой (store.search_stats_later)
+        m.store.search_stats_later = lambda ops: (вызовы.append(len(ops)), исходный(ops))[1]
         m.recall("postgres", scope="work", limit=5)
         assert вызовы == [2]                 # показ одной записи + статистика дня — один commit
         вызовы.clear()

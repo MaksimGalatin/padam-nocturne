@@ -31,6 +31,7 @@ import urllib.request
 import uuid
 from typing import Any
 
+from .store import add_column_safe as _acs
 from . import (
     ark_advanced,
     audit_chain,
@@ -284,7 +285,7 @@ def _ensure(memory) -> None:
             ("token_expires_at", "REAL NOT NULL DEFAULT 0.0"),
         ):
             if col not in existing:
-                conn.execute(f"ALTER TABLE ark_exchange_account ADD COLUMN {col} {col_def}")
+                _acs(conn, "ark_exchange_account", col, col_def)
         prefs_cols = {r["name"] for r in conn.execute("PRAGMA table_info(ark_freelance_prefs)").fetchall()}
         for col, col_def in (
             ("autopilot_running", "INTEGER NOT NULL DEFAULT 0"),
@@ -293,7 +294,7 @@ def _ensure(memory) -> None:
             ("autopilot_last_note", "TEXT NOT NULL DEFAULT ''"),
         ):
             if col not in prefs_cols:
-                conn.execute(f"ALTER TABLE ark_freelance_prefs ADD COLUMN {col} {col_def}")
+                _acs(conn, "ark_freelance_prefs", col, col_def)
         order_cols = {r["name"] for r in conn.execute("PRAGMA table_info(ark_freelance_order)").fetchall()}
         for col, col_def in (
             ("estimated_hours", "REAL NOT NULL DEFAULT 4.0"),
@@ -316,7 +317,7 @@ def _ensure(memory) -> None:
             ("sample_deliverable", "TEXT NOT NULL DEFAULT ''"),
         ):
             if col not in order_cols:
-                conn.execute(f"ALTER TABLE ark_freelance_order ADD COLUMN {col} {col_def}")
+                _acs(conn, "ark_freelance_order", col, col_def)
         conn.commit()
 
 
@@ -674,7 +675,7 @@ def _get_account_row(memory, account_id: str) -> dict[str, Any]:
 class ExchangeHttpAdapter:
     """Надёжный HTTP-адаптер к API биржи с повторами на 429, обработкой 401/таймаутов и защитой токена."""
 
-    def __init__(self, base_url: str, bearer_token: str = "", *, timeout_s: float = 8.0, max_retries: int = 2, allow_localhost: bool = False) -> None:
+    def __init__(self, base_url: str, bearer_token: str = "", *, timeout_s: float = 15.0, max_retries: int = 2, allow_localhost: bool = False) -> None:
         self.base_url = str(base_url or "").strip().rstrip("/")
         self.bearer_token = str(bearer_token or "").strip()
         self.timeout_s = max(1.0, float(timeout_s))
@@ -711,6 +712,10 @@ class ExchangeHttpAdapter:
                     return int(resp.status), parsed
             except urllib.error.HTTPError as exc:
                 code = int(exc.code)
+                # Grok-аудит 18.11, п. 8: временные отказы сервера биржи (502/503/504) — повтор с нарастающей паузой.
+                if code in (502, 503, 504) and attempt < self.max_retries:
+                    time.sleep(min(3.0, 0.5 * (2 ** attempt)))
+                    continue
                 if code == 429 and attempt < self.max_retries:
                     retry_after = exc.headers.get("Retry-After") if exc.headers else None
                     try:
@@ -724,10 +729,13 @@ class ExchangeHttpAdapter:
                 except Exception:
                     err_body = str(exc)
                 return code, {"ok": False, "error": err_body or f"HTTP {code}", "http_status": code}
+            except ValueError as exc:
+                # Отказ защиты (net_guard: запретный адрес, http вместо https) — не сбой сети, повторять бессмысленно.
+                return 400, {"ok": False, "error": str(exc), "http_status": 400}
             except Exception as exc:
                 last_err = str(exc)
                 if attempt < self.max_retries:
-                    time.sleep(0.05)
+                    time.sleep(min(3.0, 0.5 * (2 ** attempt)))   # было 0,05 с — медленная биржа не успевала
                     continue
         return 599, {"ok": False, "error": last_err or "network_error"}
 
@@ -1221,10 +1229,18 @@ def propose_or_place_bid(
         new_status = "bid_draft"
         placed = False
         note = "Черновик отклика сохранён. Для автопубликации нужно owner_approved=True и PADAM_FREELANCE_AUTOBID=1."
+        # Grok-аудит 18.11, п. 14: подсказка владельцу — что нажать, без переменных окружения.
+        ui_hint = {
+            "ru": "Отклик готов. Проверьте текст и нажмите «Отправить» в карточке заказа (вкладка «Заработок»). "
+                  "Автоотправка без вашей кнопки выключена — так безопаснее.",
+            "en": "The bid is ready. Review the text and press “Send” on the order card (Earning tab). "
+                  "Auto-sending without your click is off by default for safety.",
+        }
     else:
         new_status = "bid_placed"
         placed = True
         note = "Отклик утверждён владельцем и отмечен к отправке через подключённый адаптер биржи."
+        ui_hint = {"ru": "Отклик утверждён и отправляется.", "en": "The bid is approved and being sent."}
 
     with _lock_of(memory):
         memory.store.conn.execute(
@@ -1247,6 +1263,7 @@ def propose_or_place_bid(
         "bid_text": clean_pitch[:2000],
         "locks": locks,
         "note": note,
+        "ui_hint": ui_hint,
     }
 
 @_synchronized_memory
@@ -1548,6 +1565,25 @@ def settle_paid_order(
     from . import roles as _roles
     _roles.require_owner(actor, "settle_paid")
     order = _get_order(memory, order_id)
+    # GLM раунд 3, FA-01 (Critical): повтор вебхука order.paid зачислял доход, удержание и реферальные ДВАЖДЫ.
+    # Оплата заказа проводится один раз: есть удержание по этому заказу — это повтор, ничего не зачисляем.
+    with _lock_of(memory):
+        prior = memory.store.conn.execute(
+            "SELECT hold_id, gross_usdt, owner_net_usdt, currency, status FROM ark_owner_payout_hold "
+            "WHERE user_id = ? AND order_id = ? LIMIT 1",
+            (memory.user_id, order_id),
+        ).fetchone()
+    if prior is not None:
+        return {
+            "ok": True,
+            "order_id": order_id,
+            "idempotent_replay": True,
+            "hold_id": prior["hold_id"],
+            "gross_usdt": float(prior["gross_usdt"] or 0.0),
+            "owner_net_usdt": float(prior["owner_net_usdt"] or 0.0),
+            "currency": prior["currency"],
+            "note": "Оплата этого заказа уже проведена — повтор не зачислен.",
+        }
     prefs = get_freelance_prefs(memory)
     gross = round(max(0.0, float(paid_usdt if paid_usdt is not None else order["budget_usdt"])), 4)
     if gross <= 0:
@@ -1790,10 +1826,23 @@ def verify_and_process_webhook(
         if not trusted_agent and account_id:
             acc_row = _get_account_row(memory, account_id)
             trusted_agent = str(acc_row.get("agent_id") or "").strip()
+        # GLM раунд 3, FA-02: сумма из тела вебхука не выше бюджета заказа из НАШЕЙ базы (как AUT-07 для агента и доли).
+        # Меньше — частичная оплата, принимается; больше — срезается до бюджета, расхождение пишется в аудит.
+        budget = float(order.get("budget_usdt") or 0.0)
+        try:
+            body_paid = float(data.get("paid_usdt")) if data.get("paid_usdt") is not None else None
+        except (TypeError, ValueError):
+            body_paid = None
+        safe_paid = body_paid
+        if body_paid is not None and budget > 0 and body_paid > budget:
+            safe_paid = budget
+            audit_chain.append_audit(memory, "freelance_webhook_paid_capped",
+                                     {"order_id": order_id, "body_paid_usdt": body_paid, "budget_usdt": budget},
+                                     agent_id=trusted_agent or "system")
         return settle_paid_order(
             memory,
             order_id,
-            paid_usdt=data.get("paid_usdt"),
+            paid_usdt=safe_paid,
             agent_id=trusted_agent or "aifa",
             agent_share_pct=None,
             settlement_currency=None,
@@ -1841,8 +1890,26 @@ def freelance_dashboard_snapshot(memory) -> dict[str, Any]:
     total_fee = round(float(r_mon["f"] or 0.0), 4)
     total_comp = round(float(r_mon["c"] or 0.0), 4)
 
+    # Grok-аудит 18.11, п. 13: одна строка для владельца — что происходит и что требует его внимания.
+    _ap = get_autopilot_state(memory)
+    _drafts = sum(1 for o in orders if str(o.get("status") or "") == "bid_draft")
+    _reauth = sum(1 for a in accounts if str(a.get("status") or "") == "needs_reauth")
+    _attention = _drafts + _reauth
+    owner_summary_ru = (
+        f"Автопилот: {'работает' if _ap.get('autopilot_running') else 'остановлен'}; заказов: {len(orders)}; "
+        f"требует вашего внимания: {_attention}"
+        + (f" (черновиков откликов к отправке: {_drafts}" if _drafts else "")
+        + (f"{', ' if _drafts else ' ('}повторный вход на площадках: {_reauth}" if _reauth else "")
+        + (")" if _attention else "") + "."
+    )
+    owner_summary_en = (
+        f"Autopilot: {'running' if _ap.get('autopilot_running') else 'stopped'}; orders: {len(orders)}; "
+        f"need your attention: {_attention}."
+    )
     return {
         "ok": True,
+        "owner_summary_ru": owner_summary_ru,
+        "owner_summary_en": owner_summary_en,
         "prefs": prefs,
         "locks": locks,
         "accounts": accounts,
@@ -1987,8 +2054,13 @@ def accept_delivery(
     *,
     accepted_by: str = "client",
     now_ts: float | None = None,
+    actor=None,
 ) -> dict[str, Any]:
     """Фиксирует приёмку работы клиентом (accepted) и открывает 14-дневное окно претензий в эскроу."""
+    # GLM раунд 3, Паттерн 1 (18.11.2026): замок владельца внутри, а не только у вызывающего. API передаёт актёра;
+    # агент с ролью не-владельца получит PermissionError, даже если найдёт обходной путь к функции.
+    from . import roles as _roles
+    _roles.require_owner(actor, "accept_delivery")
     order = _get_order(memory, order_id)
     if order["status"] in ("rejected_security", "refunded", "rejected_client"):
         return {"ok": False, "order_id": order_id, "error": f"Приёмка невозможна: статус заказа {order['status']!r}."}
@@ -2103,8 +2175,12 @@ def dispute_held_payout(
     order_id: str = "",
     reason: str = "Client dispute refund",
     now_ts: float | None = None,
+    actor=None,
 ) -> dict[str, Any]:
     """Обрабатывает отказ клиента / возврат: переводит холд в refunded и отменяет начисление агенту с записью причины."""
+    # GLM раунд 3, FA-03: отмена выплаты двигает деньги — только владелец (как settle_paid, SOV-04).
+    from . import roles as _roles
+    _roles.require_owner(actor, "dispute_payout")
     _ensure(memory)
     now_s = float(now_ts if now_ts is not None else time.time())
     clean_reason, _ = safety.redact(str(reason or "Client dispute refund").strip() or "Client dispute refund")
@@ -2149,6 +2225,30 @@ def dispute_held_payout(
             "payout_cancel_reason = ?, updated_at = ? WHERE user_id = ? AND order_id = ?",
             (clean_reason, now_s, memory.user_id, eff_order_id),
         )
+        # GLM раунд 3, FA-05: возврат отменял выплату агенту, но начисление в казну агента оставалось — сводка казны
+        # была завышена и планировщик советовал лишнее пополнение. Добавляем обратную запись (история не стирается).
+        try:
+            token_autonomy._ensure(memory)
+            src_like = f"freelance:%:{eff_order_id}"
+            already = conn.execute(
+                "SELECT 1 FROM ark_earned_treasury WHERE user_id = ? AND source LIKE ? AND revenue_usdt < 0 LIMIT 1",
+                (memory.user_id, src_like),
+            ).fetchone()
+            if not already:
+                for er in conn.execute(
+                    "SELECT agent_id, source, revenue_usdt, compute_share_pct, allocated_compute_usdt FROM ark_earned_treasury "
+                    "WHERE user_id = ? AND source LIKE ? AND revenue_usdt > 0",
+                    (memory.user_id, src_like),
+                ).fetchall():
+                    conn.execute(
+                        "INSERT INTO ark_earned_treasury (entry_id, user_id, agent_id, source, revenue_usdt, compute_share_pct, "
+                        "allocated_compute_usdt, note, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (f"ern-{uuid.uuid4().hex[:10]}", memory.user_id, er["agent_id"], er["source"],
+                         -float(er["revenue_usdt"]), float(er["compute_share_pct"]), -float(er["allocated_compute_usdt"]),
+                         ("Возврат по спору: " + clean_reason)[:240], now_s),
+                    )
+        except Exception:
+            pass
         conn.commit()
     audit_chain.append_audit(
         memory,
@@ -2393,8 +2493,12 @@ def get_autopilot_state(memory) -> dict[str, Any]:
 
 
 @_synchronized_memory
-def set_autopilot_state(memory, *, running: bool, interval_s: float = 300.0, note: str = "") -> dict[str, Any]:
+def set_autopilot_state(memory, *, running: bool, interval_s: float = 300.0, note: str = "", actor=None) -> dict[str, Any]:
     """Включает или останавливает непрерывный цикл работы агентов на биржах (до команды владельца)."""
+    # GLM раунд 3, Паттерн 1 (18.11.2026): замок владельца внутри, а не только у вызывающего. API передаёт актёра;
+    # агент с ролью не-владельца получит PermissionError, даже если найдёт обходной путь к функции.
+    from . import roles as _roles
+    _roles.require_owner(actor, "autopilot_start" if running else "autopilot_stop")
     _ensure(memory)
     iv = max(5.0, min(86400.0, float(interval_s)))
     clean_note = note or ("Автопилот ЗАПУЩЕН: непрерывная работа до команды Стоп." if running else "Автопилот ОСТАНОВЛЕН владельцем.")
@@ -2431,6 +2535,7 @@ def run_autopilot_cycle(memory, *, allow_localhost: bool = False) -> dict[str, A
     checked = 0
     fetched_total = 0
     reauth_needed: list[str] = []
+    drafted = 0
     for acc_pub in accounts:
         if acc_pub["status"] != "active" or not acc_pub.get("api_base_url"):
             continue
@@ -2444,6 +2549,15 @@ def run_autopilot_cycle(memory, *, allow_localhost: bool = False) -> dict[str, A
             )
         elif res.get("ok"):
             fetched_total += int(res.get("accepted_count") or 0)
+            # Grok-аудит 18.11, п. 1: автопилот сразу готовит ЧЕРНОВИКИ откликов на принятые заказы (только текст из
+            # памяти и профиля — draft_bid_from_memory ничего не отправляет; отправка — кнопкой владельца).
+            for o in res.get("orders") or []:
+                if o.get("ok") and o.get("order_id"):
+                    try:
+                        if draft_bid_from_memory(memory, str(o["order_id"])).get("ok"):
+                            drafted += 1
+                    except Exception:
+                        pass
 
     # Шаг 2: опрос подключённых цифровых магазинов (5 autopilot-площадок)
     stores_synced = 0
@@ -2474,7 +2588,9 @@ def run_autopilot_cycle(memory, *, allow_localhost: bool = False) -> dict[str, A
         ap_platforms = {str(r["platform_id"]) for r in ap_rows}
         if ap_platforms:
             cand_orders = memory.store.conn.execute(
-                "SELECT * FROM ark_freelance_order WHERE user_id = ? AND status IN ('new', 'evaluated') ORDER BY created_at ASC LIMIT 10",
+                # 18.11 (слияние с черновиками Grok п. 1): заказ с готовым черновиком (bid_draft) на площадке с включённым
+                # автопилотом тоже уходит автооткликом; на остальных площадках черновик ждёт кнопки владельца.
+                "SELECT * FROM ark_freelance_order WHERE user_id = ? AND status IN ('new', 'evaluated', 'bid_draft') ORDER BY created_at ASC LIMIT 10",
                 (memory.user_id,),
             ).fetchall()
             for orow in cand_orders:
@@ -2526,11 +2642,17 @@ def run_autopilot_cycle(memory, *, allow_localhost: bool = False) -> dict[str, A
 
     payout_res = release_matured_payouts(memory)
     released_cnt = int(payout_res.get("released_count") or 0) if isinstance(payout_res, dict) else 0
-    note = (
-        f"Цикл завершён: биржи={checked} (+{fetched_total}), магазины={stores_synced} (+{stores_sales_accepted}), "
-        f"отклики={bids_dispatched}, исполнено={orders_executed}, сдано={deliveries_packaged}, "
-        f"выплат={released_cnt}, перевход={len(reauth_needed)}."
-    )
+    # Grok-аудит 18.11, п. 2: заметка — для владельца, человеческим языком: что готово и что ему сделать.
+    names = []
+    for aid in reauth_needed:
+        acc_row = next((a for a in accounts if a.get("account_id") == aid), {})
+        names.append(str(acc_row.get("account_label") or acc_row.get("platform") or aid))
+    note = (f"Цикл завершён: опрошено площадок {checked}, новых заказов {fetched_total}, "
+            f"черновиков откликов готово {drafted} — проверьте и отправьте кнопкой во вкладке «Заработок». "
+            f"Магазины: {stores_synced} (продаж +{stores_sales_accepted}); автоотклики {bids_dispatched}, "
+            f"исполнено {orders_executed}, сдано {deliveries_packaged}, выплат {released_cnt}.")
+    if names:
+        note += " Требуется повторный вход: " + ", ".join(names) + " — откройте «Заработок» → «Биржи» и войдите заново."
     memory.store.conn.execute(
         "UPDATE ark_freelance_prefs SET autopilot_last_tick_at = ?, autopilot_last_note = ? WHERE user_id = ?",
         (time.time(), note[:200], memory.user_id),
@@ -2551,7 +2673,9 @@ def run_autopilot_cycle(memory, *, allow_localhost: bool = False) -> dict[str, A
         "inbox_reports_sent": int(inbox_res.get("reports_sent") or 0),
         "inbox_stopped": int(inbox_res.get("stopped") or 0),
         "inbox_escalated": int(inbox_res.get("escalated") or 0),
+        "drafted_bids": drafted,
         "reauth_needed": reauth_needed,
+        "owner_note": note,
         "state": get_autopilot_state(memory),
     }
 

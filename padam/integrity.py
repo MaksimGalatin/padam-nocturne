@@ -21,7 +21,8 @@ from pathlib import Path
 
 from . import config
 
-_ключи_в_памяти: dict[int, bytes] = {}
+# 18.11.2026: кэш живёт на самом объекте хранилища, а не в словаре по id(): Python выдаёт тот же id новому объекту
+# после сборки мусора, и новая база наследовала состояние умершей (Совет видел «цепь стёрта»).
 
 
 def key_path(store) -> Path | None:
@@ -34,10 +35,10 @@ def owner_key(store) -> tuple[bytes, bool]:
     """(ключ, создан_сейчас)."""
     путь = key_path(store)
     if путь is None:
-        if id(store) not in _ключи_в_памяти:
-            _ключи_в_памяти[id(store)] = secrets.token_bytes(32)
-            return _ключи_в_памяти[id(store)], True
-        return _ключи_в_памяти[id(store)], False
+        if "_padam_owner_key_mem" not in store.__dict__:
+            store.__dict__["_padam_owner_key_mem"] = secrets.token_bytes(32)
+            return store.__dict__["_padam_owner_key_mem"], True
+        return store.__dict__["_padam_owner_key_mem"], False
     if путь.exists():
         return bytes.fromhex(путь.read_text(encoding="ascii").strip()), False
     ключ = secrets.token_bytes(32)

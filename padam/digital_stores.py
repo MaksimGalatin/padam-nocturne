@@ -27,7 +27,8 @@ from . import audit_chain, freelance_autonomy, net_guard
 
 
 _SCHEMA_LOCK = threading.RLock()
-_INITIALIZED_DBS: set[int] = set()
+# 18.11.2026: кэш живёт на самом объекте хранилища, а не в словаре по id(): Python выдаёт тот же id новому объекту
+# после сборки мусора, и новая база наследовала состояние умершей (Совет видел «цепь стёрта»).
 
 # Канонический реестр возможностей API 5 магазинов цифровых товаров.
 STORE_SPECS: dict[str, dict[str, Any]] = {
@@ -214,17 +215,16 @@ def _ensure_schema(memory) -> None:
     with freelance_autonomy._lock_of(memory):
         freelance_autonomy._ensure(memory)
         conn = memory.store.conn
-        key = id(conn)
-        if key in _INITIALIZED_DBS:
+        if memory.store.__dict__.get("_padam_ds_schema_ok"):
             try:
                 conn.execute("SELECT 1 FROM ark_digital_store_account LIMIT 1")
                 return
             except Exception:
-                _INITIALIZED_DBS.discard(key)
+                memory.store.__dict__.pop("_padam_ds_schema_ok", None)
         for stmt in _DDL_STMTS:
             conn.execute(stmt.strip())
         conn.commit()
-        _INITIALIZED_DBS.add(key)
+        memory.store.__dict__["_padam_ds_schema_ok"] = True
 
 
 def _http_json(
@@ -697,7 +697,10 @@ def seed_starter_product_drafts(memory) -> dict[str, Any]:
                 drafts.append(res["draft"])
             else:
                 drafts.append(_public_draft_dict(ex_dict))
-    return {"ok": True, "created_count": created, "drafts": drafts}
+    return {"ok": True, "created_count": created, "drafts": drafts,
+            # Grok-аудит 18.11, п. 10: следующий шаг владельца
+            "next_step": {"ru": "Откройте «Заработок» → «Магазины», проверьте карточки и нажмите «Опубликовать».",
+                          "en": "Open Earning → Stores, review the listings and press “Publish”."}}
 
 
 def list_product_drafts(memory, *, store_type: str = "") -> list[dict[str, Any]]:
@@ -744,6 +747,9 @@ def publish_product_to_store(
             "ok": True,
             "published_via_api": False,
             "status": "awaiting_owner_approval",
+            "requires_owner_confirm": True,   # Grok-аудит 18.11, п. 4: безопасный путь виден, а не похож на сбой
+            "ui_hint": {"ru": "Карточка готова. Проверьте её и нажмите «Опубликовать» во вкладке «Заработок» → «Магазины».",
+                        "en": "The listing is ready. Review it and press “Publish” in Earning → Stores."},
             "note": "Карточка сохранена как черновик. Для отправки в магазин нужно явное «да» владельца (owner_approved=True).",
             "draft": _public_draft_dict(draft),
         }

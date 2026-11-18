@@ -90,7 +90,16 @@ def run_aifa_security(
     if mode == "padam":
         repo_dir = Path(target_path) if target_path else ROOT
         ctx["repo_scan"] = scan_directory_tree(repo_dir)
+        # 18.11.2026: имя проекта — из pyproject.toml, а не из имени папки клона (у клона в «_wt_…» эталон
+        # подписывался чужим именем). Нет pyproject — имя папки, как раньше.
         label = repo_dir.name
+        try:
+            import re as _re
+            _m = _re.search(r'^name\s*=\s*"([^"]+)"', (repo_dir / "pyproject.toml").read_text(encoding="utf-8"), _re.M)
+            if _m:
+                label = _m.group(1)
+        except OSError:
+            pass
     elif mode == "repo":
         if not target_path:
             raise ValueError("--path is required for --target repo")
@@ -131,10 +140,23 @@ def run_aifa_security(
         by_id["AS-099"].threshold = "<= 90.0s"
         by_id["AS-099"].evidence = f"Completed 100 criteria in {elapsed_s}s offline"
 
-        by_id["AS-100"].status = "PASS"
-        by_id["AS-100"].score = 1.0
-        by_id["AS-100"].metric = "deterministic"
-        by_id["AS-100"].evidence = "Fixed-seed deterministic execution"
+        # GLM раунд 3, BH-01: раньше AS-100 «воспроизводимость» ставился PASS без проверки — даровой балл.
+        # Теперь все критерии прогоняются второй раз, и PASS — только если статусы обоих прогонов совпали.
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool2:
+            g1 = pool2.submit(run_d1_to_d5, specs_by_id, mode=mode, ctx=ctx)
+            g2 = pool2.submit(run_d6_to_d10, specs_by_id, mode=mode, ctx=ctx)
+            second = g1.result() + g2.result()
+        skip = {"AS-099", "AS-100"}
+        first_map = {r.id: r.status for r in all_res if r.id not in skip}
+        second_map = {r.id: r.status for r in second if r.id not in skip}
+        diff = sorted(k for k in first_map if first_map.get(k) != second_map.get(k))
+        same = not diff and len(first_map) == len(second_map)
+        by_id["AS-100"].status = "PASS" if same else "FAIL"
+        by_id["AS-100"].score = 1.0 if same else 0.0
+        by_id["AS-100"].metric = f"{len(first_map) - len(diff)}/{len(first_map)} identical on re-run"
+        by_id["AS-100"].threshold = "all criteria identical on a second run"
+        by_id["AS-100"].evidence = ("Second full run: every criterion status identical" if same
+                                    else "Differs on re-run: " + ", ".join(diff[:10]))
 
     # Агрегация по доменам и в целом
     dom_stats: dict[str, dict[str, Any]] = {}
@@ -212,8 +234,13 @@ def run_aifa_security(
     if mode == "padam":
         for c in report["criteria"]:
             if c["id"] == "AS-098":
-                c["status"] = "PASS"
-                c["score"] = 1.0
+                # GLM раунд 3 (18.11.2026): печать не объявляется, а проверяется — пересчёт на копии отчёта после
+                # сериализации в JSON обязан дать ту же SHA-256. Иначе FAIL.
+                _copy = json.loads(json.dumps(report, ensure_ascii=False))
+                _copy["summary"]["report_sha256"] = ""
+                _ok = len(seal) == 64 and canonical_report_sha256(_copy) == seal
+                c["status"] = "PASS" if _ok else "FAIL"
+                c["score"] = 1.0 if _ok else 0.0
                 c["metric"] = seal[:16]
                 c["evidence"] = f"Canonical SHA-256 seal {seal[:16]}..."
                 break
@@ -266,6 +293,8 @@ def verify_report_attestation(report: dict[str, Any], trusted_public_key_hex: st
     copy_rep = json.loads(json.dumps(report))
     att = copy_rep.pop("attestation", None)
     copy_rep.pop("cached", None)
+    for _служ in ("generated_at", "cache_age_hours", "stale", "honest_note"):   # поля свежести моста (18.11)
+        copy_rep.pop(_служ, None)
     claimed_seal = str((copy_rep.get("summary") or {}).get("report_sha256") or "")
     if "summary" in copy_rep:
         copy_rep["summary"]["report_sha256"] = ""

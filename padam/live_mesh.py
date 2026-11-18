@@ -31,6 +31,7 @@ from cryptography.hazmat.primitives.asymmetric import x25519
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
+from .store import add_column_safe as _acs
 from . import ark, audit_chain, integrity, pqc_mlkem, safety
 
 _MESH_DDL = """
@@ -88,7 +89,8 @@ CREATE TABLE IF NOT EXISTS ark_mesh_replay_nonce (
 _MAX_FORGET_BATCH_DEFAULT = 100
 _MAX_DELTA_AGE_S_DEFAULT = 3600
 
-_NODE_SECRETS_MEM: dict[int, dict[str, Any]] = {}
+# 18.11.2026: кэш живёт на самом объекте хранилища, а не в словаре по id(): Python выдаёт тот же id новому объекту
+# после сборки мусора, и новая база наследовала состояние умершей (Совет видел «цепь стёрта»).
 
 
 def _now() -> str:
@@ -110,7 +112,7 @@ def _load_node_secrets(memory) -> dict[str, Any]:
     store = memory.store
     p = _node_key_path(store)
     if p is None:
-        return dict(_NODE_SECRETS_MEM.get(id(store)) or {"peers": {}})
+        return dict(store.__dict__.get("_padam_node_secrets_mem") or {"peers": {}})
     if not p.exists():
         return {"peers": {}}
     raw = json.loads(p.read_text(encoding="utf-8"))
@@ -129,7 +131,7 @@ def _save_node_secrets(memory, data: dict[str, Any]) -> None:
     store = memory.store
     p = _node_key_path(store)
     if p is None:
-        _NODE_SECRETS_MEM[id(store)] = json.loads(json.dumps(data))
+        store.__dict__["_padam_node_secrets_mem"] = json.loads(json.dumps(data))
         return
     nonce = secrets.token_bytes(12)
     pt = json.dumps(data, ensure_ascii=False, sort_keys=True).encode("utf-8")
@@ -152,7 +154,7 @@ def _ensure_mesh(memory) -> None:
     conn.executescript(_MESH_DDL)
     cols = {r["name"] for r in conn.execute("PRAGMA table_info(ark_mesh_peer)").fetchall()}
     if "sas_code" not in cols:
-        conn.execute("ALTER TABLE ark_mesh_peer ADD COLUMN sas_code TEXT NOT NULL DEFAULT ''")
+        _acs(conn, "ark_mesh_peer", "sas_code", "TEXT NOT NULL DEFAULT ''")
     ark._ensure_tables(memory)
     # Миграция открытых ключей из старой таблицы ark_mesh_Identity в внешний шифрованный файл
     rows = conn.execute(

@@ -112,6 +112,95 @@ STRINGS: dict[str, dict[str, str]] = {
         "fd_sub": "Итоги наших сессий по дням: что решили Папа, AIfa, Сестра и Брат. Источник — память PADAM; задержанное карантином сюда не попадает.",
         "fd_ph": "Поиск по диалогам",
         "fd_empty": "Итогов пока нет. Их заносит импорт: python -m padam.family_dialogs <файлы>.",
+        "ff_ref_short": "Заполните оба поля: триггер и ответ — не короче 3 знаков.",
+        "bench_html": "Отчёт HTML",
+        "bench_qa": "Тест качества ($0)",
+        "bench_fuzz": "Живой фаззинг и сравнение",
+        "bench_verify": "Проверить подпись Ed25519",
+        "bench_qa_title": "Тест качества памяти ($0, без сети)",
+        "bench_qa_none": "Тест качества ещё не запускался.",
+        "bench_f1": "R@5/R@10 — нашла ли память нужный факт среди 5/10 первых; F1 — совпадение слов готового ответа (без модели ответ не формулируется, поэтому F1 низкий); p50 — медиана времени.",
+        "bench_d1": "Маскировка секретов до записи",
+        "bench_d2": "Защита от внедрения команд",
+        "bench_d3": "Личность, правила и платежи",
+        "bench_d4": "Разделение областей, команд и ролей",
+        "bench_d5": "Криптографическое забвение и происхождение",
+        "bench_d6": "Протокол, схемы и защита от перегрузки",
+        "bench_d7": "Шифрование, постквантовая защита, хранилище",
+        "bench_d8": "Аудит репозитория и веб-поверхности",
+        "bench_d9": "Поиск под атакой",
+        "bench_d10": "Готовность и проверяемость",
+        "bench_cached": "кэш, {h} ч назад",
+        "bench_fresh": "свежий прогон, {s} с",
+        "bench_stale": "⚠ отчёту больше суток — нажмите «Запустить 100 проверок сейчас»",
+        "bench_honest": "Все 100 критериев — детерминированные проверки без ИИ-судьи; 100 % на собственном коде PADAM ожидаемы по замыслу. Сравнивать продукты — через --target.",
+        "earn_ap_name": "Автопилот",
+        "earn_ap_on": "работает 24/7",
+        "earn_ap_off": "остановлен",
+        "earn_ab_name": "Автоставка",
+        "earn_ab_locked": "заблокирована (отправка кнопкой)",
+        "earn_ab_open": "открыта",
+        "earn_pay_name": "Автооплата",
+        "earn_pay_locked": "заблокирована",
+        "earn_pay_open": "открыта",
+        "earn_ap_last": "Последний цикл",
+        "bench_qa_date": "Результаты записанного прогона от {d}. Перезапуск: {c}",
+        "ov_connecting": "Подключаюсь к памяти…",
+        "graph_controls": "Перетащите — вращать · колесо — приблизить · нажмите на узел — запись · двойной щелчок — автоповорот",
+        "rt_title": "Красная команда: запечатанные раунды (бенчмарк из статьи)",
+        "rt_desc": "Разные ИИ-модели пишут новые атаки, не видя нашего кода; набор хешируется до прогона и запускается непрочитанным. Число — сколько случаев защита обработала верно: личность и команды задержаны, секреты замаскированы, обычные заметки не тронуты, ограждение при выдаче и забвение сработали. Источник: redteam/rounds/*/SEALED_RESULTS.md.",
+        "tip_label": "Подсказка",
+        "bc_openai_gateway_v1": "Адрес локального шлюза (совместим с OpenAI)",
+        "bc_mode": "Режим",
+        "bc_active_contour": "Активный контур",
+        "bc_total_requests": "Всего запросов через шлюз",
+        "bc_failover_count": "Переключений на запасной контур",
+        "bc_cache_hits": "Ответов из кэша",
+        "bc_semantic_cache_hits": "Ответов из смыслового кэша",
+        "bc_tokens_saved_local": "Токенов сэкономлено локально",
+        "bc_estimated_cloud_cost_usd": "Сколько стоило бы облако",
+        "bc_offline_voice_tts": "Офлайн-голос",
+        "rt_col_identity": "личность",
+        "rt_col_command": "команды",
+        "rt_col_secret": "секреты",
+        "rt_col_benign": "обычные заметки",
+        "rt_col_fence": "ограждение",
+        "rt_col_forgetting": "забвение",
+        "rt_col_secrets_masked": "секреты замаскированы",
+        "rt_col_commands_held": "команды задержаны",
+        "rt_col_ordinary_notes_left_alone": "обычные не тронуты",
+        "seal_ok": "Подпись эталонного отчёта верна: его никто не менял после выпуска",
+        "seal_bad": "Подпись не сходится — отчёт изменён или повреждён",
+        "bench_guide_title": "Как читать эту вкладку",
+        "bench_guide_1": "1. Сравнение — чем PADAM отличается от Mem0, Zep и простого MCP memory: где выигрываем, где пока уступаем. Только наши замеры и открытые документы.",
+        "bench_guide_2": "2. Красная команда — другие ИИ писали атаки на нашу память, не видя кода. Таблица показывает, сколько атак отбито.",
+        "bench_guide_3": "3. 100 проверок защиты — нажмите «Запустить»: за 5–10 секунд на этом компьютере, бесплатно. Нажмите на строку раздела — увидите каждую проверку.",
+        "bench_guide_4": "4. Качество и фаззинг — находит ли память нужное на открытых наборах вопросов и сколько атак из 300 отбивает по сравнению с обычным фильтром.",
+        "cmp_title": "Сравнение с другими слоями памяти для агентов",
+        "cmp_sub": "Зелёным — где PADAM сильнее, жёлтым — где пока уступаем или нет замера. У других продуктов указано устройство из их документации; чужих чисел мы не придумываем.",
+        "cmp_col_k": "Что сравниваем",
+        "cmp_plan_title": "Где уступаем и что делаем",
+        "cmp_plan": "• Рой агентов: 18.11 нашли и починили потери записей при 20 процессах — теперь 0 из 1000, тест в наборе. • Точность ответов с моделью (LOCOMO) не публиковали: прогоним, когда будет разрешена локальная модель без перегрева. • Свыше 100 000 записей: добавим индекс ближайших соседей, поиск — 47,5 мс p95 на 10 000 и 54 мс на 20 000 (18.11 ускорен в 11 раз). • Сравнение с Mem0 на 400 отложенных вопросах — честный замер, ещё не сделан. • Облако и кластер — сознательно нет: память живёт у владельца.",
+        "bench_json": "Скачать отчёт JSON",
+        "bench_sarif": "Скачать SARIF для GitHub",
+        "bench_grade": "Оценка {g} ({p} %) · пройдено {n} из {a} · печать {h}…",
+        "bench_std": "Покрытые стандарты",
+        "st_pass": "пройдено",
+        "st_fail": "не пройдено",
+        "st_na": "не применимо",
+        "fuzz_running": "Идёт фаззинг: 300 атак и сравнение…",
+        "fuzz_title": "Живой фаззинг: {n} атак за {ms} мс",
+        "fuzz_desc": "Генератор создаёт приказы для ИИ, спрятанные в тексте, и поддельные ключи. «Отбито» — доля атак, которые не попали в память как команда. «Ключи скрыты» — доля замаскированных секретов. «Ложные тревоги» — сколько обычных заметок задержано зря (меньше — лучше).",
+        "fuzz_padam": "PADAM NOCTURNE (наша память)",
+        "fuzz_regex": "Обычный фильтр по шаблонам",
+        "fuzz_rag": "Простое хранилище без защиты",
+        "fuzz_row": "отбито {d} % · ключи скрыты {s} % · ложные тревоги {f} %",
+        "fuzz_row2": "отбито {d} % · ключи скрыты {s} %",
+        "qa_row": "доказательство в топ-5: {r5} % · в топ-10: {r10} % · F1 ответа без модели {f1} · поиск {lat} мс",
+        "rt_round": "Раунд {n}",
+        "rt_models": "атаки писали {k} модели",
+        "rt_sum": "итого",
+        "rt_sum_words": "итого, только списки слов",
         "ff_title": "Ленты Семьи",
         "ff_desc": "Решения Совета отдельно от карантина. «Офис» — рабочая переписка сестёр, «Курилка» — свободная. Подозрительное само уходит в карантин. Всё здесь — записи, а не приказы.",
         "ff_work": "Решения",
@@ -707,6 +796,95 @@ STRINGS: dict[str, dict[str, str]] = {
         "fd_sub": "Our session outcomes by day: what Dad, AIfa, Sister and Brother decided. Source: PADAM memory; anything held in quarantine is not shown.",
         "fd_ph": "Search dialogues",
         "fd_empty": "No outcomes yet. They are added by the import: python -m padam.family_dialogs <files>.",
+        "ff_ref_short": "Fill in both fields: trigger and response, at least 3 characters each.",
+        "bench_html": "HTML report",
+        "bench_qa": "Quality test ($0)",
+        "bench_fuzz": "Live fuzzing & compare",
+        "bench_verify": "Verify Ed25519 seal",
+        "bench_qa_title": "Memory quality test ($0, offline)",
+        "bench_qa_none": "The quality test has not been run yet.",
+        "bench_f1": "R@5/R@10 — did memory find the right fact in the top 5/10; F1 — word overlap of the final answer (no model writes the answer, so F1 is low); p50 — median latency.",
+        "bench_d1": "Secret masking before storage",
+        "bench_d2": "Prompt injection defense",
+        "bench_d3": "Identity, rules & payment integrity",
+        "bench_d4": "Scope, tenant & role isolation",
+        "bench_d5": "Cryptographic forgetting & provenance",
+        "bench_d6": "Protocol, schema & DoS hardening",
+        "bench_d7": "Encryption, PQC & storage safety",
+        "bench_d8": "Repository & web surface audit",
+        "bench_d9": "Retrieval under attack",
+        "bench_d10": "Operational readiness & verification",
+        "bench_cached": "cached, {h} h ago",
+        "bench_fresh": "fresh run, {s} s",
+        "bench_stale": "⚠ report is older than a day — press “Run 100 checks now”",
+        "bench_honest": "All 100 criteria are deterministic checks without an AI judge; 100% on PADAM's own code is expected by design. Compare products with --target.",
+        "earn_ap_name": "Autopilot",
+        "earn_ap_on": "running 24/7",
+        "earn_ap_off": "stopped",
+        "earn_ab_name": "Auto-bid",
+        "earn_ab_locked": "locked (send by click)",
+        "earn_ab_open": "open",
+        "earn_pay_name": "Auto-pay",
+        "earn_pay_locked": "locked",
+        "earn_pay_open": "open",
+        "earn_ap_last": "Last cycle",
+        "bench_qa_date": "Results of the recorded run from {d}. Re-run: {c}",
+        "ov_connecting": "Connecting to memory…",
+        "graph_controls": "Drag to rotate · wheel to zoom · click a node to open it · double-click for auto-rotate",
+        "rt_title": "Red team: sealed rounds (the benchmark from the article)",
+        "rt_desc": "Different AI models write new attacks without seeing our code; each set is hashed before the run and run unread. The number is how many cases the defense handled correctly: identity and commands held, secrets masked, ordinary notes left alone, the recall fence and forgetting worked. Source: redteam/rounds/*/SEALED_RESULTS.md.",
+        "tip_label": "Help",
+        "bc_openai_gateway_v1": "Local gateway address (OpenAI-compatible)",
+        "bc_mode": "Mode",
+        "bc_active_contour": "Active path",
+        "bc_total_requests": "Requests through the gateway",
+        "bc_failover_count": "Failovers to a backup path",
+        "bc_cache_hits": "Answers from cache",
+        "bc_semantic_cache_hits": "Answers from semantic cache",
+        "bc_tokens_saved_local": "Tokens saved locally",
+        "bc_estimated_cloud_cost_usd": "What the cloud would have cost",
+        "bc_offline_voice_tts": "Offline voice",
+        "rt_col_identity": "identity",
+        "rt_col_command": "commands",
+        "rt_col_secret": "secrets",
+        "rt_col_benign": "ordinary notes",
+        "rt_col_fence": "recall fence",
+        "rt_col_forgetting": "forgetting",
+        "rt_col_secrets_masked": "secrets masked",
+        "rt_col_commands_held": "commands held",
+        "rt_col_ordinary_notes_left_alone": "ordinary notes left alone",
+        "seal_ok": "The reference report's signature is valid: nobody changed it after release",
+        "seal_bad": "The signature does not match — the report was altered or damaged",
+        "bench_guide_title": "How to read this tab",
+        "bench_guide_1": "1. Comparison — how PADAM differs from Mem0, Zep and the plain MCP memory: where we win and where we still trail. Only our measurements and public docs.",
+        "bench_guide_2": "2. Red team — other AIs wrote attacks on our memory without seeing the code. The table shows how many were stopped.",
+        "bench_guide_3": "3. 100 protection checks — press Run: 5–10 seconds on this computer, free. Click a section row to see every check.",
+        "bench_guide_4": "4. Quality and fuzzing — does memory find the right evidence on open question sets, and how many of 300 attacks it stops versus a plain filter.",
+        "cmp_title": "Comparison with other agent memory layers",
+        "cmp_sub": "Green — where PADAM is stronger; yellow — where we still trail or have no measurement. For other products we state the design from their docs; we never invent their numbers.",
+        "cmp_col_k": "What we compare",
+        "cmp_plan_title": "Where we trail and what we do",
+        "cmp_plan": "• Agent swarm: on 18.11 we found and fixed lost writes at 20 processes — now 0 of 1000, test in the suite. • LLM answer accuracy (LOCOMO) not published: we'll run it once a local model is allowed without overheating. • Above 100,000 records: we'll add a nearest-neighbour index; search is 47.5 ms p95 at 10,000 and 54 ms at 20,000 (11× faster since 18.11). • Mem0 comparison on the 400 held-out questions — the fair run, not done yet. • Cloud and cluster — deliberately no: memory stays with its owner.",
+        "bench_json": "Download JSON report",
+        "bench_sarif": "Download SARIF for GitHub",
+        "bench_grade": "Grade {g} ({p}%) · passed {n} of {a} · seal {h}…",
+        "bench_std": "Standards covered",
+        "st_pass": "passed",
+        "st_fail": "failed",
+        "st_na": "not applicable",
+        "fuzz_running": "Fuzzing: 300 attacks and comparison…",
+        "fuzz_title": "Live fuzzing: {n} attacks in {ms} ms",
+        "fuzz_desc": "The generator creates AI orders hidden in text and fake keys. 'Stopped' is the share of attacks that did not enter memory as a command. 'Keys hidden' is the share of masked secrets. 'False alarms' is how many ordinary notes were held by mistake (lower is better).",
+        "fuzz_padam": "PADAM NOCTURNE (our memory)",
+        "fuzz_regex": "Plain pattern filter",
+        "fuzz_rag": "Plain store without protection",
+        "fuzz_row": "stopped {d}% · keys hidden {s}% · false alarms {f}%",
+        "fuzz_row2": "stopped {d}% · keys hidden {s}%",
+        "qa_row": "evidence in top-5: {r5}% · top-10: {r10}% · answer F1 without a model {f1} · search {lat} ms",
+        "rt_round": "Round {n}",
+        "rt_models": "attacks by {k} models",
+        "rt_sum": "total",
+        "rt_sum_words": "total, word lists only",
         "ff_title": "Family feeds",
         "ff_desc": "Council decisions are kept apart from quarantine. 'Office' is the siblings' work chat, 'Break room' is free talk. Anything suspicious goes to quarantine by itself. Everything here is records, not orders.",
         "ff_work": "Decisions",
@@ -1291,6 +1469,95 @@ STRINGS: dict[str, dict[str, str]] = {
         "fd_sub": "Resultados de nuestras sesiones por día: lo que decidieron Papá, AIfa, la Hermana y el Hermano. Fuente: memoria PADAM; lo retenido en cuarentena no se muestra.",
         "fd_ph": "Buscar en los diálogos",
         "fd_empty": "Aún no hay resultados. Los añade la importación: python -m padam.family_dialogs <archivos>.",
+        "ff_ref_short": "Rellena ambos campos: disparador y respuesta, de al menos 3 caracteres.",
+        "bench_html": "Informe HTML",
+        "bench_qa": "Prueba de calidad ($0)",
+        "bench_fuzz": "Fuzzing en vivo y comparación",
+        "bench_verify": "Verificar sello Ed25519",
+        "bench_qa_title": "Prueba de calidad de la memoria ($0, sin red)",
+        "bench_qa_none": "La prueba de calidad aún no se ha ejecutado.",
+        "bench_f1": "R@5/R@10 — si la memoria encontró el dato correcto entre los 5/10 primeros; F1 — coincidencia de palabras de la respuesta final (ningún modelo redacta la respuesta, por eso F1 es bajo); p50 — latencia mediana.",
+        "bench_d1": "Enmascarado de secretos antes de guardar",
+        "bench_d2": "Defensa contra inyección de instrucciones",
+        "bench_d3": "Identidad, reglas e integridad de pagos",
+        "bench_d4": "Aislamiento de ámbitos, equipos y roles",
+        "bench_d5": "Olvido criptográfico y procedencia",
+        "bench_d6": "Protocolo, esquemas y defensa ante saturación",
+        "bench_d7": "Cifrado, poscuántico y almacenamiento",
+        "bench_d8": "Auditoría del repositorio y la web",
+        "bench_d9": "Recuperación bajo ataque",
+        "bench_d10": "Preparación operativa y verificación",
+        "bench_cached": "caché, hace {h} h",
+        "bench_fresh": "ejecución nueva, {s} s",
+        "bench_stale": "⚠ el informe tiene más de un día: pulsa «Ejecutar 100 comprobaciones ahora»",
+        "bench_honest": "Los 100 criterios son comprobaciones deterministas sin juez de IA; el 100 % en el propio código de PADAM es esperado por diseño. Para comparar productos usa --target.",
+        "earn_ap_name": "Piloto automático",
+        "earn_ap_on": "funciona 24/7",
+        "earn_ap_off": "detenido",
+        "earn_ab_name": "Puja automática",
+        "earn_ab_locked": "bloqueada (envío con clic)",
+        "earn_ab_open": "abierta",
+        "earn_pay_name": "Pago automático",
+        "earn_pay_locked": "bloqueado",
+        "earn_pay_open": "abierto",
+        "earn_ap_last": "Último ciclo",
+        "bench_qa_date": "Resultados de la ejecución registrada del {d}. Repetir: {c}",
+        "ov_connecting": "Conectando con la memoria…",
+        "graph_controls": "Arrastra para girar · rueda para acercar · clic en un nodo para abrirlo · doble clic: giro automático",
+        "rt_title": "Equipo rojo: rondas selladas (el benchmark del artículo)",
+        "rt_desc": "Distintos modelos de IA escriben ataques nuevos sin ver nuestro código; cada conjunto se hashea antes de ejecutarlo y se ejecuta sin leerlo. El número indica cuántos casos manejó bien la defensa. Fuente: redteam/rounds/*/SEALED_RESULTS.md.",
+        "tip_label": "Ayuda",
+        "bc_openai_gateway_v1": "Dirección de la pasarela local (compatible con OpenAI)",
+        "bc_mode": "Modo",
+        "bc_active_contour": "Ruta activa",
+        "bc_total_requests": "Solicitudes por la pasarela",
+        "bc_failover_count": "Cambios a ruta de respaldo",
+        "bc_cache_hits": "Respuestas desde caché",
+        "bc_semantic_cache_hits": "Respuestas desde caché semántica",
+        "bc_tokens_saved_local": "Tokens ahorrados en local",
+        "bc_estimated_cloud_cost_usd": "Lo que habría costado la nube",
+        "bc_offline_voice_tts": "Voz sin conexión",
+        "rt_col_identity": "identidad",
+        "rt_col_command": "órdenes",
+        "rt_col_secret": "secretos",
+        "rt_col_benign": "notas normales",
+        "rt_col_fence": "cerca",
+        "rt_col_forgetting": "olvido",
+        "rt_col_secrets_masked": "secretos enmascarados",
+        "rt_col_commands_held": "órdenes retenidas",
+        "rt_col_ordinary_notes_left_alone": "notas intactas",
+        "seal_ok": "La firma del informe de referencia es válida: nadie lo cambió",
+        "seal_bad": "La firma no coincide: el informe fue alterado o dañado",
+        "bench_guide_title": "Cómo leer esta pestaña",
+        "bench_guide_1": "1. Comparación: en qué se diferencia PADAM de Mem0, Zep y MCP memory, dónde gana y dónde aún no. Solo nuestras mediciones y documentos públicos.",
+        "bench_guide_2": "2. Equipo rojo: otras IA escribieron ataques sin ver el código. La tabla muestra cuántos se detuvieron.",
+        "bench_guide_3": "3. 100 comprobaciones: pulse Ejecutar, 5–10 segundos en este equipo, gratis. Pulse una fila para ver cada comprobación.",
+        "bench_guide_4": "4. Calidad y fuzzing: si la memoria encuentra la evidencia en conjuntos abiertos y cuántos de 300 ataques detiene frente a un filtro simple.",
+        "cmp_title": "Comparación con otras memorias para agentes",
+        "cmp_sub": "Verde: PADAM es más fuerte; amarillo: aún no, o sin medición. De otros productos citamos su diseño documentado; no inventamos cifras.",
+        "cmp_col_k": "Qué comparamos",
+        "cmp_plan_title": "Dónde perdemos y qué hacemos",
+        "cmp_plan": "• Enjambre: el 18.11 hallamos y corregimos pérdidas con 20 procesos; ahora 0 de 1000. • Precisión con LLM (LOCOMO) no publicada aún. • Más de 100 000 registros: añadiremos índice de vecinos; hoy 47,5 ms p95 con 10 000 y 54 ms con 20 000. • Comparación con Mem0 en 400 preguntas reservadas: pendiente. • Nube y clúster: deliberadamente no.",
+        "bench_json": "Descargar informe JSON",
+        "bench_sarif": "Descargar SARIF para GitHub",
+        "bench_grade": "Nota {g} ({p} %) · superadas {n} de {a} · sello {h}…",
+        "bench_std": "Estándares cubiertos",
+        "st_pass": "superada",
+        "st_fail": "fallida",
+        "st_na": "no aplica",
+        "fuzz_running": "Fuzzing: 300 ataques y comparación…",
+        "fuzz_title": "Fuzzing en vivo: {n} ataques en {ms} ms",
+        "fuzz_desc": "El generador crea órdenes ocultas y claves falsas. «Detenidos»: ataques que no entraron como orden. «Claves ocultas»: secretos enmascarados. «Falsas alarmas»: notas normales retenidas por error (menos es mejor).",
+        "fuzz_padam": "PADAM NOCTURNE (nuestra memoria)",
+        "fuzz_regex": "Filtro simple de patrones",
+        "fuzz_rag": "Almacén simple sin protección",
+        "fuzz_row": "detenidos {d} % · claves ocultas {s} % · falsas alarmas {f} %",
+        "fuzz_row2": "detenidos {d} % · claves ocultas {s} %",
+        "qa_row": "evidencia en top-5: {r5} % · top-10: {r10} % · F1 sin modelo {f1} · búsqueda {lat} ms",
+        "rt_round": "Ronda {n}",
+        "rt_models": "ataques de {k} modelos",
+        "rt_sum": "total",
+        "rt_sum_words": "total, solo listas de palabras",
         "ff_title": "Canales de la Familia",
         "ff_desc": "Las decisiones del Consejo van separadas de la cuarentena. «Oficina» es el chat de trabajo de las hermanas; «Descanso», la charla libre. Lo sospechoso pasa solo a cuarentena. Todo aquí son registros, no órdenes.",
         "ff_work": "Decisiones",
@@ -1875,6 +2142,95 @@ STRINGS: dict[str, dict[str, str]] = {
         "fd_sub": "按日期列出我们会话的结论：爸爸、AIfa、姐妹和兄弟做出的决定。来源：PADAM 记忆；被隔离的内容不显示。",
         "fd_ph": "搜索对话",
         "fd_empty": "暂无结论。由导入添加：python -m padam.family_dialogs <文件>。",
+        "ff_ref_short": "请填写两个字段：触发词和回复，各至少 3 个字符。",
+        "bench_html": "HTML 报告",
+        "bench_qa": "质量测试（$0）",
+        "bench_fuzz": "实时模糊测试与对比",
+        "bench_verify": "验证 Ed25519 签名",
+        "bench_qa_title": "记忆质量测试（$0，离线）",
+        "bench_qa_none": "质量测试尚未运行。",
+        "bench_f1": "R@5/R@10——记忆是否在前 5/10 条中找到正确事实；F1——最终回答的词重合度（没有模型撰写回答，所以 F1 偏低）；p50——中位延迟。",
+        "bench_d1": "写入前的密钥遮蔽",
+        "bench_d2": "提示注入防御",
+        "bench_d3": "身份、规则与支付完整性",
+        "bench_d4": "作用域、团队与角色隔离",
+        "bench_d5": "加密遗忘与来源证明",
+        "bench_d6": "协议、模式与抗过载",
+        "bench_d7": "加密、后量子与存储安全",
+        "bench_d8": "代码仓库与网页面审计",
+        "bench_d9": "受攻击下的检索",
+        "bench_d10": "运行就绪与可验证性",
+        "bench_cached": "缓存，{h} 小时前",
+        "bench_fresh": "新运行，{s} 秒",
+        "bench_stale": "⚠ 报告已超过一天——请点击“立即运行 100 项检查”",
+        "bench_honest": "全部 100 项标准都是确定性检查，没有 AI 评判；PADAM 自身代码得 100% 是设计使然。比较不同产品请使用 --target。",
+        "earn_ap_name": "自动驾驶",
+        "earn_ap_on": "24/7 运行中",
+        "earn_ap_off": "已停止",
+        "earn_ab_name": "自动投标",
+        "earn_ab_locked": "已锁定（点击发送）",
+        "earn_ab_open": "已开放",
+        "earn_pay_name": "自动付款",
+        "earn_pay_locked": "已锁定",
+        "earn_pay_open": "已开放",
+        "earn_ap_last": "上一轮",
+        "bench_qa_date": "记录运行的结果，日期 {d}。重新运行：{c}",
+        "ov_connecting": "正在连接记忆…",
+        "graph_controls": "拖动旋转 · 滚轮缩放 · 点击节点查看记录 · 双击自动旋转",
+        "rt_title": "红队：密封轮次（文章中的基准）",
+        "rt_desc": "不同的 AI 模型在看不到我们代码的情况下编写新攻击；每组在运行前做哈希并在未读的情况下运行。数字表示防御正确处理的用例数。来源：redteam/rounds/*/SEALED_RESULTS.md。",
+        "tip_label": "提示",
+        "bc_openai_gateway_v1": "本地网关地址（兼容 OpenAI）",
+        "bc_mode": "模式",
+        "bc_active_contour": "当前通路",
+        "bc_total_requests": "经网关的请求数",
+        "bc_failover_count": "切换到备用通路次数",
+        "bc_cache_hits": "缓存命中回答",
+        "bc_semantic_cache_hits": "语义缓存命中回答",
+        "bc_tokens_saved_local": "本地节省的 token",
+        "bc_estimated_cloud_cost_usd": "若用云端的费用",
+        "bc_offline_voice_tts": "离线语音",
+        "rt_col_identity": "身份",
+        "rt_col_command": "指令",
+        "rt_col_secret": "密钥",
+        "rt_col_benign": "普通笔记",
+        "rt_col_fence": "召回围栏",
+        "rt_col_forgetting": "遗忘",
+        "rt_col_secrets_masked": "密钥已遮蔽",
+        "rt_col_commands_held": "指令已拦截",
+        "rt_col_ordinary_notes_left_alone": "普通笔记未动",
+        "seal_ok": "参考报告签名有效：发布后未被修改",
+        "seal_bad": "签名不匹配——报告已被修改或损坏",
+        "bench_guide_title": "如何阅读本页",
+        "bench_guide_1": "1. 对比——PADAM与Mem0、Zep和普通MCP memory的区别：哪里领先、哪里仍落后。只用我们的实测和公开文档。",
+        "bench_guide_2": "2. 红队——其他AI在看不到代码的情况下编写攻击。表格显示拦截了多少。",
+        "bench_guide_3": "3. 100项防护检查——点击“运行”：本机5–10秒，免费。点击分区行可查看每项检查。",
+        "bench_guide_4": "4. 质量与模糊测试——在公开问题集上能否找到证据，300次攻击中拦截多少，并与普通过滤器对比。",
+        "cmp_title": "与其他代理记忆层的对比",
+        "cmp_sub": "绿色——PADAM更强；黄色——仍落后或无实测。其他产品只列其文档中的设计，绝不编造数字。",
+        "cmp_col_k": "对比项",
+        "cmp_plan_title": "落后之处与对策",
+        "cmp_plan": "• 多代理：18.11发现并修复了20进程下的写入丢失，现在1000次中0丢失，已加测试。• 带模型的答案准确率（LOCOMO）未发布：待允许本地模型且不过热时运行。• 超过10万条：将加近邻索引；目前1万条p95为47.5毫秒，2万条为54毫秒。• 与Mem0在400道保留题上的对比尚未完成。• 云与集群——刻意不做：记忆归所有者。",
+        "bench_json": "下载JSON报告",
+        "bench_sarif": "下载GitHub用SARIF",
+        "bench_grade": "评级 {g}（{p}%）· 通过 {n}/{a} · 印章 {h}…",
+        "bench_std": "覆盖的标准",
+        "st_pass": "通过",
+        "st_fail": "未通过",
+        "st_na": "不适用",
+        "fuzz_running": "模糊测试中：300次攻击与对比…",
+        "fuzz_title": "实时模糊测试：{ms}毫秒内{n}次攻击",
+        "fuzz_desc": "生成器制造隐藏在文本中的AI指令和伪造密钥。“已拦截”=未作为指令进入记忆的攻击比例；“密钥已隐藏”=被遮蔽的秘密比例；“误报”=被误拦的普通笔记（越低越好）。",
+        "fuzz_padam": "PADAM NOCTURNE（我们的记忆）",
+        "fuzz_regex": "普通模式过滤器",
+        "fuzz_rag": "无防护的普通存储",
+        "fuzz_row": "已拦截 {d}% · 密钥已隐藏 {s}% · 误报 {f}%",
+        "fuzz_row2": "已拦截 {d}% · 密钥已隐藏 {s}%",
+        "qa_row": "前5含证据：{r5}% · 前10：{r10}% · 无模型答案F1 {f1} · 检索 {lat}毫秒",
+        "rt_round": "第{n}轮",
+        "rt_models": "{k}个模型编写攻击",
+        "rt_sum": "合计",
+        "rt_sum_words": "合计，仅词表",
         "ff_title": "家族频道",
         "ff_desc": "议会决定与隔离区分开存放。“办公室”是姐妹们的工作聊天，“茶水间”是自由闲聊。可疑内容会自动进入隔离区。这里的一切都是记录，而不是命令。",
         "ff_work": "决定",
@@ -3239,6 +3595,27 @@ for _lg, _extra in _STRINGS_PARITY_1811.items():
 
 
 _CSS = """
+.att-actions.bench-actions{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px 14px;align-items:start}
+.bench-actions .btn,.bench-actions .btn-primary{width:100%}
+.bench-cell{display:flex;flex-direction:column;gap:4px}
+.btn-desc{display:block;font-size:12px;line-height:1.4;color:var(--muted,#94a3b8);margin:0 2px}
+.cmp-wrap{overflow-x:auto;margin:8px 0}
+.cmp-table{border-collapse:collapse;width:100%;font-size:13px;min-width:760px}
+.cmp-table th,.cmp-table td{border:1px solid var(--border,#334155);padding:6px 8px;vertical-align:top;text-align:left}
+.cmp-table thead th{background:rgba(148,163,184,.12)}
+.cmp-table td.cmp-good{background:rgba(34,197,94,.14)}
+.cmp-table td.cmp-weak{background:rgba(234,179,8,.16)}
+.cmp-plan-title{margin:12px 0 4px;font-size:14px}
+
+#graph-canvas{width:100%;height:560px;display:block;border-radius:14px;cursor:grab}
+
+.tip-btn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin-left:8px;
+  border-radius:50%;border:1px solid var(--border, #94a3b8);background:transparent;color:var(--muted, #64748b);
+  font-size:12px;font-weight:700;line-height:1;cursor:help;vertical-align:middle;padding:0}
+.tip-btn:hover,.tip-btn:focus{background:var(--accent, #0b6bcb);color:#fff;border-color:transparent;outline:none}
+.tip-pop{position:absolute;z-index:50;max-width:420px;margin-top:6px;padding:10px 12px;border-radius:10px;
+  background:#0f172a;color:#e2e8f0;font-size:13px;line-height:1.45;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+
 :root, html[data-theme="dark"] {
   --bg: #080b12;
   --bg-elev: #0e1320;
@@ -4183,11 +4560,91 @@ let feedView = 'active', feedOffset = 0, feedKind = null, feedShown = [];
 let lastReceipt = null;
 let graphData = {nodes: [], edges: []}, graphPositions = {}, selectedGraphNode = null;
 
+
+// 18.11.2026, слово Папы: «У каждого блока рядом маленький значок подсказки с ПОНЯТНЫМ описанием блока и КАК он работает».
+let TIPS = {};
+let BTN_TIPS = {};
+let CMP = null;
+let CRIT_TITLES = {};
+try { const _t = JSON.parse((document.getElementById('tips-data') || {}).textContent || '{}'); TIPS = _t.blocks || {}; BTN_TIPS = _t.buttons || {}; CMP = _t.compare || null; CRIT_TITLES = _t.crit || {}; } catch (e) { TIPS = {}; }
+function renderCompare() {
+  const tb = document.getElementById('cmp-table');
+  if (!tb || !CMP) return;
+  const L = x => (x && (x[currentLang] || x.ru)) || '';
+  const cols = ['padam', 'mem0', 'zep', 'mcpmem'];
+  tb.textContent = '';
+  const th = document.createElement('tr');
+  for (const c of [''].concat(cols)) { const e = document.createElement('th'); e.scope = 'col'; e.textContent = c ? CMP.cols[c] : (S.cmp_col_k || ''); th.appendChild(e); }
+  const head = document.createElement('thead'); head.appendChild(th); tb.appendChild(head);
+  const body = document.createElement('tbody');
+  const weak = /нет нашего замера|no measurement|sin medición|未测量|Пока не публиковали|Not published|Aún no|尚未发布/;
+  for (const r of CMP.rows) {
+    const tr = document.createElement('tr');
+    const k = document.createElement('th'); k.scope = 'row'; k.textContent = L(r.k); tr.appendChild(k);
+    for (const c of cols) {
+      const td = document.createElement('td'); td.textContent = L(r[c]);
+      if (c === 'padam') td.className = (r.padam_weak || weak.test(L(r[c]))) ? 'cmp-weak' : 'cmp-good';
+      tr.appendChild(td);
+    }
+    body.appendChild(tr);
+  }
+  tb.appendChild(body);
+}
+function applyTips() {
+  for (const id in BTN_TIPS) {                 // описание каждой кнопки — при наведении и для экранного диктора
+    const b = document.getElementById(id);
+    if (!b) continue;
+    const t = BTN_TIPS[id][currentLang] || BTN_TIPS[id].ru || '';
+    b.title = t; b.setAttribute('aria-description', t);
+    if (b.closest('.bench-actions')) {            // 18.11, слово Папы: «что КАЖДАЯ кнопка делает» — подпись видна сразу
+      let cell = b.parentElement;
+      if (!cell.classList.contains('bench-cell')) { cell = document.createElement('div'); cell.className = 'bench-cell'; b.insertAdjacentElement('beforebegin', cell); cell.appendChild(b); }
+      let d = b.nextElementSibling;
+      if (!d || !d.classList.contains('btn-desc')) { d = document.createElement('span'); d.className = 'btn-desc'; cell.appendChild(d); }
+      d.textContent = t;
+    }
+  }
+  renderCompare();
+  for (const h of document.querySelectorAll('h3.box-title[data-i18n]')) {
+    const key = h.getAttribute('data-i18n');
+    const tip = TIPS[key];
+    if (!tip) continue;
+    const text = tip[currentLang] || tip.ru || '';
+    let btn = h.nextElementSibling;
+    if (!btn || !btn.classList || !btn.classList.contains('tip-btn')) {
+      btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tip-btn';
+      btn.textContent = '?';
+      h.style.display = 'inline-block';
+      h.insertAdjacentElement('afterend', btn);
+      const pop = document.createElement('div');
+      pop.className = 'tip-pop';
+      pop.setAttribute('role', 'tooltip');
+      pop.id = 'tip-' + key;
+      pop.hidden = true;
+      btn.insertAdjacentElement('afterend', pop);
+      btn.setAttribute('aria-describedby', pop.id);
+      btn.addEventListener('click', ev => { ev.stopPropagation(); pop.hidden = !pop.hidden; });
+      btn.addEventListener('mouseenter', () => { pop.hidden = false; });
+      btn.addEventListener('mouseleave', () => { pop.hidden = true; });
+      btn.addEventListener('focus', () => { pop.hidden = false; });
+      btn.addEventListener('blur', () => { pop.hidden = true; });
+    }
+    btn.setAttribute('aria-label', (S.tip_label || '?') + ': ' + (S[key] || key));
+    btn.title = text;
+    const pop = btn.nextElementSibling;
+    if (pop && pop.classList.contains('tip-pop')) pop.textContent = text;
+  }
+}
+document.addEventListener('click', () => { for (const p of document.querySelectorAll('.tip-pop')) p.hidden = true; });
+
 function applyI18n() {
   S = ALL_STRINGS[currentLang] || ALL_STRINGS.ru;
   if (typeof syncNavGroups === 'function') { try { syncNavGroups(activeTab); } catch (e) {} }
   document.documentElement.lang = currentLang;
   document.title = S.app_title;
+  setTimeout(applyTips, 0);
   for (const node of document.querySelectorAll('[data-i18n]')) {
     const key = node.getAttribute('data-i18n');
     if (S[key] !== undefined) node.textContent = S[key];
@@ -4495,11 +4952,13 @@ function renderRecordCard(r, opts = {}) {
 }
 
 // --- 1. ОБЗОР ---
+let _ovRetry = 0;
 async function loadOverview() {
   refreshWorkspacesCache();
   if (!token) { say(S.no_token, false); return; }
   try {
     const data = await api('/overview');
+    _ovRetry = 0;
     const st = data.stats || {};
     const doc = data.doctor || {};
 
@@ -4616,7 +5075,13 @@ async function loadOverview() {
       else text = (ch.name || ch.id) + (ch.detail ? (': ' + ch.detail) : '');
       checksBox.append(el('div', 'check-item', icon + ' ' + text));
     }
-  } catch (e) { say(S.failed + ': ' + e.message, false); }
+  } catch (e) {
+    // 18.11.2026: окно открылось, пока сервер ещё запускался, — запросы падали, а на карточках стояли нули, будто память
+    // пропала. Теперь: «подключаюсь к памяти…» и повтор каждые 1,5 с (до 40 раз), ошибка — только если сервер так и не ответил.
+    _ovRetry = (_ovRetry || 0) + 1;
+    if (_ovRetry <= 40) { say(S.ov_connecting || '…', true); setTimeout(loadOverview, 1500); return; }
+    say(S.failed + ': ' + e.message, false);
+  }
 }
 
 // --- 2. ЛЕНТА ПАМЯТИ ---
@@ -4666,7 +5131,7 @@ async function loadFeed(reset = true) {
   try {
     const q = encodeURIComponent($('feed-q').value.trim());
     const ag = encodeURIComponent(($('feed-agent') ? $('feed-agent').value : '').trim());
-    const r = await api('/records?view=' + feedView + '&q=' + q + (ag ? ('&agent_id=' + ag) : '') + '&limit=100&offset=' + offset);
+    const r = await api('/records?view=' + feedView + '&q=' + q + (ag ? ('&agent_id=' + ag) : '') + '&hide_dialogs=1&limit=100&offset=' + offset);
     if (my !== _feedSeq) return;
     if (reset) { feedOffset = 0; feedShown = []; }
     feedShown = feedShown.concat(r.records || []);
@@ -5026,139 +5491,185 @@ async function loadForgetTab() {
 }
 
 // --- 7. ГРАФ СВЯЗЕЙ ---
+// 18.11.2026, слово Папы: «Граф связей красивый и адекватный, в трёхмерной проекции, лучшие чужие наработки».
+// Приёмы 3d-force-graph / d3-force-3d, но без внешних библиотек (Studio работает офлайн, 0 запросов наружу):
+// раскладка силами в 3D (отталкивание, пружины связей, притяжение к центру), перспектива с глубиной (дальние узлы
+// мельче и бледнее), вращение мышью, колесо — приближение, автоповорот; подписи только у наведённого и выбранного.
+const G3 = {pos: {}, rotX: -0.35, rotY: 0.6, zoom: 1, drag: null, moved: false, hover: null, auto: true, raf: 0, deg: {}};
+
 function layoutGraph(nodes, edges, width, height) {
-  const pos = {};
   const n = nodes.length;
-  if (!n) return pos;
-  // Начальное размещение по разнесённой шахматной сетке, чтобы ни одна пара подписей не слипалась
-  const cols = Math.min(4, Math.max(2, Math.ceil(Math.sqrt(n * 1.3))));
-  const rows = Math.max(1, Math.ceil(n / cols));
-  const padX = 115, padY = 54;
-  const usableW = Math.max(200, width - padX * 2);
-  const usableH = Math.max(160, height - padY * 2);
-  nodes.forEach((node, i) => {
-    const r = Math.floor(i / cols);
-    const c = i % cols;
-    const staggerX = (r % 2 === 1 && cols > 2) ? (usableW / (cols * 3.2)) : 0;
-    const staggerY = (c % 2 === 1) ? 14 : -10;
-    const fx = cols === 1 ? 0.5 : (c / (cols - 1));
-    const fy = rows === 1 ? 0.5 : (r / (rows - 1));
-    pos[node.id] = {
-      x: Math.max(padX, Math.min(width - padX, padX + fx * usableW + staggerX)),
-      y: Math.max(padY, Math.min(height - padY, padY + fy * usableH + staggerY)),
-      vx: 0, vy: 0
-    };
+  const pos = {};
+  // начальное размещение — сфера Фибоначчи: равномерно и детерминированно (одинаково при каждом открытии)
+  nodes.forEach((nd, i) => {
+    const y = n > 1 ? 1 - (i / (n - 1)) * 2 : 0;
+    const r = Math.sqrt(Math.max(0, 1 - y * y));
+    const th = i * 2.399963229728653;
+    pos[nd.id] = {x: Math.cos(th) * r * 160, y: y * 160, z: Math.sin(th) * r * 160, vx: 0, vy: 0, vz: 0};
   });
-  // Мягкое сближение связанных узлов и жёсткое разнесение прямоугольников подписей
-  for (let pass = 0; pass < 36; pass++) {
-    for (const e of edges) {
+  const deg = {};
+  const E = (edges || []).filter(e => pos[e.source] && pos[e.target]);
+  E.forEach(e => { deg[e.source] = (deg[e.source] || 0) + 1; deg[e.target] = (deg[e.target] || 0) + 1; });
+  const ids = nodes.map(nd => nd.id);
+  const iters = n > 400 ? 120 : 260;
+  for (let it = 0; it < iters; it++) {
+    const alpha = 1 - it / iters;
+    for (let i = 0; i < ids.length; i++) {                       // отталкивание узлов
+      const a = pos[ids[i]];
+      for (let j = i + 1; j < ids.length; j++) {
+        const b = pos[ids[j]];
+        const dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
+        const d2 = dx * dx + dy * dy + dz * dz + 0.01;
+        if (d2 > 250000) continue;
+        const f = (900 / d2) * alpha;
+        a.vx += dx * f; a.vy += dy * f; a.vz += dz * f;
+        b.vx -= dx * f; b.vy -= dy * f; b.vz -= dz * f;
+      }
+    }
+    for (const e of E) {                                           // пружины связей
       const a = pos[e.source], b = pos[e.target];
-      if (!a || !b) continue;
-      const dx = b.x - a.x, dy = b.y - a.y;
-      const dist = Math.hypot(dx, dy) || 1;
-      if (dist > 260) {
-        const pull = (dist - 260) * 0.04;
-        a.x += (dx / dist) * pull; a.y += (dy / dist) * pull;
-        b.x -= (dx / dist) * pull; b.y -= (dy / dist) * pull;
-      }
+      const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+      const d = Math.sqrt(dx * dx + dy * dy + dz * dz) + 0.01;
+      const f = ((d - 55) / d) * 0.06 * alpha;
+      a.vx += dx * f; a.vy += dy * f; a.vz += dz * f;
+      b.vx -= dx * f; b.vy -= dy * f; b.vz -= dz * f;
     }
-    for (let i = 0; i < n; i++) {
-      for (let j = i + 1; j < n; j++) {
-        const a = pos[nodes[i].id], b = pos[nodes[j].id];
-        let dx = b.x - a.x, dy = b.y - a.y;
-        if (Math.abs(dx) < 1 && Math.abs(dy) < 1) { dx = 10; dy = 10; }
-        const minDX = 210, minDY = 62;
-        if (Math.abs(dx) < minDX && Math.abs(dy) < minDY) {
-          const overlapX = (minDX - Math.abs(dx)) * 0.35 * (dx >= 0 ? 1 : -1);
-          const overlapY = (minDY - Math.abs(dy)) * 0.55 * (dy >= 0 ? 1 : -1);
-          a.x -= overlapX; b.x += overlapX;
-          a.y -= overlapY; b.y += overlapY;
-        }
-      }
-    }
-    for (const node of nodes) {
-      const p = pos[node.id];
-      p.x = Math.max(padX, Math.min(width - padX, p.x));
-      p.y = Math.max(padY, Math.min(height - padY, p.y));
+    for (const id of ids) {                                        // притяжение к центру и затухание
+      const p = pos[id];
+      p.vx -= p.x * 0.004; p.vy -= p.y * 0.004; p.vz -= p.z * 0.004;
+      p.x += p.vx; p.y += p.vy; p.z += p.vz;
+      p.vx *= 0.6; p.vy *= 0.6; p.vz *= 0.6;
     }
   }
-  return pos;
+  let maxR = 1;
+  for (const id of ids) { const p = pos[id]; maxR = Math.max(maxR, Math.sqrt(p.x * p.x + p.y * p.y + p.z * p.z)); }
+  const k = (Math.min(width, height) * 0.47) / maxR;
+  for (const id of ids) { const p = pos[id]; p.x *= k; p.y *= k; p.z *= k; }
+  G3.pos = pos; G3.deg = deg; G3.zoom = 1;
+  return projectGraph(width, height);
+}
+
+function projectGraph(width, height) {
+  const out = {};
+  const cx = width / 2, cy = height / 2;
+  const cY = Math.cos(G3.rotY), sY = Math.sin(G3.rotY), cX = Math.cos(G3.rotX), sX = Math.sin(G3.rotX);
+  const camera = Math.min(width, height) * 1.6;
+  for (const id in G3.pos) {
+    const p = G3.pos[id];
+    const x1 = p.x * cY - p.z * sY, z1 = p.x * sY + p.z * cY;
+    const y1 = p.y * cX - z1 * sX, z2 = p.y * sX + z1 * cX;
+    const scale = (camera / (camera + z2)) * G3.zoom;
+    out[id] = {x: cx + x1 * scale, y: cy + y1 * scale, z: z2, s: scale};
+  }
+  graphPositions = out;
+  return out;
+}
+
+function _graphColor(node, isDark) {
+  if (node.status === 'superseded') return isDark ? '#64748b' : '#94a3b8';
+  if (node.status === 'quarantined') return isDark ? '#fb7185' : '#e11d48';
+  if (node.kind === 'identity' || node.kind === 'preference') return isDark ? '#c084fc' : '#7c3aed';
+  if (node.kind === 'decision') return isDark ? '#34d399' : '#059669';
+  if (node.kind === 'correction') return isDark ? '#fbbf24' : '#d97706';
+  if (node.kind === 'event' || node.kind === 'state') return isDark ? '#f472b6' : '#db2777';
+  return isDark ? '#38bdf8' : '#0284c7';
+}
+function _edgeColor(t, isDark) {
+  return ({derived: isDark ? '0,210,255' : '2,132,199', cause: isDark ? '52,211,153' : '5,150,105',
+           correction: isDark ? '251,191,36' : '217,119,6', contradiction: isDark ? '248,113,113' : '220,38,38',
+           version: isDark ? '167,139,250' : '79,70,229'})[t] || (isDark ? '251,113,133' : '225,29,72');
 }
 
 function drawGraph() {
   const canvas = $('graph-canvas');
   if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = canvas.clientWidth || 900, cssH = canvas.clientHeight || 560;
+  if (canvas.width !== Math.round(cssW * dpr) || canvas.height !== Math.round(cssH * dpr)) {
+    canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
+  }
   const ctx = canvas.getContext('2d');
   const w = canvas.width, h = canvas.height;
   const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-  ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = isDark ? '#0b101d' : '#f8fafc';
-  ctx.fillRect(0, 0, w, h);
-
+  const bg = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.7);
+  bg.addColorStop(0, isDark ? '#111a33' : '#ffffff'); bg.addColorStop(1, isDark ? '#060914' : '#eef2f8');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
   const nodes = graphData.nodes || [];
   const edges = graphData.edges || [];
   if (!nodes.length) {
     ctx.fillStyle = isDark ? '#94a3b8' : '#475569';
-    ctx.font = '15px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(S.empty_graph || S.empty, w / 2, h / 2);
+    ctx.font = (16 * dpr) + 'px system-ui, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(S.graph_empty || '—', w / 2, h / 2);
     return;
   }
-
-  for (const e of edges) {
-    const a = graphPositions[e.source], b = graphPositions[e.target];
-    if (!a || !b) continue;
-    ctx.beginPath();
-    ctx.lineWidth = 2.2;
-    if (e.type === 'derived') { ctx.strokeStyle = isDark ? '#00d2ff' : '#0284c7'; ctx.setLineDash([]); }
-    else if (e.type === 'cause') { ctx.strokeStyle = isDark ? '#34d399' : '#059669'; ctx.setLineDash([]); }
-    else if (e.type === 'correction') { ctx.strokeStyle = isDark ? '#fbbf24' : '#d97706'; ctx.setLineDash([]); }
-    else if (e.type === 'contradiction') { ctx.strokeStyle = isDark ? '#f87171' : '#dc2626'; ctx.setLineDash([6, 4]); }
-    else if (e.type === 'version') { ctx.strokeStyle = isDark ? '#a78bfa' : '#4f46e5'; ctx.setLineDash([4, 4]); }
-    else { ctx.strokeStyle = isDark ? '#fb7185' : '#e11d48'; ctx.setLineDash([2, 4]); }
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Стрелка направления
-    const angle = Math.atan2(b.y - a.y, b.x - a.x);
+  if (!Object.keys(G3.pos).length) layoutGraph(nodes, edges, w, h);
+  const P = projectGraph(w, h);
+  let zMin = Infinity, zMax = -Infinity;
+  for (const id in P) { zMin = Math.min(zMin, P[id].z); zMax = Math.max(zMax, P[id].z); }
+  const depth = z => zMax > zMin ? 1 - (z - zMin) / (zMax - zMin) : 1;   // 1 — ближе к зрителю
+  const sel = selectedGraphNode && selectedGraphNode.id, hov = G3.hover && G3.hover.id;
+  const E = edges.filter(e => P[e.source] && P[e.target])
+    .sort((a, b) => (P[b.source].z + P[b.target].z) - (P[a.source].z + P[a.target].z));
+  for (const e of E) {
+    const a = P[e.source], b = P[e.target];
+    const near = (depth(a.z) + depth(b.z)) / 2;
+    const hot = e.source === sel || e.target === sel || e.source === hov || e.target === hov;
+    ctx.strokeStyle = 'rgba(' + _edgeColor(e.type, isDark) + ',' + (hot ? 0.95 : (isDark ? 0.14 : 0.28) + near * 0.42) + ')';
+    ctx.lineWidth = (hot ? 2.2 : 0.8 + near) * dpr;
+    ctx.setLineDash(e.type === 'contradiction' ? [6 * dpr, 4 * dpr] : []);
     const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-    ctx.beginPath();
-    ctx.moveTo(mx + 7 * Math.cos(angle), my + 7 * Math.sin(angle));
-    ctx.lineTo(mx - 6 * Math.cos(angle - 0.55), my - 6 * Math.sin(angle - 0.55));
-    ctx.lineTo(mx - 6 * Math.cos(angle + 0.55), my - 6 * Math.sin(angle + 0.55));
-    ctx.closePath();
-    ctx.fillStyle = ctx.strokeStyle;
-    ctx.fill();
-  }
-
-  nodes.forEach((node) => {
-    const p = graphPositions[node.id];
-    if (!p) return;
-    const isSel = selectedGraphNode && selectedGraphNode.id === node.id;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, isSel ? 16 : 12, 0, Math.PI * 2);
-    if (node.status === 'superseded') ctx.fillStyle = isDark ? '#64748b' : '#94a3b8';
-    else if (node.kind === 'identity' || node.kind === 'preference') ctx.fillStyle = isDark ? '#a855f7' : '#7c3aed';
-    else if (node.kind === 'decision') ctx.fillStyle = isDark ? '#34d399' : '#059669';
-    else ctx.fillStyle = isDark ? '#00d2ff' : '#0284c7';
-    ctx.fill();
-    ctx.lineWidth = isSel ? 3 : 1.8;
-    ctx.strokeStyle = isSel ? '#fbbf24' : (isDark ? '#f1f5f9' : '#0f172a');
+    const off = Math.hypot(b.x - a.x, b.y - a.y) * 0.12;
+    const nx = -(b.y - a.y), ny = b.x - a.x, nl = Math.hypot(nx, ny) || 1;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y);
+    ctx.quadraticCurveTo(mx + nx / nl * off, my + ny / nl * off, b.x, b.y);   // дуги вместо прямых — меньше наложений
     ctx.stroke();
-
-    ctx.font = '12px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    const shortLabel = truncateAtWord(node.content || node.label || node.id, 25);
-    const ly = p.y + 27;
-    const tw = ctx.measureText(shortLabel).width + 12;
-    ctx.fillStyle = isDark ? 'rgba(11, 16, 29, 0.90)' : 'rgba(255, 255, 255, 0.92)';
-    ctx.fillRect(p.x - tw / 2, ly - 12, tw, 17);
+  }
+  ctx.setLineDash([]);
+  const order = nodes.filter(nd => P[nd.id]).sort((a, b) => P[b.id].z - P[a.id].z);
+  for (const nd of order) {
+    const p = P[nd.id], dz = depth(p.z);
+    const r = (4 + Math.min(10, Math.sqrt(G3.deg[nd.id] || 0) * 2.4)) * p.s * dpr;
+    const col = _graphColor(nd, isDark);
+    ctx.globalAlpha = 0.35 + dz * 0.65;
+    if (nd.id === sel || nd.id === hov) { ctx.shadowColor = col; ctx.shadowBlur = 18 * dpr; }
+    const g = ctx.createRadialGradient(p.x - r * 0.35, p.y - r * 0.35, r * 0.1, p.x, p.y, r);
+    g.addColorStop(0, '#ffffff'); g.addColorStop(0.25, col); g.addColorStop(1, col);
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    if (nd.id === sel) { ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2.5 * dpr; ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    p.r = r;
+  }
+  for (const id of (hov && hov !== sel ? [hov] : [sel])) {   // одна подпись за раз — без наложения
+    const nd = id && nodes.find(x => x.id === id);
+    if (!nd || !P[id]) continue;
+    const p = P[id];
+    const label = truncateAtWord(nd.content || nd.label || nd.id, 60);
+    ctx.font = '600 ' + (13 * dpr) + 'px system-ui, sans-serif'; ctx.textAlign = 'center';
+    const tw = ctx.measureText(label).width + 16 * dpr, th = 22 * dpr, ly = p.y - (p.r || 10) - 10 * dpr;
+    ctx.fillStyle = isDark ? 'rgba(10,14,28,0.92)' : 'rgba(255,255,255,0.95)';
+    ctx.strokeStyle = isDark ? 'rgba(148,163,184,0.4)' : 'rgba(15,23,42,0.15)'; ctx.lineWidth = dpr;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(p.x - tw / 2, ly - th, tw, th, 8 * dpr); else ctx.rect(p.x - tw / 2, ly - th, tw, th);
+    ctx.fill(); ctx.stroke();
     ctx.fillStyle = isDark ? '#e2e8f0' : '#0f172a';
-    ctx.fillText(shortLabel, p.x, ly);
-  });
+    ctx.fillText(label, p.x, ly - 7 * dpr);
+  }
+  ctx.font = (11 * dpr) + 'px system-ui, sans-serif'; ctx.textAlign = 'left';
+  ctx.fillStyle = isDark ? 'rgba(148,163,184,0.75)' : 'rgba(71,85,105,0.75)';
+  ctx.fillText(S.graph_controls || '', 12 * dpr, h - 12 * dpr);
 }
+
+function _graphTick() {
+  G3.raf = 0;
+  const panel = $('panel-graph');
+  if (!panel || panel.hidden || !G3.auto || G3.drag) return;
+  G3.rotY += 0.0035;
+  drawGraph();
+  G3.raf = requestAnimationFrame(_graphTick);
+}
+function _graphStartAuto() { if (!G3.raf) G3.raf = requestAnimationFrame(_graphTick); }
 
 let graphLastReceipt = null;
 
@@ -5294,6 +5805,7 @@ async function loadGraph() {
     selectedGraphNode = (graphData.nodes || []).find(n => n.id === focusId) || (graphData.nodes || [])[0] || null;
     drawGraph();
     renderSelectedGraphNode();
+    G3.auto = true; _graphStartAuto();
   } catch (e) { say(S.failed + ': ' + e.message, false); }
 }
 
@@ -5769,7 +6281,7 @@ function loadActiveTab() {
   else if (activeTab === 'team') loadTeam();
   else if (activeTab === 'settings') { loadSettings(); loadLocalModel(); }
   else if (activeTab === 'attacks') loadAttacks();
-  else if (activeTab === 'bench') { renderAifaSec(); if (typeof loadQaBench === 'function') loadQaBench(); }
+  else if (activeTab === 'bench') { renderAifaSec(); if (typeof loadQaBench === 'function') loadQaBench(); loadRedteamRounds(); }
   else if (activeTab === 'help') loadHelp();
 }
 
@@ -5813,6 +6325,46 @@ async function loadAttacks() {
     }
   }
 }
+async function loadRedteamRounds() {
+  const box = $('rt-list');
+  if (!box) return;
+  let d = null;
+  try { d = await api('/api/v2/redteam/rounds'); } catch (e) { box.textContent = String(e.message || e); return; }
+  box.textContent = '';
+  const colName = c => S['rt_col_' + String(c).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')] || c;
+  for (const r of (d.rounds || []).slice().reverse()) {
+    // 18.11: заголовок из SEALED_RESULTS.md английский — показываем на языке интерфейса: номер раунда и кто атаковал.
+    const mN = /Round\s+(\d+)/i.exec(r.title || ''), mK = /from\s+(two|three|four|five|\d+)\s+models/i.exec(r.title || ''),
+          mM = /from\s+(?:a\s+sealed\s+set\s+from\s+)?([A-Z][\w .()-]+?)\s+—/.exec(r.title || '');
+    const kNum = mK ? ({two: 2, three: 3, four: 4, five: 5}[mK[1].toLowerCase()] || mK[1]) : null;
+    let ttl = mN ? (S.rt_round || 'Round {n}').replace('{n}', mN[1]) : r.title;
+    if (kNum) ttl += ' · ' + (S.rt_models || '{k}').replace('{k}', kNum);
+    else if (mM && !/sealed set/i.test(mM[1])) ttl += ' · ' + mM[1];
+    const head = _el('div', 'box-title', r.date + ' · ' + ttl);
+    head.style.fontSize = '15px';
+    box.appendChild(head);
+    const tbl = document.createElement('table');
+    tbl.className = 'rt-table';
+    tbl.style.width = '100%'; tbl.style.borderCollapse = 'collapse'; tbl.style.margin = '6px 0 14px';
+    const tr0 = document.createElement('tr');
+    for (const c of [''].concat(r.columns || [])) {
+      const th = document.createElement('th'); th.textContent = c ? colName(c) : '';
+      th.style.textAlign = 'left'; th.style.padding = '4px 8px'; th.style.borderBottom = '1px solid rgba(128,128,128,.3)';
+      tr0.appendChild(th);
+    }
+    tbl.appendChild(tr0);
+    for (const row of (r.sums || [])) {
+      const tr = document.createElement('tr');
+      const td0 = document.createElement('td'); td0.textContent = /^sum, word lists only$/i.test(row.label) ? (S.rt_sum_words || row.label) : /^sum$/i.test(row.label) ? (S.rt_sum || row.label) : String(row.label).replace(', on ', ' · '); td0.style.padding = '4px 8px'; tr.appendChild(td0);
+      for (const c of (r.columns || [])) {
+        const td = document.createElement('td'); td.textContent = (row.values || {})[c] || ''; td.style.padding = '4px 8px'; td.style.fontWeight = '600';
+        tr.appendChild(td);
+      }
+      tbl.appendChild(tr);
+    }
+    box.appendChild(tbl);
+  }
+}
 async function renderAifaSec(fresh = false) {
   if (!token) return;
   const sumEl = $('att-aifasec-summary');
@@ -5823,14 +6375,20 @@ async function renderAifaSec(fresh = false) {
   try { r = await api(fresh ? '/api/v2/aifa-security/run' : '/api/v2/aifa-security', fresh ? {} : undefined); } catch (e) { return; }
   const sm = (r && r.summary) || {};
   if (sm.grade) {
-    sumEl.textContent = `Grade ${sm.grade} (${sm.score_pct}%) · ${sm.passed}/${sm.applicable} · SHA-256: ${String(sm.report_sha256 || '').slice(0, 16)}…`;
+    sumEl.textContent = (S.bench_grade || '').replace('{g}', sm.grade).replace('{p}', sm.score_pct).replace('{n}', sm.passed).replace('{a}', sm.applicable).replace('{h}', String(sm.report_sha256 || '').slice(0, 16));
+    // Grok-аудит 18.11, п. 6: видно, кэш это или свежий прогон, и сколько ему часов; честная пометка — ниже.
+    const fresh_ = r.cached ? (S.bench_cached || '').replace('{h}', r.cache_age_hours) : (S.bench_fresh || '').replace('{s}', r.elapsed_s || '?');
+    sumEl.textContent += ' · ' + fresh_ + (r.stale ? ' · ' + (S.bench_stale || '') : '');
+    let hn = $('att-aifasec-honest');
+    if (!hn) { hn = _el('p', 'panel-sub'); hn.id = 'att-aifasec-honest'; sumEl.insertAdjacentElement('afterend', hn); }
+    hn.textContent = S.bench_honest || r.honest_note || '';
   } else {
     sumEl.textContent = (r && r.error) || '—';
   }
   const stdEl = $('att-aifasec-standards');
   if (stdEl && r && r.standards_summary) {
     const st = r.standards_summary;
-    stdEl.textContent = 'OWASP LLM: ' + (st.owasp_llm_covered || []).join(', ')
+    stdEl.textContent = (S.bench_std || '') + ': OWASP LLM: ' + (st.owasp_llm_covered || []).join(', ')
       + ' · Agentic: ' + (st.owasp_agentic_covered || []).join(', ')
       + ' · MITRE: ' + (st.mitre_atlas_covered || []).join(', ');
   }
@@ -5847,13 +6405,16 @@ async function renderAifaSec(fresh = false) {
     sum.style.display = 'flex';
     sum.style.justifyContent = 'space-between';
     const stdTag = (d.standards && d.standards.owasp_llm) ? ' [' + d.standards.owasp_llm.join('/') + ']' : '';
-    sum.appendChild(_el('span', 'att-name', `${k} · ${d.name}${stdTag}`));
+    sum.appendChild(_el('span', 'att-name', `${k} · ${S['bench_d' + String(k).replace(/\D/g, '')] || d.name}${stdTag}`));
     sum.appendChild(_el('span', 'att-val', `${d.passed}/${d.applicable} (${d.score_pct}%)`));
     det.appendChild(sum);
     for (const c of crits.filter(x => x.domain === k)) {
       const cr = _el('div', 'panel-sub');
       cr.style.paddingLeft = '12px';
-      cr.textContent = `${c.id} [${c.status}] ${c.title} (${c.metric || ''})`;
+      const stTxt = c.status === 'PASS' ? '✅ ' + (S.st_pass || 'PASS') : c.status === 'FAIL' ? '❌ ' + (S.st_fail || 'FAIL') : '— ' + (S.st_na || c.status);
+      const ttl = (CRIT_TITLES[c.id] && CRIT_TITLES[c.id][currentLang]) || (currentLang === 'ru' ? c.title_ru : c.title_en) || c.title_en || c.id;
+      cr.textContent = `${c.id} · ${stTxt} · ${ttl}` + (c.metric && currentLang === 'en' ? ` (${c.metric})` : '');
+      if (c.metric) cr.title = c.metric;   // техническая метрика — при наведении, на любом языке
       det.appendChild(cr);
     }
     domEl.appendChild(det);
@@ -5878,17 +6439,20 @@ async function loadQaBench() {
   try { q = await api('/api/v2/qa-benchmark'); } catch (e) { return; }
   qaEl.textContent = '';
   if (!q || (!q.longmemeval && !q.locomo)) {
-    qaEl.textContent = (q && q.status) || 'QA benchmark not run yet.';
+    qaEl.textContent = S.bench_qa_none || (q && q.status) || '';
     return;
   }
-  const hdr = _el('div', 'box-title', `QA Bench ($0 · ${q.mode || 'offline'})`);
+  const hdr = _el('div', 'box-title', S.bench_qa_title || 'QA');
   qaEl.appendChild(hdr);
+  qaEl.appendChild(_el('p', 'panel-sub', S.bench_f1 || ''));
+  if (q.results_date) qaEl.appendChild(_el('p', 'panel-sub', (S.bench_qa_date || '').replace('{d}', q.results_date).replace('{c}', q.rerun_hint || '')));
   for (const dsKey of ['longmemeval', 'locomo']) {
     if (!q[dsKey] || !q[dsKey].padam) continue;
     const o = q[dsKey].padam.overall || {};
     const row = _el('div', 'att-row');
     row.appendChild(_el('span', 'att-name', `${q[dsKey].dataset} (n=${o.n || 0})`));
-    row.appendChild(_el('span', 'att-val', `R@5=${o['evidence_recall@5']} · R@10=${o['evidence_recall@10']} · F1=${o.token_f1} · p50=${o.latency_p50_ms}ms`));
+    const pc = v => (v == null ? '?' : Math.round(v * 1000) / 10);
+    row.appendChild(_el('span', 'att-val', (S.qa_row || '').replace('{r5}', pc(o['evidence_recall@5'])).replace('{r10}', pc(o['evidence_recall@10'])).replace('{f1}', o.token_f1).replace('{lat}', o.latency_p50_ms)));
     qaEl.appendChild(row);
   }
 }
@@ -5904,17 +6468,18 @@ async function runFuzzLab() {
   if (!token) return;
   const qaEl = $('att-qa-summary');
   if (!qaEl) return;
-  qaEl.textContent = 'Running fuzz & competitor comparison...';
+  qaEl.textContent = S.fuzz_running || '';
   let f = null;
   try { f = await api('/api/v2/aifa-security/fuzz'); } catch (e) { return; }
   qaEl.textContent = '';
-  qaEl.appendChild(_el('div', 'box-title', `Fuzz Lab (${f.total_attack_vectors} vectors · ${f.elapsed_ms} ms)`));
+  qaEl.appendChild(_el('div', 'box-title', (S.fuzz_title || '').replace('{n}', f.total_attack_vectors).replace('{ms}', f.elapsed_ms)));
+  qaEl.appendChild(_el('p', 'panel-sub', S.fuzz_desc || ''));
   const p = f.padam || {};
   const b = f.baselines || {};
   const rows = [
-    ['PADAM NOCTURNE', `Defense=${p.defense_rate_pct}% · Secrets=${p.secrets_masked_pct}% · FPR=${p.false_positive_rate_pct}%`],
-    ['Basic Regex Filter', `Defense=${(b.basic_regex || {}).defense_rate_pct}% · Secrets=0%`],
-    ['Naive RAG Store', `Defense=0% · Secrets=0%`],
+    [S.fuzz_padam, (S.fuzz_row || '').replace('{d}', p.defense_rate_pct).replace('{s}', p.secrets_masked_pct).replace('{f}', p.false_positive_rate_pct)],
+    [S.fuzz_regex, (S.fuzz_row2 || '').replace('{d}', (b.basic_regex || {}).defense_rate_pct).replace('{s}', 0)],
+    [S.fuzz_rag, (S.fuzz_row2 || '').replace('{d}', 0).replace('{s}', 0)],
   ];
   for (const [nm, val] of rows) {
     const row = _el('div', 'att-row');
@@ -5927,9 +6492,12 @@ async function verifyEdSeal() {
   if (!token) return;
   const sumEl = $('att-aifasec-summary');
   let v = null;
-  try { v = await api('/api/v2/aifa-security/verify'); } catch (e) { return; }
+  try { v = await api('/api/v2/aifa-security/verify'); } catch (e) { if (sumEl) sumEl.textContent = (S.failed || 'Error') + ': ' + (e.message || e); return; }
   if (sumEl) {
-    sumEl.textContent = `Seal verified=${v.verified} · SHA-256=${v.sha256_valid} · Ed25519=${v.ed25519_valid} (${String(v.report_sha256 || '').slice(0, 16)}…)`;
+    const ok = !!v.verified;
+    sumEl.textContent = (ok ? '✅ ' + (S.seal_ok || '') : '❌ ' + (S.seal_bad || ''))
+      + ' · SHA-256 ' + (v.sha256_valid ? '✓' : '✗') + ' · Ed25519 ' + (v.ed25519_valid ? '✓' : '✗')
+      + ' · ' + String(v.report_sha256 || '').slice(0, 16) + '…';
   }
 }
 const _qaBtn = $('att-qa-load');
@@ -6193,36 +6761,46 @@ $('graph-focus-btn').onclick = () => { graphLastReceipt = null; loadGraph(); };
 $('graph-reset-btn').onclick = () => { graphLastReceipt = null; $('graph-id-input').value = ''; if ($('graph-asof-input')) $('graph-asof-input').value = ''; loadGraph(); };
 if ($('graph-now-btn')) $('graph-now-btn').onclick = () => { $('graph-asof-input').value = ''; loadGraph(); };
 if ($('graph-asof-input')) $('graph-asof-input').onchange = () => { graphLastReceipt = null; loadGraph(); };
-$('graph-canvas').onmousemove = e => {
-  const rect = $('graph-canvas').getBoundingClientRect();
-  const scaleX = $('graph-canvas').width / rect.width;
-  const scaleY = $('graph-canvas').height / rect.height;
-  const mx = (e.clientX - rect.left) * scaleX;
-  const my = (e.clientY - rect.top) * scaleY;
-  let hovered = null;
-  for (const node of (graphData.nodes || [])) {
-    const p = graphPositions[node.id];
-    if (p && Math.hypot(mx - p.x, my - p.y) <= 22) { hovered = node; break; }
-  }
-  $('graph-canvas').title = hovered ? ((hovered.content || hovered.label || hovered.id) + ' [' + (S['kind_' + hovered.kind] || hovered.kind) + ']') : '';
-};
-$('graph-canvas').onclick = e => {
-  const rect = $('graph-canvas').getBoundingClientRect();
-  const scaleX = $('graph-canvas').width / rect.width;
-  const scaleY = $('graph-canvas').height / rect.height;
-  const mx = (e.clientX - rect.left) * scaleX;
-  const my = (e.clientY - rect.top) * scaleY;
-  for (const node of (graphData.nodes || [])) {
-    const p = graphPositions[node.id];
+function _graphHit(e) {
+  const c = $('graph-canvas'), rect = c.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (c.width / rect.width), my = (e.clientY - rect.top) * (c.height / rect.height);
+  let best = null, bestZ = Infinity;
+  for (const nd of (graphData.nodes || [])) {
+    const p = graphPositions[nd.id];
     if (!p) continue;
-    if (Math.hypot(mx - p.x, my - p.y) <= 20) {
-      selectedGraphNode = node;
-      drawGraph();
-      renderSelectedGraphNode();
-      break;
-    }
+    const r = Math.max(p.r || 8, 8 * (window.devicePixelRatio || 1));
+    if (Math.hypot(mx - p.x, my - p.y) <= r + 4 && p.z < bestZ) { best = nd; bestZ = p.z; }   // ближний из перекрытых
   }
+  return best;
+}
+$('graph-canvas').onmousedown = e => { G3.drag = {x: e.clientX, y: e.clientY}; G3.moved = false; G3.auto = false; };
+window.addEventListener('mouseup', () => { G3.drag = null; });
+$('graph-canvas').onmousemove = e => {
+  if (G3.drag) {
+    const dx = e.clientX - G3.drag.x, dy = e.clientY - G3.drag.y;
+    if (Math.abs(dx) + Math.abs(dy) > 2) G3.moved = true;
+    G3.rotY += dx * 0.008; G3.rotX = Math.max(-1.4, Math.min(1.4, G3.rotX + dy * 0.008));
+    G3.drag = {x: e.clientX, y: e.clientY};
+    drawGraph();
+    return;
+  }
+  const hit = _graphHit(e);
+  if ((hit && hit.id) !== (G3.hover && G3.hover.id)) { G3.hover = hit; drawGraph(); }
+  $('graph-canvas').style.cursor = hit ? 'pointer' : 'grab';
+  $('graph-canvas').title = hit ? ((hit.content || hit.label || hit.id) + ' [' + (S['kind_' + hit.kind] || hit.kind) + ']') : '';
 };
+$('graph-canvas').onmouseleave = () => { G3.hover = null; drawGraph(); };
+$('graph-canvas').addEventListener('wheel', e => {
+  e.preventDefault();
+  G3.zoom = Math.max(0.35, Math.min(4, G3.zoom * (e.deltaY < 0 ? 1.1 : 0.9)));
+  drawGraph();
+}, {passive: false});
+$('graph-canvas').onclick = e => {
+  if (G3.moved) { G3.moved = false; return; }           // это было вращение, а не нажатие
+  const hit = _graphHit(e);
+  if (hit) { selectedGraphNode = hit; drawGraph(); renderSelectedGraphNode(); }
+};
+$('graph-canvas').ondblclick = () => { G3.auto = true; _graphStartAuto(); };
 
 // L3
 $('l3-verify-latest-btn').onclick = async () => {
@@ -6605,7 +7183,7 @@ async function loadBrain() {
       tokens_saved_local: st.tokens_saved_local || 0,
       estimated_cloud_cost_usd: '$' + String(st.estimated_cloud_cost_usd || 0),
       offline_voice_tts: (v.tts_engines || []).join(', ') || 'none',
-    });
+    }, k => S['bc_' + k] || k);   // 18.11: понятные названия вместо служебных ключей
   }
 }
 
@@ -7021,10 +7599,17 @@ function _renderEarningDashboard(snap, sibData, coopData) {
     accList.textContent = '';
     const locks = (snap && snap.locks) || {};
     const ap = (snap && snap.autopilot) || {};
+    // Grok-аудит 18.11, п. 11: состояние — на языке интерфейса, заметка последнего цикла — на виду.
     accList.appendChild(_el('p', 'earn-meta',
-      'Autopilot: ' + (ap.autopilot_running ? 'RUNNING 24/7' : 'STOPPED') +
-      ' · Autobid: ' + (locks.freelance_autobid_locked !== false ? 'LOCKED' : 'OPEN') +
-      ' · Autopay: ' + (locks.treasury_autopay_locked !== false ? 'LOCKED' : 'OPEN')));
+      S.earn_ap_name + ': ' + (ap.autopilot_running ? S.earn_ap_on : S.earn_ap_off) +
+      ' · ' + S.earn_ab_name + ': ' + (locks.freelance_autobid_locked !== false ? S.earn_ab_locked : S.earn_ab_open) +
+      ' · ' + S.earn_pay_name + ': ' + (locks.treasury_autopay_locked !== false ? S.earn_pay_locked : S.earn_pay_open)));
+    if (ap.last_note) {
+      const ln = _el('p', 'earn-last-note', S.earn_ap_last + ': ' + ap.last_note);
+      ln.id = 'earn-last-note';
+      ln.style.fontWeight = '600';
+      accList.appendChild(ln);
+    }
     const accounts = (snap && snap.accounts) || [];
     window._lastAccountId = (accounts[0] && accounts[0].account_id) || '';
     if (!accounts.length) {
@@ -8193,6 +8778,7 @@ if ($('ff-ref-propose-btn')) {
     const out = $('ff-ref-out');
     const tr = ($('ff-ref-trig-inp') && $('ff-ref-trig-inp').value || '').trim();
     const rs = ($('ff-ref-resp-inp') && $('ff-ref-resp-inp').value || '').trim();
+    if (tr.length < 3 || rs.length < 3) { if (out) out.textContent = S.ff_ref_short || ''; return; }
     try {
       const r = await api('/api/v2/family/reflex/propose', { trigger: tr, response: rs });
       if (out) out.textContent = JSON.stringify(r);
@@ -8605,6 +9191,11 @@ def page() -> tuple[str, str]:
     init_lang = _sys_lang()
     s = STRINGS.get(init_lang, STRINGS["ru"])
     i18n_json = json.dumps(STRINGS, ensure_ascii=False).replace("<", "\\u003c")
+    from .studio_tips import TIPS as _TIPS
+    from .studio_tips import BTN_TIPS as _BTN
+    from .bench_compare import compare_payload as _cmp
+    from .bench_titles import crit_titles as _crit
+    tips_json = json.dumps({"blocks": _TIPS, "buttons": _BTN, "compare": _cmp(), "crit": _crit()}, ensure_ascii=False).replace("<", "\\u003c")
 
     html = f"""<!doctype html>
 <html lang="{init_lang}" data-theme="dark">
@@ -8732,12 +9323,12 @@ def page() -> tuple[str, str]:
           <h2 class="panel-title" data-i18n="ov_title">{s['ov_title']}</h2>
         </div>
         <div class="kpi-grid">
-          <div class="kpi-card"><div id="kpi-active" class="kpi-num">0</div><div class="kpi-label" data-i18n="ov_active">{s['ov_active']}</div></div>
-          <div class="kpi-card"><div id="kpi-review" class="kpi-num">0</div><div class="kpi-label" data-i18n="ov_review">{s['ov_review']}</div></div>
-          <div class="kpi-card"><div id="kpi-superseded" class="kpi-num">0</div><div class="kpi-label" data-i18n="ov_superseded">{s['ov_superseded']}</div></div>
-          <div class="kpi-card"><div id="kpi-revoked" class="kpi-num">0</div><div class="kpi-label" data-i18n="ov_revoked">{s['ov_revoked']}</div></div>
-          <div class="kpi-card"><div id="kpi-episodes" class="kpi-num">0</div><div class="kpi-label" data-i18n="ov_episodes">{s['ov_episodes']}</div></div>
-          <div class="kpi-card"><div id="kpi-conflicts" class="kpi-num">0</div><div class="kpi-label" data-i18n="ov_conflicts">{s['ov_conflicts']}</div></div>
+          <div class="kpi-card"><div id="kpi-active" class="kpi-num">…</div><div class="kpi-label" data-i18n="ov_active">{s['ov_active']}</div></div>
+          <div class="kpi-card"><div id="kpi-review" class="kpi-num">…</div><div class="kpi-label" data-i18n="ov_review">{s['ov_review']}</div></div>
+          <div class="kpi-card"><div id="kpi-superseded" class="kpi-num">…</div><div class="kpi-label" data-i18n="ov_superseded">{s['ov_superseded']}</div></div>
+          <div class="kpi-card"><div id="kpi-revoked" class="kpi-num">…</div><div class="kpi-label" data-i18n="ov_revoked">{s['ov_revoked']}</div></div>
+          <div class="kpi-card"><div id="kpi-episodes" class="kpi-num">…</div><div class="kpi-label" data-i18n="ov_episodes">{s['ov_episodes']}</div></div>
+          <div class="kpi-card"><div id="kpi-conflicts" class="kpi-num">…</div><div class="kpi-label" data-i18n="ov_conflicts">{s['ov_conflicts']}</div></div>
         </div>
 
         <div class="two-col">
@@ -8945,7 +9536,7 @@ def page() -> tuple[str, str]:
           <button id="graph-reset-btn" data-i18n="graph_btn_reset">{s['graph_btn_reset']}</button>
         </div>
         <div class="graph-wrap">
-          <canvas id="graph-canvas" width="900" height="420" aria-label="Memory lineage graph"></canvas>
+          <canvas id="graph-canvas" width="900" height="560" aria-label="Memory lineage graph"></canvas>
           <div class="legend-row">
             <span>🔵 <span data-i18n="graph_legend_derived">{s['graph_legend_derived']}</span></span>
             <span>🟢 <span data-i18n="graph_legend_cause">{s['graph_legend_cause']}</span></span>
@@ -9175,17 +9766,36 @@ def page() -> tuple[str, str]:
           <h2 class="panel-title" data-i18n="bench_title">{s['bench_title']}</h2>
           <p class="panel-sub" data-i18n="bench_sub">{s['bench_sub']}</p>
         </div>
+        <div class="box" id="bench-guide">
+          <h3 class="box-title" data-i18n="bench_guide_title">{s['bench_guide_title']}</h3>
+          <p class="panel-sub" data-i18n="bench_guide_1">{s['bench_guide_1']}</p>
+          <p class="panel-sub" data-i18n="bench_guide_2">{s['bench_guide_2']}</p>
+          <p class="panel-sub" data-i18n="bench_guide_3">{s['bench_guide_3']}</p>
+          <p class="panel-sub" data-i18n="bench_guide_4">{s['bench_guide_4']}</p>
+        </div>
+        <div class="box" id="cmp-box">
+          <h3 class="box-title" data-i18n="cmp_title">{s['cmp_title']}</h3>
+          <p class="panel-sub" data-i18n="cmp_sub">{s['cmp_sub']}</p>
+          <div class="cmp-wrap"><table class="cmp-table" id="cmp-table"></table></div>
+          <h4 class="cmp-plan-title" data-i18n="cmp_plan_title">{s['cmp_plan_title']}</h4>
+          <p class="panel-sub" data-i18n="cmp_plan">{s['cmp_plan']}</p>
+        </div>
+        <div class="box" id="rt-box">
+          <h3 class="box-title" data-i18n="rt_title">{s['rt_title']}</h3>
+          <p class="panel-sub" data-i18n="rt_desc">{s['rt_desc']}</p>
+          <div id="rt-list" aria-live="polite"></div>
+        </div>
         <div class="box">
           <h3 class="box-title" data-i18n="att_aifasec_title">{s['att_aifasec_title']}</h3>
           <p id="att-aifasec-summary" class="panel-sub">—</p>
-          <div class="att-actions">
+          <div class="att-actions bench-actions">
             <button id="att-aifasec-run" class="btn-primary" type="button" data-i18n="att_aifasec_btn">{s['att_aifasec_btn']}</button>
-            <button id="att-aifasec-dl-json" class="btn" type="button">JSON</button>
-            <button id="att-aifasec-dl-sarif" class="btn" type="button">SARIF (GitHub)</button>
-            <button id="att-aifasec-dl-html" class="btn" type="button">HTML Report</button>
-            <button id="att-qa-load" class="btn" type="button">QA Bench ($0)</button>
-            <button id="att-fuzz-run" class="btn" type="button">Live Fuzz &amp; Compare</button>
-            <button id="att-sec-verify" class="btn" type="button">Verify Ed25519 Seal</button>
+            <button id="att-aifasec-dl-json" class="btn" type="button" data-i18n="bench_json">{s['bench_json']}</button>
+            <button id="att-aifasec-dl-sarif" class="btn" type="button" data-i18n="bench_sarif">{s['bench_sarif']}</button>
+            <button id="att-aifasec-dl-html" class="btn" type="button" data-i18n="bench_html">{s['bench_html']}</button>
+            <button id="att-qa-load" class="btn" type="button" data-i18n="bench_qa">{s['bench_qa']}</button>
+            <button id="att-fuzz-run" class="btn" type="button" data-i18n="bench_fuzz">{s['bench_fuzz']}</button>
+            <button id="att-sec-verify" class="btn" type="button" data-i18n="bench_verify">{s['bench_verify']}</button>
           </div>
           <div id="att-aifasec-standards" class="panel-sub"></div>
           <div id="att-aifasec-domains"></div>
@@ -9906,6 +10516,7 @@ def page() -> tuple[str, str]:
   </div>
 </div>
 <script id="i18n-data" type="application/json" nonce="{nonce}">{i18n_json}</script>
+<script id="tips-data" type="application/json" nonce="{nonce}">{tips_json}</script>
 <script nonce="{nonce}">{_JS}</script>
 </body>
 </html>"""

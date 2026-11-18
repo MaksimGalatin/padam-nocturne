@@ -87,6 +87,9 @@ def test_freelance_full_pipeline_locks_delivery_and_treasury(tmp_path, monkeypat
     assert draft["ok"] is True
     assert draft["placed"] is False
     assert draft["status"] == "bid_draft"
+    # Grok-аудит 18.11, п. 14: владелец видит, что нажать, — без переменных окружения в тексте
+    assert "Отправить" in draft["ui_hint"]["ru"] and "PADAM_" not in draft["ui_hint"]["ru"]
+    assert "Send" in draft["ui_hint"]["en"]
 
     # С открытым замком и owner_approved=True -> bid_placed
     monkeypatch.setenv("PADAM_FREELANCE_AUTOBID", "1")

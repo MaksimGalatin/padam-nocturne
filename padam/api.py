@@ -55,7 +55,7 @@ from .store import Store
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
 OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action", "/api/v2/ark/stores/action", "/api/v2/ark/wizard/action", "/api/v2/ark/partner/action", "/api/v2/ark/phoenix-beacon/action", "/api/v2/local-model", "/api/v2/family/post", "/api/v2/family/reflex/decide", "/api/v2/quarantine/council"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance", "/api/v2/ark/stores", "/api/v2/ark/wizard", "/api/v2/ark/partner", "/api/v2/local-model", "/api/v2/family/feed", "/api/v2/family/reflexes", "/api/v2/quarantine/council", "/api/v2/family/dialogs"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance", "/api/v2/ark/stores", "/api/v2/ark/wizard", "/api/v2/ark/partner", "/api/v2/local-model", "/api/v2/family/feed", "/api/v2/family/reflexes", "/api/v2/quarantine/council", "/api/v2/family/dialogs", "/api/v2/redteam/rounds"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
 
@@ -343,6 +343,7 @@ class Handler(BaseHTTPRequestHandler):
                     kind=q.get("kind", [None])[0] or None,
                     scope=q.get("scope", [None])[0] or None,
                     agent_id=q.get("agent_id", [None])[0] or None,
+                    hide_dialogs=q.get("hide_dialogs", ["0"])[0] == "1",
                     actor=actor))
             if путь.path == "/profile":
                 roles.require_owner(actor, "profile")
@@ -589,6 +590,11 @@ class Handler(BaseHTTPRequestHandler):
                 roles.require_owner(actor, "quarantine_council")
                 from . import quarantine_council as _qc
                 return self._send(200, {"verdicts": _qc.verdicts(mem())})
+            if путь.path == "/api/v2/redteam/rounds":
+                # Запечатанные раунды красной команды — бенчмарк из статьи Show HN (данные из redteam/rounds/*/SEALED_RESULTS.md).
+                roles.require_owner(actor, "aifa_security")
+                from . import redteam_rounds as _rr
+                return self._send(200, _rr.list_rounds())
             if путь.path == "/api/v2/family/dialogs":
                 # «Диалоги Семьи» (слово Папы 18.11): итоги сессий из памяти, лента по дням, поиск.
                 roles.require_owner(actor, "family_dialogs")
@@ -712,7 +718,12 @@ class Handler(BaseHTTPRequestHandler):
                 from pathlib import Path as _Path
                 qa_path = _Path(__file__).resolve().parents[1] / "benchmarks" / "quality" / "results_qa_honest_1611.json"
                 if qa_path.exists():
-                    return self._send(200, json.loads(qa_path.read_text(encoding="utf-8")))
+                    # GLM раунд 3, SM-02: это записанный прогон, а не живой — владелец видит дату и что перезапуск через CLI.
+                    import datetime as _dt
+                    qa = json.loads(qa_path.read_text(encoding="utf-8"))
+                    qa["results_date"] = _dt.datetime.fromtimestamp(qa_path.stat().st_mtime, tz=_dt.timezone.utc).date().isoformat()
+                    qa["rerun_hint"] = "python benchmarks/quality/qa_honest_bench.py"
+                    return self._send(200, qa)
                 return self._send(200, {"benchmark": "PADAM Honest QA Bench", "status": "not_run_yet"})
             if путь.path == "/help":
                 from . import studio_help
@@ -845,6 +856,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(404, {"error": "unknown route"})
         except PermissionError as e:
             return self._send(403, {"error": str(e)})
+        except ValueError as e:   # ошибка ввода (пустое поле, неверный формат) — 400, а не «внутренняя» 500
+            return self._send(400, {"error": str(e)})
         except Exception as e:
             return self._send(500, {"error": str(e)})
 
@@ -1872,6 +1885,7 @@ class Handler(BaseHTTPRequestHandler):
                         mem(),
                         str(data.get("order_id") or ""),
                         accepted_by=str(data.get("accepted_by") or "client"),
+                        actor=actor,
                     ))
                 if act == "client_lock_status":
                     return self._send(200, _fa.get_client_lock_status(
@@ -1926,18 +1940,19 @@ class Handler(BaseHTTPRequestHandler):
                             str(data.get("hold_id") or ""),
                             order_id=str(data.get("order_id") or ""),
                             reason=str(data.get("reason") or "Client dispute refund"),
+                            actor=actor,
                         ))
                     except ValueError as _ve:
                         return self._send(400, {"error": str(_ve)})
                 if act == "release_payouts":
                     return self._send(200, _fa.release_matured_payouts(mem()))
                 if act == "autopilot_start":
-                    st_ap = _fa.set_autopilot_state(mem(), running=True, interval_s=float(data.get("interval_s") or 300.0))
+                    st_ap = _fa.set_autopilot_state(mem(), running=True, interval_s=float(data.get("interval_s") or 300.0), actor=actor)
                     _fa.ensure_autopilot_worker(mem, allow_localhost=bool(data.get("allow_localhost", False)))
                     return self._send(200, st_ap)
                 if act == "autopilot_stop":
                     _fa.stop_autopilot_worker()
-                    return self._send(200, _fa.set_autopilot_state(mem(), running=False))
+                    return self._send(200, _fa.set_autopilot_state(mem(), running=False, actor=actor))
                 if act == "autopilot_tick":
                     return self._send(200, _fa.run_autopilot_cycle(mem(), allow_localhost=bool(data.get("allow_localhost", False))))
                 if act == "monetization":
@@ -2452,6 +2467,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(403, {"error": str(e)})
         except KeyError as e:
             return self._send(400, {"error": f"missing field: {e}"})
+        except ValueError as e:   # ошибка ввода (пустое поле, неверный формат) — 400, а не «внутренняя» 500
+            return self._send(400, {"error": str(e)})
         except Exception as e:
             return self._send(500, {"error": str(e)})
 

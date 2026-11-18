@@ -19,6 +19,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from .store import add_column_safe as _acs
 from . import audit_chain, integrity, router, safety
 
 _VALID_COMMITMENT_STATUSES = frozenset({"open", "in_progress", "fulfilled", "cancelled"})
@@ -75,7 +76,7 @@ def _ensure_tables(memory) -> None:
     memory.store.conn.executescript(_ARK_DDL)
     cols = {r["name"] for r in memory.store.conn.execute("PRAGMA table_info(ark_checkpoint)").fetchall()}
     if "agent_id" not in cols:
-        memory.store.conn.execute("ALTER TABLE ark_checkpoint ADD COLUMN agent_id TEXT NOT NULL DEFAULT 'aifa'")
+        _acs(memory.store.conn, "ark_checkpoint", "agent_id", "TEXT NOT NULL DEFAULT 'aifa'")
     memory.store.conn.commit()
 
 
@@ -475,7 +476,7 @@ def compact_checkpoints(memory, *, keep_last: int = 10, agent_id: str | None = N
     have = {c[1] for c in conn.execute("PRAGMA table_info(ark_checkpoint_archive)").fetchall()}
     for c in cols:
         if c not in have:
-            conn.execute(f'ALTER TABLE ark_checkpoint_archive ADD COLUMN "{c}" TEXT')
+            _acs(conn, "ark_checkpoint_archive", c, "TEXT")
     col_sql = ",".join(f'"{c}"' for c in cols)
     conn.execute(f"INSERT INTO ark_checkpoint_archive ({col_sql}) SELECT {col_sql} FROM ark_checkpoint WHERE id IN ({placeholders})", ids)
     archived = conn.execute(f"SELECT COUNT(*) FROM ark_checkpoint_archive WHERE id IN ({placeholders})", ids).fetchone()[0]

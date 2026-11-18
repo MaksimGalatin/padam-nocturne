@@ -97,3 +97,39 @@ def test_ручка_api_и_блок_studio(tmp_path):
             assert word in src, word
     finally:
         m.close()
+
+
+def test_итоги_не_заваливают_основную_ленту(tmp_path):
+    m = _mem(tmp_path)
+    try:
+        m.remember("Обычная запись Папы про чай", kind="fact", origin="user")
+        f = tmp_path / "2026-11-18.md"
+        f.write_text("## Итог\nПрогон 1545 из 1545.\n", encoding="utf-8")
+        fd.import_files(m, [f], author="aifa-claude-code")
+        лента = m.list_records(hide_dialogs=True)
+        тексты = [r["content"] for r in лента["records"]]
+        assert any("чай" in t for t in тексты) and not any("1545" in t for t in тексты)
+        assert лента["total"] == 1
+        assert any("1545" in (r["content"] or "") for r in m.list_records(hide_dialogs=True, agent_id="aifa-claude-code")["records"])
+        assert m.list_records()["total"] == 2                       # без флага — как раньше
+        assert fd.list_dialogs(m)["total"] == 1                      # «Диалоги» видят итог
+    finally:
+        m.close()
+
+
+def test_прежние_имена_агентов_видны_под_нынешними_подписями(tmp_path, monkeypatch):
+    """Замечание Antigravity 18.11: записи под aifa_claude / aifa_antigravity — в ленте, с нынешней подписью."""
+    monkeypatch.setenv("PADAM_EMBEDDER", "builtin")
+    from padam import family_dialogs as fd
+    from padam.memory import Memory
+    from padam.store import Store
+    m = Memory(user_id="u", store=Store(tmp_path / "al.db"))
+    m.remember("[2026-11-01] итог сессии: длинный отчёт " + "x" * 1200, kind=fd.DIALOG_KIND, scope=fd.DIALOG_SCOPE,
+               origin="agent", agent_id="aifa_claude")
+    d = fd.list_dialogs(m, lang="ru")
+    item = d["days"][0]["items"][0] if "days" in d else d["items"][0]
+    assert item["author"] == "aifa-claude-code" and item["author_label"] == "AIfa · Claude Code"
+    assert len(item["text"]) > 600
+    рез = m.list_records(hide_dialogs=True)
+    записи = рез.get("records", рез.get("items", [])) if isinstance(рез, dict) else рез
+    assert all((з.get("agent_id") if isinstance(з, dict) else getattr(з, "agent_id", "")) != "aifa_claude" for з in записи)

@@ -43,4 +43,5 @@ def test_запоздалый_ответ_не_затирает_новую_зап
             assert счёт["n"] >= 2, "сценарий гонки не сложился"
             br.close()
     finally:
+        srv.RequestHandlerClass.do_GET = исходный     # подмена не должна протечь в другие тесты (общий класс Handler)
         srv.shutdown(); srv.server_close(); m.close()

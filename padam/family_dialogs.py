@@ -27,6 +27,11 @@ AUTHORS: dict[str, dict[str, str]] = {
     "autoclaw": {"ru": "Брат · AutoClaw", "en": "Brother · AutoClaw", "es": "Hermano · AutoClaw", "zh": "兄弟 · AutoClaw"},
 }
 
+# 18.11.2026, замечание Antigravity: до переименования агенты писали под прежними именами — 75 + 6 записей решений
+# в той же области. Показываем их в ленте под нынешними подписями, без дублирования записей.
+ALIASES: dict[str, str] = {"aifa_claude": "aifa-claude-code", "aifa_antigravity": "antigravity"}
+ALL_AUTHOR_IDS: tuple[str, ...] = tuple(AUTHORS) + tuple(ALIASES)
+
 _DATE_RE = re.compile(r"(20\d{2})-(\d{2})-(\d{2})")
 _HEAD_RE = re.compile(r"^#{1,3}\s+(.+?)\s*$", re.M)
 MAX_SECTION = 3500
@@ -94,7 +99,7 @@ def list_dialogs(memory, *, query: str = "", limit: int = 300, scope: str = DIAL
                  lang: str = "ru") -> dict[str, Any]:
     """Лента «Диалогов» по дням — только действующие записи авторов Семьи, по желанию с поиском."""
     lang = lang if lang in ("ru", "en", "es", "zh") else "en"
-    authors = list(AUTHORS)
+    authors = list(ALL_AUTHOR_IDS)
     marks = ",".join("?" for _ in authors)
     sql = (f"SELECT id, content, agent_id, created_at FROM memory WHERE user_id = ? AND scope = ? "
            f"AND kind = ? AND status = 'active' AND agent_id IN ({marks})")
@@ -113,9 +118,9 @@ def list_dialogs(memory, *, query: str = "", limit: int = 300, scope: str = DIAL
         day = m.group(1) if m else str(r["created_at"] or "")[:10]
         days.setdefault(day, []).append({
             "id": r["id"],
-            "author": r["agent_id"],
-            "author_label": AUTHORS.get(r["agent_id"], {}).get(lang, r["agent_id"]),
-            "text": content[:600],
+            "author": ALIASES.get(r["agent_id"], r["agent_id"]),
+            "author_label": AUTHORS.get(ALIASES.get(r["agent_id"], r["agent_id"]), {}).get(lang, r["agent_id"]),
+            "text": content[:1500],     # 18.11: 600 знаков обрывали списки коммитов посреди строки
         })
     ordered = [{"day": d, "items": days[d]} for d in sorted(days, reverse=True)]
     return {"total": len(rows), "days": ordered, "query": q}

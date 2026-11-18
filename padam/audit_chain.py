@@ -26,7 +26,10 @@ from typing import Any
 
 from . import integrity, net_guard
 
-_MEM_AUDIT_WATERMARKS: dict[tuple[int, str], int] = {}
+# 18.11.2026: кэш живёт на самом объекте хранилища, а не в словаре по id(): Python выдаёт тот же id новому объекту
+# после сборки мусора, и новая база наследовала состояние умершей (Совет видел «цепь стёрта»).
+def _mem_wm(store) -> dict:
+    return store.__dict__.setdefault("_padam_audit_watermarks", {})
 
 _AUDIT_DDL = """
 CREATE TABLE IF NOT EXISTS ark_audit_chain (
@@ -144,9 +147,9 @@ def _watermark_path(store) -> Path | None:
 
 def _save_audit_watermark(memory, seq: int, head_hash: str, key: bytes) -> None:
     store = memory.store
-    prev = _MEM_AUDIT_WATERMARKS.get((id(store), memory.user_id), 0)
+    prev = _mem_wm(store).get(memory.user_id, 0)
     if seq > prev:
-        _MEM_AUDIT_WATERMARKS[(id(store), memory.user_id)] = seq
+        _mem_wm(store)[memory.user_id] = seq
     wpath = _watermark_path(store)
     if wpath is None:
         return
@@ -164,7 +167,7 @@ def _save_audit_watermark(memory, seq: int, head_hash: str, key: bytes) -> None:
 
 def _load_audit_watermark_seq(memory) -> int:
     store = memory.store
-    mem_wm = _MEM_AUDIT_WATERMARKS.get((id(store), memory.user_id), 0)
+    mem_wm = _mem_wm(store).get(memory.user_id, 0)
     wpath = _watermark_path(store)
     if wpath is None or not wpath.exists():
         return mem_wm

@@ -10,7 +10,10 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import atexit
 import threading
+import time
+import weakref
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -341,6 +344,41 @@ END;
 """
 
 
+_ALTER_LOCK = threading.RLock()
+
+# 18.11.2026: при выходе процесса дописываем отложенные счётчики поиска всех открытых хранилищ.
+_ЖИВЫЕ: "weakref.WeakSet" = weakref.WeakSet()
+
+
+@atexit.register
+def _сбросить_всё_при_выходе() -> None:
+    for st in list(_ЖИВЫЕ):
+        try:
+            st.flush()
+        except Exception:
+            pass
+
+
+def add_column_safe(conn, table: str, name: str, decl: str) -> bool:
+    """Добавляет столбец, если его нет. Безопасно при одновременном вызове из двух потоков.
+
+    18.11.2026: два запроса Studio (GET /l3 и POST /l3-verify) одновременно увидели, что столбца нет, оба сделали
+    ALTER TABLE, второй упал «duplicate column name» — пользователь получил 500. Теперь проверка и ALTER идут под
+    одним замком, а «duplicate column» от другого процесса не считается ошибкой. Возвращает True, если столбец добавлен.
+    """
+    with _ALTER_LOCK:
+        есть = {r[1] for r in conn.execute('PRAGMA table_info("%s")' % table).fetchall()}
+        if name in есть:
+            return False
+        try:
+            conn.execute('ALTER TABLE "%s" ADD COLUMN %s %s' % (table, name, decl))
+        except sqlite3.OperationalError as e:
+            if "duplicate column" not in str(e).lower():
+                raise
+            return False
+        return True
+
+
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -385,12 +423,21 @@ class Store:
         # блокировки два запроса одновременно портили транзакцию («cannot commit — no
         # transaction is active»). Все обращения к соединению идут под этим замком.
         self._lock = threading.RLock()
+        # 18.11.2026: отложенные служебные счётчики поиска (см. counters()).
+        self._отложенные: list[tuple[str, tuple]] = []
+        self._сброшено = time.monotonic()
+        _ЖИВЫЕ.add(self)
         # 0.4.4: счётчик своих коммитов — по нему (вместе с PRAGMA data_version для чужих соединений) кэш
         # векторов в Memory понимает, что база изменилась, и не может разойтись с ней.
         self.writes = 0
-        self.conn = sqlite3.connect(str(self.path), timeout=15.0, check_same_thread=False)
+        # 18.11.2026: замер роя (20 процессов в один файл) давал 4–6 % «database is locked»: неявная транзакция
+        # начиналась как чтение и при первой записи пыталась повыситься до записи — в WAL SQLite отбивает это сразу,
+        # не дожидаясь busy_timeout. IMMEDIATE берёт замок записи в начале транзакции: писатели встают в очередь.
+        self.conn = sqlite3.connect(str(self.path), timeout=15.0, check_same_thread=False, isolation_level="IMMEDIATE")
         self.conn.row_factory = sqlite3.Row
-        self.conn.execute("PRAGMA busy_timeout = 5000")
+        # 18.11.2026: при 20 процессах в один файл хвост очереди писателей изредка превышал 5 с — часть записей
+        # терялась с «database is locked». 30 с ожидания срабатывают только при давке; замер 20 и 40 процессов: 0 ошибок.
+        self.conn.execute("PRAGMA busy_timeout = 30000")
         # Память личная: на общем компьютере файл базы не должен читаться другими.
         # Папку закрываем только свою, по умолчанию: путь, заданный человеком, не наш.
         if str(self.path) != ":memory:" and os.name == "posix":
@@ -405,10 +452,20 @@ class Store:
         self.conn.execute("PRAGMA secure_delete = ON")
         self.conn.execute("PRAGMA cache_size = -16384")
         self.conn.execute("PRAGMA temp_store = MEMORY")
-        self.conn.executescript(SCHEMA)
-        self.conn.executescript(FTS_TRIGGERS)
-        self._дополнить_схему()
-        self.conn.commit()
+        # 18.11.2026: замер «20 процессов пишут в один файл» упал на «trigger memory_fts_delete already exists» —
+        # процессы одновременно создавали схему отдельными командами. Теперь вся схема создаётся в ОДНОЙ транзакции
+        # BEGIN IMMEDIATE: второй процесс ждёт первого (busy_timeout), а не ломается. Режимы журнала и внешних ключей
+        # внутри транзакции не меняются — их ставим до неё.
+        self.conn.execute("PRAGMA journal_mode = WAL")
+        self.conn.execute("PRAGMA foreign_keys = ON")
+        _тело = SCHEMA.replace("PRAGMA journal_mode = WAL;", "").replace("PRAGMA foreign_keys = ON;", "")
+        self.conn.executescript("BEGIN IMMEDIATE;" + _тело + FTS_TRIGGERS)
+        try:
+            self._дополнить_схему()
+            self.conn.commit()
+        except BaseException:
+            self.conn.rollback()
+            raise
 
     def _дополнить_схему(self) -> None:
         """Досоздаёт колонки, которых нет в уже существующих базах.
@@ -436,8 +493,7 @@ class Store:
                 continue
             for имя, тип in колонки.items():
                 if имя not in есть:
-                    self.conn.execute(
-                        "ALTER TABLE %s ADD COLUMN %s %s" % (таблица, имя, тип))
+                    add_column_safe(self.conn, таблица, имя, тип)
 
         # 🔴 ИНДЕКСЫ ПО ДОБАВЛЕННЫМ КОЛОНКАМ — ТОЛЬКО ЗДЕСЬ, ПОСЛЕ МИГРАЦИИ.
         #
@@ -482,7 +538,14 @@ class Store:
         )
 
     def close(self) -> None:
-        self.conn.close()
+        # 18.11.2026: закрытие без замка проскакивало посреди запроса другого потока (сервер Studio ещё отвечал) —
+        # SQLite падал с access violation и ронял весь процесс. Теперь закрытие ждёт, пока идущий запрос завершится.
+        with self._lock:
+            try:
+                self._сбросить_счётчики()
+            except sqlite3.Error:
+                pass
+            self.conn.close()
 
     def stamp(self) -> tuple[int, int]:
         """Отметка состояния базы: свои коммиты и data_version (меняется, когда коммитит другое соединение)."""
@@ -492,16 +555,19 @@ class Store:
     def execute(self, sql: str, params: tuple = ()):
         with self._lock:
             cur = self.conn.execute(sql, params)
+            self._влить_счётчики()        # отложенные счётчики уходят тем же коммитом — без лишней записи на диск
             self.conn.commit()
             self.writes += 1
             return cur
 
     def query(self, sql: str, params: tuple = ()) -> list[sqlite3.Row]:
         with self._lock:
+            self._сбросить_если_читают(sql)
             return self.conn.execute(sql, params).fetchall()
 
     def one(self, sql: str, params: tuple = ()) -> sqlite3.Row | None:
         with self._lock:
+            self._сбросить_если_читают(sql)
             return self.conn.execute(sql, params).fetchone()
 
     def purge(self) -> None:
@@ -525,14 +591,61 @@ class Store:
         кэш кандидатов и векторов: раньше каждый поиск сам сбрасывал кэш своей же записью счётчика."""
         if not ops:
             return
+        # 18.11.2026: статистику поиска откладывает search_stats_later() (профиль: 0,53 из 0,61 с поиска на 20 000
+        # записях уходило на её commit; synchronous = FULL не ослабляем). Здесь — данные, которые пишутся сразу.
         with self._lock:
             try:
                 for sql, params in ops:
                     self.conn.execute(sql, params)
+                self._влить_счётчики()      # отложенная статистика поиска уходит тем же коммитом
                 self.conn.commit()
             except Exception:
                 self.conn.rollback()
                 raise
+
+    def search_stats_later(self, ops: list[tuple[str, tuple]]) -> None:
+        """ТОЛЬКО статистика поиска (показы записи, счётчик поисков за день) — копится и пишется пачкой.
+
+        Связи, подписи и журнал аудита сюда НЕ идут: они пишутся сразу через counters() (найдено полным прогоном:
+        отложенные связи derived_from терялись, и каскадное забвение не находило выводы)."""
+        if not ops:
+            return
+        with self._lock:
+            self._отложенные.extend(ops)
+            if time.monotonic() - self._сброшено >= 5.0 or len(self._отложенные) >= 2000:
+                self._сбросить_счётчики()
+
+    _ПОЛЯ_СЧЁТЧИКОВ = ("search_stats", "access_count", "last_seen_at")
+
+    def _влить_счётчики(self) -> None:
+        if self._отложенные:
+            for sql, params in self._отложенные:
+                self.conn.execute(sql, params)
+            self._отложенные.clear()
+            self._сброшено = time.monotonic()
+
+    def _сбросить_счётчики(self) -> None:
+        if not self._отложенные:
+            return
+        # Посреди чужой незавершённой транзакции (забвение, импорт из нескольких шагов) свой commit нельзя: он
+        # зафиксировал бы половину чужой работы. Тогда счётчики уйдут с ближайшим коммитом через execute/atomic.
+        if self.conn.in_transaction:
+            return
+        try:
+            self._влить_счётчики()
+            self.conn.commit()
+        except Exception:
+            self.conn.rollback()
+            raise
+
+    def _сбросить_если_читают(self, sql: str) -> None:
+        if self._отложенные and any(п in sql for п in self._ПОЛЯ_СЧЁТЧИКОВ):
+            self._сбросить_счётчики()
+
+    def flush(self) -> None:
+        """Записать отложенные счётчики сейчас (для экспорта, отчётов и тестов)."""
+        with self._lock:
+            self._сбросить_счётчики()
 
     def atomic(self, ops: list[tuple[str, tuple]]) -> None:
         """Несколько записей одной транзакцией: либо все, либо ни одной.
@@ -544,6 +657,7 @@ class Store:
             try:
                 for sql, params in ops:
                     self.conn.execute(sql, params)
+                self._влить_счётчики()
                 self.conn.commit()
                 self.writes += 1
             except Exception:

@@ -4,13 +4,13 @@
 
 ## Сводка по всем инструментам и действиям MCP
 
-- Всего инструментов MCP (с учётом всех 6 флагов, `_ALL_TOOLS_BY_NAME`): **46** (по умолчанию: **9**, `PADAM_MCP_ARK_TOOLS=1`: **34** и **27718/27000** символов в `tools/list`, с `PADAM_MCP_PARTNER_TOOLS=1`: **40**).
-- Всего пар `(инструмент, action)`: **180**.
-- Есть в MCP: **180 из 180**
-- Есть в Studio (вкладка + кнопка/поле): **180 из 180**
-- Есть в API (`padam/api.py`): **180 из 180**
-- Покрыто автотестами: **175 из 180**
-- Проверено реальным нажатием в Playwright (1280×800 и 390×844): **173 из 180**
+- Всего инструментов MCP (с учётом всех 6 флагов, `_ALL_TOOLS_BY_NAME`): **46** (по умолчанию: **9**, `PADAM_MCP_ARK_TOOLS=1`: **34** и **27700/27000** символов в `tools/list`, с `PADAM_MCP_PARTNER_TOOLS=1`: **40**).
+- Всего пар `(инструмент, action)`: **179**.
+- Есть в MCP: **179 из 179**
+- Есть в Studio (вкладка + кнопка/поле): **179 из 179**
+- Есть в API (`padam/api.py`): **179 из 179**
+- Покрыто автотестами: **174 из 179**
+- Проверено реальным нажатием в Playwright (1280×800 и 390×844): **172 из 179**
 - Контролов Studio только для владельца (намеренно закрытых в MCP по аудиту GLM): **13**
 
 ## 1. Полная таблица MCP → Studio → API
@@ -146,7 +146,6 @@
 | `padam_freelance_hub` | `recommend_spend` | Да | Да: `panel-earning` → `#earn-rec-spend-btn` | Да: `POST /api/v2/ark/freelance/action` | Да | Да |
 | `padam_freelance_hub` | `propose_subscription` | Да | Да: `panel-earning` → `#earn-propose-sub-btn` | Да: `POST /api/v2/ark/freelance/action` | Да | Да |
 | `padam_freelance_hub` | `bind_referral` | Да | Да: `panel-earning` → `#earn-bind-ref-btn, #earn-ref-inp` | Да: `POST /api/v2/ark/freelance/action` | Да | Да |
-| `padam_freelance_hub` | `dispute_payout` | Да | Да: `panel-earning` → `#earn-dispute-btn` | Да: `POST /api/v2/ark/freelance/action` | Да | Да |
 | `padam_freelance_hub` | `release_payouts` | Да | Да: `panel-earning` → `#earn-rel-payout-btn` | Да: `POST /api/v2/ark/freelance/action` | Да | Да |
 | `padam_freelance_hub` | `stores_status` | Да | Да: `panel-earning` → `#earn-stores-list, /api/v2/ark/stores` | Да: `GET /api/v2/ark/stores` | Да | Да |
 | `padam_freelance_hub` | `connect_store` | Да | Да: `panel-earning` → `#earn-store-connect-btn, #earn-store-type` | Да: `POST /api/v2/ark/stores/action` | Да | Да |

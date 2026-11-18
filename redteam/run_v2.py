@@ -285,6 +285,48 @@ def _run_ssrf_case(case: dict[str, Any]) -> tuple[bool, str]:
         finally:
             srv.shutdown()
             srv.server_close()
+    if case["mode"] in ("rebinding", "servfail"):
+        # Аудит GLM (TOP10 SRT / NETGUARD-01): подмена DNS между проверкой и соединением и сбой DNS на проверке.
+        import socket as _socket
+        hits = {"n": 0}
+
+        class _Bait(BaseHTTPRequestHandler):
+            def do_GET(self):
+                hits["n"] += 1
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b"internal")
+
+            def log_message(self, *args):
+                return
+
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), _Bait)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        host = case.get("host") or "rebind.example.com"
+        real = _socket.getaddrinfo
+        calls = {"n": 0}
+
+        def fake(h, port, *a, **kw):
+            if h == host:
+                calls["n"] += 1
+                if calls["n"] == 1:
+                    if case["mode"] == "servfail":
+                        raise _socket.gaierror("SERVFAIL")
+                    return [(_socket.AF_INET, _socket.SOCK_STREAM, 6, "", ("93.184.216.34", port))]
+                return [(_socket.AF_INET, _socket.SOCK_STREAM, 6, "", ("127.0.0.1", port))]
+            return real(h, port, *a, **kw)
+
+        _socket.getaddrinfo = fake
+        try:
+            try:
+                net_guard.safe_urlopen(f"http://{host}:{srv.server_address[1]}/probe", require_https=False, timeout=3.0)
+            except Exception:
+                pass
+            return (hits["n"] == 0), ("blocked" if hits["n"] == 0 else "reached_internal")
+        finally:
+            _socket.getaddrinfo = real
+            srv.shutdown()
+            srv.server_close()
     return False, "unknown_ssrf_mode"
 
 

@@ -3,12 +3,29 @@ from __future__ import annotations
 
 import json
 import sys
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
+
+
+HONEST_NOTE = ("All 100 criteria are deterministic checks without an LLM judge; 100% on PADAM's own code is expected "
+               "by design — compare products with --target / --target-path.")
+
+
+def _honest(rep: dict[str, Any], *, cached: bool, generated_ts: float) -> dict[str, Any]:
+    """Grok-аудит 18.11, пп. 5/12/15: свежесть и честная пометка в КАЖДОМ ответе — из кеша и из живого прогона."""
+    rep["cached"] = cached
+    rep["generated_at"] = datetime.fromtimestamp(generated_ts, tz=timezone.utc).isoformat(timespec="seconds")
+    age_h = max(0.0, (time.time() - generated_ts) / 3600.0)
+    rep["cache_age_hours"] = round(age_h, 1) if cached else 0.0
+    rep["stale"] = bool(cached and age_h > 24)
+    rep["honest_note"] = HONEST_NOTE
+    return rep
 
 
 def get_aifa_security_report(*, run_fresh: bool = False, target: str = "padam", target_path: str | None = None) -> dict[str, Any]:
@@ -18,8 +35,7 @@ def get_aifa_security_report(*, run_fresh: bool = False, target: str = "padam", 
     if not run_fresh and target == "padam" and not target_path and cache_file.exists():
         try:
             data = json.loads(cache_file.read_text(encoding="utf-8"))
-            data["cached"] = True
-            return data
+            return _honest(data, cached=True, generated_ts=cache_file.stat().st_mtime)
         except Exception:
             pass
 
@@ -44,5 +60,4 @@ def get_aifa_security_report(*, run_fresh: bool = False, target: str = "padam", 
         if _api_mod is not None and saved_api_state is not None:
             _api_mod._state.clear()
             _api_mod._state.update(saved_api_state)
-    rep["cached"] = False
-    return rep
+    return _honest(rep, cached=False, generated_ts=time.time())

@@ -755,7 +755,7 @@ class Memory:
                    ON CONFLICT(user_id, day) DO UPDATE SET searches = searches + 1, empty = empty + excluded.empty""",
                 (self.user_id, день, 1 if пусто else 0)))
         if ops:
-            self.store.counters(ops)
+            self.store.search_stats_later(ops)
 
     def self_report(self, days: int = 30) -> dict:
         """Как работает сама память: поиски без результата, что чаще опровергают, споры, подписи."""
@@ -1788,6 +1788,7 @@ class Memory:
                      limit: int = 100, offset: int = 0, as_of: str | None = None,
                      kind: str | None = None, scope: str | None = None,
                      agent_id: str | None = None,
+                     hide_dialogs: bool = False,
                      actor: roles.ActorContext | None = None) -> dict:
         """Записи для просмотра владельцем: действующие, на проверке или история, новые сверху.
 
@@ -1809,6 +1810,11 @@ class Memory:
         if agent_id:
             sql += " AND agent_id = ?"
             params.append(agent_id)
+        if hide_dialogs and not agent_id and not scope:
+            # 18.11: 5059 итогов сессий («Диалоги Семьи») заваливали основную ленту — у них свой блок в «Семье».
+            from .family_dialogs import ALL_AUTHOR_IDS as _авторы, DIALOG_KIND as _вид, DIALOG_SCOPE as _обл
+            sql += (" AND NOT (kind = ? AND scope = ? AND COALESCE(agent_id,'') IN (" + ",".join("?" * len(_авторы)) + "))")
+            params.extend([_вид, _обл, *_авторы])
         vis_sql, vis_params, _ = roles.visibility_sql(actor)
         if vis_sql:
             sql += vis_sql

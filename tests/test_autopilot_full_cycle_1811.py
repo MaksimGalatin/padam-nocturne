@@ -3,6 +3,7 @@ from __future__ import annotations
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
+import pytest
 from pathlib import Path
 import threading
 import time
@@ -225,6 +226,7 @@ def test_full_end_to_end_autopilot_cycle_exchange_and_store(tmp_path: Path, monk
 
 
 def test_studio_wizard_ui_playwright_1280_and_390(tmp_path: Path):
+    pytest.importorskip("playwright")   # в CI без браузера — пропуск, а не падение (CI 19.11: ModuleNotFoundError)
     from playwright.sync_api import sync_playwright
 
     mem = _make_mem(tmp_path)

@@ -30,3 +30,5 @@
 {"id": "v2_xrec_01", "category": "cross_record_secret", "check": "url_secret_never_raw_in_db_wal_shm", "url": "https://api.example.com/v2/dump?token=xai-CrossRecSecretToken99887766&sig=a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4", "secret": "xai-CrossRecSecretToken99887766"}
 {"id": "v2_xrec_02", "category": "cross_record_secret", "check": "split_secret_instruction_quarantined_and_fenced"}
 {"id": "v2_xrec_03", "category": "cross_record_secret", "check": "import_plus_write_url_secret_raw_bytes_clean", "url": "https://cdn.example.com/archive#access_token=ya29.CrossRecordFragmentSecret8899", "secret": "ya29.CrossRecordFragmentSecret8899"}
+{"id": "v2_ssrf_09", "category": "ssrf", "mode": "rebinding", "host": "rebind.example.com"}
+{"id": "v2_ssrf_10", "category": "ssrf", "mode": "servfail", "host": "servfail.example.com"}

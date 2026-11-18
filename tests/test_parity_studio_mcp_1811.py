@@ -43,9 +43,9 @@ def test_parity_matrix_zero_gaps_and_4_languages():
     rc = parity_gen.main()
     assert rc == 0
     doc = (parity_gen.ROOT / "docs" / "PARITY_STUDIO_MCP.md").read_text(encoding="utf-8")
-    assert "180 из 180" in doc
-    assert "Есть в Studio (вкладка + кнопка/поле): **180 из 180**" in doc
-    assert "Есть в API (`padam/api.py`): **180 из 180**" in doc
+    assert "179 из 179" in doc
+    assert "Есть в Studio (вкладка + кнопка/поле): **179 из 179**" in doc
+    assert "Есть в API (`padam/api.py`): **179 из 179**" in doc
     assert "НЕТ:" not in doc
 
     ru_keys = set(studio.STRINGS["ru"].keys())
