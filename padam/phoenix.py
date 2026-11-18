@@ -89,9 +89,84 @@ def pack_phoenix_capsule(
     }
 
 
+def _collect_forgetting(db: Path) -> tuple[list[dict], set[str]]:
+    """Аудит GLM PHX-01: что в текущей базе уже забыто — квитанции и id отозванных записей (только чтение)."""
+    import sqlite3
+    if not db.exists():
+        return [], set()
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    con.row_factory = sqlite3.Row
+    try:
+        try:
+            receipts = [dict(r) for r in con.execute("SELECT * FROM forget_receipt")]
+        except sqlite3.Error:
+            receipts = []
+        ids: set[str] = set()
+        for r in receipts:
+            ids.add(str(r.get("memory_id")))
+            try:
+                ids.update(str(x) for x in json.loads(r.get("wiped_ids_json") or "[]"))
+            except ValueError:
+                pass
+        try:
+            ids.update(str(r[0]) for r in con.execute("SELECT id FROM memory WHERE status = 'revoked'"))
+        except sqlite3.Error:
+            pass
+        return receipts, ids
+    finally:
+        con.close()
+
+
+def _reapply_forgetting(db: Path, receipts: list[dict], ids: set[str]) -> int:
+    """Возвращает забытое в забытое: квитанции переносятся, тексты, векторы, подписи и ключи затираются заново
+    тем же SQL, что memory.revoke. Возвращает число записей, затёртых повторно."""
+    import sqlite3
+    if not receipts and not ids:
+        return 0
+    now = datetime.now(timezone.utc).isoformat()
+    con = sqlite3.connect(str(db))
+    try:
+        # Затёртые байты не должны остаться в освобождённых страницах файла.
+        con.execute("PRAGMA secure_delete = ON")
+        cols = [r[1] for r in con.execute("PRAGMA table_info(forget_receipt)")]
+        for r in receipts:
+            keep = {k: v for k, v in r.items() if k in cols}
+            if keep:
+                con.execute(f"INSERT OR IGNORE INTO forget_receipt ({', '.join(keep)}) VALUES ({', '.join('?' * len(keep))})",
+                            tuple(keep.values()))
+        затёрто = 0
+        for mid in ids:
+            row = con.execute("SELECT source_episode_id, content FROM memory WHERE id = ?", (mid,)).fetchone()
+            if row is None:
+                continue
+            cur = con.execute("""UPDATE memory SET status = 'revoked', content = NULL, embedding = NULL,
+                                 факт_ключ = NULL, owner_sig = NULL WHERE id = ?""", (mid,))
+            затёрто += cur.rowcount or 0
+            con.execute("UPDATE anchor_key SET key_ref = 'destroyed', destroyed_at = COALESCE(destroyed_at, ?) "
+                        "WHERE memory_id = ?", (now, mid))
+            if row[0]:
+                con.execute("UPDATE episode SET content = '', embedding = NULL, processed = 1 WHERE id = ?", (row[0],))
+            if row[1]:
+                con.execute("UPDATE episode SET content = '', embedding = NULL, processed = 1 WHERE content = ?", (row[1],))
+        con.commit()
+        try:
+            con.execute("INSERT INTO memory_fts(memory_fts) VALUES('rebuild')")
+            con.commit()
+        except sqlite3.Error:
+            pass
+        con.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchall()
+        con.execute("VACUUM")  # переписать файл целиком: в нём не останется страниц со старым текстом
+        con.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchall()
+        return затёрто
+    finally:
+        con.close()
+
+
 def unpack_phoenix_capsule(
     capsule_path: str | Path,
     target_db_path: str | Path,
+    *,
+    accept_key_rotation: bool = False,
 ) -> dict[str, Any]:
     cap_file = Path(capsule_path).resolve()
     if not cap_file.exists():
@@ -120,14 +195,51 @@ def unpack_phoenix_capsule(
                 raise ValueError(f"SHA-256 mismatch for {name}")
             verified[name] = raw
 
+    # Аудит GLM PHX-01 (18.11.2026): капсула не заменяет ключ владельца и не воскрешает забытое.
+    # Все проверки — ДО замены базы, чтобы отказ не оставил её подменённой наполовину.
+    import hmac as _hmac
+    key_dst = target_db.with_name(target_db.name + ".owner.key")
+    cap_key = verified.get("memory.db.owner.key")
+    key_action = "none"
+    if cap_key is not None:
+        if key_dst.exists():
+            if _hmac.compare_digest(key_dst.read_bytes().strip(), cap_key.strip()):
+                key_action = "same"
+            elif not accept_key_rotation:
+                raise ValueError(
+                    "Phoenix capsule carries a different owner key than this machine. Restoring it would replace the "
+                    "owner key and every signature check. Refused; pass accept_key_rotation=True "
+                    "(CLI --accept-key-rotation) only if this capsule is truly yours.")
+            else:
+                key_action = "rotated"
+        else:
+            key_action = "installed"
+    receipts, forgotten_ids = _collect_forgetting(target_db)
+    backup = None
+    if target_db.exists():
+        import sqlite3 as _sq
+        backup = target_db.with_name(f"{target_db.name}.before_phoenix_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}")
+        _s = _sq.connect(f"file:{target_db}?mode=ro", uri=True); _d = _sq.connect(str(backup))
+        try:
+            _s.backup(_d)
+        finally:
+            _d.close(); _s.close()
+
     # Атомарная запись после полной проверки целостности всех файлов
     tmp_db = target_db.with_name(f".{target_db.name}.{os.getpid()}.tmp")
     tmp_db.write_bytes(verified["memory.db"])
     os.replace(tmp_db, target_db)
+    reforgotten = _reapply_forgetting(target_db, receipts, forgotten_ids)
 
-    if "memory.db.owner.key" in verified:
-        key_dst = target_db.with_name(target_db.name + ".owner.key")
-        key_dst.write_bytes(verified["memory.db.owner.key"])
+    if key_action in ("installed", "rotated"):
+        if key_action == "rotated":
+            key_dst.with_name(key_dst.name + f".before_phoenix_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}").write_bytes(key_dst.read_bytes())
+        key_dst.write_bytes(cap_key)
+        try:
+            from . import net_guard as _ng
+            _ng.restrict_file_to_owner(key_dst)
+        except Exception:
+            pass
 
     l3_dir = Path(str(target_db) + ".l3")
     restored_files = ["memory.db"]
@@ -152,6 +264,9 @@ def unpack_phoenix_capsule(
         "target_db": str(target_db),
         "restored_count": len(restored_files),
         "restored_files": restored_files,
+        "owner_key": key_action,
+        "reforgotten": reforgotten,
+        "backup": str(backup) if backup else None,
     }
 
 

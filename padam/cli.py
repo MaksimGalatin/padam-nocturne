@@ -1812,7 +1812,8 @@ def main(argv=None) -> int:
             rep = _phx.run_phoenix_drill(m.store.path)
         else:
             target = args.target_db or str(m.store.path)
-            rep = _phx.unpack_phoenix_capsule(args.capsule, target)
+            rep = _phx.unpack_phoenix_capsule(args.capsule, target,
+                                              accept_key_rotation=bool(getattr(args, "accept_key_rotation", False)))
         print(json.dumps(rep, ensure_ascii=False, indent=2))
         return 0
 
@@ -1826,6 +1827,9 @@ def main(argv=None) -> int:
     pup = psub.add_parser("unpack", help=t("проверить SHA-256 и развернуть капсулу", "verify SHA-256 and unpack capsule"))
     pup.add_argument("capsule", help="Input .phoenix.zip path")
     pup.add_argument("--target-db", default=None, help="Target SQLite path")
+    pup.add_argument("--accept-key-rotation", action="store_true",
+                     help=t("принять другой ключ владельца из капсулы (только если капсула точно ваша)",
+                            "accept a different owner key from the capsule (only if the capsule is truly yours)"))
     pup.set_defaults(fn=cmd_phoenix)
     pdr = psub.add_parser("drill", help=t("учебная тревога Феникса ($0 симуляция восстановления)", "Phoenix recovery drill ($0)"))
     pdr.set_defaults(fn=cmd_phoenix)
