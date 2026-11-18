@@ -144,6 +144,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_auto_start_btn": "Старт автопилота (24/7)",
         "earn_auto_stop_btn": "Остановить",
         "earn_hw_rec_btn": "Подбор под моё железо ($0)",
+        "earn_job_hours_ph": "Часы (напр. 4)",
+        "earn_job_rate_ph": "Ставка $/ч",
+        "earn_bid_preview_title": "Черновик отклика (только предпросмотр — не отправлено):",
+        "earn_btn_send_bid": "Отправить отклик",
+        "earn_bid_draft_ready": "Черновик отклика подготовлен из памяти и профиля (не отправлен).",
         "nav_settings": "Настройки",
         "nav_quickstart": "Первый запуск",
         "theme_dark": "Тёмная тема",
@@ -582,6 +587,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_auto_start_btn": "Start Autopilot (24/7)",
         "earn_auto_stop_btn": "Stop Autopilot",
         "earn_hw_rec_btn": "Hardware Match ($0)",
+        "earn_job_hours_ph": "Hours (e.g. 4)",
+        "earn_job_rate_ph": "Rate $/h",
+        "earn_bid_preview_title": "Bid draft (preview only — not sent):",
+        "earn_btn_send_bid": "Send Bid",
+        "earn_bid_draft_ready": "Bid draft prepared from memory and profile (not sent).",
         "nav_settings": "Settings",
         "nav_quickstart": "Quick Start",
         "theme_dark": "Dark theme",
@@ -1009,6 +1019,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_auto_start_btn": "Iniciar Piloto (24/7)",
         "earn_auto_stop_btn": "Detener Piloto",
         "earn_hw_rec_btn": "Ajuste por Hardware ($0)",
+        "earn_job_hours_ph": "Horas (ej. 4)",
+        "earn_job_rate_ph": "Tarifa $/h",
+        "earn_bid_preview_title": "Borrador de oferta (solo vista previa — no enviado):",
+        "earn_btn_send_bid": "Enviar Oferta",
+        "earn_bid_draft_ready": "Borrador preparado desde memoria y perfil (no enviado).",
         "nav_settings": "Ajustes",
         "nav_quickstart": "Inicio rápido",
         "theme_dark": "Tema oscuro",
@@ -1436,6 +1451,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_auto_start_btn": "启动自动接单 (24/7)",
         "earn_auto_stop_btn": "停止自动接单",
         "earn_hw_rec_btn": "匹配本机离线模型 ($0)",
+        "earn_job_hours_ph": "预计工时（小时）",
+        "earn_job_rate_ph": "目标时薪 $/h",
+        "earn_bid_preview_title": "投标草稿（仅预览 — 尚未发送）：",
+        "earn_btn_send_bid": "发送投标",
+        "earn_bid_draft_ready": "已根据记忆与档案生成投标草稿（未发送）。",
         "nav_settings": "设置",
         "nav_quickstart": "快速开始",
         "theme_dark": "深色主题",
@@ -2772,10 +2792,53 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 
+@media (min-width: 861px) {
+  .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+}
 .earn-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+.earn-box-wide {
+  grid-column: 1 / -1;
+}
+#earn-accounts-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+}
+#earn-accounts-list > .earn-meta {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.earn-bid-preview {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px dashed var(--line);
+  background: var(--card);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.earn-bid-box {
+  width: 100%;
+  min-height: 78px;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 13px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--ink);
+  resize: vertical;
 }
 .earn-grid > .box, .earn-stack {
   min-width: 0;
@@ -2913,7 +2976,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .kpi-value {
     font-size: 22px;
   }
-  .two-col, .earn-grid {
+  .two-col, .earn-grid, #earn-accounts-list {
     grid-template-columns: minmax(0, 1fr);
   }
   .toolbar {
@@ -3105,6 +3168,7 @@ function switchTab(tab) {
     if (btn) btn.setAttribute('aria-selected', String(active));
     if (panel) panel.hidden = !active;
   }
+  if (typeof window !== 'undefined' && window.scrollTo) window.scrollTo(0, 0);
   say('');
   loadActiveTab();
 }
@@ -5709,11 +5773,30 @@ function _renderEarningDashboard(snap, sibData, coopData) {
         head.appendChild(_el('strong', '', String(o.title || o.order_id)));
         head.appendChild(_el('span', 'earn-pill', String(o.status) + ' · $' + String(o.budget_usdt)));
         card.appendChild(head);
-        card.appendChild(_el('div', 'earn-meta', 'score=' + String(o.margin_score) + ' · tokens~' + String(o.est_tokens) + ' · ' + String(o.security_note || '')));
+        const totalFeePct = Number(o.platform_fee_pct || 10) + Number(o.exchange_fee_pct || 0);
+        const hrs = o.estimated_hours ? String(o.estimated_hours) + 'h' : '—';
+        const effRate = o.effective_hourly_usdt !== undefined ? '$' + String(o.effective_hourly_usdt) + '/h' : '—';
+        const netSum = o.net_after_fees_usdt !== undefined ? ' · net=$' + String(o.net_after_fees_usdt) : '';
+        card.appendChild(_el('div', 'earn-meta',
+          'score=' + String(o.margin_score) +
+          ' · ' + effRate + ' (' + hrs + ')' +
+          ' · fee=' + String(totalFeePct) + '%' + netSum +
+          ' · tokens~' + String(o.est_tokens) +
+          ' · ' + String(o.security_note || '')
+        ));
         if (o.status !== 'rejected_security') {
           const actRow = _el('div', 'rec-actions');
-          const bBid = _el('button', '', S.earn_btn_bid || 'Bid');
-          bBid.onclick = async () => { await api('/api/v2/ark/freelance/action', { action: 'bid', order_id: o.order_id }); loadEarning(); };
+          const bBid = _el('button', '', S.earn_btn_bid || 'Draft Bid');
+          bBid.setAttribute('data-order-action', 'draft_bid');
+          bBid.onclick = async () => {
+            try {
+              const dr = await api('/api/v2/ark/freelance/action', { action: 'draft_bid', order_id: o.order_id });
+              say((dr && dr.note) || S.earn_bid_draft_ready || S.done);
+              loadEarning();
+            } catch (e) {
+              say(String(e.message || e), false);
+            }
+          };
           const bExec = _el('button', 'btn-primary', S.earn_btn_exec || 'Execute');
           bExec.onclick = async () => { await api('/api/v2/ark/freelance/action', { action: 'execute_swarm', order_id: o.order_id, agent_id: o.assigned_agent || 'aifa' }); loadEarning(); };
           const bDel = _el('button', '', S.earn_btn_deliver || 'Deliver');
@@ -5725,6 +5808,34 @@ function _renderEarningDashboard(snap, sibData, coopData) {
           actRow.appendChild(bDel);
           actRow.appendChild(bSet);
           card.appendChild(actRow);
+          if (o.bid_text) {
+            const draftBox = _el('div', 'earn-bid-preview');
+            draftBox.appendChild(_el('div', 'earn-meta', S.earn_bid_preview_title || 'Bid draft (preview only — not sent):'));
+            const ta = document.createElement('textarea');
+            ta.className = 'earn-bid-box';
+            ta.value = String(o.bid_text || '');
+            draftBox.appendChild(ta);
+            const sendRow = _el('div', 'rec-actions');
+            const bSend = _el('button', 'btn-ok', S.earn_btn_send_bid || 'Send Bid');
+            bSend.setAttribute('data-order-action', 'send_bid');
+            bSend.onclick = async () => {
+              try {
+                const res = await api('/api/v2/ark/freelance/action', {
+                  action: 'bid',
+                  order_id: o.order_id,
+                  pitch_text: ta.value,
+                  owner_approved: true,
+                });
+                say((res && res.note) || S.done, Boolean(res && res.ok !== false));
+                loadEarning();
+              } catch (e) {
+                say(String(e.message || e), false);
+              }
+            };
+            sendRow.appendChild(bSend);
+            draftBox.appendChild(sendRow);
+            card.appendChild(draftBox);
+          }
         }
         ordList.appendChild(card);
       }
@@ -5926,6 +6037,8 @@ if ($('earn-eval-btn')) {
         title: title,
         brief: brief,
         budget_usdt: Number(($('earn-job-budget') && $('earn-job-budget').value) || 50),
+        estimated_hours: Number(($('earn-job-hours') && $('earn-job-hours').value) || 4),
+        hourly_rate_usdt: Number(($('earn-job-rate') && $('earn-job-rate').value) || 25),
         estimated_tokens: Number(($('earn-job-tokens') && $('earn-job-tokens').value) || 25000),
       });
       say(S.done);
@@ -6954,7 +7067,7 @@ def page() -> tuple[str, str]:
           <p class="panel-sub" data-i18n="earn_sub">{s['earn_sub']}</p>
         </div>
         <div class="earn-grid">
-          <div class="box">
+          <div class="box earn-box-wide">
             <h3 class="box-title" data-i18n="earn_ex_title">{s['earn_ex_title']}</h3>
             <div class="toolbar">
               <select id="earn-platform" aria-label="Exchange platform">
@@ -6998,6 +7111,8 @@ def page() -> tuple[str, str]:
             </div>
             <div class="toolbar">
               <input id="earn-job-budget" class="earn-num-input" type="number" value="50" min="1" step="1" data-i18n-placeholder="earn_job_budget_ph" placeholder="{s['earn_job_budget_ph']}">
+              <input id="earn-job-hours" class="earn-num-input" type="number" value="4" min="0.5" step="0.5" data-i18n-placeholder="earn_job_hours_ph" placeholder="{s['earn_job_hours_ph']}">
+              <input id="earn-job-rate" class="earn-num-input" type="number" value="25" min="1" step="1" data-i18n-placeholder="earn_job_rate_ph" placeholder="{s['earn_job_rate_ph']}">
               <input id="earn-job-tokens" class="earn-num-input" type="number" value="25000" min="500" step="500" data-i18n-placeholder="earn_job_tokens_ph" placeholder="{s['earn_job_tokens_ph']}">
               <button id="earn-eval-btn" class="btn-primary" data-i18n="earn_job_eval_btn">{s['earn_job_eval_btn']}</button>
             </div>

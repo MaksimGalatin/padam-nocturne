@@ -1141,6 +1141,40 @@ PHOENIX_FAMILY_TOOL_DEF = {
     },
     "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
 }
+LOCAL_MODEL_TOOL_DEF = {
+    "name": "padam_local_model",
+    "title": "Local Model Settings ($0)",
+    "description": (
+        "Inspect or configure the local offline GGUF/Ollama model and CPU power mode (eco/half/full) "
+        "on top of padam.local_model. Requires PADAM_MCP_ARK_TOOLS=1. Never downloads models ($0)."
+    ),
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": ["status", "set_power", "set_model"],
+                "default": "status",
+                "description": "status: read current overview and found models; set_power: set eco|half|full; set_model: bind an already-downloaded GGUF path or Ollama model name.",
+            },
+            "power": {
+                "type": "string",
+                "enum": ["eco", "half", "full"],
+                "description": "Power mode for set_power (eco = 1/4 cores, half = 1/2 cores default, full = all minus 1).",
+            },
+            "model": {
+                "type": "string",
+                "description": "For set_model: absolute path to a local .gguf file or model name from models_found (e.g. 'qwen3:14b'). Pass '' to clear.",
+            },
+            "extra_dirs": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Optional extra directories to scan for local .gguf files.",
+            },
+        },
+    },
+    "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+}
 _ALL_TOOLS_BY_NAME = {
     **_TOOLS_BY_NAME,
     "padam_recent": RECENT_TOOL_DEF,
@@ -1172,6 +1206,7 @@ _ALL_TOOLS_BY_NAME = {
     "padam_token_budget": TOKEN_BUDGET_TOOL_DEF,
     "padam_freelance_hub": FREELANCE_HUB_TOOL_DEF,
     "padam_phoenix_family": PHOENIX_FAMILY_TOOL_DEF,
+    "padam_local_model": LOCAL_MODEL_TOOL_DEF,
 }
 
 
@@ -3836,7 +3871,7 @@ _ФЛАГ_ИНСТРУМЕНТА = {
     "padam_cabinet": ("PADAM_MCP_CABINET_TOOL", config.mcp_cabinet_tool_enabled),
     "padam_brain_status": ("PADAM_MCP_BRAIN_STATUS_TOOL", config.mcp_brain_status_tool_enabled),
     **{_n: ("PADAM_MCP_ARK_TOOLS", config.mcp_ark_tools_enabled) for _n in (
-        "padam_wake_up", "padam_commitments", "padam_family_relay", "padam_checkpoint", "padam_ark_timeline", "padam_lesson", "padam_family_council", "padam_family_feed", "padam_memory_branch", "padam_selective_proof", "padam_guardian_tick", "padam_mesh_sync", "padam_multimodal_inspect", "padam_sibling_hub", "padam_coop_lock", "padam_session_pack", "padam_code_anchor", "padam_batch", "padam_conflict_arbiter", "padam_mcp_telemetry", "padam_token_budget", "padam_freelance_hub", "padam_phoenix_family")},
+        "padam_wake_up", "padam_commitments", "padam_family_relay", "padam_checkpoint", "padam_ark_timeline", "padam_lesson", "padam_family_council", "padam_family_feed", "padam_memory_branch", "padam_selective_proof", "padam_guardian_tick", "padam_mesh_sync", "padam_multimodal_inspect", "padam_sibling_hub", "padam_coop_lock", "padam_session_pack", "padam_code_anchor", "padam_batch", "padam_conflict_arbiter", "padam_mcp_telemetry", "padam_token_budget", "padam_freelance_hub", "padam_phoenix_family", "padam_local_model")},
     **{_n: ("PADAM_MCP_PARTNER_TOOLS", _partner_bridge.enabled) for _n in _partner_bridge.TOOL_NAMES},
 }
 
@@ -5037,6 +5072,63 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             }
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
 
+    if name == "padam_local_model":
+        from pathlib import Path as _Path
+        from . import local_model as _lm
+
+        act = str(args.get("action") or "status").strip().lower()
+        if act not in ("status", "set_power", "set_model"):
+            raise ValueError("action must be one of: status, set_power, set_model")
+        extra_dirs = [str(d) for d in (args.get("extra_dirs") or []) if str(d).strip()] or None
+        if act == "set_power":
+            pwr = str(args.get("power") or "").strip().lower()
+            if pwr not in _lm.POWER_MODES:
+                raise ValueError(f"power must be one of: {', '.join(_lm.POWER_MODES)}")
+            saved = _lm.save(power=pwr)
+            ov = _lm.overview(extra_dirs=extra_dirs)
+            eff = _lm.effective()
+            note = "Power mode saved to local_model.json ($0, no download)."
+            if eff["power_from"] == "env":
+                note += f" Note: PADAM_CPU_POWER={eff['power']} overrides saved value ({saved['power']})."
+            payload = {"ok": True, "action": "set_power", "saved": saved, "effective": eff, "overview": ov, "cost_usd": 0.0, "note": note}
+            return json.dumps(payload, ensure_ascii=False, indent=2), payload
+        if act == "set_model":
+            if "model" in args and args.get("model") is not None:
+                raw_model = str(args.get("model")).strip()
+            else:
+                raw_model = str(args.get("gguf_path") or args.get("model_name") or "").strip()
+            resolved_path = ""
+            matched_name = ""
+            if raw_model:
+                found_chat = [mod for mod in _lm.list_ollama_models() if mod.get("kind") == "chat"] + _lm.list_gguf_files(extra_dirs)
+                hit = next((mod for mod in found_chat if mod.get("name") == raw_model or mod.get("path") == raw_model), None)
+                if hit is not None:
+                    resolved_path = str(hit["path"])
+                    matched_name = str(hit["name"])
+                else:
+                    cand = _Path(raw_model).expanduser()
+                    if cand.is_absolute() and cand.is_file():
+                        resolved_path = str(cand.resolve())
+                        matched_name = cand.name
+                    else:
+                        avail = ", ".join(mod["name"] for mod in found_chat[:10]) or "none"
+                        raise ValueError(
+                            f"Local model '{raw_model}' not found on disk (available: {avail}). "
+                            "padam_local_model never downloads models; install manually via `ollama pull` or provide an existing .gguf path."
+                        )
+            saved = _lm.save(gguf_path=resolved_path)
+            ov = _lm.overview(extra_dirs=extra_dirs)
+            eff = _lm.effective()
+            note = f"Bound local model '{matched_name or raw_model}' ($0)." if resolved_path else "Cleared manual local model selection ($0)."
+            if eff["gguf_from"] == "env":
+                note += " Note: PADAM_CPU_GGUF_PATH env var currently overrides saved selection."
+            payload = {"ok": True, "action": "set_model", "matched_name": matched_name, "saved": saved, "effective": eff, "overview": ov, "cost_usd": 0.0, "note": note}
+            return json.dumps(payload, ensure_ascii=False, indent=2), payload
+        ov = _lm.overview(extra_dirs=extra_dirs)
+        eff = _lm.effective()
+        payload = {"ok": True, "action": "status", "effective": eff, "overview": ov, "cost_usd": 0.0}
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
     if name == "padam_brain_status":
         from . import router as _router
         snap = _router.get_router().status_snapshot()
@@ -5221,6 +5313,7 @@ def _list_tools_payload() -> list[dict]:
             TOKEN_BUDGET_TOOL_DEF,
             FREELANCE_HUB_TOOL_DEF,
             PHOENIX_FAMILY_TOOL_DEF,
+            LOCAL_MODEL_TOOL_DEF,
         ])
     if _partner_bridge.enabled():
         items.extend(_partner_bridge.TOOL_DEFS)

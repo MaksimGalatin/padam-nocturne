@@ -1554,8 +1554,18 @@ class Handler(BaseHTTPRequestHandler):
                         brief=str(data.get("brief") or ""),
                         budget_usdt=float(data.get("budget_usdt") or 0.0),
                         estimated_tokens=int(data.get("estimated_tokens") or 25000),
+                        estimated_hours=float(data["estimated_hours"]) if data.get("estimated_hours") is not None else None,
+                        hourly_rate_usdt=float(data.get("hourly_rate_usdt") or 25.0),
+                        exchange_fee_pct=float(data["exchange_fee_pct"]) if data.get("exchange_fee_pct") is not None else None,
                         account_id=str(data.get("account_id") or ""),
                         assigned_agent=aid,
+                    ))
+                if act == "draft_bid":
+                    return self._send(200, _fa.draft_bid_from_memory(
+                        mem(),
+                        str(data.get("order_id") or ""),
+                        proposed_usdt=data.get("proposed_usdt"),
+                        custom_pitch=str(data.get("pitch_text") or ""),
                     ))
                 if act == "bid":
                     return self._send(200, _fa.propose_or_place_bid(

@@ -92,6 +92,12 @@ CREATE TABLE IF NOT EXISTS ark_freelance_order (
     budget_usdt       REAL NOT NULL DEFAULT 0.0,
     est_tokens        INTEGER NOT NULL DEFAULT 25000,
     est_compute_usdt  REAL NOT NULL DEFAULT 0.05,
+    estimated_hours   REAL NOT NULL DEFAULT 4.0,
+    hourly_rate_usdt  REAL NOT NULL DEFAULT 25.0,
+    exchange_fee_pct  REAL NOT NULL DEFAULT 0.0,
+    platform_fee_pct  REAL NOT NULL DEFAULT 10.0,
+    net_after_fees_usdt REAL NOT NULL DEFAULT 0.0,
+    effective_hourly_usdt REAL NOT NULL DEFAULT 0.0,
     margin_score      REAL NOT NULL DEFAULT 0.0,
     status            TEXT NOT NULL DEFAULT 'discovered',
     assigned_agent    TEXT NOT NULL DEFAULT 'aifa',
@@ -221,6 +227,17 @@ def _ensure(memory) -> None:
         ):
             if col not in prefs_cols:
                 conn.execute(f"ALTER TABLE ark_freelance_prefs ADD COLUMN {col} {col_def}")
+        order_cols = {r["name"] for r in conn.execute("PRAGMA table_info(ark_freelance_order)").fetchall()}
+        for col, col_def in (
+            ("estimated_hours", "REAL NOT NULL DEFAULT 4.0"),
+            ("hourly_rate_usdt", "REAL NOT NULL DEFAULT 25.0"),
+            ("exchange_fee_pct", "REAL NOT NULL DEFAULT 0.0"),
+            ("platform_fee_pct", "REAL NOT NULL DEFAULT 10.0"),
+            ("net_after_fees_usdt", "REAL NOT NULL DEFAULT 0.0"),
+            ("effective_hourly_usdt", "REAL NOT NULL DEFAULT 0.0"),
+        ):
+            if col not in order_cols:
+                conn.execute(f"ALTER TABLE ark_freelance_order ADD COLUMN {col} {col_def}")
         conn.commit()
 
 
@@ -621,6 +638,15 @@ def _estimate_compute_cost_usdt(estimated_tokens: int, cost_per_1k_usd: float = 
     return round(max(0.005, (max(100, int(estimated_tokens)) / 1000.0) * float(cost_per_1k_usd)), 4)
 
 
+_DEFAULT_EXCHANGE_FEE_PCT = {
+    "fiverr_desk": 20.0,
+    "kwork_desk": 20.0,
+    "upwork_api": 10.0,
+    "freelancer_api": 10.0,
+    "custom_webhook": 0.0,
+}
+
+
 @_synchronized_memory
 def evaluate_and_ingest_job(
     memory,
@@ -630,12 +656,15 @@ def evaluate_and_ingest_job(
     brief: str,
     budget_usdt: float,
     estimated_tokens: int = 25000,
+    estimated_hours: float | None = None,
+    hourly_rate_usdt: float = 25.0,
+    exchange_fee_pct: float | None = None,
     account_id: str = "",
     external_job_id: str = "",
     assigned_agent: str = "aifa",
     provider: str = "primary",
 ) -> dict[str, Any]:
-    """Проверяет ТЗ заказа на безопасность, рассчитывает маржу с учётом квот токенов и сохраняет заказ."""
+    """Проверяет ТЗ заказа на безопасность, считает выгоду по ставке, часам, комиссии и квотам токенов."""
     _ensure(memory)
     plat = _clean_platform(platform)
     raw_title = str(title or "").strip()
@@ -652,6 +681,25 @@ def evaluate_and_ingest_job(
     budget = max(0.0, float(budget_usdt))
     tokens_need = max(500, int(estimated_tokens))
     est_cost = _estimate_compute_cost_usdt(tokens_need)
+    hours = round(
+        max(0.25, float(estimated_hours))
+        if estimated_hours is not None and float(estimated_hours) > 0
+        else max(0.5, tokens_need / 10000.0 + len(clean_brief) / 800.0),
+        2,
+    )
+    target_rate = max(1.0, float(hourly_rate_usdt or 25.0))
+    ex_fee_pct = round(
+        min(50.0, max(0.0, float(exchange_fee_pct)))
+        if exchange_fee_pct is not None
+        else _DEFAULT_EXCHANGE_FEE_PCT.get(plat, 10.0),
+        2,
+    )
+    code_fee_pct = FIXED_PLATFORM_FEE_PCT
+    total_fee_pct = round(code_fee_pct + ex_fee_pct, 2)
+    code_fee_usdt = round(budget * (code_fee_pct / 100.0), 4)
+    exchange_fee_usdt = round(budget * (ex_fee_pct / 100.0), 4)
+    total_fee_usdt = round(code_fee_usdt + exchange_fee_usdt, 4)
+
     pacing = token_autonomy.compute_pacing_plan(memory, provider=provider)
     quota_ok = True
     if pacing.get("has_plan"):
@@ -659,12 +707,26 @@ def evaluate_and_ingest_job(
         weekly_rem = int(pacing.get("weekly", {}).get("remaining", 0))
         quota_ok = (daily_rem >= tokens_need) and (weekly_rem >= tokens_need)
 
-    margin_usdt = round(budget - est_cost, 4)
+    margin_usdt = round(budget - total_fee_usdt - est_cost, 4)
     margin_ratio = round((margin_usdt / est_cost) if est_cost > 0 else 0.0, 2)
-    margin_score = round(min(100.0, max(0.0, (margin_usdt / max(1.0, budget)) * 80.0 + (20.0 if quota_ok else 0.0))), 2)
+    effective_hourly_usdt = round(margin_usdt / hours, 2)
+
+    prefs = get_freelance_prefs(memory)
+    agent_share_pct = float(prefs.get("agent_share_pct") or 15.0)
+    owner_net_usdt = round(max(0.0, (budget - code_fee_usdt) * ((100.0 - agent_share_pct) / 100.0) - exchange_fee_usdt - est_cost), 4)
+
+    if margin_usdt <= 0 or budget <= 0:
+        margin_score = 0.0
+    else:
+        rate_ratio = max(0.0, effective_hourly_usdt / target_rate)
+        rate_pts = 55.0 * (rate_ratio / (rate_ratio + 0.7))
+        net_ratio = max(0.0, min(1.0, margin_usdt / budget))
+        margin_pts = 25.0 * net_ratio
+        hours_pts = (10.0 if quota_ok else 0.0) + 10.0 * (1.0 / (1.0 + hours / 20.0))
+        margin_score = round(min(98.5, max(0.0, rate_pts + margin_pts + hours_pts)), 2)
 
     security_veto = bool(is_injection or is_tamper)
-    status = "rejected_security" if security_veto else ("evaluated" if budget > est_cost else "low_margin")
+    status = "rejected_security" if security_veto else ("evaluated" if margin_usdt > 0 else "low_margin")
     sec_note = (
         "ОТКЛОНЕНО: обнаружена попытка prompt-инъекции или подмены правил в ТЗ заказчика."
         if security_veto
@@ -677,8 +739,9 @@ def evaluate_and_ingest_job(
         memory.store.conn.execute(
             "INSERT INTO ark_freelance_order "
             "(order_id, user_id, account_id, platform, external_job_id, title, brief_redacted, budget_usdt, est_tokens, "
-            "est_compute_usdt, margin_score, status, assigned_agent, security_note, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "est_compute_usdt, estimated_hours, hourly_rate_usdt, exchange_fee_pct, platform_fee_pct, net_after_fees_usdt, "
+            "effective_hourly_usdt, margin_score, status, assigned_agent, security_note, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 oid,
                 memory.user_id,
@@ -690,6 +753,12 @@ def evaluate_and_ingest_job(
                 budget,
                 tokens_need,
                 est_cost,
+                hours,
+                target_rate,
+                ex_fee_pct,
+                code_fee_pct,
+                margin_usdt,
+                effective_hourly_usdt,
                 margin_score if not security_veto else 0.0,
                 status,
                 str(assigned_agent or "aifa")[:48],
@@ -702,7 +771,16 @@ def evaluate_and_ingest_job(
     audit_chain.append_audit(
         memory,
         "freelance_order_evaluated",
-        {"order_id": oid, "platform": plat, "status": status, "budget_usdt": budget, "margin_score": margin_score},
+        {
+            "order_id": oid,
+            "platform": plat,
+            "status": status,
+            "budget_usdt": budget,
+            "estimated_hours": hours,
+            "total_fee_pct": total_fee_pct,
+            "effective_hourly_usdt": effective_hourly_usdt,
+            "margin_score": margin_score if not security_veto else 0.0,
+        },
         agent_id=str(assigned_agent or "aifa"),
     )
     return {
@@ -714,6 +792,15 @@ def evaluate_and_ingest_job(
         "budget_usdt": budget,
         "est_tokens": tokens_need,
         "est_compute_usdt": est_cost,
+        "estimated_hours": hours,
+        "hourly_rate_usdt": target_rate,
+        "platform_fee_pct": code_fee_pct,
+        "exchange_fee_pct": ex_fee_pct,
+        "total_fee_pct": total_fee_pct,
+        "total_fee_usdt": total_fee_usdt,
+        "net_after_fees_usdt": margin_usdt,
+        "owner_net_usdt": owner_net_usdt,
+        "effective_hourly_usdt": effective_hourly_usdt,
         "margin_usdt": margin_usdt,
         "margin_ratio": margin_ratio,
         "margin_score": margin_score if not security_veto else 0.0,
@@ -722,7 +809,6 @@ def evaluate_and_ingest_job(
         "security_note": sec_note,
         "redaction": redact_info,
     }
-
 
 def _get_order(memory, order_id: str) -> dict[str, Any]:
     _ensure(memory)
@@ -754,6 +840,111 @@ def list_orders(memory, *, status: str | None = None, limit: int = 30) -> list[d
     return [dict(r) for r in rows]
 
 
+def _collect_bid_context(memory, order: dict[str, Any]) -> dict[str, Any]:
+    """Собирает безопасный контекст из памяти и биржевого профиля для черновика отклика."""
+    skills: list[str] = []
+    account_label = ""
+    for acc in list_exchange_accounts(memory):
+        if (order.get("account_id") and acc["account_id"] == order["account_id"]) or acc["platform"] == order["platform"]:
+            account_label = acc.get("account_label") or ""
+            skills = [str(s) for s in (acc.get("skills") or []) if str(s).strip()]
+            if skills:
+                break
+    profile_facts: list[str] = []
+    try:
+        prof = memory.profile(compact=True)
+        for sec_key in ("identity", "preferences", "decisions", "facts"):
+            items = prof.get(sec_key) if isinstance(prof, dict) else None
+            if isinstance(items, list):
+                for item in items[:2]:
+                    txt = str(item.get("text") if isinstance(item, dict) else item).strip()
+                    if txt:
+                        clean_txt, _ = sanitize_for_delivery(txt)
+                        profile_facts.append(clean_txt[:140])
+    except Exception:
+        pass
+    memory_hits: list[str] = []
+    try:
+        query_str = f"{order.get('title', '')} {order.get('brief_redacted', '')[:160]}".strip()
+        if query_str:
+            res = memory.search(query_str, limit=4)
+            hits = res if isinstance(res, list) else (res.get("results") or res.get("records") or [])
+            for item in hits[:3]:
+                txt = str(item.get("text") if isinstance(item, dict) else item).strip()
+                if txt and txt not in profile_facts:
+                    clean_txt, _ = sanitize_for_delivery(txt)
+                    memory_hits.append(clean_txt[:160])
+    except Exception:
+        pass
+    return {
+        "account_label": account_label,
+        "skills": skills[:8],
+        "profile_facts": profile_facts[:3],
+        "memory_hits": memory_hits[:3],
+    }
+
+
+@_synchronized_memory
+def draft_bid_from_memory(
+    memory,
+    order_id: str,
+    *,
+    proposed_usdt: float | None = None,
+    custom_pitch: str = "",
+) -> dict[str, Any]:
+    """Готовит черновик отклика строго из памяти и профиля владельца; НИЧЕГО не отправляет наружу."""
+    order = _get_order(memory, order_id)
+    if order["status"] == "rejected_security":
+        return {"ok": False, "order_id": order_id, "error": "Нельзя готовить отклик на отклонённый по безопасности заказ."}
+
+    price = round(max(1.0, float(proposed_usdt if proposed_usdt is not None else order["budget_usdt"])), 2)
+    hours = float(order.get("estimated_hours") or 4.0)
+    ctx = _collect_bid_context(memory, order)
+    if custom_pitch.strip():
+        raw_pitch = custom_pitch.strip()
+    else:
+        lines = [f"Здравствуйте! Готовы выполнить заказ «{order['title']}»."]
+        if ctx["skills"]:
+            lines.append(f"Релевантный стек профиля: {', '.join(ctx['skills'])}.")
+        if ctx["memory_hits"]:
+            lines.append("Подтверждённый опыт из памяти: " + "; ".join(ctx["memory_hits"][:2]) + ".")
+        elif ctx["profile_facts"]:
+            lines.append("О нас: " + "; ".join(ctx["profile_facts"][:2]) + ".")
+        lines.append(
+            f"План работы (~{hours:.1f} ч): аудит ТЗ, реализация, детерминированная проверка тестов и чистая документация. "
+            f"Бюджет: {price:.2f} USDT."
+        )
+        raw_pitch = " ".join(lines)
+
+    clean_pitch, _ = sanitize_for_delivery(raw_pitch)
+    next_status = order["status"] if order["status"] in ("in_progress", "delivered", "paid") else "bid_draft"
+    with _lock_of(memory):
+        memory.store.conn.execute(
+            "UPDATE ark_freelance_order SET status = ?, bid_text = ?, updated_at = ? WHERE user_id = ? AND order_id = ?",
+            (next_status, clean_pitch[:2000], time.time(), memory.user_id, order_id),
+        )
+        memory.store.conn.commit()
+    audit_chain.append_audit(
+        memory,
+        "freelance_bid_drafted",
+        {"order_id": order_id, "memory_hits": len(ctx["memory_hits"]), "skills": len(ctx["skills"])},
+        agent_id=order["assigned_agent"],
+    )
+    return {
+        "ok": True,
+        "order_id": order_id,
+        "status": next_status,
+        "placed": False,
+        "sent": False,
+        "proposed_usdt": price,
+        "bid_text": clean_pitch[:2000],
+        "profile_skills": ctx["skills"],
+        "memory_hits_used": len(ctx["memory_hits"]),
+        "profile_facts_used": len(ctx["profile_facts"]),
+        "note": "Черновик подготовлен из памяти и профиля. Ничего не отправлено — проверьте текст и нажмите «Отправить отклик».",
+    }
+
+
 @_synchronized_memory
 def propose_or_place_bid(
     memory,
@@ -763,17 +954,17 @@ def propose_or_place_bid(
     proposed_usdt: float | None = None,
     owner_approved: bool = False,
 ) -> dict[str, Any]:
-    """Готовит отклик на заказ; реальная публикация заблокирована без owner_approved=True и PADAM_FREELANCE_AUTOBID=1."""
+    """Готовит или отправляет отклик на заказ; публикация возможна только по явному owner_approved=True (и PADAM_FREELANCE_AUTOBID=1)."""
     order = _get_order(memory, order_id)
     if order["status"] == "rejected_security":
         return {"ok": False, "order_id": order_id, "error": "Нельзя делать ставку на отклонённый по безопасности заказ."}
 
     price = round(max(1.0, float(proposed_usdt if proposed_usdt is not None else order["budget_usdt"])), 2)
-    raw_pitch = pitch_text or (
-        f"Готовы выполнить задачу «{order['title']}» с детерминированной проверкой результата "
-        f"и полной документацией. Ориентировочная стоимость: {price:.2f} USDT."
-    )
-    clean_pitch, _ = sanitize_for_delivery(raw_pitch)
+    base_pitch = pitch_text.strip() or str(order.get("bid_text") or "").strip()
+    if not base_pitch:
+        draft_res = draft_bid_from_memory(memory, order_id, proposed_usdt=price)
+        base_pitch = str(draft_res.get("bid_text") or "")
+    clean_pitch, _ = sanitize_for_delivery(base_pitch)
     locks = freelance_locks_status()
 
     if locks["freelance_autobid_locked"] or not owner_approved:
@@ -783,7 +974,7 @@ def propose_or_place_bid(
     else:
         new_status = "bid_placed"
         placed = True
-        note = "Отклик утверждён и отмечен к отправке через подключённый адаптер биржи."
+        note = "Отклик утверждён владельцем и отмечен к отправке через подключённый адаптер биржи."
 
     with _lock_of(memory):
         memory.store.conn.execute(
@@ -807,7 +998,6 @@ def propose_or_place_bid(
         "locks": locks,
         "note": note,
     }
-
 
 @_synchronized_memory
 def dispatch_bid_http(
