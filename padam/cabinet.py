@@ -21,6 +21,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from . import net_guard
 from .hardware_seal import _dpapi_protect, _dpapi_unprotect
 
 DEFAULT_CABINET_URL = "https://aifa.works"
@@ -140,12 +141,9 @@ def save_session(email: str, cookie_token: str, cabinet_url: str | None = None) 
     }
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    net_guard.restrict_file_to_owner(tmp)
     os.replace(tmp, path)
-    if sys.platform != "win32":
-        try:
-            os.chmod(path, 0o600)
-        except OSError:
-            pass
+    net_guard.restrict_file_to_owner(path)
     return {"authenticated": True, "email": payload["email"], "cabinet_url": payload["cabinet_url"], "dpapi_protected": is_dpapi}
 
 
@@ -258,7 +256,14 @@ def _http_json(
         headers["Cookie"] = "user_session=" + urllib.parse.quote(cookie_token, safe="")
     req = urllib.request.Request(url, data=raw_body, headers=headers, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with net_guard.safe_urlopen(
+            req,
+            timeout=timeout,
+            allow_localhost=True,
+            allow_ipv6_loopback=False,
+            allow_http_localhost=True,
+            require_https=True,
+        ) as resp:
             txt = resp.read().decode("utf-8", errors="replace")
             parsed = json.loads(txt) if txt.strip() else {}
             new_cookie = _extract_user_session_cookie(resp.headers)

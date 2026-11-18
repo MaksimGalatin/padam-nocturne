@@ -801,11 +801,74 @@ _PREFIXED_HEX_JOINED = re.compile(r"(?<![A-Za-z0-9_\-])([A-Za-z]{2,4})([0-9a-f]{
 _UPPER_THEN_HEX = re.compile(r"[A-Z]{2,4}(?=[0-9a-f]*$)")
 
 
+# Чувствительные имена параметров URL (после ?, &, #, ;): их значения НЕ считаются публичной частью ссылки.
+_URL_SECRET_PARAM_BEFORE = re.compile(
+    r"(?i)(?:[?#&;/]|^)[a-z0-9_.\-]{0,32}?(?:"
+    r"api[_\-]?key|apikey|access[_\-]?key|private[_\-]?key|signing[_\-]?key|"
+    r"secret|client[_\-]?secret|webhook[_\-]?secret|passw(?:or)?d|pwd|pass|"
+    r"access[_\-]?token|refresh[_\-]?token|id[_\-]?token|auth[_\-]?token|"
+    r"token|jwt|bearer|credential|signature|sig|hmac|sas|session(?:[_\-]?id)?|sid|cookie|auth|key"
+    r")[a-z0-9_.\-]{0,16}=$"
+)
+
+_STRONG_URL_SECRET_KEYS = re.compile(
+    r"(?i)(?:api[_\-]?key|apikey|access[_\-]?key|private[_\-]?key|signing[_\-]?key|"
+    r"secret|client[_\-]?secret|webhook[_\-]?secret|passw(?:or)?d|pwd|pass|"
+    r"access[_\-]?token|refresh[_\-]?token|id[_\-]?token|auth[_\-]?token|"
+    r"token|jwt|bearer|credential|signature|sig|hmac|sas|session[_\-]?id|cookie)"
+)
+
+_URL_QUERY_SECRET = re.compile(
+    r"""(?ix)
+    ([?#&])
+    ([a-z0-9_.\-]{0,32}?(?:api[_\-]?key|apikey|access[_\-]?key|private[_\-]?key|signing[_\-]?key|
+                     secret|client[_\-]?secret|webhook[_\-]?secret|passw(?:or)?d|pwd|pass|
+                     access[_\-]?token|refresh[_\-]?token|id[_\-]?token|auth[_\-]?token|
+                     token|jwt|bearer|credential|signature|sig|hmac|sas|session[_\-]?id|
+                     sid|cookie|auth|key))
+    =
+    ([^\s"'<>&#;]{8,})
+    """
+)
+
+
+def _is_secret_url_param_value(param_name: str, value: str) -> bool:
+    """Проверяет, что значение параметра после ?key=/&token=/#sig= похоже на секрет, а не на обычный флаг."""
+    val = value.strip()
+    if not val or val.startswith("[REDACTED:") or _ЗАГЛУШКА.fullmatch(val):
+        return False
+    if looks_random(val):
+        return True
+    if re.fullmatch(r"[0-9a-fA-F]{16,}", val):
+        return True
+    has_digit = any(ch.isdigit() for ch in val)
+    has_alpha = any(ch.isalpha() for ch in val)
+    has_mixed_case = any(ch.islower() for ch in val) and any(ch.isupper() for ch in val)
+    strong_name = bool(_STRONG_URL_SECRET_KEYS.search(param_name))
+    if strong_name:
+        if len(val) >= 12 and (has_digit or has_mixed_case or "_" in val or "-" in val or "%" in val or "." in val):
+            return True
+        if len(val) >= 8 and has_digit and has_alpha and _entropy(val) >= 2.6:
+            return True
+        if re.search(r"pass|pwd", param_name, re.I) and password_like(val, after_separator=True):
+            return True
+        return False
+    # Для коротких/общих имён вроде key=, auth=, sid= требуем цифры или высокую энтропию
+    if len(val) >= 10 and has_digit and has_alpha and _entropy(val) >= 2.8:
+        return True
+    if len(val) >= 16 and (has_mixed_case or (has_alpha and _entropy(val) >= 3.2)):
+        return True
+    return False
+
+
 def _public_identifier(token: str, before: str, by_shape: bool = True) -> bool:
     """Публичный идентификатор блокчейна или ссылки, а не секрет. Памяти он нужен открытым.
 
     by_shape=False — без исключения «похоже на адрес Solana или Arweave»: у слитного ключа «две заглавные и строчный
     hex» алфавит часто совпадает с base58, а настоящий адрес так не выглядит (заглавные в нём по всей строке)."""
+    # SAFETY-01/02: секреты в query/fragment параметрах URL (key=/token=/sig=/secret=/auth=...) никогда не открыты
+    if _URL_SECRET_PARAM_BEFORE.search(before):
+        return False
     if before.endswith(("/", "#", "?", "=")) and re.search(r"(?:https?://|\b[\w\-]+\.[a-z]{2,}/)\S*$", before):
         return True                                # кусок адреса ссылки, и без схемы: open.spotify.com/track/…
     if _PUBLIC_PREFIX.match(token):
@@ -849,6 +912,16 @@ def _luhn(digits: str) -> bool:
 
 
 def mask_generic(text: str, bump) -> str:
+    def url_query_secret(m: re.Match) -> str:
+        sep, param_name, raw_val = m.group(1), m.group(2), m.group(3)
+        value = raw_val.rstrip(".)]}")
+        tail = raw_val[len(value):]
+        if not _is_secret_url_param_value(param_name, value):
+            return m.group(0)
+        return f"{sep}{param_name}=" + bump("url_secret") + tail
+
+    text = _URL_QUERY_SECRET.sub(url_query_secret, text)
+
     def keyed(m: re.Match) -> str:
         value = m.group(4).rstrip(".)]}")
         tail = m.group(4)[len(value):]

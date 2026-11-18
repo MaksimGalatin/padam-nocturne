@@ -14,7 +14,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import config
+from . import config, net_guard
 
 
 def _now_iso() -> str:
@@ -46,20 +46,14 @@ def daemon_state_path(db_path: str | Path | None = None, user_id: str | None = N
 
 
 def write_daemon_state(state_path: Path, data: dict) -> None:
-    """Атомарно записывает JSON-дескриптор пула (0600 на POSIX)."""
+    """Атомарно записывает JSON-дескриптор пула (0600 на POSIX / ACL владельца на Windows)."""
     state_path.parent.mkdir(parents=True, exist_ok=True)
     tmp = state_path.with_name(f".{state_path.name}.{os.getpid()}.tmp")
     raw = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
     tmp.write_bytes(raw)
-    try:
-        os.chmod(tmp, 0o600)
-    except OSError:
-        pass
+    net_guard.restrict_file_to_owner(tmp)
     os.replace(tmp, state_path)
-    try:
-        os.chmod(state_path, 0o600)
-    except OSError:
-        pass
+    net_guard.restrict_file_to_owner(state_path)
 
 
 def read_daemon_state(state_path: Path) -> dict | None:

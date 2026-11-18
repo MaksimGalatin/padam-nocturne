@@ -26,7 +26,7 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-from . import safety
+from . import net_guard, safety
 
 АДРЕС_ПО_УМОЛЧАНИЮ = "https://aifa.works/api/mcp"
 ТАЙМАУТ = 30
@@ -38,9 +38,13 @@ def enabled() -> bool:
 
 def _адрес() -> str:
     url = os.environ.get("PADAM_AIFA_MCP_URL", АДРЕС_ПО_УМОЛЧАНИЮ).strip() or АДРЕС_ПО_УМОЛЧАНИЮ
-    if not url.startswith("https://") and not url.startswith("http://127.0.0.1"):
-        raise ValueError("PADAM_AIFA_MCP_URL must be https:// (or http://127.0.0.1 for tests)")
-    return url
+    return net_guard.validate_outbound_url(
+        url,
+        allow_localhost=True,
+        allow_ipv6_loopback=False,
+        allow_http_localhost=True,
+        require_https=True,
+    )
 
 
 # Ключ кабинета, сохранённый владельцем в Studio (блок «9. AIfaFocus»), подставляется на время одного вызова.
@@ -74,7 +78,14 @@ def call_remote(tool: str, arguments: dict[str, Any] | None = None) -> dict[str,
         },
     )
     try:
-        with urllib.request.urlopen(req, timeout=ТАЙМАУТ) as r:
+        with net_guard.safe_urlopen(
+            req,
+            timeout=ТАЙМАУТ,
+            allow_localhost=True,
+            allow_ipv6_loopback=False,
+            allow_http_localhost=True,
+            require_https=True,
+        ) as r:
             data = json.loads(r.read().decode("utf-8") or "{}")
     except urllib.error.HTTPError as e:
         if e.code == 401:

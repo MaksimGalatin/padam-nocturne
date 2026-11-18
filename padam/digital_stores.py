@@ -23,7 +23,7 @@ import urllib.parse
 import urllib.request
 from typing import Any
 
-from . import audit_chain, freelance_autonomy
+from . import audit_chain, freelance_autonomy, net_guard
 
 
 _SCHEMA_LOCK = threading.RLock()
@@ -238,7 +238,8 @@ def _http_json(
     timeout_s: float = 10.0,
 ) -> tuple[int, dict[str, Any]]:
     """Безопасный HTTP-вызов к официальному API магазина через проверку SSRF."""
-    clean_url = freelance_autonomy._validate_api_url(url, allow_localhost=allow_localhost)
+    local_allowed = bool(allow_localhost or (os.environ.get("PADAM_FREELANCE_ALLOW_LOCALHOST", "").strip() == "1"))
+    clean_url = freelance_autonomy._validate_api_url(url, allow_localhost=local_allowed)
     hdrs: dict[str, str] = {"User-Agent": "PADAM-DigitalStores/1.0"}
     if headers:
         hdrs.update(headers)
@@ -252,7 +253,14 @@ def _http_json(
 
     req = urllib.request.Request(clean_url, data=data, headers=hdrs, method=method.upper())
     try:
-        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+        with net_guard.safe_urlopen(
+            req,
+            timeout=timeout_s,
+            allow_localhost=local_allowed,
+            allow_ipv6_loopback=False,
+            allow_http_localhost=True,
+            require_https=True,
+        ) as resp:
             raw = resp.read().decode("utf-8", errors="replace")
             return int(resp.status), (json.loads(raw) if raw.strip() else {})
     except urllib.error.HTTPError as e:
@@ -1271,21 +1279,18 @@ def verify_and_process_store_webhook(
         email = str(attr.get("user_email") or "")
 
     elif st == "gumroad":
-        sig = _header_ci(headers, "X-Padam-Signature") or _header_ci(headers, "X-Signature")
-        if wh_secret and sig:
-            if not _verify_hmac_hex(wh_secret, raw_body, sig):
-                raise PermissionError("Неверная подпись вебхука Gumroad.")
-        elif wh_secret and not sig:
-            # Если настроен секрет, разрешаем либо явный X-Padam-Signature, либо точное совпадение seller_id
-            inc_seller = str(payload.get("seller_id") or "")
-            expected_seller = str(acc.get("external_store_id") or "")
-            if not expected_seller or not hmac.compare_digest(expected_seller, inc_seller):
-                raise PermissionError("Неверный seller_id или отсутствует подпись вебхука Gumroad.")
-        else:
-            inc_seller = str(payload.get("seller_id") or "")
-            expected_seller = str(acc.get("external_store_id") or "")
-            if not expected_seller or not hmac.compare_digest(expected_seller, inc_seller):
-                raise PermissionError("Неверный seller_id в Gumroad Ping вебхуке.")
+        # API-02: при проверке вебхука Gumroad обязательна криптографическая HMAC-подпись по raw_body (без фолбэка на голый seller_id)
+        sig = (
+            _header_ci(headers, "X-Padam-Signature")
+            or _header_ci(headers, "X-Signature")
+            or _header_ci(headers, "X-Gumroad-Signature")
+        )
+        if not wh_secret or not sig or not _verify_hmac_hex(wh_secret, raw_body, sig):
+            raise PermissionError("Отсутствует или неверна HMAC-подпись raw_body для вебхука Gumroad.")
+        inc_seller = str(payload.get("seller_id") or "")
+        expected_seller = str(acc.get("external_store_id") or "")
+        if expected_seller and inc_seller and not hmac.compare_digest(expected_seller, inc_seller):
+            raise PermissionError("Неверный seller_id в вебхуке Gumroad.")
 
         sale_id = str(payload.get("sale_id") or payload.get("id") or "")
         is_refund = str(payload.get("refunded") or "").lower() in ("true", "1", "yes")
@@ -1295,14 +1300,16 @@ def verify_and_process_store_webhook(
         email = str(payload.get("email") or "")
 
     elif st == "payhip":
-        sig_field = str(payload.get("signature") or "").strip().lower()
-        expected_api_sha = hashlib.sha256(api_key.encode("utf-8")).hexdigest().lower() if api_key else ""
-        x_sig = _header_ci(headers, "X-Signature")
-        sig_ok = bool(expected_api_sha and sig_field and hmac.compare_digest(expected_api_sha, sig_field))
-        if not sig_ok and wh_secret and x_sig:
-            sig_ok = _verify_hmac_hex(wh_secret, raw_body, x_sig)
-        if not sig_ok:
-            raise PermissionError("Неверная подпись sha256(api_key) в вебхуке Payhip.")
+        # API-02: при заданном webhook_secret обязателен HMAC по raw_body; без секрета допустим нативный sha256(api_key), но заказ остаётся unverified_payout до подтверждения владельцем
+        x_sig = _header_ci(headers, "X-Signature") or _header_ci(headers, "X-Payhip-Signature")
+        if wh_secret:
+            if not x_sig or not _verify_hmac_hex(wh_secret, raw_body, x_sig):
+                raise PermissionError("Отсутствует или неверна HMAC-подпись raw_body для вебхука Payhip.")
+        else:
+            sig_field = str(payload.get("signature") or "").strip().lower()
+            expected_api_sha = hashlib.sha256(api_key.encode("utf-8")).hexdigest().lower() if api_key else ""
+            if not (expected_api_sha and sig_field and hmac.compare_digest(expected_api_sha, sig_field)):
+                raise PermissionError("Неверная подпись sha256(api_key) в вебхуке Payhip.")
 
         ev_type = str(payload.get("type") or "paid").lower()
         sale_id = str(payload.get("id") or "")

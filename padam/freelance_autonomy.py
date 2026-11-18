@@ -36,6 +36,7 @@ from . import (
     coop_broker,
     deterministic_verify,
     integrity,
+    net_guard,
     safety,
     sovereign_ops,
     swarm_council,
@@ -526,17 +527,14 @@ def _validate_api_url(raw_url: str, *, allow_localhost: bool = False) -> str:
     u = str(raw_url or "").strip().rstrip("/")
     if not u:
         return ""
-    parsed = urllib.parse.urlparse(u)
-    host = (parsed.hostname or "").lower()
-    is_local = host in ("127.0.0.1", "localhost", "::1")
-    local_allowed = allow_localhost or (os.environ.get("PADAM_FREELANCE_ALLOW_LOCALHOST", "").strip() == "1")
-    if parsed.scheme == "https" and host:
-        if is_local and not local_allowed:
-            raise ValueError("Локальный loopback-адрес разрешён только при PADAM_FREELANCE_ALLOW_LOCALHOST=1.")
-        return u
-    if parsed.scheme == "http" and is_local and local_allowed:
-        return u
-    raise ValueError("URL биржи должен использовать HTTPS (или 127.0.0.1/localhost при PADAM_FREELANCE_ALLOW_LOCALHOST=1).")
+    local_allowed = bool(allow_localhost or (os.environ.get("PADAM_FREELANCE_ALLOW_LOCALHOST", "").strip() == "1"))
+    return net_guard.validate_outbound_url(
+        u,
+        allow_localhost=local_allowed,
+        allow_ipv6_loopback=False,
+        allow_http_localhost=True,
+        require_https=True,
+    )
 
 
 @_synchronized_memory
@@ -675,15 +673,17 @@ def _get_account_row(memory, account_id: str) -> dict[str, Any]:
 class ExchangeHttpAdapter:
     """Надёжный HTTP-адаптер к API биржи с повторами на 429, обработкой 401/таймаутов и защитой токена."""
 
-    def __init__(self, base_url: str, bearer_token: str = "", *, timeout_s: float = 8.0, max_retries: int = 2) -> None:
+    def __init__(self, base_url: str, bearer_token: str = "", *, timeout_s: float = 8.0, max_retries: int = 2, allow_localhost: bool = False) -> None:
         self.base_url = str(base_url or "").strip().rstrip("/")
         self.bearer_token = str(bearer_token or "").strip()
         self.timeout_s = max(1.0, float(timeout_s))
         self.max_retries = max(0, min(3, int(max_retries)))
+        self.allow_localhost = bool(allow_localhost)
 
     def request_json(self, method: str, path: str, body: dict[str, Any] | None = None) -> tuple[int, dict[str, Any]]:
         if not self.base_url:
             raise ValueError("Не указан api_base_url аккаунта биржи.")
+        local_allowed = bool(self.allow_localhost or (os.environ.get("PADAM_FREELANCE_ALLOW_LOCALHOST", "").strip() == "1"))
         url = f"{self.base_url}/{path.lstrip('/')}"
         headers = {"Accept": "application/json", "Content-Type": "application/json"}
         if self.bearer_token:
@@ -694,7 +694,14 @@ class ExchangeHttpAdapter:
         for attempt in range(self.max_retries + 1):
             req = urllib.request.Request(url, data=raw_data, headers=headers, method=method.upper())
             try:
-                with urllib.request.urlopen(req, timeout=self.timeout_s) as resp:
+                with net_guard.safe_urlopen(
+                    req,
+                    timeout=self.timeout_s,
+                    allow_localhost=local_allowed,
+                    allow_ipv6_loopback=False,
+                    allow_http_localhost=True,
+                    require_https=True,
+                ) as resp:
                     txt = resp.read().decode("utf-8", errors="replace")
                     try:
                         parsed = json.loads(txt) if txt.strip() else {}
@@ -742,12 +749,12 @@ def fetch_jobs_from_exchange(
         refreshed = _try_refresh_oauth_token(memory, acc, allow_localhost=allow_localhost)
         if refreshed:
             token = refreshed
-    adapter = ExchangeHttpAdapter(base_url, token)
+    adapter = ExchangeHttpAdapter(base_url, token, allow_localhost=allow_localhost)
     status, payload = adapter.request_json("GET", "/jobs")
     if status == 401:
         refreshed = _try_refresh_oauth_token(memory, acc, allow_localhost=allow_localhost)
         if refreshed:
-            adapter = ExchangeHttpAdapter(base_url, refreshed)
+            adapter = ExchangeHttpAdapter(base_url, refreshed, allow_localhost=allow_localhost)
             status, payload = adapter.request_json("GET", "/jobs")
     if status == 401:
         return {"ok": False, "http_status": 401, "error": "OAuth токен отклонён биржей (401 Unauthorized). Требуется обновить сессию."}
@@ -1261,7 +1268,7 @@ def dispatch_bid_http(
     if not base_url:
         return {"ok": False, "order_id": order_id, "http_dispatched": False, "error": "У аккаунта не задан api_base_url."}
     token = _unseal_secret(memory, acc.get("token_enc") or "")
-    adapter = ExchangeHttpAdapter(base_url, token)
+    adapter = ExchangeHttpAdapter(base_url, token, allow_localhost=allow_localhost)
     st, body = adapter.request_json(
         "POST",
         "/bids",
@@ -1767,13 +1774,22 @@ def verify_and_process_webhook(
     data = json.loads(raw_body.decode("utf-8"))
     ev = str(data.get("event") or "").strip().lower()
     if ev == "order.paid":
+        order_id = str(data.get("order_id") or "").strip()
+        if not order_id:
+            raise ValueError("Не указан order_id в вебхуке order.paid.")
+        # AUT-07: agent_id, agent_share_pct и settlement_currency НЕ принимаются из тела вебхука — только из БД/настроек владельца
+        order = _get_order(memory, order_id)
+        trusted_agent = str(order.get("assigned_agent") or "").strip()
+        if not trusted_agent and account_id:
+            acc_row = _get_account_row(memory, account_id)
+            trusted_agent = str(acc_row.get("agent_id") or "").strip()
         return settle_paid_order(
             memory,
-            str(data.get("order_id") or ""),
+            order_id,
             paid_usdt=data.get("paid_usdt"),
-            agent_id=str(data.get("agent_id") or "aifa"),
-            agent_share_pct=data.get("agent_share_pct"),
-            settlement_currency=data.get("settlement_currency"),
+            agent_id=trusted_agent or "aifa",
+            agent_share_pct=None,
+            settlement_currency=None,
         )
     if ev == "job.new":
         return evaluate_and_ingest_job(
@@ -2297,6 +2313,7 @@ def _try_refresh_oauth_token(memory, acc: dict[str, Any], *, allow_localhost: bo
     if not rtok or not rurl:
         return None
     clean_rurl = _validate_api_url(rurl, allow_localhost=allow_localhost)
+    local_allowed = bool(allow_localhost or (os.environ.get("PADAM_FREELANCE_ALLOW_LOCALHOST", "").strip() == "1"))
     req_body = json.dumps({"grant_type": "refresh_token", "refresh_token": rtok}).encode("utf-8")
     req = urllib.request.Request(
         clean_rurl,
@@ -2305,7 +2322,14 @@ def _try_refresh_oauth_token(memory, acc: dict[str, Any], *, allow_localhost: bo
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=8.0) as resp:
+        with net_guard.safe_urlopen(
+            req,
+            timeout=8.0,
+            allow_localhost=local_allowed,
+            allow_ipv6_loopback=False,
+            allow_http_localhost=True,
+            require_https=True,
+        ) as resp:
             data = json.loads(resp.read().decode("utf-8", errors="replace"))
         new_acc = str(data.get("access_token") or "").strip()
         if not new_acc:

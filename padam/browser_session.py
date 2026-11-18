@@ -23,6 +23,8 @@ import urllib.parse
 import urllib.request
 from typing import Any
 
+from . import net_guard
+
 
 INSTALL_BROWSER_HINT_RU = (
     "нужен браузер PADAM: установите командой `pip install playwright && python -m playwright install chromium`"
@@ -200,12 +202,13 @@ def run_interactive_browser_auth(
 
 
 def _validate_official_api_url(url: str, *, allow_localhost: bool = False) -> None:
-    parsed = urllib.parse.urlparse(url)
-    host = (parsed.hostname or "").lower()
-    if allow_localhost and host in ("127.0.0.1", "localhost"):
-        return
-    if parsed.scheme != "https":
-        raise ValueError(f"Официальный API площадки требует HTTPS: {url}")
+    net_guard.validate_outbound_url(
+        url,
+        allow_localhost=allow_localhost,
+        allow_ipv6_loopback=False,
+        allow_http_localhost=True,
+        require_https=True,
+    )
 
 
 def call_official_platform_api(
@@ -288,7 +291,14 @@ def call_official_platform_api(
         return {"ok": False, "platform_id": pid, "error": f"Неизвестная операция API: {operation}"}
 
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with net_guard.safe_urlopen(
+            req,
+            timeout=10,
+            allow_localhost=allow_local,
+            allow_ipv6_loopback=False,
+            allow_http_localhost=True,
+            require_https=True,
+        ) as resp:
             status_code = int(resp.status)
             raw_body = resp.read().decode("utf-8", errors="replace")
             data = json.loads(raw_body) if raw_body.strip() else {}

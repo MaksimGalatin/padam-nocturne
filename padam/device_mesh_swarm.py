@@ -23,7 +23,7 @@ import urllib.request
 import uuid
 from typing import Any
 
-from . import audit_chain, coop_broker, safety, sibling_registry
+from . import audit_chain, coop_broker, net_guard, safety, sibling_registry
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS ark_compute_device (
@@ -79,10 +79,13 @@ def _ensure(memory) -> None:
 
 def _clean_ollama_url(raw_url: str) -> str:
     u = str(raw_url or "http://127.0.0.1:11434").strip().rstrip("/")
-    parsed = urllib.parse.urlparse(u)
-    if parsed.scheme not in ("http", "https") or not parsed.hostname:
-        raise ValueError("Некорректный адрес Ollama (нужен http:// или https://).")
-    return u
+    return net_guard.validate_outbound_url(
+        u,
+        allow_localhost=True,
+        allow_ipv6_loopback=False,
+        allow_http_localhost=True,
+        require_https=True,
+    )
 
 
 def probe_ollama_models(ollama_url: str = "http://127.0.0.1:11434", *, timeout_s: float = 2.0) -> dict[str, Any]:
@@ -91,7 +94,14 @@ def probe_ollama_models(ollama_url: str = "http://127.0.0.1:11434", *, timeout_s
     url = f"{clean_url}/api/tags"
     req = urllib.request.Request(url, headers={"Accept": "application/json"}, method="GET")
     try:
-        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+        with net_guard.safe_urlopen(
+            req,
+            timeout=timeout_s,
+            allow_localhost=True,
+            allow_ipv6_loopback=False,
+            allow_http_localhost=True,
+            require_https=True,
+        ) as resp:
             data = json.loads(resp.read().decode("utf-8", errors="replace"))
         raw_models = data.get("models") if isinstance(data, dict) else []
         models = [str(m.get("name") or "").strip() for m in (raw_models or []) if isinstance(m, dict) and m.get("name")]
@@ -372,7 +382,14 @@ def pull_local_ollama_model(
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+        with net_guard.safe_urlopen(
+            req,
+            timeout=timeout_s,
+            allow_localhost=True,
+            allow_ipv6_loopback=False,
+            allow_http_localhost=True,
+            require_https=True,
+        ) as resp:
             raw = resp.read().decode("utf-8", errors="replace")
             info = json.loads(raw) if raw.strip() else {"status": "success"}
         bind_res = bind_user_ollama_model(memory, ollama_url=clean_url, model_name=chosen, zero_cloud_mode=True, probe=True)

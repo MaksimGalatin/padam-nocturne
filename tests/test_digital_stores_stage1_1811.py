@@ -314,7 +314,7 @@ def test_store_webhooks_cryptographic_verification_all_five(tmp_path: Path, monk
     try:
         ls = digital_stores.connect_and_verify_store(mem, store_type="lemonsqueezy", api_key="ls_secret_key", api_base_url=f"{base}/ls", webhook_secret="ls_hmac_secret")["store"]
         gr = digital_stores.connect_and_verify_store(mem, store_type="gumroad", api_key="gr_secret_key", api_base_url=f"{base}/gr", webhook_secret="gr_hmac_secret")["store"]
-        ph = digital_stores.connect_and_verify_store(mem, store_type="payhip", api_key="ph_secret_key", api_base_url=f"{base}/ph")["store"]
+        ph = digital_stores.connect_and_verify_store(mem, store_type="payhip", api_key="ph_secret_key", api_base_url=f"{base}/ph", webhook_secret="ph_hmac_secret")["store"]
         sf = digital_stores.connect_and_verify_store(mem, store_type="sellfy", api_key="sf_secret_key", api_base_url=f"{base}/sf", webhook_secret="sf_hmac_secret")["store"]
         wh_secret = "ws_test_whop_secret_utf8"
         wh = digital_stores.connect_and_verify_store(mem, store_type="whop", api_key="wh_secret_key", api_base_url=f"{base}/wh", webhook_secret=wh_secret)["store"]
@@ -333,23 +333,23 @@ def test_store_webhooks_cryptographic_verification_all_five(tmp_path: Path, monk
         c_ok, r_ok = _http_post_raw(f"{api_url}/api/v2/ark/stores/webhook?store_type=lemonsqueezy", ls_body, {"Content-Type": "application/json", "X-Signature": ls_sig, "X-Event-Name": "order_created"})
         assert c_ok == 200 and r_ok["code_fee_pct"] == 20.0 and r_ok.get("verified") in (True, False)
 
-        # 2) Gumroad Ping (form-urlencoded + seller_id / HMAC)
+        # 2) Gumroad Ping (строгая проверка HMAC-SHA256 по raw_body; голый seller_id без подписи отклоняется!)
         gr_body = urllib.parse.urlencode({"seller_id": gr["external_store_id"], "sale_id": "wh-gr-1", "product_name": "Templates", "price": "1900", "email": "bob@gr.io"}).encode("utf-8")
-        gr_bad = urllib.parse.urlencode({"seller_id": "wrong_seller", "sale_id": "wh-gr-x", "price": "1900"}).encode("utf-8")
-        c_bad, _ = _http_post_raw(f"{api_url}/api/v2/ark/stores/webhook?store_type=gumroad", gr_bad, {"Content-Type": "application/x-www-form-urlencoded"})
-        assert c_bad == 403
-        c_ok, r_ok = _http_post_raw(f"{api_url}/api/v2/ark/stores/webhook?store_type=gumroad", gr_body, {"Content-Type": "application/x-www-form-urlencoded"})
+        gr_sig = hmac.new(b"gr_hmac_secret", gr_body, hashlib.sha256).hexdigest()
+        assert _http_post_raw(f"{api_url}/api/v2/ark/stores/webhook?store_type=gumroad", gr_body, {"Content-Type": "application/x-www-form-urlencoded"})[0] == 403
+        c_ok, r_ok = _http_post_raw(f"{api_url}/api/v2/ark/stores/webhook?store_type=gumroad", gr_body, {"Content-Type": "application/x-www-form-urlencoded", "X-Padam-Signature": gr_sig})
         assert c_ok == 200 and r_ok["work_mode"] == "autopilot"
 
-        # 3) Payhip (signature == sha256(api_key)) + refund
-        ph_sig = hashlib.sha256(b"ph_secret_key").hexdigest()
-        ph_bad = json.dumps({"id": "ph-1", "type": "paid", "price": 1000, "email": "x@y.z", "signature": "0000"}).encode("utf-8")
-        ph_ok = json.dumps({"id": "ph-1", "type": "paid", "price": 1000, "email": "carol@ph.io", "items": [{"product_name": "Payhip Guide"}], "signature": ph_sig}).encode("utf-8")
-        assert _http_post_raw(f"{api_url}/api/v2/ark/stores/webhook?store_type=payhip", ph_bad, {"Content-Type": "application/json"})[0] == 403
-        c_ok, r_ok = _http_post_raw(f"{api_url}/api/v2/ark/stores/webhook?store_type=payhip", ph_ok, {"Content-Type": "application/json"})
+        # 3) Payhip (строгий HMAC-SHA256 по raw_body; статический sha256(api_key) в теле без HMAC отклоняется) + refund
+        ph_static_sig = hashlib.sha256(b"ph_secret_key").hexdigest()
+        ph_ok = json.dumps({"id": "ph-1", "type": "paid", "price": 1000, "email": "carol@ph.io", "items": [{"product_name": "Payhip Guide"}], "signature": ph_static_sig}).encode("utf-8")
+        ph_hmac = hmac.new(b"ph_hmac_secret", ph_ok, hashlib.sha256).hexdigest()
+        assert _http_post_raw(f"{api_url}/api/v2/ark/stores/webhook?store_type=payhip", ph_ok, {"Content-Type": "application/json"})[0] == 403
+        c_ok, r_ok = _http_post_raw(f"{api_url}/api/v2/ark/stores/webhook?store_type=payhip", ph_ok, {"Content-Type": "application/json", "X-Signature": ph_hmac})
         assert c_ok == 200 and r_ok["code_fee_pct"] == 20.0 and r_ok.get("verified") in (True, False)
-        ph_ref = json.dumps({"id": "ph-1", "type": "refunded", "price": 1000, "email": "carol@ph.io", "signature": ph_sig}).encode("utf-8")
-        c_ref, r_ref = _http_post_raw(f"{api_url}/api/v2/ark/stores/webhook?store_type=payhip", ph_ref, {"Content-Type": "application/json"})
+        ph_ref = json.dumps({"id": "ph-1", "type": "refunded", "price": 1000, "email": "carol@ph.io"}).encode("utf-8")
+        ph_ref_hmac = hmac.new(b"ph_hmac_secret", ph_ref, hashlib.sha256).hexdigest()
+        c_ref, r_ref = _http_post_raw(f"{api_url}/api/v2/ark/stores/webhook?store_type=payhip", ph_ref, {"Content-Type": "application/json", "X-Signature": ph_ref_hmac})
         assert c_ref == 200 and r_ref["action"] == "refund_processed"
 
         # 4) Sellfy HMAC-SHA256
