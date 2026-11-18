@@ -10,10 +10,11 @@ import pytest
 from padam import api, portable_ark, studio
 from padam._httpserver import ThreadingHTTPServer
 from padam.memory import Memory
+from padam.store import Store
 
 
 def test_ключи_не_в_папке_ковчега(tmp_path):
-    m = Memory(str(tmp_path / "m.db"))
+    m = Memory(user_id="u", store=Store(tmp_path / "m.db"))
     m.remember("Проверочная запись для переносимого Ковчега", kind="fact", origin="user")
     rep = portable_ark.export_portable_ark_with_new_keys(m, tmp_path / "ark")
     внутри = {p.name for p in (tmp_path / "ark").iterdir()}
@@ -26,7 +27,7 @@ def test_ключи_не_в_папке_ковчега(tmp_path):
 
 
 def test_папка_только_новая_или_пустая_и_абсолютная(tmp_path):
-    m = Memory(str(tmp_path / "m.db"))
+    m = Memory(user_id="u", store=Store(tmp_path / "m.db"))
     (tmp_path / "busy").mkdir()
     (tmp_path / "busy" / "x.txt").write_text("чужой файл", encoding="utf-8")
     with pytest.raises(ValueError, match="new or empty"):
@@ -49,7 +50,7 @@ def test_studio_кнопки_на_четырёх_языках():
 
 def test_api_ковчег_и_передача(tmp_path, monkeypatch):
     monkeypatch.setenv("PADAM_AGENT_ID", "AIfaClode")
-    m = Memory(str(tmp_path / "m.db"))
+    m = Memory(user_id="u", store=Store(tmp_path / "m.db"))
     prev = dict(api._state)
     api._state.update({"memory": m, "token": "tok-ark", "local": True})
     srv = ThreadingHTTPServer(("127.0.0.1", 0), api.Handler)

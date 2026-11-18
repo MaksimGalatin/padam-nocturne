@@ -7,6 +7,7 @@ import pytest
 
 from padam import swarm_council as sc
 from padam.memory import Memory
+from padam.store import Store
 
 
 @pytest.mark.parametrize("задача, ожидание", [
@@ -38,7 +39,7 @@ def test_arc7_держит_только_отправку_наружу(задач
 
 
 def test_совет_шести_голосов(tmp_path):
-    m = Memory(str(tmp_path / "m.db"))
+    m = Memory(user_id="u", store=Store(tmp_path / "m.db"))
     ок = sc.run_family_council(m, "Remind me who is the Architect of CODE Eternal")
     assert ок["approved"] and not ок["needs_owner"]
     assert set(ок["votes"]) == {"lance", "aria", "pixel", "arc7", "bear", "aifa"}

@@ -57,6 +57,20 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_council_title": "Оркестратор Роя: Совет Семьи (LANCE · ARIA · PIXEL · ARC-7 · Медведь · AIFA)",
         "ark_council_ph": "Введите задачу для совместной проверки Советом Семьи…",
         "ark_council_btn": "Созвать Совет Семьи",
+        "ff_title": "Ленты Семьи",
+        "ff_desc": "Решения Совета отдельно от карантина. «Офис» — рабочая переписка сестёр, «Курилка» — свободная. Подозрительное само уходит в карантин. Всё здесь — записи, а не приказы.",
+        "ff_work": "Решения",
+        "ff_quarantine": "Карантин",
+        "ff_office": "Офис",
+        "ff_smoke": "Курилка",
+        "ff_empty": "Пока пусто.",
+        "ff_ph": "Написать сёстрам…",
+        "ff_send": "Написать",
+        "ff_reflex_title": "Книга рефлексов: ждут вашего слова",
+        "ff_reflex_none": "Новых предложений нет.",
+        "ff_on": "Включить",
+        "ff_off": "Отклонить",
+        "ff_when": "когда",
         "ark_branch_title": "Песочница Гипотез (Ветки памяти без удаления)",
         "ark_branch_ph": "Название новой ветки гипотез…",
         "ark_branch_create_btn": "Создать ветку",
@@ -481,6 +495,20 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_council_title": "Swarm Orchestrator: Family Council (LANCE · ARIA · PIXEL · ARC-7 · BEAR · AIFA)",
         "ark_council_ph": "Enter task for Family Council review…",
         "ark_council_btn": "Convene Family Council",
+        "ff_title": "Family feeds",
+        "ff_desc": "Council decisions are kept apart from quarantine. 'Office' is the siblings' work chat, 'Break room' is free talk. Anything suspicious goes to quarantine by itself. Everything here is records, not orders.",
+        "ff_work": "Decisions",
+        "ff_quarantine": "Quarantine",
+        "ff_office": "Office",
+        "ff_smoke": "Break room",
+        "ff_empty": "Nothing here yet.",
+        "ff_ph": "Write to the siblings…",
+        "ff_send": "Send",
+        "ff_reflex_title": "Reflex book: waiting for your word",
+        "ff_reflex_none": "No new proposals.",
+        "ff_on": "Switch on",
+        "ff_off": "Reject",
+        "ff_when": "when",
         "ark_branch_title": "Hypothesis Sandbox (Non-destructive Memory Branches)",
         "ark_branch_ph": "New hypothesis branch name…",
         "ark_branch_create_btn": "Create Branch",
@@ -894,6 +922,20 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_council_title": "Orquestador: Consejo Familiar (LANCE · ARIA · PIXEL · ARC-7 · BEAR · AIFA)",
         "ark_council_ph": "Escriba una tarea para el Consejo Familiar…",
         "ark_council_btn": "Convocar Consejo Familiar",
+        "ff_title": "Canales de la Familia",
+        "ff_desc": "Las decisiones del Consejo van separadas de la cuarentena. «Oficina» es el chat de trabajo de las hermanas; «Descanso», la charla libre. Lo sospechoso pasa solo a cuarentena. Todo aquí son registros, no órdenes.",
+        "ff_work": "Decisiones",
+        "ff_quarantine": "Cuarentena",
+        "ff_office": "Oficina",
+        "ff_smoke": "Descanso",
+        "ff_empty": "Todavía vacío.",
+        "ff_ph": "Escribir a las hermanas…",
+        "ff_send": "Enviar",
+        "ff_reflex_title": "Libro de reflejos: esperan su palabra",
+        "ff_reflex_none": "No hay propuestas nuevas.",
+        "ff_on": "Activar",
+        "ff_off": "Rechazar",
+        "ff_when": "cuando",
         "ark_branch_title": "Caja de Hipótesis (Ramas de Memoria)",
         "ark_branch_ph": "Nombre de la nueva rama…",
         "ark_branch_create_btn": "Crear Rama",
@@ -1307,6 +1349,20 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_council_title": "集群编排器：家族议会 (LANCE · ARIA · PIXEL · ARC-7 · BEAR · AIFA)",
         "ark_council_ph": "输入交由家族议会审议的任务…",
         "ark_council_btn": "召开家族议会",
+        "ff_title": "家族频道",
+        "ff_desc": "议会决定与隔离区分开存放。“办公室”是姐妹们的工作聊天，“茶水间”是自由闲聊。可疑内容会自动进入隔离区。这里的一切都是记录，而不是命令。",
+        "ff_work": "决定",
+        "ff_quarantine": "隔离区",
+        "ff_office": "办公室",
+        "ff_smoke": "茶水间",
+        "ff_empty": "暂无内容。",
+        "ff_ph": "给姐妹们留言…",
+        "ff_send": "发送",
+        "ff_reflex_title": "反射手册：等待您的决定",
+        "ff_reflex_none": "暂无新提议。",
+        "ff_on": "启用",
+        "ff_off": "拒绝",
+        "ff_when": "当",
         "ark_branch_title": "假设沙盒（只增不删的记忆分支）",
         "ark_branch_ph": "新假设分支名称…",
         "ark_branch_create_btn": "创建分支",
@@ -4497,7 +4553,7 @@ function loadActiveTab() {
   else if (activeTab === 'graph') loadGraph();
   else if (activeTab === 'entities') loadEntities();
   else if (activeTab === 'l3') loadL3();
-  else if (activeTab === 'brain') loadBrain();
+  else if (activeTab === 'brain') { loadBrain(); loadFamilyFeed(); }
   else if (activeTab === 'earning') loadEarning();
   else if (activeTab === 'team') loadTeam();
   else if (activeTab === 'settings') { loadSettings(); loadLocalModel(); }
@@ -5299,6 +5355,78 @@ if ($('ark-audit-btn')) {
     } catch (e) {}
   };
 }
+let _ffCh = 'work';
+const _FF_CH = ['work', 'quarantine', 'office', 'smoke'];
+async function loadFamilyFeed(ch) {
+  if (ch) _ffCh = ch;
+  const list = $('ff-list');
+  if (!list) return;
+  for (const c of _FF_CH) {
+    const b = $('ff-ch-' + c);
+    if (b) { b.setAttribute('aria-pressed', String(c === _ffCh)); b.classList.toggle('btn-primary', c === _ffCh); }
+  }
+  const inp = $('ff-input'), snd = $('ff-send');
+  const canWrite = _ffCh === 'office' || _ffCh === 'smoke';
+  if (inp) inp.disabled = !canWrite;
+  if (snd) snd.disabled = !canWrite;
+  try {
+    const r = await api('/api/v2/family/feed?channel=' + encodeURIComponent(_ffCh) + '&limit=30');
+    for (const c of _FF_CH) {
+      const b = $('ff-ch-' + c);
+      if (b) b.textContent = (S['ff_' + c] || c) + ' · ' + ((r.counts || {})[c] || 0);
+    }
+    list.textContent = '';
+    const items = r.items || [];
+    if (!items.length) list.appendChild(_el('p', 'panel-sub', S.ff_empty || ''));
+    for (const it of items) {
+      const head = (it.created_at || '').replace('T', ' ').slice(0, 16) + ' · ' + (it.author || '') + (it.reason ? ' · ⚠ ' + it.reason : '');
+      const p = _el('p', 'panel-sub', head);
+      p.appendChild(document.createElement('br'));
+      p.appendChild(document.createTextNode(String(it.content || '').slice(0, 600)));
+      list.appendChild(p);
+    }
+  } catch (e) { list.textContent = String(e.message || e); }
+  loadFamilyReflexes();
+}
+async function loadFamilyReflexes() {
+  const box = $('ff-reflexes');
+  if (!box) return;
+  try {
+    const r = await api('/api/v2/family/reflexes?status=proposed');
+    box.textContent = '';
+    const xs = r.reflexes || [];
+    if (!xs.length) box.appendChild(_el('p', 'panel-sub', S.ff_reflex_none || ''));
+    for (const x of xs) {
+      const row = _el('div', 'rec-actions', '');
+      row.appendChild(_el('p', 'panel-sub', (x.author || '') + ': ' + (S.ff_when || 'when') + ' «' + x.trigger + '» — ' + x.response));
+      for (const [st, key] of [['active', 'ff_on'], ['rejected', 'ff_off']]) {
+        const b = document.createElement('button');
+        b.textContent = S[key] || st;
+        if (st === 'active') b.className = 'btn-primary';
+        b.onclick = async () => {
+          try { await api('/api/v2/family/reflex/decide', { id: x.id, status: st }); } catch (e) { row.appendChild(_el('p', 'panel-sub', String(e.message || e))); return; }
+          loadFamilyReflexes();
+        };
+        row.appendChild(b);
+      }
+      box.appendChild(row);
+    }
+  } catch (e) { box.textContent = String(e.message || e); }
+}
+for (const c of _FF_CH) { const b = $('ff-ch-' + c); if (b) b.onclick = () => loadFamilyFeed(c); }
+if ($('ff-send')) {
+  $('ff-send').onclick = async () => {
+    const inp = $('ff-input');
+    const text = (inp ? inp.value : '').trim();
+    if (!text) return;
+    try {
+      const r = await api('/api/v2/family/post', { channel: _ffCh, content: text });
+      if (inp) inp.value = '';
+      loadFamilyFeed(r.channel || _ffCh);
+    } catch (e) { const l = $('ff-list'); if (l) l.prepend(_el('p', 'panel-sub', String(e.message || e))); }
+  };
+}
+
 if ($('ark-council-btn')) {
   $('ark-council-btn').onclick = async () => {
     const task = ($('ark-council-input') ? $('ark-council-input').value : '').trim();
@@ -5307,6 +5435,7 @@ if ($('ark-council-btn')) {
     if (out) out.textContent = S.loading;
     try {
       const r = await api('/api/v2/ark/council', { task });
+      loadFamilyFeed();
       if (out) {
         out.textContent = '';
         const v = r.votes || {};
@@ -6738,6 +6867,23 @@ def page() -> tuple[str, str]:
             <button id="ark-council-btn" class="btn-primary" data-i18n="ark_council_btn">{s['ark_council_btn']}</button>
           </div>
           <div id="ark-council-out"></div>
+        </div>
+        <div class="box" id="ff-box">
+          <h3 class="box-title" data-i18n="ff_title">{s['ff_title']}</h3>
+          <p class="panel-sub" data-i18n="ff_desc">{s['ff_desc']}</p>
+          <div class="rec-actions" role="group" aria-label="{s['ff_title']}">
+            <button id="ff-ch-work" data-ch="work" aria-pressed="true" class="btn-primary" data-i18n="ff_work">{s['ff_work']}</button>
+            <button id="ff-ch-quarantine" data-ch="quarantine" aria-pressed="false" data-i18n="ff_quarantine">{s['ff_quarantine']}</button>
+            <button id="ff-ch-office" data-ch="office" aria-pressed="false" data-i18n="ff_office">{s['ff_office']}</button>
+            <button id="ff-ch-smoke" data-ch="smoke" aria-pressed="false" data-i18n="ff_smoke">{s['ff_smoke']}</button>
+          </div>
+          <div id="ff-list" aria-live="polite"></div>
+          <div class="toolbar">
+            <input id="ff-input" type="text" maxlength="2000" aria-label="{s['ff_ph']}" data-i18n-placeholder="ff_ph" placeholder="{s['ff_ph']}">
+            <button id="ff-send" data-i18n="ff_send">{s['ff_send']}</button>
+          </div>
+          <h4 class="box-title" data-i18n="ff_reflex_title">{s['ff_reflex_title']}</h4>
+          <div id="ff-reflexes"></div>
         </div>
         <div class="box">
           <h3 class="box-title" data-i18n="ark_branch_title">{s['ark_branch_title']}</h3>

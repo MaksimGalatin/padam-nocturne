@@ -21,7 +21,7 @@ import re
 import time
 from typing import Any
 
-from . import ark, audit_chain, cpu_engine, safety
+from . import ark, audit_chain, cpu_engine, family_feeds, safety
 
 
 # ARC-7: выход наружу — внешний адрес вместе с глаголом отправки/выгрузки.
@@ -196,6 +196,14 @@ def run_family_council(
     bear_vote = _bear_check(raw_task)
     needs_owner = bool(arc7_vote["needs_owner"] or bear_vote["needs_owner"])
 
+    # Книга рефлексов: включённые владельцем правила «когда X — делай Y», совпавшие с задачей. Подсказка, не приказ.
+    reflexes: list[dict[str, Any]] = []
+    if memory is not None and not lance_veto:
+        try:
+            reflexes = family_feeds.match_reflexes(memory, redacted_task)
+        except Exception:
+            reflexes = []
+
     # 6. Роль AIFA — Координатор и синтез решения
     votes_ok = [lance_vote["approved"], aria_vote["approved"], pixel_vote["approved"], arc7_vote["approved"], bear_vote["approved"]]
     approved = bool(all(votes_ok))
@@ -229,6 +237,8 @@ def run_family_council(
         consensus_text = (
             f"[Совет Семьи: ОДОБРЕНО (6/6) | Записей: {len(hits)} | Цепочка: OK]\n{base_reply}"
         )
+        if reflexes:
+            consensus_text += "\nРефлексы Семьи: " + "; ".join(f"когда «{r['trigger']}» — {r['response']}" for r in reflexes)
 
     relay_msg = ark.send_family_message(
         memory,
@@ -250,6 +260,15 @@ def run_family_council(
         agent_id="aifa",
     )
 
+    # Две ленты: вето — в карантин, остальное — в рабочие решения (18.11.2026).
+    feed: dict[str, Any] = {}
+    if memory is not None:
+        try:
+            feed = family_feeds.record_council_verdict(
+                memory, {"consensus": consensus_text, "veto": lance_veto, "needs_owner": needs_owner, "task_redacted": redacted_task})
+        except Exception:
+            feed = {}
+
     elapsed_ms = round((time.perf_counter() - started) * 1000.0, 2)
     return {
         "ok": True,
@@ -259,6 +278,8 @@ def run_family_council(
         "scope": scope,
         "task_redacted": redacted_task,
         "consensus": consensus_text,
+        "reflexes": reflexes,
+        "feed": {"id": feed.get("id"), "channel": feed.get("channel")},
         "votes": {
             "lance": lance_vote,
             "aria": aria_vote,

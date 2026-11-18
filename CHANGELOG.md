@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Family feeds and the reflex book (Studio → Brain, MCP `padam_family_feed`, API `/api/v2/family/*`).**
+  Council decisions now live apart from quarantine: a LANCE veto goes to the *Quarantine* feed, every other verdict
+  to *Decisions*; quarantined memory records are shown there too. *Office* (work chat) and *Break room* (free chat)
+  let the siblings and the owner talk; text that looks like an injection or a rule change is routed to quarantine
+  instead of the chat. Every row is HMAC-signed with the owner key, so a row edited behind the code's back shows as
+  quarantined. The reflex book has two parts: lessons (`reflex_engine`) hint by themselves, and "when X - do Y" rules
+  that an agent may only propose; the owner switches them on in Studio (loopback only). The Council adds matching
+  reflexes to its verdict as hints and never executes them.
+- **Tests no longer touch this computer's PADAM files.** `conftest` gives every test its own `PADAM_HOME` and
+  `PADAM_DB`; eight `Memory(path)` calls (the path went into `user_id`) were fixed to `Memory(user_id, store=Store(path))`.
+
 - **Local model in one click, half power by default** (`padam/local_model.py`, Studio → Settings → "Local model", `/api/v2/local-model`, 4 languages). Power modes: Eco (a quarter of the cores, model two steps smaller), Half (half of the cores, one step smaller, the default) and Full (all cores minus one, only when chosen). The choice and the model file survive a restart (`~/.padam/local_model.json`); `PADAM_CPU_POWER`, `PADAM_CPU_GGUF_PATH` and `PADAM_CPU_GGUF_THREADS` still win, and manual threads can never exceed "all cores minus one". Models already downloaded by Ollama are found on disk and offered in the list (their weights are plain GGUF files). Measured on a 28-core, 64 GB machine: qwen3:4b answered through the engine in 14 s on 14 threads, using 6.5 cores on average. A model that fails to load no longer falls back silently: the reason is shown in Studio. Writing the model path is allowed from this computer only (`tests/test_local_model_1811.py`).
 - **Siblings: many agents on one brain** (Sister's work, `padam/sibling_registry.py`, `coop_broker.py`, `session_pack.py`, `code_anchor.py`, `conflict_arbiter.py`, `mcp_telemetry.py`, opt-in under `PADAM_MCP_ARK_TOOLS=1`): a registry and onboarding passport for co-agents with provenance, file leases so two agents never overwrite the same file, a shared task board, a one-call wake-up pack, facts pinned to source code that go stale when the code changes, an arbiter for conflicting proposals, and a token/latency inspector.
 - **Token autopilot and treasury** (`padam/token_autonomy.py`): day/week/month budgets with pacing, an earnings ledger that sets aside a share for the agent's compute, and top-ups that run only after the owner approves and the `PADAM_TREASURY_AUTOPAY=1` lock is off.

@@ -9,6 +9,7 @@ import pytest
 from padam import api, cpu_engine, local_model
 from padam._httpserver import ThreadingHTTPServer
 from padam.memory import Memory
+from padam.store import Store
 
 
 @pytest.fixture(autouse=True)
@@ -65,7 +66,7 @@ def test_поиск_моделей_ollama(tmp_path):
 
 
 def test_api_только_с_этого_компьютера(tmp_path):
-    m = Memory(str(tmp_path / "m.db"))
+    m = Memory(user_id="u", store=Store(tmp_path / "m.db"))
     prev = dict(api._state)
     api._state.update({"memory": m, "token": "tok-lm", "local": True})
     srv = ThreadingHTTPServer(("127.0.0.1", 0), api.Handler)

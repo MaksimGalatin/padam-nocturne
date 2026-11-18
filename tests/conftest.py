@@ -32,3 +32,21 @@ def _без_живой_ollama(monkeypatch):
     monkeypatch.setattr(embeddings, "_ollama_available", None)
     monkeypatch.setattr(embeddings, "_check_ollama", lambda: False)
     yield
+
+
+@pytest.fixture(autouse=True)
+def _без_настроек_компьютера(tmp_path_factory, monkeypatch):
+    """18.11.2026: тесты не читают ~/.padam/local_model.json этого компьютера.
+
+    Иначе на машине, где владелец выбрал модель GGUF, Совет Семьи и офлайн-движок в тестах грузили настоящую
+    Qwen3-14B: прогон тестов лент шёл 292 с вместо 10. Тест, которому нужна своя папка, ставит PADAM_HOME сам.
+    """
+    home = tmp_path_factory.mktemp("padam_home")
+    monkeypatch.setenv("PADAM_HOME", str(home))
+    # И база по умолчанию — тоже временная: Memory() без store пишет в config.DB_PATH. 18.11.2026 нашлось,
+    # что тесты с Memory(путь) (путь уходил в user_id) писали в ~/.padam/memory.db этого компьютера.
+    monkeypatch.setenv("PADAM_DB", str(home / "memory.db"))
+    monkeypatch.setattr(config, "DB_PATH", home / "memory.db")
+    monkeypatch.delenv("PADAM_CPU_GGUF_PATH", raising=False)
+    monkeypatch.delenv("PADAM_CPU_POWER", raising=False)
+    yield

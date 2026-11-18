@@ -8,6 +8,7 @@ import pytest
 
 from padam import partner_bridge
 from padam.memory import Memory
+from padam.store import Store
 
 КЛЮЧ = "amcp_test_key_not_real_0001"
 
@@ -74,7 +75,7 @@ def test_ответ_облака_в_ограде_и_ключ_не_виден(о�
 
 
 def test_черновик_письма_ничего_не_отправляет(облако, tmp_path):
-    m = Memory(str(tmp_path / "m.db"))
+    m = Memory(user_id="u", store=Store(tmp_path / "m.db"))
     r = partner_bridge.draft_outreach(m, "example-a.gov", language="en")
     assert r["sent"] is False and r["council"]["needs_owner"] is True
     assert "DRAFT" in r["draft"] and "example-a.gov" in r["draft"]
