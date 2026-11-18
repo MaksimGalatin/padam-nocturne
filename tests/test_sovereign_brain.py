@@ -766,7 +766,7 @@ def test_ark_consciousness_all_10_pillars(monkeypatch, tmp_path):
         drill = phoenix.run_phoenix_drill(db_path)
         assert drill["ok"] is True
         assert drill["cost_usd"] == 0.0
-        assert len(drill["steps"]) == 5
+        assert len(drill["steps"]) >= 5
     finally:
         mcp_server._memory = prev_mem
         try:

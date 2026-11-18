@@ -1916,6 +1916,27 @@ def main(argv=None) -> int:
                                              "verify SHA-256 audit chain and Consciousness Ark health score"))
     saa.set_defaults(fn=cmd_ark_audit)
 
+    def cmd_ark_council(m: Memory, args) -> int:
+        from . import swarm_council as _sc
+        rep = _sc.run_family_council(m, " ".join(args.task), scope=args.scope)
+        print(json.dumps(rep, ensure_ascii=False, indent=2))
+        return 0 if rep.get("approved") else 2
+
+    sac = sub.add_parser("ark-council", help="Convene Family Council swarm orchestrator (LANCE, ARIA, PIXEL, AIFA)")
+    sac.add_argument("task", nargs="+")
+    sac.add_argument("--scope", default="global")
+    sac.set_defaults(fn=cmd_ark_council)
+
+    def cmd_ark_guardian(m: Memory, args) -> int:
+        from . import ark_advanced as _adv
+        rep = _adv.run_guardian_tick(m, scope=args.scope)
+        print(json.dumps(rep, ensure_ascii=False, indent=2))
+        return 0 if rep.get("audit_chain_valid") else 2
+
+    sag = sub.add_parser("ark-guardian", help="Proactive Consciousness Ark guardian tick ($0)")
+    sag.add_argument("--scope", default="global")
+    sag.set_defaults(fn=cmd_ark_guardian)
+
     a = p.parse_args(argv)
     if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup, cmd_pack_extension, cmd_playground, cmd_badge, cmd_aifa_sec) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):
         return a.fn(None, a)

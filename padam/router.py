@@ -267,6 +267,9 @@ class SovereignRouter:
         if local_only or budget_blocked:
             contours = [c for c in contours if c.name == "local"]
         if not contours:
+            if os.environ.get("PADAM_LLM_CPU_FALLBACK", "0").strip() == "1" or bool(payload.get("allow_cpu_fallback", False)):
+                from . import cpu_engine
+                return 200, cpu_engine.run_cpu_completion(payload, memory=memory, task_type=task_type, scope=scope)
             return 503, {"error": "No LLM contour enabled for this request"}
 
         # Circuit breaker: пропускаем контуры в cooldown, если есть хотя бы один живой кандидат
@@ -422,6 +425,9 @@ class SovereignRouter:
             if not should_failover:
                 return status, resp_data
 
+        if os.environ.get("PADAM_LLM_CPU_FALLBACK", "0").strip() == "1" or bool(payload.get("allow_cpu_fallback", False)):
+            from . import cpu_engine
+            return 200, cpu_engine.run_cpu_completion(payload, memory=memory, task_type=task_type, scope=scope)
         return last_status, {
             "error": last_err,
             "_padam_router": {

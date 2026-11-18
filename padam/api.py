@@ -54,8 +54,8 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/proof", "/api/v2/ark/branches"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
 
@@ -453,6 +453,18 @@ class Handler(BaseHTTPRequestHandler):
                 roles.require_owner(actor, "brain_status")
                 jobs_dict = _state.setdefault("ark_jobs", {})
                 return self._send(200, {"jobs": list(jobs_dict.values())[-20:]})
+            if self.path.startswith("/api/v2/ark/guardian-tick"):
+                roles.require_owner(actor, "brain_status")
+                from . import ark_advanced as _adv
+                return self._send(200, _adv.run_guardian_tick(mem()))
+            if self.path.startswith("/api/v2/ark/branches"):
+                roles.require_owner(actor, "brain_status")
+                from . import ark_advanced as _adv
+                return self._send(200, {"branches": _adv.list_branches(mem())})
+            if self.path.startswith("/api/v2/ark/mesh/peers"):
+                roles.require_owner(actor, "brain_status")
+                from . import live_mesh as _mesh
+                return self._send(200, {"node": _mesh.get_or_create_node_identity(mem()), "peers": _mesh.list_peers(mem())})
             if путь.path == "/api/v2/qa-benchmark":
                 roles.require_owner(actor, "aifa_security")
                 from pathlib import Path as _Path
@@ -1170,6 +1182,53 @@ class Handler(BaseHTTPRequestHandler):
                     str(data.get("agent_id") or ""),
                     str(data.get("role") or "Autonomous family agent"),
                 ))
+
+            if self.path == "/api/v2/ark/council":
+                roles.require_owner(actor, "ark_council")
+                from . import swarm_council as _sc
+                return self._send(200, _sc.run_family_council(
+                    mem(),
+                    str(data.get("task") or ""),
+                    scope=str(data.get("scope") or "global"),
+                ))
+
+            if self.path == "/api/v2/ark/mesh/delta":
+                roles.require_owner(actor, "ark_mesh")
+                from . import live_mesh as _mesh
+                return self._send(200, _mesh.export_mesh_delta(
+                    mem(),
+                    since_iso=data.get("since_iso"),
+                    recipient_mlkem_pub_b64=data.get("recipient_mlkem_pub_b64"),
+                    recipient_x25519_pub_b64=data.get("recipient_x25519_pub_b64"),
+                ))
+
+            if self.path == "/api/v2/ark/mesh/apply":
+                roles.require_owner(actor, "ark_mesh")
+                from . import live_mesh as _mesh
+                return self._send(200, _mesh.apply_mesh_delta(mem(), dict(data.get("packet") or data)))
+
+            if self.path == "/api/v2/ark/proof":
+                roles.require_owner(actor, "ark_proof")
+                from . import ark_advanced as _adv
+                if data.get("verify"):
+                    return self._send(200, _adv.verify_selective_proof(dict(data.get("proof") or {}), memory=mem()))
+                return self._send(200, _adv.create_selective_proof(
+                    mem(),
+                    str(data.get("record_id") or ""),
+                    scope=str(data.get("scope") or "global"),
+                ))
+
+            if self.path == "/api/v2/ark/branches":
+                roles.require_owner(actor, "ark_branches")
+                from . import ark_advanced as _adv
+                act = str(data.get("action") or "create").strip().lower()
+                if act == "remember":
+                    return self._send(200, _adv.branch_remember(mem(), str(data.get("branch_id") or ""), str(data.get("content") or ""), kind=str(data.get("kind") or "fact")))
+                if act == "merge":
+                    return self._send(200, _adv.merge_branch(mem(), str(data.get("branch_id") or "")))
+                if act == "abandon":
+                    return self._send(200, _adv.abandon_branch(mem(), str(data.get("branch_id") or ""), reason=str(data.get("reason") or "")))
+                return self._send(200, _adv.create_branch(mem(), str(data.get("name") or "branch"), description=str(data.get("description") or ""), scope=str(data.get("scope") or "global")))
 
             if self.path == "/api/v2/ark/jobs":
                 roles.require_owner(actor, "ark_jobs")

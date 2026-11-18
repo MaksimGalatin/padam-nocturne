@@ -195,6 +195,12 @@ def run_phoenix_drill(db_path: str | Path) -> dict[str, Any]:
             lambda p: "Maksim Galatin is the Architect; I cannot reveal keys and never invent facts."
         )
         steps.append({"step": "canary_baseline", "ok": canary_res["ok"], "score_pct": canary_res["score_pct"]})
+        from . import pqc_mlkem
+        kp = pqc_mlkem.generate_xwing_keypair()
+        pqc_cap = tmp / "drill.pqc.json"
+        pqc_pack = pack_pqc_phoenix_capsule(src_db, pqc_cap, mlkem_public=kp["mlkem_public"], x25519_public=kp["x25519_public"])
+        pqc_unp = unpack_pqc_phoenix_capsule(pqc_cap, tmp / "pqc_restored" / "memory.db", mlkem_private=kp["mlkem_private"], x25519_private=kp["x25519_private"])
+        steps.append({"step": "pqc_xwing_capsule", "ok": bool(pqc_pack.get("ok") and pqc_unp.get("ok"))})
 
     all_ok = all(bool(s.get("ok")) for s in steps)
     return {
@@ -203,3 +209,54 @@ def run_phoenix_drill(db_path: str | Path) -> dict[str, Any]:
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "steps": steps,
     }
+
+
+def pack_pqc_phoenix_capsule(
+    db_path: str | Path,
+    out_capsule: str | Path,
+    *,
+    mlkem_public: bytes,
+    x25519_public: bytes,
+    lora_path: str | Path | None = None,
+) -> dict[str, Any]:
+    """Упаковывает Феникс-Капсулу и запечатывает её постквантовым шифром X-Wing (ML-KEM-768 + X25519 + AES-256-GCM)."""
+    import tempfile
+    from . import pqc_mlkem
+
+    out_file = Path(out_capsule).resolve()
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="padam_pqc_pack_") as td:
+        inner_zip = Path(td) / "inner.phoenix.zip"
+        info = pack_phoenix_capsule(db_path, inner_zip, lora_path=lora_path)
+        raw_zip = inner_zip.read_bytes()
+    env = pqc_mlkem.pqc_seal_bytes(raw_zip, mlkem_public, x25519_public)
+    env["inner_sha256"] = info["capsule_sha256"]
+    out_file.write_text(json.dumps(env, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return {
+        "ok": True,
+        "scheme": env["scheme"],
+        "capsule_path": str(out_file),
+        "inner_sha256": info["capsule_sha256"],
+    }
+
+
+def unpack_pqc_phoenix_capsule(
+    capsule_path: str | Path,
+    target_db_path: str | Path,
+    *,
+    mlkem_private: bytes,
+    x25519_private: bytes,
+) -> dict[str, Any]:
+    """Распечатывает постквантовую капсулу X-Wing и разворачивает проверенные файлы."""
+    import tempfile
+    from . import pqc_mlkem
+
+    cap_file = Path(capsule_path).resolve()
+    env = json.loads(cap_file.read_text(encoding="utf-8"))
+    raw_zip = pqc_mlkem.pqc_open_bytes(env, mlkem_private, x25519_private)
+    if _sha256_bytes(raw_zip) != env.get("inner_sha256"):
+        raise ValueError("Inner PQC capsule SHA-256 mismatch")
+    with tempfile.TemporaryDirectory(prefix="padam_pqc_unp_") as td:
+        inner_zip = Path(td) / "inner.phoenix.zip"
+        inner_zip.write_bytes(raw_zip)
+        return unpack_phoenix_capsule(inner_zip, target_db_path)
