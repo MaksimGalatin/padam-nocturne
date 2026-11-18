@@ -95,10 +95,105 @@ _WEEK_S = 7.0 * _DAY_S
 _MONTH_S = 30.0 * _DAY_S
 
 
+from contextlib import nullcontext
+
+def _lock_of(memory):
+    return getattr(getattr(memory, "store", None), "_lock", None) or nullcontext()
+
+
+PROVIDER_CATALOG: list[dict[str, Any]] = [
+    {
+        "provider_id": "ollama_local",
+        "name": "Local Ollama / GGUF (CPU/GPU)",
+        "billing_kind": "local_zero",
+        "monthly_usd": 0.0,
+        "included_tokens_est": 50_000_000,
+        "effective_usd_per_1m": 0.0,
+        "best_for": ["sleep", "classify", "summarize", "review", "draft"],
+    },
+    {
+        "provider_id": "zhipu_autoglm_plan",
+        "name": "AutoGLM / Zhipu Coding Subscription",
+        "billing_kind": "subscription_monthly",
+        "monthly_usd": 15.0,
+        "included_tokens_est": 12_000_000,
+        "effective_usd_per_1m": 1.25,
+        "best_for": ["code", "routine_agent", "tests"],
+    },
+    {
+        "provider_id": "claude_pro",
+        "name": "Anthropic Claude Pro (Monthly Subscription)",
+        "billing_kind": "subscription_monthly",
+        "monthly_usd": 20.0,
+        "included_tokens_est": 15_000_000,
+        "effective_usd_per_1m": 1.33,
+        "best_for": ["architecture", "audit", "complex_code"],
+    },
+    {
+        "provider_id": "chatgpt_plus",
+        "name": "OpenAI ChatGPT Plus (Monthly Subscription)",
+        "billing_kind": "subscription_monthly",
+        "monthly_usd": 20.0,
+        "included_tokens_est": 15_000_000,
+        "effective_usd_per_1m": 1.33,
+        "best_for": ["general", "research", "analysis"],
+    },
+    {
+        "provider_id": "cursor_pro",
+        "name": "Cursor Pro (IDE Agent Subscription)",
+        "billing_kind": "subscription_monthly",
+        "monthly_usd": 20.0,
+        "included_tokens_est": 14_000_000,
+        "effective_usd_per_1m": 1.43,
+        "best_for": ["ide_coding", "refactor"],
+    },
+    {
+        "provider_id": "xai_supergrok",
+        "name": "xAI SuperGrok (Monthly Subscription)",
+        "billing_kind": "subscription_monthly",
+        "monthly_usd": 30.0,
+        "included_tokens_est": 18_000_000,
+        "effective_usd_per_1m": 1.67,
+        "best_for": ["realtime", "search", "synthesis"],
+    },
+    {
+        "provider_id": "claude_max",
+        "name": "Anthropic Claude Max (Heavy Swarm Subscription)",
+        "billing_kind": "subscription_monthly",
+        "monthly_usd": 100.0,
+        "included_tokens_est": 80_000_000,
+        "effective_usd_per_1m": 1.25,
+        "best_for": ["swarm_heavy", "long_horizon"],
+    },
+    {
+        "provider_id": "anthropic_payg_api",
+        "name": "Anthropic PAYG API (Sonnet/Opus per-token)",
+        "billing_kind": "payg_api",
+        "monthly_usd": 0.0,
+        "included_tokens_est": 0,
+        "effective_usd_per_1m": 9.0,
+        "best_for": ["burst_overflow_only"],
+    },
+    {
+        "provider_id": "openai_payg_api",
+        "name": "OpenAI PAYG API (per-token)",
+        "billing_kind": "payg_api",
+        "monthly_usd": 0.0,
+        "included_tokens_est": 0,
+        "effective_usd_per_1m": 7.5,
+        "best_for": ["burst_overflow_only"],
+    },
+]
+
 def _ensure(memory) -> None:
-    ark._ensure_tables(memory)
-    memory.store.conn.executescript(_BUDGET_DDL)
-    memory.store.conn.commit()
+    with _lock_of(memory):
+        ark._ensure_tables(memory)
+        conn = memory.store.conn
+        for stmt in _BUDGET_DDL.split(";"):
+            s = stmt.strip()
+            if s:
+                conn.execute(s)
+        conn.commit()
 
 
 def _clean_provider(provider: str) -> str:
@@ -347,7 +442,7 @@ def record_agent_earning(
     """Фиксирует заработок агента и автоматически выделяет долю (по умолчанию 15%) в бюджет его вычислений."""
     _ensure(memory)
     rev = max(0.0, float(revenue_usdt))
-    share = max(0.0, min(50.0, float(compute_share_pct)))
+    share = max(1.0, min(100.0, float(compute_share_pct)))
     alloc = round(rev * (share / 100.0), 4)
     eid = f"ern-{uuid.uuid4().hex[:10]}"
     clean_src, _ = safety.redact(str(source or "service").strip())
@@ -659,3 +754,124 @@ class BudgetTimerWatcher:
         self._stop.set()
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=timeout_s)
+
+
+def recommend_optimal_spend(
+    memory,
+    *,
+    monthly_tokens_need: int = 10_000_000,
+    prefer_local_first: bool = True,
+    settlement_currency: str = "USDT_TRC20",
+    galatin_price_usdt: float = 0.01,
+) -> dict[str, Any]:
+    """Рациональный финансовый советник агента: экономия на локальном ИИ + выбор дешёвой подписки вместо дорогого PAYG API."""
+    tsum = treasury_summary(memory)
+    avail = float(tsum.get("available_compute_usdt") or 0.0)
+    need_m = max(0.1, float(monthly_tokens_need) / 1_000_000.0)
+    curr = str(settlement_currency or "USDT_TRC20").strip().upper()
+    if curr not in ("USDT_TRC20", "GALATIN"):
+        curr = "USDT_TRC20"
+    g_price = max(0.0001, float(galatin_price_usdt or 0.01))
+
+    # Локальный контур бесплатно берёт до 35% фоновых/черновых задач
+    local_offload_pct = 35.0 if prefer_local_first else 0.0
+    paid_need_m = round(need_m * (1.0 - local_offload_pct / 100.0), 3)
+
+    subs = [p for p in PROVIDER_CATALOG if p["billing_kind"] == "subscription_monthly"]
+    payg = min((p for p in PROVIDER_CATALOG if p["billing_kind"] == "payg_api"), key=lambda x: x["effective_usd_per_1m"])
+
+    affordable_subs = [p for p in subs if p["monthly_usd"] <= avail]
+    best_sub = None
+    if affordable_subs:
+        # Выбираем подписку с минимальной ценой за 1M токенов среди доступных по балансу (и покрывающую потребность)
+        covering = [p for p in affordable_subs if (p["included_tokens_est"] / 1_000_000.0) >= paid_need_m]
+        pool = covering if covering else affordable_subs
+        best_sub = min(pool, key=lambda x: (x["effective_usd_per_1m"], x["monthly_usd"]))
+    else:
+        best_sub = min(subs, key=lambda x: x["monthly_usd"])
+
+    payg_est_cost = round(paid_need_m * payg["effective_usd_per_1m"], 4)
+    sub_cost = float(best_sub["monthly_usd"])
+    savings_usdt = round(max(0.0, payg_est_cost - sub_cost), 4)
+    savings_pct = round((savings_usdt / payg_est_cost) * 100.0, 2) if payg_est_cost > 0 else 0.0
+
+    recommended_action = "stay_local_and_accumulate"
+    if avail >= best_sub["monthly_usd"]:
+        recommended_action = "propose_subscription_upgrade"
+    elif avail >= 5.0 and need_m < 1.0:
+        recommended_action = "payg_micro_bridge_only"
+
+    galatin_equiv = round(avail / g_price, 2)
+    return {
+        "ok": True,
+        "available_compute_usdt": avail,
+        "monthly_tokens_need": int(monthly_tokens_need),
+        "local_offload_pct": local_offload_pct,
+        "paid_tokens_need_millions": paid_need_m,
+        "recommended_action": recommended_action,
+        "recommended_provider": best_sub,
+        "payg_baseline_provider": payg["provider_id"],
+        "payg_estimated_cost_usdt": payg_est_cost,
+        "subscription_cost_usdt": sub_cost,
+        "estimated_savings_usdt": savings_usdt,
+        "estimated_savings_pct": savings_pct,
+        "rational_policy": "Local CPU/Ollama ($0) for routine -> Cheapest Monthly Subscription -> PAYG API only for short bursts",
+        "settlement": {
+            "phase_currency": curr,
+            "galatin_price_usdt": g_price,
+            "available_galatin_equivalent": galatin_equiv,
+            "note": (
+                "Фаза 1: расчёты и выплаты учитываются в USDT TRC20."
+                if curr == "USDT_TRC20"
+                else "Фаза 2: обороты идут через $GALATIN и автовыкуп с биржи при выводе/покупке тарифов в ЛК."
+            ),
+        },
+        "catalog": PROVIDER_CATALOG,
+    }
+
+
+def propose_rational_subscription(
+    memory,
+    *,
+    agent_id: str = "aifa",
+    provider_id: str = "",
+    monthly_tokens_need: int = 10_000_000,
+) -> dict[str, Any]:
+    """Агент сам подбирает оптимальную подписку из каталога и создаёт заявку на одобрение владельцем (не тратит впустую на PAYG)."""
+    rec = recommend_optimal_spend(memory, monthly_tokens_need=monthly_tokens_need)
+    chosen = None
+    if provider_id:
+        for p in PROVIDER_CATALOG:
+            if p["provider_id"] == provider_id:
+                chosen = p
+                break
+        if chosen is None:
+            raise ValueError(f"Unknown catalog provider_id: {provider_id}")
+    else:
+        chosen = rec["recommended_provider"]
+
+    if chosen["billing_kind"] == "local_zero":
+        return {"ok": True, "action": "use_local_free", "provider": chosen, "proposal_created": False}
+
+    amt = float(chosen["monthly_usd"] or 10.0)
+    toks = int(chosen["included_tokens_est"] or 1_000_000)
+    prop = propose_plan_or_topup(
+        memory,
+        agent_id=agent_id,
+        provider=chosen["provider_id"],
+        action_type="upgrade_plan",
+        target_tier="subscription_monthly" if chosen["billing_kind"] == "subscription_monthly" else "api_payg",
+        amount_usdt=amt,
+        estimated_tokens=toks,
+        reason=(
+            f"Rational spend choice: {chosen['name']} saves ~{rec['estimated_savings_pct']}% vs PAYG API "
+            f"({chosen['effective_usd_per_1m']}$/1M vs {rec['payg_estimated_cost_usdt']}$)."
+        ),
+    )
+    return {
+        "ok": True,
+        "proposal_created": True,
+        "chosen_provider": chosen,
+        "recommendation": rec,
+        "proposal": prop,
+    }

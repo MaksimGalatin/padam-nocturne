@@ -43,13 +43,24 @@ CREATE TABLE IF NOT EXISTS ark_coop_task (
 CREATE INDEX IF NOT EXISTS idx_ark_coop_task_topic ON ark_coop_task(user_id, topic, status);
 """
 
+from contextlib import nullcontext
+
 _VALID_TASK_STATUSES = frozenset({"open", "claimed", "review", "done", "blocked"})
 
 
+def _lock_of(memory):
+    return getattr(getattr(memory, "store", None), "_lock", None) or nullcontext()
+
+
 def _ensure(memory) -> None:
-    ark._ensure_tables(memory)
-    memory.store.conn.executescript(_COOP_DDL)
-    memory.store.conn.commit()
+    with _lock_of(memory):
+        ark._ensure_tables(memory)
+        conn = memory.store.conn
+        for stmt in _COOP_DDL.split(";"):
+            s = stmt.strip()
+            if s:
+                conn.execute(s)
+        conn.commit()
 
 
 def _canon_resource(raw_key: str) -> str:

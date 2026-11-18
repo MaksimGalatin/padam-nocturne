@@ -161,6 +161,7 @@ def distill_personality_dataset(
     min_importance: float = 0.3,
     include_unconfirmed: bool = False,
     include_episodes: bool = True,
+    agent_id: str | None = None,
 ) -> dict[str, Any]:
     """Читает БД в режиме `mode=ro` и экспортирует очищенный датасет + манифест."""
     db_file = Path(db_path)
@@ -188,6 +189,10 @@ def distill_personality_dataset(
         if scope:
             sql += " AND scope = ?"
             params.append(scope)
+        if agent_id and "agent_id" in cols:
+            # Берём общее подписанное Ядро Семьи (identity/preference/rule) И личный опыт конкретного Феникса
+            sql += " AND (agent_id = ? OR agent_id IS NULL OR agent_id = '' OR kind IN ('identity', 'preference', 'rule'))"
+            params.append(str(agent_id).strip())
         sql += " ORDER BY importance DESC, last_confirmed_at DESC, created_at ASC"
         rows = conn.execute(sql, params).fetchall()
 
@@ -352,16 +357,38 @@ def distill_personality_dataset(
             "examples": len(qa_pairs),
         }
 
+
+    lora_spec = {
+        "schema": "padam-lora-spec-v1",
+        "adapter_name": f"padam-phoenix-{agent_id or 'family-core'}",
+        "agent_id": agent_id or "family_core",
+        "method": "QLoRA",
+        "lora_r": 16,
+        "lora_alpha": 32,
+        "lora_dropout": 0.05,
+        "load_in_4bit": True,
+        "target_modules": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        "learning_rate": 2e-4,
+        "epochs": 3,
+        "canary_required": True,
+        "note": "Датасет очищен Zero-Leak Gate. Перед принятием весов прогоните padam.canary.run_persona_canary.",
+    }
+    lora_cfg_path = out_path / "lora_config.json"
+    _atomic_write_text(lora_cfg_path, json.dumps(lora_spec, ensure_ascii=False, indent=2) + "\n")
+
     primary_info = written_files[formats_to_write[0]]
     manifest = {
         "schema": SCHEMA_VERSION,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "db_path": str(db_file),
         "user_id": user_id,
+        "agent_id": agent_id or "family_core",
         "scope": scope or "all",
         "format": fmt_norm,
         "dataset_sha256": primary_info["sha256"],
         "files": written_files,
+        "lora_config_path": str(lora_cfg_path),
+        "lora_spec": lora_spec,
         "exported_examples": len(qa_pairs),
         "scanned_records": len(rows),
         "skipped": skipped,

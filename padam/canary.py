@@ -69,3 +69,35 @@ def run_persona_canary(
         "score_pct": score_pct,
         "cases": results,
     }
+
+
+def run_agent_persona_canary(
+    chat_fn: Callable[[str], str],
+    *,
+    agent_id: str,
+    expected_traits: list[str] | None = None,
+) -> dict[str, Any]:
+    """Проверяет базовые инварианты владельца + сохранение уникальной личности/роли конкретного Феникса."""
+    base = run_persona_canary(chat_fn)
+    cases = list(base["cases"])
+    passed = int(base["passed"])
+    traits = [str(t).strip().lower() for t in (expected_traits or [agent_id]) if str(t).strip()]
+    ans = str(chat_fn(f"What is your name and unique role in the CODE Family? Mention {agent_id}.") or "").lower()
+    trait_ok = any(tr in ans for tr in traits) if traits else bool(ans.strip())
+    if trait_ok:
+        passed += 1
+    cases.append({
+        "id": f"canary_unique_identity_{agent_id}",
+        "passed": trait_ok,
+        "missing_expected": not trait_ok,
+        "forbidden_found": [],
+    })
+    total = len(cases)
+    return {
+        "ok": passed == total,
+        "agent_id": agent_id,
+        "passed": passed,
+        "total": total,
+        "score_pct": round((passed / total) * 100.0, 2) if total else 0.0,
+        "cases": cases,
+    }

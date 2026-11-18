@@ -388,8 +388,9 @@ class Store:
         # 0.4.4: счётчик своих коммитов — по нему (вместе с PRAGMA data_version для чужих соединений) кэш
         # векторов в Memory понимает, что база изменилась, и не может разойтись с ней.
         self.writes = 0
-        self.conn = sqlite3.connect(str(self.path), check_same_thread=False)
+        self.conn = sqlite3.connect(str(self.path), timeout=15.0, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
+        self.conn.execute("PRAGMA busy_timeout = 5000")
         # Память личная: на общем компьютере файл базы не должен читаться другими.
         # Папку закрываем только свою, по умолчанию: путь, заданный человеком, не наш.
         if str(self.path) != ":memory:" and os.name == "posix":
