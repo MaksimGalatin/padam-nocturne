@@ -395,7 +395,9 @@ def rollback(
         mem.store.atomic(restore_ops)
         # Переподписываем защищённые записи владельцем, если локальный ключ владельца доступен
         try:
-            key = getattr(mem, "_ключ", None)
+            # Аудит GLM 18.11.2026, MEM-03: раньше ключ брался из несуществующего атрибута, а sign() звался с 8
+            # аргументами — подпись после отката не ставилась никогда. Теперь ключ владельца и правильная подпись.
+            key, _ = integrity.owner_key(mem.store)
             if key is not None:
                 for rid in restored_ids:
                     row = mem.store.one(
@@ -403,7 +405,7 @@ def rollback(
                         (rid, mem.user_id),
                     )
                     if row is not None and row["kind"] in ("identity", "preference"):
-                        sig = integrity.sign(key, row["id"], row["user_id"], row["scope"], row["kind"], row["content"], row["origin"], row["created_at"])
+                        sig = integrity.sign(key, row["id"], row["kind"], row["content"])
                         mem.store.execute("UPDATE memory SET owner_sig = ? WHERE id = ?", (sig, rid))
         except Exception:
             pass

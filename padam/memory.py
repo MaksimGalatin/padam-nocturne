@@ -794,7 +794,9 @@ class Memory:
                         факт_ключ = NULL, owner_sig = NULL WHERE user_id = ?""", (self.user_id,)),
                     ("DELETE FROM episode WHERE user_id = ?", (self.user_id,)),
                     ("DELETE FROM term_alias WHERE user_id = ?", (self.user_id,)),
-                    ("DELETE FROM forget_receipt WHERE user_id = ?", (self.user_id,))]
+                    # Аудит GLM 18.11.2026, MEM-09: квитанции забвения — доказательство, их не удаляем. Затираем только
+                    # отпечаток содержания: по нему иначе можно было бы проверить догадку «текст был таким».
+                    ("UPDATE forget_receipt SET content_hash_sha256 = NULL WHERE user_id = ?", (self.user_id,))]
         self.store.atomic(ops)
         if wipe_local:
             self.store.purge()
@@ -2075,6 +2077,7 @@ class Memory:
                 f"SELECT COUNT(*) FROM memory WHERE user_id=? AND status='quarantined'{vis_sql}",
                 (self.user_id, *vis_params)),
             "episodes_pending": ожидает,
+            "audit_failures": getattr(self, "_audit_failures", 0),
             "consolidation_due": ожидает >= config.CONSOLIDATION_DUE,
             "stale_vectors": scalar(
                 """SELECT COUNT(*) FROM memory WHERE user_id=? AND content IS NOT NULL
@@ -2819,8 +2822,12 @@ class Memory:
                     pass
             if getattr(config, "WEBHOOK_URL", ""):
                 self._dispatch_webhook(ev)
-        except Exception:
-            pass
+        except Exception as exc:
+            # Аудит GLM 18.11.2026, MEM-02: сбой журнала больше не молчит. Операцию он не ломает, но счётчик
+            # растёт (виден в stats → audit_failures) и причина уходит в stderr.
+            self._audit_failures = getattr(self, "_audit_failures", 0) + 1
+            import sys as _sys
+            print(f"padam: audit_log write failed ({action}): {type(exc).__name__}: {exc}", file=_sys.stderr)
 
     def subscribe_events(self):
         """Б10: подписаться на живой поток событий памяти (SSE)."""
