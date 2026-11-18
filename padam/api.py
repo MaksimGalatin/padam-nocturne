@@ -650,6 +650,24 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self._trusted():
             return self._send(403, {"error": "forbidden origin or host"})
+        if self.path == "/api/v2/ark/freelance/webhook" or self.path.startswith("/api/v2/ark/freelance/webhook?"):
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+                if length <= 0 or length > MAX_BODY:
+                    return self._send(400, {"error": "invalid webhook body length"})
+                self._тело_прочитано = self.headers
+                raw_bytes = self.rfile.read(length)
+                from urllib.parse import urlparse as _urlparse
+                qs = parse_qs(_urlparse(self.path).query)
+                acc_id = (qs.get("account_id") or [""])[0]
+                sig = self.headers.get("X-Padam-Signature") or ""
+                from . import freelance_autonomy as _fa
+                res = _fa.verify_and_process_webhook(mem(), raw_bytes, sig, account_id=acc_id)
+                return self._send(200, res)
+            except PermissionError as e:
+                return self._send(403, {"error": str(e)})
+            except Exception as e:
+                return self._send(400, {"error": str(e)})
         ctype = (self.headers.get("Content-Type") or "").lower()
         if int(self.headers.get("Content-Length") or 0) and "application/json" not in ctype:
             return self._send(415, {"error": "Content-Type must be application/json"})
@@ -1401,7 +1419,7 @@ class Handler(BaseHTTPRequestHandler):
 
             if self.path == "/api/v2/ark/freelance/action":
                 roles.require_owner(actor, "ark_freelance")
-                from . import freelance_autonomy as _fa
+                from . import freelance_autonomy as _fa, token_autonomy as _ta
                 act = str(data.get("action") or "dashboard").lower()
                 aid = str(data.get("agent_id") or "aifa")
                 if act == "connect_account":
@@ -1413,6 +1431,22 @@ class Handler(BaseHTTPRequestHandler):
                         agent_id=aid,
                         skills=data.get("skills") if isinstance(data.get("skills"), list) else None,
                         oauth_token=str(data.get("oauth_token") or ""),
+                        api_base_url=str(data.get("api_base_url") or ""),
+                        webhook_secret=str(data.get("webhook_secret") or ""),
+                        allow_localhost=bool(data.get("allow_localhost", False)),
+                    ))
+                if act == "set_prefs":
+                    return self._send(200, _fa.set_freelance_prefs(
+                        mem(),
+                        agent_share_pct=data.get("agent_share_pct"),
+                        settlement_currency=data.get("settlement_currency"),
+                        galatin_price_usdt=data.get("galatin_price_usdt"),
+                    ))
+                if act == "fetch_jobs":
+                    return self._send(200, _fa.fetch_jobs_from_exchange(
+                        mem(),
+                        str(data.get("account_id") or ""),
+                        allow_localhost=bool(data.get("allow_localhost", False)),
                     ))
                 if act == "evaluate_job":
                     return self._send(200, _fa.evaluate_and_ingest_job(
@@ -1433,6 +1467,13 @@ class Handler(BaseHTTPRequestHandler):
                         proposed_usdt=data.get("proposed_usdt"),
                         owner_approved=bool(data.get("owner_approved", False)),
                     ))
+                if act == "dispatch_bid":
+                    return self._send(200, _fa.dispatch_bid_http(
+                        mem(),
+                        str(data.get("order_id") or ""),
+                        owner_approved=bool(data.get("owner_approved", False)),
+                        allow_localhost=bool(data.get("allow_localhost", False)),
+                    ))
                 if act == "execute_swarm":
                     return self._send(200, _fa.execute_order_with_swarm(
                         mem(),
@@ -1452,14 +1493,29 @@ class Handler(BaseHTTPRequestHandler):
                         str(data.get("order_id") or ""),
                         paid_usdt=data.get("paid_usdt"),
                         agent_id=aid,
-                        compute_share_pct=float(data.get("compute_share_pct") or 15.0),
-                        platform_fee_pct=float(data.get("platform_fee_pct") or 10.0),
+                        agent_share_pct=data.get("agent_share_pct") if data.get("agent_share_pct") is not None else data.get("compute_share_pct"),
+                        settlement_currency=data.get("settlement_currency"),
+                    ))
+                if act == "recommend_spend":
+                    prefs = _fa.get_freelance_prefs(mem())
+                    return self._send(200, _ta.recommend_optimal_spend(
+                        mem(),
+                        monthly_tokens_need=int(data.get("monthly_tokens_need") or 10_000_000),
+                        settlement_currency=str(data.get("settlement_currency") or prefs["settlement_currency"]),
+                        galatin_price_usdt=float(data.get("galatin_price_usdt") or prefs["galatin_price_usdt"]),
+                    ))
+                if act == "propose_subscription":
+                    return self._send(200, _ta.propose_rational_subscription(
+                        mem(),
+                        agent_id=aid,
+                        provider_id=str(data.get("provider_id") or ""),
+                        monthly_tokens_need=int(data.get("monthly_tokens_need") or 10_000_000),
                     ))
                 if act == "monetization":
                     return self._send(200, _fa.monetization_breakdown(
                         float(data.get("gross_usdt") or 100.0),
-                        platform_fee_pct=float(data.get("platform_fee_pct") or 10.0),
-                        agent_compute_pct=float(data.get("compute_share_pct") or 15.0),
+                        agent_share_pct=float(data.get("agent_share_pct") or data.get("compute_share_pct") or 15.0),
+                        settlement_currency=str(data.get("settlement_currency") or "USDT_TRC20"),
                     ))
                 return self._send(200, _fa.freelance_dashboard_snapshot(mem()))
 

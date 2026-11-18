@@ -1045,6 +1045,10 @@ FREELANCE_HUB_TOOL_DEF = {
                     "settle_paid",
                     "propose_profile",
                     "monetization",
+                    "set_prefs",
+                    "fetch_jobs",
+                    "recommend_spend",
+                    "propose_subscription",
                 ],
                 "default": "dashboard",
             },
@@ -1066,6 +1070,11 @@ FREELANCE_HUB_TOOL_DEF = {
             "paid_usdt": {"type": "number"},
             "platform_fee_pct": {"type": "number", "default": 10.0},
             "compute_share_pct": {"type": "number", "default": 15.0},
+            "agent_share_pct": {"type": "number"},
+            "settlement_currency": {"type": "string", "enum": ["USDT_TRC20", "GALATIN"]},
+            "api_base_url": {"type": "string"},
+            "provider_id": {"type": "string"},
+            "monthly_tokens_need": {"type": "integer", "default": 10000000},
             "suggestion_text": {"type": "string"},
             "status": {"type": "string"},
         },
@@ -4819,7 +4828,7 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
 
     if name == "padam_freelance_hub":
-        from . import freelance_autonomy as _fa
+        from . import freelance_autonomy as _fa, token_autonomy as _ta
         act = str(args.get("action") or "dashboard").lower()
         aid = str(args.get("agent_id") or "aifa")
         if act == "connect_account":
@@ -4831,6 +4840,29 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 agent_id=aid,
                 skills=args.get("skills") if isinstance(args.get("skills"), list) else None,
                 oauth_token=str(args.get("oauth_token") or ""),
+                api_base_url=str(args.get("api_base_url") or ""),
+            )
+        elif act == "set_prefs":
+            payload = _fa.set_freelance_prefs(
+                m,
+                agent_share_pct=args.get("agent_share_pct"),
+                settlement_currency=args.get("settlement_currency"),
+                galatin_price_usdt=args.get("galatin_price_usdt"),
+            )
+        elif act == "fetch_jobs":
+            payload = _fa.fetch_jobs_from_exchange(m, str(args.get("account_id") or ""))
+        elif act == "recommend_spend":
+            payload = _ta.recommend_optimal_spend(
+                m,
+                monthly_tokens_need=int(args.get("monthly_tokens_need") or 10_000_000),
+                settlement_currency=str(args.get("settlement_currency") or "USDT_TRC20"),
+            )
+        elif act == "propose_subscription":
+            payload = _ta.propose_rational_subscription(
+                m,
+                agent_id=aid,
+                provider_id=str(args.get("provider_id") or ""),
+                monthly_tokens_need=int(args.get("monthly_tokens_need") or 10_000_000),
             )
         elif act == "list_accounts":
             payload = {"accounts": _fa.list_exchange_accounts(m), "locks": _fa.freelance_locks_status()}
@@ -4870,8 +4902,8 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 str(args.get("order_id") or ""),
                 paid_usdt=args.get("paid_usdt"),
                 agent_id=aid,
-                compute_share_pct=float(args.get("compute_share_pct") or 15.0),
-                platform_fee_pct=float(args.get("platform_fee_pct") or 10.0),
+                agent_share_pct=args.get("agent_share_pct") if args.get("agent_share_pct") is not None else args.get("compute_share_pct"),
+                settlement_currency=args.get("settlement_currency"),
             )
         elif act == "propose_profile":
             payload = _fa.propose_profile_improvement(
@@ -4884,8 +4916,8 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
         elif act == "monetization":
             payload = _fa.monetization_breakdown(
                 float(args.get("budget_usdt") or args.get("paid_usdt") or 100.0),
-                platform_fee_pct=float(args.get("platform_fee_pct") or 10.0),
-                agent_compute_pct=float(args.get("compute_share_pct") or 15.0),
+                agent_share_pct=float(args.get("agent_share_pct") or args.get("compute_share_pct") or 15.0),
+                settlement_currency=str(args.get("settlement_currency") or "USDT_TRC20"),
             )
         else:
             payload = _fa.freelance_dashboard_snapshot(m)

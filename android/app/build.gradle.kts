@@ -28,8 +28,8 @@ android {
         applicationId = "com.codeofdigitaleternity.padam"
         minSdk = 24
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.6.4-android"
+        versionCode = 4
+        versionName = "0.6.5-android-autonomy"
 
         ndk {
             abiFilters += targetAbis

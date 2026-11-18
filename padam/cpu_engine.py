@@ -15,6 +15,7 @@ import importlib.util
 import os
 import platform
 import re
+import sys
 import threading
 import time
 from pathlib import Path
@@ -24,6 +25,15 @@ from . import classify, safety
 
 _GGUF_LOCK = threading.Lock()
 _GGUF_CACHE: dict[str, Any] = {"path": "", "llm": None}
+
+
+def _has_llama_cpp() -> bool:
+    if "llama_cpp" in sys.modules:
+        return True
+    try:
+        return importlib.util.find_spec("llama_cpp") is not None
+    except ValueError:
+        return False
 
 
 def _detect_system_ram_gb() -> float:
@@ -111,7 +121,7 @@ def recommend_quantized_profile(
 
 
 def cpu_engine_status() -> dict[str, Any]:
-    has_llama_cpp = importlib.util.find_spec("llama_cpp") is not None
+    has_llama_cpp = _has_llama_cpp()
     gguf_path = os.environ.get("PADAM_CPU_GGUF_PATH", "").strip()
     gguf_exists = bool(gguf_path and Path(gguf_path).is_file())
     hw = recommend_quantized_profile()
@@ -201,7 +211,7 @@ def _run_gguf_if_configured(
     gguf_path = os.environ.get("PADAM_CPU_GGUF_PATH", "").strip()
     if not gguf_path or not Path(gguf_path).is_file():
         return None
-    if importlib.util.find_spec("llama_cpp") is None:
+    if not _has_llama_cpp():
         return None
     try:
         import llama_cpp  # type: ignore
@@ -256,7 +266,7 @@ def run_cpu_completion(
             break
 
     clean_q, _ = safety.redact(user_msg)
-    used_mode = "cpu_builtin"  # 18.11: прежнее имя встроенного контура — его ждут роутер и тесты; GGUF — "llama_cpp_gguf"
+    used_mode = "cpu_extractive_builtin"
 
     if str(task_type or "").lower() in ("sleep", "classify"):
         ans_text = _classify_for_sleep(clean_q)

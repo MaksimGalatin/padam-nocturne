@@ -537,6 +537,8 @@ def propose_plan_or_topup(
         "status": "awaiting_owner_approval",
         "owner_approval_required": True,
         "provider": prov,
+        "action_type": act,
+        "target_tier": str(target_tier or "api_payg")[:40],
         "amount_usdt": amt,
         "estimated_tokens": max(0, int(estimated_tokens)),
         "self_earned_available_usdt": tsum["available_compute_usdt"],

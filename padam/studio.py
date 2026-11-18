@@ -113,6 +113,12 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_empty_accounts": "Подключённых профилей биржи пока нет.",
         "earn_empty_orders": "Оценённых заказов пока нет.",
         "earn_empty_proposals": "Заявок на покупку токенов или тарифа пока нет.",
+        "earn_api_url_ph": "Адрес API биржи (https://... необязательно для Desk)",
+        "earn_fetch_btn": "Загрузить заказы с биржи",
+        "earn_rec_spend_btn": "Подобрать выгодную подписку",
+        "earn_propose_sub_btn": "Заявка на лучшую подписку",
+        "earn_share_label": "Ставка агента (1–100% от 90% пула) и фаза расчёта (комиссия CODE = 10% фикс):",
+        "earn_prefs_save_btn": "Применить ставку",
         "nav_settings": "Настройки",
         "nav_quickstart": "Первый запуск",
         "theme_dark": "Тёмная тема",
@@ -505,6 +511,12 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_empty_accounts": "No exchange profiles connected yet.",
         "earn_empty_orders": "No evaluated orders yet.",
         "earn_empty_proposals": "No topup or plan upgrade proposals yet.",
+        "earn_api_url_ph": "Exchange API URL (https://... optional for Desk)",
+        "earn_fetch_btn": "Fetch Jobs from Exchange",
+        "earn_rec_spend_btn": "Find Optimal Subscription",
+        "earn_propose_sub_btn": "Propose Best Subscription",
+        "earn_share_label": "Agent share (1-100% of 90% pool) & settlement phase (CODE fee = 10% fixed):",
+        "earn_prefs_save_btn": "Apply Share",
         "nav_settings": "Settings",
         "nav_quickstart": "Quick Start",
         "theme_dark": "Dark theme",
@@ -886,6 +898,12 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_empty_accounts": "Aun no hay plataformas conectadas.",
         "earn_empty_orders": "Aun no hay pedidos evaluados.",
         "earn_empty_proposals": "No hay solicitudes de recarga pendientes.",
+        "earn_api_url_ph": "URL de API de plataforma (opcional en Desk)",
+        "earn_fetch_btn": "Cargar Pedidos del API",
+        "earn_rec_spend_btn": "Buscar Mejor Suscripcion",
+        "earn_propose_sub_btn": "Solicitar Mejor Suscripcion",
+        "earn_share_label": "Cuota del agente (1-100% del 90%) y moneda (comision CODE = 10% fija):",
+        "earn_prefs_save_btn": "Guardar Cuota",
         "nav_settings": "Ajustes",
         "nav_quickstart": "Inicio rápido",
         "theme_dark": "Tema oscuro",
@@ -1267,6 +1285,12 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_empty_accounts": "暂未接入任何自由职业平台账号。",
         "earn_empty_orders": "暂无已评估订单。",
         "earn_empty_proposals": "暂无充值或套餐升级申请。",
+        "earn_api_url_ph": "平台 API 地址（Desk 模式可选）",
+        "earn_fetch_btn": "从平台拉取订单",
+        "earn_rec_spend_btn": "优选省钱订阅方案",
+        "earn_propose_sub_btn": "申请最优月付订阅",
+        "earn_share_label": "智能体算力分成（占 90% 净池的 1%–100%）与结算币种（CODE 固定 10%）：",
+        "earn_prefs_save_btn": "保存分成",
         "nav_settings": "设置",
         "nav_quickstart": "快速开始",
         "theme_dark": "深色主题",
@@ -5479,14 +5503,34 @@ function _renderEarningDashboard(snap, sibData, coopData) {
     }
   }
 
+  const pr = (snap && snap.prefs) || {};
+  if ($('earn-share-pct') && document.activeElement !== $('earn-share-pct')) {
+    $('earn-share-pct').value = String(pr.agent_share_pct || 15);
+  }
+  if ($('earn-currency') && pr.settlement_currency) {
+    $('earn-currency').value = String(pr.settlement_currency);
+  }
+  const spendOut = $('earn-spend-rec-out');
+  if (spendOut && snap && snap.spend_recommendation) {
+    const sr = snap.spend_recommendation;
+    const rp = sr.recommended_provider || {};
+    _kv(spendOut, {
+      recommended_plan: String(rp.name || '') + ' ($' + String(rp.monthly_usd || 0) + '/mo)',
+      vs_payg_api: '$' + String(sr.payg_estimated_cost_usdt || 0) + ' PAYG -> save ' + String(sr.estimated_savings_pct || 0) + '%',
+      local_offload: String(sr.local_offload_pct || 0) + '% ($0 CPU/Ollama)',
+      settlement_phase: String((sr.settlement && sr.settlement.phase_currency) || 'USDT_TRC20') + ' (eq. ' + String((sr.settlement && sr.settlement.available_galatin_equivalent) || 0) + ' $GALATIN)',
+    });
+  }
+
   const monSum = $('earn-monetization-summary');
   if (monSum) {
     const mt = (snap && snap.monetization_totals) || {};
     const eco = (mt.ecosystem_reference && mt.ecosystem_reference.ecosystem_shares_pct) || {};
     _kv(monSum, {
+      code_fixed_fee: '10% fixed ($' + String(mt.total_platform_fee_usdt || 0) + ')',
+      agent_share_cfg: String(pr.agent_share_pct || 15) + '% of 90% pool ($' + String(mt.total_agent_compute_usdt || 0) + ')',
       gross_freelance_usdt: '$' + String(mt.total_gross_usdt || 0),
-      platform_fee_usdt: '$' + String(mt.total_platform_fee_usdt || 0),
-      agent_compute_pool_usdt: '$' + String(mt.total_agent_compute_usdt || 0),
+      settlement_currency: String(pr.settlement_currency || 'USDT_TRC20'),
       galatin_split: '5% Fund + 5% Burn + 15/7/3% Ambassadors + 65% Treasury (100%=' + String(Boolean(mt.ecosystem_reference && mt.ecosystem_reference.percentage_sum_verified)) + ')',
       eco_treasury_pct: String(eco.treasury_pct || 65) + '%',
     });
@@ -5527,6 +5571,7 @@ if ($('earn-connect-btn')) {
         account_label: ($('earn-label') && $('earn-label').value) || '',
         agent_id: ($('earn-agent') && $('earn-agent').value) || 'aifa',
         oauth_token: ($('earn-token') && $('earn-token').value) || '',
+        api_base_url: ($('earn-api-url') && $('earn-api-url').value) || '',
       });
       if ($('earn-token')) $('earn-token').value = '';
       say(S.done);
@@ -5600,6 +5645,55 @@ if ($('earn-propose-btn')) {
         estimated_tokens: 1000000,
         target_tier: ($('earn-plan-tier') && $('earn-plan-tier').value) || 'api_payg',
         reason: 'Заявка агента из вкладки Автономный заработок',
+      });
+      say(S.done);
+      loadEarning();
+    } catch (e) {
+      say(String(e.message || e), false);
+    }
+  };
+}
+
+if ($('earn-rec-spend-btn')) {
+  $('earn-rec-spend-btn').onclick = async () => {
+    try {
+      const r = await api('/api/v2/ark/freelance/action', { action: 'recommend_spend' });
+      const spendOut = $('earn-spend-rec-out');
+      if (spendOut && r && r.recommended_provider) {
+        _kv(spendOut, {
+          recommended_plan: String(r.recommended_provider.name || '') + ' ($' + String(r.recommended_provider.monthly_usd || 0) + '/mo)',
+          vs_payg_api: '$' + String(r.payg_estimated_cost_usdt || 0) + ' PAYG -> save ' + String(r.estimated_savings_pct || 0) + '%',
+          policy: String(r.rational_policy || ''),
+        });
+      }
+      say(S.done);
+    } catch (e) {
+      say(String(e.message || e), false);
+    }
+  };
+}
+
+if ($('earn-propose-sub-btn')) {
+  $('earn-propose-sub-btn').onclick = async () => {
+    try {
+      await api('/api/v2/ark/freelance/action', { action: 'propose_subscription', agent_id: 'aifa' });
+      say(S.done);
+      loadEarning();
+    } catch (e) {
+      say(String(e.message || e), false);
+    }
+  };
+}
+
+if ($('earn-prefs-save-btn')) {
+  $('earn-prefs-save-btn').onclick = async () => {
+    try {
+      const pct = Number(($('earn-share-pct') && $('earn-share-pct').value) || 15);
+      const curr = ($('earn-currency') && $('earn-currency').value) || 'USDT_TRC20';
+      await api('/api/v2/ark/freelance/action', {
+        action: 'set_prefs',
+        agent_share_pct: pct,
+        settlement_currency: curr,
       });
       say(S.done);
       loadEarning();
@@ -6412,6 +6506,9 @@ def page() -> tuple[str, str]:
               <input id="earn-agent" type="text" value="aifa" data-i18n-placeholder="earn_ex_agent_ph" placeholder="{s['earn_ex_agent_ph']}">
             </div>
             <div class="toolbar">
+              <input id="earn-api-url" type="text" data-i18n-placeholder="earn_api_url_ph" placeholder="{s['earn_api_url_ph']}">
+            </div>
+            <div class="toolbar">
               <input id="earn-token" type="password" data-i18n-placeholder="earn_ex_token_ph" placeholder="{s['earn_ex_token_ph']}">
               <button id="earn-connect-btn" class="btn-primary" data-i18n="earn_ex_connect_btn">{s['earn_ex_connect_btn']}</button>
             </div>
@@ -6450,7 +6547,10 @@ def page() -> tuple[str, str]:
               <button id="earn-plan-save-btn" class="btn-primary" data-i18n="earn_plan_save_btn">{s['earn_plan_save_btn']}</button>
               <button id="earn-tick-btn" data-i18n="earn_tick_btn">{s['earn_tick_btn']}</button>
               <button id="earn-propose-btn" data-i18n="earn_propose_btn">{s['earn_propose_btn']}</button>
+              <button id="earn-rec-spend-btn" data-i18n="earn_rec_spend_btn">{s['earn_rec_spend_btn']}</button>
+              <button id="earn-propose-sub-btn" class="btn-ok" data-i18n="earn_propose_sub_btn">{s['earn_propose_sub_btn']}</button>
             </div>
+            <div id="earn-spend-rec-out" class="earn-stack"></div>
             <div id="earn-budget-summary" class="earn-stack"></div>
             <div id="earn-proposals-list" class="earn-stack"></div>
           </div>
@@ -6461,6 +6561,15 @@ def page() -> tuple[str, str]:
               <input id="earn-sib-id" type="text" data-i18n-placeholder="earn_sib_id_ph" placeholder="{s['earn_sib_id_ph']}">
               <input id="earn-sib-role" type="text" data-i18n-placeholder="earn_sib_role_ph" placeholder="{s['earn_sib_role_ph']}">
               <button id="earn-sib-reg-btn" class="btn-primary" data-i18n="earn_sib_reg_btn">{s['earn_sib_reg_btn']}</button>
+            </div>
+            <p class="earn-meta" data-i18n="earn_share_label">{s['earn_share_label']}</p>
+            <div class="toolbar">
+              <input id="earn-share-pct" class="earn-num-input" type="number" value="15" min="1" max="100" step="1" aria-label="Agent share percentage 1-100">
+              <select id="earn-currency" aria-label="Settlement currency">
+                <option value="USDT_TRC20">USDT_TRC20</option>
+                <option value="GALATIN">GALATIN</option>
+              </select>
+              <button id="earn-prefs-save-btn" class="btn-primary" data-i18n="earn_prefs_save_btn">{s['earn_prefs_save_btn']}</button>
             </div>
             <div id="earn-swarm-list" class="earn-stack"></div>
             <div id="earn-monetization-summary" class="earn-stack"></div>

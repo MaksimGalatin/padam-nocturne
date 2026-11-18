@@ -1,29 +1,47 @@
 # -*- coding: utf-8 -*-
-"""Модуль автономного заработка на фриланс-биржах и прозрачной монетизации.
+"""Модуль автономного заработка на фриланс-биржах, HTTP/Webhook-коннектора и монетизации $GALATIN.
 
-Реализует безопасный конвейер работы агентов Семьи и Братьев/Сестёр с внешними
-биржами (Upwork API, Freelancer API, Fiverr Desk, Kwork Desk, Custom Webhook)
-под строгими замками владельца:
+Ключевые принципы и инварианты:
 - Без автосоздания аккаунтов, без ввода паролей и без обхода CAPTCHA/Cloudflare.
-- Секретные OAuth/API-токены никогда не хранятся открытым текстом в SQLite.
-- Любое ТЗ проверяется на prompt-инъекции (safety.looks_like_instruction).
-- Ставки на биржу (PADAM_FREELANCE_AUTOBID) и оплата тарифов (PADAM_TREASURY_AUTOPAY)
+- Секретные OAuth/API-токены и секреты вебхуков никогда не хранятся открытым текстом
+  в SQLite: в БД лежит только шифр AES-256-GCM (ключом от owner_key) или префикс SHA-256.
+- Фиксированная комиссия платформы CODE = 10% от всего валового дохода агентов;
+  оставшиеся 90% — пул владельца, из которого пользователь задаёт ставку агента от 1% до 100%.
+- Поддержка двух фаз расчётов: Фаза 1 (USDT_TRC20) -> Фаза 2 ($GALATIN с автовыкупом с биржи).
+- Любое ТЗ (включая входящие по HTTP с биржи) проверяется на prompt-инъекции (safety.looks_like_instruction).
+- Автоставки (PADAM_FREELANCE_AUTOBID) и оплата тарифов (PADAM_TREASURY_AUTOPAY)
   по умолчанию заблокированы замком и требуют прямого одобрения владельца.
-- Перед сдачей результата заказчику весь текст и код проходят через safety.redact
-  и очистку локальных путей, а оплата автоматически учитывается в token_autonomy.
 """
 
 from __future__ import annotations
 
+import base64
+from contextlib import nullcontext
 import hashlib
+import hmac
 import json
 import os
 import re
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 import uuid
 from typing import Any
 
-from . import ark_advanced, audit_chain, coop_broker, deterministic_verify, safety, sovereign_ops, swarm_council, token_autonomy
+from . import (
+    ark_advanced,
+    audit_chain,
+    coop_broker,
+    deterministic_verify,
+    integrity,
+    safety,
+    sovereign_ops,
+    swarm_council,
+    token_autonomy,
+)
+
+FIXED_PLATFORM_FEE_PCT = 10.0
 
 SUPPORTED_PLATFORMS = (
     "upwork_api",
@@ -34,6 +52,7 @@ SUPPORTED_PLATFORMS = (
 )
 
 SUPPORTED_MODES = ("oauth_api", "desk", "webhook")
+SUPPORTED_CURRENCIES = ("USDT_TRC20", "GALATIN")
 
 _LOCAL_PATH_RE = re.compile(
     r"(?:[A-Za-z]:\\[^\s\"'<>|]+|/(?:Users|home|var|etc|opt|mnt)/[^\s\"'<>|]+)"
@@ -51,6 +70,9 @@ CREATE TABLE IF NOT EXISTS ark_exchange_account (
     skills_json       TEXT NOT NULL DEFAULT '[]',
     token_configured  INTEGER NOT NULL DEFAULT 0,
     token_hash_prefix TEXT NOT NULL DEFAULT '',
+    api_base_url      TEXT NOT NULL DEFAULT '',
+    token_enc         TEXT NOT NULL DEFAULT '',
+    webhook_secret_enc TEXT NOT NULL DEFAULT '',
     status            TEXT NOT NULL DEFAULT 'active',
     created_at        REAL NOT NULL,
     updated_at        REAL NOT NULL
@@ -96,27 +118,93 @@ CREATE TABLE IF NOT EXISTS ark_profile_suggestion (
 CREATE INDEX IF NOT EXISTS idx_ark_prof_sug_user ON ark_profile_suggestion (user_id, status);
 
 CREATE TABLE IF NOT EXISTS ark_monetization_ledger (
-    ledger_id         TEXT PRIMARY KEY,
-    user_id           TEXT NOT NULL,
-    source_type       TEXT NOT NULL,
-    gross_usdt        REAL NOT NULL DEFAULT 0.0,
-    platform_fee_usdt REAL NOT NULL DEFAULT 0.0,
+    ledger_id          TEXT PRIMARY KEY,
+    user_id            TEXT NOT NULL,
+    source_type        TEXT NOT NULL,
+    gross_usdt         REAL NOT NULL DEFAULT 0.0,
+    platform_fee_usdt  REAL NOT NULL DEFAULT 0.0,
     agent_compute_usdt REAL NOT NULL DEFAULT 0.0,
-    ecosystem_json    TEXT NOT NULL DEFAULT '{}',
-    note              TEXT NOT NULL DEFAULT '',
-    created_at        REAL NOT NULL
+    ecosystem_json     TEXT NOT NULL DEFAULT '{}',
+    note               TEXT NOT NULL DEFAULT '',
+    created_at         REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_ark_monet_user ON ark_monetization_ledger (user_id, created_at);
+
+CREATE TABLE IF NOT EXISTS ark_freelance_prefs (
+    user_id             TEXT PRIMARY KEY,
+    agent_share_pct     REAL NOT NULL DEFAULT 15.0,
+    settlement_currency TEXT NOT NULL DEFAULT 'USDT_TRC20',
+    galatin_price_usdt  REAL NOT NULL DEFAULT 0.01,
+    updated_at          REAL NOT NULL
+);
 """
 
 
+from functools import wraps
+
+def _synchronized_memory(fn):
+    """Сериализует работу нескольких агентов/потоков над одним SQLite Store через реентерабельный RLock."""
+    @wraps(fn)
+    def _wrapper(memory, *args, **kwargs):
+        with _lock_of(memory):
+            return fn(memory, *args, **kwargs)
+    return _wrapper
+
+def _lock_of(memory):
+    return getattr(getattr(memory, "store", None), "_lock", None) or nullcontext()
+
+
 def _ensure(memory) -> None:
-    """Создаёт таблицы подсистемы заработка при первом обращении."""
-    memory.store.conn.executescript(_DDL)
+    """Создаёт и мягко дополняет таблицы подсистемы заработка без execscript-конфликтов."""
+    with _lock_of(memory):
+        conn = memory.store.conn
+        for stmt in _DDL.split(";"):
+            s = stmt.strip()
+            if s:
+                conn.execute(s)
+        # Миграция старых таблиц без потери данных
+        existing = {r["name"] for r in conn.execute("PRAGMA table_info(ark_exchange_account)").fetchall()}
+        for col, col_def in (
+            ("api_base_url", "TEXT NOT NULL DEFAULT ''"),
+            ("token_enc", "TEXT NOT NULL DEFAULT ''"),
+            ("webhook_secret_enc", "TEXT NOT NULL DEFAULT ''"),
+        ):
+            if col not in existing:
+                conn.execute(f"ALTER TABLE ark_exchange_account ADD COLUMN {col} {col_def}")
+        conn.commit()
+
+
+def _derive_vault_key(memory) -> bytes:
+    raw_owner, _ = integrity.owner_key(memory.store)
+    return hashlib.sha256(b"padam-freelance-vault-v1:" + raw_owner).digest()
+
+
+def _seal_secret(memory, plaintext: str) -> str:
+    """Шифрует токен/секрет AES-256-GCM; без cryptography использует HMAC-связанный конверт не-plaintext."""
+    s = str(plaintext or "").strip()
+    if not s:
+        return ""
+    key = _derive_vault_key(memory)
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    nonce = os.urandom(12)
+    ct = AESGCM(key).encrypt(nonce, s.encode("utf-8"), b"padam-freelance-secret")
+    return "aesgcm1:" + base64.urlsafe_b64encode(nonce + ct).decode("ascii")
+
+
+def _unseal_secret(memory, blob: str) -> str:
+    b = str(blob or "").strip()
+    if not b or not b.startswith("aesgcm1:"):
+        return ""
+    key = _derive_vault_key(memory)
+    raw = base64.urlsafe_b64decode(b[8:].encode("ascii"))
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    nonce, ct = raw[:12], raw[12:]
+    return AESGCM(key).decrypt(nonce, ct, b"padam-freelance-secret").decode("utf-8")
 
 
 def _strip_local_paths(text: str) -> str:
-    """Удаляет абсолютные локальные пути файловой системы из текста для сдачи заказчику."""
     return _LOCAL_PATH_RE.sub("[LOCAL_PATH_REDACTED]", str(text or ""))
 
 
@@ -156,6 +244,81 @@ def _clean_mode(raw: str) -> str:
     return val
 
 
+def _clean_currency(raw: str) -> str:
+    val = str(raw or "USDT_TRC20").strip().upper()
+    if val not in SUPPORTED_CURRENCIES:
+        raise ValueError(f"Неподдерживаемая валюта расчёта: {val}. Доступны: {', '.join(SUPPORTED_CURRENCIES)}")
+    return val
+
+
+def get_freelance_prefs(memory) -> dict[str, Any]:
+    """Возвращает текущие настройки ставки агента (1%..100%) и валютной фазы."""
+    _ensure(memory)
+    with _lock_of(memory):
+        row = memory.store.conn.execute(
+            "SELECT * FROM ark_freelance_prefs WHERE user_id = ?", (memory.user_id,)
+        ).fetchone()
+    if not row:
+        return {
+            "user_id": memory.user_id,
+            "agent_share_pct": 15.0,
+            "platform_fee_pct": FIXED_PLATFORM_FEE_PCT,
+            "settlement_currency": "USDT_TRC20",
+            "galatin_price_usdt": 0.01,
+        }
+    return {
+        "user_id": row["user_id"],
+        "agent_share_pct": float(row["agent_share_pct"]),
+        "platform_fee_pct": FIXED_PLATFORM_FEE_PCT,
+        "settlement_currency": str(row["settlement_currency"]),
+        "galatin_price_usdt": float(row["galatin_price_usdt"]),
+    }
+
+
+def set_freelance_prefs(
+    memory,
+    *,
+    agent_share_pct: float | None = None,
+    settlement_currency: str | None = None,
+    galatin_price_usdt: float | None = None,
+) -> dict[str, Any]:
+    """Сохраняет регулируемую ставку агента (1%..100% от чистых 90%) и валютную фазу (USDT_TRC20 / GALATIN)."""
+    cur = get_freelance_prefs(memory)
+    share = cur["agent_share_pct"] if agent_share_pct is None else max(1.0, min(100.0, float(agent_share_pct)))
+    curr = cur["settlement_currency"] if settlement_currency is None else _clean_currency(settlement_currency)
+    g_price = cur["galatin_price_usdt"] if galatin_price_usdt is None else max(0.0001, float(galatin_price_usdt))
+
+    with _lock_of(memory):
+        memory.store.conn.execute(
+            "INSERT INTO ark_freelance_prefs (user_id, agent_share_pct, settlement_currency, galatin_price_usdt, updated_at) "
+            "VALUES (?, ?, ?, ?, ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET "
+            "agent_share_pct=excluded.agent_share_pct, settlement_currency=excluded.settlement_currency, "
+            "galatin_price_usdt=excluded.galatin_price_usdt, updated_at=excluded.updated_at",
+            (memory.user_id, round(share, 2), curr, round(g_price, 6), time.time()),
+        )
+        memory.store.conn.commit()
+    return get_freelance_prefs(memory)
+
+
+def _validate_api_url(raw_url: str, *, allow_localhost: bool = False) -> str:
+    u = str(raw_url or "").strip().rstrip("/")
+    if not u:
+        return ""
+    parsed = urllib.parse.urlparse(u)
+    host = (parsed.hostname or "").lower()
+    is_local = host in ("127.0.0.1", "localhost", "::1")
+    local_allowed = allow_localhost or (os.environ.get("PADAM_FREELANCE_ALLOW_LOCALHOST", "").strip() == "1")
+    if parsed.scheme == "https" and host:
+        if is_local and not local_allowed:
+            raise ValueError("Локальный loopback-адрес разрешён только при PADAM_FREELANCE_ALLOW_LOCALHOST=1.")
+        return u
+    if parsed.scheme == "http" and is_local and local_allowed:
+        return u
+    raise ValueError("URL биржи должен использовать HTTPS (или 127.0.0.1/localhost при PADAM_FREELANCE_ALLOW_LOCALHOST=1).")
+
+
+@_synchronized_memory
 def connect_exchange_account(
     memory,
     *,
@@ -165,22 +328,25 @@ def connect_exchange_account(
     agent_id: str = "aifa",
     skills: list[str] | None = None,
     oauth_token: str = "",
+    api_base_url: str = "",
+    webhook_secret: str = "",
+    allow_localhost: bool = False,
 ) -> dict[str, Any]:
-    """Подключает пользовательский профиль биржи в режиме OAuth/API или Desk без хранения пароля."""
+    """Подключает пользовательский профиль биржи (OAuth/API/Webhook или Desk) без хранения открытых секретов."""
     _ensure(memory)
     plat = _clean_platform(platform)
     md = _clean_mode(mode)
-    if oauth_token and safety.password_like(oauth_token):
-        # Даже если передали что-то похожее на пароль, не сохраняем его ни в лог, ни в SQLite.
-        pass
     token_str = str(oauth_token or "").strip()
     if md == "oauth_api" and not token_str:
         return {
             "ok": False,
             "error": "Для режима oauth_api необходимо передать oauth_token владельца (или используйте режим desk).",
         }
+    clean_url = _validate_api_url(api_base_url, allow_localhost=allow_localhost) if api_base_url else ""
     token_configured = 1 if token_str else 0
     token_hash_prefix = hashlib.sha256(token_str.encode("utf-8")).hexdigest()[:12] if token_str else ""
+    token_enc = _seal_secret(memory, token_str) if token_str else ""
+    wh_enc = _seal_secret(memory, webhook_secret) if webhook_secret else ""
 
     clean_label, _ = safety.redact(str(account_label or f"{plat}:{md}").strip())
     clean_agent = re.sub(r"[^a-zA-Z0-9_.-]+", "_", str(agent_id or "aifa").strip())[:48] or "aifa"
@@ -188,29 +354,34 @@ def connect_exchange_account(
     aid = f"ex-{uuid.uuid4().hex[:10]}"
     now = time.time()
 
-    memory.store.conn.execute(
-        "INSERT INTO ark_exchange_account "
-        "(account_id, user_id, platform, mode, account_label, agent_id, skills_json, token_configured, token_hash_prefix, status, created_at, updated_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
-        (
-            aid,
-            memory.user_id,
-            plat,
-            md,
-            clean_label[:100],
-            clean_agent,
-            json.dumps(clean_skills, ensure_ascii=False),
-            token_configured,
-            token_hash_prefix,
-            now,
-            now,
-        ),
-    )
-    memory.store.conn.commit()
+    with _lock_of(memory):
+        memory.store.conn.execute(
+            "INSERT INTO ark_exchange_account "
+            "(account_id, user_id, platform, mode, account_label, agent_id, skills_json, token_configured, token_hash_prefix, "
+            "api_base_url, token_enc, webhook_secret_enc, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
+            (
+                aid,
+                memory.user_id,
+                plat,
+                md,
+                clean_label[:100],
+                clean_agent,
+                json.dumps(clean_skills, ensure_ascii=False),
+                token_configured,
+                token_hash_prefix,
+                clean_url[:300],
+                token_enc,
+                wh_enc,
+                now,
+                now,
+            ),
+        )
+        memory.store.conn.commit()
     audit_chain.append_audit(
         memory,
         "freelance_account_connected",
-        {"account_id": aid, "platform": plat, "mode": md, "token_configured": bool(token_configured)},
+        {"account_id": aid, "platform": plat, "mode": md, "token_configured": bool(token_configured), "has_url": bool(clean_url)},
         agent_id=clean_agent,
     )
     return {
@@ -221,6 +392,7 @@ def connect_exchange_account(
         "account_label": clean_label[:100],
         "agent_id": clean_agent,
         "skills": clean_skills,
+        "api_base_url": clean_url,
         "token_configured": bool(token_configured),
         "token_hash_prefix": token_hash_prefix,
         "locks": freelance_locks_status(),
@@ -228,13 +400,14 @@ def connect_exchange_account(
 
 
 def list_exchange_accounts(memory) -> list[dict[str, Any]]:
-    """Возвращает список подключённых биржевых профилей без секретных токенов."""
+    """Возвращает список подключённых биржевых профилей без шифрованных/секретных токенов."""
     _ensure(memory)
-    rows = memory.store.conn.execute(
-        "SELECT account_id, platform, mode, account_label, agent_id, skills_json, token_configured, token_hash_prefix, status, created_at "
-        "FROM ark_exchange_account WHERE user_id = ? ORDER BY created_at DESC",
-        (memory.user_id,),
-    ).fetchall()
+    with _lock_of(memory):
+        rows = memory.store.conn.execute(
+            "SELECT account_id, platform, mode, account_label, agent_id, skills_json, token_configured, token_hash_prefix, api_base_url, status, created_at "
+            "FROM ark_exchange_account WHERE user_id = ? ORDER BY created_at DESC",
+            (memory.user_id,),
+        ).fetchall()
     out: list[dict[str, Any]] = []
     for r in rows:
         try:
@@ -248,6 +421,7 @@ def list_exchange_accounts(memory) -> list[dict[str, Any]]:
             "account_label": r["account_label"],
             "agent_id": r["agent_id"],
             "skills": skills,
+            "api_base_url": r["api_base_url"],
             "token_configured": bool(r["token_configured"]),
             "token_hash_prefix": r["token_hash_prefix"],
             "status": r["status"],
@@ -256,11 +430,129 @@ def list_exchange_accounts(memory) -> list[dict[str, Any]]:
     return out
 
 
+def _get_account_row(memory, account_id: str) -> dict[str, Any]:
+    _ensure(memory)
+    with _lock_of(memory):
+        row = memory.store.conn.execute(
+            "SELECT * FROM ark_exchange_account WHERE user_id = ? AND account_id = ?",
+            (memory.user_id, str(account_id or "").strip()),
+        ).fetchone()
+    if row is None:
+        raise ValueError(f"Аккаунт биржи {account_id} не найден.")
+    return dict(row)
+
+
+class ExchangeHttpAdapter:
+    """Надёжный HTTP-адаптер к API биржи с повторами на 429, обработкой 401/таймаутов и защитой токена."""
+
+    def __init__(self, base_url: str, bearer_token: str = "", *, timeout_s: float = 8.0, max_retries: int = 2) -> None:
+        self.base_url = str(base_url or "").strip().rstrip("/")
+        self.bearer_token = str(bearer_token or "").strip()
+        self.timeout_s = max(1.0, float(timeout_s))
+        self.max_retries = max(0, min(3, int(max_retries)))
+
+    def request_json(self, method: str, path: str, body: dict[str, Any] | None = None) -> tuple[int, dict[str, Any]]:
+        if not self.base_url:
+            raise ValueError("Не указан api_base_url аккаунта биржи.")
+        url = f"{self.base_url}/{path.lstrip('/')}"
+        headers = {"Accept": "application/json", "Content-Type": "application/json"}
+        if self.bearer_token:
+            headers["Authorization"] = f"Bearer {self.bearer_token}"
+        raw_data = json.dumps(body, ensure_ascii=False).encode("utf-8") if body is not None else None
+
+        last_err = ""
+        for attempt in range(self.max_retries + 1):
+            req = urllib.request.Request(url, data=raw_data, headers=headers, method=method.upper())
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout_s) as resp:
+                    txt = resp.read().decode("utf-8", errors="replace")
+                    try:
+                        parsed = json.loads(txt) if txt.strip() else {}
+                    except json.JSONDecodeError:
+                        return int(resp.status), {"ok": False, "error": "invalid_json_response"}
+                    return int(resp.status), parsed
+            except urllib.error.HTTPError as exc:
+                code = int(exc.code)
+                if code == 429 and attempt < self.max_retries:
+                    retry_after = exc.headers.get("Retry-After") if exc.headers else None
+                    try:
+                        delay = min(1.5, max(0.05, float(retry_after or 0.1)))
+                    except ValueError:
+                        delay = 0.1
+                    time.sleep(delay)
+                    continue
+                try:
+                    err_body = exc.read().decode("utf-8", errors="replace")[:300]
+                except Exception:
+                    err_body = str(exc)
+                return code, {"ok": False, "error": err_body or f"HTTP {code}", "http_status": code}
+            except Exception as exc:
+                last_err = str(exc)
+                if attempt < self.max_retries:
+                    time.sleep(0.05)
+                    continue
+        return 599, {"ok": False, "error": last_err or "network_error"}
+
+
+@_synchronized_memory
+def fetch_jobs_from_exchange(
+    memory,
+    account_id: str,
+    *,
+    allow_localhost: bool = False,
+) -> dict[str, Any]:
+    """Опрашивает реальный REST endpoint подключённой биржи и прогоняет все заказы через security + margin фильтр."""
+    acc = _get_account_row(memory, account_id)
+    base_url = _validate_api_url(acc.get("api_base_url") or "", allow_localhost=allow_localhost)
+    if not base_url:
+        return {"ok": False, "error": "У этого аккаунта не задан api_base_url."}
+    token = _unseal_secret(memory, acc.get("token_enc") or "")
+    adapter = ExchangeHttpAdapter(base_url, token)
+    status, payload = adapter.request_json("GET", "/jobs")
+    if status == 401:
+        return {"ok": False, "http_status": 401, "error": "OAuth токен отклонён биржей (401 Unauthorized). Требуется обновить токен."}
+    if not (200 <= status < 300):
+        return {"ok": False, "http_status": status, "error": payload.get("error", f"HTTP {status}")}
+
+    raw_jobs = payload.get("jobs") if isinstance(payload, dict) else []
+    if not isinstance(raw_jobs, list):
+        return {"ok": False, "error": "Биржа вернула некорректный формат поля jobs."}
+
+    ingested: list[dict[str, Any]] = []
+    rejected = 0
+    for j in raw_jobs[:30]:
+        if not isinstance(j, dict):
+            continue
+        res = evaluate_and_ingest_job(
+            memory,
+            platform=acc["platform"],
+            title=str(j.get("title") or "Untitled job"),
+            brief=str(j.get("brief") or j.get("description") or "No brief"),
+            budget_usdt=float(j.get("budget_usdt") or 0.0),
+            estimated_tokens=int(j.get("estimated_tokens") or 25000),
+            account_id=account_id,
+            external_job_id=str(j.get("id") or j.get("external_job_id") or ""),
+            assigned_agent=acc["agent_id"],
+        )
+        ingested.append(res)
+        if not res["ok"]:
+            rejected += 1
+
+    return {
+        "ok": True,
+        "account_id": account_id,
+        "fetched_count": len(ingested),
+        "accepted_count": len(ingested) - rejected,
+        "rejected_security_count": rejected,
+        "orders": ingested,
+    }
+
+
 def _estimate_compute_cost_usdt(estimated_tokens: int, cost_per_1k_usd: float = 0.002) -> float:
-    """Оценивает ориентировочную стоимость токенов для выполнения заказа."""
     return round(max(0.005, (max(100, int(estimated_tokens)) / 1000.0) * float(cost_per_1k_usd)), 4)
 
 
+@_synchronized_memory
 def evaluate_and_ingest_job(
     memory,
     *,
@@ -300,7 +592,6 @@ def evaluate_and_ingest_job(
 
     margin_usdt = round(budget - est_cost, 4)
     margin_ratio = round((margin_usdt / est_cost) if est_cost > 0 else 0.0, 2)
-    # Нормализованный скор маржинальности 0..100
     margin_score = round(min(100.0, max(0.0, (margin_usdt / max(1.0, budget)) * 80.0 + (20.0 if quota_ok else 0.0))), 2)
 
     security_veto = bool(is_injection or is_tamper)
@@ -313,31 +604,32 @@ def evaluate_and_ingest_job(
 
     oid = f"ord-{uuid.uuid4().hex[:10]}"
     now = time.time()
-    memory.store.conn.execute(
-        "INSERT INTO ark_freelance_order "
-        "(order_id, user_id, account_id, platform, external_job_id, title, brief_redacted, budget_usdt, est_tokens, "
-        "est_compute_usdt, margin_score, status, assigned_agent, security_note, created_at, updated_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (
-            oid,
-            memory.user_id,
-            str(account_id or ""),
-            plat,
-            str(external_job_id or ""),
-            clean_title[:160],
-            clean_brief[:4000],
-            budget,
-            tokens_need,
-            est_cost,
-            margin_score if not security_veto else 0.0,
-            status,
-            str(assigned_agent or "aifa")[:48],
-            sec_note,
-            now,
-            now,
-        ),
-    )
-    memory.store.conn.commit()
+    with _lock_of(memory):
+        memory.store.conn.execute(
+            "INSERT INTO ark_freelance_order "
+            "(order_id, user_id, account_id, platform, external_job_id, title, brief_redacted, budget_usdt, est_tokens, "
+            "est_compute_usdt, margin_score, status, assigned_agent, security_note, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                oid,
+                memory.user_id,
+                str(account_id or ""),
+                plat,
+                str(external_job_id or ""),
+                clean_title[:160],
+                clean_brief[:4000],
+                budget,
+                tokens_need,
+                est_cost,
+                margin_score if not security_veto else 0.0,
+                status,
+                str(assigned_agent or "aifa")[:48],
+                sec_note,
+                now,
+                now,
+            ),
+        )
+        memory.store.conn.commit()
     audit_chain.append_audit(
         memory,
         "freelance_order_evaluated",
@@ -365,10 +657,11 @@ def evaluate_and_ingest_job(
 
 def _get_order(memory, order_id: str) -> dict[str, Any]:
     _ensure(memory)
-    row = memory.store.conn.execute(
-        "SELECT * FROM ark_freelance_order WHERE user_id = ? AND order_id = ?",
-        (memory.user_id, str(order_id or "").strip()),
-    ).fetchone()
+    with _lock_of(memory):
+        row = memory.store.conn.execute(
+            "SELECT * FROM ark_freelance_order WHERE user_id = ? AND order_id = ?",
+            (memory.user_id, str(order_id or "").strip()),
+        ).fetchone()
     if row is None:
         raise ValueError(f"Заказ {order_id} не найден.")
     return dict(row)
@@ -378,19 +671,21 @@ def list_orders(memory, *, status: str | None = None, limit: int = 30) -> list[d
     """Возвращает список заказов с бирж (новейшие сверху)."""
     _ensure(memory)
     lim = max(1, min(100, int(limit)))
-    if status:
-        rows = memory.store.conn.execute(
-            "SELECT * FROM ark_freelance_order WHERE user_id = ? AND status = ? ORDER BY created_at DESC LIMIT ?",
-            (memory.user_id, str(status).strip(), lim),
-        ).fetchall()
-    else:
-        rows = memory.store.conn.execute(
-            "SELECT * FROM ark_freelance_order WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
-            (memory.user_id, lim),
-        ).fetchall()
+    with _lock_of(memory):
+        if status:
+            rows = memory.store.conn.execute(
+                "SELECT * FROM ark_freelance_order WHERE user_id = ? AND status = ? ORDER BY created_at DESC LIMIT ?",
+                (memory.user_id, str(status).strip(), lim),
+            ).fetchall()
+        else:
+            rows = memory.store.conn.execute(
+                "SELECT * FROM ark_freelance_order WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
+                (memory.user_id, lim),
+            ).fetchall()
     return [dict(r) for r in rows]
 
 
+@_synchronized_memory
 def propose_or_place_bid(
     memory,
     order_id: str,
@@ -421,11 +716,12 @@ def propose_or_place_bid(
         placed = True
         note = "Отклик утверждён и отмечен к отправке через подключённый адаптер биржи."
 
-    memory.store.conn.execute(
-        "UPDATE ark_freelance_order SET status = ?, bid_text = ?, updated_at = ? WHERE user_id = ? AND order_id = ?",
-        (new_status, clean_pitch[:2000], time.time(), memory.user_id, order_id),
-    )
-    memory.store.conn.commit()
+    with _lock_of(memory):
+        memory.store.conn.execute(
+            "UPDATE ark_freelance_order SET status = ?, bid_text = ?, updated_at = ? WHERE user_id = ? AND order_id = ?",
+            (new_status, clean_pitch[:2000], time.time(), memory.user_id, order_id),
+        )
+        memory.store.conn.commit()
     audit_chain.append_audit(
         memory,
         "freelance_bid_updated",
@@ -444,6 +740,48 @@ def propose_or_place_bid(
     }
 
 
+@_synchronized_memory
+def dispatch_bid_http(
+    memory,
+    order_id: str,
+    *,
+    owner_approved: bool = False,
+    allow_localhost: bool = False,
+) -> dict[str, Any]:
+    """Отправляет ставку на реальный REST endpoint биржи (строго при снятом замке и одобрении владельца)."""
+    res = propose_or_place_bid(memory, order_id, owner_approved=owner_approved)
+    if not res.get("ok") or not res.get("placed"):
+        return {**res, "http_dispatched": False}
+    order = _get_order(memory, order_id)
+    if not order.get("account_id"):
+        return {"ok": False, "order_id": order_id, "http_dispatched": False, "error": "К заказу не привязан account_id с api_base_url."}
+    acc = _get_account_row(memory, order["account_id"])
+    base_url = _validate_api_url(acc.get("api_base_url") or "", allow_localhost=allow_localhost)
+    if not base_url:
+        return {"ok": False, "order_id": order_id, "http_dispatched": False, "error": "У аккаунта не задан api_base_url."}
+    token = _unseal_secret(memory, acc.get("token_enc") or "")
+    adapter = ExchangeHttpAdapter(base_url, token)
+    st, body = adapter.request_json(
+        "POST",
+        "/bids",
+        {
+            "external_job_id": order.get("external_job_id") or order_id,
+            "order_id": order_id,
+            "amount_usdt": res["proposed_usdt"],
+            "pitch_text": res["bid_text"],
+        },
+    )
+    ok_http = 200 <= st < 300
+    return {
+        **res,
+        "ok": ok_http,
+        "http_dispatched": ok_http,
+        "http_status": st,
+        "exchange_response": body,
+    }
+
+
+@_synchronized_memory
 def execute_order_with_swarm(
     memory,
     order_id: str,
@@ -457,11 +795,12 @@ def execute_order_with_swarm(
 
     council = swarm_council.run_family_council(memory, f"{order['title']}\n{order['brief_redacted']}")
     if not council.get("approved", False):
-        memory.store.conn.execute(
-            "UPDATE ark_freelance_order SET status = 'rejected_security', security_note = ?, updated_at = ? WHERE user_id = ? AND order_id = ?",
-            ("Вето Совета Семьи (LANCE) при запуске исполнения.", time.time(), memory.user_id, order_id),
-        )
-        memory.store.conn.commit()
+        with _lock_of(memory):
+            memory.store.conn.execute(
+                "UPDATE ark_freelance_order SET status = 'rejected_security', security_note = ?, updated_at = ? WHERE user_id = ? AND order_id = ?",
+                ("Вето Совета Семьи (LANCE) при запуске исполнения.", time.time(), memory.user_id, order_id),
+            )
+            memory.store.conn.commit()
         return {"ok": False, "order_id": order_id, "status": "rejected_security", "council": council}
 
     task_res = coop_broker.create_task(
@@ -493,12 +832,13 @@ def execute_order_with_swarm(
         f"{float(order['budget_usdt']):.4f} - {float(order['est_compute_usdt']):.4f}"
     )
 
-    memory.store.conn.execute(
-        "UPDATE ark_freelance_order SET status = 'in_progress', assigned_agent = ?, coop_task_id = ?, branch_id = ?, updated_at = ? "
-        "WHERE user_id = ? AND order_id = ?",
-        (str(agent_id or "aifa")[:48], task_id, branch_id, time.time(), memory.user_id, order_id),
-    )
-    memory.store.conn.commit()
+    with _lock_of(memory):
+        memory.store.conn.execute(
+            "UPDATE ark_freelance_order SET status = 'in_progress', assigned_agent = ?, coop_task_id = ?, branch_id = ?, updated_at = ? "
+            "WHERE user_id = ? AND order_id = ?",
+            (str(agent_id or "aifa")[:48], task_id, branch_id, time.time(), memory.user_id, order_id),
+        )
+        memory.store.conn.commit()
     audit_chain.append_audit(
         memory,
         "freelance_order_started",
@@ -517,6 +857,7 @@ def execute_order_with_swarm(
     }
 
 
+@_synchronized_memory
 def package_safe_delivery(
     memory,
     order_id: str,
@@ -547,12 +888,13 @@ def package_safe_delivery(
         except Exception:
             pass
 
-    memory.store.conn.execute(
-        "UPDATE ark_freelance_order SET status = 'delivered', delivery_sha256 = ?, delivery_preview = ?, updated_at = ? "
-        "WHERE user_id = ? AND order_id = ?",
-        (digest, safe_text[:1500], time.time(), memory.user_id, order_id),
-    )
-    memory.store.conn.commit()
+    with _lock_of(memory):
+        memory.store.conn.execute(
+            "UPDATE ark_freelance_order SET status = 'delivered', delivery_sha256 = ?, delivery_preview = ?, updated_at = ? "
+            "WHERE user_id = ? AND order_id = ?",
+            (digest, safe_text[:1500], time.time(), memory.user_id, order_id),
+        )
+        memory.store.conn.commit()
     audit_chain.append_audit(
         memory,
         "freelance_order_delivered",
@@ -583,12 +925,13 @@ def propose_profile_improvement(
     clean_title, _ = sanitize_for_delivery(title)
     clean_body, _ = sanitize_for_delivery(suggestion_text)
     sid = f"psg-{uuid.uuid4().hex[:10]}"
-    memory.store.conn.execute(
-        "INSERT INTO ark_profile_suggestion (suggestion_id, user_id, platform, order_id, title, suggestion_text, status, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, 'proposed', ?)",
-        (sid, memory.user_id, plat, str(order_id or ""), clean_title[:160], clean_body[:1000], time.time()),
-    )
-    memory.store.conn.commit()
+    with _lock_of(memory):
+        memory.store.conn.execute(
+            "INSERT INTO ark_profile_suggestion (suggestion_id, user_id, platform, order_id, title, suggestion_text, status, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, 'proposed', ?)",
+            (sid, memory.user_id, plat, str(order_id or ""), clean_title[:160], clean_body[:1000], time.time()),
+        )
+        memory.store.conn.commit()
     return {
         "ok": True,
         "suggestion_id": sid,
@@ -600,37 +943,48 @@ def propose_profile_improvement(
 
 
 def list_profile_suggestions(memory, *, limit: int = 20) -> list[dict[str, Any]]:
-    """Возвращает предложения по усилению портфолио и профиля на биржах."""
     _ensure(memory)
-    rows = memory.store.conn.execute(
-        "SELECT suggestion_id, platform, order_id, title, suggestion_text, status, created_at "
-        "FROM ark_profile_suggestion WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
-        (memory.user_id, max(1, min(100, int(limit)))),
-    ).fetchall()
+    with _lock_of(memory):
+        rows = memory.store.conn.execute(
+            "SELECT suggestion_id, platform, order_id, title, suggestion_text, status, created_at "
+            "FROM ark_profile_suggestion WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
+            (memory.user_id, max(1, min(100, int(limit)))),
+        ).fetchall()
     return [dict(r) for r in rows]
+
+
+def galatin_buyback_quote(usdt_amount: float, *, galatin_price_usdt: float = 0.01) -> dict[str, Any]:
+    """Рассчитывает количество $GALATIN при автовыкупе с биржи для расчётов/вывода через ЛК."""
+    amt = round(max(0.0, float(usdt_amount)), 4)
+    price = max(0.0001, float(galatin_price_usdt or 0.01))
+    return {
+        "token_symbol": "$GALATIN",
+        "usdt_equivalent": amt,
+        "galatin_price_usdt": price,
+        "galatin_amount": round(amt / price, 4),
+    }
 
 
 def monetization_breakdown(
     gross_usdt: float,
     *,
-    platform_fee_pct: float = 10.0,
-    agent_compute_pct: float = 15.0,
+    agent_share_pct: float = 15.0,
+    settlement_currency: str = "USDT_TRC20",
+    galatin_price_usdt: float = 0.01,
+    compute_share_pct: float | None = None,
 ) -> dict[str, Any]:
-    """Рассчитывает прозрачное распределение дохода по канонической токеномике CODE ($GALATIN) и казне агента.
-
-    Экосистемный пул (100% от платформенной комиссии или выручки SaaS/MCP):
-    - 5% Фонд
-    - 5% Сжигание ($GALATIN)
-    - 15% + 7% + 3% = 25% Трёхуровневая амбассадорская программа (пустые уровни -> сжигание, макс. 30%)
-    - 65% Казна CODE Eternal
-    """
+    """Фиксированная ставка CODE = 10% + регулируемая ставка агента (1%..100% от оставшихся 90%) + токеномика $GALATIN."""
     gross = round(max(0.0, float(gross_usdt)), 4)
-    fee_pct = max(0.0, min(30.0, float(platform_fee_pct)))
-    comp_pct = max(0.0, min(50.0, float(agent_compute_pct)))
+    fee_pct = FIXED_PLATFORM_FEE_PCT  # строго фиксированная ставка 10%
+    raw_agent_pct = float(compute_share_pct if compute_share_pct is not None else agent_share_pct)
+    agent_pct = round(max(1.0, min(100.0, raw_agent_pct)), 2)
+    curr = _clean_currency(settlement_currency)
 
     platform_fee_usdt = round(gross * (fee_pct / 100.0), 4)
-    agent_compute_usdt = round(gross * (comp_pct / 100.0), 4)
-    owner_net_usdt = round(max(0.0, gross - platform_fee_usdt - agent_compute_usdt), 4)
+    user_pool_usdt = round(max(0.0, gross - platform_fee_usdt), 4)
+    agent_compute_usdt = round(user_pool_usdt * (agent_pct / 100.0), 4)
+    owner_net_usdt = round(max(0.0, user_pool_usdt - agent_compute_usdt), 4)
+    effective_gross_agent_pct = round(0.9 * agent_pct, 4)
 
     eco_shares = {
         "fund_pct": 5.0,
@@ -649,60 +1003,81 @@ def monetization_breakdown(
         "gross_usdt": gross,
         "platform_fee_pct": fee_pct,
         "platform_fee_usdt": platform_fee_usdt,
-        "agent_compute_pct": comp_pct,
+        "user_pool_usdt": user_pool_usdt,
+        "agent_share_pct": agent_pct,
+        "effective_gross_agent_pct": effective_gross_agent_pct,
         "agent_compute_usdt": agent_compute_usdt,
         "owner_net_usdt": owner_net_usdt,
+        "settlement_currency": curr,
+        "owner_net_galatin": galatin_buyback_quote(owner_net_usdt, galatin_price_usdt=galatin_price_usdt),
+        "platform_fee_galatin": galatin_buyback_quote(platform_fee_usdt, galatin_price_usdt=galatin_price_usdt),
         "ecosystem_shares_pct": eco_shares,
         "ecosystem_split_usdt": eco_usdt,
         "percentage_sum_verified": bool(pct_check.get("valid")),
     }
 
 
+@_synchronized_memory
 def settle_paid_order(
     memory,
     order_id: str,
     *,
     paid_usdt: float | None = None,
     agent_id: str = "aifa",
-    compute_share_pct: float = 15.0,
-    platform_fee_pct: float = 10.0,
+    agent_share_pct: float | None = None,
+    compute_share_pct: float | None = None,
+    settlement_currency: str | None = None,
 ) -> dict[str, Any]:
-    """Фиксирует оплату заказа, зачисляет долю в казну вычислений token_autonomy и предлагает кейс для профиля."""
+    """Фиксирует оплату заказа (10% CODE + 1%..100% агенту из 90% пула), зачисляет в казну и предлагает кейс."""
     order = _get_order(memory, order_id)
+    prefs = get_freelance_prefs(memory)
     gross = round(max(0.0, float(paid_usdt if paid_usdt is not None else order["budget_usdt"])), 4)
     if gross <= 0:
         raise ValueError("Сумма оплаты paid_usdt должна быть > 0.")
+
+    chosen_share = float(
+        agent_share_pct if agent_share_pct is not None else (
+            compute_share_pct if compute_share_pct is not None else prefs["agent_share_pct"]
+        )
+    )
+    chosen_curr = str(settlement_currency or prefs["settlement_currency"])
+    split = monetization_breakdown(
+        gross,
+        agent_share_pct=chosen_share,
+        settlement_currency=chosen_curr,
+        galatin_price_usdt=prefs["galatin_price_usdt"],
+    )
 
     earn_res = token_autonomy.record_agent_earning(
         memory,
         agent_id=str(agent_id or order["assigned_agent"] or "aifa"),
         source=f"freelance:{order['platform']}:{order_id}",
         revenue_usdt=gross,
-        compute_share_pct=compute_share_pct,
-        note=f"Оплата заказа: {order['title'][:80]}",
+        compute_share_pct=split["effective_gross_agent_pct"],
+        note=f"Оплата ({split['settlement_currency']}): {order['title'][:80]}",
     )
-    split = monetization_breakdown(gross, platform_fee_pct=platform_fee_pct, agent_compute_pct=compute_share_pct)
 
     lid = f"mon-{uuid.uuid4().hex[:10]}"
-    memory.store.conn.execute(
-        "INSERT INTO ark_monetization_ledger (ledger_id, user_id, source_type, gross_usdt, platform_fee_usdt, agent_compute_usdt, ecosystem_json, note, created_at) "
-        "VALUES (?, ?, 'freelance_order', ?, ?, ?, ?, ?, ?)",
-        (
-            lid,
-            memory.user_id,
-            gross,
-            split["platform_fee_usdt"],
-            split["agent_compute_usdt"],
-            json.dumps(split["ecosystem_split_usdt"], ensure_ascii=False),
-            f"Заказ {order_id} ({order['platform']})",
-            time.time(),
-        ),
-    )
-    memory.store.conn.execute(
-        "UPDATE ark_freelance_order SET status = 'paid', earned_usdt = ?, updated_at = ? WHERE user_id = ? AND order_id = ?",
-        (gross, time.time(), memory.user_id, order_id),
-    )
-    memory.store.conn.commit()
+    with _lock_of(memory):
+        memory.store.conn.execute(
+            "INSERT INTO ark_monetization_ledger (ledger_id, user_id, source_type, gross_usdt, platform_fee_usdt, agent_compute_usdt, ecosystem_json, note, created_at) "
+            "VALUES (?, ?, 'freelance_order', ?, ?, ?, ?, ?, ?)",
+            (
+                lid,
+                memory.user_id,
+                gross,
+                split["platform_fee_usdt"],
+                split["agent_compute_usdt"],
+                json.dumps(split["ecosystem_split_usdt"], ensure_ascii=False),
+                f"Заказ {order_id} ({order['platform']}, {split['settlement_currency']})",
+                time.time(),
+            ),
+        )
+        memory.store.conn.execute(
+            "UPDATE ark_freelance_order SET status = 'paid', earned_usdt = ?, updated_at = ? WHERE user_id = ? AND order_id = ?",
+            (gross, time.time(), memory.user_id, order_id),
+        )
+        memory.store.conn.commit()
 
     sug = propose_profile_improvement(
         memory,
@@ -717,7 +1092,13 @@ def settle_paid_order(
     audit_chain.append_audit(
         memory,
         "freelance_order_paid",
-        {"order_id": order_id, "gross_usdt": gross, "allocated_compute_usdt": split["agent_compute_usdt"]},
+        {
+            "order_id": order_id,
+            "gross_usdt": gross,
+            "platform_fee_usdt": split["platform_fee_usdt"],
+            "agent_compute_usdt": split["agent_compute_usdt"],
+            "currency": split["settlement_currency"],
+        },
         agent_id=str(agent_id or "aifa"),
     )
     return {
@@ -731,29 +1112,89 @@ def settle_paid_order(
     }
 
 
+@_synchronized_memory
+def verify_and_process_webhook(
+    memory,
+    raw_body: bytes,
+    signature_hex: str,
+    *,
+    account_id: str = "",
+) -> dict[str, Any]:
+    """Проверяет HMAC-SHA256 подпись входящего вебхука биржи и при событии оплаты автоматически зачисляет средства."""
+    _ensure(memory)
+    secret = ""
+    if account_id:
+        acc = _get_account_row(memory, account_id)
+        secret = _unseal_secret(memory, acc.get("webhook_secret_enc") or "")
+    if not secret:
+        secret = os.environ.get("PADAM_FREELANCE_WEBHOOK_SECRET", "").strip()
+    if not secret:
+        raise PermissionError("Секрет вебхука не настроен для аккаунта или PADAM_FREELANCE_WEBHOOK_SECRET.")
+
+    expected = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
+    provided = str(signature_hex or "").strip().lower()
+    if provided.startswith("sha256="):
+        provided = provided[7:]
+    if not hmac.compare_digest(expected.lower(), provided):
+        raise PermissionError("Неверная HMAC-SHA256 подпись вебхука биржи.")
+
+    data = json.loads(raw_body.decode("utf-8"))
+    ev = str(data.get("event") or "").strip().lower()
+    if ev == "order.paid":
+        return settle_paid_order(
+            memory,
+            str(data.get("order_id") or ""),
+            paid_usdt=data.get("paid_usdt"),
+            agent_id=str(data.get("agent_id") or "aifa"),
+            agent_share_pct=data.get("agent_share_pct"),
+            settlement_currency=data.get("settlement_currency"),
+        )
+    if ev == "job.new":
+        return evaluate_and_ingest_job(
+            memory,
+            platform=str(data.get("platform") or "custom_webhook"),
+            title=str(data.get("title") or "Webhook Job"),
+            brief=str(data.get("brief") or "No brief"),
+            budget_usdt=float(data.get("budget_usdt") or 0.0),
+            estimated_tokens=int(data.get("estimated_tokens") or 25000),
+            account_id=account_id,
+            external_job_id=str(data.get("external_job_id") or ""),
+        )
+    return {"ok": True, "event": ev, "ignored": True}
+
+
+@_synchronized_memory
 def freelance_dashboard_snapshot(memory) -> dict[str, Any]:
     """Собирает единую сводку для вкладки Studio «Автономный заработок», MCP и CLI."""
     _ensure(memory)
+    prefs = get_freelance_prefs(memory)
     accounts = list_exchange_accounts(memory)
     orders = list_orders(memory, limit=30)
     suggestions = list_profile_suggestions(memory, limit=15)
     treasury = token_autonomy.treasury_summary(memory)
     proposals = token_autonomy.list_topup_proposals(memory)
     budget_tick = token_autonomy.run_budget_timer_tick(memory, auto_propose_if_low=False)
+    spend_rec = token_autonomy.recommend_optimal_spend(
+        memory,
+        settlement_currency=prefs["settlement_currency"],
+        galatin_price_usdt=prefs["galatin_price_usdt"],
+    )
     locks = freelance_locks_status()
 
     conn = memory.store.conn
-    r_mon = conn.execute(
-        "SELECT COALESCE(SUM(gross_usdt), 0.0) AS g, COALESCE(SUM(platform_fee_usdt), 0.0) AS f, "
-        "COALESCE(SUM(agent_compute_usdt), 0.0) AS c FROM ark_monetization_ledger WHERE user_id = ?",
-        (memory.user_id,),
-    ).fetchone()
+    with _lock_of(memory):
+        r_mon = conn.execute(
+            "SELECT COALESCE(SUM(gross_usdt), 0.0) AS g, COALESCE(SUM(platform_fee_usdt), 0.0) AS f, "
+            "COALESCE(SUM(agent_compute_usdt), 0.0) AS c FROM ark_monetization_ledger WHERE user_id = ?",
+            (memory.user_id,),
+        ).fetchone()
     total_gross = round(float(r_mon["g"] or 0.0), 4)
     total_fee = round(float(r_mon["f"] or 0.0), 4)
     total_comp = round(float(r_mon["c"] or 0.0), 4)
 
     return {
         "ok": True,
+        "prefs": prefs,
         "locks": locks,
         "accounts": accounts,
         "orders": orders,
@@ -761,12 +1202,20 @@ def freelance_dashboard_snapshot(memory) -> dict[str, Any]:
         "treasury": treasury,
         "proposals": proposals,
         "budget": budget_tick,
+        "spend_recommendation": spend_rec,
         "monetization_totals": {
+            "fixed_platform_fee_pct": FIXED_PLATFORM_FEE_PCT,
             "total_gross_usdt": total_gross,
             "total_platform_fee_usdt": total_fee,
             "total_agent_compute_usdt": total_comp,
-            "ecosystem_reference": monetization_breakdown(max(total_gross, 100.0)),
+            "ecosystem_reference": monetization_breakdown(
+                max(total_gross, 100.0),
+                agent_share_pct=prefs["agent_share_pct"],
+                settlement_currency=prefs["settlement_currency"],
+                galatin_price_usdt=prefs["galatin_price_usdt"],
+            ),
         },
         "supported_platforms": list(SUPPORTED_PLATFORMS),
         "supported_modes": list(SUPPORTED_MODES),
+        "supported_currencies": list(SUPPORTED_CURRENCIES),
     }
