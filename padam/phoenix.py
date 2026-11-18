@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac as _hmac
 import json
 import os
 import zipfile
@@ -291,7 +292,7 @@ def run_phoenix_drill(db_path: str | Path) -> dict[str, Any]:
         key_bytes = bytes.fromhex(key_file.read_text(encoding="ascii").strip()) if key_file.exists() else b"drill-test-key-32-bytes-00000000"
         shares = shamir.split_secret(key_bytes, 3, 5)
         recovered_key = shamir.combine_shares([shares[0], shares[2], shares[4]])
-        shamir_ok = (recovered_key == key_bytes)
+        shamir_ok = _hmac.compare_digest(recovered_key, key_bytes)  # SIDE-02: за постоянное время
         steps.append({"step": "shamir_3_of_5", "ok": shamir_ok})
 
         restored_db = tmp / "restored" / "memory.db"

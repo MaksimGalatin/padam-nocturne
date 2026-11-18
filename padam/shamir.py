@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import secrets
 
 _SHARE_PREFIX = "padam-shamir-v1"
@@ -131,6 +132,6 @@ def combine_shares(shares: list[str]) -> bytes:
     if secret_len < 5:
         raise ValueError("Invalid Shamir share length")
     result, tag = bytes(recovered[:-4]), bytes(recovered[-4:])
-    if hashlib.sha256(result).digest()[:4] != tag:
+    if not hmac.compare_digest(hashlib.sha256(result).digest()[:4], tag):  # SIDE-01: сравнение за постоянное время
         raise ValueError("Recovered secret checksum mismatch (corrupted shares)")
     return result

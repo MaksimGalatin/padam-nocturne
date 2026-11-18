@@ -2394,6 +2394,28 @@ def make_viewer_server(memory: Memory | None = None, port: int = 8078) -> tuple[
     return srv, f"http://127.0.0.1:{srv.server_address[1]}/ui#t={_state['token']}"
 
 
+def write_session_file(base_dir, data: dict):
+    """Фаза 2 аудита GLM, API-01: session.json несёт токен владельца — файл только для владельца
+    (POSIX 0o600, Windows — DACL только на SID владельца), как у демона MCP."""
+    from pathlib import Path as _P
+    from . import net_guard as _ng
+    base = _P(base_dir)
+    base.mkdir(parents=True, exist_ok=True)
+    try:
+        os.chmod(base, 0o700)
+    except OSError:
+        pass
+    path = base / "session.json"
+    if os.name != "nt":
+        fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(json.dumps(data))
+    else:
+        path.write_text(json.dumps(data), encoding="utf-8")
+    _ng.restrict_file_to_owner(path)
+    return path
+
+
 def make_studio_server(memory: Memory | None = None, port: int = 8078) -> tuple[ThreadingHTTPServer, str]:
     """Сервер приложения PADAM Studio: только 127.0.0.1, одноразовый токен в якоре ссылки."""
     _state["token"] = secrets.token_urlsafe(24)
@@ -2472,13 +2494,12 @@ def main(argv=None, memory: Memory | None = None) -> int:
             from pathlib import Path as _P
             base_dir = _P(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")) / "PADAM Studio"
             base_dir.mkdir(parents=True, exist_ok=True)
-            sess_file = base_dir / "session.json"
-            sess_file.write_text(json.dumps({
+            sess_file = write_session_file(base_dir, {
                 "port": int(srv.server_address[1]),
                 "token": _state["token"],
                 "pid": os.getpid(),
                 "ppid": os.getppid(),
-            }), encoding="utf-8")
+            })
         except Exception:
             sess_file = None
     try:

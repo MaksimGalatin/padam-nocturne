@@ -186,6 +186,12 @@ class TreasuryComputeManager:
         daily_cap = float(os.environ.get("PADAM_TREASURY_DAILY_CAP_USDT", "25.0") or "25.0")
         if amt <= 0 or amt > daily_cap:
             raise ValueError(f"Topup amount ${amt} out of allowed bounds (0, ${daily_cap}]")
+        # Фаза 2 аудита GLM, SOV-01: предел суточный и ЗДЕСЬ, а не только в обёртке execute_approved_topup —
+        # прямой вызов N раз по ${daily_cap} не должен обходить его. Скользящие 24 часа в этом процессе.
+        now_s = time.time()
+        hist = [(ts, a) for ts, a in getattr(self, "_topup_history", []) if now_s - ts < 86400]
+        if sum(a for _, a in hist) + amt > daily_cap + 1e-9:
+            raise ValueError(f"Daily treasury cap ${daily_cap} reached in the last 24 h")
         if self._transfer_fn is None:
             raise RuntimeError("No treasury transfer backend configured")
 
@@ -204,6 +210,7 @@ class TreasuryComputeManager:
             "idempotent_replay": False,
         }
         self._executed_keys[key] = record
+        self._topup_history = hist + [(now_s, round(amt, 4))]
         return record
 
 

@@ -97,9 +97,12 @@ def save_procedure(
         (rec_id, clean_name, next_ver, _utc_now()),
     )
 
-    if owner_approved and prev is not None and prev["memory_id"] != rec_id:
+    # Фаза 2 LIFE-01: заменять можно только ДЕЙСТВУЮЩУЮ прежнюю версию. Забытая (revoked) процедура остаётся забытой:
+    # иначе статус revoked — основа доказуемого забвения — превращался в superseded, а связь вела из забытого.
+    if owner_approved and prev is not None and prev["memory_id"] != rec_id and prev["status"] == "active":
         mem.store.atomic([
-            ("UPDATE memory SET status = 'superseded', superseded_by = ? WHERE id = ?", (rec_id, prev["memory_id"])),
+            ("UPDATE memory SET status = 'superseded', superseded_by = ? WHERE id = ? AND status = 'active'",
+             (rec_id, prev["memory_id"])),
             ("INSERT OR IGNORE INTO memory_link (src, dst, relation, created_at) VALUES (?, ?, 'correction', ?)",
              (prev["memory_id"], rec_id, _utc_now())),
         ])

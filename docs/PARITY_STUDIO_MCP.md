@@ -4,13 +4,13 @@
 
 ## Сводка по всем инструментам и действиям MCP
 
-- Всего инструментов MCP (с учётом всех 6 флагов, `_ALL_TOOLS_BY_NAME`): **45** (по умолчанию: **9**, `PADAM_MCP_ARK_TOOLS=1`: **33** и **26845/27000** символов в `tools/list`, с `PADAM_MCP_PARTNER_TOOLS=1`: **39**).
-- Всего пар `(инструмент, action)`: **170**.
-- Есть в MCP: **170 из 170**
-- Есть в Studio (вкладка + кнопка/поле): **170 из 170**
-- Есть в API (`padam/api.py`): **170 из 170**
-- Покрыто автотестами: **170 из 170**
-- Проверено реальным нажатием в Playwright (1280×800 и 390×844): **170 из 170**
+- Всего инструментов MCP (с учётом всех 6 флагов, `_ALL_TOOLS_BY_NAME`): **46** (по умолчанию: **9**, `PADAM_MCP_ARK_TOOLS=1`: **34** и **27153/27000** символов в `tools/list`, с `PADAM_MCP_PARTNER_TOOLS=1`: **40**).
+- Всего пар `(инструмент, action)`: **173**.
+- Есть в MCP: **173 из 173**
+- Есть в Studio (вкладка + кнопка/поле): **173 из 173**
+- Есть в API (`padam/api.py`): **173 из 173**
+- Покрыто автотестами: **173 из 173**
+- Проверено реальным нажатием в Playwright (1280×800 и 390×844): **173 из 173**
 - Контролов Studio только для владельца (намеренно закрытых в MCP по аудиту GLM): **13**
 
 ## 1. Полная таблица MCP → Studio → API
@@ -187,6 +187,9 @@
 | `padam_platform_connect` | `autopilot_dispatch` | Да | Да: `panel-earning` → `#earn-wiz-disp-btn` | Да: `POST /api/v2/ark/wizard/action` | Да | Да |
 | `padam_platform_connect` | `sample_prepare` | Да | Да: `panel-earning` → `[data-order-action='sample_prepare']` | Да: `POST /api/v2/ark/wizard/action` | Да | Да |
 | `padam_platform_connect` | `sample_reject` | Да | Да: `panel-earning` → `[data-order-action='sample_reject']` | Да: `POST /api/v2/ark/wizard/action` | Да | Да |
+| `padam_benchmark` | `report` | Да | Да: `panel-bench` → `#att-aifasec-summary, #att-aifasec-dl-json` | Да: `GET /api/v2/aifa-security` | Да | Да |
+| `padam_benchmark` | `run` | Да | Да: `panel-bench` → `#att-aifasec-run` | Да: `POST /api/v2/aifa-security/run` | Да | Да |
+| `padam_benchmark` | `qa` | Да | Да: `panel-bench` → `#att-qa-load, #att-qa-summary` | Да: `GET /api/v2/qa-benchmark` | Да | Да |
 
 ## 2. Обратный аудит Studio / Владелец → MCP (намеренные ограничения безопасности)
 
