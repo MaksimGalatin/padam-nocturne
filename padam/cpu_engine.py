@@ -133,40 +133,33 @@ def recommend_quantized_profile(
     has_gpu: bool = False,
 ) -> dict[str, Any]:
     """Подбирает оптимальную квантованную GGUF-модель и параметры под железо пользователя."""
-    ram = float(ram_gb if ram_gb is not None else _detect_system_ram_gb())
-    cores = int(cpu_cores if cpu_cores is not None else (os.cpu_count() or 2))
+    from . import local_model as _lm
 
-    if ram < 3.5:
-        tier = "ultra_light_mobile"
-        model_size = "0.5B–1.5B (Qwen2.5-1.5B / Llama-3.2-1B)"
-        quant = "Q4_K_M"
-        ctx = 2048
-    elif ram < 7.5:
-        tier = "laptop_4gb_6gb"
-        model_size = "3B (Llama-3.2-3B / Qwen2.5-3B)"
-        quant = "Q4_K_M"
-        ctx = 4096
-    elif ram < 15.0:
-        tier = "workstation_8gb_12gb"
-        model_size = "7B–8B (Qwen2.5-7B / Llama-3.1-8B)"
-        quant = "Q4_K_M" if not has_gpu else "Q5_K_M"
-        ctx = 8192
-    elif ram < 31.0:
-        tier = "pro_16gb_24gb"
-        model_size = "14B (Qwen2.5-14B / DeepSeek-R1-Distill-14B)"
-        quant = "Q5_K_M"
-        ctx = 16384
-    else:
-        tier = "server_32gb_plus"
-        model_size = "32B–70B (Qwen2.5-32B / Llama-3.3-70B)"
-        quant = "Q4_K_M" if ram < 48 else "Q6_K"
-        ctx = 16384
+    real_ram = float(ram_gb if ram_gb is not None else _detect_system_ram_gb())
+    cores = int(cpu_cores if cpu_cores is not None else (os.cpu_count() or 2))
+    power = _lm.effective()["power"]
+    # 18.11.2026, слово Архитектора: «тяжёлые модели в пол мощности». По умолчанию half: половина ядер и модель
+    # на ступень меньше — компьютер не уходит в 100 % и не перегревается.
+    ram = real_ram
+    _ступени = [
+        ("ultra_light_mobile", 0.0, "0.5B–1.5B (Qwen2.5-1.5B / Llama-3.2-1B)", "Q4_K_M", 2048),
+        ("laptop_4gb_6gb", 3.5, "3B (Llama-3.2-3B / Qwen2.5-3B)", "Q4_K_M", 4096),
+        ("workstation_8gb_12gb", 7.5, "7B–8B (Qwen2.5-7B / Llama-3.1-8B)", "Q5_K_M" if has_gpu else "Q4_K_M", 8192),
+        ("pro_16gb_24gb", 15.0, "14B (Qwen3-14B / DeepSeek-R1-Distill-14B)", "Q4_K_M", 16384),
+        ("server_32gb_plus", 31.0, "32B–70B (Qwen2.5-32B / Llama-3.3-70B)", "Q4_K_M" if real_ram < 48 else "Q6_K", 16384),
+    ]
+    по_памяти = max(i for i, ст in enumerate(_ступени) if real_ram >= ст[1])
+    # Мощность опускает модель на ступень (half) или две (eco): меньше памяти, меньше нагрев, тот же смысл.
+    понижение = {"full": 0, "half": 1, "eco": 2}.get(power, 1)
+    tier, _, model_size, quant, ctx = _ступени[max(0, по_памяти - понижение)]
 
     return {
         "tier": tier,
-        "system_ram_gb": ram,
+        "system_ram_gb": real_ram,
+        "full_power_tier": _ступени[по_памяти][0],
+        "power_mode": power,
         "cpu_cores": cores,
-        "threads_recommended": max(1, min(cores, cores - 1 if cores > 2 else cores)),
+        "threads_recommended": _lm.threads_for(cores, power),
         "recommended_model": model_size,
         "recommended_quant": quant,
         "context_window": ctx,
@@ -176,7 +169,9 @@ def recommend_quantized_profile(
 
 def cpu_engine_status() -> dict[str, Any]:
     has_llama_cpp = _has_llama_cpp()
-    gguf_path = os.environ.get("PADAM_CPU_GGUF_PATH", "").strip()
+    from . import local_model as _lm
+
+    gguf_path = _lm.effective()["gguf_path"]
     gguf_exists = bool(gguf_path and Path(gguf_path).is_file())
     hw = recommend_quantized_profile()
     return {
@@ -187,6 +182,8 @@ def cpu_engine_status() -> dict[str, Any]:
         "mode": "llama_cpp_gguf" if (has_llama_cpp and gguf_exists) else "cpu_extractive_builtin",
         "llama_cpp_installed": has_llama_cpp,
         "gguf_configured": gguf_exists,
+        "gguf_path": gguf_path,
+        "last_error": str(_GGUF_CACHE.get("last_error") or ""),
         "recommended_quant_profile": hw,
         "offline_model_packs": OFFLINE_MODEL_PACKS,
         "models_storage_note": "Модели не вшиты в APK/инсталлятор (чтобы пакет весил ~60 МБ); скачиваются 1 раз по команде ollama pull или как .gguf файл (PADAM_CPU_GGUF_PATH).",
@@ -264,7 +261,9 @@ def _run_gguf_if_configured(
     payload: dict[str, Any],
 ) -> str | None:
     """Запускает реальную квантованную GGUF-модель через llama_cpp, если библиотека и файл настроены."""
-    gguf_path = os.environ.get("PADAM_CPU_GGUF_PATH", "").strip()
+    from . import local_model as _lm
+
+    gguf_path = _lm.effective()["gguf_path"]
     if not gguf_path or not Path(gguf_path).is_file():
         return None
     if not _has_llama_cpp():
@@ -278,7 +277,9 @@ def _run_gguf_if_configured(
                 _GGUF_CACHE["llm"] = llama_cpp.Llama(
                     model_path=gguf_path,
                     n_ctx=int(os.environ.get("PADAM_CPU_GGUF_CTX", hw["context_window"])),
-                    n_threads=int(os.environ.get("PADAM_CPU_GGUF_THREADS", hw["threads_recommended"])),
+                    n_threads=_lm.capped_threads(
+                        int(os.environ["PADAM_CPU_GGUF_THREADS"]) if os.environ.get("PADAM_CPU_GGUF_THREADS", "").strip().isdigit() else None,
+                        hw["cpu_cores"], hw["power_mode"]),
                     verbose=False,
                 )
                 _GGUF_CACHE["path"] = gguf_path
@@ -287,7 +288,7 @@ def _run_gguf_if_configured(
         sys_ctx = "Offline sovereign assistant. Use verified memory only.\n" + ("\n".join(context_blocks) if context_blocks else "")
         prompt_msgs = [
             {"role": "system", "content": sys_ctx[:4000]},
-            {"role": "user", "content": clean_q[:3000]},
+            {"role": "user", "content": clean_q[:3000] + (" /no_think" if "qwen3" in gguf_path.lower() else "")},
         ]
         max_tok = int(payload.get("max_tokens") or 384)
         temp = float(payload.get("temperature") or 0.2)
@@ -299,8 +300,13 @@ def _run_gguf_if_configured(
             res = llm(raw_p, max_tokens=max_tok, temperature=temp)
             txt = str((((res or {}).get("choices") or [{}])[0]).get("text") or "").strip()
         if txt:
+            _GGUF_CACHE["last_error"] = ""
             return safety.redact(txt)[0]
-    except Exception:
+    except Exception as exc:
+        # 18.11.2026: раньше ошибка загрузки проглатывалась молча, и человек думал, что модель работает.
+        # Теперь причина видна в cpu_engine_status() и в Studio; ответ всё равно даёт встроенный режим.
+        _GGUF_CACHE["last_error"] = f"{type(exc).__name__}: {str(exc)[:200]}"
+        _GGUF_CACHE["llm"] = None
         return None
     return None
 

@@ -350,6 +350,21 @@ STRINGS: dict[str, dict[str, str]] = {
         "l3_verify_fail": "Не удалось подтвердить якорь:",
         # 9. Настройки
         "set_title": "Настройки безопасности и работы памяти",
+        "lm_title": "Локальная модель (офлайн, $0)",
+        "lm_desc": "Модель работает на процессоре этого компьютера, без интернета и без оплаты. Выберите мощность и модель — и нажмите «Сохранить». По умолчанию — половина мощности: компьютер остаётся отзывчивым и не перегревается.",
+        "lm_power_eco": "Эко",
+        "lm_power_half": "Половина",
+        "lm_power_full": "Полная",
+        "lm_threads": "потоков",
+        "lm_model_label": "Модель",
+        "lm_model_none": "Без модели — встроенный режим (ответы из памяти)",
+        "lm_save": "Сохранить",
+        "lm_saved": "Сохранено. Модель загрузится при первом вопросе.",
+        "lm_need_install": "Чтобы включить модель, установите движок одной командой ниже.",
+        "lm_need_model": "Скачайте модель один раз: файл .gguf в папку ~/.padam/models или через ollama pull — она появится в списке.",
+        "lm_ready": "Модель подключена",
+        "lm_builtin": "Работает встроенный режим",
+        "lm_recommended": "Рекомендуем для этой мощности",
         "set_subtitle": "Безопасные режимы можно включить сразу. Опасные настройки, ослабляющие защиту, из браузера включить нельзя.",
         "set_strict_name": "PADAM_STRICT — Строгий режим в один переключатель",
         "set_strict_desc": "Каждая запись агента и любой внешний текст ждут вашего одобрения. Ослабляющие флаги игнорируются.",
@@ -749,6 +764,21 @@ STRINGS: dict[str, dict[str, str]] = {
         "l3_verify_ok": "VERIFIED: Merkle root and bundle SHA-256 match.",
         "l3_verify_fail": "Verification failed:",
         "set_title": "Security & Memory Settings",
+        "lm_title": "Local model (offline, $0)",
+        "lm_desc": "The model runs on this computer's CPU, with no internet and no payment. Pick the power and the model, then press Save. Half power is the default: the computer stays responsive and does not overheat.",
+        "lm_power_eco": "Eco",
+        "lm_power_half": "Half",
+        "lm_power_full": "Full",
+        "lm_threads": "threads",
+        "lm_model_label": "Model",
+        "lm_model_none": "No model — built-in mode (answers from memory)",
+        "lm_save": "Save",
+        "lm_saved": "Saved. The model loads on the first question.",
+        "lm_need_install": "To turn the model on, install the engine with the one command below.",
+        "lm_need_model": "Download a model once: a .gguf file into ~/.padam/models or via ollama pull — it will appear in the list.",
+        "lm_ready": "Model connected",
+        "lm_builtin": "Built-in mode is active",
+        "lm_recommended": "Recommended for this power",
         "set_subtitle": "Protective switches can be enabled right here. Weakening switches are read-only from the browser.",
         "set_strict_name": "PADAM_STRICT — One-switch strict security profile",
         "set_strict_desc": "Every agent write and all external text wait for your review. Weakening flags are ignored.",
@@ -1147,6 +1177,21 @@ STRINGS: dict[str, dict[str, str]] = {
         "l3_verify_ok": "VERIFICADO: la raíz Merkle y el SHA-256 del paquete coinciden.",
         "l3_verify_fail": "Error de verificación:",
         "set_title": "Ajustes de seguridad y memoria",
+        "lm_title": "Modelo local (sin conexión, $0)",
+        "lm_desc": "El modelo funciona en el procesador de este equipo, sin internet y sin pago. Elija la potencia y el modelo y pulse Guardar. Por defecto, media potencia: el equipo sigue ágil y no se sobrecalienta.",
+        "lm_power_eco": "Eco",
+        "lm_power_half": "Media",
+        "lm_power_full": "Completa",
+        "lm_threads": "hilos",
+        "lm_model_label": "Modelo",
+        "lm_model_none": "Sin modelo — modo integrado (respuestas desde la memoria)",
+        "lm_save": "Guardar",
+        "lm_saved": "Guardado. El modelo se carga con la primera pregunta.",
+        "lm_need_install": "Para activar el modelo, instale el motor con el comando de abajo.",
+        "lm_need_model": "Descargue un modelo una vez: un archivo .gguf en ~/.padam/models o con ollama pull; aparecerá en la lista.",
+        "lm_ready": "Modelo conectado",
+        "lm_builtin": "Modo integrado activo",
+        "lm_recommended": "Recomendado para esta potencia",
         "set_subtitle": "Los modos de protección se pueden activar aquí. Los ajustes que debilitan la seguridad son de solo lectura.",
         "set_strict_name": "PADAM_STRICT — Modo estricto en un solo interruptor",
         "set_strict_desc": "Toda escritura del agente y texto externo espera su revisión. Ignora indicadores débiles.",
@@ -1545,6 +1590,21 @@ STRINGS: dict[str, dict[str, str]] = {
         "l3_verify_ok": "验证通过：Merkle 根与数据包 SHA-256 完全一致。",
         "l3_verify_fail": "验证未通过：",
         "set_title": "安全防护与记忆设置",
+        "lm_title": "本地模型（离线，$0）",
+        "lm_desc": "模型在本机处理器上运行，无需联网、无需付费。选择功率和模型后点击“保存”。默认半功率：电脑保持流畅且不会过热。",
+        "lm_power_eco": "节能",
+        "lm_power_half": "半功率",
+        "lm_power_full": "全功率",
+        "lm_threads": "线程",
+        "lm_model_label": "模型",
+        "lm_model_none": "不使用模型——内置模式（从记忆中回答）",
+        "lm_save": "保存",
+        "lm_saved": "已保存。模型将在第一个问题时加载。",
+        "lm_need_install": "要启用模型，请用下面的一条命令安装引擎。",
+        "lm_need_model": "下载一次模型：将 .gguf 文件放入 ~/.padam/models，或使用 ollama pull——它会出现在列表中。",
+        "lm_ready": "模型已连接",
+        "lm_builtin": "内置模式运行中",
+        "lm_recommended": "此功率推荐",
         "set_subtitle": "增强安全的开关可在此直接开启；削弱防护的危险开关在浏览器中为只读状态。",
         "set_strict_name": "PADAM_STRICT — 一键严格安全模式",
         "set_strict_desc": "智能体的每次写入与所有外部文本均需您审核批准，自动忽略削弱安全的环境变量。",
@@ -4128,6 +4188,76 @@ async function loadL3() {
 }
 
 // --- 9. НАСТРОЙКИ ---
+let _lmPower = 'half';
+function _lmPaint(r) {
+  _lmPower = r.power || 'half';
+  for (const m of (r.power_modes || [])) {
+    const b = $('lm-power-' + m.id);
+    if (!b) continue;
+    b.textContent = (S['lm_power_' + m.id] || m.id) + ' · ' + m.threads + ' ' + (S.lm_threads || '');
+    b.setAttribute('aria-pressed', String(m.id === _lmPower));
+    b.classList.toggle('btn-primary', m.id === _lmPower);
+  }
+  const st = $('lm-status');
+  if (st) {
+    st.textContent = '';
+    const head = r.mode === 'llama_cpp_gguf' ? S.lm_ready : S.lm_builtin;
+    st.appendChild(_el('p', 'panel-sub', head + ' · CPU ' + (r.cpu_cores || 0) + ' · RAM ' + Math.round(r.system_ram_gb || 0) + ' GB'));
+    const rec = r.recommended || {};
+    st.appendChild(_el('p', 'panel-sub', (S.lm_recommended || '') + ': ' + (rec.recommended_model || '') + ' · ' + (rec.recommended_quant || '')));
+    if (r.next_step === 'install') {
+      st.appendChild(_el('p', 'panel-sub', S.lm_need_install || ''));
+      st.appendChild(_el('code', '', 'pip install llama-cpp-python'));
+    }
+    if (r.last_error) st.appendChild(_el('p', 'panel-sub', '⚠ ' + String(r.last_error).slice(0, 200)));
+    else if (r.next_step === 'choose_model' && !(r.models_found || []).length) st.appendChild(_el('p', 'panel-sub', S.lm_need_model || ''));
+  }
+  const sel = $('lm-model');
+  if (sel) {
+    sel.textContent = '';
+    const none = document.createElement('option');
+    none.value = ''; none.textContent = S.lm_model_none || '';
+    sel.appendChild(none);
+    for (const m of (r.models_found || [])) {
+      const o = document.createElement('option');
+      o.value = m.path; o.textContent = m.name + ' · ' + m.size_gb + ' GB';
+      if (String(m.path).toLowerCase() === String(r.gguf_path || '').toLowerCase()) o.selected = true;
+      sel.appendChild(o);
+    }
+    if (r.gguf_path && ![...sel.options].some(o => o.value.toLowerCase() === r.gguf_path.toLowerCase())) {
+      const o = document.createElement('option');
+      o.value = r.gguf_path; o.textContent = r.gguf_path; o.selected = true;
+      sel.appendChild(o);
+    }
+  }
+}
+async function loadLocalModel() {
+  try { _lmPaint(await api('/api/v2/local-model')); } catch (e) { const o = $('lm-out'); if (o) o.textContent = String(e.message || e); }
+}
+for (const id of ['eco', 'half', 'full']) {
+  const b = $('lm-power-' + id);
+  if (b) b.onclick = () => {
+    _lmPower = id;
+    for (const k of ['eco', 'half', 'full']) {
+      const x = $('lm-power-' + k);
+      if (x) { x.setAttribute('aria-pressed', String(k === id)); x.classList.toggle('btn-primary', k === id); }
+    }
+  };
+}
+if ($('lm-save')) {
+  $('lm-save').onclick = async () => {
+    const out = $('lm-out');
+    if (out) out.textContent = S.loading;
+    try {
+      const r = await api('/api/v2/local-model', { power: _lmPower, gguf_path: ($('lm-model') || {}).value || '' });
+      _lmPaint(r);
+      if (out) out.textContent = S.lm_saved || 'OK';
+    } catch (e) {
+      if (out) out.textContent = String(e.message || e);
+    }
+  };
+}
+
 async function loadSettings() {
   try {
     const s = await api('/settings');
@@ -4370,7 +4500,7 @@ function loadActiveTab() {
   else if (activeTab === 'brain') loadBrain();
   else if (activeTab === 'earning') loadEarning();
   else if (activeTab === 'team') loadTeam();
-  else if (activeTab === 'settings') loadSettings();
+  else if (activeTab === 'settings') { loadSettings(); loadLocalModel(); }
   else if (activeTab === 'attacks') loadAttacks();
   else if (activeTab === 'help') loadHelp();
 }
@@ -6423,6 +6553,24 @@ def page() -> tuple[str, str]:
         <div class="panel-header">
           <h2 class="panel-title" data-i18n="set_title">{s['set_title']}</h2>
           <p class="panel-sub" data-i18n="set_subtitle">{s['set_subtitle']}</p>
+        </div>
+        <div class="box" id="lm-box">
+          <h3 class="box-title" id="lm-box-title" data-i18n="lm_title">{s['lm_title']}</h3>
+          <p class="panel-sub" data-i18n="lm_desc">{s['lm_desc']}</p>
+          <div id="lm-status" aria-live="polite"></div>
+          <div class="rec-actions" role="group" aria-labelledby="lm-box-title">
+            <button id="lm-power-eco" data-power="eco" aria-pressed="false" data-i18n="lm_power_eco">{s['lm_power_eco']}</button>
+            <button id="lm-power-half" data-power="half" aria-pressed="true" data-i18n="lm_power_half">{s['lm_power_half']}</button>
+            <button id="lm-power-full" data-power="full" aria-pressed="false" data-i18n="lm_power_full">{s['lm_power_full']}</button>
+          </div>
+          <div class="toolbar">
+            <label for="lm-model" data-i18n="lm_model_label">{s['lm_model_label']}</label>
+            <select id="lm-model"></select>
+          </div>
+          <div class="rec-actions">
+            <button id="lm-save" class="btn-primary" data-i18n="lm_save">{s['lm_save']}</button>
+          </div>
+          <p id="lm-out" class="panel-sub" aria-live="polite"></p>
         </div>
         <div class="box">
           <div id="settings-safe-list"></div>

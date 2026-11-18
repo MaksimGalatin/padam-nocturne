@@ -281,7 +281,10 @@ def test_concurrent_swarm_6_agents_zero_sqlite_lock_errors(tmp_path):
 
 def test_offline_cpu_gguf_mock_quant_profiles_and_personal_lora_distill(monkeypatch, tmp_path):
     """Оффлайн квантованный ИИ (профили + GGUF llama_cpp + lessons/commitments) и персональный LoRA для каждого Феникса."""
-    # 1. Профили под любое железо
+    # 1. Профили под любое железо — ступени по памяти при полной мощности
+    #    (18.11: по умолчанию половина мощности опускает модель на ступень, это проверяет tests/test_local_model_1811.py)
+    monkeypatch.setenv("PADAM_CPU_POWER", "full")
+    monkeypatch.setenv("PADAM_HOME", str(tmp_path / "lm_home"))
     p_low = cpu_engine.recommend_quantized_profile(ram_gb=2.0, cpu_cores=4)
     p_mid = cpu_engine.recommend_quantized_profile(ram_gb=8.0, cpu_cores=8)
     p_hi = cpu_engine.recommend_quantized_profile(ram_gb=64.0, cpu_cores=16)
