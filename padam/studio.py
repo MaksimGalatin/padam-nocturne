@@ -153,6 +153,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_bid_preview_title": "Черновик отклика (только предпросмотр — не отправлено):",
         "earn_btn_send_bid": "Отправить отклик",
         "earn_bid_draft_ready": "Черновик отклика подготовлен из памяти и профиля (не отправлен).",
+        "earn_job_client_lbl": "Клиент (email / домен / ID)",
+        "earn_job_client_ph": "alice@company.com или company.com (необязательно)",
+        "earn_client_locked_prefix": "Клиент закреплён за ",
+        "earn_until_word": " до ",
+        "earn_agent_share_prefix": "Доля агента: ",
+        "earn_payout_pending": "в ожидании",
+        "earn_payout_credited": "начислено",
+        "earn_payout_cancelled": "отменено",
+        "earn_btn_accept": "Принято клиентом",
+        "earn_btn_refund": "Возврат",
         "nav_settings": "Настройки",
         "nav_quickstart": "Первый запуск",
         "theme_dark": "Тёмная тема",
@@ -600,6 +610,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_bid_preview_title": "Bid draft (preview only — not sent):",
         "earn_btn_send_bid": "Send Bid",
         "earn_bid_draft_ready": "Bid draft prepared from memory and profile (not sent).",
+        "earn_job_client_lbl": "Client (email / domain / ID)",
+        "earn_job_client_ph": "alice@company.com or company.com (optional)",
+        "earn_client_locked_prefix": "Client locked to ",
+        "earn_until_word": " until ",
+        "earn_agent_share_prefix": "Agent share: ",
+        "earn_payout_pending": "pending",
+        "earn_payout_credited": "credited",
+        "earn_payout_cancelled": "cancelled",
+        "earn_btn_accept": "Accepted",
+        "earn_btn_refund": "Refund",
         "nav_settings": "Settings",
         "nav_quickstart": "Quick Start",
         "theme_dark": "Dark theme",
@@ -1036,6 +1056,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_bid_preview_title": "Borrador de oferta (solo vista previa — no enviado):",
         "earn_btn_send_bid": "Enviar Oferta",
         "earn_bid_draft_ready": "Borrador preparado desde memoria y perfil (no enviado).",
+        "earn_job_client_lbl": "Cliente (email / dominio / ID)",
+        "earn_job_client_ph": "alice@company.com o company.com (opcional)",
+        "earn_client_locked_prefix": "Cliente asignado a ",
+        "earn_until_word": " hasta ",
+        "earn_agent_share_prefix": "Cuota del agente: ",
+        "earn_payout_pending": "en espera",
+        "earn_payout_credited": "acreditado",
+        "earn_payout_cancelled": "cancelado",
+        "earn_btn_accept": "Aceptado",
+        "earn_btn_refund": "Reembolso",
         "nav_settings": "Ajustes",
         "nav_quickstart": "Inicio rápido",
         "theme_dark": "Tema oscuro",
@@ -1472,6 +1502,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_bid_preview_title": "投标草稿（仅预览 — 尚未发送）：",
         "earn_btn_send_bid": "发送投标",
         "earn_bid_draft_ready": "已根据记忆与档案生成投标草稿（未发送）。",
+        "earn_job_client_lbl": "客户 (邮箱 / 域名 / ID)",
+        "earn_job_client_ph": "alice@company.com 或 company.com（可选）",
+        "earn_client_locked_prefix": "客户绑定代理：",
+        "earn_until_word": " 至 ",
+        "earn_agent_share_prefix": "代理分成：",
+        "earn_payout_pending": "待结算",
+        "earn_payout_credited": "已入账",
+        "earn_payout_cancelled": "已取消",
+        "earn_btn_accept": "客户验收",
+        "earn_btn_refund": "退款取消",
         "nav_settings": "设置",
         "nav_quickstart": "快速开始",
         "theme_dark": "深色主题",
@@ -3154,6 +3194,7 @@ async function api(path, body) {
   if (token) headers['Authorization'] = 'Bearer ' + token;
   const r = await fetch(path, {
     method: body !== undefined ? 'POST' : 'GET',
+    cache: 'no-store',
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined
   });
@@ -5825,6 +5866,30 @@ function _renderEarningDashboard(snap, sibData, coopData) {
           ' · tokens~' + String(o.est_tokens) +
           ' · ' + String(o.security_note || '')
         ));
+        if (o.locked_agent_id && o.client_locked_until_date) {
+          const lockLine = _el('div', 'earn-meta',
+            (S.earn_client_locked_prefix || 'Client locked to ') +
+            String(o.locked_agent_id) +
+            (S.earn_until_word || ' until ') +
+            String(o.client_locked_until_date)
+          );
+          lockLine.setAttribute('data-order-client-lock', '1');
+          card.appendChild(lockLine);
+        }
+        const rawPaySt = String(o.agent_payout_status || '');
+        if (rawPaySt || o.status === 'paid' || o.status === 'accepted' || o.status === 'delivered' || o.status === 'refunded') {
+          let payText = S.earn_payout_pending || 'pending';
+          if (rawPaySt === 'credited') {
+            payText = (S.earn_payout_credited || 'credited') + (o.agent_payout_usdt ? ' ($' + String(o.agent_payout_usdt) + ')' : '');
+          } else if (rawPaySt === 'cancelled' || o.status === 'refunded') {
+            payText = (S.earn_payout_cancelled || 'cancelled') + (o.payout_cancel_reason ? ' (' + String(o.payout_cancel_reason) + ')' : '');
+          } else if (o.agent_payout_usdt) {
+            payText = payText + ' ($' + String(o.agent_payout_usdt) + ')';
+          }
+          const payLine = _el('div', 'earn-meta', (S.earn_agent_share_prefix || 'Agent share: ') + payText);
+          payLine.setAttribute('data-order-agent-payout', '1');
+          card.appendChild(payLine);
+        }
         if (o.status !== 'rejected_security') {
           const actRow = _el('div', 'rec-actions');
           const bBid = _el('button', '', S.earn_btn_bid || 'Draft Bid');
@@ -5838,16 +5903,55 @@ function _renderEarningDashboard(snap, sibData, coopData) {
               say(String(e.message || e), false);
             }
           };
+          const _runOrderAction = async (btn, payload) => {
+            btn.disabled = true;
+            try {
+              const res = await api('/api/v2/ark/freelance/action', payload);
+              if (res && res.status) o.status = res.status;
+              if (res && res.client_lock) {
+                o.locked_agent_id = res.client_lock.agent_id || o.locked_agent_id;
+                o.client_locked_until_date = res.client_lock.locked_until_date || o.client_locked_until_date;
+              }
+              if (res && res.agent_payout) {
+                o.agent_payout_status = res.agent_payout.status || 'pending';
+                o.agent_payout_usdt = res.agent_payout.amount_usdt || o.agent_payout_usdt;
+              }
+              if (res && res.agent_payout_status) o.agent_payout_status = res.agent_payout_status;
+              if (res && res.cancel_reason) o.payout_cancel_reason = res.cancel_reason;
+              ++_earnLoadSeq;
+              if (window._lastEarnSnap && Array.isArray(window._lastEarnSnap.orders)) {
+                _renderEarningDashboard(window._lastEarnSnap, window._lastEarnSibs || { siblings: [] }, window._lastEarnCoop || { tasks: [] });
+              }
+              await loadEarning();
+            } catch (e) {
+              say(String(e.message || e), false);
+            } finally {
+              btn.disabled = false;
+            }
+          };
           const bExec = _el('button', 'btn-primary', S.earn_btn_exec || 'Execute');
-          bExec.onclick = async () => { await api('/api/v2/ark/freelance/action', { action: 'execute_swarm', order_id: o.order_id, agent_id: o.assigned_agent || 'aifa' }); loadEarning(); };
+          bExec.setAttribute('data-order-action', 'execute_swarm');
+          bExec.onclick = () => _runOrderAction(bExec, { action: 'execute_swarm', order_id: o.order_id, agent_id: o.assigned_agent || 'aifa' });
           const bDel = _el('button', '', S.earn_btn_deliver || 'Deliver');
-          bDel.onclick = async () => { await api('/api/v2/ark/freelance/action', { action: 'deliver', order_id: o.order_id, deliverable_text: 'Выполнено по ТЗ заказа: ' + String(o.title) }); loadEarning(); };
+          bDel.setAttribute('data-order-action', 'deliver');
+          bDel.onclick = () => _runOrderAction(bDel, { action: 'deliver', order_id: o.order_id, deliverable_text: 'Выполнено по ТЗ заказа: ' + String(o.title) });
           const bSet = _el('button', 'btn-ok', S.earn_btn_settle || 'Settle');
-          bSet.onclick = async () => { await api('/api/v2/ark/freelance/action', { action: 'settle_paid', order_id: o.order_id, paid_usdt: Number(o.budget_usdt || 10) }); loadEarning(); };
+          bSet.setAttribute('data-order-action', 'settle_paid');
+          bSet.onclick = () => _runOrderAction(bSet, { action: 'settle_paid', order_id: o.order_id, paid_usdt: Number(o.budget_usdt || 10) });
+          const bAcc = _el('button', '', S.earn_btn_accept || 'Accepted');
+          bAcc.setAttribute('data-order-action', 'accept_delivery');
+          bAcc.onclick = () => _runOrderAction(bAcc, { action: 'accept_delivery', order_id: o.order_id });
           actRow.appendChild(bBid);
           actRow.appendChild(bExec);
           actRow.appendChild(bDel);
           actRow.appendChild(bSet);
+          actRow.appendChild(bAcc);
+          if (o.agent_payout_status !== 'cancelled' && o.status !== 'refunded' && (o.status === 'paid' || o.status === 'accepted' || o.status === 'delivered')) {
+            const bRef = _el('button', 'btn-danger', S.earn_btn_refund || 'Refund');
+            bRef.setAttribute('data-order-action', 'refund');
+            bRef.onclick = () => _runOrderAction(bRef, { action: 'dispute_payout', order_id: o.order_id, reason: 'Client dispute refund' });
+            actRow.appendChild(bRef);
+          }
           card.appendChild(actRow);
           if (o.bid_text) {
             const draftBox = _el('div', 'earn-bid-preview');
@@ -5887,10 +5991,14 @@ function _renderEarningDashboard(snap, sibData, coopData) {
   if (bSum) {
     const tr = (snap && snap.treasury) || {};
     const bg = (snap && snap.budget) || {};
+    const agL = (snap && snap.agent_ledger) || {};
+    const cLocks = (snap && snap.client_locks) || [];
     _kv(bSum, {
       providers_checked: bg.checked_providers || 0,
       total_earned_usdt: '$' + String(tr.total_revenue_usdt || 0),
       compute_available_usdt: '$' + String(tr.available_compute_usdt || 0),
+      agent_ledger_pending_credited: '$' + String(agL.pending_usdt || 0) + ' / $' + String(agL.credited_usdt || 0),
+      locked_clients_90d: cLocks.filter(x => x.status === 'active').length,
       spent_usdt: '$' + String(tr.spent_usdt || 0),
       autopay_locked: String(Boolean(tr.autopay_locked !== false)),
     });
@@ -6033,12 +6141,20 @@ function _renderEarningDashboard(snap, sibData, coopData) {
   }
 }
 
+let _earnLoadSeq = 0;
 async function loadEarning() {
   if (!token) return;
+  const seq = ++_earnLoadSeq;
   try {
-    const snap = await api('/api/v2/ark/freelance');
-    const sibData = await api('/api/v2/ark/siblings').catch(() => ({ siblings: [] }));
-    const coopData = await api('/api/v2/ark/coop').catch(() => ({ tasks: [] }));
+    const [snap, sibData, coopData] = await Promise.all([
+      api('/api/v2/ark/freelance'),
+      api('/api/v2/ark/siblings').catch(() => ({ siblings: [] })),
+      api('/api/v2/ark/coop').catch(() => ({ tasks: [] })),
+    ]);
+    if (seq !== _earnLoadSeq) return;
+    window._lastEarnSnap = snap;
+    window._lastEarnSibs = sibData;
+    window._lastEarnCoop = coopData;
     _renderEarningDashboard(snap, sibData, coopData);
   } catch (e) {
     say(String(e.message || e), false);
@@ -6081,9 +6197,10 @@ if ($('earn-eval-btn')) {
         estimated_hours: Number(($('earn-job-hours') && $('earn-job-hours').value) || 4),
         hourly_rate_usdt: Number(($('earn-job-rate') && $('earn-job-rate').value) || 25),
         estimated_tokens: Number(($('earn-job-tokens') && $('earn-job-tokens').value) || 25000),
+        client_ref: ($('earn-job-client') && $('earn-job-client').value) || '',
       });
       say(S.done);
-      loadEarning();
+      await loadEarning();
     } catch (e) {
       say(String(e.message || e), false);
     }
@@ -7167,6 +7284,10 @@ def page() -> tuple[str, str]:
                 <label for="earn-job-tokens" data-i18n="earn_job_tokens_lbl">{s['earn_job_tokens_lbl']}</label>
                 <input id="earn-job-tokens" class="earn-num-input" type="number" value="25000" min="500" step="500" data-i18n-placeholder="earn_job_tokens_ph" placeholder="{s['earn_job_tokens_ph']}">
               </div>
+            </div>
+            <div class="earn-field">
+              <label for="earn-job-client" data-i18n="earn_job_client_lbl">{s['earn_job_client_lbl']}</label>
+              <input id="earn-job-client" type="text" data-i18n-placeholder="earn_job_client_ph" placeholder="{s['earn_job_client_ph']}">
             </div>
             <div class="rec-actions">
               <button id="earn-eval-btn" class="btn-primary" data-i18n="earn_job_eval_btn">{s['earn_job_eval_btn']}</button>

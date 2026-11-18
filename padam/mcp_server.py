@@ -119,7 +119,7 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "query": {"type": "string", "minLength": 1, "maxLength": 4000},
-                "kind": {"type": "string", "enum": _KINDS, "description": "Record kind"},
+                "kind": {"type": "string", "enum": _KINDS, "description": "Kind"},
                 "scope": _SCOPE,
                 "limit": {"type": "integer", "minimum": 1, "maximum": config.MAX_RECALL_LIMIT},
                 "compact": {"type": "boolean", "description": "Trim text"},
@@ -130,7 +130,7 @@ TOOLS = [
                 "max_tokens": {"type": "integer", "minimum": 50, "maximum": 32000, "description": "Token cap"},
                 "known_at": {"type": "string", "maxLength": 40, "pattern": _AS_OF_PATTERN, "description": "Known ISO"},
                 "reflect": {"type": "boolean", "description": "Reflect"},
-                "mode": {"type": "string", "enum": ["default", "reflect"], "description": "Query mode"},
+                "mode": {"type": "string", "enum": ["default", "reflect"], "description": "Mode"},
             },
             "required": ["query"],
             "additionalProperties": False,
@@ -145,7 +145,7 @@ TOOLS = [
             "properties": {
                 "content": {"type": "string", "minLength": 1, "maxLength": config.MAX_CONTENT_CHARS},
                 "text": {"type": "string", "minLength": 1, "maxLength": config.MAX_CONTENT_CHARS},
-                "kind": {"type": "string", "enum": _KINDS, "description": "Record kind"},
+                "kind": {"type": "string", "enum": _KINDS, "description": "Kind"},
                 "importance": {"type": "number", "minimum": 0.0, "maximum": 1.0, "description": "0..1"},
                 "scope": _SCOPE,
                 "origin": {"type": "string", "enum": list(config.ORIGINS), "description": "Origin"},
@@ -170,7 +170,7 @@ TOOLS = [
                         "additionalProperties": False,
                     },
                 },
-                "dedup_mode": {"type": "string", "enum": ["default", "atomic_merge"], "description": "Merge mode"},
+                "dedup_mode": {"type": "string", "enum": ["default", "atomic_merge"], "description": "Merge"},
             },
             "required": ["content"],
             "additionalProperties": False,
@@ -212,9 +212,9 @@ TOOLS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "batch": {"type": "integer", "minimum": 1, "maximum": 4096, "description": "Batch size"},
+                "batch": {"type": "integer", "minimum": 1, "maximum": 4096, "description": "Batch"},
                 "dry_run": {"type": "boolean", "description": "Preview"},
-                "rem": {"type": "boolean", "description": "REM dream"},
+                "rem": {"type": "boolean", "description": "REM"},
                 "max_insights": {"type": "integer", "minimum": 1, "maximum": 20, "description": "REM cap"},
                 "scope": _SCOPE,
             },
@@ -228,7 +228,7 @@ TOOLS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "include_superseded": {"type": "boolean", "description": "Old versions"},
+                "include_superseded": {"type": "boolean", "description": "Old"},
                 "scope": _SCOPE,
                 "limit": {"type": "integer", "minimum": 1, "maximum": config.MAX_EXPORT_LIMIT},
                 "offset": {"type": "integer", "minimum": 0, "maximum": config.MAX_EXPORT_OFFSET},
@@ -426,12 +426,12 @@ SOVEREIGN_SYNC_TOOL_DEF = {
     "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
 }
 WAKE_UP_TOOL_DEF = {
-    "name": "padam_wake_up", "title": _TITLES["padam_wake_up"], "description": "Briefing.",
+    "name": "padam_wake_up", "title": _TITLES["padam_wake_up"], "description": "Briefing",
     "inputSchema": {"type": "object", "properties": {"agent": _S, "scope": _S, "max_chars": {**_I, "description": "Char cap"}}},
     "annotations": _RO,
 }
 COMMITMENTS_TOOL_DEF = {
-    "name": "padam_commitments", "title": _TITLES["padam_commitments"], "description": "Goals.",
+    "name": "padam_commitments", "title": _TITLES["padam_commitments"], "description": "Goals",
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": ["add", "update", "list"], "default": "list", "description": "add(title)|update(id,status)"},
         "id": _S, "title": _S, "status": _S,
@@ -440,7 +440,7 @@ COMMITMENTS_TOOL_DEF = {
     "annotations": _RW,
 }
 FAMILY_RELAY_TOOL_DEF = {
-    "name": "padam_family_relay", "title": _TITLES["padam_family_relay"], "description": "Relay.",
+    "name": "padam_family_relay", "title": _TITLES["padam_family_relay"], "description": "Relay",
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": ["send", "inbox", "ack"], "default": "inbox", "description": "send(payload)|ack(id)"},
         "from_agent": _S, "to_agent": _S, "payload": {"type": ["string", "object"], "description": "Body JSON/str"},
@@ -449,22 +449,22 @@ FAMILY_RELAY_TOOL_DEF = {
     "annotations": _RW,
 }
 CHECKPOINT_TOOL_DEF = {
-    "name": "padam_checkpoint", "title": _TITLES["padam_checkpoint"], "description": "Checkpoint.",
+    "name": "padam_checkpoint", "title": _TITLES["padam_checkpoint"], "description": "Save/load",
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": ["save", "latest"], "default": "latest", "description": "save(task,next_step)|latest"},
         "session_id": {**_S, "description": "Session id"}, "task": {**_S, "description": "Task"},
         "next_step": {**_S, "description": "Next step"}, "files": {**_SA, "description": "Files"},
-        "hypothesis": {**_S, "description": "Working guess"},
+        "hypothesis": {**_S, "description": "Guess"},
     }},
     "annotations": _RW,
 }
 TIMELINE_TOOL_DEF = {
-    "name": "padam_ark_timeline", "title": _TITLES["padam_ark_timeline"], "description": "Timeline.",
+    "name": "padam_ark_timeline", "title": _TITLES["padam_ark_timeline"], "description": "Timeline",
     "inputSchema": {"type": "object", "properties": {"query": _S, "since": {**_S, "description": "From ISO"}, "limit": _I}},
     "annotations": _RO,
 }
 LESSON_TOOL_DEF = {
-    "name": "padam_lesson", "title": _TITLES["padam_lesson"], "description": "Lessons.",
+    "name": "padam_lesson", "title": _TITLES["padam_lesson"], "description": "Lessons",
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": ["record", "list"], "default": "list", "description": "record(what_happened,rule_learned)|list"},
         "what_happened": {**_S, "description": "Incident"}, "why_failed": {**_S, "description": "Cause"},
@@ -473,12 +473,12 @@ LESSON_TOOL_DEF = {
     "annotations": _RW,
 }
 FAMILY_COUNCIL_TOOL_DEF = {
-    "name": "padam_family_council", "title": _TITLES["padam_family_council"], "description": "Council.",
+    "name": "padam_family_council", "title": _TITLES["padam_family_council"], "description": "Council",
     "inputSchema": {"type": "object", "properties": {"task": {**_S, "description": "Task"}, "scope": _S}, "required": ["task"]},
     "annotations": _RW,
 }
 FAMILY_FEED_TOOL_DEF = {
-    "name": "padam_family_feed", "title": _TITLES["padam_family_feed"], "description": "Feeds.",
+    "name": "padam_family_feed", "title": _TITLES["padam_family_feed"], "description": "Feeds",
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": ["read", "post", "counts", "reflex_propose", "reflex_list", "reflex_match"], "default": "read", "description": "post(content)|reflex_propose(trigger,response)|reflex_match(text)"},
         "channel": {"type": "string", "enum": ["work", "quarantine", "office", "smoke"], "description": "Channel"},
@@ -488,7 +488,7 @@ FAMILY_FEED_TOOL_DEF = {
     "annotations": _RW,
 }
 MEMORY_BRANCH_TOOL_DEF = {
-    "name": "padam_memory_branch", "title": _TITLES["padam_memory_branch"], "description": "Branches.",
+    "name": "padam_memory_branch", "title": _TITLES["padam_memory_branch"], "description": "Branches",
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": ["create", "remember", "list", "merge", "abandon"], "default": "list", "description": "create(name)|remember(branch_id,content)|merge/abandon(branch_id)"},
         "name": _S, "branch_id": {**_S, "description": "Branch id"}, "content": _S, "description": _S, "reason": _S, "scope": _S,
@@ -496,62 +496,62 @@ MEMORY_BRANCH_TOOL_DEF = {
     "annotations": _RW,
 }
 SELECTIVE_PROOF_TOOL_DEF = {
-    "name": "padam_selective_proof", "title": _TITLES["padam_selective_proof"], "description": "Proof.",
+    "name": "padam_selective_proof", "title": _TITLES["padam_selective_proof"], "description": "Proof",
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": ["create", "verify"], "default": "create", "description": "create(record_id)|verify(proof)"},
-        "record_id": {**_S, "description": "Record id"}, "scope": _S, "proof": {**_O, "description": "Proof JSON"},
+        "record_id": {**_S, "description": "Record id"}, "scope": _S, "proof": {**_O, "description": "Proof"},
     }},
     "annotations": _RO,
 }
 GUARDIAN_TICK_TOOL_DEF = {
-    "name": "padam_guardian_tick", "title": _TITLES["padam_guardian_tick"], "description": "Check.",
+    "name": "padam_guardian_tick", "title": _TITLES["padam_guardian_tick"], "description": "Health",
     "inputSchema": {"type": "object", "properties": {"scope": _S}},
     "annotations": _RO,
 }
 MESH_SYNC_TOOL_DEF = {
-    "name": "padam_mesh_sync", "title": _TITLES["padam_mesh_sync"], "description": "Sync.",
+    "name": "padam_mesh_sync", "title": _TITLES["padam_mesh_sync"], "description": "PQC sync",
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": ["identity", "peers", "pair_init", "pair_accept", "pair_confirm", "export", "apply"], "default": "peers", "description": "pair_init(peer_identity)|pair_accept(pairing_invite)|pair_confirm(peer_id,sas_code)|apply(packet)"},
         "device_name": {**_S, "description": "Node name"}, "device_type": {**_S, "description": "Kind"},
         "peer_id": {**_S, "description": "Peer id"}, "sas_code": {**_S, "description": "6-digit SAS"},
-        "peer_identity": {**_O, "description": "Peer pub"}, "pairing_invite": {**_O, "description": "Invite JSON"},
-        "packet": {**_O, "description": "Delta JSON"},
+        "peer_identity": {**_O, "description": "Peer pub"}, "pairing_invite": {**_O, "description": "Invite"},
+        "packet": {**_O, "description": "Delta"},
     }},
     "annotations": _RW,
 }
 MULTIMODAL_INSPECT_TOOL_DEF = {
-    "name": "padam_multimodal_inspect", "title": _TITLES["padam_multimodal_inspect"], "description": "Scan.",
+    "name": "padam_multimodal_inspect", "title": _TITLES["padam_multimodal_inspect"], "description": "Scan",
     "inputSchema": {"type": "object", "properties": {
-        "filename": {**_S, "description": "File"}, "text": _S, "content_b64": {**_S, "description": "Base64 bytes"}, "scope": _S,
+        "filename": {**_S, "description": "File"}, "text": _S, "content_b64": {**_S, "description": "Base64"}, "scope": _S,
     }, "required": ["filename"]},
     "annotations": _RW,
 }
 SIBLING_HUB_TOOL_DEF = {
-    "name": "padam_sibling_hub", "title": _TITLES["padam_sibling_hub"], "description": "Siblings.",
+    "name": "padam_sibling_hub", "title": _TITLES["padam_sibling_hub"], "description": "Siblings",
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": ["register", "heartbeat", "list", "passport", "sign_provenance", "verify_provenance"], "default": "list", "description": "register/heartbeat/passport(agent_id)|sign_provenance(content)|verify_provenance(envelope)"},
         "agent_id": _S, "display_name": {**_S, "description": "Label"}, "role": {**_S, "description": "Role"},
         "client_type": {**_S, "description": "Client"},
         "permission_role": {"type": "string", "enum": ["auditor", "contributor", "maintainer"], "description": "RBAC role"},
         "scopes": {**_SA, "description": "Scopes"}, "capabilities": {**_SA, "description": "Skill tags"},
-        "status": _S, "current_task": {**_S, "description": "Active task"},
-        "content": _S, "envelope": {**_O, "description": "Signed JSON"},
+        "status": _S, "current_task": {**_S, "description": "Task"},
+        "content": _S, "envelope": {**_O, "description": "Signed"},
     }},
     "annotations": _RW,
 }
 COOP_LOCK_TOOL_DEF = {
-    "name": "padam_coop_lock", "title": _TITLES["padam_coop_lock"], "description": "Leases.",
+    "name": "padam_coop_lock", "title": _TITLES["padam_coop_lock"], "description": "Leases",
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": ["acquire", "renew", "release", "release_all", "list_leases", "list", "create_task", "claim_task", "update_task", "list_tasks"], "default": "list_tasks", "description": "acquire/renew/release(resource_key)|create_task(title)|claim_task/update_task(task_id)"},
-        "agent_id": _S, "resource_key": {**_S, "description": "File path"}, "resource_path": {**_S, "description": "Path alias"},
+        "agent_id": _S, "resource_key": {**_S, "description": "File path"}, "resource_path": {**_S, "description": "Alias"},
         "purpose": {**_S, "description": "Reason"}, "ttl_s": {**_I, "description": "TTL sec"},
         "task_id": {**_S, "description": "Task id"}, "title": _S, "topic": _S, "scope": _S, "status": _S,
-        "summary": {**_S, "description": "Result note"}, "artifacts": {**_SA, "description": "Output files"},
+        "summary": {**_S, "description": "Note"}, "artifacts": {**_SA, "description": "Files"},
     }},
     "annotations": _RW,
 }
 SESSION_PACK_TOOL_DEF = {
-    "name": "padam_session_pack", "title": _TITLES["padam_session_pack"], "description": "Pack.",
+    "name": "padam_session_pack", "title": _TITLES["padam_session_pack"], "description": "Context",
     "inputSchema": {"type": "object", "properties": {
         "agent_id": _S, "topic": _S, "current_task": {**_S, "description": "Set task"}, "scope": _S,
         "max_tokens": {"type": "integer", "minimum": 150, "maximum": 8000, "description": "Token cap"},
@@ -559,7 +559,7 @@ SESSION_PACK_TOOL_DEF = {
     "annotations": _RO,
 }
 CODE_ANCHOR_TOOL_DEF = {
-    "name": "padam_code_anchor", "title": _TITLES["padam_code_anchor"], "description": "Anchors.",
+    "name": "padam_code_anchor", "title": _TITLES["padam_code_anchor"], "description": "Anchors",
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": ["anchor", "check"], "default": "check", "description": "anchor(memory_id,file_path)|check"},
         "memory_id": {**_S, "description": "Record id"}, "file_path": {**_S, "description": "Repo file"},
@@ -568,74 +568,77 @@ CODE_ANCHOR_TOOL_DEF = {
     "annotations": _RW,
 }
 BATCH_TOOL_DEF = {
-    "name": "padam_batch", "title": _TITLES["padam_batch"], "description": "Batch.",
+    "name": "padam_batch", "title": _TITLES["padam_batch"], "description": "Batch",
     "inputSchema": {"type": "object", "properties": {
         "calls": {"type": "array", "maxItems": 10, "description": "Read calls", "items": {
-            "type": "object", "properties": {"name": _S, "arguments": {"type": ["object", "string"], "description": "Args JSON"}}, "required": ["name"],
+            "type": "object", "properties": {"name": _S, "arguments": {"type": ["object", "string"], "description": "Args"}}, "required": ["name"],
         }},
     }, "required": ["calls"]},
     "annotations": _RO,
 }
 CONFLICT_ARBITER_TOOL_DEF = {
-    "name": "padam_conflict_arbiter", "title": _TITLES["padam_conflict_arbiter"], "description": "Conflicts.",
+    "name": "padam_conflict_arbiter", "title": _TITLES["padam_conflict_arbiter"], "description": "Conflicts",
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": ["open", "evidence", "resolve", "list"], "default": "list", "description": "open(topic)|evidence(case_id,note)|resolve(case_id,decision)"},
         "case_id": {**_S, "description": "Case id"}, "topic": _S,
         "agent_a": {**_S, "description": "Agent A"}, "position_a": {**_S, "description": "Claim A"},
         "agent_b": {**_S, "description": "Agent B"}, "position_b": {**_S, "description": "Claim B"},
         "agent_id": _S, "note": {**_S, "description": "Note"}, "ref": {**_S, "description": "Ref"},
-        "decision": {**_S, "description": "Verdict"}, "escalate_to_owner": {"type": "boolean", "description": "Notify owner"}, "status": _S,
+        "decision": {**_S, "description": "Verdict"}, "escalate_to_owner": {"type": "boolean", "description": "Escalate"}, "status": _S,
     }},
     "annotations": _RW,
 }
 MCP_TELEMETRY_TOOL_DEF = {
-    "name": "padam_mcp_telemetry", "title": _TITLES["padam_mcp_telemetry"], "description": "Stats.",
+    "name": "padam_mcp_telemetry", "title": _TITLES["padam_mcp_telemetry"], "description": "Stats",
     "inputSchema": {"type": "object", "properties": {}},
     "annotations": _RO,
 }
 TOKEN_BUDGET_TOOL_DEF = {
-    "name": "padam_token_budget", "title": _TITLES["padam_token_budget"], "description": "Quotas.",
+    "name": "padam_token_budget", "title": _TITLES["padam_token_budget"], "description": "Quotas",
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": ["status", "set_plan", "record_usage", "apply_pacing", "record_earning", "propose_topup", "timer_tick", "list_proposals"], "default": "status", "description": "record_usage(tokens)|record_earning(revenue_usdt)|propose_topup(amount_usdt)"},
-        "provider": {**_S, "description": "Provider"}, "agent_id": _S, "tier_name": {**_S, "description": "Plan tier"},
-        "daily_token_limit": {**_I, "description": "Day cap"}, "weekly_token_limit": {**_I, "description": "Week cap"},
-        "monthly_token_limit": {**_I, "description": "Month cap"}, "tokens": {**_I, "description": "Tokens"},
-        "source": {**_S, "description": "Source"}, "revenue_usdt": {**_N, "description": "Gross USDT"},
-        "compute_share_pct": {**_N, "description": "Agent share %"}, "amount_usdt": {**_N, "description": "Topup USDT"},
-        "estimated_tokens": {**_I, "description": "Est tokens"}, "target_tier": {**_S, "description": "Target tier"},
-        "action_type": {"type": "string", "enum": ["topup_api", "upgrade_plan", "renew_plan"], "description": "Topup kind"},
+        "provider": {**_S, "description": "Provider"}, "agent_id": _S, "tier_name": {**_S, "description": "Tier"},
+        "daily_token_limit": {**_I, "description": "Day"}, "weekly_token_limit": {**_I, "description": "Week"},
+        "monthly_token_limit": {**_I, "description": "Month"}, "tokens": {**_I, "description": "Tokens"},
+        "source": {**_S, "description": "Source"}, "revenue_usdt": {**_N, "description": "USDT"},
+        "compute_share_pct": {**_N, "description": "Share %"}, "amount_usdt": {**_N, "description": "USDT"},
+        "estimated_tokens": {**_I, "description": "Est tokens"}, "target_tier": {**_S, "description": "Target"},
+        "action_type": {"type": "string", "enum": ["topup_api", "upgrade_plan", "renew_plan"], "description": "Kind"},
         "reason": _S,
     }},
     "annotations": _RW,
 }
 FREELANCE_HUB_TOOL_DEF = {
-    "name": "padam_freelance_hub", "title": _TITLES["padam_freelance_hub"], "description": "Freelance.",
+    "name": "padam_freelance_hub", "title": _TITLES["padam_freelance_hub"], "description": "Freelance",
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": [
             "dashboard", "connect_account", "list_accounts", "evaluate_job", "list_orders",
-            "draft_bid", "bid", "execute_swarm", "deliver", "settle_paid",
+            "draft_bid", "bid", "execute_swarm", "deliver", "accept_delivery", "settle_paid",
+            "client_lock_status", "agent_ledger",
             "propose_profile", "monetization", "set_prefs", "fetch_jobs", "recommend_spend", "propose_subscription",
-        ], "default": "dashboard", "description": "evaluate_job(title,brief,budget_usdt)|draft_bid/bid/execute_swarm/settle_paid(order_id)|deliver(order_id,deliverable_text)|fetch_jobs(account_id)|propose_profile(suggestion_text)"},
+        ], "default": "dashboard", "description": "evaluate_job(title,brief)|deliver(order_id,deliverable_text)|fetch_jobs(account_id)|propose_profile(suggestion_text)|draft_bid/bid/execute_swarm/accept_delivery/settle_paid(order_id)"},
         "platform": {**_S, "description": "Exchange"}, "mode": {"type": "string", "enum": ["oauth_api", "desk", "webhook"], "description": "Mode"},
         "account_label": {**_S, "description": "Label"}, "agent_id": _S,
         "skills": {**_SA, "description": "Skills"}, "oauth_token": {**_S, "description": "OAuth token"},
         "account_id": {**_S, "description": "Account id"}, "order_id": {**_S, "description": "Order id"},
         "title": _S, "brief": {**_S, "description": "Job brief"},
-        "budget_usdt": {**_N, "description": "USDT pre-fee"}, "estimated_tokens": {**_I, "description": "Est tokens"},
-        "estimated_hours": {**_N, "description": "Est hours"}, "hourly_rate_usdt": {**_N, "description": "Min $/h"},
-        "exchange_fee_pct": {**_N, "description": "Ex fee %"}, "pitch_text": {**_S, "description": "Bid text"},
+        "budget_usdt": {**_N, "description": "USDT"}, "estimated_tokens": {**_I, "description": "Tokens"},
+        "estimated_hours": {**_N, "description": "Hours"}, "hourly_rate_usdt": {**_N, "description": "Min $/h"},
+        "exchange_fee_pct": {**_N, "description": "Fee %"}, "pitch_text": {**_S, "description": "Bid text"},
         "proposed_usdt": {**_N, "description": "Bid USDT"}, "deliverable_text": {**_S, "description": "Delivery"},
         "paid_usdt": {**_N, "description": "Paid USDT"}, "platform_fee_pct": {**_N, "description": "CODE 10%"},
-        "compute_share_pct": {**_N, "description": "Share alias %"}, "agent_share_pct": {**_N, "description": "Agent % 1..100"},
+        "compute_share_pct": {**_N, "description": "Share %"}, "agent_share_pct": {**_N, "description": "Agent %"},
         "settlement_currency": {"type": "string", "enum": ["USDT_TRC20", "GALATIN"], "description": "Coin"},
         "api_base_url": {**_S, "description": "API URL"}, "provider_id": {**_S, "description": "Plan id"},
-        "monthly_tokens_need": {**_I, "description": "Month tokens"}, "suggestion_text": {**_S, "description": "Note"},
+        "monthly_tokens_need": {**_I, "description": "Tokens"}, "suggestion_text": {**_S, "description": "Note"},
+        "client_email": {**_S, "description": "Email"}, "client_domain": {**_S, "description": "Domain"},
+        "client_external_id": {**_S, "description": "Client"}, "accepted_by": {**_S, "description": "Acceptor"},
         "status": _S,
     }},
     "annotations": _RW,
 }
 PHOENIX_FAMILY_TOOL_DEF = {
-    "name": "padam_phoenix_family", "title": _TITLES["padam_phoenix_family"], "description": "Phoenix.",
+    "name": "padam_phoenix_family", "title": _TITLES["padam_phoenix_family"], "description": "Phoenix",
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": [
             "status", "bind_ollama", "register_device", "dispatch_devices", "record_experience",
@@ -651,7 +654,7 @@ PHOENIX_FAMILY_TOOL_DEF = {
     "annotations": _RW,
 }
 LOCAL_MODEL_TOOL_DEF = {
-    "name": "padam_local_model", "title": _TITLES["padam_local_model"], "description": "Local ($0).",
+    "name": "padam_local_model", "title": _TITLES["padam_local_model"], "description": "Local $0",
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": ["status", "set_power", "set_model"], "default": "status", "description": "set_power(power)|set_model(model)|status"},
         "power": {"type": "string", "enum": ["eco", "half", "full"], "description": "CPU level"},
@@ -725,6 +728,7 @@ _ACTION_REQUIRED: dict[str, dict[str, tuple[str, ...]]] = {
         "bid": ("order_id",),
         "execute_swarm": ("order_id",),
         "deliver": ("order_id", "deliverable_text"),
+        "accept_delivery": ("order_id",),
         "settle_paid": ("order_id",),
         "fetch_jobs": ("account_id",),
         "propose_profile": ("suggestion_text",),
@@ -3460,7 +3464,7 @@ _BATCH_ALLOWED_READONLY_ACTIONS: dict[str, tuple[str, frozenset[str]]] = {
     "padam_family_feed": ("read", frozenset({"read", "counts", "reflex_list", "reflex_match"})),
     "padam_token_budget": ("status", frozenset({"status", "list_proposals"})),
     "padam_local_model": ("status", frozenset({"status"})),
-    "padam_freelance_hub": ("dashboard", frozenset({"dashboard", "list_accounts", "list_orders", "monetization", "recommend_spend"})),
+    "padam_freelance_hub": ("dashboard", frozenset({"dashboard", "list_accounts", "list_orders", "monetization", "recommend_spend", "client_lock_status", "agent_ledger"})),
 }
 
 
@@ -4633,6 +4637,9 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 exchange_fee_pct=float(args["exchange_fee_pct"]) if args.get("exchange_fee_pct") is not None else None,
                 account_id=str(args.get("account_id") or ""),
                 assigned_agent=aid,
+                client_email=str(args.get("client_email") or ""),
+                client_domain=str(args.get("client_domain") or ""),
+                client_external_id=str(args.get("client_external_id") or ""),
             )
         elif act == "list_orders":
             payload = {"orders": _fa.list_orders(m, status=args.get("status"))}
@@ -4659,6 +4666,25 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 str(args.get("order_id") or ""),
                 deliverable_text=str(args.get("deliverable_text") or ""),
                 agent_id=aid,
+            )
+        elif act == "accept_delivery":
+            payload = _fa.accept_delivery(
+                m,
+                str(args.get("order_id") or ""),
+                accepted_by=str(args.get("accepted_by") or "client"),
+            )
+        elif act == "client_lock_status":
+            payload = _fa.get_client_lock_status(
+                m,
+                client_email=str(args.get("client_email") or ""),
+                client_domain=str(args.get("client_domain") or ""),
+                client_external_id=str(args.get("client_external_id") or ""),
+                platform=str(args.get("platform") or ""),
+            )
+        elif act == "agent_ledger":
+            payload = _fa.get_agent_ledger(
+                m,
+                agent_id=str(args.get("agent_id") or ""),
             )
         elif act == "settle_paid":
             payload = _fa.settle_paid_order(

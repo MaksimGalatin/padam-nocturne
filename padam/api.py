@@ -1559,6 +1559,10 @@ class Handler(BaseHTTPRequestHandler):
                         exchange_fee_pct=float(data["exchange_fee_pct"]) if data.get("exchange_fee_pct") is not None else None,
                         account_id=str(data.get("account_id") or ""),
                         assigned_agent=aid,
+                        client_email=str(data.get("client_email") or ""),
+                        client_domain=str(data.get("client_domain") or ""),
+                        client_external_id=str(data.get("client_external_id") or ""),
+                        client_ref=str(data.get("client_ref") or ""),
                     ))
                 if act == "draft_bid":
                     return self._send(200, _fa.draft_bid_from_memory(
@@ -1595,6 +1599,28 @@ class Handler(BaseHTTPRequestHandler):
                         deliverable_text=str(data.get("deliverable_text") or ""),
                         agent_id=aid,
                     ))
+                if act == "accept_delivery":
+                    return self._send(200, _fa.accept_delivery(
+                        mem(),
+                        str(data.get("order_id") or ""),
+                        accepted_by=str(data.get("accepted_by") or "client"),
+                    ))
+                if act == "client_lock_status":
+                    return self._send(200, _fa.get_client_lock_status(
+                        mem(),
+                        client_email=str(data.get("client_email") or ""),
+                        client_domain=str(data.get("client_domain") or ""),
+                        client_external_id=str(data.get("client_external_id") or ""),
+                        client_ref=str(data.get("client_ref") or ""),
+                        client_key=str(data.get("client_key") or ""),
+                        platform=str(data.get("platform") or ""),
+                    ))
+                if act == "agent_ledger":
+                    return self._send(200, _fa.get_agent_ledger(
+                        mem(),
+                        agent_id=str(data.get("agent_id") or ""),
+                        limit=int(data.get("limit") or 50),
+                    ))
                 if act == "settle_paid":
                     return self._send(200, _fa.settle_paid_order(
                         mem(),
@@ -1622,7 +1648,12 @@ class Handler(BaseHTTPRequestHandler):
                 if act == "bind_referral":
                     return self._send(200, _fa.bind_referrer_code(mem(), str(data.get("ref_code") or "")))
                 if act == "dispute_payout":
-                    return self._send(200, _fa.dispute_held_payout(mem(), str(data.get("hold_id") or ""), reason=str(data.get("reason") or "")))
+                    return self._send(200, _fa.dispute_held_payout(
+                        mem(),
+                        str(data.get("hold_id") or ""),
+                        order_id=str(data.get("order_id") or ""),
+                        reason=str(data.get("reason") or "Client dispute refund"),
+                    ))
                 if act == "release_payouts":
                     return self._send(200, _fa.release_matured_payouts(mem()))
                 if act == "autopilot_start":

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import base64
 from contextlib import nullcontext
+from datetime import datetime, timezone
 import hashlib
 import hmac
 import json
@@ -44,6 +45,8 @@ from . import (
 FIXED_PLATFORM_FEE_PCT = 10.0
 ESCROW_HOLD_DAYS = 14
 ESCROW_HOLD_SECONDS = ESCROW_HOLD_DAYS * 86400
+CLIENT_LOCK_DAYS = 90
+CLIENT_LOCK_SECONDS = CLIENT_LOCK_DAYS * 86400
 
 SUPPORTED_PLATFORMS = (
     "upwork_api",
@@ -181,6 +184,47 @@ CREATE TABLE IF NOT EXISTS ark_referral_reward (
     created_at    REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_ark_ref_to ON ark_referral_reward (to_user_id, created_at);
+
+CREATE TABLE IF NOT EXISTS ark_client_agent_lock (
+    lock_id         TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL,
+    client_key      TEXT NOT NULL,
+    client_source   TEXT NOT NULL DEFAULT '',
+    agent_id        TEXT NOT NULL,
+    first_order_id  TEXT NOT NULL DEFAULT '',
+    last_order_id   TEXT NOT NULL DEFAULT '',
+    orders_count    INTEGER NOT NULL DEFAULT 1,
+    locked_from_ts  REAL NOT NULL,
+    locked_until_ts REAL NOT NULL,
+    status          TEXT NOT NULL DEFAULT 'active',
+    released_at     REAL,
+    created_at      REAL NOT NULL,
+    updated_at      REAL NOT NULL,
+    UNIQUE(user_id, client_key)
+);
+CREATE INDEX IF NOT EXISTS idx_ark_client_lock_user ON ark_client_agent_lock (user_id, status, locked_until_ts);
+
+CREATE TABLE IF NOT EXISTS ark_agent_ledger (
+    ledger_entry_id   TEXT PRIMARY KEY,
+    user_id           TEXT NOT NULL,
+    order_id          TEXT NOT NULL UNIQUE,
+    hold_id           TEXT NOT NULL DEFAULT '',
+    agent_id          TEXT NOT NULL,
+    client_key        TEXT NOT NULL DEFAULT '',
+    gross_usdt        REAL NOT NULL DEFAULT 0.0,
+    agent_share_pct   REAL NOT NULL DEFAULT 15.0,
+    agent_amount_usdt REAL NOT NULL DEFAULT 0.0,
+    currency          TEXT NOT NULL DEFAULT 'USDT_TRC20',
+    status            TEXT NOT NULL DEFAULT 'pending',
+    cancel_reason     TEXT NOT NULL DEFAULT '',
+    accepted_at       REAL,
+    available_at      REAL,
+    credited_at       REAL,
+    cancelled_at      REAL,
+    created_at        REAL NOT NULL,
+    updated_at        REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ark_agent_ledger_user ON ark_agent_ledger (user_id, agent_id, status);
 """
 
 
@@ -235,11 +279,92 @@ def _ensure(memory) -> None:
             ("platform_fee_pct", "REAL NOT NULL DEFAULT 10.0"),
             ("net_after_fees_usdt", "REAL NOT NULL DEFAULT 0.0"),
             ("effective_hourly_usdt", "REAL NOT NULL DEFAULT 0.0"),
+            ("client_key", "TEXT NOT NULL DEFAULT ''"),
+            ("client_source", "TEXT NOT NULL DEFAULT ''"),
+            ("locked_agent_id", "TEXT NOT NULL DEFAULT ''"),
+            ("client_locked_until_ts", "REAL"),
+            ("accepted_at", "REAL"),
+            ("agent_payout_status", "TEXT NOT NULL DEFAULT ''"),
+            ("payout_cancel_reason", "TEXT NOT NULL DEFAULT ''"),
         ):
             if col not in order_cols:
                 conn.execute(f"ALTER TABLE ark_freelance_order ADD COLUMN {col} {col_def}")
         conn.commit()
 
+
+def _iso_utc(ts: float | None) -> str:
+    if not ts:
+        return ""
+    return datetime.fromtimestamp(float(ts), tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _date_utc(ts: float | None) -> str:
+    if not ts:
+        return ""
+    return datetime.fromtimestamp(float(ts), tz=timezone.utc).strftime("%Y-%m-%d")
+
+
+def _normalize_client_identity(
+    platform: str = "",
+    *,
+    client_email: str = "",
+    client_domain: str = "",
+    client_external_id: str = "",
+    client_ref: str = "",
+) -> tuple[str, str]:
+    """Нормализует клиента к виду (client_key, client_source) по email, домену или id клиента биржи."""
+    em = str(client_email or "").strip().lower()
+    dom = str(client_domain or "").strip().lower()
+    ext = str(client_external_id or "").strip().lower()
+    ref = str(client_ref or "").strip()
+    if ref and not (em or dom or ext):
+        low_ref = ref.lower()
+        if "@" in low_ref:
+            em = low_ref
+        elif "." in low_ref and " " not in low_ref:
+            dom = low_ref
+        else:
+            ext = low_ref
+
+    if em and "@" in em:
+        local, _, host = em.partition("@")
+        local = local.strip()
+        host = host.strip().lstrip("www.")
+        if local and host:
+            return f"email:{local}@{host}"[:160], "email"
+    if dom:
+        if "://" in dom:
+            dom = urllib.parse.urlparse(dom).netloc or dom
+        dom = dom.split("/")[0].split(":")[0].strip().lower()
+        if dom.startswith("www."):
+            dom = dom[4:]
+        if dom:
+            return f"domain:{dom}"[:160], "domain"
+    if ext:
+        plat = _clean_platform(platform) if str(platform or "").strip() else ""
+        key = f"exchange:{plat}:{ext}" if plat else f"exchange:{ext}"
+        return key[:160], "exchange_client_id"
+    return "", ""
+
+
+def _expire_stale_client_locks_locked(conn, user_id: str, now_s: float) -> int:
+    """Снимает истекшие 90-дневные закрепления (status -> expired) внутри активной блокировки."""
+    cur = conn.execute(
+        "UPDATE ark_client_agent_lock SET status = 'expired', released_at = COALESCE(released_at, locked_until_ts), updated_at = ? "
+        "WHERE user_id = ? AND status = 'active' AND locked_until_ts <= ?",
+        (now_s, user_id, now_s),
+    )
+    return int(cur.rowcount or 0)
+
+
+def _active_client_lock_locked(conn, user_id: str, client_key: str, now_s: float) -> dict[str, Any] | None:
+    if not client_key:
+        return None
+    row = conn.execute(
+        "SELECT * FROM ark_client_agent_lock WHERE user_id = ? AND client_key = ? AND status = 'active' AND locked_until_ts > ?",
+        (user_id, client_key, now_s),
+    ).fetchone()
+    return dict(row) if row is not None else None
 
 def _derive_vault_key(memory) -> bytes:
     raw_owner, _ = integrity.owner_key(memory.store)
@@ -619,6 +744,9 @@ def fetch_jobs_from_exchange(
             account_id=account_id,
             external_job_id=str(j.get("id") or j.get("external_job_id") or ""),
             assigned_agent=acc["agent_id"],
+            client_email=str(j.get("client_email") or ""),
+            client_domain=str(j.get("client_domain") or ""),
+            client_external_id=str(j.get("client_id") or j.get("client_external_id") or ""),
         )
         ingested.append(res)
         if not res["ok"]:
@@ -663,6 +791,11 @@ def evaluate_and_ingest_job(
     external_job_id: str = "",
     assigned_agent: str = "aifa",
     provider: str = "primary",
+    client_email: str = "",
+    client_domain: str = "",
+    client_external_id: str = "",
+    client_ref: str = "",
+    now_ts: float | None = None,
 ) -> dict[str, Any]:
     """Проверяет ТЗ заказа на безопасность, считает выгоду по ставке, часам, комиссии и квотам токенов."""
     _ensure(memory)
@@ -733,15 +866,36 @@ def evaluate_and_ingest_job(
         else ("Квоты токенов на сегодня не хватает — рекомендуется перенести в очередь или снизить лимит." if not quota_ok else "ТЗ прошло проверку безопасности.")
     )
 
+    client_key, client_source = _normalize_client_identity(
+        plat,
+        client_email=client_email,
+        client_domain=client_domain,
+        client_external_id=client_external_id,
+        client_ref=client_ref,
+    )
+    eff_agent = str(assigned_agent or "aifa")[:48]
+    locked_agent = ""
+    locked_until: float | None = None
+
     oid = f"ord-{uuid.uuid4().hex[:10]}"
-    now = time.time()
+    now = float(now_ts if now_ts is not None else time.time())
     with _lock_of(memory):
-        memory.store.conn.execute(
+        conn = memory.store.conn
+        if client_key:
+            _expire_stale_client_locks_locked(conn, memory.user_id, now)
+            active_lock = _active_client_lock_locked(conn, memory.user_id, client_key, now)
+            if active_lock is not None:
+                # Повторный заказ клиента в 90-дневном окне закрепления засчитывается тому же агенту.
+                eff_agent = str(active_lock["agent_id"] or eff_agent)[:48]
+                locked_agent = eff_agent
+                locked_until = float(active_lock["locked_until_ts"])
+        conn.execute(
             "INSERT INTO ark_freelance_order "
             "(order_id, user_id, account_id, platform, external_job_id, title, brief_redacted, budget_usdt, est_tokens, "
             "est_compute_usdt, estimated_hours, hourly_rate_usdt, exchange_fee_pct, platform_fee_pct, net_after_fees_usdt, "
-            "effective_hourly_usdt, margin_score, status, assigned_agent, security_note, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "effective_hourly_usdt, margin_score, status, assigned_agent, client_key, client_source, locked_agent_id, "
+            "client_locked_until_ts, security_note, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 oid,
                 memory.user_id,
@@ -761,13 +915,17 @@ def evaluate_and_ingest_job(
                 effective_hourly_usdt,
                 margin_score if not security_veto else 0.0,
                 status,
-                str(assigned_agent or "aifa")[:48],
+                eff_agent,
+                client_key,
+                client_source,
+                locked_agent,
+                locked_until,
                 sec_note,
                 now,
                 now,
             ),
         )
-        memory.store.conn.commit()
+        conn.commit()
     audit_chain.append_audit(
         memory,
         "freelance_order_evaluated",
@@ -806,6 +964,12 @@ def evaluate_and_ingest_job(
         "margin_score": margin_score if not security_veto else 0.0,
         "quota_sufficient": quota_ok,
         "security_veto": security_veto,
+        "assigned_agent": eff_agent,
+        "client_key": client_key,
+        "client_source": client_source,
+        "locked_agent_id": locked_agent,
+        "client_locked_until_ts": locked_until,
+        "client_locked_until_date": _date_utc(locked_until),
         "security_note": sec_note,
         "redaction": redact_info,
     }
@@ -822,22 +986,64 @@ def _get_order(memory, order_id: str) -> dict[str, Any]:
     return dict(row)
 
 
-def list_orders(memory, *, status: str | None = None, limit: int = 30) -> list[dict[str, Any]]:
-    """Возвращает список заказов с бирж (новейшие сверху)."""
+def list_orders(memory, *, status: str | None = None, limit: int = 30, now_ts: float | None = None) -> list[dict[str, Any]]:
+    """Возвращает список заказов с бирж (новейшие сверху) с актуальным статусом лока клиента и доли агента."""
     _ensure(memory)
     lim = max(1, min(100, int(limit)))
+    now_s = float(now_ts if now_ts is not None else time.time())
     with _lock_of(memory):
+        conn = memory.store.conn
         if status:
-            rows = memory.store.conn.execute(
+            rows = conn.execute(
                 "SELECT * FROM ark_freelance_order WHERE user_id = ? AND status = ? ORDER BY created_at DESC LIMIT ?",
                 (memory.user_id, str(status).strip(), lim),
             ).fetchall()
         else:
-            rows = memory.store.conn.execute(
+            rows = conn.execute(
                 "SELECT * FROM ark_freelance_order WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
                 (memory.user_id, lim),
             ).fetchall()
-    return [dict(r) for r in rows]
+        lock_rows = conn.execute(
+            "SELECT * FROM ark_client_agent_lock WHERE user_id = ?",
+            (memory.user_id,),
+        ).fetchall()
+        ledger_rows = conn.execute(
+            "SELECT * FROM ark_agent_ledger WHERE user_id = ?",
+            (memory.user_id,),
+        ).fetchall()
+    locks_by_key = {str(r["client_key"]): dict(r) for r in lock_rows}
+    ledger_by_order = {str(r["order_id"]): dict(r) for r in ledger_rows}
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        d = dict(r)
+        ck = str(d.get("client_key") or "")
+        lk = locks_by_key.get(ck) if ck else None
+        if lk is not None:
+            lk_status = "expired" if (lk["status"] == "active" and now_s >= float(lk["locked_until_ts"])) else str(lk["status"])
+            d["client_lock_status"] = lk_status
+            d["locked_agent_id"] = str(lk["agent_id"] or d.get("locked_agent_id") or "")
+            d["client_locked_until_ts"] = float(lk["locked_until_ts"])
+            d["client_locked_until_date"] = _date_utc(lk["locked_until_ts"])
+            d["client_locked_until_iso"] = _iso_utc(lk["locked_until_ts"])
+        else:
+            d["client_lock_status"] = ""
+            d["client_locked_until_date"] = _date_utc(d.get("client_locked_until_ts"))
+            d["client_locked_until_iso"] = _iso_utc(d.get("client_locked_until_ts"))
+        d["accepted_iso"] = _iso_utc(d.get("accepted_at"))
+        le = ledger_by_order.get(str(d["order_id"]))
+        if le is not None:
+            d["agent_payout_status"] = str(le["status"])
+            d["agent_payout_usdt"] = float(le["agent_amount_usdt"])
+            d["agent_payout_available_date"] = _date_utc(le.get("available_at"))
+            d["agent_payout_available_iso"] = _iso_utc(le.get("available_at"))
+            d["payout_cancel_reason"] = str(le.get("cancel_reason") or d.get("payout_cancel_reason") or "")
+        else:
+            d["agent_payout_status"] = str(d.get("agent_payout_status") or "")
+            d["agent_payout_usdt"] = 0.0
+            d["agent_payout_available_date"] = ""
+            d["agent_payout_available_iso"] = ""
+        out.append(d)
+    return out
 
 
 def _collect_bid_context(memory, order: dict[str, Any]) -> dict[str, Any]:
@@ -1286,8 +1492,9 @@ def settle_paid_order(
     agent_share_pct: float | None = None,
     compute_share_pct: float | None = None,
     settlement_currency: str | None = None,
+    now_ts: float | None = None,
 ) -> dict[str, Any]:
-    """Фиксирует оплату заказа (10% CODE + 1%..100% агенту из 90% пула), зачисляет в казну и предлагает кейс."""
+    """Фиксирует оплату заказа, 90-дневное закрепление клиента и долю агента в ожидании (до accepted + 14д)."""
     order = _get_order(memory, order_id)
     prefs = get_freelance_prefs(memory)
     gross = round(max(0.0, float(paid_usdt if paid_usdt is not None else order["budget_usdt"])), 4)
@@ -1307,22 +1514,83 @@ def settle_paid_order(
         galatin_price_usdt=prefs["galatin_price_usdt"],
     )
 
-    earn_res = token_autonomy.record_agent_earning(
-        memory,
-        agent_id=str(agent_id or order["assigned_agent"] or "aifa"),
-        source=f"freelance:{order['platform']}:{order_id}",
-        revenue_usdt=gross,
-        compute_share_pct=split["effective_gross_agent_pct"],
-        note=f"Оплата ({split['settlement_currency']}): {order['title'][:80]}",
-    )
-
     lid = f"mon-{uuid.uuid4().hex[:10]}"
     hid = f"hld-{uuid.uuid4().hex[:10]}"
-    now_s = time.time()
-    release_at = now_s + ESCROW_HOLD_SECONDS
+    aeid = f"agl-{uuid.uuid4().hex[:10]}"
+    now_s = float(now_ts if now_ts is not None else time.time())
+    accepted_ts = float(order["accepted_at"]) if order.get("accepted_at") else None
+    escrow_base = accepted_ts if accepted_ts is not None else now_s
+    release_at = escrow_base + ESCROW_HOLD_SECONDS
+    available_at = (accepted_ts + ESCROW_HOLD_SECONDS) if accepted_ts is not None else None
+    credited_agent = str(order.get("assigned_agent") or agent_id or "aifa")[:48]
+    client_key = str(order.get("client_key") or "")
+    client_source = str(order.get("client_source") or "")
+    lock_info: dict[str, Any] | None = None
+
     with _lock_of(memory):
+        conn = memory.store.conn
+        if client_key:
+            _expire_stale_client_locks_locked(conn, memory.user_id, now_s)
+            active_lock = _active_client_lock_locked(conn, memory.user_id, client_key, now_s)
+            if active_lock is not None:
+                # Повторная оплаченная сделка в пределах 90 дней засчитывается закреплённому агенту.
+                credited_agent = str(active_lock["agent_id"] or credited_agent)[:48]
+                new_until = max(float(active_lock["locked_until_ts"]), now_s + CLIENT_LOCK_SECONDS)
+                new_cnt = int(active_lock["orders_count"] or 1) + 1
+                conn.execute(
+                    "UPDATE ark_client_agent_lock SET last_order_id = ?, orders_count = ?, locked_until_ts = ?, updated_at = ? "
+                    "WHERE lock_id = ? AND user_id = ?",
+                    (order_id, new_cnt, new_until, now_s, active_lock["lock_id"], memory.user_id),
+                )
+                lock_info = {
+                    "lock_id": active_lock["lock_id"],
+                    "client_key": client_key,
+                    "client_source": str(active_lock["client_source"] or client_source),
+                    "agent_id": credited_agent,
+                    "orders_count": new_cnt,
+                    "locked_from_ts": float(active_lock["locked_from_ts"]),
+                    "locked_until_ts": new_until,
+                    "locked_until_date": _date_utc(new_until),
+                    "status": "active",
+                }
+            else:
+                # Первая оплаченная сделка (или новое закрепление после снятия старого через 90 дней).
+                new_until = now_s + CLIENT_LOCK_SECONDS
+                existing_row = conn.execute(
+                    "SELECT lock_id FROM ark_client_agent_lock WHERE user_id = ? AND client_key = ?",
+                    (memory.user_id, client_key),
+                ).fetchone()
+                if existing_row is not None:
+                    lck_id = str(existing_row["lock_id"])
+                    conn.execute(
+                        "UPDATE ark_client_agent_lock SET client_source = ?, agent_id = ?, first_order_id = ?, last_order_id = ?, "
+                        "orders_count = 1, locked_from_ts = ?, locked_until_ts = ?, status = 'active', released_at = NULL, updated_at = ? "
+                        "WHERE lock_id = ? AND user_id = ?",
+                        (client_source, credited_agent, order_id, order_id, now_s, new_until, now_s, lck_id, memory.user_id),
+                    )
+                else:
+                    lck_id = f"clk-{uuid.uuid4().hex[:10]}"
+                    conn.execute(
+                        "INSERT INTO ark_client_agent_lock "
+                        "(lock_id, user_id, client_key, client_source, agent_id, first_order_id, last_order_id, "
+                        "orders_count, locked_from_ts, locked_until_ts, status, created_at, updated_at) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, 'active', ?, ?)",
+                        (lck_id, memory.user_id, client_key, client_source, credited_agent, order_id, order_id, now_s, new_until, now_s, now_s),
+                    )
+                lock_info = {
+                    "lock_id": lck_id,
+                    "client_key": client_key,
+                    "client_source": client_source,
+                    "agent_id": credited_agent,
+                    "orders_count": 1,
+                    "locked_from_ts": now_s,
+                    "locked_until_ts": new_until,
+                    "locked_until_date": _date_utc(new_until),
+                    "status": "active",
+                }
+
         ref_eco = _distribute_referral_and_burn(memory, order_id, split["platform_fee_usdt"])
-        memory.store.conn.execute(
+        conn.execute(
             "INSERT INTO ark_monetization_ledger (ledger_id, user_id, source_type, gross_usdt, platform_fee_usdt, agent_compute_usdt, ecosystem_json, note, created_at) "
             "VALUES (?, ?, 'freelance_order', ?, ?, ?, ?, ?, ?)",
             (
@@ -1336,16 +1604,61 @@ def settle_paid_order(
                 now_s,
             ),
         )
-        memory.store.conn.execute(
+        conn.execute(
             "INSERT INTO ark_owner_payout_hold (hold_id, user_id, order_id, gross_usdt, owner_net_usdt, currency, status, created_at, release_at) "
             "VALUES (?, ?, ?, ?, ?, ?, 'held_14d', ?, ?)",
             (hid, memory.user_id, order_id, gross, split["owner_net_usdt"], split["settlement_currency"], now_s, release_at),
         )
-        memory.store.conn.execute(
-            "UPDATE ark_freelance_order SET status = 'paid', earned_usdt = ?, updated_at = ? WHERE user_id = ? AND order_id = ?",
-            (gross, now_s, memory.user_id, order_id),
+        conn.execute(
+            "INSERT INTO ark_agent_ledger "
+            "(ledger_entry_id, user_id, order_id, hold_id, agent_id, client_key, gross_usdt, agent_share_pct, "
+            "agent_amount_usdt, currency, status, accepted_at, available_at, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?) "
+            "ON CONFLICT(order_id) DO UPDATE SET hold_id=excluded.hold_id, agent_id=excluded.agent_id, "
+            "gross_usdt=excluded.gross_usdt, agent_share_pct=excluded.agent_share_pct, "
+            "agent_amount_usdt=excluded.agent_amount_usdt, currency=excluded.currency, status='pending', "
+            "accepted_at=excluded.accepted_at, available_at=excluded.available_at, updated_at=excluded.updated_at",
+            (
+                aeid,
+                memory.user_id,
+                order_id,
+                hid,
+                credited_agent,
+                client_key,
+                gross,
+                chosen_share,
+                split["agent_compute_usdt"],
+                split["settlement_currency"],
+                accepted_ts,
+                available_at,
+                now_s,
+                now_s,
+            ),
         )
-        memory.store.conn.commit()
+        conn.execute(
+            "UPDATE ark_freelance_order SET status = 'paid', earned_usdt = ?, assigned_agent = ?, "
+            "locked_agent_id = ?, client_locked_until_ts = ?, agent_payout_status = 'pending', updated_at = ? "
+            "WHERE user_id = ? AND order_id = ?",
+            (
+                gross,
+                credited_agent,
+                lock_info["agent_id"] if lock_info else str(order.get("locked_agent_id") or ""),
+                lock_info["locked_until_ts"] if lock_info else order.get("client_locked_until_ts"),
+                now_s,
+                memory.user_id,
+                order_id,
+            ),
+        )
+        conn.commit()
+
+    earn_res = token_autonomy.record_agent_earning(
+        memory,
+        agent_id=credited_agent,
+        source=f"freelance:{order['platform']}:{order_id}",
+        revenue_usdt=gross,
+        compute_share_pct=split["effective_gross_agent_pct"],
+        note=f"Оплата ({split['settlement_currency']}): {order['title'][:80]}",
+    )
 
     sug = propose_profile_improvement(
         memory,
@@ -1377,6 +1690,9 @@ def settle_paid_order(
         "treasury": earn_res.get("treasury", {}),
         "monetization": split,
         "profile_suggestion": sug,
+        "credited_agent": credited_agent,
+        "client_lock": lock_info,
+        "agent_payout": {"status": "pending", "agent_id": credited_agent, "amount_usdt": split["agent_compute_usdt"], "hold_id": hid, "available_at": available_at},
         "payout_hold": {"hold_id": hid, "status": "held_14d", "hold_days": ESCROW_HOLD_DAYS, "owner_net_usdt": split["owner_net_usdt"], "release_at": release_at},
         "referral_ecosystem_split": ref_eco,
     }
@@ -1474,6 +1790,8 @@ def freelance_dashboard_snapshot(memory) -> dict[str, Any]:
         "budget": budget_tick,
         "spend_recommendation": spend_rec,
         "payout_hold": payout_summary(memory),
+        "client_locks": get_client_lock_status(memory)["locks"],
+        "agent_ledger": get_agent_ledger(memory),
         "referral": get_or_create_referral_profile(memory),
         "autopilot": get_autopilot_state(memory),
         "monetization_totals": {
@@ -1587,44 +1905,315 @@ def _distribute_referral_and_burn(memory, order_id: str, platform_fee_usdt: floa
 
 
 @_synchronized_memory
-def release_matured_payouts(memory, *, now_ts: float | None = None) -> dict[str, Any]:
-    """Переводит из 14-дневного холда в статус `releasable` все выплаты, чей срок ожидания истёк."""
-    _ensure(memory)
-    now = float(now_ts if now_ts is not None else time.time())
-    cur = memory.store.conn.execute(
-        "UPDATE ark_owner_payout_hold SET status = 'releasable', resolved_at = ? "
-        "WHERE user_id = ? AND status = 'held_14d' AND release_at <= ?",
-        (now, memory.user_id, now),
+def accept_delivery(
+    memory,
+    order_id: str,
+    *,
+    accepted_by: str = "client",
+    now_ts: float | None = None,
+) -> dict[str, Any]:
+    """Фиксирует приёмку работы клиентом (accepted) и открывает 14-дневное окно претензий в эскроу."""
+    order = _get_order(memory, order_id)
+    if order["status"] in ("rejected_security", "refunded", "rejected_client"):
+        return {"ok": False, "order_id": order_id, "error": f"Приёмка невозможна: статус заказа {order['status']!r}."}
+    now_s = float(now_ts if now_ts is not None else time.time())
+    release_at = now_s + ESCROW_HOLD_SECONDS
+    new_status = "accepted" if order["status"] != "paid" else "paid"
+    with _lock_of(memory):
+        conn = memory.store.conn
+        conn.execute(
+            "UPDATE ark_freelance_order SET status = ?, accepted_at = COALESCE(accepted_at, ?), updated_at = ? "
+            "WHERE user_id = ? AND order_id = ?",
+            (new_status, now_s, now_s, memory.user_id, order_id),
+        )
+        # Привязываем эскроу-холд и долю агента к моменту приёмки (accepted_at + 14 дней).
+        row_acc = conn.execute(
+            "SELECT accepted_at FROM ark_freelance_order WHERE user_id = ? AND order_id = ?",
+            (memory.user_id, order_id),
+        ).fetchone()
+        eff_acc = float(row_acc["accepted_at"]) if row_acc and row_acc["accepted_at"] else now_s
+        eff_release = eff_acc + ESCROW_HOLD_SECONDS
+        conn.execute(
+            "UPDATE ark_owner_payout_hold SET release_at = MAX(release_at, ?) "
+            "WHERE user_id = ? AND order_id = ? AND status = 'held_14d'",
+            (eff_release, memory.user_id, order_id),
+        )
+        conn.execute(
+            "UPDATE ark_agent_ledger SET accepted_at = COALESCE(accepted_at, ?), "
+            "available_at = MAX(COALESCE(available_at, 0.0), ?), updated_at = ? "
+            "WHERE user_id = ? AND order_id = ? AND status = 'pending'",
+            (eff_acc, eff_release, now_s, memory.user_id, order_id),
+        )
+        conn.commit()
+    audit_chain.append_audit(
+        memory,
+        "freelance_delivery_accepted",
+        {"order_id": order_id, "accepted_by": str(accepted_by or "client")[:48], "escrow_release_at": eff_release},
+        agent_id=str(order.get("assigned_agent") or "aifa"),
     )
-    memory.store.conn.commit()
-    return {"ok": True, "released_count": cur.rowcount, "summary": payout_summary(memory)}
+    return {
+        "ok": True,
+        "order_id": order_id,
+        "status": new_status,
+        "delivery_accepted": True,
+        "accepted_at": eff_acc,
+        "accepted_iso": _iso_utc(eff_acc),
+        "escrow_release_at": eff_release,
+        "escrow_release_date": _date_utc(eff_release),
+        "agent_payout_status": order.get("agent_payout_status") or "pending",
+    }
 
 
 @_synchronized_memory
-def dispute_held_payout(memory, hold_id: str, *, reason: str = "Client dispute refund") -> dict[str, Any]:
-    """Обрабатывает спор клиента внутри 14-дневного холда: переводит средства в `refunded` для возврата заказчику."""
+def release_matured_payouts(memory, *, now_ts: float | None = None) -> dict[str, Any]:
+    """Переводит в статус releasable/credited выплаты, где заказ принят (accepted) и истекло 14-дневное окно претензий."""
     _ensure(memory)
-    row = memory.store.conn.execute(
-        "SELECT * FROM ark_owner_payout_hold WHERE user_id = ? AND hold_id = ?",
-        (memory.user_id, str(hold_id or "").strip()),
-    ).fetchone()
-    if not row:
-        raise ValueError(f"Холд {hold_id} не найден.")
-    if row["status"] != "held_14d":
-        raise ValueError(f"Спор невозможен: статус холда уже {row['status']!r}.")
-    clean_reason, _ = safety.redact(str(reason or "Dispute refund"))
-    memory.store.conn.execute(
-        "UPDATE ark_owner_payout_hold SET status = 'refunded', dispute_reason = ?, resolved_at = ? WHERE hold_id = ? AND user_id = ?",
-        (clean_reason[:240], time.time(), hold_id, memory.user_id),
-    )
-    memory.store.conn.commit()
+    now = float(now_ts if now_ts is not None else time.time())
+    released_holds = 0
+    credited_agents = 0
+    with _lock_of(memory):
+        conn = memory.store.conn
+        # 1. Холды владельца, чей 14-дневный срок истёк -> releasable.
+        cur_holds = conn.execute(
+            "UPDATE ark_owner_payout_hold SET status = 'releasable', resolved_at = COALESCE(resolved_at, ?) "
+            "WHERE user_id = ? AND status = 'held_14d' AND release_at <= ?",
+            (now, memory.user_id, now),
+        )
+        released_holds = int(cur_holds.rowcount or 0)
+        # 2. Доля агента в ark_agent_ledger начисляется ТОЛЬКО после accepted и истечения 14д после accepted.
+        pending_entries = conn.execute(
+            "SELECT l.ledger_entry_id, l.order_id, l.available_at, o.accepted_at, h.status AS hold_status "
+            "FROM ark_agent_ledger l "
+            "LEFT JOIN ark_freelance_order o ON o.user_id = l.user_id AND o.order_id = l.order_id "
+            "LEFT JOIN ark_owner_payout_hold h ON h.user_id = l.user_id AND h.hold_id = l.hold_id "
+            "WHERE l.user_id = ? AND l.status = 'pending'",
+            (memory.user_id,),
+        ).fetchall()
+        for entry in pending_entries:
+            acc_ts = entry["accepted_at"]
+            if acc_ts is None:
+                continue
+            if entry["hold_status"] == "refunded":
+                continue
+            avail_ts = max(float(entry["available_at"] or 0.0), float(acc_ts) + ESCROW_HOLD_SECONDS)
+            if now < avail_ts:
+                continue
+            cur_ag = conn.execute(
+                "UPDATE ark_agent_ledger SET status = 'credited', credited_at = ?, updated_at = ? "
+                "WHERE ledger_entry_id = ? AND user_id = ? AND status = 'pending'",
+                (now, now, entry["ledger_entry_id"], memory.user_id),
+            )
+            credited_agents += int(cur_ag.rowcount or 0)
+            conn.execute(
+                "UPDATE ark_freelance_order SET agent_payout_status = 'credited', updated_at = ? "
+                "WHERE user_id = ? AND order_id = ? AND COALESCE(agent_payout_status, '') IN ('', 'pending')",
+                (now, memory.user_id, entry["order_id"]),
+            )
+        conn.commit()
+    return {
+        "ok": True,
+        "released_count": released_holds,
+        "credited_agent_entries": credited_agents,
+        "summary": payout_summary(memory),
+        "agent_ledger": get_agent_ledger(memory),
+    }
+
+
+@_synchronized_memory
+def dispute_held_payout(
+    memory,
+    hold_id: str = "",
+    *,
+    order_id: str = "",
+    reason: str = "Client dispute refund",
+    now_ts: float | None = None,
+) -> dict[str, Any]:
+    """Обрабатывает отказ клиента / возврат: переводит холд в refunded и отменяет начисление агенту с записью причины."""
+    _ensure(memory)
+    now_s = float(now_ts if now_ts is not None else time.time())
+    clean_reason, _ = safety.redact(str(reason or "Client dispute refund").strip() or "Client dispute refund")
+    clean_reason = clean_reason[:240]
+    with _lock_of(memory):
+        conn = memory.store.conn
+        row = None
+        if str(hold_id or "").strip():
+            row = conn.execute(
+                "SELECT * FROM ark_owner_payout_hold WHERE user_id = ? AND hold_id = ?",
+                (memory.user_id, str(hold_id).strip()),
+            ).fetchone()
+            if not row:
+                raise ValueError(f"Холд {hold_id} не найден.")
+        elif str(order_id or "").strip():
+            row = conn.execute(
+                "SELECT * FROM ark_owner_payout_hold WHERE user_id = ? AND order_id = ? ORDER BY created_at DESC LIMIT 1",
+                (memory.user_id, str(order_id).strip()),
+            ).fetchone()
+        eff_order_id = str(row["order_id"] if row is not None else order_id or "").strip()
+        if not eff_order_id:
+            raise ValueError("Необходимо указать hold_id или order_id.")
+
+        refunded_usdt = 0.0
+        eff_hold_id = str(row["hold_id"]) if row is not None else ""
+        if row is not None:
+            if row["status"] != "held_14d":
+                raise ValueError(f"Спор невозможен: статус холда уже {row['status']!r}.")
+            refunded_usdt = float(row["owner_net_usdt"])
+            conn.execute(
+                "UPDATE ark_owner_payout_hold SET status = 'refunded', dispute_reason = ?, resolved_at = ? "
+                "WHERE hold_id = ? AND user_id = ?",
+                (clean_reason, now_s, eff_hold_id, memory.user_id),
+            )
+        conn.execute(
+            "UPDATE ark_agent_ledger SET status = 'cancelled', cancel_reason = ?, cancelled_at = ?, updated_at = ? "
+            "WHERE user_id = ? AND order_id = ? AND status IN ('pending', 'credited')",
+            (clean_reason, now_s, now_s, memory.user_id, eff_order_id),
+        )
+        conn.execute(
+            "UPDATE ark_freelance_order SET status = 'refunded', agent_payout_status = 'cancelled', "
+            "payout_cancel_reason = ?, updated_at = ? WHERE user_id = ? AND order_id = ?",
+            (clean_reason, now_s, memory.user_id, eff_order_id),
+        )
+        conn.commit()
     audit_chain.append_audit(
         memory,
         "freelance_payout_dispute_refunded",
-        {"hold_id": hold_id, "order_id": row["order_id"], "refunded_usdt": float(row["owner_net_usdt"])},
+        {"hold_id": eff_hold_id, "order_id": eff_order_id, "refunded_usdt": refunded_usdt, "reason": clean_reason},
         agent_id="owner",
     )
-    return {"ok": True, "hold_id": hold_id, "status": "refunded", "refunded_usdt": float(row["owner_net_usdt"])}
+    return {
+        "ok": True,
+        "hold_id": eff_hold_id,
+        "order_id": eff_order_id,
+        "status": "refunded",
+        "agent_payout_status": "cancelled",
+        "cancel_reason": clean_reason,
+        "refunded_usdt": refunded_usdt,
+    }
+
+
+def get_client_lock_status(
+    memory,
+    *,
+    client_email: str = "",
+    client_domain: str = "",
+    client_external_id: str = "",
+    client_ref: str = "",
+    client_key: str = "",
+    platform: str = "",
+    now_ts: float | None = None,
+    limit: int = 50,
+) -> dict[str, Any]:
+    """Чистое чтение таблицы закреплений клиентов за агентами (90 дней с первой оплаченной сделки)."""
+    _ensure(memory)
+    now_s = float(now_ts if now_ts is not None else time.time())
+    lim = max(1, min(200, int(limit)))
+    target_key = str(client_key or "").strip()
+    target_src = ""
+    if not target_key:
+        target_key, target_src = _normalize_client_identity(
+            platform,
+            client_email=client_email,
+            client_domain=client_domain,
+            client_external_id=client_external_id,
+            client_ref=client_ref,
+        )
+    with _lock_of(memory):
+        rows = memory.store.conn.execute(
+            "SELECT * FROM ark_client_agent_lock WHERE user_id = ? ORDER BY updated_at DESC LIMIT ?",
+            (memory.user_id, lim),
+        ).fetchall()
+    items: list[dict[str, Any]] = []
+    matched: dict[str, Any] | None = None
+    for r in rows:
+        d = dict(r)
+        eff_status = "expired" if (d["status"] == "active" and now_s >= float(d["locked_until_ts"])) else str(d["status"])
+        rem_s = max(0.0, float(d["locked_until_ts"]) - now_s) if eff_status == "active" else 0.0
+        item = {
+            **d,
+            "status": eff_status,
+            "locked_from_iso": _iso_utc(d["locked_from_ts"]),
+            "locked_from_date": _date_utc(d["locked_from_ts"]),
+            "locked_until_iso": _iso_utc(d["locked_until_ts"]),
+            "locked_until_date": _date_utc(d["locked_until_ts"]),
+            "days_remaining": round(rem_s / 86400.0, 2),
+        }
+        items.append(item)
+        if target_key and d["client_key"] == target_key:
+            matched = item
+    return {
+        "ok": True,
+        "lock_days": CLIENT_LOCK_DAYS,
+        "queried_client_key": target_key,
+        "queried_client_source": target_src,
+        "locked": bool(matched and matched["status"] == "active"),
+        "match": matched,
+        "active_count": sum(1 for x in items if x["status"] == "active"),
+        "locks": items,
+    }
+
+
+@_synchronized_memory
+def release_expired_client_locks(memory, *, now_ts: float | None = None) -> dict[str, Any]:
+    """Явно переводит в статус expired все 90-дневные закрепления без новых сделок."""
+    _ensure(memory)
+    now_s = float(now_ts if now_ts is not None else time.time())
+    with _lock_of(memory):
+        cnt = _expire_stale_client_locks_locked(memory.store.conn, memory.user_id, now_s)
+        memory.store.conn.commit()
+    return {"ok": True, "expired_count": cnt, **get_client_lock_status(memory, now_ts=now_s)}
+
+
+def get_agent_ledger(memory, *, agent_id: str = "", limit: int = 50) -> dict[str, Any]:
+    """Чистое чтение учёта начислений агентов (pending до accepted+14д, credited после, cancelled при возврате)."""
+    _ensure(memory)
+    lim = max(1, min(200, int(limit)))
+    aid = str(agent_id or "").strip()
+    with _lock_of(memory):
+        conn = memory.store.conn
+        if aid:
+            rows = conn.execute(
+                "SELECT * FROM ark_agent_ledger WHERE user_id = ? AND agent_id = ? ORDER BY created_at DESC LIMIT ?",
+                (memory.user_id, aid, lim),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM ark_agent_ledger WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
+                (memory.user_id, lim),
+            ).fetchall()
+    entries: list[dict[str, Any]] = []
+    pending_usdt = 0.0
+    credited_usdt = 0.0
+    cancelled_usdt = 0.0
+    for r in rows:
+        d = dict(r)
+        amt = float(d["agent_amount_usdt"] or 0.0)
+        st = str(d["status"] or "pending")
+        if st == "credited":
+            credited_usdt += amt
+        elif st == "cancelled":
+            cancelled_usdt += amt
+        else:
+            pending_usdt += amt
+        entries.append({
+            **d,
+            "accepted_iso": _iso_utc(d.get("accepted_at")),
+            "available_iso": _iso_utc(d.get("available_at")),
+            "available_date": _date_utc(d.get("available_at")),
+            "credited_iso": _iso_utc(d.get("credited_at")),
+            "cancelled_iso": _iso_utc(d.get("cancelled_at")),
+        })
+    return {
+        "ok": True,
+        "agent_id": aid or "all",
+        "hold_days": ESCROW_HOLD_DAYS,
+        "pending_usdt": round(pending_usdt, 4),
+        "credited_usdt": round(credited_usdt, 4),
+        "cancelled_usdt": round(cancelled_usdt, 4),
+        "total_entries": len(entries),
+        "entries": entries,
+        "ledger_only": True,
+        "note": "Учёт начислений без перевода средств; реальный вывод регулируется PADAM_TREASURY_AUTOPAY и владельцем.",
+    }
 
 
 @_synchronized_memory
