@@ -791,8 +791,9 @@ def test_legend5_hardware_locked_genesis_and_fido2_seal(tmp_path, monkeypatch, c
     # До запечатывания в файле есть стандартный SQLite заголовок
     assert db_path.read_bytes().startswith(b"SQLite format 3")
 
-    # 2. Запечатываем аппаратным токеном FIDO2 (ECDSA P-256 + hmac-secret)
-    token = SoftwareFido2Token(algorithm="ES256", rp_id="padam.local", present=True, user_verified=True)
+    # 2. Запечатываем программным тестовым токеном (с явным insecure-флагом по HW-03)
+    monkeypatch.setenv("PADAM_INSECURE_TEST_TOKEN", "1")
+    token = SoftwareFido2Token(algorithm="ES256", rp_id="padam.local", present=True, user_verified=True, insecure_test_token=True)
     seal_res = seal_database(db_path, mode="fido2", fido2_token=token)
     assert seal_res["status"] == "sealed"
     assert seal_res["mode"] == "fido2"
@@ -814,7 +815,7 @@ def test_legend5_hardware_locked_genesis_and_fido2_seal(tmp_path, monkeypatch, c
             pass
 
     token.present = True
-    alien_token = SoftwareFido2Token(algorithm="ES256", rp_id="padam.local", present=True)
+    alien_token = SoftwareFido2Token(algorithm="ES256", rp_id="padam.local", present=True, insecure_test_token=True)
     with pytest.raises(HardwareAuthError):
         with HardwareSealedMemory(db_path, user_id="hw-u", fido2_token=alien_token):
             pass

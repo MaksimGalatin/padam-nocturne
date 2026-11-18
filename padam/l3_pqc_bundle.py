@@ -18,6 +18,22 @@ from typing import Any
 from . import pqc_mlkem, safety
 
 
+def _l3_leaf_hash(rec: dict[str, Any]) -> str:
+    return hashlib.sha256(b"\x00" + json.dumps(rec, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+
+
+def _l3_merkle_root(leaves_hex: list[str]) -> str:
+    if not leaves_hex:
+        return hashlib.sha256(b"\x02empty-l3-bundle-v2").hexdigest()
+    lvl = [bytes.fromhex(h) for h in leaves_hex]
+    while len(lvl) > 1:
+        nxt = [hashlib.sha256(b"\x01" + lvl[i] + lvl[i + 1]).digest() for i in range(0, len(lvl) - 1, 2)]
+        if len(lvl) % 2 == 1:
+            nxt.append(lvl[-1])  # нечётный поднимается без дублирования
+        lvl = nxt
+    return lvl[0].hex()
+
+
 def seal_l3_pqc_bundle(
     memory,
     mlkem_public: bytes,
@@ -25,7 +41,7 @@ def seal_l3_pqc_bundle(
     *,
     scope: str | None = None,
 ) -> dict[str, Any]:
-    """Собирает активные записи памяти и запечатывает их в постквантовый конверт для L3."""
+    """Собирает активные записи памяти и запечатывает их в постквантовый конверт L3 (domain-separated Merkle v2)."""
     sql = "SELECT id, scope, kind, content, created_at, owner_sig FROM memory WHERE user_id = ? AND status = 'active'"
     params: list[Any] = [memory.user_id]
     if scope:
@@ -47,20 +63,12 @@ def seal_l3_pqc_bundle(
             "owner_sig": r["owner_sig"],
         }
         records.append(rec)
-        leaves.append(hashlib.sha256(json.dumps(rec, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest())
+        leaves.append(_l3_leaf_hash(rec))
 
-    if leaves:
-        lvl = list(leaves)
-        while len(lvl) > 1:
-            if len(lvl) % 2 == 1:
-                lvl.append(lvl[-1])
-            lvl = [hashlib.sha256((lvl[i] + ":" + lvl[i + 1]).encode("utf-8")).hexdigest() for i in range(0, len(lvl), 2)]
-        merkle_root = lvl[0]
-    else:
-        merkle_root = hashlib.sha256(b"empty-l3-bundle").hexdigest()
+    merkle_root = _l3_merkle_root(leaves)
 
     bundle_plain = {
-        "schema": "padam-l3-pqc-bundle-v1",
+        "schema": "padam-l3-pqc-bundle-v2",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "merkle_root": merkle_root,
         "records_count": len(records),
@@ -71,7 +79,7 @@ def seal_l3_pqc_bundle(
 
     return {
         "ok": True,
-        "schema": "padam-l3-pqc-envelope-v1",
+        "schema": "padam-l3-pqc-envelope-v2",
         "merkle_root": merkle_root,
         "records_count": len(records),
         "network_uploaded": False,
@@ -92,19 +100,25 @@ def open_l3_pqc_bundle(
     raw = pqc_mlkem.pqc_open_bytes(envelope_bundle["pqc_envelope"], mlkem_private, x25519_private)
     bundle = json.loads(raw.decode("utf-8"))
 
-    leaves = [
-        hashlib.sha256(json.dumps(rec, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
-        for rec in (bundle.get("records") or [])
-    ]
-    if leaves:
-        lvl = list(leaves)
-        while len(lvl) > 1:
-            if len(lvl) % 2 == 1:
-                lvl.append(lvl[-1])
-            lvl = [hashlib.sha256((lvl[i] + ":" + lvl[i + 1]).encode("utf-8")).hexdigest() for i in range(0, len(lvl), 2)]
-        calc_root = lvl[0]
+    schema = str(bundle.get("schema") or "")
+    recs = bundle.get("records") or []
+    if schema == "padam-l3-pqc-bundle-v2":
+        leaves = [_l3_leaf_hash(rec) for rec in recs]
+        calc_root = _l3_merkle_root(leaves)
     else:
-        calc_root = hashlib.sha256(b"empty-l3-bundle").hexdigest()
+        leaves = [
+            hashlib.sha256(json.dumps(rec, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+            for rec in recs
+        ]
+        if leaves:
+            lvl = list(leaves)
+            while len(lvl) > 1:
+                if len(lvl) % 2 == 1:
+                    lvl.append(lvl[-1])
+                lvl = [hashlib.sha256((lvl[i] + ":" + lvl[i + 1]).encode("utf-8")).hexdigest() for i in range(0, len(lvl), 2)]
+            calc_root = lvl[0]
+        else:
+            calc_root = hashlib.sha256(b"empty-l3-bundle").hexdigest()
 
     if calc_root != envelope_bundle.get("merkle_root") or calc_root != bundle.get("merkle_root"):
         raise ValueError("L3 PQC bundle Merkle root mismatch")

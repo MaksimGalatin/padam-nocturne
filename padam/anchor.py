@@ -99,6 +99,11 @@ def leaf_record(record_bytes: bytes) -> bytes:
     return hashlib.sha256(b"\x00" + record_bytes).digest()
 
 
+def leaf_record_bound(memory_id: str, record_bytes: bytes) -> bytes:
+    """ARK-03: лист записи Меркла, жёстко привязанный к memory_id (подмена record.id ломает корень)."""
+    return hashlib.sha256(b"\x00" + str(memory_id).encode("utf-8") + b"\x1f" + record_bytes).digest()
+
+
 def leaf_forget(memory_id: str, destroyed_at: str) -> bytes:
     return hashlib.sha256(
         b"\x02" + f"AIFA-FORGET|{memory_id}|{destroyed_at}".encode("utf-8")).digest()
@@ -225,7 +230,7 @@ def build_bundle(memory: Memory) -> Optional[Bundle]:
         # в какие часы человек говорит с памятью. Листья от даты не зависят.
         items.append({"id": r["id"], "created_at": (r["created_at"] or "")[:10],
                       "data": base64.b64encode(blob).decode()})
-        leaves.append(leaf_record(blob))
+        leaves.append(leaf_record_bound(r["id"], blob))
         entries.append(("record", r["id"]))
     fitems = []
     for f in forgets:
@@ -234,10 +239,11 @@ def build_bundle(memory: Memory) -> Optional[Bundle]:
         entries.append(("forget", f["memory_id"]))
     root = merkle_root(leaves)
     payload = json.dumps({
-        "format": "padam-l3/1",
+        "format": "padam-l3/2",
+        "content_basis": "redacted_at_ingest",
         "created_at": now_iso(),
         "owner": hashlib.sha256(memory.user_id.encode()).hexdigest(),
-        "scheme": "record leaf=SHA256(0x00||base64decode(data)); forget leaf=SHA256(0x02||'AIFA-FORGET|id|destroyed_at'); "
+        "scheme": "record leaf=SHA256(0x00||id||0x1f||base64decode(data)); forget leaf=SHA256(0x02||'AIFA-FORGET|id|destroyed_at'); "
                   "node=SHA256(0x01||L||R); odd node promoted; leaves: records then forgets, in listed order",
         "records": items,
         "forgets": fitems,
@@ -401,16 +407,75 @@ def fetch_arweave(tx: str, timeout: int = 40) -> Optional[bytes]:
     return None
 
 
-def verify_bundle(payload: bytes, memo: str) -> dict:
-    """Независимая проверка: пересчитать корень из пакета и сверить с заметкой в цепи."""
+def verify_bundle(
+    payload: bytes,
+    memo: str,
+    *,
+    attestation: Optional[dict] = None,
+    expected_pubkey_hex: Optional[str] = None,
+    require_owner_attestation: bool = False,
+) -> dict:
+    """Проверка пакета L3: пересчёт Меркла (с привязкой id для v2) + опциональная/обязательная Ed25519-аттестация."""
     d = json.loads(payload)
-    leaves = [leaf_record(base64.b64decode(r["data"])) for r in d["records"]] + \
-             [leaf_forget(f["id"], f["destroyed_at"]) for f in d["forgets"]]
+    fmt = d.get("format") or "padam-l3/1"
+    if fmt == "padam-l3/2":
+        rec_leaves = [leaf_record_bound(str(r.get("id") or ""), base64.b64decode(r["data"])) for r in d["records"]]
+    else:
+        rec_leaves = [leaf_record(base64.b64decode(r["data"])) for r in d["records"]]
+    leaves = rec_leaves + [leaf_forget(f["id"], f["destroyed_at"]) for f in d["forgets"]]
     root = merkle_root(leaves).hex()
     in_memo = memo.split("root=", 1)[1].split()[0] if "root=" in memo else ""
-    return {"root_recomputed": root, "root_in_bundle": d.get("root"),
-            "root_in_chain": in_memo, "ok": root == d.get("root") == in_memo,
-            "records": len(d["records"]), "forgets": len(d["forgets"])}
+    merkle_ok = (root == d.get("root") == in_memo)
+
+    pinned_pub = (expected_pubkey_hex or os.environ.get("PADAM_ANCHOR_PUBKEY_HEX") or "").strip().lower() or None
+    strict = bool(require_owner_attestation or attestation is not None or pinned_pub is not None)
+    if strict:
+        if attestation is None:
+            return {
+                "root_recomputed": root,
+                "root_in_bundle": d.get("root"),
+                "root_in_chain": in_memo,
+                "merkle_ok": merkle_ok,
+                "signature_ok": False,
+                "owner_verified": False,
+                "ok": False,
+                "error": "owner_attestation_required",
+                "records": len(d["records"]),
+                "forgets": len(d["forgets"]),
+            }
+        att_res = verify_anchor_attestation(
+            None,
+            memo,
+            attestation,
+            expected_pubkey_hex=pinned_pub,
+            require_pinned_pubkey=bool(pinned_pub is not None or require_owner_attestation),
+        )
+        root_matches_att = (root == attestation.get("root_hex"))
+        all_ok = bool(merkle_ok and att_res.get("ok") and root_matches_att)
+        return {
+            "root_recomputed": root,
+            "root_in_bundle": d.get("root"),
+            "root_in_chain": in_memo,
+            "merkle_ok": merkle_ok,
+            "signature_ok": bool(att_res.get("signature_ok") and root_matches_att),
+            "owner_verified": bool(all_ok and att_res.get("owner_verified")),
+            "ok": all_ok,
+            "error": att_res.get("error") or (None if root_matches_att else "attestation root mismatch"),
+            "records": len(d["records"]),
+            "forgets": len(d["forgets"]),
+        }
+
+    return {
+        "root_recomputed": root,
+        "root_in_bundle": d.get("root"),
+        "root_in_chain": in_memo,
+        "ok": merkle_ok,
+        "owner_verified": False,
+        "untrusted_signer": True,
+        "warning": "Merkle matches payload/memo only; pass attestation and expected_pubkey_hex for owner provenance proof.",
+        "records": len(d["records"]),
+        "forgets": len(d["forgets"]),
+    }
 
 
 # ---------------------------------------------------------------- В5: локальная подпись и проверка якоря ($0, devnet)
@@ -474,6 +539,7 @@ def verify_anchor_attestation(
     expected_pubkey_hex: Optional[str] = None,
     expected_measurement: Optional[str] = None,
     reject_mainnet: bool = False,
+    require_pinned_pubkey: bool = False,
 ) -> dict:
     """Локально ($0) проверяет дерево Меркла пакета (если передан) и подпись Ed25519 якоря."""
     from cryptography.exceptions import InvalidSignature
@@ -500,8 +566,11 @@ def verify_anchor_attestation(
         return {"ok": False, "bundle_ok": bundle_ok, "signature_ok": False, "error": "memo mismatch"}
 
     pub_hex = str(attestation.get("pubkey_hex") or "").lower()
-    if expected_pubkey_hex and pub_hex != expected_pubkey_hex.lower():
-        return {"ok": False, "bundle_ok": bundle_ok, "signature_ok": False, "error": "unexpected pubkey"}
+    pinned_pub = (expected_pubkey_hex or os.environ.get("PADAM_ANCHOR_PUBKEY_HEX") or "").strip().lower()
+    if require_pinned_pubkey and not pinned_pub:
+        return {"ok": False, "bundle_ok": bundle_ok, "signature_ok": False, "owner_verified": False, "error": "expected_pubkey_hex_required"}
+    if pinned_pub and pub_hex != pinned_pub:
+        return {"ok": False, "bundle_ok": bundle_ok, "signature_ok": False, "owner_verified": False, "error": "unexpected pubkey"}
 
     meas = str(attestation.get("measurement") or "")
     if expected_measurement and meas != expected_measurement:
@@ -529,6 +598,8 @@ def verify_anchor_attestation(
         "ok": ok,
         "bundle_ok": bundle_ok,
         "signature_ok": sig_ok,
+        "owner_verified": bool(ok and pinned_pub),
+        "signer_pinned": bool(pinned_pub),
         "network": net,
         "slot": int(attestation.get("slot") or 0),
         "error": err,

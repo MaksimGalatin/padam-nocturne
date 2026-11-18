@@ -17,6 +17,7 @@ import base64
 import hashlib
 import hmac
 import json
+import os
 import secrets
 from dataclasses import dataclass
 from typing import Any
@@ -90,6 +91,10 @@ def _local_wrap_key(memory) -> bytes:
 def _wrap_secret(memory, label: str, secret_bytes: bytes) -> str:
     if keyvault.is_enabled(memory):
         return keyvault.wrap(memory, label, secret_bytes)
+    if os.environ.get("PADAM_PQC_REQUIRE_KEYVAULT", "0").strip() == "1":
+        raise PqcSyncError(
+            "PQC-01: PADAM_PQC_REQUIRE_KEYVAULT=1 requires enabled keyvault (passphrase KDF) instead of plaintext owner.key wrapping"
+        )
     nonce = secrets.token_bytes(12)
     ct = AESGCM(_local_wrap_key(memory)).encrypt(nonce, secret_bytes, label.encode("utf-8"))
     return "k1:" + (nonce + ct).hex()
@@ -99,6 +104,10 @@ def _unwrap_secret(memory, label: str, wrapped: str) -> bytes:
     if wrapped.startswith(keyvault.PREFIX):
         return keyvault.unwrap(memory, label, wrapped)
     if wrapped.startswith("k1:"):
+        if os.environ.get("PADAM_PQC_REQUIRE_KEYVAULT", "0").strip() == "1":
+            raise PqcSyncError(
+                "PQC-01: plaintext owner.key wrapped secret (k1:) rejected when PADAM_PQC_REQUIRE_KEYVAULT=1"
+            )
         blob = bytes.fromhex(wrapped[3:])
         try:
             return AESGCM(_local_wrap_key(memory)).decrypt(blob[:12], blob[12:], label.encode("utf-8"))
@@ -557,16 +566,26 @@ def apply_sync_packet(memory, packet: dict[str, Any]) -> dict[str, int]:
         if not content:
             continue
         kind = str(rec.get("kind") or "fact")
+        created_ts = str(rec.get("created_at") or now_iso())
+        scope_val = str(rec.get("scope") or "global")
         owner_sig = None
         if kind in ("identity", "preference"):
             key, _ = integrity.owner_key(memory.store)
-            owner_sig = integrity.sign(key, rec_id, kind, content)
+            owner_sig = integrity.sign(
+                key,
+                rec_id,
+                kind,
+                content,
+                scope=scope_val,
+                user_id=memory.user_id,
+                created_at=created_ts,
+                status="active",
+            )
         chash = (
             _b64d(rec["content_hash_b64"])
             if rec.get("content_hash_b64")
             else hashlib.sha256(content.encode("utf-8")).digest()
         )
-        created_ts = str(rec.get("created_at") or now_iso())
         last_seen_ts = str(rec.get("last_seen_at") or created_ts)
         last_conf_ts = str(rec.get("last_confirmed_at") or created_ts)
         memory.store.execute(

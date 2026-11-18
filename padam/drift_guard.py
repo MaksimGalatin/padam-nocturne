@@ -19,7 +19,7 @@ def load_signed_anchors(memory, *, scope: str = "global") -> list[dict[str, Any]
     """Загружает только криптографически подписанные владельцем опорные записи (`identity`/`preference`/правила)."""
     key, _ = integrity.owner_key(memory.store)
     rows = memory.store.conn.execute(
-        "SELECT id, kind, content, owner_sig, scope FROM memory "
+        "SELECT id, user_id, kind, content, owner_sig, scope, created_at, status FROM memory "
         "WHERE user_id = ? AND status = 'active' AND scope = ? "
         "AND kind IN ('identity', 'preference', 'decision', 'correction')",
         (memory.user_id, scope),

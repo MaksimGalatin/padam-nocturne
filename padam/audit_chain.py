@@ -21,9 +21,12 @@ import hmac
 import json
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
-from . import integrity
+from . import integrity, net_guard
+
+_MEM_AUDIT_WATERMARKS: dict[tuple[int, str], int] = {}
 
 _AUDIT_DDL = """
 CREATE TABLE IF NOT EXISTS ark_audit_chain (
@@ -122,6 +125,7 @@ def append_audit(memory, action: str, details: dict[str, Any] | str, *, agent_id
         (memory.user_id, seq, entry_hash, head_hmac, ots_receipt, ots_date, created_at),
     )
     conn.commit()
+    _save_audit_watermark(memory, seq, entry_hash, key)
     return {
         "seq": seq,
         "action": action,
@@ -130,6 +134,54 @@ def append_audit(memory, action: str, details: dict[str, Any] | str, *, agent_id
         "head_hmac": head_hmac,
         "created_at": created_at,
     }
+
+
+def _watermark_path(store) -> Path | None:
+    if str(store.path) == ":memory:":
+        return None
+    return Path(str(store.path) + ".audit.state.json")
+
+
+def _save_audit_watermark(memory, seq: int, head_hash: str, key: bytes) -> None:
+    store = memory.store
+    prev = _MEM_AUDIT_WATERMARKS.get((id(store), memory.user_id), 0)
+    if seq > prev:
+        _MEM_AUDIT_WATERMARKS[(id(store), memory.user_id)] = seq
+    wpath = _watermark_path(store)
+    if wpath is None:
+        return
+    try:
+        data = json.loads(wpath.read_text(encoding="utf-8")) if wpath.exists() else {}
+    except Exception:
+        data = {}
+    users = dict(data.get("users") or {})
+    u_rec = {"head_seq": int(seq), "head_hash": head_hash}
+    u_rec["hmac"] = hmac.new(key, f"wm|{memory.user_id}|{seq}|{head_hash}".encode("utf-8"), hashlib.sha256).hexdigest()
+    users[memory.user_id] = u_rec
+    wpath.write_text(json.dumps({"users": users}, ensure_ascii=False, sort_keys=True), encoding="utf-8")
+    net_guard.restrict_file_to_owner(wpath)
+
+
+def _load_audit_watermark_seq(memory) -> int:
+    store = memory.store
+    mem_wm = _MEM_AUDIT_WATERMARKS.get((id(store), memory.user_id), 0)
+    wpath = _watermark_path(store)
+    if wpath is None or not wpath.exists():
+        return mem_wm
+    try:
+        data = json.loads(wpath.read_text(encoding="utf-8"))
+        u_rec = (data.get("users") or {}).get(memory.user_id)
+        if not isinstance(u_rec, dict):
+            return mem_wm
+        seq = int(u_rec.get("head_seq") or 0)
+        head_hash = str(u_rec.get("head_hash") or "")
+        key, _ = integrity.owner_key(store)
+        expected = hmac.new(key, f"wm|{memory.user_id}|{seq}|{head_hash}".encode("utf-8"), hashlib.sha256).hexdigest()
+        if hmac.compare_digest(expected, str(u_rec.get("hmac") or "")):
+            return max(mem_wm, seq)
+    except Exception:
+        pass
+    return mem_wm
 
 
 def verify_audit_chain(memory) -> dict[str, Any]:
@@ -166,7 +218,15 @@ def verify_audit_chain(memory) -> dict[str, Any]:
     if not rows:
         if anchor and int(anchor["head_seq"]) > 0:
             return {"ok": False, "length": 0, "broken_seq": int(anchor["head_seq"]), "reason": "tail_truncated"}
-        return {"ok": True, "length": 0, "head_hash": expected_prev, "anchored": False}
+        wm_seq = _load_audit_watermark_seq(memory)
+        if wm_seq > 0:
+            return {
+                "ok": False,
+                "length": 0,
+                "expected_min_seq": wm_seq,
+                "reason": "chain_and_anchor_wiped",
+            }
+        return {"ok": True, "length": 0, "head_hash": expected_prev, "anchored": False, "empty": True, "tamper_evident": False}
 
     if not anchor:
         return {"ok": False, "length": len(rows), "broken_seq": last_seq, "reason": "missing_anchor"}

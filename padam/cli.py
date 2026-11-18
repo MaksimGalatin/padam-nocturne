@@ -691,7 +691,10 @@ def cmd_seal(m, a) -> int:
         seal_mode = "fido2" if a.mode == "webauthn" else "fido2+dpapi"
         res = hardware_seal.seal_database(db_target, mode=seal_mode, fido2_token=tok, rp_id=rp_id)
     else:
-        res = hardware_seal.seal_database(db_target, mode=a.mode, rp_id=rp_id)
+        res = hardware_seal.seal_database(
+            db_target, mode=a.mode, rp_id=rp_id,
+            allow_insecure_test_token=bool(getattr(a, "insecure_test_token", False)),
+        )
     if a.json:
         print(json.dumps(res, ensure_ascii=False, indent=2))
     else:
@@ -706,7 +709,10 @@ def cmd_unseal(m, a) -> int:
     db_target = Path(a.db) if a.db else config.DB_PATH
     hdr = hardware_seal.read_seal_header(db_target)
     use_wa = bool(getattr(a, "webauthn", False)) or hdr.get("mode") in ("fido2", "fido2+dpapi")
-    res = hardware_seal.unseal_database(db_target, use_webauthn=use_wa)
+    res = hardware_seal.unseal_database(
+        db_target, use_webauthn=use_wa,
+        allow_insecure_test_token=bool(getattr(a, "insecure_test_token", False)),
+    )
     if a.json:
         print(json.dumps(res, ensure_ascii=False, indent=2))
     else:
@@ -1259,7 +1265,8 @@ def cmd_l3_verify(m: Memory, a) -> int:
             from . import ots
             о = ots.info(bytes(row["ots"]))
             v["bitcoin_ots"] = {"matches_bundle": ots.matches(bytes(row["ots"]), payload),
-                                "bitcoin_blocks": о["bitcoin_blocks"], "pending_calendars": о["pending"]}
+                                "bitcoin_blocks": о["bitcoin_blocks"], "pending_calendars": о["pending"],
+                                "unverified_metadata": True, "bitcoin_proof_verified": False}
         except Exception as e:
             v["bitcoin_ots"] = {"error": f"{type(e).__name__}: {e}"}
     print(json.dumps(v, ensure_ascii=False, indent=2))
@@ -1604,12 +1611,14 @@ def main(argv=None) -> int:
                                       "seal the database with hardware protection (DPAPI / Windows Hello WebAuthn)"))
     s.add_argument("--mode", default="dpapi", choices=("dpapi", "webauthn", "webauthn+dpapi"))
     s.add_argument("--rp-id", default="padam.local")
+    s.add_argument("--insecure-test-token", action="store_true")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_seal)
 
     s = sub.add_parser("unseal", help=t("распечатать базу данных с аппаратной проверки (DPAPI / WebAuthn)",
                                         "unseal a hardware-sealed database (DPAPI / WebAuthn)"))
     s.add_argument("--webauthn", action="store_true")
+    s.add_argument("--insecure-test-token", action="store_true")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_unseal)
 

@@ -234,7 +234,14 @@ class SoftwareFido2Token:
         rp_id: str = "padam.local",
         present: bool = True,
         user_verified: bool = True,
+        insecure_test_token: bool = False,
     ) -> None:
+        # HW-03: программная заглушка FIDO2 запрещена по умолчанию (только для тестов с явным флагом)
+        if not insecure_test_token and os.environ.get("PADAM_INSECURE_TEST_TOKEN", "0").strip() != "1":
+            raise HardwareAuthError(
+                "SoftwareFido2Token is disabled by default; pass insecure_test_token=True or set PADAM_INSECURE_TEST_TOKEN=1 (tests only)"
+            )
+        self._insecure_test_token = True
         self.algorithm = algorithm.upper()
         self.rp_id = rp_id
         self.present = bool(present)
@@ -438,6 +445,116 @@ def _checkpoint_sqlite_if_openable(db_path: Path) -> None:
             _secure_delete(side)
 
 
+def _hw_owner_paths(db_path: Path) -> tuple[Path, Path, Path]:
+    base = str(db_path)
+    return (
+        Path(base + ".hwseal.owner.key"),
+        Path(base + ".hwseal.owner.pub"),
+        Path(base + ".hwseal.state.json"),
+    )
+
+
+def _get_or_create_hw_owner_key(db_path: Path) -> tuple[ed25519.Ed25519PrivateKey, str]:
+    from . import net_guard
+    kpath, pubpath, _ = _hw_owner_paths(db_path)
+    if kpath.exists():
+        raw_sk = bytes.fromhex(kpath.read_text(encoding="ascii").strip())
+        sk = ed25519.Ed25519PrivateKey.from_private_bytes(raw_sk)
+    else:
+        sk = ed25519.Ed25519PrivateKey.generate()
+        raw_sk = sk.private_bytes(serialization.Encoding.Raw, serialization.PrivateFormat.Raw, serialization.NoEncryption())
+        kpath.write_text(raw_sk.hex(), encoding="ascii")
+        net_guard.restrict_file_to_owner(kpath)
+    pub_hex = sk.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw).hex()
+    if not pubpath.exists():
+        pubpath.write_text(pub_hex, encoding="ascii")
+        net_guard.restrict_file_to_owner(pubpath)
+    return sk, pub_hex
+
+
+def _sign_hw_header(header: dict[str, Any], sk: ed25519.Ed25519PrivateKey) -> dict[str, Any]:
+    h = {k: v for k, v in header.items() if k != "owner_sig_hex"}
+    h["owner_pubkey_hex"] = sk.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw).hex()
+    canon = json.dumps(h, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    h["owner_sig_hex"] = sk.sign(b"PADAMHW1-HDR|" + canon).hex()
+    return h
+
+
+def _verify_hw_header_and_monotonic(
+    db_path: Path,
+    header: dict[str, Any],
+    *,
+    expected_owner_pubkey_hex: str | None = None,
+    require_owner_signature: bool = True,
+) -> dict[str, Any]:
+    _, pubpath, stpath = _hw_owner_paths(db_path)
+    pinned_pub = (
+        (expected_owner_pubkey_hex or "").strip().lower()
+        or os.environ.get("PADAM_HW_SEAL_PUBKEY_HEX", "").strip().lower()
+        or (pubpath.read_text(encoding="ascii").strip().lower() if pubpath.exists() else "")
+    )
+    sig_hex = str(header.get("owner_sig_hex") or "").strip().lower()
+    hdr_pub_hex = str(header.get("owner_pubkey_hex") or "").strip().lower()
+
+    if require_owner_signature:
+        if not sig_hex or not hdr_pub_hex:
+            raise HardwareAuthError("Container missing owner Ed25519 signature (HW-01)")
+        if pinned_pub and hdr_pub_hex != pinned_pub:
+            raise HardwareAuthError("Container owner pubkey mismatch (possible container replacement)")
+        try:
+            pk = ed25519.Ed25519PublicKey.from_public_bytes(bytes.fromhex(hdr_pub_hex))
+            canon = json.dumps({k: v for k, v in header.items() if k != "owner_sig_hex"}, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            pk.verify(bytes.fromhex(sig_hex), b"PADAMHW1-HDR|" + canon)
+        except Exception as exc:
+            raise HardwareAuthError(f"Container owner Ed25519 signature verification failed: {exc}") from exc
+
+    # HW-02: монотонный счётчик seal_seq против rollback-подмены старым контейнером
+    seq = int(header.get("seal_seq") or 0)
+    if stpath.exists():
+        try:
+            st = json.loads(stpath.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise HardwareAuthError(f"Corrupted hardware seal monotonic state: {exc}") from exc
+        st_sig = str(st.get("state_sig_hex") or "")
+        st_pub = pinned_pub or hdr_pub_hex
+        if st_pub and st_sig:
+            try:
+                pk = ed25519.Ed25519PublicKey.from_public_bytes(bytes.fromhex(st_pub))
+                st_canon = json.dumps({k: v for k, v in st.items() if k != "state_sig_hex"}, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+                pk.verify(bytes.fromhex(st_sig), b"PADAMHW1-STATE|" + st_canon)
+            except Exception as exc:
+                raise HardwareAuthError(f"Monotonic state signature invalid: {exc}") from exc
+        max_seq = int(st.get("max_seal_seq") or 0)
+        if seq < max_seq:
+            raise HardwareAuthError(f"Container rollback detected: seal_seq={seq} < max_known={max_seq}")
+        st_cid = str(st.get("container_id") or "")
+        if st_cid and header.get("container_id") and st_cid != str(header.get("container_id")):
+            raise HardwareAuthError("Container identity mismatch against monotonic state (container replacement)")
+        return st
+    return {}
+
+
+def _save_hw_monotonic_state(db_path: Path, header: dict[str, Any], sk: ed25519.Ed25519PrivateKey) -> None:
+    from . import net_guard
+    _, _, stpath = _hw_owner_paths(db_path)
+    st_body = {
+        "container_id": str(header.get("container_id") or ""),
+        "max_seal_seq": int(header.get("seal_seq") or 1),
+        "last_sealed_at": str(header.get("sealed_at") or ""),
+        "last_plain_sha256": str(header.get("plain_sha256") or ""),
+    }
+    st_canon = json.dumps(st_body, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    st_body["state_sig_hex"] = sk.sign(b"PADAMHW1-STATE|" + st_canon).hex()
+    stpath.write_text(json.dumps(st_body, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    net_guard.restrict_file_to_owner(stpath)
+
+
+def _reject_software_token_unless_allowed(token: Any, allow_insecure_test_token: bool) -> None:
+    if isinstance(token, SoftwareFido2Token):
+        if not allow_insecure_test_token and os.environ.get("PADAM_INSECURE_TEST_TOKEN", "0").strip() != "1":
+            raise HardwareAuthError("SoftwareFido2Token rejected without allow_insecure_test_token=True or PADAM_INSECURE_TEST_TOKEN=1")
+
+
 def seal_database(
     db_path: Path | str,
     *,
@@ -445,8 +562,9 @@ def seal_database(
     fido2_token: Any | None = None,
     rp_id: str = "padam.local",
     require_uv: bool = True,
+    allow_insecure_test_token: bool = False,
 ) -> dict[str, Any]:
-    """Запечатывает SQLite-файл целиком в контейнер ``PADAMHW1`` и затирает открытую копию."""
+    """Запечатывает SQLite-файл целиком в контейнер ``PADAMHW1`` с подписью владельца и монотонным счётчиком."""
     p = Path(db_path)
     if str(p) == ":memory:":
         raise HardwareSealError("Cannot seal :memory: database")
@@ -460,6 +578,8 @@ def seal_database(
         raise ValueError(f"Unsupported seal mode: {mode}")
     if clean_mode in ("fido2", "fido2+dpapi") and fido2_token is None:
         raise HardwareAuthError("FIDO2 token / public key credential is required for fido2 seal mode")
+    if fido2_token is not None:
+        _reject_software_token_unless_allowed(fido2_token, allow_insecure_test_token)
     if clean_mode in ("dpapi", "fido2+dpapi") and not probe_hardware_capabilities()["dpapi_available"]:
         raise HardwareSealError("Windows DPAPI is not available on this host")
 
@@ -467,9 +587,24 @@ def seal_database(
     plain_bytes = bytearray(p.read_bytes())
     try:
         dek = bytearray(secrets.token_bytes(32))
+        owner_sk, owner_pub_hex = _get_or_create_hw_owner_key(p)
+        _, _, stpath = _hw_owner_paths(p)
+        prev_seq = 0
+        prev_cid = ""
+        if stpath.exists():
+            try:
+                old_st = json.loads(stpath.read_text(encoding="utf-8"))
+                prev_seq = int(old_st.get("max_seal_seq") or 0)
+                prev_cid = str(old_st.get("container_id") or "")
+            except Exception:
+                pass
+        next_seq = prev_seq + 1
+        container_id = prev_cid or secrets.token_hex(16)
         try:
             header: dict[str, Any] = {
-                "v": 1,
+                "v": 2,
+                "container_id": container_id,
+                "seal_seq": next_seq,
                 "mode": clean_mode,
                 "rp_id": rp_id,
                 "require_uv": bool(require_uv),
@@ -538,7 +673,8 @@ def seal_database(
                     _wipe_bytes(share_dpapi)
                     _wipe_bytes(share_fido)
 
-            hdr_bytes = json.dumps(header, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+            header = _sign_hw_header(header, owner_sk)
+            hdr_bytes = json.dumps(header, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
             aad = b"PADAMHW1|" + hdr_bytes
             db_nonce = secrets.token_bytes(12)
             ct = AESGCM(bytes(dek)).encrypt(db_nonce, bytes(plain_bytes), aad)
@@ -553,10 +689,14 @@ def seal_database(
             tmp_out.write_bytes(container)
             _secure_delete(p)
             tmp_out.replace(p)
+            _save_hw_monotonic_state(p, header, owner_sk)
             return {
                 "status": "sealed",
                 "db": str(p),
                 "mode": clean_mode,
+                "seal_seq": next_seq,
+                "container_id": container_id,
+                "owner_pubkey_hex": owner_pub_hex,
                 "plain_sha256": header["plain_sha256"],
                 "plain_size": header["plain_size"],
                 "container_size": len(container),
@@ -634,8 +774,12 @@ def unseal_database(
     fido2_token: Any | None = None,
     assertion_cb: Callable[[bytes, bytes, dict[str, Any]], Fido2Assertion] | None = None,
     use_webauthn: bool = False,
+    expected_owner_pubkey_hex: str | None = None,
+    allow_insecure_test_token: bool = False,
 ) -> dict[str, Any]:
-    """Проверяет аппаратное доказательство и распечатывает БД на диск."""
+    """Проверяет подпись владельца, монотонный счётчик, аппаратное доказательство и распечатывает БД."""
+    if fido2_token is not None:
+        _reject_software_token_unless_allowed(fido2_token, allow_insecure_test_token)
     p = Path(db_path)
     raw = p.read_bytes()
     if len(raw) < 28 or raw[:8] != CONTAINER_MAGIC:
@@ -643,6 +787,7 @@ def unseal_database(
     hdr_len = struct.unpack(">I", raw[8:12])[0]
     hdr_bytes = raw[12 : 12 + hdr_len]
     header = json.loads(hdr_bytes.decode("utf-8"))
+    _verify_hw_header_and_monotonic(p, header, expected_owner_pubkey_hex=expected_owner_pubkey_hex)
     db_nonce = raw[12 + hdr_len : 12 + hdr_len + 12]
     ct = raw[12 + hdr_len + 12 :]
 
@@ -684,12 +829,18 @@ class HardwareSealedMemory:
         fido2_token: Any | None = None,
         assertion_cb: Callable[[bytes, bytes, dict[str, Any]], Fido2Assertion] | None = None,
         use_webauthn: bool = False,
+        expected_owner_pubkey_hex: str | None = None,
+        allow_insecure_test_token: bool = False,
     ) -> None:
+        if fido2_token is not None:
+            _reject_software_token_unless_allowed(fido2_token, allow_insecure_test_token)
         self.sealed_path = Path(sealed_db_path)
         self.user_id = user_id
         self.fido2_token = fido2_token
         self.assertion_cb = assertion_cb
         self.use_webauthn = bool(use_webauthn)
+        self.expected_owner_pubkey_hex = expected_owner_pubkey_hex
+        self.allow_insecure_test_token = bool(allow_insecure_test_token)
         self._work_dir: Path | None = None
         self._work_db: Path | None = None
         self._header: dict[str, Any] | None = None
@@ -697,12 +848,17 @@ class HardwareSealedMemory:
         self.mem: Memory | None = None
 
     def open(self) -> Memory:
+        if self.fido2_token is not None:
+            _reject_software_token_unless_allowed(self.fido2_token, self.allow_insecure_test_token)
         raw = self.sealed_path.read_bytes()
         if len(raw) < 28 or raw[:8] != CONTAINER_MAGIC:
             raise HardwareSealError("Database is not a valid PADAMHW1 container")
         hdr_len = struct.unpack(">I", raw[8:12])[0]
         hdr_bytes = raw[12 : 12 + hdr_len]
         header = json.loads(hdr_bytes.decode("utf-8"))
+        _verify_hw_header_and_monotonic(
+            self.sealed_path, header, expected_owner_pubkey_hex=self.expected_owner_pubkey_hex
+        )
         db_nonce = raw[12 + hdr_len : 12 + hdr_len + 12]
         ct = raw[12 + hdr_len + 12 :]
 
@@ -737,16 +893,20 @@ class HardwareSealedMemory:
             plain = bytearray(self._work_db.read_bytes())
             try:
                 upd = dict(self._header)
+                upd["seal_seq"] = int(upd.get("seal_seq") or 1) + 1
                 upd["sealed_at"] = _utc_now()
                 upd["plain_sha256"] = hashlib.sha256(plain).hexdigest()
                 upd["plain_size"] = len(plain)
-                hdr_bytes = json.dumps(upd, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+                owner_sk, _ = _get_or_create_hw_owner_key(self.sealed_path)
+                upd = _sign_hw_header(upd, owner_sk)
+                hdr_bytes = json.dumps(upd, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
                 nonce = secrets.token_bytes(12)
                 ct = AESGCM(bytes(self._dek)).encrypt(nonce, bytes(plain), b"PADAMHW1|" + hdr_bytes)
                 container = CONTAINER_MAGIC + struct.pack(">I", len(hdr_bytes)) + hdr_bytes + nonce + ct
                 tmp_out = self.sealed_path.with_name(self.sealed_path.name + ".hwre.tmp")
                 tmp_out.write_bytes(container)
                 tmp_out.replace(self.sealed_path)
+                _save_hw_monotonic_state(self.sealed_path, upd, owner_sk)
             finally:
                 _wipe_bytes(plain)
         if self._dek is not None:

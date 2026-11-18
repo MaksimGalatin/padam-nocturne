@@ -401,11 +401,14 @@ def rollback(
             if key is not None:
                 for rid in restored_ids:
                     row = mem.store.one(
-                        "SELECT id, user_id, scope, kind, content, origin, created_at FROM memory WHERE id = ? AND user_id = ? AND content IS NOT NULL",
+                        "SELECT id, user_id, scope, kind, content, status, origin, created_at FROM memory WHERE id = ? AND user_id = ? AND content IS NOT NULL",
                         (rid, mem.user_id),
                     )
                     if row is not None and row["kind"] in ("identity", "preference"):
-                        sig = integrity.sign(key, row["id"], row["kind"], row["content"])
+                        sig = integrity.sign(
+                            key, row["id"], row["kind"], row["content"],
+                            scope=row["scope"], user_id=row["user_id"], created_at=row["created_at"], status=row["status"]
+                        )
                         mem.store.execute("UPDATE memory SET owner_sig = ? WHERE id = ?", (sig, rid))
         except Exception:
             pass

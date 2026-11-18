@@ -75,18 +75,99 @@ def _read(ots_bytes: bytes):
 
 
 def info(ots_bytes: bytes) -> dict:
-    """Что в штампе: отпечаток, календари, которые ещё не ответили, и блоки Bitcoin, если штамп «дозрел»."""
+    """Неверифицированные локальные метаданные .ots (НЕ является доказательством против цепи Bitcoin; используйте verify())."""
     notary = _lib()[0]
     d = _read(ots_bytes)
     ждут = sorted({a.uri for _, a in d.timestamp.all_attestations() if isinstance(a, notary.PendingAttestation)})
     блоки = sorted({a.height for _, a in d.timestamp.all_attestations()
                     if isinstance(a, notary.BitcoinBlockHeaderAttestation)})
-    return {"digest": d.file_digest.hex(), "pending": ждут, "bitcoin_blocks": блоки}
+    return {
+        "digest": d.file_digest.hex(),
+        "pending": ждут,
+        "bitcoin_blocks": блоки,
+        "unverified_metadata": True,
+        "bitcoin_proof_verified": False,
+    }
 
 
 def matches(ots_bytes: bytes, payload: bytes) -> bool:
-    """Штамп относится именно к этим байтам (SHA-256 совпадает)."""
+    """Проверяет только заголовок file_digest против SHA-256 (не проверяет дерево и Bitcoin header)."""
     return _read(ots_bytes).file_digest == hashlib.sha256(payload).digest()
+
+
+def verify(ots_bytes: bytes, payload: bytes, *, block_header_fn=None) -> dict:
+    """OTS-01: криптографически обходит дерево операций OpenTimestamps и сверяет BitcoinBlockHeaderAttestation с заголовком блока."""
+    notary = _lib()[0]
+    try:
+        d = _read(ots_bytes)
+    except Exception as exc:
+        return {"verified": False, "error": f"invalid_ots: {exc}", "untrusted_claim_blocks": []}
+
+    expected_digest = hashlib.sha256(payload).digest()
+    if d.file_digest != expected_digest or d.timestamp.msg != expected_digest:
+        return {"verified": False, "error": "file_digest_mismatch", "untrusted_claim_blocks": []}
+
+    # Обходим дерево операций вручную, пересчитывая msg каждого узла через op_edge(cur_msg)
+    btc_claims: list[tuple[int, bytes, object]] = []
+    tree_valid = True
+
+    def _walk(ts, cur_msg: bytes) -> None:
+        nonlocal tree_valid
+        if ts.msg != cur_msg:
+            tree_valid = False
+            return
+        for att in ts.attestations:
+            if isinstance(att, notary.BitcoinBlockHeaderAttestation):
+                btc_claims.append((int(att.height), cur_msg, att))
+        for op_edge, sub in ts.ops.items():
+            nxt_msg = op_edge(cur_msg)
+            _walk(sub, nxt_msg)
+
+    _walk(d.timestamp, expected_digest)
+    claim_heights = sorted({h for h, _, _ in btc_claims})
+    if not tree_valid:
+        return {"verified": False, "error": "timestamp_tree_op_mismatch", "untrusted_claim_blocks": claim_heights}
+    if not btc_claims:
+        return {"verified": False, "error": "no_bitcoin_attestations", "untrusted_claim_blocks": []}
+    if block_header_fn is None:
+        return {
+            "verified": False,
+            "error": "no_verified_bitcoin_header_source",
+            "untrusted_claim_blocks": claim_heights,
+        }
+
+    verified_blocks: list[dict[str, int]] = []
+    for height, commitment_msg, att in btc_claims:
+        try:
+            bh = block_header_fn(height)
+            if bh is None:
+                continue
+            if isinstance(bh, dict):
+                mr_raw = bh.get("merkleroot") or bh.get("hashMerkleRoot")
+                mr_bytes = bytes.fromhex(mr_raw) if isinstance(mr_raw, str) else bytes(mr_raw or b"")
+                ntime = int(bh.get("time") or bh.get("nTime") or 0)
+                class _HdrObj:
+                    hashMerkleRoot = mr_bytes
+                    nTime = ntime
+                bh_obj = _HdrObj()
+            else:
+                bh_obj = bh
+            block_time = att.verify_against_blockheader(commitment_msg, bh_obj)
+            verified_blocks.append({"height": height, "time": int(block_time)})
+        except Exception:
+            continue
+
+    if not verified_blocks:
+        return {
+            "verified": False,
+            "error": "bitcoin_block_header_verification_failed",
+            "untrusted_claim_blocks": claim_heights,
+        }
+    return {
+        "verified": True,
+        "verified_blocks": verified_blocks,
+        "untrusted_claim_blocks": [],
+    }
 
 
 def upgrade(ots_bytes: bytes, timeout: int = 20, get=None) -> tuple[bytes, list[int]]:

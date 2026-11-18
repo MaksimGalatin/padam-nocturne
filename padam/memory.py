@@ -647,33 +647,40 @@ class Memory:
 
     def _подписать_все(self, ключ: bytes) -> int:
         rows = self.store.query(
-            f"""SELECT id, kind, content FROM memory WHERE user_id = ? AND status = 'active'
+            f"""SELECT id, user_id, scope, kind, content, created_at, status FROM memory WHERE user_id = ? AND status = 'active'
                 AND kind IN ({",".join("?" * len(config.PROTECTED_KINDS))})""",
             (self.user_id, *config.PROTECTED_KINDS))
         if rows:
-            # Подпись owner_sig не меняет ни векторы, ни статус записи; counters не сбивает кэш поиска.
             self.store.counters([
                 ("UPDATE memory SET owner_sig = ? WHERE id = ?",
-                 (integrity.sign(ключ, r["id"], r["kind"], r["content"]), r["id"]))
+                 (integrity.sign(
+                     ключ, r["id"], r["kind"], r["content"],
+                     scope=r["scope"], user_id=r["user_id"], created_at=r["created_at"], status=r["status"]
+                 ), r["id"]))
                 for r in rows
             ])
         return len(rows)
 
     def _подписать(self, memory_id: str) -> None:
-        row = self.store.one("SELECT id, kind, content FROM memory WHERE id = ?", (memory_id,))
+        row = self.store.one("SELECT id, user_id, scope, kind, content, created_at, status FROM memory WHERE id = ?", (memory_id,))
         if row and integrity.protected(row["kind"]):
             ключ = self._ключ_подписи()
-            self.store.counters([("UPDATE memory SET owner_sig = ? WHERE id = ?",
-                                  (integrity.sign(ключ, row["id"], row["kind"], row["content"]), memory_id))])
+            self.store.counters([(
+                "UPDATE memory SET owner_sig = ? WHERE id = ?",
+                (integrity.sign(
+                    ключ, row["id"], row["kind"], row["content"],
+                    scope=row["scope"], user_id=row["user_id"], created_at=row["created_at"], status=row["status"]
+                ), memory_id),
+            )])
 
     def unsigned_protected(self) -> list[dict]:
         """Действующие записи о личности и предпочтениях без подписи владельца: внесены мимо PADAM."""
         ключ = self._ключ_подписи()
         rows = self.store.query(
-            f"""SELECT id, kind, content, owner_sig, created_at FROM memory WHERE user_id = ? AND status = 'active'
+            f"""SELECT id, user_id, scope, kind, content, owner_sig, created_at, status FROM memory WHERE user_id = ? AND status = 'active'
                 AND kind IN ({",".join("?" * len(config.PROTECTED_KINDS))})""",
             (self.user_id, *config.PROTECTED_KINDS))
-        return [dict(r) for r in rows if not integrity.valid(ключ, r)]
+        return [dict(r) for r in rows if not integrity.valid(ключ, r, require_context=True)]
 
     def trust_protected(self) -> int:
         """Владелец проверил записи о себе и подписывает их текущий вид (`padam trust-protected`)."""
@@ -1312,7 +1319,7 @@ class Memory:
         if not записи:
             return
         строки = {r["id"]: r for r in self.store.query(
-            f"""SELECT id, kind, content, owner_sig, факт_ключ, scope, agent_id, visibility, workspace_id FROM memory
+            f"""SELECT id, user_id, scope, kind, content, owner_sig, created_at, status, факт_ключ, agent_id, visibility, workspace_id FROM memory
                 WHERE id IN ({",".join("?" * len(записи))})""", tuple(з.id for з in записи))}
         по_областям: dict[str, list[str]] = {}
         for r in строки.values():
@@ -1339,7 +1346,7 @@ class Memory:
             з.visibility = r["visibility"] or "private"
             з.workspace_id = r["workspace_id"]
             if ключ is not None and integrity.protected(з.kind) and з.status == "active":
-                з.signed = integrity.valid(ключ, r)
+                з.signed = integrity.valid(ключ, r, require_context=True)
             з.conflict = з.status == "active" and (r["scope"], r["факт_ключ"]) in спорные
 
     def _recall(self, query: str, scope: str = "global",
@@ -1993,8 +2000,18 @@ class Memory:
             try:
                 ключ_владельца, _ = integrity.owner_key(self.store)
                 своя = bool(rec.get("owner_sig")) and ch is not None and integrity.valid(
-                    ключ_владельца, {"owner_sig": rec.get("owner_sig"), "id": rec["id"], "kind": rec.get("kind", "fact"),
-                                    "content": rec.get("content")})
+                    ключ_владельца, {
+                        "owner_sig": rec.get("owner_sig"),
+                        "id": rec["id"],
+                        "kind": rec.get("kind", "fact"),
+                        "content": rec.get("content"),
+                        "scope": rec.get("scope", "global"),
+                        "user_id": rec.get("user_id", self.user_id),
+                        "created_at": rec.get("created_at", ""),
+                        "status": статус,
+                    },
+                    require_context=True,
+                )
             except Exception:
                 своя = False
             if not своя and статус == "active" and (safety.looks_like_instruction(текст) or rec.get("kind") in ("identity", "preference")):
@@ -2404,7 +2421,7 @@ class Memory:
                 need_ids = list(cand_nodes_for_hop.keys())[: max(1, limit_n - len(neighbor_order)) * 2]
                 ph_n = ",".join("?" * len(need_ids))
                 node_rows = self.store.query(
-                    f"""SELECT id, kind, scope, content, status, origin, confidence,
+                    f"""SELECT id, user_id, kind, scope, content, status, origin, confidence,
                                created_at, valid_from, valid_to, owner_sig
                         FROM memory
                         WHERE user_id = ? AND id IN ({ph_n})
@@ -2724,17 +2741,35 @@ class Memory:
             except Exception:
                 memo = row["memo"] or ""
         if payload is None:
-            # Проверим листья из таблицы l3_leaf против root_hex в l3_anchor и memo
-            листья = [bytes.fromhex(r["leaf_hex"]) for r in self.store.query(
-                "SELECT leaf_hex FROM l3_leaf WHERE anchor_id = ? ORDER BY position", (row["id"],))]
-            if листья:
+            # ARK-02: проверяем не только дерево l3_leaf, но и привязку каждого (kind, memory_id, leaf_hex) к таблицам memory/forget_receipt
+            leaf_rows = self.store.query(
+                "SELECT position, kind, memory_id, leaf_hex FROM l3_leaf WHERE anchor_id = ? ORDER BY position",
+                (row["id"],),
+            )
+            if leaf_rows:
+                листья = [bytes.fromhex(r["leaf_hex"]) for r in leaf_rows]
+                leaves_bound = True
+                for lr in leaf_rows:
+                    if lr["kind"] == "record":
+                        if self.store.one("SELECT id FROM memory WHERE id = ? AND user_id = ?", (lr["memory_id"], self.user_id)) is None:
+                            leaves_bound = False
+                            break
+                    elif lr["kind"] == "forget":
+                        fr = self.store.one("SELECT leaf_forget_hex FROM forget_receipt WHERE memory_id = ? AND user_id = ?", (lr["memory_id"], self.user_id))
+                        if fr is None or str(fr["leaf_forget_hex"] or "") != str(lr["leaf_hex"]):
+                            leaves_bound = False
+                            break
+                    else:
+                        leaves_bound = False
+                        break
                 пересчитан = anchor.merkle_root(листья).hex()
                 in_memo = memo.split("root=", 1)[1].split()[0] if "root=" in memo else row["root_hex"]
-                ok = (пересчитан == row["root_hex"] == in_memo)
+                ok = bool(leaves_bound and пересчитан == row["root_hex"] == in_memo)
                 return {
                     "anchor_id": row["id"],
                     "ok": ok,
                     "source": "db_leaves",
+                    "leaves_bound_to_memory": leaves_bound,
                     "root_recomputed": пересчитан,
                     "root_in_db": row["root_hex"],
                     "root_in_memo": in_memo,
@@ -2763,6 +2798,8 @@ class Memory:
                     "matches_bundle": _ots.matches(bytes(row["ots"]), payload),
                     "bitcoin_blocks": о["bitcoin_blocks"],
                     "pending_calendars": о["pending"],
+                    "unverified_metadata": True,
+                    "bitcoin_proof_verified": False,
                 }
             except Exception as e:
                 v["bitcoin_ots"] = {"error": f"{type(e).__name__}: {e}"}
@@ -2893,7 +2930,7 @@ class Memory:
         ключ = self._ключ_подписи()
         scopes = ["global"] if scope == "global" else ["global", scope]
         rows = self.store.query(
-            f"""SELECT id, kind, scope, content, owner_sig, confidence, importance, created_at, last_confirmed_at
+            f"""SELECT id, user_id, kind, scope, content, owner_sig, status, confidence, importance, created_at, last_confirmed_at
                 FROM memory
                 WHERE user_id = ? AND status = 'active'
                   AND kind IN ('identity', 'preference')
@@ -2905,7 +2942,7 @@ class Memory:
         preference_items = []
         unsigned_skipped = 0
         for r in rows:
-            if not integrity.valid(ключ, r):
+            if not integrity.valid(ключ, r, require_context=True):
                 unsigned_skipped += 1
                 continue
             item = {
