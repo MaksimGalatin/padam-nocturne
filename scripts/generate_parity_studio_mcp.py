@@ -221,6 +221,10 @@ PARITY_MAP: dict[tuple[str, str], tuple[str, str, str, str]] = {
     ("padam_phoenix_family", "send_kin_message"): ("panel-earning", "#earn-kin-send-btn | #earn-kin-msg-inp", "POST /api/v2/ark/phoenix-beacon/action", "padam.phoenix_beacon"),
     ("padam_phoenix_family", "receive_kin_message"): ("panel-earning", "#earn-kin-recv-btn", "POST /api/v2/ark/phoenix-beacon/action", "padam.phoenix_beacon"),
 
+    # padam_benchmark — 18.11.2026: бенчмарк на виду, отдельная вкладка «Бенчмарк»
+    ("padam_benchmark", "report"): ("panel-bench", "#att-aifasec-summary | #att-aifasec-dl-json", "GET /api/v2/aifa-security", "padam.aifa_sec_bridge"),
+    ("padam_benchmark", "run"): ("panel-bench", "#att-aifasec-run", "POST /api/v2/aifa-security/run", "padam.aifa_sec_bridge"),
+    ("padam_benchmark", "qa"): ("panel-bench", "#att-qa-load | #att-qa-summary", "GET /api/v2/qa-benchmark", "benchmarks/quality"),
     # padam_local_model
     ("padam_local_model", "status"): ("panel-settings", "#lm-out | /api/v2/local-model", "GET /api/v2/local-model", "padam.local_model"),
     ("padam_local_model", "set_power"): ("panel-settings", "#lm-power-eco | #lm-power-half | #lm-power-full", "POST /api/v2/local-model", "padam.local_model"),

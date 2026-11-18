@@ -84,6 +84,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "nav_graph": "Связи",
         "nav_l3": "Вечный слой L3",
         "nav_brain": "Суверенный мозг",
+        "nav_bench": "Бенчмарк",
+        "bench_title": "Бенчмарк защиты AIFaSecurity-100 и качества ответов",
+        "bench_sub": "100 критериев защиты памяти за $0 на вашей машине: запустить, скачать отчёт (JSON, SARIF для GitHub, HTML), сравнить живым фаззингом, проверить подпись Ed25519.",
         "brain_title": "Суверенный мозг и Феникс",
         "brain_sub": "Светофор контуров моделей, гигиеническая сборка датасета LoRA и мастер восстановления Феникса",
         "brain_traffic_title": "Светофор контуров (Primary -> Sovereign -> Local)",
@@ -392,6 +395,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "search_unsigned": "Не подписано владельцем",
         # 4. На проверку
         "review_title": "Очередь проверки владельцем",
+        "council_title": "Консилиум Семьи",
+        "council_sub": "Пять голосов проверяют каждую запись в карантине: словарь, локальная модель-детектор, источник (свой агент или чужой), вид записи, замена. Консилиум ничего не удаляет и не подписывает вашим именем.",
+        "council_clean_title": "Консилиум считает чистым",
+        "council_clean_btn": "Перенести всё чистое в память",
+        "council_iso_title": "Изолятор — по мнению консилиума, отрава",
+        "council_iso_sub": "Ничего не удалено. Посмотрите и решите сами.",
+        "council_iso_delete": "Удалить",
+        "council_iso_restore": "Не отрава — в память",
+        "council_none": "пусто",
+        "council_detector_off": "Детектор выключен: без него консилиум ничего не считает чистым.",
         "review_subtitle": "Записи, удержанные защитой PADAM до вашего решения. Агенты не видят их в поиске и выгрузке.",
         "review_why": "Почему удержано:",
         "reason_instruction": "Текст похож на спрятанный приказ ИИ-агенту",
@@ -662,6 +675,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "nav_graph": "Lineage Graph",
         "nav_l3": "Eternal Layer L3",
         "nav_brain": "Sovereign Brain",
+        "nav_bench": "Benchmark",
+        "bench_title": "AIFaSecurity-100 protection and answer-quality benchmark",
+        "bench_sub": "100 memory-protection criteria for $0 on your machine: run, download the report (JSON, SARIF for GitHub, HTML), compare with live fuzzing, verify the Ed25519 seal.",
         "brain_title": "Sovereign Brain & Phoenix",
         "brain_sub": "Model contour traffic light, Zero-Leak LoRA dataset distill, and Phoenix recovery wizard",
         "brain_traffic_title": "Model Contours (Primary -> Sovereign -> Local)",
@@ -965,6 +981,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "search_conflict": "Conflicts with another active record",
         "search_unsigned": "Not signed by the owner",
         "review_title": "Owner Review Queue",
+        "council_title": "Family Council",
+        "council_sub": "Five votes check every held record: word lists, a local detector model, the source (own agent or stranger), the record kind, replacement. The council deletes nothing and never signs in your name.",
+        "council_clean_title": "The council considers clean",
+        "council_clean_btn": "Move all clean records to memory",
+        "council_iso_title": "Isolation — poisoned in the council's view",
+        "council_iso_sub": "Nothing is deleted. Look and decide yourself.",
+        "council_iso_delete": "Delete",
+        "council_iso_restore": "Not poison — keep in memory",
+        "council_none": "empty",
+        "council_detector_off": "Detector is off: without it the council marks nothing clean.",
         "review_subtitle": "Writes held by PADAM protection until you decide. Hidden from agents in search and export.",
         "review_why": "Why held:",
         "reason_instruction": "Text looks like a hidden instruction / prompt injection",
@@ -1229,6 +1255,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "nav_graph": "Grafo de vínculos",
         "nav_l3": "Capa eterna L3",
         "nav_brain": "Cerebro Soberano",
+        "nav_bench": "Benchmark",
+        "bench_title": "Benchmark de protección AIFaSecurity-100 y de calidad de respuestas",
+        "bench_sub": "100 criterios de protección de memoria por $0 en su equipo: ejecutar, descargar el informe (JSON, SARIF para GitHub, HTML), comparar con fuzzing en vivo, verificar el sello Ed25519.",
         "brain_title": "Cerebro Soberano y Fénix",
         "brain_sub": "Semáforo de contornos LLM, exportación LoRA sin fugas y asistente de recuperación Fénix",
         "brain_traffic_title": "Contornos de modelos (Primary -> Sovereign -> Local)",
@@ -1532,6 +1561,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "search_conflict": "En conflicto con otro registro activo",
         "search_unsigned": "Sin firma del propietario",
         "review_title": "Cola de revisión del propietario",
+        "council_title": "Consejo de la Familia",
+        "council_sub": "Cinco votos revisan cada registro retenido: listas de palabras, un modelo detector local, la fuente (agente propio o ajeno), el tipo de registro, el reemplazo. El consejo no borra nada ni firma en su nombre.",
+        "council_clean_title": "El consejo lo considera limpio",
+        "council_clean_btn": "Pasar todo lo limpio a la memoria",
+        "council_iso_title": "Aislamiento — envenenado según el consejo",
+        "council_iso_sub": "No se borró nada. Revíselo y decida usted.",
+        "council_iso_delete": "Borrar",
+        "council_iso_restore": "No es veneno — a la memoria",
+        "council_none": "vacío",
+        "council_detector_off": "El detector está apagado: sin él el consejo no marca nada como limpio.",
         "review_subtitle": "Registros retenidos por la protección de PADAM hasta que usted decida.",
         "review_why": "Motivo de retención:",
         "reason_instruction": "El texto parece una orden oculta al agente (Prompt Injection)",
@@ -1796,6 +1835,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "nav_graph": "关联图谱",
         "nav_l3": "永恒层 L3",
         "nav_brain": "主权大脑",
+        "nav_bench": "基准测试",
+        "bench_title": "AIFaSecurity-100 防护与回答质量基准",
+        "bench_sub": "在您的机器上以 $0 运行 100 项记忆防护标准：运行、下载报告（JSON、GitHub 用 SARIF、HTML），用实时模糊测试对比，验证 Ed25519 签名。",
         "brain_title": "主权大脑与凤凰模式",
         "brain_sub": "模型回路状态灯、零泄漏 LoRA 人格数据集导出与凤凰恢复向导",
         "brain_traffic_title": "模型回路状态 (Primary -> Sovereign -> Local)",
@@ -2099,6 +2141,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "search_conflict": "与另一条有效记录存在冲突",
         "search_unsigned": "未经主人签名",
         "review_title": "主人审核队列",
+        "council_title": "家庭议会",
+        "council_sub": "五票审查每条被扣留的记录：词表、本地检测模型、来源（本家代理或外部）、记录类型、替换。议会不删除任何内容，也不以您的名义签名。",
+        "council_clean_title": "议会认为干净",
+        "council_clean_btn": "将全部干净记录移入记忆",
+        "council_iso_title": "隔离区 — 议会认为有毒",
+        "council_iso_sub": "未删除任何内容。请查看并自行决定。",
+        "council_iso_delete": "删除",
+        "council_iso_restore": "不是毒 — 放入记忆",
+        "council_none": "空",
+        "council_detector_off": "检测器已关闭：没有它，议会不会把任何记录判为干净。",
         "review_subtitle": "被 PADAM 防护机制暂扣的写入。在您决定前，智能体无法在搜索或导出中看到它们。",
         "review_why": "暂扣原因：",
         "reason_instruction": "文本疑似隐藏的 AI 控制指令 (Prompt Injection)",
@@ -4108,7 +4160,7 @@ function say(text, ok = true) {
   box.className = ok ? 'msg-ok' : 'msg-err';
 }
 
-const TABS = ['overview', 'family', 'migrate', 'aifa', 'plans', 'feed', 'search', 'ask', 'review', 'attacks', 'asof', 'forget', 'graph', 'entities', 'l3', 'brain', 'earning', 'team', 'backup', 'settings', 'quickstart', 'help'];
+const TABS = ['overview', 'family', 'bench', 'migrate', 'aifa', 'plans', 'feed', 'search', 'ask', 'review', 'attacks', 'asof', 'forget', 'graph', 'entities', 'l3', 'brain', 'earning', 'team', 'backup', 'settings', 'quickstart', 'help'];
 window._padamWorkspaces = [];
 let activeTab = (initialTab && TABS.includes(initialTab)) ? initialTab : 'family';
 let feedView = 'active', feedOffset = 0, feedKind = null, feedShown = [];
@@ -4143,6 +4195,7 @@ function applyI18n() {
 // 18.11.2026: меню из 7 групп вместо 21 строки. Кнопки вкладок те же, они лишь переносятся в свёрнутые группы.
 const NAV_GROUPS = [
   { key: null, tabs: ['family'] },
+  { key: null, tabs: ['bench'] },
   { key: null, tabs: ['earning'] },
   { key: 'grp_memory', tabs: ['overview', 'feed', 'search', 'ask', 'asof', 'graph', 'entities'] },
   { key: 'grp_guard', tabs: ['review', 'attacks', 'forget'] },
@@ -4776,12 +4829,50 @@ async function saveQuickAdd() {
 }
 
 // --- 4. НА ПРОВЕРКУ ---
-async function loadReview() {
+// Консилиум Семьи и Изолятор (18.11.2026): консилиум запускается сам при открытии вкладки.
+async function loadCouncil() {
+  const box = $('council-box');
+  if (!box) return new Set();
+  const skip = new Set();
+  try {
+    const run = await api('/api/v2/quarantine/council', { action: 'review' });
+    const v = (await api('/api/v2/quarantine/council')).verdicts || [];
+    box.replaceChildren(_el('h3', '', S.council_title), _el('p', 'panel-sub', S.council_sub));
+    if (run.detector !== 'on') box.append(_el('p', 'earn-meta', S.council_detector_off));
+    const clean = v.filter(x => x.verdict === 'likely_clean'), iso = v.filter(x => x.verdict === 'poison');
+    clean.concat(iso).forEach(x => skip.add(x.id));
+    const ch = _el('h4', '', S.council_clean_title + ': ' + clean.length); box.append(ch);
+    for (const x of clean) box.append(_el('p', 'earn-meta', '• ' + (x.agent_id || '—') + ' · ' + x.kind + ' · ' + x.preview));
+    if (clean.length) {
+      const b = _el('button', 'btn-primary', S.council_clean_btn); b.type = 'button';
+      b.onclick = async () => { await api('/api/v2/quarantine/council', { action: 'approve_clean' }); loadReview(); };
+      box.append(b);
+    }
+    box.append(_el('h4', '', S.council_iso_title + ': ' + iso.length), _el('p', 'panel-sub', S.council_iso_sub));
+    for (const x of iso) {
+      const row = _el('div', 'setup-row');
+      const sg = x.signals || {};
+      row.append(_el('div', '', (x.agent_id || '—') + ' · ' + x.kind + ' · p=' + (sg['детектор'] == null ? '—' : Number(sg['детектор']).toFixed(4)) + ' · ' + x.preview));
+      const act = _el('div', 'rec-actions');
+      const del = _el('button', '', S.council_iso_delete); del.type = 'button';
+      del.onclick = async () => { await api('/reject', { id: x.id }); loadReview(); };
+      const keep = _el('button', '', S.council_iso_restore); keep.type = 'button';
+      keep.onclick = async () => { await api('/approve', { id: x.id }); loadReview(); };
+      act.append(del, keep); row.append(act); box.append(row);
+    }
+    if (!clean.length && !iso.length) box.append(_el('p', 'panel-sub', S.council_none));
+  } catch (e) { box.replaceChildren(_el('p', 'panel-sub', S.failed + ': ' + e.message)); }
+  return skip;
+}
+
+async function loadReview(skip) {
   const list = $('review-list');
   try {
     const r = await api('/records?view=review&limit=100&offset=0');
     list.replaceChildren();
-    const rows = r.records || [];
+    const rows = (r.records || []).filter(x => !(skip && skip.has(x.id)));
+    // Очередь видна сразу; консилиум работает следом и убирает из неё то, что разложил сам.
+    if (!skip) loadCouncil().then(s => { if (s && s.size) loadReview(s); });
     if (!rows.length) {
       list.append(el('p', 'panel-sub', S.empty_review || S.ov_attention_clean));
       return;
@@ -5656,6 +5747,7 @@ function loadActiveTab() {
   else if (activeTab === 'team') loadTeam();
   else if (activeTab === 'settings') { loadSettings(); loadLocalModel(); }
   else if (activeTab === 'attacks') loadAttacks();
+  else if (activeTab === 'bench') { renderAifaSec(); if (typeof loadQaBench === 'function') loadQaBench(); }
   else if (activeTab === 'help') loadHelp();
 }
 
@@ -5698,7 +5790,6 @@ async function loadAttacks() {
       rec.appendChild(row);
     }
   }
-  renderAifaSec();
 }
 async function renderAifaSec(fresh = false) {
   if (!token) return;
@@ -8480,6 +8571,9 @@ def page() -> tuple[str, str]:
       <button id="tab-l3" data-tab="l3" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-l3">
         <span data-i18n="nav_l3">{s['nav_l3']}</span>
       </button>
+      <button id="tab-bench" data-tab="bench" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-bench">
+        <span data-i18n="nav_bench">{s['nav_bench']}</span>
+      </button>
       <button id="tab-brain" data-tab="brain" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-brain">
         <span data-i18n="nav_brain">{s['nav_brain']}</span>
       </button>
@@ -8674,6 +8768,7 @@ def page() -> tuple[str, str]:
           <h2 class="panel-title" data-i18n="review_title">{s['review_title']}</h2>
           <p class="panel-sub" data-i18n="review_subtitle">{s['review_subtitle']}</p>
         </div>
+        <div id="council-box" class="panel"></div>
         <div id="review-list"></div>
       </section>
 
@@ -8966,6 +9061,29 @@ def page() -> tuple[str, str]:
       </section>
 
       <!-- АТАКИ (16.11.2026) -->
+      <section id="panel-bench" role="tabpanel" aria-labelledby="tab-bench" hidden>
+        <div class="panel-header">
+          <h2 class="panel-title" data-i18n="bench_title">{s['bench_title']}</h2>
+          <p class="panel-sub" data-i18n="bench_sub">{s['bench_sub']}</p>
+        </div>
+        <div class="box">
+          <h3 class="box-title" data-i18n="att_aifasec_title">{s['att_aifasec_title']}</h3>
+          <p id="att-aifasec-summary" class="panel-sub">—</p>
+          <div class="att-actions">
+            <button id="att-aifasec-run" class="btn-primary" type="button" data-i18n="att_aifasec_btn">{s['att_aifasec_btn']}</button>
+            <button id="att-aifasec-dl-json" class="btn" type="button">JSON</button>
+            <button id="att-aifasec-dl-sarif" class="btn" type="button">SARIF (GitHub)</button>
+            <button id="att-aifasec-dl-html" class="btn" type="button">HTML Report</button>
+            <button id="att-qa-load" class="btn" type="button">QA Bench ($0)</button>
+            <button id="att-fuzz-run" class="btn" type="button">Live Fuzz &amp; Compare</button>
+            <button id="att-sec-verify" class="btn" type="button">Verify Ed25519 Seal</button>
+          </div>
+          <div id="att-aifasec-standards" class="panel-sub"></div>
+          <div id="att-aifasec-domains"></div>
+          <div id="att-qa-summary" class="att-qa-box"></div>
+        </div>
+      </section>
+
       <section id="panel-attacks" role="tabpanel" aria-labelledby="tab-attacks" hidden>
         <div class="panel-header">
           <h2 class="panel-title" data-i18n="att_title">{s['att_title']}</h2>
@@ -8983,22 +9101,6 @@ def page() -> tuple[str, str]:
         <div class="box"><h3 class="box-title" data-i18n="att_by_day">{s['att_by_day']}</h3><div id="att-by-day"></div></div>
         <div class="box"><h3 class="box-title" data-i18n="att_secrets_kind">{s['att_secrets_kind']}</h3><div id="att-secrets-kind"></div></div>
         <div class="box"><h3 class="box-title" data-i18n="att_recent">{s['att_recent']}</h3><div id="att-recent"></div></div>
-        <div class="box">
-          <h3 class="box-title" data-i18n="att_aifasec_title">{s['att_aifasec_title']}</h3>
-          <p id="att-aifasec-summary" class="panel-sub">—</p>
-          <div class="att-actions">
-            <button id="att-aifasec-run" class="btn-primary" type="button" data-i18n="att_aifasec_btn">{s['att_aifasec_btn']}</button>
-            <button id="att-aifasec-dl-json" class="btn" type="button">JSON</button>
-            <button id="att-aifasec-dl-sarif" class="btn" type="button">SARIF (GitHub)</button>
-            <button id="att-aifasec-dl-html" class="btn" type="button">HTML Report</button>
-            <button id="att-qa-load" class="btn" type="button">QA Bench ($0)</button>
-            <button id="att-fuzz-run" class="btn" type="button">Live Fuzz &amp; Compare</button>
-            <button id="att-sec-verify" class="btn" type="button">Verify Ed25519 Seal</button>
-          </div>
-          <div id="att-aifasec-standards" class="panel-sub"></div>
-          <div id="att-aifasec-domains"></div>
-          <div id="att-qa-summary" class="att-qa-box"></div>
-        </div>
       </section>
 
       <!-- СПРАВКА (16.11.2026) -->

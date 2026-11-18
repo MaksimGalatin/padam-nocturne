@@ -43,9 +43,9 @@ def test_parity_matrix_zero_gaps_and_4_languages():
     rc = parity_gen.main()
     assert rc == 0
     doc = (parity_gen.ROOT / "docs" / "PARITY_STUDIO_MCP.md").read_text(encoding="utf-8")
-    assert "170 из 170" in doc
-    assert "Есть в Studio (вкладка + кнопка/поле): **170 из 170**" in doc
-    assert "Есть в API (`padam/api.py`): **170 из 170**" in doc
+    assert "173 из 173" in doc
+    assert "Есть в Studio (вкладка + кнопка/поле): **173 из 173**" in doc
+    assert "Есть в API (`padam/api.py`): **173 из 173**" in doc
     assert "НЕТ:" not in doc
 
     ru_keys = set(studio.STRINGS["ru"].keys())
@@ -191,7 +191,7 @@ def test_parity_studio_playwright_all_buttons_1280_and_390(tmp_path: Path, monke
                     page.click(btn_sel)
                     page.wait_for_function(
                         f"() => {{ const el = document.querySelector({json.dumps(out_sel)}); return el && el.textContent.trim().length > 0 && el.textContent.trim() !== 'Загрузка…'; }}",
-                        timeout=12000,
+                        timeout=30000,  # 18.11: тяжёлые проверки на загруженной машине не укладывались в 12 с
                     )
 
                 assert page.evaluate("() => document.documentElement.scrollWidth <= window.innerWidth"), f"overflow at start ({vp})"
@@ -449,7 +449,9 @@ def test_parity_studio_playwright_all_buttons_1280_and_390(tmp_path: Path, monke
                         page.locator("#review-list button").nth(1).click()
                         page.wait_for_timeout(150)
 
-                    open_group_tab("grp_guard", "attacks")
+                    # 18.11: бенчмарк вынесен из «Атак» в отдельную вкладку меню «Бенчмарк»
+                    page.click("#tab-bench")
+                    page.wait_for_selector("#panel-bench:not([hidden])", timeout=5000)
                     with page.expect_response(lambda r: "/api/v2/aifa-security/run" in r.url, timeout=30000) as resp_info:
                         page.click("#att-aifasec-run")
                     assert resp_info.value.status == 200

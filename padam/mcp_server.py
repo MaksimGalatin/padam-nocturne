@@ -647,14 +647,14 @@ FREELANCE_HUB_TOOL_DEF = {
         "estimated_hours": _N, "hourly_rate_usdt": _N,
         "exchange_fee_pct": _N, "pitch_text": _S,
         "proposed_usdt": _N, "deliverable_text": _S,
-        "paid_usdt": _N, "platform_fee_pct": _N,
+        "platform_fee_pct": _N,
         "work_mode": {"type": "string", "enum": ["assisted", "autopilot"]},
         "compute_share_pct": _N, "agent_share_pct": _N,
         "settlement_currency": {"type": "string", "enum": ["USDT_TRC20", "GALATIN"], "description": "Coin"},
         "api_base_url": _S, "provider_id": _S,
         "monthly_tokens_need": _I, "suggestion_text": _S,
         "client_email": _S, "client_domain": _S,
-        "client_external_id": _S, "accepted_by": _S,
+        "client_external_id": _S,
         "store_type": _S, "api_key": _S, "webhook_secret": _S, "delivery_url": _S,
         "draft_id": _S, "price_usdt": _N, "seller_id": _S, "currency": _S,
         "auth_method": _S, "specializations": _S, "min_order_usdt": _N,
@@ -688,6 +688,14 @@ LOCAL_MODEL_TOOL_DEF = {
         "model": {**_S, "description": "Model/GGUF"}, "extra_dirs": {**_SA, "description": "Extra dirs"},
     }},
     "annotations": _IDEM,
+}
+BENCHMARK_TOOL_DEF = {
+    "name": "padam_benchmark", "title": "Benchmark",
+    "description": "AIFaSecurity-100 + QA ($0)",
+    "inputSchema": {"type": "object", "properties": {
+        "action": {"type": "string", "enum": ["report", "run", "qa"], "default": "report", "description": "report|run|qa"},
+    }},
+    "annotations": _hints(True, False, True),
 }
 PLATFORM_CONNECT_TOOL_DEF = {
     "name": "padam_platform_connect", "title": "Platform Connect", "description": "1-click Google signup or login",
@@ -734,6 +742,7 @@ _ALL_TOOLS_BY_NAME = {
     "padam_phoenix_family": PHOENIX_FAMILY_TOOL_DEF,
     "padam_local_model": LOCAL_MODEL_TOOL_DEF,
     "padam_platform_connect": PLATFORM_CONNECT_TOOL_DEF,
+    "padam_benchmark": BENCHMARK_TOOL_DEF,
 }
 
 
@@ -5027,6 +5036,18 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             payload = _fa.freelance_dashboard_snapshot(m)
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
 
+    if name == "padam_benchmark":
+        # 18.11.2026, слово Папы: бенчмарк должен быть на виду и в Studio, и в MCP.
+        act_b = str(args.get("action") or "report").lower()
+        if act_b == "qa":
+            from pathlib import Path as _Path
+            qa_p = _Path(__file__).resolve().parents[1] / "benchmarks" / "quality" / "results_qa_honest_1611.json"
+            payload = json.loads(qa_p.read_text(encoding="utf-8")) if qa_p.exists() else {"status": "not_run_yet"}
+        else:
+            from . import aifa_sec_bridge as _asb
+            payload = _asb.get_aifa_security_report(run_fresh=(act_b == "run"))
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
     if name == "padam_platform_connect":
         from . import platform_wizard as _pw
         act = str(args.get("action") or "login").lower()
@@ -5321,6 +5342,7 @@ def _list_tools_payload() -> list[dict]:
         items.append(SOVEREIGN_SYNC_TOOL_DEF)
     if config.mcp_ark_tools_enabled():
         items.extend([
+            BENCHMARK_TOOL_DEF,
             WAKE_UP_TOOL_DEF,
             COMMITMENTS_TOOL_DEF,
             FAMILY_RELAY_TOOL_DEF,

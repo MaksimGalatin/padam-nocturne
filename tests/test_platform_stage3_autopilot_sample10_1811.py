@@ -335,7 +335,7 @@ def test_official_freelancer_api_and_browser_session_no_network_in_tests(tmp_pat
             mem, platform_id="freelancer", op="place_bid", project_id="901", bid_amount_usdt=300.0,
             pitch_text="Ready to build", api_base_url=base_u, allow_localhost=True
         )
-        assert r_bid["ok"] is True
+        assert r_bid["ok"] is True, r_bid  # диагностика: печатать ответ при сбое
 
         # На Upwork place_bid по API запрещён (возвращает ready_to_send)
         r_upw_bid = platform_wizard.official_platform_api_action(

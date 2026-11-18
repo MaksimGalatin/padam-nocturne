@@ -3928,7 +3928,7 @@ def test_step_2_9_studio_accessibility_axe(tmp_path):
     assert "axe-core" in wf
 
     import scripts.studio_a11y_check as a11y_mod
-    assert len(a11y_mod.TABS) == 15 and a11y_mod.TABS[0] == "family"  # 18.11.2026: «Семья» — стартовая
+    assert len(a11y_mod.TABS) == 16 and a11y_mod.TABS[0] == "family" and "bench" in a11y_mod.TABS  # 18.11.2026: «Семья» — стартовая
     axe_env = os.environ.get("AXE_JS_PATH", "").strip()
     if axe_env and Path(axe_env).is_file():
         rep = a11y_mod.run_a11y_check(axe_env)

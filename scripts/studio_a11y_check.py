@@ -24,7 +24,7 @@ if str(ROOT) not in sys.path:
 from padam import api  # noqa: E402
 from padam.demo import build_demo_memory  # noqa: E402
 
-TABS = ["family", 
+TABS = ["family", "bench", 
     "overview",
     "feed",
     "search",

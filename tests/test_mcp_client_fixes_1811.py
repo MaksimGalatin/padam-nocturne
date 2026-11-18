@@ -106,13 +106,14 @@ def test_item1_and_8_context_compaction_titles_docs_and_instructions(tmp_path: P
 
     tools_res = resps[2]["result"]
     tools = tools_res["tools"]
-    assert len(tools) == 33
+    assert len(tools) == 34  # 18.11: + padam_benchmark (бенчмарк на виду и в MCP)
     assert all(bool(t.get("title")) for t in tools)
     # Было 35842 / 33754 -> 26805/26816 (все параметры с полными описаниями или дословно в INSTRUCTIONS)
     tools_chars = len(json.dumps(tools, ensure_ascii=False))
     total_chars = len(json.dumps(tools_res, ensure_ascii=False))
-    assert tools_chars <= 27000, f"tools array exceeds 27000 chars: {tools_chars}"
-    assert total_chars <= 27000, f"tools/list result exceeds 27000 chars: {total_chars}"
+    # 18.11.2026: +padam_benchmark (слово Папы: бенчмарк на виду и в MCP) — лимит 27000 -> 27300 (+1 инструмент, ~1 %)
+    assert tools_chars <= 27300, f"tools array exceeds 27300 chars: {tools_chars}"
+    assert total_chars <= 27300, f"tools/list result exceeds 27300 chars: {total_chars}"
 
     instr_tokens = set(re.findall(r"[A-Za-z0-9_]+", instr))
     missing_everywhere: list[str] = []
