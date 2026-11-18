@@ -77,6 +77,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_portable_btn": "Создать переносимый Ковчег",
         "ark_portable_not_empty": "Эта папка не пустая. Укажите новую или пустую папку.",
         "ark_portable_warn": "Закрытые ключи сохраняются отдельным файлом рядом с папкой. Держите их не на той же флешке.",
+        "ark_budget_title": "Автопилот Токенов (День/Неделя/Месяц) и Казначей",
+        "ark_budget_btn": "Проверить токены и казну",
         "nav_settings": "Настройки",
         "nav_quickstart": "Первый запуск",
         "theme_dark": "Тёмная тема",
@@ -433,6 +435,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_portable_btn": "Create portable Ark",
         "ark_portable_not_empty": "This folder is not empty. Choose a new or empty folder.",
         "ark_portable_warn": "Private keys are saved to a separate file next to the folder. Keep them off the same drive.",
+        "ark_budget_title": "Token Autopilot (Day/Week/Month) & Treasury",
+        "ark_budget_btn": "Check Tokens & Treasury",
         "nav_settings": "Settings",
         "nav_quickstart": "Quick Start",
         "theme_dark": "Dark theme",
@@ -778,6 +782,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_portable_btn": "Crear Arca portátil",
         "ark_portable_not_empty": "Esta carpeta no está vacía. Elija una carpeta nueva o vacía.",
         "ark_portable_warn": "Las claves privadas se guardan en un archivo aparte junto a la carpeta. No las guarde en la misma memoria.",
+        "ark_budget_title": "Piloto de Tokens (Día/Semana/Mes) y Tesorería",
+        "ark_budget_btn": "Revisar Tokens y Tesorería",
         "nav_settings": "Ajustes",
         "nav_quickstart": "Inicio rápido",
         "theme_dark": "Tema oscuro",
@@ -1123,6 +1129,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_portable_btn": "创建便携方舟",
         "ark_portable_not_empty": "该文件夹不是空的。请选择新的或空的文件夹。",
         "ark_portable_warn": "私钥另存为文件夹旁边的单独文件。请勿放在同一个 U 盘上。",
+        "ark_budget_title": "Token 配额自动驾驶（日/周/月）与金库",
+        "ark_budget_btn": "检查 Token 与金库",
         "nav_settings": "设置",
         "nav_quickstart": "快速开始",
         "theme_dark": "深色主题",
@@ -4951,6 +4959,27 @@ if ($('ark-mesh-btn')) {
     }
   };
 }
+if ($('ark-budget-btn')) {
+  $('ark-budget-btn').onclick = async () => {
+    const out = $('ark-budget-out');
+    if (!out) return;
+    out.textContent = S.loading;
+    try {
+      const r = await api('/api/v2/ark/budget');
+      out.textContent = '';
+      const tr = r.treasury || {};
+      _kv(out, {
+        providers_checked: r.checked_providers || 0,
+        earned_usdt: '$' + String(tr.total_revenue_usdt || 0),
+        compute_avail_usdt: '$' + String(tr.available_compute_usdt || 0),
+        autopay_locked: String(Boolean(tr.autopay_locked !== false)),
+        pending_approvals: ((r.proposals || []).filter(p => p.status === 'awaiting_owner_approval')).length,
+      });
+    } catch (e) {
+      out.textContent = String(e.message || e);
+    }
+  };
+}
 if ($('ark-guardian-btn')) {
   $('ark-guardian-btn').onclick = async () => {
     const out = $('ark-mesh-out');
@@ -5812,6 +5841,11 @@ def page() -> tuple[str, str]:
             <p class="panel-sub" data-i18n="ark_portable_warn">{s['ark_portable_warn']}</p>
           </div>
           <div id="ark-portable-out"></div>
+          <h3 class="box-title" data-i18n="ark_budget_title">{s['ark_budget_title']}</h3>
+          <div class="rec-actions">
+            <button id="ark-budget-btn" class="btn-primary" data-i18n="ark_budget_btn">{s['ark_budget_btn']}</button>
+          </div>
+          <div id="ark-budget-out"></div>
         </div>
       </section>
     </main>

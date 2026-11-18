@@ -1991,6 +1991,61 @@ def main(argv=None) -> int:
         sp_c.add_argument("--perm", default="contributor", choices=["auditor", "contributor", "maintainer"])
         sp_c.set_defaults(fn=cmd_sibling)
 
+    def cmd_budget(m: Memory, args) -> int:
+        from . import token_autonomy as _ta
+        act = args.budget_cmd
+        if act == "set-plan":
+            res = _ta.upsert_provider_plan(m, args.provider, tier_name=args.tier, daily_token_limit=args.daily, weekly_token_limit=args.weekly, monthly_token_limit=args.monthly, usd_balance=args.usd)
+        elif act == "earn":
+            res = _ta.record_agent_earning(m, args.agent, source=args.source, revenue_usdt=args.revenue, compute_share_pct=args.share)
+        elif act == "propose":
+            res = _ta.propose_plan_or_topup(m, agent_id=args.agent, provider=args.provider, amount_usdt=args.amount, estimated_tokens=args.tokens, target_tier=args.tier, reason=args.reason)
+        elif act == "approve":
+            res = _ta.decide_topup_proposal(m, args.proposal_id, approve=True, owner_note=args.note)
+        elif act == "reject":
+            res = _ta.decide_topup_proposal(m, args.proposal_id, approve=False, owner_note=args.note)
+        elif act == "tick":
+            res = _ta.run_budget_timer_tick(m, agent_id=args.agent)
+        else:
+            res = _ta.run_budget_timer_tick(m, auto_propose_if_low=False)
+            res["proposals"] = _ta.list_topup_proposals(m)
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+        return 0
+
+    sbgt = sub.add_parser("budget", help="Token quota pacing (day/week/month), earnings & owner-approved topup proposals")
+    sbsub = sbgt.add_subparsers(dest="budget_cmd", required=True)
+    for cname in ("status", "tick"):
+        sc = sbsub.add_parser(cname)
+        sc.add_argument("--agent", default="aifa")
+        sc.set_defaults(fn=cmd_budget)
+    spl = sbsub.add_parser("set-plan")
+    spl.add_argument("provider")
+    spl.add_argument("--tier", default="api_payg")
+    spl.add_argument("--daily", type=int, default=100000)
+    spl.add_argument("--weekly", type=int, default=500000)
+    spl.add_argument("--monthly", type=int, default=2000000)
+    spl.add_argument("--usd", type=float, default=0.0)
+    spl.set_defaults(fn=cmd_budget)
+    ser = sbsub.add_parser("earn")
+    ser.add_argument("revenue", type=float)
+    ser.add_argument("--agent", default="aifa")
+    ser.add_argument("--source", default="service")
+    ser.add_argument("--share", type=float, default=15.0)
+    ser.set_defaults(fn=cmd_budget)
+    spr = sbsub.add_parser("propose")
+    spr.add_argument("provider")
+    spr.add_argument("amount", type=float)
+    spr.add_argument("--tokens", type=int, default=1000000)
+    spr.add_argument("--tier", default="api_payg")
+    spr.add_argument("--agent", default="aifa")
+    spr.add_argument("--reason", default="")
+    spr.set_defaults(fn=cmd_budget)
+    for dname in ("approve", "reject"):
+        sd = sbsub.add_parser(dname)
+        sd.add_argument("proposal_id")
+        sd.add_argument("--note", default="")
+        sd.set_defaults(fn=cmd_budget)
+
     a = p.parse_args(argv)
     if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup, cmd_pack_extension, cmd_playground, cmd_badge, cmd_aifa_sec) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):
         return a.fn(None, a)

@@ -999,6 +999,32 @@ MCP_TELEMETRY_TOOL_DEF = {
     "inputSchema": {"type": "object", "properties": {}},
     "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
 }
+TOKEN_BUDGET_TOOL_DEF = {
+    "name": "padam_token_budget",
+    "description": "Token quota pacing (day/week/month), agent earnings ledger, timer check, and owner-approved topup/plan proposals (agents cannot approve/execute payments themselves).",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["status", "set_plan", "record_usage", "apply_pacing", "record_earning", "propose_topup", "timer_tick", "list_proposals"], "default": "status"},
+            "provider": {"type": "string", "default": "primary"},
+            "agent_id": {"type": "string", "default": "aifa"},
+            "tier_name": {"type": "string", "default": "api_payg"},
+            "daily_token_limit": {"type": "integer", "default": 100000},
+            "weekly_token_limit": {"type": "integer", "default": 500000},
+            "monthly_token_limit": {"type": "integer", "default": 2000000},
+            "tokens": {"type": "integer", "default": 0},
+            "source": {"type": "string"},
+            "revenue_usdt": {"type": "number"},
+            "compute_share_pct": {"type": "number", "default": 15.0},
+            "amount_usdt": {"type": "number"},
+            "estimated_tokens": {"type": "integer", "default": 1000000},
+            "target_tier": {"type": "string", "default": "api_payg"},
+            "action_type": {"type": "string", "enum": ["topup_api", "upgrade_plan", "renew_plan"], "default": "topup_api"},
+            "reason": {"type": "string"},
+        },
+    },
+    "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+}
 _ALL_TOOLS_BY_NAME = {
     **_TOOLS_BY_NAME,
     "padam_recent": RECENT_TOOL_DEF,
@@ -1026,6 +1052,7 @@ _ALL_TOOLS_BY_NAME = {
     "padam_batch": BATCH_TOOL_DEF,
     "padam_conflict_arbiter": CONFLICT_ARBITER_TOOL_DEF,
     "padam_mcp_telemetry": MCP_TELEMETRY_TOOL_DEF,
+    "padam_token_budget": TOKEN_BUDGET_TOOL_DEF,
 }
 
 
@@ -2818,6 +2845,17 @@ def read_resource(uri: str) -> dict:
             "annotations": _make_annotations(["assistant", "user"], 0.9, None),
         }
 
+    if uri == "padam://token-budget":
+        from . import token_autonomy as _ta
+        tb_res = _ta.run_budget_timer_tick(m, auto_propose_if_low=False)
+        tb_res["proposals"] = _ta.list_topup_proposals(m)
+        return {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps(tb_res, ensure_ascii=False, indent=2),
+            "annotations": _make_annotations(["user", "assistant"], 0.9, None),
+        }
+
     if uri == "padam://mcp-telemetry":
         from . import mcp_telemetry as _mt
         mt_res = _mt.inspect_mcp_telemetry(_list_tools_payload(), memory_stats=m.stats(actor=actor))
@@ -3669,7 +3707,7 @@ _ФЛАГ_ИНСТРУМЕНТА = {
     "padam_cabinet": ("PADAM_MCP_CABINET_TOOL", config.mcp_cabinet_tool_enabled),
     "padam_brain_status": ("PADAM_MCP_BRAIN_STATUS_TOOL", config.mcp_brain_status_tool_enabled),
     **{_n: ("PADAM_MCP_ARK_TOOLS", config.mcp_ark_tools_enabled) for _n in (
-        "padam_wake_up", "padam_commitments", "padam_family_relay", "padam_checkpoint", "padam_ark_timeline", "padam_lesson", "padam_family_council", "padam_memory_branch", "padam_selective_proof", "padam_guardian_tick", "padam_mesh_sync", "padam_multimodal_inspect", "padam_sibling_hub", "padam_coop_lock", "padam_session_pack", "padam_code_anchor", "padam_batch", "padam_conflict_arbiter", "padam_mcp_telemetry")},
+        "padam_wake_up", "padam_commitments", "padam_family_relay", "padam_checkpoint", "padam_ark_timeline", "padam_lesson", "padam_family_council", "padam_memory_branch", "padam_selective_proof", "padam_guardian_tick", "padam_mesh_sync", "padam_multimodal_inspect", "padam_sibling_hub", "padam_coop_lock", "padam_session_pack", "padam_code_anchor", "padam_batch", "padam_conflict_arbiter", "padam_mcp_telemetry", "padam_token_budget")},
     **{_n: ("PADAM_MCP_PARTNER_TOOLS", _partner_bridge.enabled) for _n in _partner_bridge.TOOL_NAMES},
 }
 
@@ -4676,6 +4714,52 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             _READ_CACHE[_cache_key] = (json.dumps(payload, ensure_ascii=False, indent=2), payload)
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
 
+    if name == "padam_token_budget":
+        from . import token_autonomy as _ta
+        act = str(args.get("action") or "status").lower()
+        prov = str(args.get("provider") or "primary")
+        aid = str(args.get("agent_id") or "aifa")
+        if act in ("approve", "execute"):
+            raise PermissionError("Payment approval and execution require the human owner in Studio/API/CLI")
+        if act == "set_plan":
+            payload = _ta.upsert_provider_plan(
+                m, prov,
+                tier_name=str(args.get("tier_name") or "api_payg"),
+                daily_token_limit=int(args.get("daily_token_limit") or 100000),
+                weekly_token_limit=int(args.get("weekly_token_limit") or 500000),
+                monthly_token_limit=int(args.get("monthly_token_limit") or 2000000),
+            )
+        elif act == "record_usage":
+            payload = _ta.record_token_usage(m, prov, int(args.get("tokens") or 0), agent_id=aid)
+        elif act == "apply_pacing":
+            payload = _ta.apply_adaptive_pacing(m, prov)
+        elif act == "record_earning":
+            payload = _ta.record_agent_earning(
+                m, aid,
+                source=str(args.get("source") or "service"),
+                revenue_usdt=float(args.get("revenue_usdt") or 0.0),
+                compute_share_pct=float(args.get("compute_share_pct") or 15.0),
+            )
+        elif act == "propose_topup":
+            payload = _ta.propose_plan_or_topup(
+                m,
+                agent_id=aid,
+                provider=prov,
+                action_type=str(args.get("action_type") or "topup_api"),
+                target_tier=str(args.get("target_tier") or "api_payg"),
+                amount_usdt=float(args.get("amount_usdt") or 5.0),
+                estimated_tokens=int(args.get("estimated_tokens") or 1000000),
+                reason=str(args.get("reason") or ""),
+            )
+        elif act == "timer_tick":
+            payload = _ta.run_budget_timer_tick(m, agent_id=aid)
+        elif act == "list_proposals":
+            payload = {"proposals": _ta.list_topup_proposals(m)}
+        else:
+            payload = _ta.compute_pacing_plan(m, prov)
+            payload["treasury"] = _ta.treasury_summary(m)
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
     if name == "padam_brain_status":
         from . import router as _router
         snap = _router.get_router().status_snapshot()
@@ -4856,6 +4940,7 @@ def _list_tools_payload() -> list[dict]:
             BATCH_TOOL_DEF,
             CONFLICT_ARBITER_TOOL_DEF,
             MCP_TELEMETRY_TOOL_DEF,
+            TOKEN_BUDGET_TOOL_DEF,
         ])
     if _partner_bridge.enabled():
         items.extend(_partner_bridge.TOOL_DEFS)
