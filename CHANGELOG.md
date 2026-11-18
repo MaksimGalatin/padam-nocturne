@@ -1,6 +1,43 @@
 # Changelog
 
-## Unreleased
+## 0.6.4 — 17 November 2026
+
+The Consciousness Ark: memory that can wake an agent up, keep its promises, survive a broken disk and move between
+devices. Everything below is opt-in and costs $0; with default settings PADAM behaves as 0.6.3. The 12 Ark MCP tools
+appear only with `PADAM_MCP_ARK_TOOLS=1`, and a direct call to a hidden tool is refused, not just left out of the list.
+- **Wake-up and commitments** (`padam_wake_up`, `padam_commitments`, `padam_checkpoint`, `padam_ark_timeline`,
+  `padam_lesson`): a new session gets what was done, what was promised and what is overdue in one call.
+- **Post-quantum key exchange** (`padam/pqc_mlkem.py`): X-Wing hybrid, ML-KEM-768 (FIPS 203) + X25519. With
+  `cryptography` 50 the native constant-time ML-KEM is used; where it is missing (Android, `cryptography` 42) a
+  pure-Python FIPS 203 fallback takes over. The private key is stored as the 64-byte seed, so the same key works in both
+  engines; the older 2,400-byte form is still read.
+- **Live Mesh** (`padam/live_mesh.py`, `/api/v2/ark/mesh/*`): one memory on several devices. Pairing uses X-Wing and a
+  6-digit code both people compare; node keys live in a separate `<db>.node.key.json`, encrypted with AES-GCM under the
+  owner key, and older databases are migrated. Sync packets are authenticated (HMAC is mandatory).
+- **LAN discovery** (`padam/lan_discovery.py`): off by default, binds to `127.0.0.1` unless enabled, answers private
+  addresses only, and the beacon carries no names or keys.
+- **Shamir 3-of-5 key split** (`padam ark-shamir`, Studio): shares carry no fingerprint of the secret; over the API the
+  split is answered on loopback only.
+- **Family Council, memory branches, Merkle selective proof, guardian tick** (`padam/ark_advanced.py`): a task checked by
+  four roles, hypothesis branches that never delete, proof that one record exists without revealing the rest, and a
+  health pass over the audit chain and open promises.
+- **Portable Ark, signed handover, L3 post-quantum envelope** (`padam ark-portable`, `padam ark-handover`,
+  `padam/l3_pqc_bundle.py`): memory on a USB/SSD with SHA-256 checks, a signed record of what one session hands the next,
+  and an X-Wing envelope for the eternal archive.
+- **Safe self-heal** (`padam/self_heal.py`, `/api/v2/ark/self-heal`): diagnoses a damaged SQLite file and recovers into a
+  copy; the original is never replaced without the owner.
+- **Deterministic verifier** (`padam/deterministic_verify.py`): numbers, dates and hashes are checked by walking a
+  restricted syntax tree, never by executing code; imports are rejected and oversized results such as `(9**999)**999`
+  stop at once.
+- **Reflex book and heartbeat** (`padam/reflex_engine.py`, `padam/heartbeat.py`): past lessons are surfaced before a
+  similar step; the heartbeat runs only when switched on.
+- **Readiness range** (`padam ark-readiness`, `/api/v2/ark/readiness`): 8 scenarios from key exchange to signed handover;
+  all 8 pass on a fresh database.
+- **Studio:** Ark controls in the Brain tab in 4 languages (drill, Shamir split, Family Council, branches, Merkle proof,
+  Mesh devices, guardian pass), checked at 1280 and 390 px.
+- **AIFaSecurity scanner fix (AS-072):** dangerous calls are now looked for in Python code only, not in docstrings,
+  comments or strings. A module that said "without eval()" in its description was flagged as unsafe
+  (`tests/test_aifa_sec_code_only.py`); real `eval(`, `shell=True` and JavaScript calls are still caught.
 
 Consciousness Ark & Sovereign Brain polish (all opt-in, disabled by default, $0):
 - **Audit chain head anchor (`padam/audit_chain.py`).** Chain head is signed with `HMAC-SHA256` using the owner's key (`ark_audit_anchor`); `verify_audit_chain` now detects tail truncation, re-computed chains without the owner key, and mid-chain tampering. Optional daily OpenTimestamps receipt via `PADAM_AUDIT_OTS=1` (off by default).

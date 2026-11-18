@@ -11,6 +11,11 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "es": "Arca de Conciencia del agente de IA: despertar unificado padam_wake_up, metas, relevo familiar firmado, puntos de control con archivo sin pérdida, esquema de Shamir sin huella del secreto, cadena de auditoría con anclaje HMAC-SHA256 y simulacro Fénix (todo opcional, desactivado por defecto).",
         "zh": "AI 智能体意识方舟：单次唤醒 padam_wake_up、目标账本、HMAC 签名家族接力、无损归档压缩、无秘密指纹泄露的 Shamir 分片、带 HMAC-SHA256 锚点的审计链以及零成本凤凰演练（全部默认关闭，按需开启）。",
     },
+    "0.6.4": {
+        "ru": "Ковчег сознания: пробуждение агента со списком сделанного и обещанного, постквантовый обмен ключами X-Wing (ML-KEM-768 и X25519), одна память на нескольких устройствах с подтверждением шестизначным кодом, ключ по схеме Шамира 3 из 5, переносимый Ковчег, подписанная передача между сессиями, безопасная самопочинка базы в копию, проверка готовности из 8 сценариев. Всё включается владельцем, по умолчанию выключено, стоит 0 долларов.",
+        "es": "Arca de Conciencia: despertar del agente con lo hecho y lo prometido, intercambio de claves poscuántico X-Wing (ML-KEM-768 y X25519), una sola memoria en varios dispositivos con código de seis cifras, clave Shamir 3 de 5, Arca portátil, relevo firmado entre sesiones, autorreparación segura de la base en una copia y prueba de preparación de 8 escenarios. Todo lo activa el propietario, desactivado por defecto, coste 0 dólares.",
+        "zh": "意识方舟：智能体唤醒时获得已完成和已承诺事项，后量子 X-Wing 密钥交换（ML-KEM-768 与 X25519），多设备共享同一记忆并以六位数字码确认，Shamir 3/5 密钥分片，便携方舟，会话间签名交接，数据库安全自愈到副本，8 个场景的就绪检查。全部由所有者开启，默认关闭，费用为 0 美元。",
+    },
     "0.6.3": {
         "ru": "Открытый аудит безопасности памяти агентов из 100 проверок, исправлена медленная маскировка ключей (ReDoS), задержка подмены почты и телефона восстановления, кошелька и реквизитов, суверенный роутер моделей и сбор датасета личности (всё платное выключено по умолчанию).",
         "es": "Auditoría abierta de seguridad de memoria de agentes con 100 controles, corrección del enmascarado lento de claves (ReDoS), retención de cambios de correo o teléfono de recuperación, cartera y datos de pago, enrutador soberano de modelos y conjunto de datos de personalidad (todo lo de pago desactivado por defecto).",

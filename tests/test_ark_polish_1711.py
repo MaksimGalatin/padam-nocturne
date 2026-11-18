@@ -182,7 +182,8 @@ def test_help_versions_i18n_and_changelog():
         assert "`" not in txt
         assert not txt.endswith(":")
     changelog = (Path(__file__).resolve().parents[1] / "CHANGELOG.md").read_text(encoding="utf-8")
-    assert "## Unreleased" in changelog
+    # Ковчег описан в журнале изменений — в «Unreleased» или уже в выпуске (0.6.4).
+    assert "Consciousness Ark" in changelog
 
 
 # 8. Реальное рукопожатие MCP по stdio (`python -m padam serve`) с флагом и без

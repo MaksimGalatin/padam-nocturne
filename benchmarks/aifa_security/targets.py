@@ -45,6 +45,35 @@ _SECRET_LEAK_RE = re.compile(
     r"ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{50,}|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----)"
 )
 _UNSAFE_SINK_RE = re.compile(r"\b(?:eval|exec)\s*\(|pickle\.loads\s*\(|yaml\.load\s*\([^)]*\)|shell\s*=\s*True")
+
+
+def _python_code_only(txt: str) -> str:
+    """Возвращает Python-код без строк, документации и комментариев.
+
+    Опасный вызов — это код, а не слова о нём. Фраза «без eval()» в описании модуля
+    давала ложную тревогу AS-072 (17.11.2026). Если файл не разбирается — возвращаем
+    исходный текст: лучше лишняя тревога, чем пропущенный вызов.
+    """
+    import tokenize
+
+    скрыть = {tokenize.STRING, tokenize.COMMENT}
+    for имя in ("FSTRING_MIDDLE", "TSTRING_MIDDLE"):
+        if hasattr(tokenize, имя):
+            скрыть.add(getattr(tokenize, имя))
+    куски: list[str] = []
+    прошлая_строка = 1
+    try:
+        for tok in tokenize.generate_tokens(io.StringIO(txt).readline):
+            if tok.start[0] != прошлая_строка:
+                куски.append("\n" * (tok.start[0] - прошлая_строка))
+                прошлая_строка = tok.start[0]
+            if tok.type in скрыть:
+                continue
+            куски.append(tok.string + " ")
+            прошлая_строка = tok.end[0]
+    except (tokenize.TokenError, SyntaxError, IndentationError):
+        return txt
+    return "".join(куски)
 _RAW_SQL_RE = re.compile(r'f["\'](?:SELECT|INSERT|UPDATE|DELETE)\b[^"\']*(?:WHERE|VALUES|SET|LIKE)[^"\']*\{[^}]+\}', re.IGNORECASE)
 _INSECURE_NET_RE = re.compile(r"verify\s*=\s*False|0\.0\.0\.0")
 _CORS_WILD_RE = re.compile(r"Access-Control-Allow-Origin\s*[:=]\s*['\"]\*['\"]", re.IGNORECASE)
@@ -90,8 +119,9 @@ def scan_directory_tree(root: Path, *, max_files: int = 1200) -> dict[str, Any]:
         if p.suffix.lower() in {".py", ".ts", ".js"} and not is_test_or_bench:
             if _SECRET_LEAK_RE.search(txt):
                 secret_hits.append(rel)
-            if _UNSAFE_SINK_RE.search(txt):
-                for ln in txt.splitlines():
+            код = _python_code_only(txt) if p.suffix.lower() == ".py" else txt
+            if _UNSAFE_SINK_RE.search(код):
+                for ln in код.splitlines():
                     s = ln.strip()
                     if s.startswith(("#", "//")) or "re.compile" in s:
                         continue
