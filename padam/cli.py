@@ -1969,6 +1969,28 @@ def main(argv=None) -> int:
     sap.add_argument("target_dir")
     sap.set_defaults(fn=cmd_ark_portable)
 
+    def cmd_sibling(m: Memory, args) -> int:
+        from . import sibling_registry as _sr
+        if args.sib_cmd == "register":
+            res = _sr.register_sibling(m, args.agent_id, role=args.role, permission_role=args.perm)
+        elif args.sib_cmd == "passport":
+            res = _sr.spawn_sibling_passport(m, args.agent_id, role=args.role, permission_role=args.perm)
+        else:
+            res = {"siblings": _sr.list_siblings(m)}
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+        return 0
+
+    ssib = sub.add_parser("sibling", help="Manage family AI sibling agents (list, register, passport)")
+    ssub = ssib.add_subparsers(dest="sib_cmd", required=True)
+    ss_l = ssub.add_parser("list", help="List registered siblings")
+    ss_l.set_defaults(fn=cmd_sibling)
+    for cname in ("register", "passport"):
+        sp_c = ssub.add_parser(cname, help=f"{cname} a family sibling agent")
+        sp_c.add_argument("agent_id")
+        sp_c.add_argument("--role", default="Autonomous family sibling")
+        sp_c.add_argument("--perm", default="contributor", choices=["auditor", "contributor", "maintainer"])
+        sp_c.set_defaults(fn=cmd_sibling)
+
     a = p.parse_args(argv)
     if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup, cmd_pack_extension, cmd_playground, cmd_badge, cmd_aifa_sec) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):
         return a.fn(None, a)

@@ -54,8 +54,8 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
 
@@ -474,6 +474,28 @@ class Handler(BaseHTTPRequestHandler):
                 from . import reflex_engine as _rf
                 q = parse_qs(путь.query).get("action", [""])[0]
                 return self._send(200, _rf.surface_reflex_hints(mem(), q))
+            if путь.path == "/api/v2/ark/siblings":
+                roles.require_owner(actor, "brain_status")
+                from . import sibling_registry as _sr
+                return self._send(200, {"siblings": _sr.list_siblings(mem())})
+            if путь.path == "/api/v2/ark/coop":
+                roles.require_owner(actor, "brain_status")
+                from . import coop_broker as _cb
+                return self._send(200, {"leases": _cb.list_leases(mem()), "tasks": _cb.list_tasks(mem())})
+            if путь.path == "/api/v2/ark/session-pack":
+                roles.require_owner(actor, "brain_status")
+                from . import session_pack as _sp
+                qs_sp = parse_qs(путь.query)
+                return self._send(200, _sp.build_session_pack(
+                    mem(),
+                    agent_id=(qs_sp.get("agent") or ["aifa"])[0],
+                    topic=(qs_sp.get("topic") or [""])[0],
+                    max_tokens=int((qs_sp.get("max_tokens") or ["1200"])[0]),
+                ))
+            if путь.path == "/api/v2/ark/mcp-telemetry":
+                roles.require_owner(actor, "brain_status")
+                from . import mcp_server as _ms, mcp_telemetry as _mt
+                return self._send(200, _mt.inspect_mcp_telemetry(_ms._list_tools_payload(), memory_stats=mem().stats(actor=actor)))
             if путь.path == "/api/v2/qa-benchmark":
                 roles.require_owner(actor, "aifa_security")
                 from pathlib import Path as _Path
@@ -1296,6 +1318,36 @@ class Handler(BaseHTTPRequestHandler):
                 roles.require_owner(actor, "ark_self_heal")
                 from . import self_heal as _heal
                 return self._send(200, _heal.inspect_and_propose_repair(mem().store.path, capsule_path=data.get("capsule_path")))
+
+            if self.path == "/api/v2/ark/siblings":
+                roles.require_owner(actor, "ark_siblings")
+                from . import sibling_registry as _sr
+                if data.get("action") == "passport":
+                    return self._send(200, _sr.spawn_sibling_passport(
+                        mem(), str(data.get("agent_id") or ""),
+                        role=str(data.get("role") or "Autonomous family sibling"),
+                        client_type=str(data.get("client_type") or "claude_code"),
+                        permission_role=str(data.get("permission_role") or "contributor"),
+                    ))
+                return self._send(200, _sr.register_sibling(
+                    mem(), str(data.get("agent_id") or ""),
+                    role=str(data.get("role") or "Autonomous sibling agent"),
+                    client_type=str(data.get("client_type") or "mcp_stdio"),
+                    permission_role=str(data.get("permission_role") or "contributor"),
+                ))
+
+            if self.path == "/api/v2/ark/coop":
+                roles.require_owner(actor, "ark_coop")
+                from . import coop_broker as _cb
+                act = str(data.get("action") or "create_task").lower()
+                aid = str(data.get("agent_id") or "aifa")
+                if act == "acquire":
+                    return self._send(200, _cb.acquire_lease(mem(), aid, str(data.get("resource_key") or ""), purpose=str(data.get("purpose") or ""), ttl_s=int(data.get("ttl_s") or 300)))
+                if act == "release":
+                    return self._send(200, _cb.release_lease(mem(), aid, str(data.get("resource_key") or "")))
+                if act == "claim_task":
+                    return self._send(200, _cb.claim_task(mem(), str(data.get("task_id") or ""), aid))
+                return self._send(200, _cb.create_task(mem(), str(data.get("title") or ""), topic=str(data.get("topic") or "general"), created_by=aid))
 
             if self.path == "/api/v2/ark/jobs":
                 roles.require_owner(actor, "ark_jobs")

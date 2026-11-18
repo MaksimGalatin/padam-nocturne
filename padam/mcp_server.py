@@ -874,6 +874,131 @@ MULTIMODAL_INSPECT_TOOL_DEF = {
     },
     "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
 }
+SIBLING_HUB_TOOL_DEF = {
+    "name": "padam_sibling_hub",
+    "description": "Family Sibling Registry & Onboarding Passport (register, heartbeat, list, passport, sign_provenance, verify_provenance).",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["register", "heartbeat", "list", "passport", "sign_provenance", "verify_provenance"], "default": "list"},
+            "agent_id": {"type": "string"},
+            "display_name": {"type": "string"},
+            "role": {"type": "string"},
+            "client_type": {"type": "string", "default": "mcp_stdio"},
+            "permission_role": {"type": "string", "enum": ["auditor", "contributor", "maintainer"], "default": "contributor"},
+            "scopes": {"type": "array", "items": {"type": "string"}},
+            "capabilities": {"type": "array", "items": {"type": "string"}},
+            "status": {"type": "string", "default": "online"},
+            "current_task": {"type": "string"},
+            "content": {"type": "string"},
+            "envelope": {"type": "object"},
+        },
+    },
+    "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+}
+COOP_LOCK_TOOL_DEF = {
+    "name": "padam_coop_lock",
+    "description": "Cross-process File Lease Broker & Persistent Swarm Task Board (acquire, release, list_leases, create_task, claim_task, update_task, list_tasks).",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["acquire", "release", "list_leases", "create_task", "claim_task", "update_task", "list_tasks"], "default": "list_tasks"},
+            "agent_id": {"type": "string", "default": "aifa"},
+            "resource_key": {"type": "string"},
+            "purpose": {"type": "string"},
+            "ttl_s": {"type": "integer", "default": 300},
+            "task_id": {"type": "string"},
+            "title": {"type": "string"},
+            "topic": {"type": "string", "default": "general"},
+            "scope": {"type": "string", "default": "global"},
+            "status": {"type": "string"},
+            "summary": {"type": "string"},
+            "artifacts": {"type": "array", "items": {"type": "string"}},
+        },
+    },
+    "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+}
+SESSION_PACK_TOOL_DEF = {
+    "name": "padam_session_pack",
+    "description": "Single-call token-budgeted session bootstrap pack (profile, active leases, coop tasks, relay inbox, reflex warnings, topic hits).",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "agent_id": {"type": "string", "default": "aifa"},
+            "topic": {"type": "string", "default": ""},
+            "scope": {"type": "string", "default": "global"},
+            "max_tokens": {"type": "integer", "default": 1200, "minimum": 150, "maximum": 8000},
+        },
+    },
+    "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+}
+CODE_ANCHOR_TOOL_DEF = {
+    "name": "padam_code_anchor",
+    "description": "Anchor memory facts to local source files by SHA-256 and detect stale facts when code changes.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["anchor", "check"], "default": "check"},
+            "memory_id": {"type": "string"},
+            "file_path": {"type": "string"},
+            "symbol_name": {"type": "string"},
+            "repo_root": {"type": "string", "default": "."},
+        },
+    },
+    "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+}
+BATCH_TOOL_DEF = {
+    "name": "padam_batch",
+    "description": "Execute up to 10 read-only MCP tool calls in a single round-trip with gating preserved.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "calls": {
+                "type": "array",
+                "maxItems": 10,
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "arguments": {"type": "object"},
+                    },
+                    "required": ["name"],
+                },
+            },
+        },
+        "required": ["calls"],
+    },
+    "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+}
+CONFLICT_ARBITER_TOOL_DEF = {
+    "name": "padam_conflict_arbiter",
+    "description": "Multi-agent conflict arbiter (open, evidence, resolve, escalate, list).",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["open", "evidence", "resolve", "list"], "default": "list"},
+            "case_id": {"type": "string"},
+            "topic": {"type": "string"},
+            "agent_a": {"type": "string"},
+            "position_a": {"type": "string"},
+            "agent_b": {"type": "string"},
+            "position_b": {"type": "string"},
+            "agent_id": {"type": "string", "default": "aifa"},
+            "note": {"type": "string"},
+            "ref": {"type": "string"},
+            "decision": {"type": "string"},
+            "escalate_to_owner": {"type": "boolean", "default": False},
+            "status": {"type": "string"},
+        },
+    },
+    "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+}
+MCP_TELEMETRY_TOOL_DEF = {
+    "name": "padam_mcp_telemetry",
+    "description": "Inspect MCP tool schema token weights, runtime latencies, and context-saving hints.",
+    "inputSchema": {"type": "object", "properties": {}},
+    "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+}
 _ALL_TOOLS_BY_NAME = {
     **_TOOLS_BY_NAME,
     "padam_recent": RECENT_TOOL_DEF,
@@ -894,6 +1019,13 @@ _ALL_TOOLS_BY_NAME = {
     "padam_mesh_sync": MESH_SYNC_TOOL_DEF,
     "padam_multimodal_inspect": MULTIMODAL_INSPECT_TOOL_DEF,
     **{_t["name"]: _t for _t in __import__("padam.partner_bridge", fromlist=["TOOL_DEFS"]).TOOL_DEFS},
+    "padam_sibling_hub": SIBLING_HUB_TOOL_DEF,
+    "padam_coop_lock": COOP_LOCK_TOOL_DEF,
+    "padam_session_pack": SESSION_PACK_TOOL_DEF,
+    "padam_code_anchor": CODE_ANCHOR_TOOL_DEF,
+    "padam_batch": BATCH_TOOL_DEF,
+    "padam_conflict_arbiter": CONFLICT_ARBITER_TOOL_DEF,
+    "padam_mcp_telemetry": MCP_TELEMETRY_TOOL_DEF,
 }
 
 
@@ -1502,6 +1634,8 @@ def _event_allowed_for_actor(audience: dict | None, actor) -> bool:
 
 def _uri_matches_scope_filter(uri: str, scopes: list[str] | None, aud: dict | None = None) -> bool:
     if not scopes:
+        return True
+    if uri.startswith("padam://swarm/topic/"):
         return True
     if uri == "padam://swarm/feed":
         sig_scope = str((aud or {}).get("scope") or "global")
@@ -2666,6 +2800,51 @@ def read_resource(uri: str) -> dict:
             "annotations": _make_annotations(["user", "assistant"], 0.7, None),
         }
 
+    if uri == "padam://session-pack" or uri.startswith("padam://session-pack?"):
+        from urllib.parse import parse_qs as _pqs, urlsplit as _usplit
+        from . import session_pack as _sp
+        qs_sp = _pqs(_usplit(uri).query)
+        sp_res = _sp.build_session_pack(
+            m,
+            agent_id=(qs_sp.get("agent_id") or ["aifa"])[0],
+            topic=(qs_sp.get("topic") or [""])[0],
+            scope=_session_scope_ctx.get() or "global",
+            max_tokens=int((qs_sp.get("max_tokens") or ["1200"])[0]),
+        )
+        return {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps(sp_res, ensure_ascii=False, indent=2),
+            "annotations": _make_annotations(["assistant", "user"], 0.9, None),
+        }
+
+    if uri == "padam://mcp-telemetry":
+        from . import mcp_telemetry as _mt
+        mt_res = _mt.inspect_mcp_telemetry(_list_tools_payload(), memory_stats=m.stats(actor=actor))
+        return {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps(mt_res, ensure_ascii=False, indent=2),
+            "annotations": _make_annotations(["user", "assistant"], 0.85, None),
+        }
+
+    if uri.startswith("padam://swarm/topic/"):
+        from . import coop_broker as _cb
+        topic_name = uri.split("padam://swarm/topic/", 1)[1].strip()
+        if not topic_name:
+            raise KeyError(f"Resource not found: {uri}")
+        topic_payload = {
+            "topic": topic_name,
+            "tasks": _cb.list_tasks(m, topic=topic_name, limit=25),
+            "active_leases": _cb.list_leases(m),
+        }
+        return {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps(topic_payload, ensure_ascii=False, indent=2),
+            "annotations": _make_annotations(["assistant", "user"], 0.85, None),
+        }
+
     if uri == "padam://swarm/feed" or uri.startswith("padam://swarm/feed?"):
         if not config.mcp_swarm_enabled():
             raise KeyError(f"Resource not found: {uri}")
@@ -3490,9 +3669,18 @@ _ФЛАГ_ИНСТРУМЕНТА = {
     "padam_cabinet": ("PADAM_MCP_CABINET_TOOL", config.mcp_cabinet_tool_enabled),
     "padam_brain_status": ("PADAM_MCP_BRAIN_STATUS_TOOL", config.mcp_brain_status_tool_enabled),
     **{_n: ("PADAM_MCP_ARK_TOOLS", config.mcp_ark_tools_enabled) for _n in (
-        "padam_wake_up", "padam_commitments", "padam_family_relay", "padam_checkpoint", "padam_ark_timeline", "padam_lesson", "padam_family_council", "padam_memory_branch", "padam_selective_proof", "padam_guardian_tick", "padam_mesh_sync", "padam_multimodal_inspect")},
+        "padam_wake_up", "padam_commitments", "padam_family_relay", "padam_checkpoint", "padam_ark_timeline", "padam_lesson", "padam_family_council", "padam_memory_branch", "padam_selective_proof", "padam_guardian_tick", "padam_mesh_sync", "padam_multimodal_inspect", "padam_sibling_hub", "padam_coop_lock", "padam_session_pack", "padam_code_anchor", "padam_batch", "padam_conflict_arbiter", "padam_mcp_telemetry")},
     **{_n: ("PADAM_MCP_PARTNER_TOOLS", _partner_bridge.enabled) for _n in _partner_bridge.TOOL_NAMES},
 }
+
+
+_READ_CACHE: dict[tuple, tuple[str, dict | None]] = {}
+_READ_CACHE_SAFE_TOOLS = frozenset({"padam_stats", "padam_profile", "padam_recent", "padam_mcp_telemetry"})
+_BATCH_ALLOWED_READONLY_TOOLS = frozenset({
+    "padam_search", "padam_profile", "padam_stats", "padam_recent", "padam_timeline",
+    "padam_graph", "padam_conflicts", "padam_wake_up", "padam_session_pack",
+    "padam_mcp_telemetry", "padam_guardian_tick", "padam_ark_timeline",
+})
 
 
 def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
@@ -3501,6 +3689,13 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
     if _флаг and not _флаг[1]():
         raise ValueError(f"{name} is disabled by default; set {_флаг[0]}=1 to enable it")
     actor = _current_actor(m)
+    _cache_key = None
+    if name in _READ_CACHE_SAFE_TOOLS:
+        _actor_k = (actor.role, actor.subject, actor.workspace_id) if actor is not None else ("owner", "", None)
+        _cache_key = (id(m.store), m.store.stamp(), m.user_id, _session_scope_ctx.get(), _actor_k, name, json.dumps(args or {}, ensure_ascii=False, sort_keys=True))
+        _hit = _READ_CACHE.get(_cache_key)
+        if _hit is not None:
+            return _hit
     if config.mcp_app_acl_enabled():
         from . import app_acl
         acl_client = str((args or {}).get("agent_id") or getattr(actor, "agent_id", None) or "default")
@@ -4351,6 +4546,136 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
         payload = _adv.inspect_and_store_document(m, str(args.get("filename") or "doc.txt"), raw, scope=str(args.get("scope") or "global"))
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
 
+    if name == "padam_sibling_hub":
+        from . import sibling_registry as _sr
+        act = str(args.get("action") or "list").lower()
+        if act == "register":
+            payload = _sr.register_sibling(
+                m, str(args.get("agent_id") or ""),
+                display_name=str(args.get("display_name") or ""),
+                role=str(args.get("role") or "Autonomous sibling agent"),
+                client_type=str(args.get("client_type") or "mcp_stdio"),
+                permission_role=str(args.get("permission_role") or "contributor"),
+                scopes=args.get("scopes") if isinstance(args.get("scopes"), list) else None,
+                capabilities=args.get("capabilities") if isinstance(args.get("capabilities"), list) else None,
+                current_task=str(args.get("current_task") or ""),
+            )
+        elif act == "heartbeat":
+            payload = _sr.heartbeat_sibling(m, str(args.get("agent_id") or ""), status=str(args.get("status") or "online"), current_task=args.get("current_task"))
+        elif act == "passport":
+            payload = _sr.spawn_sibling_passport(
+                m, str(args.get("agent_id") or ""),
+                role=str(args.get("role") or "Autonomous family sibling"),
+                client_type=str(args.get("client_type") or "claude_code"),
+                permission_role=str(args.get("permission_role") or "contributor"),
+                scopes=args.get("scopes") if isinstance(args.get("scopes"), list) else None,
+                capabilities=args.get("capabilities") if isinstance(args.get("capabilities"), list) else None,
+            )
+        elif act == "sign_provenance":
+            payload = _sr.sign_sibling_envelope(m, str(args.get("agent_id") or "aifa"), str(args.get("content") or ""))
+        elif act == "verify_provenance":
+            payload = _sr.verify_sibling_envelope(m, dict(args.get("envelope") or {}))
+        else:
+            payload = {"siblings": _sr.list_siblings(m)}
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
+    if name == "padam_coop_lock":
+        from . import coop_broker as _cb
+        act = str(args.get("action") or "list_tasks").lower()
+        aid = str(args.get("agent_id") or "aifa")
+        if act == "acquire":
+            payload = _cb.acquire_lease(m, aid, str(args.get("resource_key") or ""), purpose=str(args.get("purpose") or ""), ttl_s=int(args.get("ttl_s") or 300))
+        elif act == "release":
+            payload = _cb.release_lease(m, aid, str(args.get("resource_key") or ""))
+        elif act == "list_leases":
+            payload = {"leases": _cb.list_leases(m)}
+        elif act == "create_task":
+            payload = _cb.create_task(m, str(args.get("title") or ""), topic=str(args.get("topic") or "general"), scope=str(args.get("scope") or "global"), created_by=aid)
+            _emit_resource_updated(f"padam://swarm/topic/{payload['topic']}", owner_only=False)
+        elif act == "claim_task":
+            payload = _cb.claim_task(m, str(args.get("task_id") or ""), aid)
+            _emit_resource_updated(f"padam://swarm/topic/{payload['topic']}", owner_only=False)
+        elif act == "update_task":
+            payload = _cb.update_task(
+                m, str(args.get("task_id") or ""),
+                status=str(args.get("status") or "done"),
+                agent_id=aid,
+                summary=str(args.get("summary") or ""),
+                artifacts=args.get("artifacts") if isinstance(args.get("artifacts"), list) else None,
+            )
+            _emit_resource_updated(f"padam://swarm/topic/{payload['topic']}", owner_only=False)
+        else:
+            payload = {"tasks": _cb.list_tasks(m, topic=args.get("topic"), status=args.get("status"))}
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
+    if name == "padam_session_pack":
+        from . import session_pack as _sp
+        payload = _sp.build_session_pack(
+            m,
+            agent_id=str(args.get("agent_id") or "aifa"),
+            topic=str(args.get("topic") or ""),
+            scope=_check_session_scope(args.get("scope")) or "global",
+            max_tokens=int(args.get("max_tokens") or 1200),
+        )
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
+    if name == "padam_code_anchor":
+        from . import code_anchor as _ca
+        act = str(args.get("action") or "check").lower()
+        root = str(args.get("repo_root") or ".")
+        if act == "anchor":
+            payload = _ca.anchor_fact_to_file(m, str(args.get("memory_id") or ""), str(args.get("file_path") or ""), repo_root=root, symbol_name=str(args.get("symbol_name") or ""))
+        else:
+            payload = _ca.check_stale_anchors(m, repo_root=root)
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
+    if name == "padam_batch":
+        calls = list(args.get("calls") or [])
+        if len(calls) > 10:
+            raise ValueError("padam_batch supports at most 10 calls")
+        results = []
+        for idx, item in enumerate(calls):
+            sub_name = str(item.get("name") or "")
+            sub_args = dict(item.get("arguments") or {})
+            if sub_name == "padam_batch" or sub_name not in _BATCH_ALLOWED_READONLY_TOOLS:
+                raise PermissionError(f"Tool {sub_name!r} is not allowed inside read-only padam_batch")
+            sub_text, sub_struct = _call_tool_full_impl(sub_name, sub_args)
+            results.append({"index": idx, "name": sub_name, "structured": sub_struct, "text": sub_text[:1200]})
+        payload = {"ok": True, "count": len(results), "results": results}
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
+    if name == "padam_conflict_arbiter":
+        from . import conflict_arbiter as _arb
+        act = str(args.get("action") or "list").lower()
+        if act == "open":
+            payload = _arb.open_conflict_case(
+                m, str(args.get("topic") or ""),
+                agent_a=str(args.get("agent_a") or "agent_a"), position_a=str(args.get("position_a") or ""),
+                agent_b=str(args.get("agent_b") or "agent_b"), position_b=str(args.get("position_b") or ""),
+                scope=_check_session_scope(args.get("scope")) or "global",
+            )
+        elif act == "evidence":
+            payload = _arb.add_case_evidence(m, str(args.get("case_id") or ""), agent_id=str(args.get("agent_id") or "aifa"), note=str(args.get("note") or ""), ref=str(args.get("ref") or ""))
+        elif act == "resolve":
+            payload = _arb.resolve_conflict_case(
+                m, str(args.get("case_id") or ""),
+                decision=str(args.get("decision") or ""),
+                resolved_by=str(args.get("agent_id") or "aifa"),
+                escalate_to_owner=bool(args.get("escalate_to_owner", False)),
+            )
+        else:
+            payload = {"cases": _arb.list_conflict_cases(m, status=args.get("status"))}
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
+    if name == "padam_mcp_telemetry":
+        from . import mcp_telemetry as _mt
+        payload = _mt.inspect_mcp_telemetry(_list_tools_payload(), memory_stats=m.stats(actor=actor))
+        if _cache_key is not None:
+            if len(_READ_CACHE) >= 64:
+                _READ_CACHE.clear()
+            _READ_CACHE[_cache_key] = (json.dumps(payload, ensure_ascii=False, indent=2), payload)
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
     if name == "padam_brain_status":
         from . import router as _router
         snap = _router.get_router().status_snapshot()
@@ -4524,6 +4849,13 @@ def _list_tools_payload() -> list[dict]:
             GUARDIAN_TICK_TOOL_DEF,
             MESH_SYNC_TOOL_DEF,
             MULTIMODAL_INSPECT_TOOL_DEF,
+            SIBLING_HUB_TOOL_DEF,
+            COOP_LOCK_TOOL_DEF,
+            SESSION_PACK_TOOL_DEF,
+            CODE_ANCHOR_TOOL_DEF,
+            BATCH_TOOL_DEF,
+            CONFLICT_ARBITER_TOOL_DEF,
+            MCP_TELEMETRY_TOOL_DEF,
         ])
     if _partner_bridge.enabled():
         items.extend(_partner_bridge.TOOL_DEFS)
