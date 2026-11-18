@@ -26,6 +26,60 @@ from . import classify, safety
 _GGUF_LOCK = threading.Lock()
 _GGUF_CACHE: dict[str, Any] = {"path": "", "llm": None}
 
+OFFLINE_MODEL_PACKS: list[dict[str, Any]] = [
+    {
+        "pack_id": "qwen25_1_5b_q4",
+        "tier": "ultra_light_mobile",
+        "ram_min_gb": 2.0,
+        "download_size_gb": 1.1,
+        "quant": "Q4_K_M",
+        "ollama_pull": "ollama pull qwen2.5:1.5b",
+        "gguf_filename": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+        "source_hint": "Ollama Library / HuggingFace (GGUF, Apache-2.0)",
+    },
+    {
+        "pack_id": "llama32_3b_q4",
+        "tier": "laptop_4gb_6gb",
+        "ram_min_gb": 4.0,
+        "download_size_gb": 2.0,
+        "quant": "Q4_K_M",
+        "ollama_pull": "ollama pull llama3.2:3b",
+        "gguf_filename": "llama-3.2-3b-instruct-q4_k_m.gguf",
+        "source_hint": "Ollama Library / HuggingFace (GGUF)",
+    },
+    {
+        "pack_id": "qwen25_coder_7b_q4",
+        "tier": "workstation_8gb_12gb",
+        "ram_min_gb": 8.0,
+        "download_size_gb": 4.7,
+        "quant": "Q4_K_M",
+        "ollama_pull": "ollama pull qwen2.5-coder:7b",
+        "gguf_filename": "qwen2.5-coder-7b-instruct-q4_k_m.gguf",
+        "source_hint": "Ollama Library / HuggingFace (GGUF, Apache-2.0)",
+    },
+    {
+        "pack_id": "deepseek_r1_14b_q5",
+        "tier": "pro_16gb_24gb",
+        "ram_min_gb": 16.0,
+        "download_size_gb": 10.5,
+        "quant": "Q5_K_M",
+        "ollama_pull": "ollama pull deepseek-r1:14b",
+        "gguf_filename": "deepseek-r1-distill-qwen-14b-q5_k_m.gguf",
+        "source_hint": "Ollama Library / HuggingFace (GGUF, MIT)",
+    },
+    {
+        "pack_id": "qwen25_32b_q4",
+        "tier": "server_32gb_plus",
+        "ram_min_gb": 32.0,
+        "download_size_gb": 19.8,
+        "quant": "Q4_K_M",
+        "ollama_pull": "ollama pull qwen2.5:32b",
+        "gguf_filename": "qwen2.5-32b-instruct-q4_k_m.gguf",
+        "source_hint": "Ollama Library / HuggingFace (GGUF, Apache-2.0)",
+    },
+]
+
+
 
 def _has_llama_cpp() -> bool:
     if "llama_cpp" in sys.modules:
@@ -134,6 +188,8 @@ def cpu_engine_status() -> dict[str, Any]:
         "llama_cpp_installed": has_llama_cpp,
         "gguf_configured": gguf_exists,
         "recommended_quant_profile": hw,
+        "offline_model_packs": OFFLINE_MODEL_PACKS,
+        "models_storage_note": "Модели не вшиты в APK/инсталлятор (чтобы пакет весил ~60 МБ); скачиваются 1 раз по команде ollama pull или как .gguf файл (PADAM_CPU_GGUF_PATH).",
     }
 
 

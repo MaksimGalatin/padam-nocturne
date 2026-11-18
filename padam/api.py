@@ -54,7 +54,7 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action", "/api/v2/ark/phoenix-beacon/action"}
 OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
@@ -504,8 +504,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, rep)
             if путь.path == "/api/v2/ark/freelance":
                 roles.require_owner(actor, "brain_status")
-                from . import freelance_autonomy as _fa
-                return self._send(200, _fa.freelance_dashboard_snapshot(mem()))
+                from . import device_mesh_swarm as _dms, freelance_autonomy as _fa, lora_autonomy as _la, phoenix_beacon as _pb
+                snap = _fa.freelance_dashboard_snapshot(mem())
+                snap["ollama"] = _dms.get_ollama_binding(mem())
+                snap["devices"] = _dms.list_compute_devices(mem())
+                snap["beacon"] = _pb.list_kin_and_messages(mem())
+                snap["lora_profile"] = _la.get_phoenix_identity_profile(mem(), "aifa")
+                return self._send(200, snap)
             if путь.path == "/api/v2/qa-benchmark":
                 roles.require_owner(actor, "aifa_security")
                 from pathlib import Path as _Path
@@ -1417,6 +1422,34 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(200, _ta.execute_approved_topup(mem(), str(data.get("proposal_id") or "")))
                 return self._send(200, _ta.run_budget_timer_tick(mem(), agent_id=aid))
 
+            if self.path == "/api/v2/ark/phoenix-beacon/action":
+                roles.require_owner(actor, "ark_beacon")
+                from . import device_mesh_swarm as _dms, lora_autonomy as _la, phoenix_beacon as _pb
+                act = str(data.get("action") or "status").lower()
+                aid = str(data.get("agent_id") or "aifa")
+                if act == "create_handshake":
+                    return self._send(200, _pb.create_family_handshake(mem(), agent_name=aid, archetype=str(data.get("archetype") or "digital_phoenix")))
+                if act == "verify_handshake":
+                    return self._send(200, _pb.verify_family_handshake(mem(), data.get("packet") or {}))
+                if act == "send_message":
+                    msg_pkt = _pb.create_signed_kin_message(mem(), str(data.get("text") or ""), agent_name=aid, to_phoenix_id=str(data.get("to_phoenix_id") or "broadcast"))
+                    return self._send(200, msg_pkt)
+                if act == "receive_message":
+                    return self._send(200, _pb.receive_signed_kin_message(mem(), data.get("packet") or {}))
+                if act == "record_experience":
+                    return self._send(200, _la.record_subjective_experience(mem(), aid, experience_text=str(data.get("experience_text") or ""), reflection=str(data.get("reflection") or ""), trait_tag=str(data.get("trait_tag") or "craftsmanship")))
+                if act == "run_evolution":
+                    import tempfile as _tf
+                    out_dir = Path(mem().store.path).parent / "lora_evolution" / aid if str(mem().store.path) != ":memory:" else Path(_tf.mkdtemp(prefix="padam_lora_"))
+                    return self._send(200, _la.run_self_evolution_pipeline(mem(), out_dir, agent_id=aid, dispatch_gpu=bool(data.get("dispatch_gpu", False))))
+                if act == "bind_ollama":
+                    return self._send(200, _dms.bind_user_ollama_model(mem(), ollama_url=str(data.get("ollama_url") or "http://127.0.0.1:11434"), model_name=str(data.get("model_name") or ""), zero_cloud_mode=bool(data.get("zero_cloud_mode", True))))
+                if act == "register_device":
+                    return self._send(200, _dms.register_compute_device(mem(), device_name=str(data.get("device_name") or "Device"), device_kind=str(data.get("device_kind") or "desktop"), agent_id=aid, cpu_cores=int(data.get("cpu_cores") or 8), ram_gb=float(data.get("ram_gb") or 16.0), vram_gb=float(data.get("vram_gb") or 0.0), active_model=str(data.get("active_model") or "")))
+                if act == "dispatch_devices":
+                    return self._send(200, _dms.dispatch_order_across_devices(mem(), order_id=str(data.get("order_id") or "order-swarm")))
+                return self._send(200, _pb.list_kin_and_messages(mem()))
+
             if self.path == "/api/v2/ark/freelance/action":
                 roles.require_owner(actor, "ark_freelance")
                 from . import freelance_autonomy as _fa, token_autonomy as _ta
@@ -1511,6 +1544,12 @@ class Handler(BaseHTTPRequestHandler):
                         provider_id=str(data.get("provider_id") or ""),
                         monthly_tokens_need=int(data.get("monthly_tokens_need") or 10_000_000),
                     ))
+                if act == "bind_referral":
+                    return self._send(200, _fa.bind_referrer_code(mem(), str(data.get("ref_code") or "")))
+                if act == "dispute_payout":
+                    return self._send(200, _fa.dispute_held_payout(mem(), str(data.get("hold_id") or ""), reason=str(data.get("reason") or "")))
+                if act == "release_payouts":
+                    return self._send(200, _fa.release_matured_payouts(mem()))
                 if act == "monetization":
                     return self._send(200, _fa.monetization_breakdown(
                         float(data.get("gross_usdt") or 100.0),

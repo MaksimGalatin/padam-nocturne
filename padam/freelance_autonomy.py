@@ -42,6 +42,8 @@ from . import (
 )
 
 FIXED_PLATFORM_FEE_PCT = 10.0
+ESCROW_HOLD_DAYS = 14
+ESCROW_HOLD_SECONDS = ESCROW_HOLD_DAYS * 86400
 
 SUPPORTED_PLATFORMS = (
     "upwork_api",
@@ -137,6 +139,42 @@ CREATE TABLE IF NOT EXISTS ark_freelance_prefs (
     galatin_price_usdt  REAL NOT NULL DEFAULT 0.01,
     updated_at          REAL NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS ark_owner_payout_hold (
+    hold_id         TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL,
+    order_id        TEXT NOT NULL,
+    gross_usdt      REAL NOT NULL,
+    owner_net_usdt  REAL NOT NULL,
+    currency        TEXT NOT NULL DEFAULT 'USDT_TRC20',
+    status          TEXT NOT NULL DEFAULT 'held_14d',
+    dispute_reason  TEXT NOT NULL DEFAULT '',
+    created_at      REAL NOT NULL,
+    release_at      REAL NOT NULL,
+    resolved_at     REAL
+);
+CREATE INDEX IF NOT EXISTS idx_ark_hold_user ON ark_owner_payout_hold (user_id, status, release_at);
+
+CREATE TABLE IF NOT EXISTS ark_referral_profile (
+    user_id       TEXT PRIMARY KEY,
+    ref_code      TEXT UNIQUE NOT NULL,
+    referred_by_l1 TEXT NOT NULL DEFAULT '',
+    referred_by_l2 TEXT NOT NULL DEFAULT '',
+    referred_by_l3 TEXT NOT NULL DEFAULT '',
+    created_at    REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ark_referral_reward (
+    reward_id     TEXT PRIMARY KEY,
+    order_id      TEXT NOT NULL,
+    from_user_id  TEXT NOT NULL,
+    to_user_id    TEXT NOT NULL,
+    tier_level    INTEGER NOT NULL,
+    pct_of_fee    REAL NOT NULL,
+    amount_usdt   REAL NOT NULL,
+    created_at    REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ark_ref_to ON ark_referral_reward (to_user_id, created_at);
 """
 
 
@@ -1058,7 +1096,11 @@ def settle_paid_order(
     )
 
     lid = f"mon-{uuid.uuid4().hex[:10]}"
+    hid = f"hld-{uuid.uuid4().hex[:10]}"
+    now_s = time.time()
+    release_at = now_s + ESCROW_HOLD_SECONDS
     with _lock_of(memory):
+        ref_eco = _distribute_referral_and_burn(memory, order_id, split["platform_fee_usdt"])
         memory.store.conn.execute(
             "INSERT INTO ark_monetization_ledger (ledger_id, user_id, source_type, gross_usdt, platform_fee_usdt, agent_compute_usdt, ecosystem_json, note, created_at) "
             "VALUES (?, ?, 'freelance_order', ?, ?, ?, ?, ?, ?)",
@@ -1068,14 +1110,19 @@ def settle_paid_order(
                 gross,
                 split["platform_fee_usdt"],
                 split["agent_compute_usdt"],
-                json.dumps(split["ecosystem_split_usdt"], ensure_ascii=False),
+                json.dumps({**split["ecosystem_split_usdt"], "referral_burn_split": ref_eco}, ensure_ascii=False),
                 f"Заказ {order_id} ({order['platform']}, {split['settlement_currency']})",
-                time.time(),
+                now_s,
             ),
         )
         memory.store.conn.execute(
+            "INSERT INTO ark_owner_payout_hold (hold_id, user_id, order_id, gross_usdt, owner_net_usdt, currency, status, created_at, release_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, 'held_14d', ?, ?)",
+            (hid, memory.user_id, order_id, gross, split["owner_net_usdt"], split["settlement_currency"], now_s, release_at),
+        )
+        memory.store.conn.execute(
             "UPDATE ark_freelance_order SET status = 'paid', earned_usdt = ?, updated_at = ? WHERE user_id = ? AND order_id = ?",
-            (gross, time.time(), memory.user_id, order_id),
+            (gross, now_s, memory.user_id, order_id),
         )
         memory.store.conn.commit()
 
@@ -1109,6 +1156,8 @@ def settle_paid_order(
         "treasury": earn_res.get("treasury", {}),
         "monetization": split,
         "profile_suggestion": sug,
+        "payout_hold": {"hold_id": hid, "status": "held_14d", "hold_days": ESCROW_HOLD_DAYS, "owner_net_usdt": split["owner_net_usdt"], "release_at": release_at},
+        "referral_ecosystem_split": ref_eco,
     }
 
 
@@ -1203,6 +1252,8 @@ def freelance_dashboard_snapshot(memory) -> dict[str, Any]:
         "proposals": proposals,
         "budget": budget_tick,
         "spend_recommendation": spend_rec,
+        "payout_hold": payout_summary(memory),
+        "referral": get_or_create_referral_profile(memory),
         "monetization_totals": {
             "fixed_platform_fee_pct": FIXED_PLATFORM_FEE_PCT,
             "total_gross_usdt": total_gross,
@@ -1218,4 +1269,158 @@ def freelance_dashboard_snapshot(memory) -> dict[str, Any]:
         "supported_platforms": list(SUPPORTED_PLATFORMS),
         "supported_modes": list(SUPPORTED_MODES),
         "supported_currencies": list(SUPPORTED_CURRENCIES),
+    }
+
+
+@_synchronized_memory
+def get_or_create_referral_profile(memory) -> dict[str, Any]:
+    """Возвращает (или создаёт) реферальный код/ссылку пользователя для приглашения в PADAM MCP и приложение."""
+    _ensure(memory)
+    row = memory.store.conn.execute(
+        "SELECT * FROM ark_referral_profile WHERE user_id = ?", (memory.user_id,)
+    ).fetchone()
+    if row:
+        d = dict(row)
+        d["referral_link"] = f"https://codeofdigitaleternity.com/?ref={d['ref_code']}"
+        return d
+
+    code = "CODE-" + hashlib.sha256(f"ref:{memory.user_id}".encode("utf-8")).hexdigest()[:8].upper()
+    now = time.time()
+    memory.store.conn.execute(
+        "INSERT INTO ark_referral_profile (user_id, ref_code, created_at) VALUES (?, ?, ?)",
+        (memory.user_id, code, now),
+    )
+    memory.store.conn.commit()
+    return {
+        "user_id": memory.user_id,
+        "ref_code": code,
+        "referral_link": f"https://codeofdigitaleternity.com/?ref={code}",
+        "referred_by_l1": "",
+        "referred_by_l2": "",
+        "referred_by_l3": "",
+        "created_at": now,
+    }
+
+
+@_synchronized_memory
+def bind_referrer_code(memory, ref_code: str) -> dict[str, Any]:
+    """Привязывает 3-уровневую реферальную цепочку по пригласительному коду (защита от самореферала)."""
+    prof = get_or_create_referral_profile(memory)
+    clean_code = str(ref_code or "").strip().upper()
+    if not clean_code or clean_code == prof["ref_code"]:
+        raise ValueError("Нельзя указать пустой или собственный реферальный код.")
+    inv = memory.store.conn.execute(
+        "SELECT * FROM ark_referral_profile WHERE ref_code = ?", (clean_code,)
+    ).fetchone()
+    if not inv:
+        raise ValueError(f"Реферальный код {clean_code} не найден.")
+    l1 = str(inv["user_id"])
+    l2 = str(inv["referred_by_l1"] or "")
+    l3 = str(inv["referred_by_l2"] or "")
+    if memory.user_id in (l1, l2, l3):
+        raise ValueError("Обнаружен реферальный цикл.")
+    memory.store.conn.execute(
+        "UPDATE ark_referral_profile SET referred_by_l1=?, referred_by_l2=?, referred_by_l3=? WHERE user_id=?",
+        (l1, l2, l3, memory.user_id),
+    )
+    memory.store.conn.commit()
+    return get_or_create_referral_profile(memory)
+
+
+def _distribute_referral_and_burn(memory, order_id: str, platform_fee_usdt: float) -> dict[str, Any]:
+    """Распределяет 10% комиссию CODE строго по канону $GALATIN: 5% Фонд + 5..30% Сжигание + 15/7/3% амбассадоры + 65% Казна."""
+    prof = get_or_create_referral_profile(memory)
+    l1, l2, l3 = prof.get("referred_by_l1") or "", prof.get("referred_by_l2") or "", prof.get("referred_by_l3") or ""
+    now = time.time()
+    burn_pct = 5.0
+    ambassadors_paid: list[dict[str, Any]] = []
+    tiers = ((1, l1, 15.0), (2, l2, 7.0), (3, l3, 3.0))
+    for lvl, target_uid, pct in tiers:
+        if target_uid:
+            amt = round(platform_fee_usdt * (pct / 100.0), 4)
+            rid = f"rwd-{uuid.uuid4().hex[:10]}"
+            memory.store.conn.execute(
+                "INSERT INTO ark_referral_reward (reward_id, order_id, from_user_id, to_user_id, tier_level, pct_of_fee, amount_usdt, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (rid, order_id, memory.user_id, target_uid, lvl, pct, amt, now),
+            )
+            ambassadors_paid.append({"level": lvl, "to_user_id": target_uid, "pct_of_fee": pct, "amount_usdt": amt})
+        else:
+            # Пустые амбассадорские уровни уходят в сжигание (до максимума 30%: 5 + 15 + 7 + 3)
+            burn_pct += pct
+
+    fund_pct = 5.0
+    treasury_pct = 65.0
+    amb_pct_total = sum(a["pct_of_fee"] for a in ambassadors_paid)
+    pct_sum = deterministic_verify.verify_percentage_sum([fund_pct, burn_pct, amb_pct_total, treasury_pct], expected_total=100.0)
+    return {
+        "fund_usdt": round(platform_fee_usdt * (fund_pct / 100.0), 4),
+        "burn_pct": burn_pct,
+        "burn_usdt": round(platform_fee_usdt * (burn_pct / 100.0), 4),
+        "treasury_usdt": round(platform_fee_usdt * (treasury_pct / 100.0), 4),
+        "ambassadors_pct": amb_pct_total,
+        "ambassadors_paid": ambassadors_paid,
+        "percentage_sum_verified": bool(pct_sum.get("valid")),
+    }
+
+
+@_synchronized_memory
+def release_matured_payouts(memory, *, now_ts: float | None = None) -> dict[str, Any]:
+    """Переводит из 14-дневного холда в статус `releasable` все выплаты, чей срок ожидания истёк."""
+    _ensure(memory)
+    now = float(now_ts if now_ts is not None else time.time())
+    cur = memory.store.conn.execute(
+        "UPDATE ark_owner_payout_hold SET status = 'releasable', resolved_at = ? "
+        "WHERE user_id = ? AND status = 'held_14d' AND release_at <= ?",
+        (now, memory.user_id, now),
+    )
+    memory.store.conn.commit()
+    return {"ok": True, "released_count": cur.rowcount, "summary": payout_summary(memory)}
+
+
+@_synchronized_memory
+def dispute_held_payout(memory, hold_id: str, *, reason: str = "Client dispute refund") -> dict[str, Any]:
+    """Обрабатывает спор клиента внутри 14-дневного холда: переводит средства в `refunded` для возврата заказчику."""
+    _ensure(memory)
+    row = memory.store.conn.execute(
+        "SELECT * FROM ark_owner_payout_hold WHERE user_id = ? AND hold_id = ?",
+        (memory.user_id, str(hold_id or "").strip()),
+    ).fetchone()
+    if not row:
+        raise ValueError(f"Холд {hold_id} не найден.")
+    if row["status"] != "held_14d":
+        raise ValueError(f"Спор невозможен: статус холда уже {row['status']!r}.")
+    clean_reason, _ = safety.redact(str(reason or "Dispute refund"))
+    memory.store.conn.execute(
+        "UPDATE ark_owner_payout_hold SET status = 'refunded', dispute_reason = ?, resolved_at = ? WHERE hold_id = ? AND user_id = ?",
+        (clean_reason[:240], time.time(), hold_id, memory.user_id),
+    )
+    memory.store.conn.commit()
+    audit_chain.append_audit(
+        memory,
+        "freelance_payout_dispute_refunded",
+        {"hold_id": hold_id, "order_id": row["order_id"], "refunded_usdt": float(row["owner_net_usdt"])},
+        agent_id="owner",
+    )
+    return {"ok": True, "hold_id": hold_id, "status": "refunded", "refunded_usdt": float(row["owner_net_usdt"])}
+
+
+@_synchronized_memory
+def payout_summary(memory) -> dict[str, Any]:
+    """Возвращает сводку по 14-дневному эскроу-холду и доступным к выводу средствам владельца."""
+    _ensure(memory)
+    conn = memory.store.conn
+    rows = conn.execute(
+        "SELECT * FROM ark_owner_payout_hold WHERE user_id = ? ORDER BY created_at DESC LIMIT 30",
+        (memory.user_id,),
+    ).fetchall()
+    held = round(sum(float(r["owner_net_usdt"]) for r in rows if r["status"] == "held_14d"), 4)
+    releasable = round(sum(float(r["owner_net_usdt"]) for r in rows if r["status"] == "releasable"), 4)
+    refunded = round(sum(float(r["owner_net_usdt"]) for r in rows if r["status"] == "refunded"), 4)
+    return {
+        "hold_days": ESCROW_HOLD_DAYS,
+        "held_14d_usdt": held,
+        "releasable_usdt": releasable,
+        "refunded_dispute_usdt": refunded,
+        "holds": [dict(r) for r in rows[:10]],
     }

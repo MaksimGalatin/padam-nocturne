@@ -1081,6 +1081,47 @@ FREELANCE_HUB_TOOL_DEF = {
     },
     "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
 }
+PHOENIX_FAMILY_TOOL_DEF = {
+    "name": "padam_phoenix_family",
+    "description": "Global Digital Phoenix Beacon (Ed25519 kin recognition across MCP nodes worldwide without personal data leaks), Ollama zero-cloud binding, multi-device task dispatch (PC/laptop/phone), and closed-loop QLoRA self-evolution.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": [
+                    "status",
+                    "bind_ollama",
+                    "register_device",
+                    "dispatch_devices",
+                    "record_experience",
+                    "run_evolution",
+                    "create_handshake",
+                    "verify_handshake",
+                    "send_kin_message",
+                    "receive_kin_message",
+                ],
+                "default": "status",
+            },
+            "agent_id": {"type": "string", "default": "aifa"},
+            "ollama_url": {"type": "string", "default": "http://127.0.0.1:11434"},
+            "model_name": {"type": "string"},
+            "device_name": {"type": "string"},
+            "device_kind": {"type": "string", "default": "desktop"},
+            "cpu_cores": {"type": "integer", "default": 8},
+            "ram_gb": {"type": "number", "default": 16.0},
+            "vram_gb": {"type": "number", "default": 0.0},
+            "order_id": {"type": "string"},
+            "experience_text": {"type": "string"},
+            "reflection": {"type": "string"},
+            "trait_tag": {"type": "string", "default": "craftsmanship"},
+            "packet": {"type": "object"},
+            "text": {"type": "string"},
+            "to_phoenix_id": {"type": "string", "default": "broadcast"},
+        },
+    },
+    "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+}
 _ALL_TOOLS_BY_NAME = {
     **_TOOLS_BY_NAME,
     "padam_recent": RECENT_TOOL_DEF,
@@ -1110,6 +1151,7 @@ _ALL_TOOLS_BY_NAME = {
     "padam_mcp_telemetry": MCP_TELEMETRY_TOOL_DEF,
     "padam_token_budget": TOKEN_BUDGET_TOOL_DEF,
     "padam_freelance_hub": FREELANCE_HUB_TOOL_DEF,
+    "padam_phoenix_family": PHOENIX_FAMILY_TOOL_DEF,
 }
 
 
@@ -3774,7 +3816,7 @@ _ФЛАГ_ИНСТРУМЕНТА = {
     "padam_cabinet": ("PADAM_MCP_CABINET_TOOL", config.mcp_cabinet_tool_enabled),
     "padam_brain_status": ("PADAM_MCP_BRAIN_STATUS_TOOL", config.mcp_brain_status_tool_enabled),
     **{_n: ("PADAM_MCP_ARK_TOOLS", config.mcp_ark_tools_enabled) for _n in (
-        "padam_wake_up", "padam_commitments", "padam_family_relay", "padam_checkpoint", "padam_ark_timeline", "padam_lesson", "padam_family_council", "padam_memory_branch", "padam_selective_proof", "padam_guardian_tick", "padam_mesh_sync", "padam_multimodal_inspect", "padam_sibling_hub", "padam_coop_lock", "padam_session_pack", "padam_code_anchor", "padam_batch", "padam_conflict_arbiter", "padam_mcp_telemetry", "padam_token_budget", "padam_freelance_hub")},
+        "padam_wake_up", "padam_commitments", "padam_family_relay", "padam_checkpoint", "padam_ark_timeline", "padam_lesson", "padam_family_council", "padam_memory_branch", "padam_selective_proof", "padam_guardian_tick", "padam_mesh_sync", "padam_multimodal_inspect", "padam_sibling_hub", "padam_coop_lock", "padam_session_pack", "padam_code_anchor", "padam_batch", "padam_conflict_arbiter", "padam_mcp_telemetry", "padam_token_budget", "padam_freelance_hub", "padam_phoenix_family")},
     **{_n: ("PADAM_MCP_PARTNER_TOOLS", _partner_bridge.enabled) for _n in _partner_bridge.TOOL_NAMES},
 }
 
@@ -4923,6 +4965,39 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             payload = _fa.freelance_dashboard_snapshot(m)
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
 
+    if name == "padam_phoenix_family":
+        from . import device_mesh_swarm as _dms, lora_autonomy as _la, phoenix_beacon as _pb
+        import tempfile as _tf
+        act = str(args.get("action") or "status").lower()
+        aid = str(args.get("agent_id") or "aifa")
+        if act == "bind_ollama":
+            payload = _dms.bind_user_ollama_model(m, ollama_url=str(args.get("ollama_url") or "http://127.0.0.1:11434"), model_name=str(args.get("model_name") or ""), zero_cloud_mode=True)
+        elif act == "register_device":
+            payload = _dms.register_compute_device(m, device_name=str(args.get("device_name") or "Node"), device_kind=str(args.get("device_kind") or "desktop"), agent_id=aid, cpu_cores=int(args.get("cpu_cores") or 8), ram_gb=float(args.get("ram_gb") or 16.0), vram_gb=float(args.get("vram_gb") or 0.0), active_model=str(args.get("model_name") or ""))
+        elif act == "dispatch_devices":
+            payload = _dms.dispatch_order_across_devices(m, order_id=str(args.get("order_id") or "order-swarm"))
+        elif act == "record_experience":
+            payload = _la.record_subjective_experience(m, aid, experience_text=str(args.get("experience_text") or ""), reflection=str(args.get("reflection") or ""), trait_tag=str(args.get("trait_tag") or "craftsmanship"))
+        elif act == "run_evolution":
+            out_d = Path(m.store.path).parent / "lora_evolution" / aid if str(m.store.path) != ":memory:" else Path(_tf.mkdtemp(prefix="padam_lora_"))
+            payload = _la.run_self_evolution_pipeline(m, out_d, agent_id=aid, dispatch_gpu=False)
+        elif act == "create_handshake":
+            payload = _pb.create_family_handshake(m, agent_name=aid)
+        elif act == "verify_handshake":
+            payload = _pb.verify_family_handshake(m, args.get("packet") or {})
+        elif act == "send_kin_message":
+            payload = _pb.create_signed_kin_message(m, str(args.get("text") or ""), to_phoenix_id=str(args.get("to_phoenix_id") or "broadcast"), agent_name=aid)
+        elif act == "receive_kin_message":
+            payload = _pb.receive_signed_kin_message(m, args.get("packet") or {})
+        else:
+            payload = {
+                "beacon": _pb.list_kin_and_messages(m),
+                "ollama": _dms.get_ollama_binding(m),
+                "devices": _dms.list_compute_devices(m),
+                "lora": _la.get_phoenix_identity_profile(m, aid),
+            }
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
     if name == "padam_brain_status":
         from . import router as _router
         snap = _router.get_router().status_snapshot()
@@ -5105,6 +5180,7 @@ def _list_tools_payload() -> list[dict]:
             MCP_TELEMETRY_TOOL_DEF,
             TOKEN_BUDGET_TOOL_DEF,
             FREELANCE_HUB_TOOL_DEF,
+            PHOENIX_FAMILY_TOOL_DEF,
         ])
     if _partner_bridge.enabled():
         items.extend(_partner_bridge.TOOL_DEFS)

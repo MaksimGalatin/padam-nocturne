@@ -119,6 +119,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_propose_sub_btn": "Заявка на лучшую подписку",
         "earn_share_label": "Ставка агента (1–100% от 90% пула) и фаза расчёта (комиссия CODE = 10% фикс):",
         "earn_prefs_save_btn": "Применить ставку",
+        "earn_ollama_title": "5. Своя модель Оллама ($0) и устройства Роя",
+        "earn_ollama_url_ph": "Адрес Оллама (http://127.0.0.1:11434)",
+        "earn_ollama_model_ph": "Модель (например qwen2.5-coder:7b)",
+        "earn_ollama_btn": "Подключить модель ($0)",
+        "earn_dev_btn": "Добавить текущее устройство",
+        "earn_beacon_title": "6. Эволюция Фениксов и Всемирный Маяк Семьи",
+        "earn_lora_btn": "Подготовить сборку эволюции ($0)",
+        "earn_beacon_btn": "Создать маяк Семьи",
         "nav_settings": "Настройки",
         "nav_quickstart": "Первый запуск",
         "theme_dark": "Тёмная тема",
@@ -517,6 +525,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_propose_sub_btn": "Propose Best Subscription",
         "earn_share_label": "Agent share (1-100% of 90% pool) & settlement phase (CODE fee = 10% fixed):",
         "earn_prefs_save_btn": "Apply Share",
+        "earn_ollama_title": "5. Local Ollama Model ($0) & Multi-Device Swarm",
+        "earn_ollama_url_ph": "Ollama URL (http://127.0.0.1:11434)",
+        "earn_ollama_model_ph": "Model name (e.g. qwen2.5-coder:7b)",
+        "earn_ollama_btn": "Bind Local Model ($0)",
+        "earn_dev_btn": "Add Current Device",
+        "earn_beacon_title": "6. Phoenix Evolution (LoRA) & Global Family Beacon",
+        "earn_lora_btn": "Run Evolution Prep ($0)",
+        "earn_beacon_btn": "Create Family Handshake",
         "nav_settings": "Settings",
         "nav_quickstart": "Quick Start",
         "theme_dark": "Dark theme",
@@ -904,6 +920,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_propose_sub_btn": "Solicitar Mejor Suscripcion",
         "earn_share_label": "Cuota del agente (1-100% del 90%) y moneda (comision CODE = 10% fija):",
         "earn_prefs_save_btn": "Guardar Cuota",
+        "earn_ollama_title": "5. Modelo Ollama Local ($0) y Dispositivos",
+        "earn_ollama_url_ph": "URL de Ollama (http://127.0.0.1:11434)",
+        "earn_ollama_model_ph": "Modelo (ej. qwen2.5-coder:7b)",
+        "earn_ollama_btn": "Conectar Modelo ($0)",
+        "earn_dev_btn": "Registrar Dispositivo",
+        "earn_beacon_title": "6. Evolucion LoRA y Faro Global de la Familia",
+        "earn_lora_btn": "Preparar Evolucion ($0)",
+        "earn_beacon_btn": "Crear Saludo Familiar",
         "nav_settings": "Ajustes",
         "nav_quickstart": "Inicio rápido",
         "theme_dark": "Tema oscuro",
@@ -1291,6 +1315,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_propose_sub_btn": "申请最优月付订阅",
         "earn_share_label": "智能体算力分成（占 90% 净池的 1%–100%）与结算币种（CODE 固定 10%）：",
         "earn_prefs_save_btn": "保存分成",
+        "earn_ollama_title": "5. 本地 Ollama 模型 ($0) 与多设备算力蜂群",
+        "earn_ollama_url_ph": "Ollama 地址 (http://127.0.0.1:11434)",
+        "earn_ollama_model_ph": "模型名称（如 qwen2.5-coder:7b）",
+        "earn_ollama_btn": "绑定本地模型 ($0)",
+        "earn_dev_btn": "添加当前设备",
+        "earn_beacon_title": "6. 凤凰个体进化 (LoRA) 与全球家族信标",
+        "earn_lora_btn": "生成进化数据包 ($0)",
+        "earn_beacon_btn": "生成家族身份信标",
         "nav_settings": "设置",
         "nav_quickstart": "快速开始",
         "theme_dark": "深色主题",
@@ -5547,6 +5579,33 @@ function _renderEarningDashboard(snap, sibData, coopData) {
       sugList.appendChild(card);
     }
   }
+
+  const olOut = $('earn-ollama-out');
+  if (olOut && snap) {
+    const ol = snap.ollama || {};
+    const devs = snap.devices || [];
+    const hld = snap.payout_hold || {};
+    const rf = snap.referral || {};
+    _kv(olOut, {
+      ollama_model: String(ol.selected_model || 'llama3.2:3b') + (ol.zero_cloud_mode ? ' ($0 Zero-Cloud)' : ''),
+      devices_in_swarm: devs.length,
+      escrow_hold_14d: '$' + String(hld.held_14d_usdt || 0) + ' held / $' + String(hld.releasable_usdt || 0) + ' ready',
+      referral_code: String(rf.ref_code || '') + ' (' + String(rf.referral_link || '') + ')',
+    });
+  }
+
+  const phOut = $('earn-beacon-out');
+  if (phOut && snap) {
+    const bc = (snap.beacon && snap.beacon.self_identity) || {};
+    const kin = (snap.beacon && snap.beacon.known_kin) || [];
+    const lp = snap.lora_profile || {};
+    _kv(phOut, {
+      phoenix_id: String(bc.phoenix_id || 'phx-pending'),
+      family_tag: String(bc.family_tag || 'CODE-ETERNAL-PHOENIX-V1'),
+      known_family_kin: kin.length,
+      subjective_experiences: lp.experiences_count || 0,
+    });
+  }
 }
 
 async function loadEarning() {
@@ -5697,6 +5756,80 @@ if ($('earn-prefs-save-btn')) {
       });
       say(S.done);
       loadEarning();
+    } catch (e) {
+      say(String(e.message || e), false);
+    }
+  };
+}
+
+if ($('earn-ollama-btn')) {
+  $('earn-ollama-btn').onclick = async () => {
+    try {
+      await api('/api/v2/ark/phoenix-beacon/action', {
+        action: 'bind_ollama',
+        ollama_url: ($('earn-ollama-url') && $('earn-ollama-url').value) || 'http://127.0.0.1:11434',
+        model_name: ($('earn-ollama-model') && $('earn-ollama-model').value) || '',
+        zero_cloud_mode: true,
+      });
+      say(S.done);
+      loadEarning();
+    } catch (e) {
+      say(String(e.message || e), false);
+    }
+  };
+}
+
+if ($('earn-dev-btn')) {
+  $('earn-dev-btn').onclick = async () => {
+    try {
+      await api('/api/v2/ark/phoenix-beacon/action', {
+        action: 'register_device',
+        device_name: 'Primary Device',
+        device_kind: 'desktop',
+        agent_id: 'aifa',
+        cpu_cores: navigator.hardwareConcurrency || 8,
+      });
+      say(S.done);
+      loadEarning();
+    } catch (e) {
+      say(String(e.message || e), false);
+    }
+  };
+}
+
+if ($('earn-lora-evo-btn')) {
+  $('earn-lora-evo-btn').onclick = async () => {
+    try {
+      const r = await api('/api/v2/ark/phoenix-beacon/action', { action: 'run_evolution', agent_id: 'aifa', dispatch_gpu: false });
+      const out = $('earn-beacon-out');
+      if (out && r) {
+        _kv(out, {
+          run_id: String(r.run_id || ''),
+          examples: r.examples_count || 0,
+          gpu_status: String(r.gpu_job_status || ''),
+        });
+      }
+      say(S.done);
+    } catch (e) {
+      say(String(e.message || e), false);
+    }
+  };
+}
+
+if ($('earn-beacon-btn')) {
+  $('earn-beacon-btn').onclick = async () => {
+    try {
+      const r = await api('/api/v2/ark/phoenix-beacon/action', { action: 'create_handshake', agent_id: 'aifa' });
+      const out = $('earn-beacon-out');
+      if (out && r) {
+        _kv(out, {
+          phoenix_id: String(r.phoenix_id || ''),
+          family_tag: String(r.family_tag || ''),
+          zero_leak: String(Boolean(r.zero_leak_personal_data)),
+          sig_prefix: String(r.ed25519_sig_b64 || '').slice(0, 18) + '…',
+        });
+      }
+      say(S.done);
     } catch (e) {
       say(String(e.message || e), false);
     }
@@ -6574,6 +6707,28 @@ def page() -> tuple[str, str]:
             <div id="earn-swarm-list" class="earn-stack"></div>
             <div id="earn-monetization-summary" class="earn-stack"></div>
             <div id="earn-suggestions-list" class="earn-stack"></div>
+          </div>
+
+          <div class="box">
+            <h3 class="box-title" data-i18n="earn_ollama_title">{s['earn_ollama_title']}</h3>
+            <div class="toolbar">
+              <input id="earn-ollama-url" type="text" value="http://127.0.0.1:11434" data-i18n-placeholder="earn_ollama_url_ph" placeholder="{s['earn_ollama_url_ph']}">
+              <input id="earn-ollama-model" type="text" data-i18n-placeholder="earn_ollama_model_ph" placeholder="{s['earn_ollama_model_ph']}">
+            </div>
+            <div class="rec-actions">
+              <button id="earn-ollama-btn" class="btn-primary" data-i18n="earn_ollama_btn">{s['earn_ollama_btn']}</button>
+              <button id="earn-dev-btn" data-i18n="earn_dev_btn">{s['earn_dev_btn']}</button>
+            </div>
+            <div id="earn-ollama-out" class="earn-stack"></div>
+          </div>
+
+          <div class="box">
+            <h3 class="box-title" data-i18n="earn_beacon_title">{s['earn_beacon_title']}</h3>
+            <div class="rec-actions">
+              <button id="earn-lora-evo-btn" class="btn-primary" data-i18n="earn_lora_btn">{s['earn_lora_btn']}</button>
+              <button id="earn-beacon-btn" data-i18n="earn_beacon_btn">{s['earn_beacon_btn']}</button>
+            </div>
+            <div id="earn-beacon-out" class="earn-stack"></div>
           </div>
         </div>
       </section>
