@@ -1144,6 +1144,11 @@ class Handler(BaseHTTPRequestHandler):
 
             if self.path == "/api/v2/ark/shamir-split":
                 roles.require_owner(actor, "ark_shamir")
+                # 17.11.2026: доли КЛЮЧА ВЛАДЕЛЬЦА уходят в ответе — только запросу с этого же компьютера.
+                # API можно поднять на сетевом адресе с токеном (обычный HTTP); доли ключа по сети не отдаём.
+                _клиент = str((self.client_address or ("",))[0])
+                if not (_клиент.startswith("127.") or _клиент in ("::1", "localhost")):
+                    return self._send(403, {"error": "shamir-split is available only from this computer (loopback)"})
                 from . import integrity as _int, shamir as _sh
                 k = max(2, min(10, int(data.get("k") or 3)))
                 n = max(k, min(15, int(data.get("n") or 5)))

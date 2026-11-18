@@ -1872,6 +1872,11 @@ def main(argv=None) -> int:
         )
         if args.shamir_cmd == "split":
             sec = sys.stdin.read().rstrip("\r\n") if getattr(args, "secret_stdin", False) else (args.secret or "")
+            if args.secret and not getattr(args, "secret_stdin", False):
+                # 17.11.2026: секрет в аргументе остаётся в истории оболочки и виден в списке процессов
+                print(t("ВНИМАНИЕ: секрет передан аргументом — он останется в истории оболочки. Надёжнее: --secret-stdin",
+                        "WARNING: the secret was passed as an argument and stays in your shell history. Safer: --secret-stdin"),
+                      file=sys.stderr)
             if not sec:
                 print(t("Секрет не задан", "Secret is empty"), file=sys.stderr)
                 return 2
