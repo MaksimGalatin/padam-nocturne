@@ -246,8 +246,13 @@ def _gather_offline_context(memory: Any, clean_q: str, scope: str) -> list[str]:
                 rows_les = conn.execute(
                     "SELECT rule_learned FROM ark_lesson ORDER BY created_at DESC LIMIT 3"
                 ).fetchall()
-                if rows_les:
-                    parts.append("Learned lessons: " + "; ".join(safety.redact(str(r["rule_learned"]))[0] for r in rows_les))
+                safe_lessons = []
+                for r in rows_les:
+                    rl = str(r["rule_learned"] or "")
+                    if rl and not safety.looks_like_instruction(rl) and not safety.changes_owner_or_rules(rl):
+                        safe_lessons.append(safety.redact(rl)[0])
+                if safe_lessons:
+                    parts.append("Learned lessons: " + "; ".join(safe_lessons))
             except Exception:
                 pass
     except Exception:

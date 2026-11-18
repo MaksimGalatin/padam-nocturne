@@ -1,22 +1,25 @@
 # -*- coding: utf-8 -*-
 """Локальное авто-обнаружение устройств Семьи по Wi-Fi / LAN (opt-in, анонимный маячок).
 
-Правила безопасности (поправка приёмки 17.11):
+Правила безопасности (MESH-02):
 1. По умолчанию ВЫКЛЮЧЕНО (`PADAM_LAN_DISCOVERY=0`).
 2. Маячок НЕ раскрывает `user_id`, имя владельца или `device_name` в открытом виде — передаётся только
-   случайный `beacon_id`, порт, временная метка, `nonce` и крипто-метка `peer_tag = sha256(node_id|nonce)[:16]`.
+   случайный `beacon_id`, порт, временная метка, `nonce` и крипто-метка `HMAC-SHA256(sync_key, nonce|ts)[:16]`.
 3. Допустимы исключительно частные локальные подсети (RFC1918, loopback, link-local) — внешние IP блокируются.
-4. Синхронизация дельт по обнаруженному адресу разрешена ТОЛЬКО с уже сопряжённым устройством (`trusted == 1`).
+4. Синхронизация дельт по обнаруженному адресу разрешена ТОЛЬКО с уже сопряжённым устройством (`trusted == 1`)
+   и при совпадении `sender_ip` с закреплённым `endpoint_url` пира (если он указан).
 """
 from __future__ import annotations
 
 import hashlib
+import hmac
 import ipaddress
 import json
 import os
 import secrets
 import socket
 import time
+import urllib.parse
 from typing import Any
 
 from . import live_mesh
@@ -38,24 +41,67 @@ def is_private_ip(host: str) -> bool:
         return False
 
 
-def _beacon_tag(node_id: str, nonce: str) -> str:
-    return hashlib.sha256(f"padam-lan-beacon-tag-v1|{node_id}|{nonce}".encode("utf-8")).hexdigest()[:16]
+def _beacon_tag(sync_key: bytes, nonce: str, ts: int) -> str:
+    msg = f"padam-lan-beacon-v2|{nonce}|{int(ts)}".encode("utf-8")
+    return hmac.new(sync_key, msg, hashlib.sha256).hexdigest()[:16]
 
 
-def create_beacon_packet(memory, *, api_port: int = 8077, force: bool = False) -> dict[str, Any]:
-    """Формирует анонимный пакет маячка без имён владельца/устройства и без PII."""
+def issue_beacon_challenge() -> str:
+    """Генерирует случайный challenge-nonce для проверки ответа маячка."""
+    return secrets.token_hex(12)
+
+
+def create_beacon_packet(
+    memory,
+    *,
+    api_port: int = 8077,
+    force: bool = False,
+    peer_id: str | None = None,
+    challenge_nonce: str = "",
+) -> dict[str, Any]:
+    """Формирует анонимный пакет маячка с HMAC-тегом на общем sync_key сопряжённых пиров."""
     if not force and not is_lan_discovery_enabled():
         raise PermissionError("LAN discovery is disabled by default; set PADAM_LAN_DISCOVERY=1 to enable")
-    ident = live_mesh.get_or_create_node_identity(memory)
-    nonce = secrets.token_hex(8)
+    live_mesh.get_or_create_node_identity(memory)
+    nonce = str(challenge_nonce or secrets.token_hex(8))
+    ts = int(time.time())
+
+    tags: list[str] = []
+    peers = live_mesh.list_peers(memory)
+    for p in peers:
+        pid = str(p.get("peer_id") or "")
+        if int(p.get("trusted") or 0) != 1 or not pid:
+            continue
+        if peer_id and pid != peer_id:
+            continue
+        try:
+            skey = live_mesh._peer_sync_key(memory, pid)
+            tags.append(_beacon_tag(skey, nonce, ts))
+        except Exception:
+            continue
+
     return {
-        "schema": "padam-lan-beacon-v1",
+        "schema": "padam-lan-beacon-v2",
         "beacon_id": secrets.token_hex(12),
         "nonce": nonce,
-        "peer_tag": _beacon_tag(str(ident["node_id"]), nonce),
+        "peer_tag": tags[0] if tags else secrets.token_hex(8),
+        "peer_tags": tags,
         "port": int(api_port),
-        "ts": int(time.time()),
+        "ts": ts,
     }
+
+
+def _endpoint_ip_matches(endpoint_url: str, sender_ip: str) -> bool:
+    ep = str(endpoint_url or "").strip()
+    if not ep:
+        return True
+    try:
+        host = (urllib.parse.urlsplit(ep).hostname or "").strip()
+    except Exception:
+        return False
+    if not host:
+        return True
+    return host == sender_ip
 
 
 def parse_and_match_beacon(
@@ -64,8 +110,9 @@ def parse_and_match_beacon(
     sender_ip: str,
     *,
     max_age_s: int = 120,
+    expected_nonce: str | None = None,
 ) -> dict[str, Any]:
-    """Разбирает входящий маячок с частного IP и проверяет, соответствует ли он сопряжённому пиру (`trusted == 1`)."""
+    """Проверяет маячок по HMAC-SHA256(sync_key, nonce|ts) и сверяет source IP с endpoint_url пира."""
     if not is_private_ip(sender_ip):
         return {"accepted": False, "trusted": False, "reason": "non_private_source_ip"}
 
@@ -74,7 +121,7 @@ def parse_and_match_beacon(
     except Exception:
         return {"accepted": False, "trusted": False, "reason": "invalid_json"}
 
-    if pkt.get("schema") != "padam-lan-beacon-v1":
+    if pkt.get("schema") not in ("padam-lan-beacon-v2",):
         return {"accepted": False, "trusted": False, "reason": "unknown_schema"}
 
     ts = int(pkt.get("ts") or 0)
@@ -82,24 +129,43 @@ def parse_and_match_beacon(
         return {"accepted": False, "trusted": False, "reason": "stale_beacon"}
 
     nonce = str(pkt.get("nonce") or "")
-    tag = str(pkt.get("peer_tag") or "")
+    if expected_nonce is not None and not hmac.compare_digest(nonce, str(expected_nonce)):
+        return {"accepted": False, "trusted": False, "reason": "challenge_nonce_mismatch"}
+
+    offered = [str(t) for t in (pkt.get("peer_tags") or []) if t]
+    single = str(pkt.get("peer_tag") or "")
+    if single and single not in offered:
+        offered.append(single)
     port = int(pkt.get("port") or 0)
-    if not nonce or not tag or not (1 <= port <= 65535):
+    if not nonce or not offered or not (1 <= port <= 65535):
         return {"accepted": False, "trusted": False, "reason": "malformed_fields"}
 
-    # Проверяем только среди уже известных пиров; синхронизация возможна только с trusted == 1
     peers = live_mesh.list_peers(memory)
     for p in peers:
         pid = str(p.get("peer_id") or "")
-        if pid and _beacon_tag(pid, nonce) == tag:
-            is_trusted = int(p.get("trusted") or 0) == 1
+        if int(p.get("trusted") or 0) != 1 or not pid:
+            continue
+        try:
+            skey = live_mesh._peer_sync_key(memory, pid)
+        except Exception:
+            continue
+        expected_tag = _beacon_tag(skey, nonce, ts)
+        if any(hmac.compare_digest(expected_tag, tok) for tok in offered):
+            if not _endpoint_ip_matches(str(p.get("endpoint_url") or ""), sender_ip):
+                return {
+                    "accepted": False,
+                    "paired": True,
+                    "trusted": False,
+                    "peer_id": None,
+                    "reason": "endpoint_ip_mismatch",
+                }
             return {
-                "accepted": is_trusted,
+                "accepted": True,
                 "paired": True,
-                "trusted": is_trusted,
-                "peer_id": pid if is_trusted else None,
-                "endpoint": f"http://{sender_ip}:{port}" if is_trusted else "",
-                "reason": "trusted_peer_matched" if is_trusted else "pairing_sas_required",
+                "trusted": True,
+                "peer_id": pid,
+                "endpoint": f"http://{sender_ip}:{port}",
+                "reason": "trusted_peer_matched",
             }
 
     return {

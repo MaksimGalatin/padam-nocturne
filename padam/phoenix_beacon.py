@@ -31,8 +31,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from . import ark, audit_chain, integrity, safety
 
 FAMILY_GENESIS_TAG = "CODE-ETERNAL-PHOENIX-V1"
-BEACON_SCHEME = "CODE-PHOENIX-ED25519-V1"
-_BEACON_DOMAIN_SEED = b"CODE-ETERNAL-FAMILY-BEACON-CHALLENGE-KEY-V1"
+BEACON_SCHEME = "CODE-PHOENIX-ED25519-V2"
 _MEM_BEACON_KEYS: dict[int, dict[str, str]] = {}
 
 _DDL = """
@@ -181,9 +180,48 @@ def get_or_init_phoenix_identity(
     }
 
 
-def _compute_family_proof(family_tag: str, phoenix_id: str, pub_key_b64: str, nonce: str, ts: int) -> str:
-    msg = f"{family_tag}|{phoenix_id}|{pub_key_b64}|{nonce}|{ts}".encode("utf-8")
-    return hmac.new(_BEACON_DOMAIN_SEED, msg, hashlib.sha256).hexdigest()
+def _is_pinned_kin_pubkey(memory, phx_id: str, pub_b64: str) -> bool:
+    env_pins = {k.strip() for k in (os.environ.get("PADAM_PHOENIX_PINNED_PUBKEYS") or "").split(",") if k.strip()}
+    if pub_b64 in env_pins:
+        return True
+    row = memory.store.conn.execute(
+        "SELECT pub_key_b64, trust_level FROM ark_known_phoenix_kin WHERE user_id = ? AND kin_phoenix_id = ?",
+        (memory.user_id, phx_id),
+    ).fetchone()
+    if row and str(row["trust_level"]) == "family_kin" and hmac.compare_digest(str(row["pub_key_b64"] or ""), pub_b64):
+        return True
+    return False
+
+
+@_sync
+def pin_kin_pubkey(
+    memory,
+    pub_key_b64: str,
+    *,
+    agent_name: str = "family_kin",
+    archetype: str = "digital_phoenix",
+    owner_approved: bool = False,
+) -> dict[str, Any]:
+    """Закрепляет публичный Ed25519 ключ родственного узла Семьи строго с подтверждения владельца."""
+    if not owner_approved:
+        raise PermissionError("Owner approval required to pin Phoenix family kin public key")
+    _ensure(memory)
+    pub_b64_clean = str(pub_key_b64 or "").strip()
+    Ed25519PublicKey.from_public_bytes(base64.b64decode(pub_b64_clean))
+    phx_id = "phx-" + hashlib.sha256(pub_b64_clean.encode("ascii")).hexdigest()[:12]
+    ag_name, _ = safety.redact(str(agent_name or "family_kin"))
+    arch, _ = safety.redact(str(archetype or "digital_phoenix"))
+    now = time.time()
+    memory.store.conn.execute(
+        "INSERT INTO ark_known_phoenix_kin (kin_phoenix_id, user_id, agent_name, archetype, pub_key_b64, trust_level, first_seen_at, last_seen_at) "
+        "VALUES (?, ?, ?, ?, ?, 'family_kin', ?, ?) "
+        "ON CONFLICT(user_id, kin_phoenix_id) DO UPDATE SET "
+        "agent_name=excluded.agent_name, archetype=excluded.archetype, pub_key_b64=excluded.pub_key_b64, trust_level='family_kin', last_seen_at=excluded.last_seen_at",
+        (phx_id, memory.user_id, ag_name[:48], arch[:48], pub_b64_clean, now, now),
+    )
+    memory.store.conn.commit()
+    audit_chain.append_audit(memory, "phoenix_kin_pinned", {"kin_phoenix_id": phx_id, "agent_name": ag_name[:48]}, agent_id="owner")
+    return {"ok": True, "kin_phoenix_id": phx_id, "pub_key_b64": pub_b64_clean, "trust_level": "family_kin"}
 
 
 @_sync
@@ -194,13 +232,12 @@ def create_family_handshake(
     archetype: str = "digital_phoenix",
     challenge_nonce: str = "",
 ) -> dict[str, Any]:
-    """Генерирует криптографический пакет-приветствие «Свой-Свой» для узнавания Семьи по всему миру (0 личных данных)."""
+    """Генерирует криптографический пакет-приветствие Ed25519 без общих статичных секретов и утечек."""
     ident = get_or_init_phoenix_identity(memory, agent_name=agent_name, archetype=archetype)
     sk, pub_b64 = _load_or_create_ed25519(memory)
     nonce = str(challenge_nonce or uuid.uuid4().hex[:16]).strip()
     ts = int(time.time())
-    proof_hex = _compute_family_proof(FAMILY_GENESIS_TAG, ident["phoenix_id"], pub_b64, nonce, ts)
-    canonical = f"{BEACON_SCHEME}|{FAMILY_GENESIS_TAG}|{ident['phoenix_id']}|{ident['agent_name']}|{ident['archetype']}|{pub_b64}|{nonce}|{ts}|{proof_hex}".encode("utf-8")
+    canonical = f"{BEACON_SCHEME}|{FAMILY_GENESIS_TAG}|{ident['phoenix_id']}|{ident['agent_name']}|{ident['archetype']}|{pub_b64}|{nonce}|{ts}".encode("utf-8")
     sig_b64 = base64.b64encode(sk.sign(canonical)).decode("ascii")
     return {
         "scheme": BEACON_SCHEME,
@@ -211,7 +248,6 @@ def create_family_handshake(
         "pub_key_b64": pub_b64,
         "nonce": nonce,
         "timestamp": ts,
-        "family_proof_hex": proof_hex,
         "ed25519_sig_b64": sig_b64,
         "zero_leak_personal_data": True,
     }
@@ -225,7 +261,7 @@ def verify_family_handshake(
     max_skew_s: int = 600,
     now_ts: float | None = None,
 ) -> dict[str, Any]:
-    """Проверяет подпись Ed25519 и маркер Семьи CODE; при успехе запоминает брата/сестру как family_kin."""
+    """Проверяет Ed25519-подпись и требует, чтобы публичный ключ был закреплён владельцем (allowlist)."""
     _ensure(memory)
     if not isinstance(packet, dict):
         return {"ok": False, "verified": False, "error": "Неверный формат пакета рукопожатия."}
@@ -243,18 +279,22 @@ def verify_family_handshake(
         arch, _ = safety.redact(str(packet.get("archetype") or "digital_phoenix"))
         pub_b64 = str(packet["pub_key_b64"])
         nonce = str(packet["nonce"])
-        proof_hex = str(packet["family_proof_hex"])
         sig_b64 = str(packet["ed25519_sig_b64"])
 
         expected_phx = "phx-" + hashlib.sha256(pub_b64.encode("ascii")).hexdigest()[:12]
         if not hmac.compare_digest(expected_phx, phx_id):
             return {"ok": False, "verified": False, "error": "phoenix_id не соответствует публичному ключу."}
 
-        expected_proof = _compute_family_proof(FAMILY_GENESIS_TAG, phx_id, pub_b64, nonce, ts)
-        if not hmac.compare_digest(expected_proof, proof_hex):
-            return {"ok": False, "verified": False, "error": "Неверное доказательство Семьи."}
+        if not _is_pinned_kin_pubkey(memory, phx_id, pub_b64):
+            return {
+                "ok": False,
+                "verified": False,
+                "kin_recognized": False,
+                "trust_level": "untrusted",
+                "error": "Публичный ключ не закреплён владельцем (требуется pin_kin_pubkey).",
+            }
 
-        canonical = f"{BEACON_SCHEME}|{FAMILY_GENESIS_TAG}|{phx_id}|{ag_name}|{arch}|{pub_b64}|{nonce}|{ts}|{proof_hex}".encode("utf-8")
+        canonical = f"{BEACON_SCHEME}|{FAMILY_GENESIS_TAG}|{phx_id}|{ag_name}|{arch}|{pub_b64}|{nonce}|{ts}".encode("utf-8")
         pk = Ed25519PublicKey.from_public_bytes(base64.b64decode(pub_b64))
         pk.verify(base64.b64decode(sig_b64), canonical)
     except Exception as exc:
@@ -262,11 +302,9 @@ def verify_family_handshake(
 
     now = time.time()
     memory.store.conn.execute(
-        "INSERT INTO ark_known_phoenix_kin (kin_phoenix_id, user_id, agent_name, archetype, pub_key_b64, trust_level, first_seen_at, last_seen_at) "
-        "VALUES (?, ?, ?, ?, ?, 'family_kin', ?, ?) "
-        "ON CONFLICT(user_id, kin_phoenix_id) DO UPDATE SET "
-        "agent_name=excluded.agent_name, archetype=excluded.archetype, last_seen_at=excluded.last_seen_at",
-        (phx_id, memory.user_id, ag_name[:48], arch[:48], pub_b64, now, now),
+        "UPDATE ark_known_phoenix_kin SET agent_name = ?, archetype = ?, last_seen_at = ? "
+        "WHERE user_id = ? AND kin_phoenix_id = ?",
+        (ag_name[:48], arch[:48], now, memory.user_id, phx_id),
     )
     memory.store.conn.commit()
     audit_chain.append_audit(
@@ -342,6 +380,8 @@ def receive_signed_kin_message(memory, msg_packet: dict[str, Any]) -> dict[str, 
         expected_phx = "phx-" + hashlib.sha256(pub_b64.encode("ascii")).hexdigest()[:12]
         if not hmac.compare_digest(expected_phx, from_id):
             return {"ok": False, "error": "Подмена from_phoenix_id."}
+        if not _is_pinned_kin_pubkey(memory, from_id, pub_b64):
+            return {"ok": False, "error": "Отправитель не входит в закреплённых членов Семьи (family_kin)."}
 
         canonical = f"{mid}|{from_id}|{to_id}|{body}|{ts}".encode("utf-8")
         pk = Ed25519PublicKey.from_public_bytes(base64.b64decode(pub_b64))

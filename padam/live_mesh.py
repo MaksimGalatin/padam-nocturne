@@ -58,7 +58,35 @@ CREATE TABLE IF NOT EXISTS ark_mesh_Identity (
     x25519_pub   TEXT NOT NULL,
     created_at   TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS ark_mesh_shared (
+    user_id    TEXT NOT NULL,
+    peer_id    TEXT NOT NULL,
+    memory_id  TEXT NOT NULL,
+    direction  TEXT NOT NULL DEFAULT 'outbound',
+    shared_at  TEXT NOT NULL,
+    PRIMARY KEY (user_id, peer_id, memory_id)
+);
+CREATE TABLE IF NOT EXISTS ark_mesh_forget_quarantine (
+    user_id        TEXT NOT NULL,
+    source_peer_id TEXT NOT NULL,
+    memory_id      TEXT NOT NULL,
+    reason         TEXT NOT NULL,
+    status         TEXT NOT NULL DEFAULT 'pending',
+    created_at     TEXT NOT NULL,
+    decided_at     TEXT,
+    PRIMARY KEY (user_id, source_peer_id, memory_id)
+);
+CREATE TABLE IF NOT EXISTS ark_mesh_replay_nonce (
+    user_id     TEXT NOT NULL,
+    peer_id     TEXT NOT NULL,
+    delta_nonce TEXT NOT NULL,
+    seen_at     TEXT NOT NULL,
+    PRIMARY KEY (user_id, peer_id, delta_nonce)
+);
 """
+
+_MAX_FORGET_BATCH_DEFAULT = 100
+_MAX_DELTA_AGE_S_DEFAULT = 3600
 
 _NODE_SECRETS_MEM: dict[int, dict[str, Any]] = {}
 
@@ -449,11 +477,21 @@ def export_mesh_delta(
     commitments = ark.list_commitments(memory, limit=50)
     chk = ark.latest_checkpoint(memory)
 
+    now_s = _now()
+    for m in memories:
+        conn.execute(
+            "INSERT OR IGNORE INTO ark_mesh_shared (user_id, peer_id, memory_id, direction, shared_at) VALUES (?, ?, ?, 'outbound', ?)",
+            (memory.user_id, resolved_peer_id, str(m["id"]), now_s),
+        )
+    if memories:
+        conn.commit()
+
     delta_body = {
         "schema": "padam-live-mesh-delta-v2",
         "source_node": node["node_id"],
         "target_peer": resolved_peer_id,
-        "exported_at": _now(),
+        "exported_at": now_s,
+        "nonce": secrets.token_hex(16),
         "memories": memories,
         "forgotten_ids": forgotten_ids,
         "commitments": commitments,
@@ -475,8 +513,15 @@ def export_mesh_delta(
     }
 
 
-def apply_mesh_delta(memory, packet: dict[str, Any], *, allow_plaintext_for_tests: bool = False) -> dict[str, Any]:
-    """Применяет входящую дельту: ВСЕГДА проверяет сопряжение (`trusted=1`) и подпись HMAC-SHA256."""
+def apply_mesh_delta(
+    memory,
+    packet: dict[str, Any],
+    *,
+    allow_plaintext_for_tests: bool = False,
+    max_forget_batch: int = _MAX_FORGET_BATCH_DEFAULT,
+    max_delta_age_s: int = _MAX_DELTA_AGE_S_DEFAULT,
+) -> dict[str, Any]:
+    """Применяет входящую дельту: проверяет сопряжение, HMAC-SHA256, свежесть/nonce и scope forgotten_ids."""
     _ensure_mesh(memory)
     conn = memory.store.conn
 
@@ -507,14 +552,85 @@ def apply_mesh_delta(memory, packet: dict[str, Any], *, allow_plaintext_for_test
     if not hmac.compare_digest(str(packet.get("hmac_sig") or ""), expected_sig):
         raise PermissionError("Mesh delta HMAC signature verification failed")
 
-    forgotten_ids = set(str(x) for x in (delta_body.get("forgotten_ids") or []))
+    # MESH-07: проверка свежести метки времени и одноразовости nonce (anti-replay)
+    delta_nonce = str(delta_body.get("nonce") or "").strip()
+    if not delta_nonce:
+        raise PermissionError("Mesh delta missing anti-replay nonce")
+    exp_str = str(delta_body.get("exported_at") or "").strip()
+    if exp_str:
+        try:
+            exp_dt = datetime.fromisoformat(exp_str.replace("Z", "+00:00"))
+            if exp_dt.tzinfo is None:
+                exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+            skew_s = abs((datetime.now(timezone.utc) - exp_dt).total_seconds())
+            if skew_s > max(1, int(max_delta_age_s)):
+                raise PermissionError(f"Stale or future mesh delta rejected (skew={int(skew_s)}s)")
+        except ValueError as exc:
+            raise PermissionError(f"Invalid mesh delta exported_at timestamp: {exc}") from exc
+    seen = conn.execute(
+        "SELECT 1 FROM ark_mesh_replay_nonce WHERE user_id = ? AND peer_id = ? AND delta_nonce = ?",
+        (memory.user_id, source_node, delta_nonce),
+    ).fetchone()
+    if seen is not None:
+        raise PermissionError("Mesh delta replay detected (duplicate nonce)")
+    now_s = _now()
+    conn.execute(
+        "INSERT INTO ark_mesh_replay_nonce (user_id, peer_id, delta_nonce, seen_at) VALUES (?, ?, ?, ?)",
+        (memory.user_id, source_node, delta_nonce, now_s),
+    )
+
+    # MESH-01: забвения от пира применяются ТОЛЬКО к записям, расшаренным с этим пиром, с пределом на батч и аудитом
+    forgotten_list = sorted({str(x) for x in (delta_body.get("forgotten_ids") or []) if str(x)})
+    forgotten_ids = set(forgotten_list)
     erased_count = 0
-    for fid in forgotten_ids:
-        cur = conn.execute(
-            "UPDATE memory SET content = NULL, embedding = NULL, status = 'forgotten' WHERE id = ? AND user_id = ? AND status != 'forgotten'",
-            (fid, memory.user_id),
+    quarantined_forgotten = 0
+    require_confirm = os.environ.get("PADAM_MESH_REQUIRE_FORGET_CONFIRM", "0").strip() == "1"
+    cap = max(1, int(max_forget_batch))
+
+    if len(forgotten_list) > cap:
+        for fid in forgotten_list:
+            conn.execute(
+                "INSERT OR IGNORE INTO ark_mesh_forget_quarantine (user_id, source_peer_id, memory_id, reason, status, created_at) "
+                "VALUES (?, ?, ?, 'forget_batch_limit_exceeded', 'pending', ?)",
+                (memory.user_id, source_node, fid, now_s),
+            )
+            quarantined_forgotten += 1
+        audit_chain.append_audit(
+            memory,
+            "mesh_remote_forget_batch_quarantined",
+            {"source_node": source_node, "count": len(forgotten_list), "cap": cap},
         )
-        erased_count += cur.rowcount
+    else:
+        for fid in forgotten_list:
+            shared_row = conn.execute(
+                "SELECT 1 FROM ark_mesh_shared WHERE user_id = ? AND peer_id = ? AND memory_id = ?",
+                (memory.user_id, source_node, fid),
+            ).fetchone()
+            if shared_row is None or require_confirm:
+                reason = "unshared_peer_forget" if shared_row is None else "owner_confirm_required"
+                conn.execute(
+                    "INSERT OR IGNORE INTO ark_mesh_forget_quarantine (user_id, source_peer_id, memory_id, reason, status, created_at) "
+                    "VALUES (?, ?, ?, ?, 'pending', ?)",
+                    (memory.user_id, source_node, fid, reason, now_s),
+                )
+                quarantined_forgotten += 1
+                audit_chain.append_audit(
+                    memory,
+                    "mesh_remote_forget_quarantined",
+                    {"source_node": source_node, "memory_id": fid, "reason": reason},
+                )
+                continue
+            cur = conn.execute(
+                "UPDATE memory SET content = NULL, embedding = NULL, status = 'forgotten' WHERE id = ? AND user_id = ? AND status != 'forgotten'",
+                (fid, memory.user_id),
+            )
+            if cur.rowcount > 0:
+                erased_count += cur.rowcount
+                audit_chain.append_audit(
+                    memory,
+                    "mesh_remote_forget_applied",
+                    {"source_node": source_node, "memory_id": fid},
+                )
 
     applied_memories = 0
     for m in (delta_body.get("memories") or []):
@@ -537,14 +653,18 @@ def apply_mesh_delta(memory, packet: dict[str, Any], *, allow_plaintext_for_test
                     clean_content,
                     float(m.get("importance") or 0.5),
                     float(m.get("confidence") or 1.0),
-                    str(m.get("created_at") or _now()),
-                    str(m.get("last_seen_at") or _now()),
-                    str(m.get("last_confirmed_at") or _now()),
+                    str(m.get("created_at") or now_s),
+                    str(m.get("last_seen_at") or now_s),
+                    str(m.get("last_confirmed_at") or now_s),
                     str(m.get("origin") or "user"),
                     m.get("owner_sig"),
                 ),
             )
             applied_memories += 1
+        conn.execute(
+            "INSERT OR IGNORE INTO ark_mesh_shared (user_id, peer_id, memory_id, direction, shared_at) VALUES (?, ?, ?, 'inbound', ?)",
+            (memory.user_id, source_node, mid, now_s),
+        )
 
     applied_commitments = 0
     for c in (delta_body.get("commitments") or []):
@@ -564,22 +684,58 @@ def apply_mesh_delta(memory, packet: dict[str, Any], *, allow_plaintext_for_test
                     int(c.get("priority") or 2),
                     c.get("due_at"),
                     str(c.get("context") or ""),
-                    str(c.get("created_at") or _now()),
-                    str(c.get("updated_at") or _now()),
+                    str(c.get("created_at") or now_s),
+                    str(c.get("updated_at") or now_s),
                 ),
             )
             applied_commitments += 1
 
-    conn.execute("UPDATE ark_mesh_peer SET last_sync_at = ? WHERE peer_id = ? AND user_id = ?", (_now(), source_node, memory.user_id))
+    conn.execute("UPDATE ark_mesh_peer SET last_sync_at = ? WHERE peer_id = ? AND user_id = ?", (now_s, source_node, memory.user_id))
     conn.commit()
     audit_chain.append_audit(
         memory,
         "mesh_delta_applied",
-        {"source_node": source_node, "applied_memories": applied_memories, "erased_forgotten": erased_count, "applied_commitments": applied_commitments},
+        {
+            "source_node": source_node,
+            "applied_memories": applied_memories,
+            "erased_forgotten": erased_count,
+            "quarantined_forgotten": quarantined_forgotten,
+            "applied_commitments": applied_commitments,
+        },
     )
     return {
         "ok": True,
         "applied_memories": applied_memories,
         "erased_forgotten": erased_count,
+        "quarantined_forgotten": quarantined_forgotten,
         "applied_commitments": applied_commitments,
     }
+
+
+def list_quarantined_forgets(memory) -> list[dict[str, Any]]:
+    _ensure_mesh(memory)
+    rows = memory.store.conn.execute(
+        "SELECT source_peer_id, memory_id, reason, status, created_at, decided_at "
+        "FROM ark_mesh_forget_quarantine WHERE user_id = ? ORDER BY created_at DESC LIMIT 100",
+        (memory.user_id,),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def confirm_quarantined_forget(memory, memory_id: str, source_peer_id: str, *, owner_approved: bool = False) -> dict[str, Any]:
+    """Подтверждает или отклоняет удалённое забывание из карантина строго владельцем."""
+    _ensure_mesh(memory)
+    if not owner_approved:
+        raise PermissionError("Owner approval required to confirm quarantined remote forget")
+    now_s = _now()
+    cur = memory.store.conn.execute(
+        "UPDATE memory SET content = NULL, embedding = NULL, status = 'forgotten' WHERE id = ? AND user_id = ? AND status != 'forgotten'",
+        (memory_id, memory.user_id),
+    )
+    memory.store.conn.execute(
+        "UPDATE ark_mesh_forget_quarantine SET status = 'confirmed', decided_at = ? WHERE user_id = ? AND source_peer_id = ? AND memory_id = ?",
+        (now_s, memory.user_id, source_peer_id, memory_id),
+    )
+    memory.store.conn.commit()
+    audit_chain.append_audit(memory, "mesh_remote_forget_owner_confirmed", {"memory_id": memory_id, "source_peer_id": source_peer_id}, agent_id="owner")
+    return {"ok": True, "memory_id": memory_id, "erased": cur.rowcount}

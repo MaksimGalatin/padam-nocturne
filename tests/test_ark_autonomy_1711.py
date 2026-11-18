@@ -344,13 +344,15 @@ def test_block_a_3_lan_discovery_anonymous_private_and_paired_only(monkeypatch, 
         # До сопряжения SAS не принимается к синхронизации
         live_mesh.register_peer(pc, ph_node["node_id"], "Phone", mlkem_public_b64=ph_node["mlkem_public_b64"], x25519_public_b64=ph_node["x25519_public_b64"])
         unpaired = lan_discovery.parse_and_match_beacon(pc, raw_bytes, "192.168.1.55")
-        assert unpaired["accepted"] is False and unpaired["trusted"] is False and unpaired["reason"] == "pairing_sas_required"
+        assert unpaired["accepted"] is False and unpaired["trusted"] is False
 
-        # После сопряжения SAS маячок принимается для сопряжённого пира
+        # После сопряжения SAS обе стороны имеют общий sync_key, и новый HMAC-маячок принимается
         p_init = live_mesh.initiate_pairing(pc, ph_node)
         p_acc = live_mesh.accept_pairing_invite(phone, p_init["pairing_invite"])
         live_mesh.confirm_peer_sas(pc, ph_node["node_id"], p_init["sas_code"])
-        matched = lan_discovery.parse_and_match_beacon(pc, raw_bytes, "192.168.1.55")
+        live_mesh.confirm_peer_sas(phone, pc_node["node_id"], p_acc["sas_code"])
+        pkt2 = lan_discovery.create_beacon_packet(phone, api_port=8099)
+        matched = lan_discovery.parse_and_match_beacon(pc, json.dumps(pkt2).encode("utf-8"), "192.168.1.55")
         assert matched["accepted"] is True and matched["trusted"] is True and matched["endpoint"] == "http://192.168.1.55:8099"
 
         # Реальный UDP loopback-тест

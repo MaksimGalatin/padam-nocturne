@@ -11,6 +11,7 @@ import hashlib
 import hmac
 import json
 import re
+import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -65,6 +66,7 @@ def build_signed_handover(
     sig_payload = {
         "schema": "padam-handover-v1",
         "created_at": created_at,
+        "nonce": secrets.token_hex(12),
         "agent": agent,
         "body_sha256": body_sha256,
         "audit_head_hash": chain.get("head_hash", ""),
@@ -102,8 +104,10 @@ def verify_signed_handover(
     *,
     memory=None,
     owner_key: bytes | None = None,
+    max_age_s: int = 7 * 86400,
+    prevent_replay: bool = False,
 ) -> dict[str, Any]:
-    """Проверяет SHA-256 тела передачи контекста и HMAC-SHA256 подпись владельца."""
+    """Проверяет SHA-256, HMAC-SHA256 подпись владельца, окно свежести и опциональный anti-replay."""
     m = _SIG_RE.search(markdown_text or "")
     if not m:
         return {"valid": False, "reason": "missing_signature_block"}
@@ -127,9 +131,42 @@ def verify_signed_handover(
     if not hmac.compare_digest(expected_hmac, str(sig_block.get("hmac_sha256") or "")):
         return {"valid": False, "reason": "hmac_signature_mismatch"}
 
+    # MESH-09: проверка окна свежести created_at
+    created_raw = str(sig_block.get("created_at") or "").strip()
+    try:
+        created_dt = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
+        if created_dt.tzinfo is None:
+            created_dt = created_dt.replace(tzinfo=timezone.utc)
+    except Exception:
+        return {"valid": False, "reason": "invalid_handover_timestamp"}
+    age_s = (datetime.now(timezone.utc) - created_dt).total_seconds()
+    if age_s > max(1, int(max_age_s)) or age_s < -300:
+        return {"valid": False, "reason": "handover_stale_or_future"}
+
+    if prevent_replay and memory is not None:
+        nonce_val = str(sig_block.get("nonce") or "").strip()
+        if not nonce_val:
+            return {"valid": False, "reason": "handover_missing_nonce"}
+        conn = memory.store.conn
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS ark_handover_replay (user_id TEXT NOT NULL, nonce TEXT NOT NULL, seen_at TEXT NOT NULL, PRIMARY KEY (user_id, nonce))"
+        )
+        dup = conn.execute(
+            "SELECT 1 FROM ark_handover_replay WHERE user_id = ? AND nonce = ?",
+            (memory.user_id, nonce_val),
+        ).fetchone()
+        if dup is not None:
+            return {"valid": False, "reason": "handover_replay_detected"}
+        conn.execute(
+            "INSERT INTO ark_handover_replay (user_id, nonce, seen_at) VALUES (?, ?, ?)",
+            (memory.user_id, nonce_val, datetime.now(timezone.utc).isoformat()),
+        )
+        conn.commit()
+
     return {
         "valid": True,
         "body_sha256": actual_sha,
         "created_at": sig_block.get("created_at"),
         "agent": sig_block.get("agent"),
+        "nonce": sig_block.get("nonce"),
     }

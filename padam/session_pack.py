@@ -32,7 +32,10 @@ def build_session_pack(
 
     explicit_task = str(current_task).strip() if current_task is not None and str(current_task).strip() else None
     if touch_heartbeat:
-        sibling_registry.heartbeat_sibling(memory, agent_id, status="online", current_task=explicit_task)
+        try:
+            sibling_registry.heartbeat_sibling(memory, agent_id, status="online", current_task=explicit_task)
+        except PermissionError:
+            pass  # не создаём фантомного агента при read-only session_pack
     prof = memory.profile(scope=scope)
     leases = coop_broker.list_leases(memory)
     tasks = coop_broker.list_tasks(memory, limit=10)

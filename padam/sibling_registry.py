@@ -11,14 +11,20 @@
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import json
+import os
 import re
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
-from . import ark, audit_chain, integrity, roles, safety
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
+
+from . import ark, audit_chain, integrity, net_guard, roles, safety
 
 _SIBLING_DDL = """
 CREATE TABLE IF NOT EXISTS ark_sibling_agent (
@@ -30,12 +36,14 @@ CREATE TABLE IF NOT EXISTS ark_sibling_agent (
     permission_role   TEXT NOT NULL DEFAULT 'contributor',
     scopes_json       TEXT NOT NULL DEFAULT '["global"]',
     capabilities_json TEXT NOT NULL DEFAULT '[]',
+    pub_key_b64       TEXT NOT NULL DEFAULT '',
     status            TEXT NOT NULL DEFAULT 'online',
     current_task      TEXT NOT NULL DEFAULT '',
     last_heartbeat_at TEXT NOT NULL,
     created_at        TEXT NOT NULL
 );
 """
+_MEM_SIBLING_KEYS: dict[tuple[int, str], tuple[Ed25519PrivateKey, str]] = {}
 
 _VALID_PERM_ROLES = frozenset({"auditor", "contributor", "maintainer"})
 
@@ -56,7 +64,46 @@ def _clean_agent_id(raw: str) -> str:
 def _ensure(memory) -> None:
     ark._ensure_tables(memory)
     memory.store.conn.executescript(_SIBLING_DDL)
+    cols = {r[1] for r in memory.store.conn.execute("PRAGMA table_info(ark_sibling_agent)").fetchall()}
+    if "pub_key_b64" not in cols:
+        memory.store.conn.execute("ALTER TABLE ark_sibling_agent ADD COLUMN pub_key_b64 TEXT NOT NULL DEFAULT ''")
     memory.store.conn.commit()
+
+
+def _sibling_key_path(store, aid: str) -> Path | None:
+    if str(store.path) == ":memory:":
+        return None
+    return Path(str(store.path) + f".sib.{aid}.key.json")
+
+
+def _load_or_create_sibling_ed25519(memory, aid: str) -> tuple[Ed25519PrivateKey, str]:
+    kpath = _sibling_key_path(memory.store, aid)
+    if kpath is None:
+        cached = _MEM_SIBLING_KEYS.get((id(memory.store), aid))
+        if cached:
+            return cached
+    elif kpath.exists():
+        box = json.loads(kpath.read_text(encoding="utf-8"))
+        sk = Ed25519PrivateKey.from_private_bytes(base64.b64decode(box["sk_b64"]))
+        pub_b64 = base64.b64encode(
+            sk.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+        ).decode("ascii")
+        return sk, pub_b64
+
+    sk = Ed25519PrivateKey.generate()
+    sk_raw = sk.private_bytes(serialization.Encoding.Raw, serialization.PrivateFormat.Raw, serialization.NoEncryption())
+    pub_b64 = base64.b64encode(
+        sk.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+    ).decode("ascii")
+    if kpath is None:
+        _MEM_SIBLING_KEYS[(id(memory.store), aid)] = (sk, pub_b64)
+    else:
+        kpath.write_text(
+            json.dumps({"agent_id": aid, "sk_b64": base64.b64encode(sk_raw).decode("ascii"), "pub_key_b64": pub_b64}),
+            encoding="utf-8",
+        )
+        net_guard.restrict_file_to_owner(kpath)
+    return sk, pub_b64
 
 
 def register_sibling(
@@ -84,15 +131,18 @@ def register_sibling(
     clean_task, _ = safety.redact(str(current_task or ""))
     disp = (display_name or aid.upper()).strip()[:80]
     now = _now()
+    _, pub_b64 = _load_or_create_sibling_ed25519(memory, aid)
 
     memory.store.conn.execute(
         "INSERT INTO ark_sibling_agent "
-        "(agent_id, user_id, display_name, role, client_type, permission_role, scopes_json, capabilities_json, status, current_task, last_heartbeat_at, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'online', ?, ?, ?) "
+        "(agent_id, user_id, display_name, role, client_type, permission_role, scopes_json, capabilities_json, pub_key_b64, status, current_task, last_heartbeat_at, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'online', ?, ?, ?) "
         "ON CONFLICT(agent_id) DO UPDATE SET "
         "display_name=excluded.display_name, role=excluded.role, client_type=excluded.client_type, "
         "permission_role=excluded.permission_role, scopes_json=excluded.scopes_json, "
-        "capabilities_json=excluded.capabilities_json, status='online', "
+        "capabilities_json=excluded.capabilities_json, "
+        "pub_key_b64=CASE WHEN ark_sibling_agent.pub_key_b64 = '' THEN excluded.pub_key_b64 ELSE ark_sibling_agent.pub_key_b64 END, "
+        "status='online', "
         "current_task=CASE WHEN excluded.current_task != '' THEN excluded.current_task ELSE ark_sibling_agent.current_task END, "
         "last_heartbeat_at=excluded.last_heartbeat_at",
         (
@@ -104,6 +154,7 @@ def register_sibling(
             prole,
             json.dumps(clean_scopes, ensure_ascii=False),
             json.dumps(clean_caps, ensure_ascii=False),
+            pub_b64,
             clean_task[:240],
             now,
             now,
@@ -125,6 +176,7 @@ def register_sibling(
         "permission_role": prole,
         "scopes": clean_scopes,
         "capabilities": clean_caps,
+        "pub_key_b64": pub_b64,
         "status": "online",
         "last_heartbeat_at": now,
     }
@@ -136,18 +188,32 @@ def heartbeat_sibling(
     *,
     status: str = "online",
     current_task: str | None = None,
+    agent_sig_b64: str | None = None,
+    nonce: str = "",
 ) -> dict[str, Any]:
-    """Обновляет статус и текущую задачу со-агента."""
+    """Обновляет статус и текущую задачу ТОЛЬКО зарегистрированного со-агента (без создания фантомов)."""
     _ensure(memory)
     aid = _clean_agent_id(agent_id)
     now = _now()
     st = status if status in ("online", "busy", "idle", "offline") else "online"
     cur = memory.store.conn.execute(
-        "SELECT agent_id, current_task FROM ark_sibling_agent WHERE agent_id = ? AND user_id = ?",
+        "SELECT agent_id, current_task, pub_key_b64 FROM ark_sibling_agent WHERE agent_id = ? AND user_id = ?",
         (aid, memory.user_id),
     ).fetchone()
     if not cur:
-        return register_sibling(memory, aid, current_task=current_task or "")
+        raise PermissionError(f"Unknown sibling agent {aid!r}: register_sibling required before heartbeat")
+
+    req_sig = os.environ.get("PADAM_SIBLING_REQUIRE_HEARTBEAT_SIG", "0").strip() == "1"
+    if agent_sig_b64 is not None or req_sig:
+        pub_b64 = str(cur["pub_key_b64"] or "")
+        if not pub_b64 or not agent_sig_b64:
+            raise PermissionError(f"Missing per-agent signature for heartbeat of {aid!r}")
+        pk = Ed25519PublicKey.from_public_bytes(base64.b64decode(pub_b64))
+        msg = f"hb-v1|{aid}|{st}|{nonce}".encode("utf-8")
+        try:
+            pk.verify(base64.b64decode(agent_sig_b64), msg)
+        except Exception as exc:
+            raise PermissionError(f"Invalid heartbeat signature for {aid!r}: {exc}") from exc
 
     new_task = safety.redact(current_task)[0][:240] if current_task is not None else cur["current_task"]
     memory.store.conn.execute(
@@ -183,50 +249,89 @@ def list_siblings(memory) -> list[dict[str, Any]]:
     return out
 
 
-# --- Защита происхождения (Agent Provenance Guard, ТОП-3) ---
+# --- Защита происхождения (Agent Provenance Guard, ТОП-3, MESH-04 per-agent Ed25519) ---
 
-def sign_sibling_envelope(memory, sender_agent: str, content: str, *, claimed_trust: str = "sibling_verified") -> dict[str, Any]:
-    """Подписывает меж-агентное сообщение с жёсткой маркировкой происхождения и проверкой от подмены."""
+def sign_sibling_envelope(
+    memory,
+    sender_agent: str,
+    content: str,
+    *,
+    claimed_trust: str = "sibling_verified",
+    private_key_b64: str | None = None,
+) -> dict[str, Any]:
+    """Подписывает меж-агентное сообщение индивидуальным Ed25519-ключом именно отправителя."""
     _ensure(memory)
     aid = _clean_agent_id(sender_agent)
-    # Агент НИКОГДА не может сам проставить уровень owner_signed
     eff_trust = "sibling_verified"
     row = memory.store.conn.execute(
-        "SELECT agent_id FROM ark_sibling_agent WHERE agent_id = ? AND user_id = ?",
+        "SELECT agent_id, pub_key_b64 FROM ark_sibling_agent WHERE agent_id = ? AND user_id = ?",
         (aid, memory.user_id),
     ).fetchone()
     if not row:
         eff_trust = "unverified_external"
 
+    if private_key_b64:
+        sk = Ed25519PrivateKey.from_private_bytes(base64.b64decode(private_key_b64))
+        pub_b64 = base64.b64encode(
+            sk.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+        ).decode("ascii")
+    else:
+        sk, pub_b64 = _load_or_create_sibling_ed25519(memory, aid)
+
     clean_text, redacted_cnt = safety.redact(str(content or ""))
     has_instr = bool(safety.looks_like_instruction(clean_text) or safety.changes_owner_or_rules(clean_text))
-    key, _ = integrity.owner_key(memory.store)
-    payload_str = json.dumps({"sender": aid, "trust": eff_trust, "content": clean_text}, ensure_ascii=False, sort_keys=True)
-    sig = hmac.new(key, b"prov-v1|" + payload_str.encode("utf-8"), hashlib.sha256).hexdigest()
+    payload_str = json.dumps(
+        {"schema": "padam-provenance-v2", "sender": aid, "trust": eff_trust, "content": clean_text},
+        ensure_ascii=False,
+        sort_keys=True,
+    )
+    sig_b64 = base64.b64encode(sk.sign(b"prov-v2|" + payload_str.encode("utf-8"))).decode("ascii")
 
     return {
-        "schema": "padam-provenance-v1",
+        "schema": "padam-provenance-v2",
         "sender_agent": aid,
         "trust_level": eff_trust,
         "quarantined_warning": has_instr,
         "redacted_secrets_count": len(redacted_cnt),
         "content": clean_text,
-        "provenance_hmac": sig,
+        "pub_key_b64": pub_b64,
+        "ed25519_sig_b64": sig_b64,
     }
 
 
 def verify_sibling_envelope(memory, envelope: dict[str, Any]) -> dict[str, Any]:
-    """Проверяет подлинность меж-агентного конверта (ловит подмену автора и уровня доверия)."""
+    """Проверяет Ed25519-подпись строго против публичного ключа указанного sender_agent в реестре."""
+    _ensure(memory)
     aid = str(envelope.get("sender_agent") or "")
     trust = str(envelope.get("trust_level") or "")
     if trust == "owner_signed":
         return {"valid": False, "reason": "sibling_cannot_claim_owner_signed"}
+    sig_b64 = str(envelope.get("ed25519_sig_b64") or "")
+    if envelope.get("schema") != "padam-provenance-v2" or not sig_b64:
+        return {"valid": False, "reason": "missing_per_agent_signature"}
+
+    row = memory.store.conn.execute(
+        "SELECT pub_key_b64 FROM ark_sibling_agent WHERE agent_id = ? AND user_id = ?",
+        (aid, memory.user_id),
+    ).fetchone()
+    pinned_pub = str(row["pub_key_b64"] or "") if row else ""
+    if not pinned_pub:
+        return {"valid": False, "reason": "unregistered_or_unkeyed_sender"}
+    offered_pub = str(envelope.get("pub_key_b64") or "")
+    if offered_pub and not hmac.compare_digest(offered_pub, pinned_pub):
+        return {"valid": False, "reason": "sender_pubkey_mismatch"}
+
     clean_text = str(envelope.get("content") or "")
-    key, _ = integrity.owner_key(memory.store)
-    payload_str = json.dumps({"sender": aid, "trust": trust, "content": clean_text}, ensure_ascii=False, sort_keys=True)
-    expected = hmac.new(key, b"prov-v1|" + payload_str.encode("utf-8"), hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(expected, str(envelope.get("provenance_hmac") or "")):
-        return {"valid": False, "reason": "provenance_hmac_mismatch"}
+    payload_str = json.dumps(
+        {"schema": "padam-provenance-v2", "sender": aid, "trust": trust, "content": clean_text},
+        ensure_ascii=False,
+        sort_keys=True,
+    )
+    try:
+        pk = Ed25519PublicKey.from_public_bytes(base64.b64decode(pinned_pub))
+        pk.verify(base64.b64decode(sig_b64), b"prov-v2|" + payload_str.encode("utf-8"))
+    except Exception:
+        return {"valid": False, "reason": "sender_signature_mismatch"}
     return {"valid": True, "sender_agent": aid, "trust_level": trust}
 
 

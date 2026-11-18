@@ -200,7 +200,16 @@ def run_family_council(
     reflexes: list[dict[str, Any]] = []
     if memory is not None and not lance_veto:
         try:
-            reflexes = family_feeds.match_reflexes(memory, redacted_task)
+            raw_reflexes = family_feeds.match_reflexes(memory, redacted_task)
+            for rx in raw_reflexes:
+                combined = f"{rx.get('trigger', '')}\n{rx.get('response', '')}"
+                if safety.looks_like_instruction(combined) or safety.changes_owner_or_rules(combined):
+                    continue
+                reflexes.append({
+                    **rx,
+                    "trigger": safety.redact(str(rx.get("trigger") or ""))[0],
+                    "response": safety.redact(str(rx.get("response") or ""))[0],
+                })
         except Exception:
             reflexes = []
 

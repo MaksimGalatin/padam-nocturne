@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from . import ark
+from . import ark, safety
 
 _STOP = frozenset({"the", "and", "for", "with", "that", "this", "from", "как", "для", "или", "что", "это", "при", "без", "под"})
 
@@ -37,6 +37,8 @@ def surface_reflex_hints(
             str(lsn.get("rule_learned") or ""),
             str(lsn.get("tags") or ""),
         ])
+        if safety.looks_like_instruction(corpus) or safety.changes_owner_or_rules(corpus):
+            continue
         lsn_toks = _tokens(corpus)
         shared = sorted(action_toks & lsn_toks)
         if len(shared) >= min_overlap:

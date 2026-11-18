@@ -259,6 +259,9 @@ def match_reflexes(memory, text: str, *, limit: int = 3, count_use: bool = True)
     for r in list_reflexes(memory, status="active", limit=200):
         if not r["verified"]:
             continue
+        # MESH-05: повторная проверка содержимого рефлекса при выдаче
+        if _suspicious(f"{r['trigger']}\n{r['response']}"):
+            continue
         tw = {w.lower() for w in _WORD.findall(r["trigger"])}
         hit = len(words & tw)
         if tw and hit and hit / len(tw) >= 0.5:
@@ -270,15 +273,17 @@ def match_reflexes(memory, text: str, *, limit: int = 3, count_use: bool = True)
             memory.store.conn.execute("UPDATE family_reflex SET uses = uses + 1 WHERE id = ? AND user_id = ?", (r["id"], memory.user_id))
         if picked:
             memory.store.conn.commit()
-    out = [{"id": r["id"], "trigger": r["trigger"], "response": r["response"], "source": "owner_rule"} for r in picked]
-    # Вторая часть той же книги — уроки (`reflex_engine`, грабли из ark_lesson): они подсказывают сами,
-    # отдельного включения не требуют, потому что ничего не велят, а только предупреждают.
+    out = [
+        {"id": r["id"], "trigger": safety.redact(r["trigger"])[0], "response": safety.redact(r["response"])[0], "source": "owner_rule"}
+        for r in picked
+    ]
     try:
         from . import reflex_engine
         for h in reflex_engine.surface_reflex_hints(memory, text, limit=limit, min_overlap=2).get("hints", []):
-            if h.get("rule_learned"):
+            rule_txt = str(h.get("rule_learned") or "")
+            if rule_txt and not _suspicious(rule_txt):
                 out.append({"id": str(h.get("lesson_id") or ""), "trigger": ", ".join(h.get("matched_terms") or []),
-                            "response": str(h["rule_learned"])[:300], "source": "lesson"})
+                            "response": safety.redact(rule_txt)[0][:300], "source": "lesson"})
     except Exception:
         pass
     return out[:max(1, int(limit)) * 2]

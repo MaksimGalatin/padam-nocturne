@@ -232,7 +232,8 @@ def test_global_phoenix_beacon_ed25519_kin_recognition_zero_leak_and_chat(monkey
         assert "дачи" not in json.dumps(hs, ensure_ascii=False)
         assert Path(str(db_pc) + ".beacon.key.json").exists()
 
-        # Узел телефона проверяет маяк и узнаёт родного Феникса
+        # Владелец телефона закрепляет публичный ключ узла ПК (MESH-03 allowlist) перед рукопожатием
+        phoenix_beacon.pin_kin_pubkey(phone, hs["pub_key_b64"], agent_name="aifa_pc", owner_approved=True)
         ver = phoenix_beacon.verify_family_handshake(phone, hs)
         assert ver["ok"] is True and ver["verified"] is True and ver["trust_level"] == "family_kin"
         assert ver["agent_name"] == "aifa_pc"
