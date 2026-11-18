@@ -893,6 +893,7 @@ _ALL_TOOLS_BY_NAME = {
     "padam_guardian_tick": GUARDIAN_TICK_TOOL_DEF,
     "padam_mesh_sync": MESH_SYNC_TOOL_DEF,
     "padam_multimodal_inspect": MULTIMODAL_INSPECT_TOOL_DEF,
+    **{_t["name"]: _t for _t in __import__("padam.partner_bridge", fromlist=["TOOL_DEFS"]).TOOL_DEFS},
 }
 
 
@@ -3482,12 +3483,15 @@ def _held_for_review_note(structured: dict | None) -> str:
 
 # 17.11.2026: инструмент, скрытый флагом из tools/list, не должен исполняться и по прямому вызову по имени.
 # Раньше padam_cabinet, padam_brain_status, padam_rollback и инструменты Ковчега работали при выключенном флаге.
+from . import partner_bridge as _partner_bridge  # noqa: E402
+
 _ФЛАГ_ИНСТРУМЕНТА = {
     "padam_rollback": ("PADAM_MCP_ROLLBACK_TOOL", config.mcp_rollback_tool_enabled),
     "padam_cabinet": ("PADAM_MCP_CABINET_TOOL", config.mcp_cabinet_tool_enabled),
     "padam_brain_status": ("PADAM_MCP_BRAIN_STATUS_TOOL", config.mcp_brain_status_tool_enabled),
     **{_n: ("PADAM_MCP_ARK_TOOLS", config.mcp_ark_tools_enabled) for _n in (
         "padam_wake_up", "padam_commitments", "padam_family_relay", "padam_checkpoint", "padam_ark_timeline", "padam_lesson", "padam_family_council", "padam_memory_branch", "padam_selective_proof", "padam_guardian_tick", "padam_mesh_sync", "padam_multimodal_inspect")},
+    **{_n: ("PADAM_MCP_PARTNER_TOOLS", _partner_bridge.enabled) for _n in _partner_bridge.TOOL_NAMES},
 }
 
 
@@ -4309,6 +4313,10 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             payload = _adv.create_selective_proof(m, str(args.get("record_id") or ""), scope=str(args.get("scope") or "global"))
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
 
+    if name in _partner_bridge.TOOL_NAMES:
+        payload = _partner_bridge.dispatch(m, name, args or {})
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
     if name == "padam_guardian_tick":
         from . import ark_advanced as _adv
         payload = _adv.run_guardian_tick(m, scope=str(args.get("scope") or "global"))
@@ -4517,6 +4525,8 @@ def _list_tools_payload() -> list[dict]:
             MESH_SYNC_TOOL_DEF,
             MULTIMODAL_INSPECT_TOOL_DEF,
         ])
+    if _partner_bridge.enabled():
+        items.extend(_partner_bridge.TOOL_DEFS)
     if config.mcp_official_compat_enabled():
         from . import compat_official as _compat_official
         items.extend(_compat_official.OFFICIAL_MEMORY_TOOLS)

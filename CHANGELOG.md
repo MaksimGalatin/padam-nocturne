@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **AIfa partner bridge** (`padam/partner_bridge.py`, off by default: `PADAM_MCP_PARTNER_TOOLS=1` plus the cabinet key `PADAM_AIFA_MCP_TOKEN`). Six tools bring the AIfa Works partner program into local PADAM: find client sites from the open accessibility research, a report link for a site, a partner link, rates and templates, your deals, and a draft email. The bridge never sends email and has no withdrawal or webhook tools: the draft goes through the Family Council and the person sends it from their own address; payouts stay in the cabinet. Cloud answers come back fenced as data, the key is never echoed, and only https endpoints are accepted (`tests/test_partner_bridge_1711.py`).
 - **Studio buttons for the autonomy range, signed handover and Portable Ark** (Brain tab, 4 languages, checked at 1280 and 390 px). The Portable Ark button writes to a new or empty absolute folder only, from this computer only (`/api/v2/ark/portable`, loopback); private keys go to a separate `<folder>.owner_keys.json` next to it, never inside. A signed handover now records the agent name from `PADAM_AGENT_ID` (`tests/test_studio_ark_buttons_1711.py`).
 - **Browser extension archives rebuilt from source** (`scripts/pack_browser_extensions.py`): the store zips were still version 0.5.2; the script refuses to build when the manifest and the package versions differ.
 - **Family Council of six** (`padam/swarm_council.py`, Studio, `padam ark-council`, `padam_family_council`): two new
