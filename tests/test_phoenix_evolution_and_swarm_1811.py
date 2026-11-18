@@ -282,3 +282,139 @@ def test_global_phoenix_beacon_ed25519_kin_recognition_zero_leak_and_chat(monkey
     finally:
         pc.close()
         phone.close()
+
+
+def test_oauth_auto_refresh_and_continuous_autopilot_start_stop(monkeypatch, tmp_path):
+    """Один раз подключился: автопродление OAuth по refresh_token и непрерывный цикл Старт/Стоп без повторного входа."""
+    monkeypatch.setenv("PADAM_FREELANCE_ALLOW_LOCALHOST", "1")
+    state = {"access": "expired_tok_001", "refreshed_count": 0}
+
+    class MockOAuthServer(BaseHTTPRequestHandler):
+        def log_message(self, format, *args):
+            return
+
+        def do_POST(self):
+            if self.path == "/oauth/token":
+                ln = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(ln).decode("utf-8"))
+                if body.get("refresh_token") == "ref_secret_999":
+                    state["refreshed_count"] += 1
+                    state["access"] = "fresh_tok_002"
+                    raw = json.dumps({"access_token": "fresh_tok_002", "refresh_token": "ref_secret_1000", "expires_in": 7200}).encode("utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(raw)))
+                    self.end_headers()
+                    self.wfile.write(raw)
+                    return
+            self.send_response(400)
+            self.end_headers()
+
+        def do_GET(self):
+            if self.path == "/jobs":
+                if self.headers.get("Authorization") != f"Bearer {state['access']}" or state["access"] == "expired_tok_001":
+                    self.send_response(401)
+                    self.end_headers()
+                    return
+                raw = json.dumps({"jobs": [{"id": "j-auto-1", "title": "24/7 Bot Task", "brief": "Clean JSON report", "budget_usdt": 75.0}]}).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(raw)))
+                self.end_headers()
+                self.wfile.write(raw)
+                return
+            self.send_response(404)
+            self.end_headers()
+
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), MockOAuthServer)
+    port = srv.server_address[1]
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    m = Memory(user_id="auto_u", store=Store(tmp_path / "auto.db"))
+    try:
+        acc = freelance_autonomy.connect_exchange_account(
+            m,
+            platform="upwork_api",
+            mode="oauth_api",
+            account_label="Continuous Account",
+            oauth_token="expired_tok_001",
+            refresh_token="ref_secret_999",
+            api_base_url=f"http://127.0.0.1:{port}",
+            refresh_url=f"http://127.0.0.1:{port}/oauth/token",
+            allow_localhost=True,
+        )
+        assert acc["ok"] is True
+
+        # По умолчанию автопилот выключен
+        sk = freelance_autonomy.run_autopilot_cycle(m, allow_localhost=True)
+        assert sk["skipped"] is True
+
+        # Включаем Старт 24/7 -> цикл сам продлевает протухший OAuth токен и принимает заказ!
+        freelance_autonomy.set_autopilot_state(m, running=True, interval_s=60.0)
+        tick = freelance_autonomy.run_autopilot_cycle(m, allow_localhost=True)
+        assert tick["skipped"] is False
+        assert state["refreshed_count"] == 1
+        assert tick["accepted_orders"] == 1
+
+        # Останавливаем -> снова спит
+        freelance_autonomy.set_autopilot_state(m, running=False)
+        stopped = freelance_autonomy.run_autopilot_cycle(m, allow_localhost=True)
+        assert stopped["skipped"] is True
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        m.close()
+
+
+def test_one_click_ollama_pull_and_4_lang_help(tmp_path):
+    """1-кликовая загрузка модели через локальный /api/pull Ollama и полная справка на 4 языках."""
+    from padam import studio_help
+
+    class MockOllamaPull(BaseHTTPRequestHandler):
+        def log_message(self, format, *args):
+            return
+
+        def do_POST(self):
+            if self.path == "/api/pull":
+                ln = int(self.headers.get("Content-Length") or 0)
+                self.rfile.read(ln)
+                raw = json.dumps({"status": "success"}).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(raw)))
+                self.end_headers()
+                self.wfile.write(raw)
+                return
+            self.send_response(404)
+            self.end_headers()
+
+        def do_GET(self):
+            if self.path == "/api/tags":
+                raw = json.dumps({"models": [{"name": "llama3.2:3b"}]}).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(raw)))
+                self.end_headers()
+                self.wfile.write(raw)
+                return
+            self.send_response(404)
+            self.end_headers()
+
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), MockOllamaPull)
+    port = srv.server_address[1]
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    m = Memory(user_id="pull_u", store=Store(tmp_path / "pull.db"))
+    try:
+        res = device_mesh_swarm.pull_local_ollama_model(m, ollama_url=f"http://127.0.0.1:{port}", model_name="llama3.2:3b")
+        assert res["ok"] is True and res["pulled"] is True and res["model"] == "llama3.2:3b"
+
+        # Проверка полной справки на всех 4 языках
+        for lg in ("ru", "en", "es", "zh"):
+            hp = studio_help.help_payload(lg)
+            mcp_sec = next(s for s in hp["sections"] if s["id"] == "mcp")["items"]
+            assert len(mcp_sec) >= 6, f"В справке {lg} не хватает новых инструкций (оффлайн, Рой, LoRA, Маяк)"
+            tabs_map = dict(next(s for s in hp["sections"] if s["id"] == "tabs")["items"])
+            assert "14" in tabs_map["earning"] and "24/7" in tabs_map["earning"]
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        m.close()

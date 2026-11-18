@@ -1444,6 +1444,11 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(200, _la.run_self_evolution_pipeline(mem(), out_dir, agent_id=aid, dispatch_gpu=bool(data.get("dispatch_gpu", False))))
                 if act == "bind_ollama":
                     return self._send(200, _dms.bind_user_ollama_model(mem(), ollama_url=str(data.get("ollama_url") or "http://127.0.0.1:11434"), model_name=str(data.get("model_name") or ""), zero_cloud_mode=bool(data.get("zero_cloud_mode", True))))
+                if act == "pull_ollama":
+                    return self._send(200, _dms.pull_local_ollama_model(mem(), ollama_url=str(data.get("ollama_url") or "http://127.0.0.1:11434"), model_name=str(data.get("model_name") or "")))
+                if act == "hw_recommend":
+                    from . import cpu_engine as _ce
+                    return self._send(200, _ce.cpu_engine_status())
                 if act == "register_device":
                     return self._send(200, _dms.register_compute_device(mem(), device_name=str(data.get("device_name") or "Device"), device_kind=str(data.get("device_kind") or "desktop"), agent_id=aid, cpu_cores=int(data.get("cpu_cores") or 8), ram_gb=float(data.get("ram_gb") or 16.0), vram_gb=float(data.get("vram_gb") or 0.0), active_model=str(data.get("active_model") or "")))
                 if act == "dispatch_devices":
@@ -1466,6 +1471,9 @@ class Handler(BaseHTTPRequestHandler):
                         oauth_token=str(data.get("oauth_token") or ""),
                         api_base_url=str(data.get("api_base_url") or ""),
                         webhook_secret=str(data.get("webhook_secret") or ""),
+                        refresh_token=str(data.get("refresh_token") or ""),
+                        refresh_url=str(data.get("refresh_url") or ""),
+                        token_expires_in_s=float(data.get("token_expires_in_s") or 0.0),
                         allow_localhost=bool(data.get("allow_localhost", False)),
                     ))
                 if act == "set_prefs":
@@ -1550,6 +1558,12 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(200, _fa.dispute_held_payout(mem(), str(data.get("hold_id") or ""), reason=str(data.get("reason") or "")))
                 if act == "release_payouts":
                     return self._send(200, _fa.release_matured_payouts(mem()))
+                if act == "autopilot_start":
+                    return self._send(200, _fa.set_autopilot_state(mem(), running=True, interval_s=float(data.get("interval_s") or 300.0)))
+                if act == "autopilot_stop":
+                    return self._send(200, _fa.set_autopilot_state(mem(), running=False))
+                if act == "autopilot_tick":
+                    return self._send(200, _fa.run_autopilot_cycle(mem(), allow_localhost=bool(data.get("allow_localhost", False))))
                 if act == "monetization":
                     return self._send(200, _fa.monetization_breakdown(
                         float(data.get("gross_usdt") or 100.0),

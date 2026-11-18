@@ -206,9 +206,21 @@ def _ensure(memory) -> None:
             ("api_base_url", "TEXT NOT NULL DEFAULT ''"),
             ("token_enc", "TEXT NOT NULL DEFAULT ''"),
             ("webhook_secret_enc", "TEXT NOT NULL DEFAULT ''"),
+            ("refresh_token_enc", "TEXT NOT NULL DEFAULT ''"),
+            ("refresh_url", "TEXT NOT NULL DEFAULT ''"),
+            ("token_expires_at", "REAL NOT NULL DEFAULT 0.0"),
         ):
             if col not in existing:
                 conn.execute(f"ALTER TABLE ark_exchange_account ADD COLUMN {col} {col_def}")
+        prefs_cols = {r["name"] for r in conn.execute("PRAGMA table_info(ark_freelance_prefs)").fetchall()}
+        for col, col_def in (
+            ("autopilot_running", "INTEGER NOT NULL DEFAULT 0"),
+            ("autopilot_interval_s", "REAL NOT NULL DEFAULT 300.0"),
+            ("autopilot_last_tick_at", "REAL NOT NULL DEFAULT 0.0"),
+            ("autopilot_last_note", "TEXT NOT NULL DEFAULT ''"),
+        ):
+            if col not in prefs_cols:
+                conn.execute(f"ALTER TABLE ark_freelance_prefs ADD COLUMN {col} {col_def}")
         conn.commit()
 
 
@@ -368,6 +380,9 @@ def connect_exchange_account(
     oauth_token: str = "",
     api_base_url: str = "",
     webhook_secret: str = "",
+    refresh_token: str = "",
+    refresh_url: str = "",
+    token_expires_in_s: float = 0.0,
     allow_localhost: bool = False,
 ) -> dict[str, Any]:
     """Подключает пользовательский профиль биржи (OAuth/API/Webhook или Desk) без хранения открытых секретов."""
@@ -385,6 +400,9 @@ def connect_exchange_account(
     token_hash_prefix = hashlib.sha256(token_str.encode("utf-8")).hexdigest()[:12] if token_str else ""
     token_enc = _seal_secret(memory, token_str) if token_str else ""
     wh_enc = _seal_secret(memory, webhook_secret) if webhook_secret else ""
+    rtok_enc = _seal_secret(memory, refresh_token) if refresh_token else ""
+    clean_rurl = _validate_api_url(refresh_url, allow_localhost=allow_localhost) if refresh_url else ""
+    exp_at = (time.time() + float(token_expires_in_s)) if token_expires_in_s > 0 else 0.0
 
     clean_label, _ = safety.redact(str(account_label or f"{plat}:{md}").strip())
     clean_agent = re.sub(r"[^a-zA-Z0-9_.-]+", "_", str(agent_id or "aifa").strip())[:48] or "aifa"
@@ -396,8 +414,8 @@ def connect_exchange_account(
         memory.store.conn.execute(
             "INSERT INTO ark_exchange_account "
             "(account_id, user_id, platform, mode, account_label, agent_id, skills_json, token_configured, token_hash_prefix, "
-            "api_base_url, token_enc, webhook_secret_enc, status, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
+            "api_base_url, token_enc, webhook_secret_enc, refresh_token_enc, refresh_url, token_expires_at, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
             (
                 aid,
                 memory.user_id,
@@ -411,6 +429,9 @@ def connect_exchange_account(
                 clean_url[:300],
                 token_enc,
                 wh_enc,
+                rtok_enc,
+                clean_rurl[:300],
+                exp_at,
                 now,
                 now,
             ),
@@ -545,10 +566,20 @@ def fetch_jobs_from_exchange(
     if not base_url:
         return {"ok": False, "error": "У этого аккаунта не задан api_base_url."}
     token = _unseal_secret(memory, acc.get("token_enc") or "")
+    exp_at = float(acc.get("token_expires_at") or 0.0)
+    if exp_at > 0 and time.time() >= exp_at - 30.0:
+        refreshed = _try_refresh_oauth_token(memory, acc, allow_localhost=allow_localhost)
+        if refreshed:
+            token = refreshed
     adapter = ExchangeHttpAdapter(base_url, token)
     status, payload = adapter.request_json("GET", "/jobs")
     if status == 401:
-        return {"ok": False, "http_status": 401, "error": "OAuth токен отклонён биржей (401 Unauthorized). Требуется обновить токен."}
+        refreshed = _try_refresh_oauth_token(memory, acc, allow_localhost=allow_localhost)
+        if refreshed:
+            adapter = ExchangeHttpAdapter(base_url, refreshed)
+            status, payload = adapter.request_json("GET", "/jobs")
+    if status == 401:
+        return {"ok": False, "http_status": 401, "error": "OAuth токен отклонён биржей (401 Unauthorized). Требуется обновить сессию."}
     if not (200 <= status < 300):
         return {"ok": False, "http_status": status, "error": payload.get("error", f"HTTP {status}")}
 
@@ -1254,6 +1285,7 @@ def freelance_dashboard_snapshot(memory) -> dict[str, Any]:
         "spend_recommendation": spend_rec,
         "payout_hold": payout_summary(memory),
         "referral": get_or_create_referral_profile(memory),
+        "autopilot": get_autopilot_state(memory),
         "monetization_totals": {
             "fixed_platform_fee_pct": FIXED_PLATFORM_FEE_PCT,
             "total_gross_usdt": total_gross,
@@ -1423,4 +1455,140 @@ def payout_summary(memory) -> dict[str, Any]:
         "releasable_usdt": releasable,
         "refunded_dispute_usdt": refunded,
         "holds": [dict(r) for r in rows[:10]],
+    }
+
+
+def _try_refresh_oauth_token(memory, acc: dict[str, Any], *, allow_localhost: bool = False) -> str | None:
+    """Автоматически продлевает OAuth access_token через зашифрованный refresh_token без повторного ввода пароля."""
+    rtok = _unseal_secret(memory, acc.get("refresh_token_enc") or "")
+    rurl = str(acc.get("refresh_url") or "").strip()
+    if not rtok or not rurl:
+        return None
+    clean_rurl = _validate_api_url(rurl, allow_localhost=allow_localhost)
+    req_body = json.dumps({"grant_type": "refresh_token", "refresh_token": rtok}).encode("utf-8")
+    req = urllib.request.Request(
+        clean_rurl,
+        data=req_body,
+        headers={"Accept": "application/json", "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=8.0) as resp:
+            data = json.loads(resp.read().decode("utf-8", errors="replace"))
+        new_acc = str(data.get("access_token") or "").strip()
+        if not new_acc:
+            return None
+        new_ref = str(data.get("refresh_token") or rtok).strip()
+        exp_in = float(data.get("expires_in") or 3600.0)
+        memory.store.conn.execute(
+            "UPDATE ark_exchange_account SET token_enc=?, token_hash_prefix=?, refresh_token_enc=?, token_expires_at=?, status='active', updated_at=? "
+            "WHERE account_id=? AND user_id=?",
+            (
+                _seal_secret(memory, new_acc),
+                hashlib.sha256(new_acc.encode("utf-8")).hexdigest()[:12],
+                _seal_secret(memory, new_ref),
+                time.time() + max(60.0, exp_in),
+                time.time(),
+                acc["account_id"],
+                memory.user_id,
+            ),
+        )
+        memory.store.conn.commit()
+        audit_chain.append_audit(
+            memory,
+            "freelance_oauth_refreshed",
+            {"account_id": acc["account_id"], "platform": acc["platform"]},
+            agent_id=acc["agent_id"],
+        )
+        return new_acc
+    except Exception:
+        return None
+
+
+@_synchronized_memory
+def get_autopilot_state(memory) -> dict[str, Any]:
+    """Возвращает состояние непрерывного цикла биржевого автопилота (включен/остановлен)."""
+    _ensure(memory)
+    row = memory.store.conn.execute(
+        "SELECT autopilot_running, autopilot_interval_s, autopilot_last_tick_at, autopilot_last_note "
+        "FROM ark_freelance_prefs WHERE user_id = ?",
+        (memory.user_id,),
+    ).fetchone()
+    if not row:
+        return {
+            "autopilot_running": False,
+            "interval_s": 300.0,
+            "last_tick_at": 0.0,
+            "last_note": "Остановлен (включается кнопкой Старт владельцем).",
+        }
+    return {
+        "autopilot_running": bool(row["autopilot_running"]),
+        "interval_s": float(row["autopilot_interval_s"] or 300.0),
+        "last_tick_at": float(row["autopilot_last_tick_at"] or 0.0),
+        "last_note": str(row["autopilot_last_note"] or ""),
+    }
+
+
+@_synchronized_memory
+def set_autopilot_state(memory, *, running: bool, interval_s: float = 300.0, note: str = "") -> dict[str, Any]:
+    """Включает или останавливает непрерывный цикл работы агентов на биржах (до команды владельца)."""
+    _ensure(memory)
+    iv = max(5.0, min(86400.0, float(interval_s)))
+    clean_note = note or ("Автопилот ЗАПУЩЕН: непрерывная работа до команды Стоп." if running else "Автопилот ОСТАНОВЛЕН владельцем.")
+    memory.store.conn.execute(
+        "INSERT INTO ark_freelance_prefs (user_id, agent_share_pct, settlement_currency, galatin_price_usdt, autopilot_running, autopilot_interval_s, autopilot_last_note, updated_at) "
+        "VALUES (?, 15.0, 'USDT_TRC20', 0.01, ?, ?, ?, ?) "
+        "ON CONFLICT(user_id) DO UPDATE SET autopilot_running=excluded.autopilot_running, "
+        "autopilot_interval_s=excluded.autopilot_interval_s, autopilot_last_note=excluded.autopilot_last_note, updated_at=excluded.updated_at",
+        (memory.user_id, 1 if running else 0, iv, clean_note[:200], time.time()),
+    )
+    memory.store.conn.commit()
+    audit_chain.append_audit(
+        memory,
+        "freelance_autopilot_toggled",
+        {"running": bool(running), "interval_s": iv},
+        agent_id="owner",
+    )
+    return get_autopilot_state(memory)
+
+
+@_synchronized_memory
+def run_autopilot_cycle(memory, *, allow_localhost: bool = False) -> dict[str, Any]:
+    """Один непрерывный шаг работы Роя на подключённых биржах (только если autopilot_running=True)."""
+    st = get_autopilot_state(memory)
+    if not st["autopilot_running"]:
+        return {"ok": True, "skipped": True, "reason": "autopilot_stopped_by_owner", "state": st}
+
+    accounts = list_exchange_accounts(memory)
+    checked = 0
+    fetched_total = 0
+    reauth_needed: list[str] = []
+    for acc_pub in accounts:
+        if acc_pub["status"] != "active" or not acc_pub.get("api_base_url"):
+            continue
+        checked += 1
+        res = fetch_jobs_from_exchange(memory, acc_pub["account_id"], allow_localhost=allow_localhost)
+        if not res.get("ok") and res.get("http_status") == 401:
+            reauth_needed.append(acc_pub["account_id"])
+            memory.store.conn.execute(
+                "UPDATE ark_exchange_account SET status = 'needs_reauth', updated_at = ? WHERE account_id = ? AND user_id = ?",
+                (time.time(), acc_pub["account_id"], memory.user_id),
+            )
+        elif res.get("ok"):
+            fetched_total += int(res.get("accepted_count") or 0)
+
+    release_matured_payouts(memory)
+    note = f"Цикл завершён: опрошено площадок={checked}, принято заказов={fetched_total}, требуют перевхода={len(reauth_needed)}."
+    memory.store.conn.execute(
+        "UPDATE ark_freelance_prefs SET autopilot_last_tick_at = ?, autopilot_last_note = ? WHERE user_id = ?",
+        (time.time(), note, memory.user_id),
+    )
+    memory.store.conn.commit()
+    return {
+        "ok": True,
+        "skipped": False,
+        "accounts_polled": checked,
+        "accepted_orders": fetched_total,
+        "reauth_needed": reauth_needed,
+        "state": get_autopilot_state(memory),
     }

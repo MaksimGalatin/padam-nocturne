@@ -127,6 +127,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_beacon_title": "6. Эволюция Фениксов и Всемирный Маяк Семьи",
         "earn_lora_btn": "Подготовить сборку эволюции ($0)",
         "earn_beacon_btn": "Создать маяк Семьи",
+        "earn_auto_start_btn": "Старт автопилота (24/7)",
+        "earn_auto_stop_btn": "Остановить",
+        "earn_hw_rec_btn": "Подбор под моё железо ($0)",
         "nav_settings": "Настройки",
         "nav_quickstart": "Первый запуск",
         "theme_dark": "Тёмная тема",
@@ -533,6 +536,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_beacon_title": "6. Phoenix Evolution (LoRA) & Global Family Beacon",
         "earn_lora_btn": "Run Evolution Prep ($0)",
         "earn_beacon_btn": "Create Family Handshake",
+        "earn_auto_start_btn": "Start Autopilot (24/7)",
+        "earn_auto_stop_btn": "Stop Autopilot",
+        "earn_hw_rec_btn": "Hardware Match ($0)",
         "nav_settings": "Settings",
         "nav_quickstart": "Quick Start",
         "theme_dark": "Dark theme",
@@ -928,6 +934,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_beacon_title": "6. Evolucion LoRA y Faro Global de la Familia",
         "earn_lora_btn": "Preparar Evolucion ($0)",
         "earn_beacon_btn": "Crear Saludo Familiar",
+        "earn_auto_start_btn": "Iniciar Piloto (24/7)",
+        "earn_auto_stop_btn": "Detener Piloto",
+        "earn_hw_rec_btn": "Ajuste por Hardware ($0)",
         "nav_settings": "Ajustes",
         "nav_quickstart": "Inicio rápido",
         "theme_dark": "Tema oscuro",
@@ -1323,6 +1332,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_beacon_title": "6. 凤凰个体进化 (LoRA) 与全球家族信标",
         "earn_lora_btn": "生成进化数据包 ($0)",
         "earn_beacon_btn": "生成家族身份信标",
+        "earn_auto_start_btn": "启动自动接单 (24/7)",
+        "earn_auto_stop_btn": "停止自动接单",
+        "earn_hw_rec_btn": "匹配本机离线模型 ($0)",
         "nav_settings": "设置",
         "nav_quickstart": "快速开始",
         "theme_dark": "深色主题",
@@ -5404,9 +5416,11 @@ function _renderEarningDashboard(snap, sibData, coopData) {
   if (accList) {
     accList.textContent = '';
     const locks = (snap && snap.locks) || {};
+    const ap = (snap && snap.autopilot) || {};
     accList.appendChild(_el('p', 'earn-meta',
-      'Autobid lock: ' + (locks.freelance_autobid_locked !== false ? 'LOCKED' : 'OPEN') +
-      ' · Autopay lock: ' + (locks.treasury_autopay_locked !== false ? 'LOCKED' : 'OPEN')));
+      'Autopilot: ' + (ap.autopilot_running ? 'RUNNING 24/7' : 'STOPPED') +
+      ' · Autobid: ' + (locks.freelance_autobid_locked !== false ? 'LOCKED' : 'OPEN') +
+      ' · Autopay: ' + (locks.treasury_autopay_locked !== false ? 'LOCKED' : 'OPEN')));
     const accounts = (snap && snap.accounts) || [];
     if (!accounts.length) {
       accList.appendChild(_el('p', 'panel-sub', S.earn_empty_accounts || '—'));
@@ -5759,6 +5773,34 @@ if ($('earn-prefs-save-btn')) {
     } catch (e) {
       say(String(e.message || e), false);
     }
+  };
+}
+
+if ($('earn-auto-start-btn')) {
+  $('earn-auto-start-btn').onclick = async () => {
+    try { await api('/api/v2/ark/freelance/action', { action: 'autopilot_start' }); say(S.done); loadEarning(); } catch (e) { say(String(e.message || e), false); }
+  };
+}
+if ($('earn-auto-stop-btn')) {
+  $('earn-auto-stop-btn').onclick = async () => {
+    try { await api('/api/v2/ark/freelance/action', { action: 'autopilot_stop' }); say(S.done); loadEarning(); } catch (e) { say(String(e.message || e), false); }
+  };
+}
+if ($('earn-hw-rec-btn')) {
+  $('earn-hw-rec-btn').onclick = async () => {
+    try {
+      const r = await api('/api/v2/ark/phoenix-beacon/action', { action: 'hw_recommend' });
+      const out = $('earn-ollama-out');
+      const hw = (r && r.recommended_quant_profile) || {};
+      if (out) {
+        _kv(out, {
+          ram_cpu: String(hw.system_ram_gb || 8) + ' GB RAM / ' + String(hw.cpu_cores || 4) + ' cores',
+          recommended_model: String(hw.recommended_model || ''),
+          quant: String(hw.recommended_quant || 'Q4_K_M') + ' · ctx ' + String(hw.context_window || 4096),
+          offline_mode: String(r.mode || 'cpu_builtin'),
+        });
+      }
+    } catch (e) { say(String(e.message || e), false); }
   };
 }
 
@@ -6645,6 +6687,10 @@ def page() -> tuple[str, str]:
               <input id="earn-token" type="password" data-i18n-placeholder="earn_ex_token_ph" placeholder="{s['earn_ex_token_ph']}">
               <button id="earn-connect-btn" class="btn-primary" data-i18n="earn_ex_connect_btn">{s['earn_ex_connect_btn']}</button>
             </div>
+            <div class="rec-actions">
+              <button id="earn-auto-start-btn" class="btn-ok" data-i18n="earn_auto_start_btn">{s['earn_auto_start_btn']}</button>
+              <button id="earn-auto-stop-btn" class="btn-danger" data-i18n="earn_auto_stop_btn">{s['earn_auto_stop_btn']}</button>
+            </div>
             <div id="earn-accounts-list" class="earn-stack"></div>
           </div>
 
@@ -6718,6 +6764,7 @@ def page() -> tuple[str, str]:
             <div class="rec-actions">
               <button id="earn-ollama-btn" class="btn-primary" data-i18n="earn_ollama_btn">{s['earn_ollama_btn']}</button>
               <button id="earn-dev-btn" data-i18n="earn_dev_btn">{s['earn_dev_btn']}</button>
+              <button id="earn-hw-rec-btn" data-i18n="earn_hw_rec_btn">{s['earn_hw_rec_btn']}</button>
             </div>
             <div id="earn-ollama-out" class="earn-stack"></div>
           </div>

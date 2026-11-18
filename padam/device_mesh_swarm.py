@@ -346,3 +346,43 @@ def dispatch_order_across_devices(
         "total_subtasks": len(assignments),
         "assignments": assignments,
     }
+
+
+def pull_local_ollama_model(
+    memory,
+    *,
+    ollama_url: str = "http://127.0.0.1:11434",
+    model_name: str = "",
+    timeout_s: float = 30.0,
+) -> dict[str, Any]:
+    """Запускает скачивание рекомендованной или выбранной модели через официальный локальный `/api/pull` Ollama."""
+    from . import cpu_engine
+    clean_url = _clean_ollama_url(ollama_url)
+    hw = cpu_engine.recommend_quantized_profile()
+    packs = cpu_engine.OFFLINE_MODEL_PACKS
+    chosen = str(model_name or "").strip()
+    if not chosen:
+        match = next((p for p in packs if p["tier"] == hw["tier"]), packs[1])
+        chosen = match["ollama_pull"].replace("ollama pull ", "").strip()
+
+    req = urllib.request.Request(
+        f"{clean_url}/api/pull",
+        data=json.dumps({"name": chosen, "stream": False}).encode("utf-8"),
+        headers={"Accept": "application/json", "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+            info = json.loads(raw) if raw.strip() else {"status": "success"}
+        bind_res = bind_user_ollama_model(memory, ollama_url=clean_url, model_name=chosen, zero_cloud_mode=True, probe=True)
+        return {"ok": True, "pulled": True, "model": chosen, "ollama_response": info, "binding": bind_res}
+    except Exception as exc:
+        return {
+            "ok": False,
+            "pulled": False,
+            "model": chosen,
+            "install_command": f"ollama pull {chosen}",
+            "recommended_profile": hw,
+            "error": str(exc)[:200],
+        }
