@@ -205,6 +205,17 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_partner_copied": "Письмо скопировано",
         "brain_local_no_models": "Ollama не видит ни одной модели: перезапустите Ollama из трея, чтобы она прочитала OLLAMA_MODELS",
         "brain_local_model_missing": "модель не скачана",
+        "earn_wiz_tier_autopilot": "автопилот",
+        "earn_wiz_tier_assisted": "черновик и кнопка",
+        "earn_wiz_tier_na": "пока нельзя",
+        "earn_wiz_f_all": "все (34)",
+        "earn_wiz_f_autopilot": "автопилот (20%)",
+        "earn_wiz_f_assisted": "черновик и кнопка (15%)",
+        "earn_wiz_f_na": "пока нельзя",
+        "earn_wiz_auth_session": "Зашифрованная сессия браузера",
+        "earn_wiz_def_spec": "Создание сайтов с ИИ-агентами, верифицированные базы лидов, аудит WCAG",
+        "earn_wiz_def_tone": "деловой, конкретный",
+        "earn_wiz_def_excl": "казино, серый парсинг, обход капч",
         "earn_wiz_title": "8. Мастер подключения 30 площадок и бирж агентов (выбрал → вошёл → дальше мы)",
         "earn_wiz_sub": "30 площадок методички + 4 биржи для ИИ-агентов. Пароли не храним никогда (только OAuth, ключ API или зашифрованная сессия браузера).",
         "earn_wiz_secret_ph": "OAuth-токен / ключ API / зашифрованная сессия браузера (БЕЗ пароля)",
@@ -717,6 +728,17 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_partner_copied": "Email copied",
         "brain_local_no_models": "Ollama sees no models: restart Ollama from the tray so it reads OLLAMA_MODELS",
         "brain_local_model_missing": "model not pulled",
+        "earn_wiz_tier_autopilot": "autopilot",
+        "earn_wiz_tier_assisted": "draft and button",
+        "earn_wiz_tier_na": "not yet",
+        "earn_wiz_f_all": "all (34)",
+        "earn_wiz_f_autopilot": "autopilot (20%)",
+        "earn_wiz_f_assisted": "draft and button (15%)",
+        "earn_wiz_f_na": "not yet",
+        "earn_wiz_auth_session": "Encrypted browser session",
+        "earn_wiz_def_spec": "Websites with AI agents, verified lead databases, WCAG audits",
+        "earn_wiz_def_tone": "businesslike, specific",
+        "earn_wiz_def_excl": "casinos, grey scraping, captcha bypass",
         "earn_wiz_title": "8. 30 Platforms & Agent Exchanges Wizard (Pick → Sign In → We Handle the Rest)",
         "earn_wiz_sub": "30 methodology platforms + 4 AI agent exchanges. Passwords are NEVER stored (OAuth, API key, or encrypted browser session only).",
         "earn_wiz_secret_ph": "OAuth token / API key / encrypted browser session (NO password)",
@@ -1218,6 +1240,17 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_partner_copied": "Correo copiado",
         "brain_local_no_models": "Ollama no ve ningún modelo: reinicie Ollama desde la bandeja para que lea OLLAMA_MODELS",
         "brain_local_model_missing": "modelo no descargado",
+        "earn_wiz_tier_autopilot": "piloto automático",
+        "earn_wiz_tier_assisted": "borrador y botón",
+        "earn_wiz_tier_na": "aún no",
+        "earn_wiz_f_all": "todas (34)",
+        "earn_wiz_f_autopilot": "piloto automático (20%)",
+        "earn_wiz_f_assisted": "borrador y botón (15%)",
+        "earn_wiz_f_na": "aún no",
+        "earn_wiz_auth_session": "Sesión del navegador cifrada",
+        "earn_wiz_def_spec": "Sitios web con agentes de IA, bases de clientes potenciales verificadas, auditorías WCAG",
+        "earn_wiz_def_tone": "profesional, concreto",
+        "earn_wiz_def_excl": "casinos, scraping gris, evasión de captchas",
         "earn_wiz_title": "8. Asistente de 30 Plataformas y Bolsas de Agentes (Elegir → Entrar → Nosotros Seguimos)",
         "earn_wiz_sub": "30 plataformas de la guia + 4 bolsas de agentes IA. Nunca guardamos contrasenas (solo OAuth, clave API o sesion cifrada).",
         "earn_wiz_secret_ph": "Token OAuth / clave API / sesion cifrada (SIN contrasena)",
@@ -1719,6 +1752,17 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_partner_copied": "邮件已复制",
         "brain_local_no_models": "Ollama 看不到任何模型：请从托盘重启 Ollama，使其读取 OLLAMA_MODELS",
         "brain_local_model_missing": "模型未下载",
+        "earn_wiz_tier_autopilot": "自动驾驶",
+        "earn_wiz_tier_assisted": "草稿与按钮",
+        "earn_wiz_tier_na": "暂不可用",
+        "earn_wiz_f_all": "全部 (34)",
+        "earn_wiz_f_autopilot": "自动驾驶 (20%)",
+        "earn_wiz_f_assisted": "草稿与按钮 (15%)",
+        "earn_wiz_f_na": "暂不可用",
+        "earn_wiz_auth_session": "加密的浏览器会话",
+        "earn_wiz_def_spec": "带 AI 智能体的网站、经验证的潜在客户数据库、WCAG 审计",
+        "earn_wiz_def_tone": "专业、具体",
+        "earn_wiz_def_excl": "赌场、灰色抓取、绕过验证码",
         "earn_wiz_title": "8. 30 大平台与智能体交易市场接入向导（选择 → 登录 → 全自动接管）",
         "earn_wiz_sub": "指南 30 个平台 + 4 个 AI 智能体市场。绝不存储密码（仅限 OAuth、API 密钥或加密浏览器会话）。",
         "earn_wiz_secret_ph": "OAuth 令牌 / API 密钥 / 加密会话（严禁输入密码）",
@@ -6469,9 +6513,9 @@ function _renderEarningDashboard(snap, sibData, coopData) {
   const sumEl = $('earn-wiz-summary');
   if (sumEl && counts.total) {
     sumEl.textContent = String(counts.total) + ' (' + String(counts.methodology_30 || 30) + '+4): '
-      + 'автопилот=' + String(counts.autopilot || 0)
-      + ' · черновик и кнопка=' + String(counts.assisted_button || 0)
-      + ' · пока нельзя=' + String(counts.not_available || 0);
+      + _wizTier('autopilot') + '=' + String(counts.autopilot || 0)
+      + ' · ' + _wizTier('assisted_button') + '=' + String(counts.assisted_button || 0)
+      + ' · ' + _wizTier('not_available') + '=' + String(counts.not_available || 0);
   }
   const selPlat = $('earn-wiz-platform');
   const filterVal = ($('earn-wiz-filter') && $('earn-wiz-filter').value) || 'all';
@@ -6480,7 +6524,7 @@ function _renderEarningDashboard(snap, sibData, coopData) {
     const prevVal = selPlat.value;
     selPlat.textContent = '';
     for (const p of filteredPlats) {
-      const opt = _el('option', '', '#' + String(p.num) + ' ' + String(p.title) + ' — [' + String(p.automation_label_ru) + ']');
+      const opt = _el('option', '', '#' + String(p.num) + ' ' + String(p.title) + ' — [' + _wizTier(p.automation_tier, p.automation_label_ru) + ']');
       opt.value = String(p.platform_id);
       selPlat.appendChild(opt);
     }
@@ -6490,7 +6534,7 @@ function _renderEarningDashboard(snap, sibData, coopData) {
     const curSpec = plats.find(p => p.platform_id === selPlat.value) || filteredPlats[0];
     const infoEl = $('earn-wiz-spec-info');
     if (infoEl && curSpec) {
-      infoEl.textContent = '[' + String(curSpec.automation_label_ru) + '] '
+      infoEl.textContent = '[' + _wizTier(curSpec.automation_tier, curSpec.automation_label_ru) + '] '
         + String(curSpec.auth_hint_ru || '') + ' — ' + String(curSpec.reason_ru || '');
     }
   }
@@ -6524,7 +6568,7 @@ function _renderEarningDashboard(snap, sibData, coopData) {
       const item = _el('div', 'earn-item');
       item.setAttribute('data-platform-id', String(p.platform_id));
       item.setAttribute('data-automation-tier', String(p.automation_tier));
-      item.appendChild(_el('strong', '', '#' + String(p.num) + ' ' + String(p.title) + ' (' + String(p.score) + '/10) — ' + String(p.automation_label_ru)));
+      item.appendChild(_el('strong', '', '#' + String(p.num) + ' ' + String(p.title) + ' (' + String(p.score) + '/10) — ' + _wizTier(p.automation_tier, p.automation_label_ru)));
       item.appendChild(_el('div', 'earn-meta', String(p.auth_hint_ru) + ' · ' + String(p.reason_ru)));
       catListEl.appendChild(item);
     }
@@ -6586,6 +6630,18 @@ if ($('earn-partner-key-btn')) {
   $('earn-partner-kit-btn').onclick = () => _partnerAct('kit', { language: (currentLang || 'en') }, S.earn_partner_kit_btn);
 }
 
+// 18.11.2026: метки уровней площадок и значения анкеты — из словаря языка, а не зашитым русским текстом.
+function _wizTier(tier, fallback) {
+  const k = {autopilot: 'earn_wiz_tier_autopilot', assisted_button: 'earn_wiz_tier_assisted', not_available: 'earn_wiz_tier_na'}[String(tier || '')];
+  return (k && S[k]) || String(fallback || tier || '');
+}
+function _wizDefaults() {
+  for (const [id, key] of [['earn-wiz-q-spec', 'earn_wiz_def_spec'], ['earn-wiz-q-tone', 'earn_wiz_def_tone'], ['earn-wiz-q-excl', 'earn_wiz_def_excl']]) {
+    const el = $(id);
+    if (el && !el.dataset.touched && S[key]) el.value = S[key];
+    if (el && !el.dataset.wired) { el.dataset.wired = '1'; el.addEventListener('input', () => { el.dataset.touched = '1'; }); }
+  }
+}
 async function loadEarning() {
   if (!token) return;
   const seq = ++_earnLoadSeq;
@@ -6600,6 +6656,7 @@ async function loadEarning() {
     window._lastEarnSibs = sibData;
     window._lastEarnCoop = coopData;
     _renderEarningDashboard(snap, sibData, coopData);
+    _wizDefaults();
     loadPartner();
   } catch (e) {
     say(String(e.message || e), false);
@@ -6817,7 +6874,7 @@ if ($('earn-wiz-platform')) {
     const curSpec = plats.find(p => p.platform_id === $('earn-wiz-platform').value);
     const infoEl = $('earn-wiz-spec-info');
     if (infoEl && curSpec) {
-      infoEl.textContent = '[' + String(curSpec.automation_label_ru) + '] '
+      infoEl.textContent = '[' + _wizTier(curSpec.automation_tier, curSpec.automation_label_ru) + '] '
         + String(curSpec.auth_hint_ru || '') + ' — ' + String(curSpec.reason_ru || '');
     }
   };
@@ -7957,16 +8014,16 @@ def page() -> tuple[str, str]:
             <div id="earn-wiz-summary" class="earn-meta"></div>
             <div class="toolbar">
               <select id="earn-wiz-filter" aria-label="Filter platforms by tier">
-                <option value="all">all (34)</option>
-                <option value="autopilot">автопилот (20%)</option>
-                <option value="assisted_button">черновик и кнопка (15%)</option>
-                <option value="not_available">пока нельзя</option>
+                <option value="all" data-i18n="earn_wiz_f_all">{s['earn_wiz_f_all']}</option>
+                <option value="autopilot" data-i18n="earn_wiz_f_autopilot">{s['earn_wiz_f_autopilot']}</option>
+                <option value="assisted_button" data-i18n="earn_wiz_f_assisted">{s['earn_wiz_f_assisted']}</option>
+                <option value="not_available" data-i18n="earn_wiz_f_na">{s['earn_wiz_f_na']}</option>
               </select>
               <select id="earn-wiz-platform" aria-label="Select platform"></select>
               <select id="earn-wiz-auth-method" aria-label="Auth method without password">
                 <option value="oauth">OAuth 2.0</option>
                 <option value="api_key">API Key</option>
-                <option value="browser_session">Encrypted Browser Session</option>
+                <option value="browser_session" data-i18n="earn_wiz_auth_session">{s['earn_wiz_auth_session']}</option>
               </select>
             </div>
             <div id="earn-wiz-spec-info" class="earn-meta"></div>
@@ -7975,14 +8032,14 @@ def page() -> tuple[str, str]:
               <button id="earn-wiz-connect-btn" class="btn-primary" data-i18n="earn_wiz_connect_btn">{s['earn_wiz_connect_btn']}</button>
             </div>
             <div class="toolbar">
-              <input id="earn-wiz-q-spec" type="text" value="Создание сайтов с ИИ-агентами, верифицированные базы лидов, аудит WCAG" data-i18n-placeholder="earn_wiz_q_spec_ph" placeholder="{s['earn_wiz_q_spec_ph']}">
+              <input id="earn-wiz-q-spec" type="text" value="{s['earn_wiz_def_spec']}" data-i18n-placeholder="earn_wiz_q_spec_ph" placeholder="{s['earn_wiz_q_spec_ph']}">
               <input id="earn-wiz-q-rate" class="earn-num-input" type="number" value="35" min="5" step="5" data-i18n-placeholder="earn_wiz_q_rate_ph" placeholder="{s['earn_wiz_q_rate_ph']}">
               <input id="earn-wiz-q-min" class="earn-num-input" type="number" value="100" min="10" step="10" data-i18n-placeholder="earn_wiz_q_min_ph" placeholder="{s['earn_wiz_q_min_ph']}">
             </div>
             <div class="toolbar">
               <input id="earn-wiz-q-langs" type="text" value="ru, en, es, zh" data-i18n-placeholder="earn_wiz_q_langs_ph" placeholder="{s['earn_wiz_q_langs_ph']}">
-              <input id="earn-wiz-q-tone" type="text" value="деловой, конкретный" data-i18n-placeholder="earn_wiz_q_tone_ph" placeholder="{s['earn_wiz_q_tone_ph']}">
-              <input id="earn-wiz-q-excl" type="text" value="казино, серый парсинг, обход капч" data-i18n-placeholder="earn_wiz_q_excl_ph" placeholder="{s['earn_wiz_q_excl_ph']}">
+              <input id="earn-wiz-q-tone" type="text" value="{s['earn_wiz_def_tone']}" data-i18n-placeholder="earn_wiz_q_tone_ph" placeholder="{s['earn_wiz_q_tone_ph']}">
+              <input id="earn-wiz-q-excl" type="text" value="{s['earn_wiz_def_excl']}" data-i18n-placeholder="earn_wiz_q_excl_ph" placeholder="{s['earn_wiz_q_excl_ph']}">
             </div>
             <div class="rec-actions">
               <button id="earn-wiz-profile-btn" class="btn-primary" data-i18n="earn_wiz_profile_btn">{s['earn_wiz_profile_btn']}</button>
