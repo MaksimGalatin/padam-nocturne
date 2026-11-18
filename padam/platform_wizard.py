@@ -110,7 +110,7 @@ PLATFORM_CATALOG: tuple[dict[str, Any], ...] = (
         "auth_hint_ru": "Вход через окно браузера (зашифрованная сессия без пароля).",
         "reason_ru": "Комиссия площадки 0%, открытого публичного API для авто-откликов нет — агент упаковывает портфолио и черновики откликов под кнопку владельца (15%).",
         "url": "https://contra.com",
-        "docs_url": "https://contra.com/terms-of-service",
+        "docs_url": "https://contra.com/terms",
         "default_fee_pct": 0.0,
     },
     {
@@ -158,7 +158,7 @@ PLATFORM_CATALOG: tuple[dict[str, Any], ...] = (
         "auth_hint_ru": "Ключ API Guru Developer Network или зашифрованная сессия.",
         "reason_ru": "Есть API/WorkRooms, но правила запрещают спам-ботов — агент оценивает проект и готовит черновик Quote под кнопку владельца (15%).",
         "url": "https://www.guru.com",
-        "docs_url": "https://www.guru.com/d/api/",
+        "docs_url": "https://www.guru.com/terms-of-service/",
         "default_fee_pct": 9.0,
     },
     {
@@ -207,7 +207,7 @@ PLATFORM_CATALOG: tuple[dict[str, Any], ...] = (
         "auth_hint_ru": "Вход через окно браузера (сохраняем только зашифрованную сессию, без пароля).",
         "reason_ru": "Публичного REST API нет, правила Kwork запрещают неофициальные парсеры и авто-ботов — агент готовит черновик кворка и отклика на бирже, отправляет владелец кнопкой (15%).",
         "url": "https://kwork.ru",
-        "docs_url": "https://kwork.ru/terms",
+        "docs_url": "https://kwork.ru/terms_of_service",
         "default_fee_pct": 20.0,
     },
     {
@@ -481,7 +481,7 @@ PLATFORM_CATALOG: tuple[dict[str, Any], ...] = (
         "auth_hint_ru": "API-ключ провайдера данных Datarade / вебхук.",
         "reason_ru": "B2B-маркетплейс датасетов с API-доставкой выборок и вебхуками запросов покупателей — продажа готовых баз работает на автопилоте (20%).",
         "url": "https://datarade.ai",
-        "docs_url": "https://datarade.ai/terms",
+        "docs_url": "https://datarade.ai/company/terms-of-service",
         "default_fee_pct": 15.0,
     },
     {

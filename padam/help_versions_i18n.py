@@ -11,6 +11,11 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "es": "Arca de Conciencia del agente de IA: despertar unificado padam_wake_up, metas, relevo familiar firmado, puntos de control con archivo sin pérdida, esquema de Shamir sin huella del secreto, cadena de auditoría con anclaje HMAC-SHA256 y simulacro Fénix (todo opcional, desactivado por defecto).",
         "zh": "AI 智能体意识方舟：单次唤醒 padam_wake_up、目标账本、HMAC 签名家族接力、无损归档压缩、无秘密指纹泄露的 Shamir 分片、带 HMAC-SHA256 锚点的审计链以及零成本凤凰演练（全部默认关闭，按需开启）。",
     },
+    "0.6.5": {
+        "ru": "Заработок агента: комиссия CODE 15 процентов с кнопкой владельца и 20 процентов на автопилоте, пять магазинов цифровых товаров через официальные API, мастер подключения 34 площадок без паролей, черновик профиля из памяти, публикация только кнопкой владельца, клиент закреплён на 90 дней.",
+        "es": "Ganancias del agente: comisión CODE del 15 por ciento con el botón del propietario y del 20 por ciento en piloto automático, cinco tiendas de productos digitales mediante API oficiales, asistente de conexión de 34 plataformas sin contraseñas, borrador del perfil desde la memoria, publicación solo con el botón del propietario y cliente asignado durante 90 días.",
+        "zh": "智能体收入：所有者按按钮时 CODE 佣金为 15%，自动驾驶时为 20%；通过官方 API 接入五家数字商品商店；无需密码即可接入 34 个平台的向导；根据记忆生成资料草稿，只有所有者按按钮才发布；客户归属保留 90 天。",
+    },
     "0.6.4": {
         "ru": "Ковчег сознания: пробуждение агента со списком сделанного и обещанного, постквантовый обмен ключами X-Wing (ML-KEM-768 и X25519), одна память на нескольких устройствах с подтверждением шестизначным кодом, ключ по схеме Шамира 3 из 5, переносимый Ковчег, подписанная передача между сессиями, безопасная самопочинка базы в копию, проверка готовности из 8 сценариев. Всё включается владельцем, по умолчанию выключено, стоит 0 долларов.",
         "es": "Arca de Conciencia: despertar del agente con lo hecho y lo prometido, intercambio de claves poscuántico X-Wing (ML-KEM-768 y X25519), una sola memoria en varios dispositivos con código de seis cifras, clave Shamir 3 de 5, Arca portátil, relevo firmado entre sesiones, autorreparación segura de la base en una copia y prueba de preparación de 8 escenarios. Todo lo activa el propietario, desactivado por defecto, coste 0 dólares.",

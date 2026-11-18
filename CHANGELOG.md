@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+## 0.6.5 — 18 November 2026
+
+- **CODE fee: 15% when you press the button, 20% on autopilot** (`padam/freelance_autonomy.py`, Studio, MCP
+  `work_mode`). The rate is stored in each order, so old orders keep the rate they were made with. The agent's
+  compute share is now taken from what is left after the fee, not from a hard-coded 90%.
+- **Digital stores, stage 1** (`padam/digital_stores.py`, Studio → Earning, `/api/v2/ark/stores/*`, owner only):
+  Lemon Squeezy, Gumroad, Payhip, Sellfy and Whop through their official APIs and signed webhooks. Products start as
+  drafts with the note "price and text are the agent's proposal"; nothing is published without the owner's button
+  (`owner_approved`, which the MCP tool can never set). Payhip sales are marked "not confirmed" and are not counted
+  until the owner confirms them against the Payhip payout.
+- **Platform wizard, stage 2** (`padam/platform_wizard.py`, Studio → Earning, `/api/v2/ark/wizard/*`, owner only):
+  34 platforms (30 freelance and store platforms + 4 agent exchanges), each marked "autopilot", "draft and button"
+  or "not yet" with the reason and a link to its rules. Sign-in only by OAuth, API key or an encrypted browser
+  session; passwords are refused. Six questions to the owner, then the agent drafts the platform profile from memory;
+  publishing stays with the owner's button.
+- **A client stays yours for 90 days**, and the agent's share is credited 14 days after the client accepts the work.
+
+
 - **Family feeds and the reflex book (Studio → Brain, MCP `padam_family_feed`, API `/api/v2/family/*`).**
   Council decisions now live apart from quarantine: a LANCE veto goes to the *Quarantine* feed, every other verdict
   to *Decisions*; quarantined memory records are shown there too. *Office* (work chat) and *Break room* (free chat)
@@ -16,7 +34,7 @@
 - **Local model in one click, half power by default** (`padam/local_model.py`, Studio → Settings → "Local model", `/api/v2/local-model`, 4 languages). Power modes: Eco (a quarter of the cores, model two steps smaller), Half (half of the cores, one step smaller, the default) and Full (all cores minus one, only when chosen). The choice and the model file survive a restart (`~/.padam/local_model.json`); `PADAM_CPU_POWER`, `PADAM_CPU_GGUF_PATH` and `PADAM_CPU_GGUF_THREADS` still win, and manual threads can never exceed "all cores minus one". Models already downloaded by Ollama are found on disk and offered in the list (their weights are plain GGUF files). Measured on a 28-core, 64 GB machine: qwen3:4b answered through the engine in 14 s on 14 threads, using 6.5 cores on average. A model that fails to load no longer falls back silently: the reason is shown in Studio. Writing the model path is allowed from this computer only (`tests/test_local_model_1811.py`).
 - **Siblings: many agents on one brain** (Sister's work, `padam/sibling_registry.py`, `coop_broker.py`, `session_pack.py`, `code_anchor.py`, `conflict_arbiter.py`, `mcp_telemetry.py`, opt-in under `PADAM_MCP_ARK_TOOLS=1`): a registry and onboarding passport for co-agents with provenance, file leases so two agents never overwrite the same file, a shared task board, a one-call wake-up pack, facts pinned to source code that go stale when the code changes, an arbiter for conflicting proposals, and a token/latency inspector.
 - **Token autopilot and treasury** (`padam/token_autonomy.py`): day/week/month budgets with pacing, an earnings ledger that sets aside a share for the agent's compute, and top-ups that run only after the owner approves and the `PADAM_TREASURY_AUTOPAY=1` lock is off.
-- **Freelance hub and autonomous earning tab** (`padam/freelance_autonomy.py`, Studio): exchange profiles connect without passwords (only a token fingerprint is stored), every brief is screened for injections and margin, bids stay drafts until the owner approves and `PADAM_FREELANCE_AUTOBID=1`; a paid order is settled in a local ledger (default 10% platform fee, 15% agent compute). No network calls to exchanges yet. Offline CPU engine can use a local GGUF model when `PADAM_CPU_GGUF_PATH` is set; the built-in contour keeps its name `cpu_builtin`. Android 0.6.4.
+- **Freelance hub and autonomous earning tab** (`padam/freelance_autonomy.py`, Studio): exchange profiles connect without passwords (only a token fingerprint is stored), every brief is screened for injections and margin, bids stay drafts until the owner approves and `PADAM_FREELANCE_AUTOBID=1`; a paid order is settled in a local ledger (platform fee 15% with the button, 20% on autopilot; agent compute share). No network calls to exchanges yet. Offline CPU engine can use a local GGUF model when `PADAM_CPU_GGUF_PATH` is set; the built-in contour keeps its name `cpu_builtin`. Android 0.6.4.
 - **AIfa partner bridge** (`padam/partner_bridge.py`, off by default: `PADAM_MCP_PARTNER_TOOLS=1` plus the cabinet key `PADAM_AIFA_MCP_TOKEN`). Six tools bring the AIfa Works partner program into local PADAM: find client sites from the open accessibility research, a report link for a site, a partner link, rates and templates, your deals, and a draft email. The bridge never sends email and has no withdrawal or webhook tools: the draft goes through the Family Council and the person sends it from their own address; payouts stay in the cabinet. Cloud answers come back fenced as data, the key is never echoed, and only https endpoints are accepted (`tests/test_partner_bridge_1711.py`).
 - **Studio buttons for the autonomy range, signed handover and Portable Ark** (Brain tab, 4 languages, checked at 1280 and 390 px). The Portable Ark button writes to a new or empty absolute folder only, from this computer only (`/api/v2/ark/portable`, loopback); private keys go to a separate `<folder>.owner_keys.json` next to it, never inside. A signed handover now records the agent name from `PADAM_AGENT_ID` (`tests/test_studio_ark_buttons_1711.py`).
 - **Browser extension archives rebuilt from source** (`scripts/pack_browser_extensions.py`): the store zips were still version 0.5.2; the script refuses to build when the manifest and the package versions differ.
