@@ -1025,6 +1025,53 @@ TOKEN_BUDGET_TOOL_DEF = {
     },
     "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
 }
+FREELANCE_HUB_TOOL_DEF = {
+    "name": "padam_freelance_hub",
+    "description": "Autonomous freelance exchange workflow (OAuth/Desk connection without passwords, job safety/margin evaluation, draft/locked bidding, Swarm execution, redacted delivery, settlement into token treasury, and monetization split).",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": [
+                    "dashboard",
+                    "connect_account",
+                    "list_accounts",
+                    "evaluate_job",
+                    "list_orders",
+                    "bid",
+                    "execute_swarm",
+                    "deliver",
+                    "settle_paid",
+                    "propose_profile",
+                    "monetization",
+                ],
+                "default": "dashboard",
+            },
+            "platform": {"type": "string", "default": "fiverr_desk"},
+            "mode": {"type": "string", "enum": ["oauth_api", "desk", "webhook"], "default": "desk"},
+            "account_label": {"type": "string"},
+            "agent_id": {"type": "string", "default": "aifa"},
+            "skills": {"type": "array", "items": {"type": "string"}},
+            "oauth_token": {"type": "string"},
+            "account_id": {"type": "string"},
+            "order_id": {"type": "string"},
+            "title": {"type": "string"},
+            "brief": {"type": "string"},
+            "budget_usdt": {"type": "number", "default": 50.0},
+            "estimated_tokens": {"type": "integer", "default": 25000},
+            "pitch_text": {"type": "string"},
+            "proposed_usdt": {"type": "number"},
+            "deliverable_text": {"type": "string"},
+            "paid_usdt": {"type": "number"},
+            "platform_fee_pct": {"type": "number", "default": 10.0},
+            "compute_share_pct": {"type": "number", "default": 15.0},
+            "suggestion_text": {"type": "string"},
+            "status": {"type": "string"},
+        },
+    },
+    "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+}
 _ALL_TOOLS_BY_NAME = {
     **_TOOLS_BY_NAME,
     "padam_recent": RECENT_TOOL_DEF,
@@ -1053,6 +1100,7 @@ _ALL_TOOLS_BY_NAME = {
     "padam_conflict_arbiter": CONFLICT_ARBITER_TOOL_DEF,
     "padam_mcp_telemetry": MCP_TELEMETRY_TOOL_DEF,
     "padam_token_budget": TOKEN_BUDGET_TOOL_DEF,
+    "padam_freelance_hub": FREELANCE_HUB_TOOL_DEF,
 }
 
 
@@ -2856,6 +2904,16 @@ def read_resource(uri: str) -> dict:
             "annotations": _make_annotations(["user", "assistant"], 0.9, None),
         }
 
+    if uri == "padam://freelance":
+        from . import freelance_autonomy as _fa
+        fa_res = _fa.freelance_dashboard_snapshot(m)
+        return {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps(fa_res, ensure_ascii=False, indent=2),
+            "annotations": _make_annotations(["user", "assistant"], 0.9, None),
+        }
+
     if uri == "padam://mcp-telemetry":
         from . import mcp_telemetry as _mt
         mt_res = _mt.inspect_mcp_telemetry(_list_tools_payload(), memory_stats=m.stats(actor=actor))
@@ -3707,7 +3765,7 @@ _ФЛАГ_ИНСТРУМЕНТА = {
     "padam_cabinet": ("PADAM_MCP_CABINET_TOOL", config.mcp_cabinet_tool_enabled),
     "padam_brain_status": ("PADAM_MCP_BRAIN_STATUS_TOOL", config.mcp_brain_status_tool_enabled),
     **{_n: ("PADAM_MCP_ARK_TOOLS", config.mcp_ark_tools_enabled) for _n in (
-        "padam_wake_up", "padam_commitments", "padam_family_relay", "padam_checkpoint", "padam_ark_timeline", "padam_lesson", "padam_family_council", "padam_memory_branch", "padam_selective_proof", "padam_guardian_tick", "padam_mesh_sync", "padam_multimodal_inspect", "padam_sibling_hub", "padam_coop_lock", "padam_session_pack", "padam_code_anchor", "padam_batch", "padam_conflict_arbiter", "padam_mcp_telemetry", "padam_token_budget")},
+        "padam_wake_up", "padam_commitments", "padam_family_relay", "padam_checkpoint", "padam_ark_timeline", "padam_lesson", "padam_family_council", "padam_memory_branch", "padam_selective_proof", "padam_guardian_tick", "padam_mesh_sync", "padam_multimodal_inspect", "padam_sibling_hub", "padam_coop_lock", "padam_session_pack", "padam_code_anchor", "padam_batch", "padam_conflict_arbiter", "padam_mcp_telemetry", "padam_token_budget", "padam_freelance_hub")},
     **{_n: ("PADAM_MCP_PARTNER_TOOLS", _partner_bridge.enabled) for _n in _partner_bridge.TOOL_NAMES},
 }
 
@@ -4760,6 +4818,79 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             payload["treasury"] = _ta.treasury_summary(m)
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
 
+    if name == "padam_freelance_hub":
+        from . import freelance_autonomy as _fa
+        act = str(args.get("action") or "dashboard").lower()
+        aid = str(args.get("agent_id") or "aifa")
+        if act == "connect_account":
+            payload = _fa.connect_exchange_account(
+                m,
+                platform=str(args.get("platform") or "fiverr_desk"),
+                mode=str(args.get("mode") or "desk"),
+                account_label=str(args.get("account_label") or ""),
+                agent_id=aid,
+                skills=args.get("skills") if isinstance(args.get("skills"), list) else None,
+                oauth_token=str(args.get("oauth_token") or ""),
+            )
+        elif act == "list_accounts":
+            payload = {"accounts": _fa.list_exchange_accounts(m), "locks": _fa.freelance_locks_status()}
+        elif act == "evaluate_job":
+            payload = _fa.evaluate_and_ingest_job(
+                m,
+                platform=str(args.get("platform") or "fiverr_desk"),
+                title=str(args.get("title") or ""),
+                brief=str(args.get("brief") or ""),
+                budget_usdt=float(args.get("budget_usdt") or 0.0),
+                estimated_tokens=int(args.get("estimated_tokens") or 25000),
+                account_id=str(args.get("account_id") or ""),
+                assigned_agent=aid,
+            )
+        elif act == "list_orders":
+            payload = {"orders": _fa.list_orders(m, status=args.get("status"))}
+        elif act == "bid":
+            payload = _fa.propose_or_place_bid(
+                m,
+                str(args.get("order_id") or ""),
+                pitch_text=str(args.get("pitch_text") or ""),
+                proposed_usdt=args.get("proposed_usdt"),
+                owner_approved=False,
+            )
+        elif act == "execute_swarm":
+            payload = _fa.execute_order_with_swarm(m, str(args.get("order_id") or ""), agent_id=aid)
+        elif act == "deliver":
+            payload = _fa.package_safe_delivery(
+                m,
+                str(args.get("order_id") or ""),
+                deliverable_text=str(args.get("deliverable_text") or ""),
+                agent_id=aid,
+            )
+        elif act == "settle_paid":
+            payload = _fa.settle_paid_order(
+                m,
+                str(args.get("order_id") or ""),
+                paid_usdt=args.get("paid_usdt"),
+                agent_id=aid,
+                compute_share_pct=float(args.get("compute_share_pct") or 15.0),
+                platform_fee_pct=float(args.get("platform_fee_pct") or 10.0),
+            )
+        elif act == "propose_profile":
+            payload = _fa.propose_profile_improvement(
+                m,
+                platform=str(args.get("platform") or "fiverr_desk"),
+                title=str(args.get("title") or "Улучшение профиля"),
+                suggestion_text=str(args.get("suggestion_text") or ""),
+                order_id=str(args.get("order_id") or ""),
+            )
+        elif act == "monetization":
+            payload = _fa.monetization_breakdown(
+                float(args.get("budget_usdt") or args.get("paid_usdt") or 100.0),
+                platform_fee_pct=float(args.get("platform_fee_pct") or 10.0),
+                agent_compute_pct=float(args.get("compute_share_pct") or 15.0),
+            )
+        else:
+            payload = _fa.freelance_dashboard_snapshot(m)
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
     if name == "padam_brain_status":
         from . import router as _router
         snap = _router.get_router().status_snapshot()
@@ -4941,6 +5072,7 @@ def _list_tools_payload() -> list[dict]:
             CONFLICT_ARBITER_TOOL_DEF,
             MCP_TELEMETRY_TOOL_DEF,
             TOKEN_BUDGET_TOOL_DEF,
+            FREELANCE_HUB_TOOL_DEF,
         ])
     if _partner_bridge.enabled():
         items.extend(_partner_bridge.TOOL_DEFS)

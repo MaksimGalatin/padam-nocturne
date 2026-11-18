@@ -25,7 +25,7 @@ LINKS = {
 
 # Пункты вкладок: (ключ вкладки, текст). Название вкладки берётся из строк Studio (nav_*), чтобы не расходилось.
 _TABS = ["overview", "migrate", "aifa", "plans", "feed", "search", "ask", "review", "attacks", "asof", "forget",
-         "graph", "entities", "l3", "brain", "team", "backup", "settings", "quickstart"]
+         "graph", "entities", "l3", "brain", "earning", "team", "backup", "settings", "quickstart"]
 
 _T: dict[str, dict[str, Any]] = {
     "ru": {
@@ -48,6 +48,7 @@ _T: dict[str, dict[str, Any]] = {
             "entities": "Люди, проекты и сервисы, о которых есть записи, и что о каждом известно.",
             "l3": "Вечный слой: пакет записей в Arweave и корень Меркла в Solana (по команде padam l3, нужен ваш кошелёк). У каждой записи свой ключ, в цепь он не уходит; уничтожили ключ — запись в цепи стала шумом. «Проверить якорь» сверяет пакет с цепью.",
             "brain": "Суверенный мозг и Ковчег сознания: светофор контуров моделей, сбор очищенного датасета личности (Zero-Leak Distill), мастер локального восстановления Феникса, проверка SHA-256 цепочки аудита, учебная тревога ($0), разделение ключа по схеме Шамира 3 из 5, Совет Семьи (LANCE/ARIA/PIXEL/ARC-7/Медведь/AIFA), Песочница Гипотез (ветки памяти без удаления), селективное доказательство Меркла, Live Mesh (ML-KEM-768 + сопряжение SAS) и проактивный Хранитель ($0). Всё платное выключено по умолчанию.",
+            "earning": "Автономный заработок и работа Роя: подключение профилей бирж без паролей, проверка ТЗ на безопасность и маржинальность, сдача без утечек, автопилот токенов на день/неделю/месяц с кнопками одобрения и расчёт долей $GALATIN.",
             "team": "Общая память команды: «Создать команду», «Выдать токен» участнику с ролью, «Отозвать» доступ. Личные записи участникам не видны.",
             "backup": "«Создать резервную копию» — зашифрованный файл всей памяти; «Восстановить из копии» — вернуть из него.",
             "settings": "Переключатели защиты: строгий профиль, задержка внешнего текста, проверка всех записей агентов и другие. Опасные переключатели только для чтения. Ниже — журнал действий с памятью и внешние подключения.",
@@ -99,6 +100,7 @@ _T: dict[str, dict[str, Any]] = {
             "entities": "People, projects and services your records mention, and what is known about each.",
             "l3": "Permanent layer: a bundle of records on Arweave and a Merkle root on Solana (padam l3, needs your wallet). Every record has its own key that never goes on-chain; destroy the key and the record on-chain becomes noise. \"Verify anchor\" checks the bundle against the chain.",
             "brain": "Sovereign Brain and Consciousness Ark: model contour traffic light, Zero-Leak personality dataset export, local Phoenix recovery wizard, SHA-256 audit chain verification, $0 Phoenix drill, Shamir 3-of-5 key splitting, Family Council orchestrator, Hypothesis Sandbox memory branches, selective Merkle proofs, PQC Live Mesh devices, and $0 proactive guardian (all paid/on-chain actions are locked by default).",
+            "earning": "Autonomous earning and exchange Swarm: connect freelance profiles via OAuth or Desk without passwords, screen briefs for prompt injections and margin, deliver redacted outputs, pace day/week/month token budgets with approval buttons, and inspect $GALATIN splits.",
             "team": "Shared team memory: \"Create team\", \"Issue token\" to a member with a role, \"Revoke\" access. Private records stay private.",
             "backup": "\"Create backup\" makes an encrypted file of your whole memory; \"Restore from backup\" brings it back.",
             "settings": "Protection switches: strict profile, holding external text, reviewing every agent write and more. Dangerous switches are read-only. Below are the memory action log and external connectors.",
@@ -150,6 +152,7 @@ _T: dict[str, dict[str, Any]] = {
             "entities": "Personas, proyectos y servicios que mencionan sus registros, y lo que se sabe de cada uno.",
             "l3": "Capa permanente: un paquete de registros en Arweave y una raíz de Merkle en Solana (padam l3, requiere su billetera). Cada registro tiene su propia clave que nunca va a la cadena; al destruirla, el registro en la cadena se vuelve ruido. «Verificar ancla» comprueba el paquete con la cadena.",
             "brain": "Cerebro Soberano y Arca de Conciencia: semáforo de contornos de modelos, exportación Zero-Leak del dataset de personalidad, asistente de recuperación local Fénix, verificación de cadena SHA-256, simulacro Fénix ($0), división Shamir 3 de 5, Consejo Familiar, ramas de hipótesis, prueba selectiva de Merkle, dispositivos Live Mesh PQC y guardián proactivo ($0).",
+            "earning": "Ingresos autonomos y enjambre de plataformas: conecta perfiles freelance sin guardar contrasenas, evalua seguridad y margen de pedidos, entrega resultados limpios, regula presupuestos de tokens y aprueba recargas.",
             "team": "Memoria compartida del equipo: «Crear equipo», «Emitir token» a un miembro con un rol, «Revocar» el acceso. Los registros privados siguen privados.",
             "backup": "«Crear copia de seguridad» genera un archivo cifrado de toda su memoria; «Restaurar desde copia» la recupera.",
             "settings": "Interruptores de protección: perfil estricto, retención de texto externo, revisión de cada escritura de agentes y más. Los interruptores peligrosos son solo de lectura. Abajo, el registro de acciones y los conectores externos.",
@@ -201,6 +204,7 @@ _T: dict[str, dict[str, Any]] = {
             "entities": "记录中提到的人物、项目和服务,以及对每一项已知的信息。",
             "l3": "永久层:记录包存入 Arweave,默克尔根锚定在 Solana(padam l3,需要您的钱包)。每条记录都有独立密钥且从不上链;销毁密钥后,链上记录即成噪声。「验证锚点」将记录包与链上数据核对。",
             "brain": "主权大脑与意识方舟:模型回路状态灯、零泄漏人格数据集导出、本地凤凰恢复向导、SHA-256 审计链校验、零成本凤凰演练、Shamir 3/5 密钥拆分、家族议会编排、假设沙盒分支、选择性默克尔证明、后量子 Live Mesh 设备同步与零成本守护者巡检（所有付费与上链操作默认关闭）。",
+            "earning": "自主创收与接单蜂群：免密码接入自由职业平台，订单安全与利润评估，脱敏交付，日/周/月 Token 配额自动驾驶与审批按钮，以及 $GALATIN 透明分成。",
             "team": "团队共享记忆:「创建团队」、为成员「发放令牌」并指定角色、「撤销」访问。私人记录保持私密。",
             "backup": "「创建备份」生成整个记忆的加密文件;「从备份恢复」将其还原。",
             "settings": "防护开关:严格模式、外部文本拦截、审核所有智能体写入等。危险开关为只读。下方是记忆操作日志和外部连接器。",

@@ -54,8 +54,8 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
 
@@ -502,6 +502,10 @@ class Handler(BaseHTTPRequestHandler):
                 rep = _ta.run_budget_timer_tick(mem(), auto_propose_if_low=False)
                 rep["proposals"] = _ta.list_topup_proposals(mem())
                 return self._send(200, rep)
+            if путь.path == "/api/v2/ark/freelance":
+                roles.require_owner(actor, "brain_status")
+                from . import freelance_autonomy as _fa
+                return self._send(200, _fa.freelance_dashboard_snapshot(mem()))
             if путь.path == "/api/v2/qa-benchmark":
                 roles.require_owner(actor, "aifa_security")
                 from pathlib import Path as _Path
@@ -1394,6 +1398,70 @@ class Handler(BaseHTTPRequestHandler):
                 if act == "execute":
                     return self._send(200, _ta.execute_approved_topup(mem(), str(data.get("proposal_id") or "")))
                 return self._send(200, _ta.run_budget_timer_tick(mem(), agent_id=aid))
+
+            if self.path == "/api/v2/ark/freelance/action":
+                roles.require_owner(actor, "ark_freelance")
+                from . import freelance_autonomy as _fa
+                act = str(data.get("action") or "dashboard").lower()
+                aid = str(data.get("agent_id") or "aifa")
+                if act == "connect_account":
+                    return self._send(200, _fa.connect_exchange_account(
+                        mem(),
+                        platform=str(data.get("platform") or "fiverr_desk"),
+                        mode=str(data.get("mode") or "desk"),
+                        account_label=str(data.get("account_label") or ""),
+                        agent_id=aid,
+                        skills=data.get("skills") if isinstance(data.get("skills"), list) else None,
+                        oauth_token=str(data.get("oauth_token") or ""),
+                    ))
+                if act == "evaluate_job":
+                    return self._send(200, _fa.evaluate_and_ingest_job(
+                        mem(),
+                        platform=str(data.get("platform") or "fiverr_desk"),
+                        title=str(data.get("title") or ""),
+                        brief=str(data.get("brief") or ""),
+                        budget_usdt=float(data.get("budget_usdt") or 0.0),
+                        estimated_tokens=int(data.get("estimated_tokens") or 25000),
+                        account_id=str(data.get("account_id") or ""),
+                        assigned_agent=aid,
+                    ))
+                if act == "bid":
+                    return self._send(200, _fa.propose_or_place_bid(
+                        mem(),
+                        str(data.get("order_id") or ""),
+                        pitch_text=str(data.get("pitch_text") or ""),
+                        proposed_usdt=data.get("proposed_usdt"),
+                        owner_approved=bool(data.get("owner_approved", False)),
+                    ))
+                if act == "execute_swarm":
+                    return self._send(200, _fa.execute_order_with_swarm(
+                        mem(),
+                        str(data.get("order_id") or ""),
+                        agent_id=aid,
+                    ))
+                if act == "deliver":
+                    return self._send(200, _fa.package_safe_delivery(
+                        mem(),
+                        str(data.get("order_id") or ""),
+                        deliverable_text=str(data.get("deliverable_text") or ""),
+                        agent_id=aid,
+                    ))
+                if act == "settle_paid":
+                    return self._send(200, _fa.settle_paid_order(
+                        mem(),
+                        str(data.get("order_id") or ""),
+                        paid_usdt=data.get("paid_usdt"),
+                        agent_id=aid,
+                        compute_share_pct=float(data.get("compute_share_pct") or 15.0),
+                        platform_fee_pct=float(data.get("platform_fee_pct") or 10.0),
+                    ))
+                if act == "monetization":
+                    return self._send(200, _fa.monetization_breakdown(
+                        float(data.get("gross_usdt") or 100.0),
+                        platform_fee_pct=float(data.get("platform_fee_pct") or 10.0),
+                        agent_compute_pct=float(data.get("compute_share_pct") or 15.0),
+                    ))
+                return self._send(200, _fa.freelance_dashboard_snapshot(mem()))
 
             if self.path == "/api/v2/ark/jobs":
                 roles.require_owner(actor, "ark_jobs")

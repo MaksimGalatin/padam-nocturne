@@ -2012,6 +2012,45 @@ def main(argv=None) -> int:
         print(json.dumps(res, ensure_ascii=False, indent=2))
         return 0
 
+    def cmd_freelance(m: Memory, args) -> int:
+        from . import freelance_autonomy as _fa
+        act = args.freelance_cmd
+        if act == "connect":
+            res = _fa.connect_exchange_account(
+                m,
+                platform=args.platform,
+                mode=args.mode,
+                account_label=args.label,
+                agent_id=args.agent,
+                oauth_token=args.oauth_token,
+            )
+        elif act == "accounts":
+            res = {"accounts": _fa.list_exchange_accounts(m), "locks": _fa.freelance_locks_status()}
+        elif act == "eval":
+            res = _fa.evaluate_and_ingest_job(
+                m,
+                platform=args.platform,
+                title=args.title,
+                brief=args.brief,
+                budget_usdt=args.budget,
+                estimated_tokens=args.tokens,
+                assigned_agent=args.agent,
+            )
+        elif act == "orders":
+            res = {"orders": _fa.list_orders(m, status=args.status)}
+        elif act == "execute":
+            res = _fa.execute_order_with_swarm(m, args.order_id, agent_id=args.agent)
+        elif act == "deliver":
+            res = _fa.package_safe_delivery(m, args.order_id, deliverable_text=args.text, agent_id=args.agent)
+        elif act == "settle":
+            res = _fa.settle_paid_order(m, args.order_id, paid_usdt=args.amount, agent_id=args.agent)
+        elif act == "monetization":
+            res = _fa.monetization_breakdown(args.amount)
+        else:
+            res = _fa.freelance_dashboard_snapshot(m)
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+        return 0
+
     sbgt = sub.add_parser("budget", help="Token quota pacing (day/week/month), earnings & owner-approved topup proposals")
     sbsub = sbgt.add_subparsers(dest="budget_cmd", required=True)
     for cname in ("status", "tick"):
@@ -2045,6 +2084,48 @@ def main(argv=None) -> int:
         sd.add_argument("proposal_id")
         sd.add_argument("--note", default="")
         sd.set_defaults(fn=cmd_budget)
+
+
+    sfrl = sub.add_parser("freelance", help="Autonomous freelance exchange hub, Swarm execution & monetization ledger")
+    sfsub = sfrl.add_subparsers(dest="freelance_cmd", required=True)
+    for cname in ("status", "accounts"):
+        sc = sfsub.add_parser(cname)
+        sc.set_defaults(fn=cmd_freelance)
+    sfc = sfsub.add_parser("connect")
+    sfc.add_argument("--platform", default="fiverr_desk")
+    sfc.add_argument("--mode", default="desk")
+    sfc.add_argument("--label", default="")
+    sfc.add_argument("--agent", default="aifa")
+    sfc.add_argument("--oauth-token", default="")
+    sfc.set_defaults(fn=cmd_freelance)
+    sfe = sfsub.add_parser("eval")
+    sfe.add_argument("title")
+    sfe.add_argument("brief")
+    sfe.add_argument("--platform", default="fiverr_desk")
+    sfe.add_argument("--budget", type=float, default=50.0)
+    sfe.add_argument("--tokens", type=int, default=25000)
+    sfe.add_argument("--agent", default="aifa")
+    sfe.set_defaults(fn=cmd_freelance)
+    sfo = sfsub.add_parser("orders")
+    sfo.add_argument("--status", default=None)
+    sfo.set_defaults(fn=cmd_freelance)
+    sfx = sfsub.add_parser("execute")
+    sfx.add_argument("order_id")
+    sfx.add_argument("--agent", default="aifa")
+    sfx.set_defaults(fn=cmd_freelance)
+    sfd = sfsub.add_parser("deliver")
+    sfd.add_argument("order_id")
+    sfd.add_argument("text")
+    sfd.add_argument("--agent", default="aifa")
+    sfd.set_defaults(fn=cmd_freelance)
+    sfs = sfsub.add_parser("settle")
+    sfs.add_argument("order_id")
+    sfs.add_argument("--amount", type=float, default=None)
+    sfs.add_argument("--agent", default="aifa")
+    sfs.set_defaults(fn=cmd_freelance)
+    sfm = sfsub.add_parser("monetization")
+    sfm.add_argument("amount", type=float, default=100.0)
+    sfm.set_defaults(fn=cmd_freelance)
 
     a = p.parse_args(argv)
     if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup, cmd_pack_extension, cmd_playground, cmd_badge, cmd_aifa_sec) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):

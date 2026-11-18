@@ -79,6 +79,40 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_portable_warn": "Закрытые ключи сохраняются отдельным файлом рядом с папкой. Держите их не на той же флешке.",
         "ark_budget_title": "Автопилот Токенов (День/Неделя/Месяц) и Казначей",
         "ark_budget_btn": "Проверить токены и казну",
+        "nav_earning": "Заработок",
+        "earn_title": "Автономный заработок и Рой бирж",
+        "earn_sub": "Подключение фриланс-бирж (только от имени владельца без обхода проверок), оценка заказов Роем, автопилот квот токенов, казна и прозрачная монетизация.",
+        "earn_ex_title": "1. Подключение биржи (профиль без пароля)",
+        "earn_ex_label_ph": "Метка профиля (например: Основной аккаунт)",
+        "earn_ex_agent_ph": "Агент (aifa / брат / сестра)",
+        "earn_ex_token_ph": "Ключ доступа для режима OAuth (необязательно для Desk)",
+        "earn_ex_connect_btn": "Подключить профиль биржи",
+        "earn_jobs_title": "2. Заказы биржи и конвейер Роя",
+        "earn_job_title_ph": "Название заказа…",
+        "earn_job_brief_ph": "Краткое ТЗ заказа для проверки безопасности и маржи…",
+        "earn_job_budget_ph": "Бюджет USDT",
+        "earn_job_tokens_ph": "Оценка токенов",
+        "earn_job_eval_btn": "Оценить заказ ($0)",
+        "earn_budget_title": "3. Автопилот токенов и согласование пополнений",
+        "earn_plan_prov_ph": "Провайдер (primary)",
+        "earn_plan_tier_ph": "Тариф (api_payg / pro)",
+        "earn_plan_save_btn": "Сохранить квоты",
+        "earn_tick_btn": "Проверить таймер",
+        "earn_propose_btn": "Запросить пополнение (+$5)",
+        "earn_swarm_title": "4. Братья, Сёстры и Монетизация ($GALATIN)",
+        "earn_sib_id_ph": "Имя сиблинга (например: brother_codex)",
+        "earn_sib_role_ph": "Роль сиблинга в Рое",
+        "earn_sib_reg_btn": "Подключить сиблинга",
+        "earn_btn_bid": "Черновик отклика",
+        "earn_btn_exec": "Взять в Рой",
+        "earn_btn_deliver": "Сдать безопасно",
+        "earn_btn_settle": "Зачислить оплату",
+        "earn_btn_approve": "Одобрить",
+        "earn_btn_reject": "Отклонить",
+        "earn_btn_execute": "Исполнить оплату",
+        "earn_empty_accounts": "Подключённых профилей биржи пока нет.",
+        "earn_empty_orders": "Оценённых заказов пока нет.",
+        "earn_empty_proposals": "Заявок на покупку токенов или тарифа пока нет.",
         "nav_settings": "Настройки",
         "nav_quickstart": "Первый запуск",
         "theme_dark": "Тёмная тема",
@@ -437,6 +471,40 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_portable_warn": "Private keys are saved to a separate file next to the folder. Keep them off the same drive.",
         "ark_budget_title": "Token Autopilot (Day/Week/Month) & Treasury",
         "ark_budget_btn": "Check Tokens & Treasury",
+        "nav_earning": "Earning",
+        "earn_title": "Autonomous Earning & Exchange Swarm",
+        "earn_sub": "Connect freelance profiles via OAuth/Desk without storing passwords, evaluate job safety & margin, pace token quotas, approve topups, and track monetization.",
+        "earn_ex_title": "1. Exchange Connection (No Password)",
+        "earn_ex_label_ph": "Profile label (e.g. Main Freelance Desk)",
+        "earn_ex_agent_ph": "Assigned agent (aifa / sibling)",
+        "earn_ex_token_ph": "OAuth token (optional for Desk mode)",
+        "earn_ex_connect_btn": "Connect Exchange Profile",
+        "earn_jobs_title": "2. Exchange Orders & Swarm Pipeline",
+        "earn_job_title_ph": "Order title…",
+        "earn_job_brief_ph": "Client brief for prompt-injection check & margin scoring…",
+        "earn_job_budget_ph": "Budget USDT",
+        "earn_job_tokens_ph": "Est. tokens",
+        "earn_job_eval_btn": "Evaluate Order ($0)",
+        "earn_budget_title": "3. Token Autopilot & Owner Approvals",
+        "earn_plan_prov_ph": "Provider (primary)",
+        "earn_plan_tier_ph": "Tier (api_payg / pro)",
+        "earn_plan_save_btn": "Save Quotas",
+        "earn_tick_btn": "Run Timer Tick",
+        "earn_propose_btn": "Propose Topup (+$5)",
+        "earn_swarm_title": "4. Sibling Agents & Monetization ($GALATIN)",
+        "earn_sib_id_ph": "Sibling ID (e.g. brother_codex)",
+        "earn_sib_role_ph": "Sibling role in Swarm",
+        "earn_sib_reg_btn": "Register Sibling",
+        "earn_btn_bid": "Draft Bid",
+        "earn_btn_exec": "Run in Swarm",
+        "earn_btn_deliver": "Safe Delivery",
+        "earn_btn_settle": "Settle Payment",
+        "earn_btn_approve": "Approve",
+        "earn_btn_reject": "Reject",
+        "earn_btn_execute": "Execute Topup",
+        "earn_empty_accounts": "No exchange profiles connected yet.",
+        "earn_empty_orders": "No evaluated orders yet.",
+        "earn_empty_proposals": "No topup or plan upgrade proposals yet.",
         "nav_settings": "Settings",
         "nav_quickstart": "Quick Start",
         "theme_dark": "Dark theme",
@@ -784,6 +852,40 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_portable_warn": "Las claves privadas se guardan en un archivo aparte junto a la carpeta. No las guarde en la misma memoria.",
         "ark_budget_title": "Piloto de Tokens (Día/Semana/Mes) y Tesorería",
         "ark_budget_btn": "Revisar Tokens y Tesorería",
+        "nav_earning": "Ingresos",
+        "earn_title": "Ingresos Autonomos y Enjambre de Trabajo",
+        "earn_sub": "Conecta perfiles freelance por OAuth o modo Desk sin guardar contrasenas, evalua margen y seguridad, regula cuotas de tokens y aprueba recargas.",
+        "earn_ex_title": "1. Conexion de Plataforma (Sin Contrasena)",
+        "earn_ex_label_ph": "Etiqueta del perfil",
+        "earn_ex_agent_ph": "Agente asignado (aifa / hermano)",
+        "earn_ex_token_ph": "Token OAuth (opcional en modo Desk)",
+        "earn_ex_connect_btn": "Conectar Perfil",
+        "earn_jobs_title": "2. Pedidos y Flujo del Enjambre",
+        "earn_job_title_ph": "Titulo del pedido…",
+        "earn_job_brief_ph": "Descripcion para revisar seguridad y margen…",
+        "earn_job_budget_ph": "Presupuesto USDT",
+        "earn_job_tokens_ph": "Tokens est.",
+        "earn_job_eval_btn": "Evaluar Pedido ($0)",
+        "earn_budget_title": "3. Piloto de Tokens y Aprobaciones",
+        "earn_plan_prov_ph": "Proveedor (primary)",
+        "earn_plan_tier_ph": "Plan (api_payg / pro)",
+        "earn_plan_save_btn": "Guardar Cuotas",
+        "earn_tick_btn": "Revisar Temporizador",
+        "earn_propose_btn": "Solicitar Recarga (+$5)",
+        "earn_swarm_title": "4. Agentes Hermanos y Monetizacion ($GALATIN)",
+        "earn_sib_id_ph": "ID del hermano (ej. brother_codex)",
+        "earn_sib_role_ph": "Rol en el enjambre",
+        "earn_sib_reg_btn": "Registrar Agente",
+        "earn_btn_bid": "Borrador de Oferta",
+        "earn_btn_exec": "Ejecutar en Enjambre",
+        "earn_btn_deliver": "Entrega Segura",
+        "earn_btn_settle": "Registrar Pago",
+        "earn_btn_approve": "Aprobar",
+        "earn_btn_reject": "Rechazar",
+        "earn_btn_execute": "Ejecutar Pago",
+        "earn_empty_accounts": "Aun no hay plataformas conectadas.",
+        "earn_empty_orders": "Aun no hay pedidos evaluados.",
+        "earn_empty_proposals": "No hay solicitudes de recarga pendientes.",
         "nav_settings": "Ajustes",
         "nav_quickstart": "Inicio rápido",
         "theme_dark": "Tema oscuro",
@@ -1131,6 +1233,40 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_portable_warn": "私钥另存为文件夹旁边的单独文件。请勿放在同一个 U 盘上。",
         "ark_budget_title": "Token 配额自动驾驶（日/周/月）与金库",
         "ark_budget_btn": "检查 Token 与金库",
+        "nav_earning": "自主创收",
+        "earn_title": "自主创收与接单协作蜂群",
+        "earn_sub": "通过 OAuth 或 Desk 安全接入自由职业平台（不保存密码），评估订单安全与利润，按日/周/月分配 Token 配额，并在审批后充值。",
+        "earn_ex_title": "1. 接单平台接入（零密码存储）",
+        "earn_ex_label_ph": "账号标签",
+        "earn_ex_agent_ph": "指派智能体 (aifa / sibling)",
+        "earn_ex_token_ph": "OAuth 令牌（Desk 模式可选）",
+        "earn_ex_connect_btn": "接入平台账号",
+        "earn_jobs_title": "2. 订单评估与蜂群执行流水线",
+        "earn_job_title_ph": "订单标题…",
+        "earn_job_brief_ph": "需求描述（用于防注入安全检查与利润评分）…",
+        "earn_job_budget_ph": "预算 USDT",
+        "earn_job_tokens_ph": "预计 Token",
+        "earn_job_eval_btn": "评估订单 ($0)",
+        "earn_budget_title": "3. Token 配额自动驾驶与主人审批",
+        "earn_plan_prov_ph": "服务商 (primary)",
+        "earn_plan_tier_ph": "套餐 (api_payg / pro)",
+        "earn_plan_save_btn": "保存配额",
+        "earn_tick_btn": "执行定时检查",
+        "earn_propose_btn": "申请充值 (+$5)",
+        "earn_swarm_title": "4. 兄弟姐妹智能体与经济分配 ($GALATIN)",
+        "earn_sib_id_ph": "同伴 ID（例如 brother_codex）",
+        "earn_sib_role_ph": "蜂群角色",
+        "earn_sib_reg_btn": "注册同伴",
+        "earn_btn_bid": "生成投标草稿",
+        "earn_btn_exec": "蜂群接单执行",
+        "earn_btn_deliver": "脱敏安全交付",
+        "earn_btn_settle": "入账结算",
+        "earn_btn_approve": "批准",
+        "earn_btn_reject": "拒绝",
+        "earn_btn_execute": "执行充值",
+        "earn_empty_accounts": "暂未接入任何自由职业平台账号。",
+        "earn_empty_orders": "暂无已评估订单。",
+        "earn_empty_proposals": "暂无充值或套餐升级申请。",
         "nav_settings": "设置",
         "nav_quickstart": "快速开始",
         "theme_dark": "深色主题",
@@ -2451,6 +2587,82 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   word-break: break-word;
 }
 
+
+.earn-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.earn-grid > .box, .earn-stack {
+  min-width: 0;
+}
+.earn-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+.earn-stack .att-row {
+  flex-wrap: wrap;
+}
+.earn-stack .att-val {
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  text-align: right;
+  max-width: 100%;
+}
+.earn-item {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.earn-item-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+.earn-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+}
+.earn-meta {
+  font-size: 12px;
+  color: var(--muted);
+  word-break: break-word;
+}
+.earn-num-input {
+  max-width: 150px;
+}
+.btn-ok {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+.btn-danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+@media (max-width: 1180px) {
+  .layout {
+    grid-template-columns: 224px minmax(0, 1fr);
+  }
+  .earn-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 860px) {
   .layout {
     grid-template-columns: minmax(0, 1fr);
@@ -2465,16 +2677,18 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .sidebar {
     border-right: 0;
     border-bottom: 1px solid var(--line);
-    padding: 10px 12px;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px 12px;
     gap: 8px;
   }
   .topbar {
     flex-wrap: wrap;
     gap: 8px;
+    padding: 10px calc(12px + env(safe-area-inset-right, 0px)) 10px calc(12px + env(safe-area-inset-left, 0px));
   }
   .topbar-controls {
     flex-wrap: wrap;
     gap: 6px;
+    width: 100%;
   }
   .brand-sub {
     display: none;
@@ -2486,6 +2700,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     flex-direction: row;
     flex-wrap: nowrap;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     gap: 6px;
     padding-bottom: 6px;
     scrollbar-width: thin;
@@ -2497,27 +2712,35 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     align-items: center;
     gap: 6px;
     white-space: nowrap;
+    min-height: 40px;
     padding: 6px 11px;
     font-size: 12.5px;
-  }
-  .topbar {
-    padding: 10px 14px;
   }
   .topbar-title {
     font-size: 16px;
   }
   .content-area {
-    padding: 14px;
+    padding: 12px calc(12px + env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) calc(12px + env(safe-area-inset-left, 0px));
   }
   .kpi-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
   }
   .kpi-value {
-    font-size: 24px;
+    font-size: 22px;
   }
-  .two-col {
-    grid-template-columns: 1fr;
+  .two-col, .earn-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .toolbar {
+    flex-wrap: wrap;
+  }
+  .toolbar input, .toolbar select, .toolbar button, .earn-num-input {
+    max-width: 100%;
+    min-height: 40px;
+  }
+  .rec-actions button {
+    min-height: 40px;
   }
   .kind-row {
     grid-template-columns: 110px 1fr 34px;
@@ -2526,7 +2749,31 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 420px) {
+  .content-area {
+    padding: 10px 10px calc(16px + env(safe-area-inset-bottom, 0px)) 10px;
+  }
+  .box {
+    padding: 12px;
+  }
+  .kpi-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .toolbar input, .toolbar select, .toolbar button, .rec-actions button {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+  .lang-group {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .kind-row {
+    grid-template-columns: 88px 1fr 30px;
+  }
+}
 """
+
 
 
 _JS = r"""
@@ -2633,7 +2880,7 @@ function say(text, ok = true) {
   box.className = ok ? 'msg-ok' : 'msg-err';
 }
 
-const TABS = ['overview', 'migrate', 'aifa', 'plans', 'feed', 'search', 'ask', 'review', 'attacks', 'asof', 'forget', 'graph', 'entities', 'l3', 'brain', 'team', 'backup', 'settings', 'quickstart', 'help'];
+const TABS = ['overview', 'migrate', 'aifa', 'plans', 'feed', 'search', 'ask', 'review', 'attacks', 'asof', 'forget', 'graph', 'entities', 'l3', 'brain', 'earning', 'team', 'backup', 'settings', 'quickstart', 'help'];
 window._padamWorkspaces = [];
 let activeTab = (initialTab && TABS.includes(initialTab)) ? initialTab : 'overview';
 let feedView = 'active', feedOffset = 0, feedKind = null, feedShown = [];
@@ -4053,6 +4300,7 @@ function loadActiveTab() {
   else if (activeTab === 'entities') loadEntities();
   else if (activeTab === 'l3') loadL3();
   else if (activeTab === 'brain') loadBrain();
+  else if (activeTab === 'earning') loadEarning();
   else if (activeTab === 'team') loadTeam();
   else if (activeTab === 'settings') loadSettings();
   else if (activeTab === 'attacks') loadAttacks();
@@ -5094,6 +5342,292 @@ if ($('brain-phoenix-arweave-btn')) {
   };
 }
 
+
+function _renderEarningDashboard(snap, sibData, coopData) {
+  const accList = $('earn-accounts-list');
+  if (accList) {
+    accList.textContent = '';
+    const locks = (snap && snap.locks) || {};
+    accList.appendChild(_el('p', 'earn-meta',
+      'Autobid lock: ' + (locks.freelance_autobid_locked !== false ? 'LOCKED' : 'OPEN') +
+      ' · Autopay lock: ' + (locks.treasury_autopay_locked !== false ? 'LOCKED' : 'OPEN')));
+    const accounts = (snap && snap.accounts) || [];
+    if (!accounts.length) {
+      accList.appendChild(_el('p', 'panel-sub', S.earn_empty_accounts || '—'));
+    } else {
+      for (const a of accounts) {
+        const card = _el('div', 'earn-item');
+        const head = _el('div', 'earn-item-head');
+        head.appendChild(_el('strong', '', String(a.account_label || a.platform)));
+        head.appendChild(_el('span', 'earn-pill', String(a.platform) + ' · ' + String(a.mode)));
+        card.appendChild(head);
+        card.appendChild(_el('div', 'earn-meta', 'agent=' + String(a.agent_id || 'aifa') + ' · token_configured=' + String(Boolean(a.token_configured))));
+        accList.appendChild(card);
+      }
+    }
+  }
+
+  const ordList = $('earn-orders-list');
+  if (ordList) {
+    ordList.textContent = '';
+    const orders = (snap && snap.orders) || [];
+    if (!orders.length) {
+      ordList.appendChild(_el('p', 'panel-sub', S.earn_empty_orders || '—'));
+    } else {
+      for (const o of orders) {
+        const card = _el('div', 'earn-item');
+        const head = _el('div', 'earn-item-head');
+        head.appendChild(_el('strong', '', String(o.title || o.order_id)));
+        head.appendChild(_el('span', 'earn-pill', String(o.status) + ' · $' + String(o.budget_usdt)));
+        card.appendChild(head);
+        card.appendChild(_el('div', 'earn-meta', 'score=' + String(o.margin_score) + ' · tokens~' + String(o.est_tokens) + ' · ' + String(o.security_note || '')));
+        if (o.status !== 'rejected_security') {
+          const actRow = _el('div', 'rec-actions');
+          const bBid = _el('button', '', S.earn_btn_bid || 'Bid');
+          bBid.onclick = async () => { await api('/api/v2/ark/freelance/action', { action: 'bid', order_id: o.order_id }); loadEarning(); };
+          const bExec = _el('button', 'btn-primary', S.earn_btn_exec || 'Execute');
+          bExec.onclick = async () => { await api('/api/v2/ark/freelance/action', { action: 'execute_swarm', order_id: o.order_id, agent_id: o.assigned_agent || 'aifa' }); loadEarning(); };
+          const bDel = _el('button', '', S.earn_btn_deliver || 'Deliver');
+          bDel.onclick = async () => { await api('/api/v2/ark/freelance/action', { action: 'deliver', order_id: o.order_id, deliverable_text: 'Выполнено по ТЗ заказа: ' + String(o.title) }); loadEarning(); };
+          const bSet = _el('button', 'btn-ok', S.earn_btn_settle || 'Settle');
+          bSet.onclick = async () => { await api('/api/v2/ark/freelance/action', { action: 'settle_paid', order_id: o.order_id, paid_usdt: Number(o.budget_usdt || 10) }); loadEarning(); };
+          actRow.appendChild(bBid);
+          actRow.appendChild(bExec);
+          actRow.appendChild(bDel);
+          actRow.appendChild(bSet);
+          card.appendChild(actRow);
+        }
+        ordList.appendChild(card);
+      }
+    }
+  }
+
+  const bSum = $('earn-budget-summary');
+  if (bSum) {
+    const tr = (snap && snap.treasury) || {};
+    const bg = (snap && snap.budget) || {};
+    _kv(bSum, {
+      providers_checked: bg.checked_providers || 0,
+      total_earned_usdt: '$' + String(tr.total_revenue_usdt || 0),
+      compute_available_usdt: '$' + String(tr.available_compute_usdt || 0),
+      spent_usdt: '$' + String(tr.spent_usdt || 0),
+      autopay_locked: String(Boolean(tr.autopay_locked !== false)),
+    });
+  }
+
+  const propList = $('earn-proposals-list');
+  if (propList) {
+    propList.textContent = '';
+    const props = (snap && snap.proposals) || [];
+    if (!props.length) {
+      propList.appendChild(_el('p', 'panel-sub', S.earn_empty_proposals || '—'));
+    } else {
+      for (const p of props) {
+        const card = _el('div', 'earn-item');
+        const head = _el('div', 'earn-item-head');
+        head.appendChild(_el('strong', '', String(p.provider) + ' · ' + String(p.target_tier) + ' · $' + String(p.amount_usdt)));
+        head.appendChild(_el('span', 'earn-pill', String(p.status)));
+        card.appendChild(head);
+        card.appendChild(_el('div', 'earn-meta', String(p.reason || '') + ' · tokens=' + String(p.estimated_tokens || 0)));
+        if (p.status === 'awaiting_owner_approval') {
+          const actRow = _el('div', 'rec-actions');
+          const bApp = _el('button', 'btn-ok', S.earn_btn_approve || 'Approve');
+          bApp.setAttribute('data-proposal-action', 'approve');
+          bApp.onclick = async () => {
+            await api('/api/v2/ark/budget/action', { action: 'approve', proposal_id: p.proposal_id, owner_note: 'Approved in Studio' });
+            loadEarning();
+          };
+          const bRej = _el('button', 'btn-danger', S.earn_btn_reject || 'Reject');
+          bRej.setAttribute('data-proposal-action', 'reject');
+          bRej.onclick = async () => {
+            await api('/api/v2/ark/budget/action', { action: 'reject', proposal_id: p.proposal_id, owner_note: 'Rejected in Studio' });
+            loadEarning();
+          };
+          actRow.appendChild(bApp);
+          actRow.appendChild(bRej);
+          card.appendChild(actRow);
+        } else if (p.status === 'approved') {
+          const actRow = _el('div', 'rec-actions');
+          const bExe = _el('button', 'btn-primary', S.earn_btn_execute || 'Execute');
+          bExe.onclick = async () => {
+            try {
+              await api('/api/v2/ark/budget/action', { action: 'execute', proposal_id: p.proposal_id });
+              loadEarning();
+            } catch (e) {
+              say(String(e.message || e), false);
+            }
+          };
+          actRow.appendChild(bExe);
+          card.appendChild(actRow);
+        }
+        propList.appendChild(card);
+      }
+    }
+  }
+
+  const swList = $('earn-swarm-list');
+  if (swList) {
+    swList.textContent = '';
+    const sibs = (sibData && sibData.siblings) || [];
+    const tasks = (coopData && coopData.tasks) || [];
+    swList.appendChild(_el('p', 'earn-meta', 'Siblings: ' + sibs.length + ' · Swarm tasks: ' + tasks.length));
+    for (const sItem of sibs.slice(0, 6)) {
+      swList.appendChild(_el('div', 'earn-meta', '• ' + String(sItem.agent_id) + ' (' + String(sItem.permission_role) + ') — ' + String(sItem.role)));
+    }
+    for (const tItem of tasks.slice(0, 6)) {
+      swList.appendChild(_el('div', 'earn-meta', '◦ [' + String(tItem.status) + '] ' + String(tItem.title)));
+    }
+  }
+
+  const monSum = $('earn-monetization-summary');
+  if (monSum) {
+    const mt = (snap && snap.monetization_totals) || {};
+    const eco = (mt.ecosystem_reference && mt.ecosystem_reference.ecosystem_shares_pct) || {};
+    _kv(monSum, {
+      gross_freelance_usdt: '$' + String(mt.total_gross_usdt || 0),
+      platform_fee_usdt: '$' + String(mt.total_platform_fee_usdt || 0),
+      agent_compute_pool_usdt: '$' + String(mt.total_agent_compute_usdt || 0),
+      galatin_split: '5% Fund + 5% Burn + 15/7/3% Ambassadors + 65% Treasury (100%=' + String(Boolean(mt.ecosystem_reference && mt.ecosystem_reference.percentage_sum_verified)) + ')',
+      eco_treasury_pct: String(eco.treasury_pct || 65) + '%',
+    });
+  }
+
+  const sugList = $('earn-suggestions-list');
+  if (sugList) {
+    sugList.textContent = '';
+    const sugs = (snap && snap.profile_suggestions) || [];
+    for (const sg of sugs.slice(0, 5)) {
+      const card = _el('div', 'earn-item');
+      card.appendChild(_el('strong', '', String(sg.title || '')));
+      card.appendChild(_el('div', 'earn-meta', String(sg.suggestion_text || '')));
+      sugList.appendChild(card);
+    }
+  }
+}
+
+async function loadEarning() {
+  if (!token) return;
+  try {
+    const snap = await api('/api/v2/ark/freelance');
+    const sibData = await api('/api/v2/ark/siblings').catch(() => ({ siblings: [] }));
+    const coopData = await api('/api/v2/ark/coop').catch(() => ({ tasks: [] }));
+    _renderEarningDashboard(snap, sibData, coopData);
+  } catch (e) {
+    say(String(e.message || e), false);
+  }
+}
+
+if ($('earn-connect-btn')) {
+  $('earn-connect-btn').onclick = async () => {
+    try {
+      await api('/api/v2/ark/freelance/action', {
+        action: 'connect_account',
+        platform: ($('earn-platform') && $('earn-platform').value) || 'fiverr_desk',
+        mode: ($('earn-mode') && $('earn-mode').value) || 'desk',
+        account_label: ($('earn-label') && $('earn-label').value) || '',
+        agent_id: ($('earn-agent') && $('earn-agent').value) || 'aifa',
+        oauth_token: ($('earn-token') && $('earn-token').value) || '',
+      });
+      if ($('earn-token')) $('earn-token').value = '';
+      say(S.done);
+      loadEarning();
+    } catch (e) {
+      say(String(e.message || e), false);
+    }
+  };
+}
+
+if ($('earn-eval-btn')) {
+  $('earn-eval-btn').onclick = async () => {
+    try {
+      const title = ($('earn-job-title') && $('earn-job-title').value) || '';
+      const brief = ($('earn-job-brief') && $('earn-job-brief').value) || '';
+      if (!title.trim() || !brief.trim()) { say(S.failed, false); return; }
+      await api('/api/v2/ark/freelance/action', {
+        action: 'evaluate_job',
+        platform: ($('earn-platform') && $('earn-platform').value) || 'fiverr_desk',
+        title: title,
+        brief: brief,
+        budget_usdt: Number(($('earn-job-budget') && $('earn-job-budget').value) || 50),
+        estimated_tokens: Number(($('earn-job-tokens') && $('earn-job-tokens').value) || 25000),
+      });
+      say(S.done);
+      loadEarning();
+    } catch (e) {
+      say(String(e.message || e), false);
+    }
+  };
+}
+
+if ($('earn-plan-save-btn')) {
+  $('earn-plan-save-btn').onclick = async () => {
+    try {
+      await api('/api/v2/ark/budget/action', {
+        action: 'set_plan',
+        provider: ($('earn-plan-prov') && $('earn-plan-prov').value) || 'primary',
+        tier_name: ($('earn-plan-tier') && $('earn-plan-tier').value) || 'api_payg',
+        daily_token_limit: Number(($('earn-plan-daily') && $('earn-plan-daily').value) || 100000),
+        weekly_token_limit: Number(($('earn-plan-weekly') && $('earn-plan-weekly').value) || 500000),
+        monthly_token_limit: Number(($('earn-plan-monthly') && $('earn-plan-monthly').value) || 2000000),
+        usd_balance: Number(($('earn-plan-usd') && $('earn-plan-usd').value) || 10),
+      });
+      say(S.done);
+      loadEarning();
+    } catch (e) {
+      say(String(e.message || e), false);
+    }
+  };
+}
+
+if ($('earn-tick-btn')) {
+  $('earn-tick-btn').onclick = async () => {
+    try {
+      await api('/api/v2/ark/budget/action', { action: 'timer_tick', agent_id: 'aifa' });
+      loadEarning();
+    } catch (e) {
+      say(String(e.message || e), false);
+    }
+  };
+}
+
+if ($('earn-propose-btn')) {
+  $('earn-propose-btn').onclick = async () => {
+    try {
+      await api('/api/v2/ark/budget/action', {
+        action: 'propose',
+        provider: ($('earn-plan-prov') && $('earn-plan-prov').value) || 'primary',
+        amount_usdt: 5.0,
+        estimated_tokens: 1000000,
+        target_tier: ($('earn-plan-tier') && $('earn-plan-tier').value) || 'api_payg',
+        reason: 'Заявка агента из вкладки Автономный заработок',
+      });
+      say(S.done);
+      loadEarning();
+    } catch (e) {
+      say(String(e.message || e), false);
+    }
+  };
+}
+
+if ($('earn-sib-reg-btn')) {
+  $('earn-sib-reg-btn').onclick = async () => {
+    try {
+      const sid = ($('earn-sib-id') && $('earn-sib-id').value) || '';
+      if (!sid.trim()) { say(S.failed, false); return; }
+      await api('/api/v2/ark/siblings', {
+        action: 'register',
+        agent_id: sid.trim(),
+        role: ($('earn-sib-role') && $('earn-sib-role').value) || 'Autonomous sibling',
+        permission_role: 'contributor',
+      });
+      say(S.done);
+      loadEarning();
+    } catch (e) {
+      say(String(e.message || e), false);
+    }
+  };
+}
+
 applyI18n();
 switchTab(activeTab);
 """
@@ -5110,7 +5644,7 @@ def page() -> tuple[str, str]:
 <html lang="{init_lang}" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>{s['app_title']}</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
@@ -5179,6 +5713,9 @@ def page() -> tuple[str, str]:
       </button>
       <button id="tab-brain" data-tab="brain" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-brain">
         <span data-i18n="nav_brain">{s['nav_brain']}</span>
+      </button>
+      <button id="tab-earning" data-tab="earning" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-earning">
+        <span data-i18n="nav_earning">{s['nav_earning']}</span>
       </button>
       <button id="tab-team" data-tab="team" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-team">
         <span data-i18n="nav_team">{s['nav_team']}</span>
@@ -5846,6 +6383,89 @@ def page() -> tuple[str, str]:
             <button id="ark-budget-btn" class="btn-primary" data-i18n="ark_budget_btn">{s['ark_budget_btn']}</button>
           </div>
           <div id="ark-budget-out"></div>
+        </div>
+      </section>
+      <section id="panel-earning" role="tabpanel" aria-labelledby="tab-earning" hidden>
+        <div class="panel-head">
+          <h2 class="panel-title" data-i18n="earn_title">{s['earn_title']}</h2>
+          <p class="panel-sub" data-i18n="earn_sub">{s['earn_sub']}</p>
+        </div>
+        <div class="earn-grid">
+          <div class="box">
+            <h3 class="box-title" data-i18n="earn_ex_title">{s['earn_ex_title']}</h3>
+            <div class="toolbar">
+              <select id="earn-platform" aria-label="Exchange platform">
+                <option value="fiverr_desk">fiverr_desk</option>
+                <option value="upwork_api">upwork_api</option>
+                <option value="freelancer_api">freelancer_api</option>
+                <option value="kwork_desk">kwork_desk</option>
+                <option value="custom_webhook">custom_webhook</option>
+              </select>
+              <select id="earn-mode" aria-label="Connection mode">
+                <option value="desk">desk</option>
+                <option value="oauth_api">oauth_api</option>
+                <option value="webhook">webhook</option>
+              </select>
+            </div>
+            <div class="toolbar">
+              <input id="earn-label" type="text" data-i18n-placeholder="earn_ex_label_ph" placeholder="{s['earn_ex_label_ph']}">
+              <input id="earn-agent" type="text" value="aifa" data-i18n-placeholder="earn_ex_agent_ph" placeholder="{s['earn_ex_agent_ph']}">
+            </div>
+            <div class="toolbar">
+              <input id="earn-token" type="password" data-i18n-placeholder="earn_ex_token_ph" placeholder="{s['earn_ex_token_ph']}">
+              <button id="earn-connect-btn" class="btn-primary" data-i18n="earn_ex_connect_btn">{s['earn_ex_connect_btn']}</button>
+            </div>
+            <div id="earn-accounts-list" class="earn-stack"></div>
+          </div>
+
+          <div class="box">
+            <h3 class="box-title" data-i18n="earn_jobs_title">{s['earn_jobs_title']}</h3>
+            <div class="toolbar">
+              <input id="earn-job-title" type="text" data-i18n-placeholder="earn_job_title_ph" placeholder="{s['earn_job_title_ph']}">
+            </div>
+            <div class="toolbar">
+              <input id="earn-job-brief" type="text" data-i18n-placeholder="earn_job_brief_ph" placeholder="{s['earn_job_brief_ph']}">
+            </div>
+            <div class="toolbar">
+              <input id="earn-job-budget" class="earn-num-input" type="number" value="50" min="1" step="1" data-i18n-placeholder="earn_job_budget_ph" placeholder="{s['earn_job_budget_ph']}">
+              <input id="earn-job-tokens" class="earn-num-input" type="number" value="25000" min="500" step="500" data-i18n-placeholder="earn_job_tokens_ph" placeholder="{s['earn_job_tokens_ph']}">
+              <button id="earn-eval-btn" class="btn-primary" data-i18n="earn_job_eval_btn">{s['earn_job_eval_btn']}</button>
+            </div>
+            <div id="earn-orders-list" class="earn-stack"></div>
+          </div>
+
+          <div class="box">
+            <h3 class="box-title" data-i18n="earn_budget_title">{s['earn_budget_title']}</h3>
+            <div class="toolbar">
+              <input id="earn-plan-prov" type="text" value="primary" data-i18n-placeholder="earn_plan_prov_ph" placeholder="{s['earn_plan_prov_ph']}">
+              <input id="earn-plan-tier" type="text" value="api_payg" data-i18n-placeholder="earn_plan_tier_ph" placeholder="{s['earn_plan_tier_ph']}">
+              <input id="earn-plan-usd" class="earn-num-input" type="number" value="10" min="0" step="1" aria-label="USD balance">
+            </div>
+            <div class="toolbar">
+              <input id="earn-plan-daily" class="earn-num-input" type="number" value="100000" min="1000" step="1000" aria-label="Daily limit">
+              <input id="earn-plan-weekly" class="earn-num-input" type="number" value="500000" min="1000" step="5000" aria-label="Weekly limit">
+              <input id="earn-plan-monthly" class="earn-num-input" type="number" value="2000000" min="1000" step="10000" aria-label="Monthly limit">
+            </div>
+            <div class="rec-actions">
+              <button id="earn-plan-save-btn" class="btn-primary" data-i18n="earn_plan_save_btn">{s['earn_plan_save_btn']}</button>
+              <button id="earn-tick-btn" data-i18n="earn_tick_btn">{s['earn_tick_btn']}</button>
+              <button id="earn-propose-btn" data-i18n="earn_propose_btn">{s['earn_propose_btn']}</button>
+            </div>
+            <div id="earn-budget-summary" class="earn-stack"></div>
+            <div id="earn-proposals-list" class="earn-stack"></div>
+          </div>
+
+          <div class="box">
+            <h3 class="box-title" data-i18n="earn_swarm_title">{s['earn_swarm_title']}</h3>
+            <div class="toolbar">
+              <input id="earn-sib-id" type="text" data-i18n-placeholder="earn_sib_id_ph" placeholder="{s['earn_sib_id_ph']}">
+              <input id="earn-sib-role" type="text" data-i18n-placeholder="earn_sib_role_ph" placeholder="{s['earn_sib_role_ph']}">
+              <button id="earn-sib-reg-btn" class="btn-primary" data-i18n="earn_sib_reg_btn">{s['earn_sib_reg_btn']}</button>
+            </div>
+            <div id="earn-swarm-list" class="earn-stack"></div>
+            <div id="earn-monetization-summary" class="earn-stack"></div>
+            <div id="earn-suggestions-list" class="earn-stack"></div>
+          </div>
         </div>
       </section>
     </main>
