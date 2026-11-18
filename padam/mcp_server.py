@@ -2158,6 +2158,44 @@ def _try_elicit_quarantined(m: Memory, mid: str, content: str, origin: str) -> t
     return None, reason_text
 
 
+def _owner_confirms_export(scope, limit) -> tuple[bool, str]:
+    """Аудит GLM MCP-01: агент под инъекцией не должен молча выгрузить всю память. Спрашиваем человека в клиенте.
+    Возвращает (разрешено, причина отказа)."""
+    mode = config.mcp_export_confirm_mode()
+    if mode == "off":
+        return True, ""
+    can_ask = _client_supports_elicitation() and _elicitation_callback is not None
+    if not can_ask:
+        if mode == "strict":
+            return False, ("Export needs the owner's confirmation, and this client cannot ask. "
+                           "Run `padam export` in a terminal, or set PADAM_MCP_EXPORT_CONFIRM=ask.")
+        return True, ""
+    req = {
+        "jsonrpc": "2.0", "id": f"elicit-export-{int(time.time() * 1000)}", "method": "elicitation/create",
+        "params": {
+            "message": ("Агент просит выгрузить память PADAM (padam_export).\n"
+                        f"Область: {scope or 'вся'} | предел: {limit or 'без предела'}.\n"
+                        "Выгрузка содержит текст записей. Разрешить? / An agent asks to export PADAM memory. Allow?"),
+            "requestedSchema": {"type": "object", "properties": {"decision": {
+                "type": "string", "title": "Решение владельца / Owner decision",
+                "enum": ["allow", "deny"], "enumNames": ["Разрешить / Allow", "Запретить / Deny"]}},
+                "required": ["decision"]},
+        },
+    }
+    try:
+        raw = _elicitation_callback(req)
+    except Exception:
+        raw = None
+    res = raw.get("result") if isinstance(raw, dict) and isinstance(raw.get("result"), dict) else raw
+    if isinstance(res, dict):
+        content = res.get("content") if isinstance(res.get("content"), dict) else {}
+        action = str(res.get("action") or "").strip().lower()
+        decision = str(content.get("decision") or res.get("decision") or "").strip().lower()
+        if action == "accept" and decision in ("allow", "approve", "yes", "разрешить"):
+            return True, ""
+    return False, "Export was not confirmed by the owner."
+
+
 RESOURCES = [
     {
         "uri": "padam://profile",
@@ -4128,6 +4166,9 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
 
     if name == "padam_export":
         eff_export_scope = _check_session_scope(args.get("scope")) if (_session_scope_ctx.get() or args.get("scope")) else args.get("scope")
+        разрешено, причина = _owner_confirms_export(eff_export_scope, args.get("limit"))
+        if not разрешено:
+            return f"Permission denied: {причина}", None
         c_ev = _cancel_event_ctx.get()
         p_cb = _emit_progress if _progress_token_ctx.get() is not None else None
         try:

@@ -473,6 +473,15 @@ def mcp_elicitation_guard_enabled() -> bool:
     return os.environ.get("PADAM_MCP_ELICITATION_GUARD", "0").strip() == "1"
 
 
+def mcp_export_confirm_mode() -> str:
+    """Аудит GLM MCP-01 (18.11.2026): подтверждение владельца перед padam_export через MCP.
+    ask (по умолчанию) — если клиент умеет elicitation, спросить человека; отказ = отказ.
+    strict — без подтверждения человеком выгрузки нет (клиент без elicitation получает отказ и подсказку `padam export`).
+    off — прежнее поведение."""
+    v = os.environ.get("PADAM_MCP_EXPORT_CONFIRM", "ask").strip().lower()
+    return v if v in ("ask", "strict", "off") else "ask"
+
+
 # --- ТОП-10 v3 Пункт 9: Локальная телеметрия OpenTelemetry-формата (выключено по умолчанию) ---
 def mcp_otel_enabled() -> bool:
     """Включает локальную OTLP-телеметрию и ресурс padam://metrics (PADAM_OTEL_METRICS=1)."""
