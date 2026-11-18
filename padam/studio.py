@@ -27,6 +27,31 @@ STRINGS: dict[str, dict[str, str]] = {
     "ru": {
         "app_title": "PADAM · NOCTURNE Studio",
         "app_subtitle": "Локальная защищённая память ИИ-агентов · CODE Eternal",
+        "nav_family": "Семья",
+        "fam_title": "Семья: кто работает с вами и как",
+        "fam_sub": "Агенты, подключённые к вашей памяти, их роли и текущая работа. Каждое действие сначала проходит Совет Семьи; переписка и вердикты — в Лентах ниже. Всё это — записи, а не приказы.",
+        "fam_agents_title": "Кто в Семье сейчас",
+        "fam_agents_empty": "Пока никто не подключён. Агенты появляются здесь, когда подключаются к PADAM через MCP.",
+        "fam_status": "статус",
+        "fam_task": "сейчас",
+        "fam_seen": "на связи",
+        "fam_ollama": "Ollama — локальный мозг ($0)",
+        "fam_ollama_on": "работает, моделей",
+        "fam_ollama_off": "не видит моделей — перезапустите Ollama из трея",
+        "fam_roles_title": "Совет Семьи: 6 ролей",
+        "fam_roles_sub": "Совет проверяет каждую задачу до исполнения и сам ничего не делает: он выносит решение.",
+        "role_lance": "LANCE — страж безопасности: ловит подброшенные приказы, подмену правил и утечку секретов. Единственный с правом запрета.",
+        "role_aria": "ARIA — хранитель памяти: находит ваши подписанные правила, решения и предпочтения.",
+        "role_pixel": "PIXEL — проверяет цепочку подписей аудита и данные обещания.",
+        "role_arc7": "ARC-7 — страж границы: задерживает всё, что уходит наружу (письма, выгрузки, публикации) до вашего слова.",
+        "role_bear": "МЕДВЕДЬ — держит необратимое: деньги, удаление, блокчейн, публикацию — до вашего слова.",
+        "role_aifa": "AIFA — координатор: собирает голоса и записывает решение в журнал.",
+        "grp_memory": "Память",
+        "grp_guard": "Защита",
+        "grp_cloud": "AIfa и вечная память",
+        "grp_brain": "Мозг и модели",
+        "grp_more": "Ещё: переезд, копии, настройки",
+        "fam_quiet": "молчит с",
         "nav_overview": "Обзор",
         "nav_feed": "Лента памяти",
         "nav_search": "Поиск",
@@ -557,6 +582,31 @@ STRINGS: dict[str, dict[str, str]] = {
     "en": {
         "app_title": "PADAM · NOCTURNE Studio",
         "app_subtitle": "Local-First Verifiable Memory for AI Agents · CODE Eternal",
+        "nav_family": "Family",
+        "fam_title": "Family: who works with you and how",
+        "fam_sub": "Agents connected to your memory, their roles and current work. Every action goes through the Family Council first; chat and verdicts are in the Feeds below. Everything here is records, not orders.",
+        "fam_agents_title": "Who is in the Family now",
+        "fam_agents_empty": "Nobody is connected yet. Agents appear here when they connect to PADAM over MCP.",
+        "fam_status": "status",
+        "fam_task": "now",
+        "fam_seen": "last seen",
+        "fam_ollama": "Ollama — local brain ($0)",
+        "fam_ollama_on": "running, models",
+        "fam_ollama_off": "sees no models — restart Ollama from the tray",
+        "fam_roles_title": "Family Council: 6 roles",
+        "fam_roles_sub": "The Council checks every task before it runs and does nothing itself: it gives a verdict.",
+        "role_lance": "LANCE — security guard: catches planted orders, rule swaps and leaked secrets. The only one with a veto.",
+        "role_aria": "ARIA — memory keeper: finds your signed rules, decisions and preferences.",
+        "role_pixel": "PIXEL — checks the signed audit chain and the promises made.",
+        "role_arc7": "ARC-7 — boundary warden: holds anything leaving your computer (emails, uploads, posts) for your word.",
+        "role_bear": "BEAR — holds what cannot be undone: money, deletion, blockchain, publishing — for your word.",
+        "role_aifa": "AIFA — coordinator: collects the votes and writes the decision to the log.",
+        "grp_memory": "Memory",
+        "grp_guard": "Protection",
+        "grp_cloud": "AIfa and eternal memory",
+        "grp_brain": "Brain and models",
+        "grp_more": "More: move in, backups, settings",
+        "fam_quiet": "silent since",
         "nav_overview": "Overview",
         "nav_feed": "Memory Feed",
         "nav_search": "Search",
@@ -1076,6 +1126,31 @@ STRINGS: dict[str, dict[str, str]] = {
     "es": {
         "app_title": "PADAM · NOCTURNE Studio",
         "app_subtitle": "Memoria local verificable para agentes de IA · CODE Eternal",
+        "nav_family": "Familia",
+        "fam_title": "Familia: quién trabaja con usted y cómo",
+        "fam_sub": "Agentes conectados a su memoria, sus roles y su trabajo actual. Cada acción pasa primero por el Consejo Familiar; el chat y los veredictos están en los Feeds de abajo. Todo esto son registros, no órdenes.",
+        "fam_agents_title": "Quién está en la Familia ahora",
+        "fam_agents_empty": "Aún no hay nadie conectado. Los agentes aparecen aquí cuando se conectan a PADAM por MCP.",
+        "fam_status": "estado",
+        "fam_task": "ahora",
+        "fam_seen": "visto",
+        "fam_ollama": "Ollama — cerebro local ($0)",
+        "fam_ollama_on": "funciona, modelos",
+        "fam_ollama_off": "no ve modelos — reinicie Ollama desde la bandeja",
+        "fam_roles_title": "Consejo Familiar: 6 roles",
+        "fam_roles_sub": "El Consejo revisa cada tarea antes de ejecutarla y no hace nada por sí mismo: da un veredicto.",
+        "role_lance": "LANCE — guardián de seguridad: detecta órdenes plantadas, cambios de reglas y fugas de secretos. El único con veto.",
+        "role_aria": "ARIA — guardiana de la memoria: encuentra sus reglas, decisiones y preferencias firmadas.",
+        "role_pixel": "PIXEL — revisa la cadena de auditoría firmada y las promesas hechas.",
+        "role_arc7": "ARC-7 — guardián de la frontera: retiene todo lo que sale (correos, subidas, publicaciones) hasta su palabra.",
+        "role_bear": "OSO — retiene lo irreversible: dinero, borrado, blockchain, publicación — hasta su palabra.",
+        "role_aifa": "AIFA — coordinadora: reúne los votos y anota la decisión en el registro.",
+        "grp_memory": "Memoria",
+        "grp_guard": "Protección",
+        "grp_cloud": "AIfa y memoria eterna",
+        "grp_brain": "Cerebro y modelos",
+        "grp_more": "Más: mudanza, copias, ajustes",
+        "fam_quiet": "en silencio desde",
         "nav_overview": "Resumen",
         "nav_feed": "Línea de memoria",
         "nav_search": "Búsqueda",
@@ -1595,6 +1670,31 @@ STRINGS: dict[str, dict[str, str]] = {
     "zh": {
         "app_title": "PADAM · NOCTURNE Studio",
         "app_subtitle": "本地优先、可永久验证的 AI 智能体安全记忆系统 · CODE Eternal",
+        "nav_family": "家族",
+        "fam_title": "家族：谁在与您合作、如何合作",
+        "fam_sub": "已连接到您记忆的智能体、它们的角色和当前工作。每个操作都先经过家族委员会；聊天和裁决见下方信息流。这里的一切都是记录，而不是命令。",
+        "fam_agents_title": "当前家族成员",
+        "fam_agents_empty": "还没有成员连接。智能体通过 MCP 连接 PADAM 后会显示在这里。",
+        "fam_status": "状态",
+        "fam_task": "当前",
+        "fam_seen": "最近在线",
+        "fam_ollama": "Ollama — 本地大脑（$0）",
+        "fam_ollama_on": "运行中，模型数",
+        "fam_ollama_off": "看不到模型 — 请从托盘重启 Ollama",
+        "fam_roles_title": "家族委员会：6 个角色",
+        "fam_roles_sub": "委员会在执行前检查每项任务，自己不执行任何操作：只给出裁决。",
+        "role_lance": "LANCE — 安全卫士：识别植入的指令、规则替换和机密泄露。唯一拥有否决权。",
+        "role_aria": "ARIA — 记忆守护者：找出您签名的规则、决定和偏好。",
+        "role_pixel": "PIXEL — 检查签名审计链和已作出的承诺。",
+        "role_arc7": "ARC-7 — 边界守卫：一切外发（邮件、上传、发布）都等您确认。",
+        "role_bear": "熊 — 守住不可逆操作：资金、删除、区块链、发布 — 等您确认。",
+        "role_aifa": "AIFA — 协调者：汇总投票并把决定写入日志。",
+        "grp_memory": "记忆",
+        "grp_guard": "防护",
+        "grp_cloud": "AIfa 与永久记忆",
+        "grp_brain": "大脑与模型",
+        "grp_more": "更多：迁入、备份、设置",
+        "fam_quiet": "静默自",
         "nav_overview": "概览",
         "nav_feed": "记忆流",
         "nav_search": "搜索",
@@ -2705,6 +2805,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   font-weight: 500;
 }
 .nav-tab:hover { background: var(--card); border-color: var(--line); }
+.nav-group { display: flex; flex-direction: column; gap: 4px; }
+.nav-group-head { width: 100%; text-align: left; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: transparent; font-weight: 600; color: var(--muted, inherit); }
+.nav-group-body { display: flex; flex-direction: column; gap: 4px; padding-left: 10px; }
+.nav-group-body[hidden] { display: none; }
 .nav-tab[aria-selected="true"] {
   background: var(--card);
   border-color: var(--accent);
@@ -3501,15 +3605,16 @@ function say(text, ok = true) {
   box.className = ok ? 'msg-ok' : 'msg-err';
 }
 
-const TABS = ['overview', 'migrate', 'aifa', 'plans', 'feed', 'search', 'ask', 'review', 'attacks', 'asof', 'forget', 'graph', 'entities', 'l3', 'brain', 'earning', 'team', 'backup', 'settings', 'quickstart', 'help'];
+const TABS = ['overview', 'family', 'migrate', 'aifa', 'plans', 'feed', 'search', 'ask', 'review', 'attacks', 'asof', 'forget', 'graph', 'entities', 'l3', 'brain', 'earning', 'team', 'backup', 'settings', 'quickstart', 'help'];
 window._padamWorkspaces = [];
-let activeTab = (initialTab && TABS.includes(initialTab)) ? initialTab : 'overview';
+let activeTab = (initialTab && TABS.includes(initialTab)) ? initialTab : 'family';
 let feedView = 'active', feedOffset = 0, feedKind = null, feedShown = [];
 let lastReceipt = null;
 let graphData = {nodes: [], edges: []}, graphPositions = {}, selectedGraphNode = null;
 
 function applyI18n() {
   S = ALL_STRINGS[currentLang] || ALL_STRINGS.ru;
+  if (typeof syncNavGroups === 'function') { try { syncNavGroups(activeTab); } catch (e) {} }
   document.documentElement.lang = currentLang;
   document.title = S.app_title;
   for (const node of document.querySelectorAll('[data-i18n]')) {
@@ -3532,8 +3637,46 @@ function applyI18n() {
   try { if (activeTab === 'help' || activeTab === 'attacks') loadActiveTab(); } catch (e) {}
 }
 
+// 18.11.2026: меню из 7 групп вместо 21 строки. Кнопки вкладок те же, они лишь переносятся в свёрнутые группы.
+const NAV_GROUPS = [
+  { key: null, tabs: ['family'] },
+  { key: null, tabs: ['earning'] },
+  { key: 'grp_memory', tabs: ['overview', 'feed', 'search', 'ask', 'asof', 'graph', 'entities'] },
+  { key: 'grp_guard', tabs: ['review', 'attacks', 'forget'] },
+  { key: 'grp_cloud', tabs: ['aifa', 'plans', 'l3'] },
+  { key: null, tabs: ['brain'] },
+  { key: 'grp_more', tabs: ['migrate', 'team', 'backup', 'settings', 'quickstart', 'help'] },
+];
+function buildNavGroups() {
+  const nav = document.querySelector('.nav-list');
+  if (!nav || nav.dataset.grouped) return;
+  nav.dataset.grouped = '1';
+  for (const g of NAV_GROUPS) {
+    if (!g.key) { for (const tb of g.tabs) { const b = $('tab-' + tb); if (b) nav.appendChild(b); } continue; }
+    const wrap = _el('div', 'nav-group');
+    const head = _el('button', 'nav-group-head');
+    head.type = 'button';
+    head.dataset.group = g.key;
+    head.setAttribute('aria-expanded', 'false');
+    head.textContent = '▸ ' + (S[g.key] || g.key);
+    const body = _el('div', 'nav-group-body');
+    body.hidden = true;
+    for (const tb of g.tabs) { const b = $('tab-' + tb); if (b) body.appendChild(b); }
+    head.onclick = () => { const open = body.hidden; body.hidden = !open; head.setAttribute('aria-expanded', String(open)); head.textContent = (open ? '▾ ' : '▸ ') + (S[g.key] || g.key); };
+    wrap.appendChild(head); wrap.appendChild(body); nav.appendChild(wrap);
+  }
+}
+function syncNavGroups(tab) {
+  for (const g of NAV_GROUPS) {
+    if (!g.key || !g.tabs.includes(tab)) continue;
+    const head = document.querySelector('.nav-group-head[data-group="' + g.key + '"]');
+    if (head && head.nextSibling && head.nextSibling.hidden) head.click();
+  }
+  for (const h of document.querySelectorAll('.nav-group-head')) h.textContent = (h.getAttribute('aria-expanded') === 'true' ? '▾ ' : '▸ ') + (S[h.dataset.group] || h.dataset.group);
+}
 function switchTab(tab) {
   if (!TABS.includes(tab)) return;
+  buildNavGroups(); syncNavGroups(tab);
   activeTab = tab;
   for (const t of TABS) {
     const btn = $('tab-' + t);
@@ -4991,7 +5134,8 @@ function loadActiveTab() {
   else if (activeTab === 'graph') loadGraph();
   else if (activeTab === 'entities') loadEntities();
   else if (activeTab === 'l3') loadL3();
-  else if (activeTab === 'brain') { loadBrain(); loadFamilyFeed(); }
+  else if (activeTab === 'family') { loadFamily(); loadFamilyFeed(); }
+  else if (activeTab === 'brain') loadBrain();
   else if (activeTab === 'earning') loadEarning();
   else if (activeTab === 'team') loadTeam();
   else if (activeTab === 'settings') { loadSettings(); loadLocalModel(); }
@@ -5686,6 +5830,38 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
 
+// Вкладка «Семья» (18.11.2026): кто подключён к памяти, статус, текущая работа и локальный мозг Ollama.
+async function loadFamily() {
+  const box = $('fam-agents');
+  if (!box || !token) return;
+  box.textContent = '';
+  try {
+    const [sib, st] = await Promise.all([
+      api('/api/v2/ark/siblings').catch(() => ({ siblings: [] })),
+      api('/api/v2/brain/status?probe=1').catch(() => ({})),
+    ]);
+    const list = (sib && sib.siblings) || [];
+    if (!list.length) box.appendChild(_el('p', 'panel-sub', S.fam_agents_empty));
+    for (const a of list) {
+      const item = _el('div', 'earn-item');
+      item.appendChild(_el('strong', '', String(a.display_name || a.agent_id)));
+      item.appendChild(_el('div', 'earn-meta', String(a.role || '')));
+      const seen = Date.parse(String(a.last_heartbeat_at || ''));
+      const quiet = isFinite(seen) && (Date.now() - seen) > 3600 * 1000;
+      const when = isFinite(seen) ? new Date(seen).toLocaleString(currentLang === 'zh' ? 'zh-CN' : currentLang, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+      item.appendChild(_el('div', 'earn-meta', quiet ? ('⏸ ' + S.fam_quiet + ' ' + when) : ('🟢 ' + S.fam_status + ': ' + String(a.status || '') + ' · ' + S.fam_seen + ': ' + when)));
+      if (a.current_task) item.appendChild(_el('div', 'earn-meta', S.fam_task + ': ' + String(a.current_task)));
+      box.appendChild(item);
+    }
+    const probe = (st && st.local_probe) || null;
+    const ol = _el('div', 'earn-item');
+    ol.appendChild(_el('strong', '', S.fam_ollama));
+    const n = probe && probe.models ? probe.models.length : 0;
+    ol.appendChild(_el('div', 'earn-meta', (probe && probe.online && n) ? (S.fam_ollama_on + ': ' + n + ' · ' + probe.models.slice(0, 6).join(', ')) : S.fam_ollama_off));
+    box.appendChild(ol);
+  } catch (e) { box.appendChild(_el('p', 'panel-sub', String(e.message || e))); }
+}
+
 async function loadBrain() {
   if (!token) return;
   let st = null;
@@ -5797,7 +5973,7 @@ if ($('ark-audit-btn')) {
     } catch (e) {}
   };
 }
-let _ffCh = 'work';
+let _ffCh = 'office';
 const _FF_CH = ['work', 'quarantine', 'office', 'smoke'];
 async function loadFamilyFeed(ch) {
   if (ch) _ffCh = ch;
@@ -7260,6 +7436,9 @@ def page() -> tuple[str, str]:
       <button id="tab-overview" data-tab="overview" class="nav-tab" role="tab" aria-selected="true" aria-controls="panel-overview">
         <span data-i18n="nav_overview">{s['nav_overview']}</span>
       </button>
+      <button id="tab-family" data-tab="family" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-family">
+        <span data-i18n="nav_family">{s['nav_family']}</span>
+      </button>
       <button id="tab-migrate" data-tab="migrate" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-migrate">
         <span data-i18n="nav_migrate">{s['nav_migrate']}</span>
       </button>
@@ -7871,6 +8050,53 @@ def page() -> tuple[str, str]:
       </section>
 
       <!-- СУВЕРЕННЫЙ МОЗГ И ФЕНИКС -->
+      <section id="panel-family" role="tabpanel" aria-labelledby="tab-family" hidden>
+        <h2 class="panel-title" data-i18n="fam_title">{s['fam_title']}</h2>
+        <p class="panel-sub" data-i18n="fam_sub">{s['fam_sub']}</p>
+        <div class="box" id="fam-agents-box">
+          <h3 class="box-title" data-i18n="fam_agents_title">{s['fam_agents_title']}</h3>
+          <div id="fam-agents" class="earn-stack" aria-live="polite"></div>
+        </div>
+        <div class="box" id="fam-roles-box">
+          <h3 class="box-title" data-i18n="fam_roles_title">{s['fam_roles_title']}</h3>
+          <p class="panel-sub" data-i18n="fam_roles_sub">{s['fam_roles_sub']}</p>
+          <ul class="fam-roles">
+            <li><span data-i18n="role_lance">{s['role_lance']}</span></li>
+            <li><span data-i18n="role_aria">{s['role_aria']}</span></li>
+            <li><span data-i18n="role_pixel">{s['role_pixel']}</span></li>
+            <li><span data-i18n="role_arc7">{s['role_arc7']}</span></li>
+            <li><span data-i18n="role_bear">{s['role_bear']}</span></li>
+            <li><span data-i18n="role_aifa">{s['role_aifa']}</span></li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3 class="box-title" data-i18n="ark_council_title">{s['ark_council_title']}</h3>
+          <div class="toolbar">
+            <input id="ark-council-input" type="text" data-i18n-placeholder="ark_council_ph" placeholder="{s['ark_council_ph']}">
+          </div>
+          <div class="rec-actions">
+            <button id="ark-council-btn" class="btn-primary" data-i18n="ark_council_btn">{s['ark_council_btn']}</button>
+          </div>
+          <div id="ark-council-out"></div>
+        </div>
+        <div class="box" id="ff-box">
+          <h3 class="box-title" data-i18n="ff_title">{s['ff_title']}</h3>
+          <p class="panel-sub" data-i18n="ff_desc">{s['ff_desc']}</p>
+          <div class="rec-actions" role="group" aria-label="{s['ff_title']}">
+            <button id="ff-ch-work" data-ch="work" aria-pressed="true" class="btn-primary" data-i18n="ff_work">{s['ff_work']}</button>
+            <button id="ff-ch-quarantine" data-ch="quarantine" aria-pressed="false" data-i18n="ff_quarantine">{s['ff_quarantine']}</button>
+            <button id="ff-ch-office" data-ch="office" aria-pressed="false" data-i18n="ff_office">{s['ff_office']}</button>
+            <button id="ff-ch-smoke" data-ch="smoke" aria-pressed="false" data-i18n="ff_smoke">{s['ff_smoke']}</button>
+          </div>
+          <div id="ff-list" aria-live="polite"></div>
+          <div class="toolbar">
+            <input id="ff-input" type="text" maxlength="2000" aria-label="{s['ff_ph']}" data-i18n-placeholder="ff_ph" placeholder="{s['ff_ph']}">
+            <button id="ff-send" data-i18n="ff_send">{s['ff_send']}</button>
+          </div>
+          <h4 class="box-title" data-i18n="ff_reflex_title">{s['ff_reflex_title']}</h4>
+          <div id="ff-reflexes"></div>
+        </div>
+      </section>
       <section id="panel-brain" role="tabpanel" aria-labelledby="tab-brain" hidden>
         <div class="panel-header">
           <h2 class="panel-title" data-i18n="brain_title">{s['brain_title']}</h2>
@@ -7918,33 +8144,6 @@ def page() -> tuple[str, str]:
             <p class="panel-sub" data-i18n="ark_shamir_warn">{s['ark_shamir_warn']}</p>
           </div>
           <p id="ark-drill-out" class="panel-sub"></p>
-        </div>
-        <div class="box">
-          <h3 class="box-title" data-i18n="ark_council_title">{s['ark_council_title']}</h3>
-          <div class="toolbar">
-            <input id="ark-council-input" type="text" data-i18n-placeholder="ark_council_ph" placeholder="{s['ark_council_ph']}">
-          </div>
-          <div class="rec-actions">
-            <button id="ark-council-btn" class="btn-primary" data-i18n="ark_council_btn">{s['ark_council_btn']}</button>
-          </div>
-          <div id="ark-council-out"></div>
-        </div>
-        <div class="box" id="ff-box">
-          <h3 class="box-title" data-i18n="ff_title">{s['ff_title']}</h3>
-          <p class="panel-sub" data-i18n="ff_desc">{s['ff_desc']}</p>
-          <div class="rec-actions" role="group" aria-label="{s['ff_title']}">
-            <button id="ff-ch-work" data-ch="work" aria-pressed="true" class="btn-primary" data-i18n="ff_work">{s['ff_work']}</button>
-            <button id="ff-ch-quarantine" data-ch="quarantine" aria-pressed="false" data-i18n="ff_quarantine">{s['ff_quarantine']}</button>
-            <button id="ff-ch-office" data-ch="office" aria-pressed="false" data-i18n="ff_office">{s['ff_office']}</button>
-            <button id="ff-ch-smoke" data-ch="smoke" aria-pressed="false" data-i18n="ff_smoke">{s['ff_smoke']}</button>
-          </div>
-          <div id="ff-list" aria-live="polite"></div>
-          <div class="toolbar">
-            <input id="ff-input" type="text" maxlength="2000" aria-label="{s['ff_ph']}" data-i18n-placeholder="ff_ph" placeholder="{s['ff_ph']}">
-            <button id="ff-send" data-i18n="ff_send">{s['ff_send']}</button>
-          </div>
-          <h4 class="box-title" data-i18n="ff_reflex_title">{s['ff_reflex_title']}</h4>
-          <div id="ff-reflexes"></div>
         </div>
         <div class="box">
           <h3 class="box-title" data-i18n="ark_branch_title">{s['ark_branch_title']}</h3>

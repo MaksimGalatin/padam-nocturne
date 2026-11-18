@@ -24,7 +24,7 @@ LINKS = {
 }
 
 # Пункты вкладок: (ключ вкладки, текст). Название вкладки берётся из строк Studio (nav_*), чтобы не расходилось.
-_TABS = ["overview", "migrate", "aifa", "plans", "feed", "search", "ask", "review", "attacks", "asof", "forget",
+_TABS = ["overview", "family", "migrate", "aifa", "plans", "feed", "search", "ask", "review", "attacks", "asof", "forget",
          "graph", "entities", "l3", "brain", "earning", "team", "backup", "settings", "quickstart"]
 
 _T: dict[str, dict[str, Any]] = {
@@ -33,6 +33,7 @@ _T: dict[str, dict[str, Any]] = {
         "sub": "Как устроен PADAM NOCTURNE и что делает каждая кнопка. Обновляется с каждым выпуском.",
         "s_tabs": "Вкладки и кнопки",
         "tabs": {
+            "family": "Семья: кто подключён к вашей памяти (Claude Code, Antigravity, AutoClaw и другие) — роль, статус, текущая работа; локальный мозг Ollama; Совет Семьи из 6 ролей с объяснением каждой и кнопкой созыва; Ленты «Решения», «Карантин», «Офис», «Курилка» и книга рефлексов.",
             "overview": "Сводка: сколько записей действует, сколько ждёт проверки, забыто, противоречит. «Открыть очередь проверки» ведёт к задержанным записям. «Запустить сон NOCTURNE» сводит накопленные эпизоды в факты. Ниже — состояние защиты (padam doctor): зелёный — всё в порядке, жёлтый — есть предупреждения, красный — нужна ваша помощь.",
             "migrate": "Переезд из ChatGPT, Claude, Gemini, Grok, DeepSeek, Copilot, Perplexity и официальной памяти MCP. Укажите архив экспорта или выберите файл. «Предпросмотр» ничего не записывает и показывает, сколько разговоров и ключей будет. «Импортировать» сначала делает снимок, потом переносит. «Отменить импорт» откатывает всё по снимку и выдаёт квитанцию.",
             "aifa": "Разговор с AIfa из единого кабинета CODE Eternal — та же память, что на четырёх сайтах. Вход по коду из почты, пароль не нужен. Переключатель «AIfa видит мою локальную память» по умолчанию выключен; если включить, в запрос уйдёт не больше 5 найденных записей, уже со скрытыми ключами, и вы увидите, какие именно.",
@@ -88,6 +89,7 @@ _T: dict[str, dict[str, Any]] = {
         "sub": "How PADAM NOCTURNE works and what each button does. Updated with every release.",
         "s_tabs": "Tabs and buttons",
         "tabs": {
+            "family": "Family: who is connected to your memory (Claude Code, Antigravity, AutoClaw and others) — role, status, current work; the local Ollama brain; the Family Council of 6 roles with what each does and a button to convene it; the Decisions, Quarantine, Office and Break room feeds and the reflex book.",
             "overview": "Summary: how many records are active, waiting for review, forgotten or in conflict. \"Open review queue\" takes you to held records. \"Run NOCTURNE sleep\" consolidates pending episodes into facts. Below is the protection status (padam doctor): green is fine, yellow has warnings, red needs you.",
             "migrate": "Move in from ChatGPT, Claude, Gemini, Grok, DeepSeek, Copilot, Perplexity and the official MCP memory. Point to the export archive or choose a file. \"Preview\" writes nothing and shows how many conversations and keys there are. \"Import\" takes a snapshot first, then moves the data. \"Undo import\" rolls everything back from the snapshot and issues a receipt.",
             "aifa": "Talk to AIfa from the unified CODE Eternal account — the same memory as on the four sites. Sign in with a code from your email, no password. \"AIfa sees my local memory\" is off by default; when on, at most 5 matching records, already with keys masked, are sent, and you see which ones.",
@@ -143,6 +145,7 @@ _T: dict[str, dict[str, Any]] = {
         "sub": "Cómo funciona PADAM NOCTURNE y qué hace cada botón. Se actualiza con cada versión.",
         "s_tabs": "Pestañas y botones",
         "tabs": {
+            "family": "Familia: quién está conectado a su memoria (Claude Code, Antigravity, AutoClaw y otros) — rol, estado, trabajo actual; el cerebro local Ollama; el Consejo Familiar de 6 roles con lo que hace cada uno y un botón para convocarlo; los feeds Decisiones, Cuarentena, Oficina y Descanso y el libro de reflejos.",
             "overview": "Resumen: cuántos registros están activos, esperan revisión, se olvidaron o se contradicen. «Abrir cola de revisión» lleva a los registros retenidos. «Ejecutar sueño NOCTURNE» consolida los episodios en hechos. Abajo, el estado de la protección (padam doctor): verde está bien, amarillo tiene avisos, rojo necesita su ayuda.",
             "migrate": "Mudanza desde ChatGPT, Claude, Gemini, Grok, DeepSeek, Copilot, Perplexity y la memoria oficial de MCP. Indique el archivo de exportación o elija un archivo. «Vista previa» no escribe nada y muestra cuántas conversaciones y claves hay. «Importar» primero toma una instantánea y luego mueve los datos. «Deshacer importación» revierte todo desde la instantánea y emite un recibo.",
             "aifa": "Hable con AIfa desde la cuenta única de CODE Eternal: la misma memoria que en los cuatro sitios. Entrada con un código del correo, sin contraseña. «AIfa ve mi memoria local» está desactivado por defecto; si lo activa, se envían como máximo 5 registros encontrados, ya con las claves ocultas, y usted ve cuáles.",
@@ -198,6 +201,7 @@ _T: dict[str, dict[str, Any]] = {
         "sub": "PADAM NOCTURNE 的工作方式以及每个按钮的作用。每次发布都会更新。",
         "s_tabs": "标签页与按钮",
         "tabs": {
+            "family": "家族：谁连接到了您的记忆（Claude Code、Antigravity、AutoClaw 等）— 角色、状态、当前工作；本地大脑 Ollama；6 个角色的家族委员会及各自职责和召集按钮；「决定」「隔离」「办公室」「休息室」信息流和反射手册。",
             "overview": "概览:有多少记录生效、等待审核、已遗忘或存在冲突。「打开审核队列」进入被拦截的记录。「立即运行 NOCTURNE 睡眠」把待处理的片段整合为事实。下方是防护状态(padam doctor):绿色正常,黄色有警告,红色需要您处理。",
             "migrate": "从 ChatGPT、Claude、Gemini、Grok、DeepSeek、Copilot、Perplexity 以及官方 MCP 记忆迁入。指定导出压缩包或选择文件。「预览」不写入任何内容,只显示会话和密钥数量。「导入」先创建快照再迁移数据。「撤销导入」按快照全部回滚并出具回执。",
             "aifa": "在统一的 CODE Eternal 账户中与 AIfa 对话——与四个网站相同的记忆。用邮箱验证码登录,无需密码。「AIfa 可见我的本地记忆」默认关闭;开启后最多发送 5 条已隐藏密钥的匹配记录,并显示具体是哪些。",
