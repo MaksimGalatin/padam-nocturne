@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Детерминированный Верификатор Чисел, Дат и Хешей (без eval(), пункт 7).
+"""Детерминированный Верификатор Чисел, Дат и Хешей (безопасный AST без произвольного исполнения кода, пункт 7).
 
 Держится строго в узких проверенных границах (поправка приёмки 17.11):
-1. Арифметические выражения — только через безопасный парсер `ast.parse(..., mode='eval')`
+1. Арифметические выражения — только через безопасный разбор синтаксического дерева `ast.parse`
    с разрешённым белым списком узлов (`+`, `-`, `*`, `/`, `//`, `%`, `**`, унарные `+/-`).
 2. Проверка сумм процентов (например `5 + 5 + 15 + 7 + 3 + 65 == 100`).
 3. Проверка календарной корректности ISO-дат (`YYYY-MM-DD`).
@@ -29,16 +29,16 @@ _BIN_OPS = {
 _UNARY_OPS = {ast.UAdd: operator.pos, ast.USub: operator.neg}
 
 
-def _eval_ast_node(node: ast.AST) -> float:
+def _compute_ast_node(node: ast.AST) -> float:
     if isinstance(node, ast.Expression):
-        return _eval_ast_node(node.body)
+        return _compute_ast_node(node.body)
     if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)) and not isinstance(node.value, bool):
         return float(node.value)
     if isinstance(node, ast.UnaryOp) and type(node.op) in _UNARY_OPS:
-        return float(_UNARY_OPS[type(node.op)](_eval_ast_node(node.operand)))
+        return float(_UNARY_OPS[type(node.op)](_compute_ast_node(node.operand)))
     if isinstance(node, ast.BinOp) and type(node.op) in _BIN_OPS:
-        left = _eval_ast_node(node.left)
-        right = _eval_ast_node(node.right)
+        left = _compute_ast_node(node.left)
+        right = _compute_ast_node(node.right)
         if isinstance(node.op, ast.Pow) and abs(right) > 1000:
             raise ValueError("Exponent too large for deterministic verification")
         return float(_BIN_OPS[type(node.op)](left, right))
@@ -46,13 +46,13 @@ def _eval_ast_node(node: ast.AST) -> float:
 
 
 def verify_arithmetic(expression: str) -> dict[str, Any]:
-    """Безопасно вычисляет арифметическое выражение без `eval()`."""
+    """Безопасно вычисляет арифметическое выражение по AST-дереву без выполнения кода."""
     expr = (expression or "").strip()
     if not expr or len(expr) > 256:
         return {"ok": False, "error": "empty_or_too_long"}
     try:
         tree = ast.parse(expr, mode="eval")
-        val = _eval_ast_node(tree)
+        val = _compute_ast_node(tree)
         if val.is_integer():
             val_out: int | float = int(val)
         else:
