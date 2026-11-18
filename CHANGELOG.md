@@ -18,6 +18,11 @@
   session; passwords are refused. Six questions to the owner, then the agent drafts the platform profile from memory;
   publishing stays with the owner's button.
 - **A client stays yours for 90 days**, and the agent's share is credited 14 days after the client accepts the work.
+- **Studio block 9 «AIfaFocus: clients from our research»** — separate from the exchanges; the same actions as the
+  `padam_partner_*` MCP tools (find clients, report link, partner link, kit, deals, email draft through the Family
+  Council). The cabinet key is stored encrypted; emails are never sent by the agent — copy or open in your own mail.
+- **Honest local-model status**: when Ollama sees no models, Sovereign brain says so instead of «ONLINE · 0 models».
+- **AS-055 timing check is stable on CI**: warm-up and the median of five timings per size; the 30x limit is unchanged.
 
 
 - **Family feeds and the reflex book (Studio → Brain, MCP `padam_family_feed`, API `/api/v2/family/*`).**
