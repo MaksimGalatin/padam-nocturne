@@ -411,7 +411,7 @@ def run_guardian_tick(
         f"Хранитель Ковчега: здоровье {health.get('score', 0)}/100, "
         f"открытых обещаний {len(open_commits)} (просрочено: {len(overdue)}, скоро: {len(due_soon)}), "
         f"цепочка аудита: {'OK' if chain_ok else 'BROKEN'}, "
-        f"CPU-движок: {cpu_stat.get('engine')}."
+        f"CPU-движок: {cpu_stat.get('mode')}."
     )
     return {
         "ok": True,

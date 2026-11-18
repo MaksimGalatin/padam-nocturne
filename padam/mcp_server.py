@@ -786,6 +786,94 @@ LESSON_TOOL_DEF = {
     },
     "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
 }
+FAMILY_COUNCIL_TOOL_DEF = {
+    "name": "padam_family_council",
+    "description": "Convene Family Council swarm orchestrator (LANCE security veto, ARIA memory, PIXEL integrity, AIFA consensus).",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "task": {"type": "string"},
+            "scope": {"type": "string", "default": "global"},
+        },
+        "required": ["task"],
+    },
+    "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+}
+MEMORY_BRANCH_TOOL_DEF = {
+    "name": "padam_memory_branch",
+    "description": "Hypothesis Sandbox (create, remember, list, merge, abandon) without deleting user records.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["create", "remember", "list", "merge", "abandon"], "default": "list"},
+            "name": {"type": "string"},
+            "branch_id": {"type": "string"},
+            "content": {"type": "string"},
+            "description": {"type": "string"},
+            "reason": {"type": "string"},
+            "scope": {"type": "string", "default": "global"},
+        },
+    },
+    "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+}
+SELECTIVE_PROOF_TOOL_DEF = {
+    "name": "padam_selective_proof",
+    "description": "Create or verify a blinded Merkle selective proof for one memory record without exposing other records.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["create", "verify"], "default": "create"},
+            "record_id": {"type": "string"},
+            "scope": {"type": "string", "default": "global"},
+            "proof": {"type": "object"},
+        },
+    },
+    "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+}
+GUARDIAN_TICK_TOOL_DEF = {
+    "name": "padam_guardian_tick",
+    "description": "Run proactive $0 Consciousness Ark check (overdue commitments, audit chain integrity, health score).",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "scope": {"type": "string", "default": "global"},
+        },
+    },
+    "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+}
+MESH_SYNC_TOOL_DEF = {
+    "name": "padam_mesh_sync",
+    "description": "Post-quantum X-Wing Live Mesh multi-device pairing (SAS), peer listing, and encrypted delta sync.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["identity", "peers", "pair_init", "pair_accept", "pair_confirm", "export", "apply"], "default": "peers"},
+            "device_name": {"type": "string", "default": "Primary-Node"},
+            "device_type": {"type": "string", "default": "pc"},
+            "peer_id": {"type": "string"},
+            "sas_code": {"type": "string"},
+            "peer_identity": {"type": "object"},
+            "pairing_invite": {"type": "object"},
+            "packet": {"type": "object"},
+        },
+    },
+    "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+}
+MULTIMODAL_INSPECT_TOOL_DEF = {
+    "name": "padam_multimodal_inspect",
+    "description": "Inspect document/image bytes for hidden prompt injections before saving a safe hash card to memory.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "filename": {"type": "string"},
+            "text": {"type": "string"},
+            "content_b64": {"type": "string"},
+            "scope": {"type": "string", "default": "global"},
+        },
+        "required": ["filename"],
+    },
+    "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+}
 _ALL_TOOLS_BY_NAME = {
     **_TOOLS_BY_NAME,
     "padam_recent": RECENT_TOOL_DEF,
@@ -799,6 +887,12 @@ _ALL_TOOLS_BY_NAME = {
     "padam_checkpoint": CHECKPOINT_TOOL_DEF,
     "padam_ark_timeline": TIMELINE_TOOL_DEF,
     "padam_lesson": LESSON_TOOL_DEF,
+    "padam_family_council": FAMILY_COUNCIL_TOOL_DEF,
+    "padam_memory_branch": MEMORY_BRANCH_TOOL_DEF,
+    "padam_selective_proof": SELECTIVE_PROOF_TOOL_DEF,
+    "padam_guardian_tick": GUARDIAN_TICK_TOOL_DEF,
+    "padam_mesh_sync": MESH_SYNC_TOOL_DEF,
+    "padam_multimodal_inspect": MULTIMODAL_INSPECT_TOOL_DEF,
 }
 
 
@@ -3393,7 +3487,7 @@ _ФЛАГ_ИНСТРУМЕНТА = {
     "padam_cabinet": ("PADAM_MCP_CABINET_TOOL", config.mcp_cabinet_tool_enabled),
     "padam_brain_status": ("PADAM_MCP_BRAIN_STATUS_TOOL", config.mcp_brain_status_tool_enabled),
     **{_n: ("PADAM_MCP_ARK_TOOLS", config.mcp_ark_tools_enabled) for _n in (
-        "padam_wake_up", "padam_commitments", "padam_family_relay", "padam_checkpoint", "padam_ark_timeline", "padam_lesson")},
+        "padam_wake_up", "padam_commitments", "padam_family_relay", "padam_checkpoint", "padam_ark_timeline", "padam_lesson", "padam_family_council", "padam_memory_branch", "padam_selective_proof", "padam_guardian_tick", "padam_mesh_sync", "padam_multimodal_inspect")},
 }
 
 
@@ -4187,6 +4281,68 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             payload = {"lessons": _ark.list_lessons(m, limit=int(args.get("limit") or 10))}
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
 
+    if name == "padam_family_council":
+        from . import swarm_council as _sc
+        payload = _sc.run_family_council(m, str(args.get("task") or ""), scope=str(args.get("scope") or "global"))
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
+    if name == "padam_memory_branch":
+        from . import ark_advanced as _adv
+        act = str(args.get("action") or "list").lower()
+        if act == "create":
+            payload = _adv.create_branch(m, str(args.get("name") or "branch"), description=str(args.get("description") or ""), scope=str(args.get("scope") or "global"))
+        elif act == "remember":
+            payload = _adv.branch_remember(m, str(args.get("branch_id") or ""), str(args.get("content") or ""))
+        elif act == "merge":
+            payload = _adv.merge_branch(m, str(args.get("branch_id") or ""))
+        elif act == "abandon":
+            payload = _adv.abandon_branch(m, str(args.get("branch_id") or ""), reason=str(args.get("reason") or ""))
+        else:
+            payload = {"branches": _adv.list_branches(m, scope=args.get("scope"))}
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
+    if name == "padam_selective_proof":
+        from . import ark_advanced as _adv
+        if str(args.get("action") or "create").lower() == "verify":
+            payload = _adv.verify_selective_proof(dict(args.get("proof") or {}), memory=m)
+        else:
+            payload = _adv.create_selective_proof(m, str(args.get("record_id") or ""), scope=str(args.get("scope") or "global"))
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
+    if name == "padam_guardian_tick":
+        from . import ark_advanced as _adv
+        payload = _adv.run_guardian_tick(m, scope=str(args.get("scope") or "global"))
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
+    if name == "padam_mesh_sync":
+        from . import live_mesh as _mesh
+        act = str(args.get("action") or "peers").lower()
+        if act == "identity":
+            payload = _mesh.get_or_create_node_identity(m, device_name=str(args.get("device_name") or "Primary-Node"), device_type=str(args.get("device_type") or "pc"))
+        elif act == "pair_init":
+            payload = _mesh.initiate_pairing(m, dict(args.get("peer_identity") or {}))
+        elif act == "pair_accept":
+            payload = _mesh.accept_pairing_invite(m, dict(args.get("pairing_invite") or {}))
+        elif act == "pair_confirm":
+            payload = _mesh.confirm_peer_sas(m, str(args.get("peer_id") or ""), str(args.get("sas_code") or ""))
+        elif act == "export":
+            payload = _mesh.export_mesh_delta(m, peer_id=args.get("peer_id"))
+        elif act == "apply":
+            pkt = dict(args.get("packet") or {})
+            if not pkt.get("encrypted"):
+                raise PermissionError("Unencrypted mesh deltas are rejected; PQC envelope required")
+            payload = _mesh.apply_mesh_delta(m, pkt)
+        else:
+            payload = {"node": _mesh.get_or_create_node_identity(m), "peers": _mesh.list_peers(m)}
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
+    if name == "padam_multimodal_inspect":
+        import base64 as _b64
+        from . import ark_advanced as _adv
+        raw = _b64.b64decode(str(args["content_b64"])) if args.get("content_b64") else str(args.get("text") or "").encode("utf-8")
+        payload = _adv.inspect_and_store_document(m, str(args.get("filename") or "doc.txt"), raw, scope=str(args.get("scope") or "global"))
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
     if name == "padam_brain_status":
         from . import router as _router
         snap = _router.get_router().status_snapshot()
@@ -4354,6 +4510,12 @@ def _list_tools_payload() -> list[dict]:
             CHECKPOINT_TOOL_DEF,
             TIMELINE_TOOL_DEF,
             LESSON_TOOL_DEF,
+            FAMILY_COUNCIL_TOOL_DEF,
+            MEMORY_BRANCH_TOOL_DEF,
+            SELECTIVE_PROOF_TOOL_DEF,
+            GUARDIAN_TICK_TOOL_DEF,
+            MESH_SYNC_TOOL_DEF,
+            MULTIMODAL_INSPECT_TOOL_DEF,
         ])
     if config.mcp_official_compat_enabled():
         from . import compat_official as _compat_official

@@ -54,6 +54,19 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_audit_btn": "Проверить хэш-цепь SHA-256",
         "ark_shamir_btn": "Разделить ключ (Шамир 3/5)",
         "ark_shamir_warn": "Храните доли Шамира раздельно у разных доверенных людей!",
+        "ark_council_title": "Оркестратор Роя: Совет Семьи (LANCE · ARIA · PIXEL · AIFA)",
+        "ark_council_ph": "Введите задачу для совместной проверки Советом Семьи…",
+        "ark_council_btn": "Созвать Совет Семьи",
+        "ark_branch_title": "Песочница Гипотез (Ветки памяти без удаления)",
+        "ark_branch_ph": "Название новой ветки гипотез…",
+        "ark_branch_create_btn": "Создать ветку",
+        "ark_branch_list_btn": "Обновить ветки",
+        "ark_proof_title": "Селективное доказательство Меркла (без раскрытия базы)",
+        "ark_proof_ph": "ID записи (record_id)…",
+        "ark_proof_btn": "Доказательство Меркла",
+        "ark_mesh_title": "Live Mesh (Одна Душа на всех экранах) и Хранитель ($0)",
+        "ark_mesh_btn": "Устройства Mesh",
+        "ark_guardian_btn": "Обход Хранителя ($0)",
         "nav_settings": "Настройки",
         "nav_quickstart": "Первый запуск",
         "theme_dark": "Тёмная тема",
@@ -387,6 +400,19 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_audit_btn": "Verify SHA-256 Audit Chain",
         "ark_shamir_btn": "Split Key (Shamir 3/5)",
         "ark_shamir_warn": "Store Shamir shares separately with different trusted guardians!",
+        "ark_council_title": "Swarm Orchestrator: Family Council (LANCE · ARIA · PIXEL · AIFA)",
+        "ark_council_ph": "Enter task for Family Council review…",
+        "ark_council_btn": "Convene Family Council",
+        "ark_branch_title": "Hypothesis Sandbox (Non-destructive Memory Branches)",
+        "ark_branch_ph": "New hypothesis branch name…",
+        "ark_branch_create_btn": "Create Branch",
+        "ark_branch_list_btn": "Refresh Branches",
+        "ark_proof_title": "Selective Merkle Knowledge Proof",
+        "ark_proof_ph": "Record ID (record_id)…",
+        "ark_proof_btn": "Generate Merkle Proof",
+        "ark_mesh_title": "Live Mesh (PQC Multi-Device) & Guardian ($0)",
+        "ark_mesh_btn": "Mesh Devices",
+        "ark_guardian_btn": "Guardian Tick ($0)",
         "nav_settings": "Settings",
         "nav_quickstart": "Quick Start",
         "theme_dark": "Dark theme",
@@ -709,6 +735,19 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_audit_btn": "Verificar cadena SHA-256",
         "ark_shamir_btn": "Dividir clave (Shamir 3/5)",
         "ark_shamir_warn": "Guarde cada parte de Shamir por separado con distintos guardianes.",
+        "ark_council_title": "Orquestador: Consejo Familiar (LANCE · ARIA · PIXEL · AIFA)",
+        "ark_council_ph": "Escriba una tarea para el Consejo Familiar…",
+        "ark_council_btn": "Convocar Consejo Familiar",
+        "ark_branch_title": "Caja de Hipótesis (Ramas de Memoria)",
+        "ark_branch_ph": "Nombre de la nueva rama…",
+        "ark_branch_create_btn": "Crear Rama",
+        "ark_branch_list_btn": "Actualizar Ramas",
+        "ark_proof_title": "Prueba Selectiva de Merkle (Sin exponer la base)",
+        "ark_proof_ph": "ID de registro (record_id)…",
+        "ark_proof_btn": "Generar Prueba Merkle",
+        "ark_mesh_title": "Live Mesh (PQC Multidispositivo) y Guardián ($0)",
+        "ark_mesh_btn": "Dispositivos Mesh",
+        "ark_guardian_btn": "Ronda del Guardián ($0)",
         "nav_settings": "Ajustes",
         "nav_quickstart": "Inicio rápido",
         "theme_dark": "Tema oscuro",
@@ -1031,6 +1070,19 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_audit_btn": "校验 SHA-256 审计链",
         "ark_shamir_btn": "拆分密钥 (Shamir 3/5)",
         "ark_shamir_warn": "请将各份 Shamir 密钥分片分别交由不同可信守护者保管！",
+        "ark_council_title": "集群编排器：家族议会 (LANCE · ARIA · PIXEL · AIFA)",
+        "ark_council_ph": "输入交由家族议会审议的任务…",
+        "ark_council_btn": "召开家族议会",
+        "ark_branch_title": "假设沙盒（只增不删的记忆分支）",
+        "ark_branch_ph": "新假设分支名称…",
+        "ark_branch_create_btn": "创建分支",
+        "ark_branch_list_btn": "刷新分支",
+        "ark_proof_title": "选择性默克尔知识证明",
+        "ark_proof_ph": "记录 ID (record_id)…",
+        "ark_proof_btn": "生成默克尔证明",
+        "ark_mesh_title": "Live Mesh 多设备同步与守护者 ($0)",
+        "ark_mesh_btn": "查看 Mesh 设备",
+        "ark_guardian_btn": "守护者巡检 ($0)",
         "nav_settings": "设置",
         "nav_quickstart": "快速开始",
         "theme_dark": "深色主题",
@@ -4007,7 +4059,7 @@ async function renderAifaSec(fresh = false) {
   if (!sumEl || !domEl) return;
   if (fresh) sumEl.textContent = S.att_aifasec_running || 'Running...';
   let r = null;
-  try { r = await api(fresh ? '/api/v2/aifa-security/run' : '/api/v2/aifa-security', fresh ? { method: 'POST', body: '{}' } : undefined); } catch (e) { return; }
+  try { r = await api(fresh ? '/api/v2/aifa-security/run' : '/api/v2/aifa-security', fresh ? {} : undefined); } catch (e) { return; }
   const sm = (r && r.summary) || {};
   if (sm.grade) {
     sumEl.textContent = `Grade ${sm.grade} (${sm.score_pct}%) · ${sm.passed}/${sm.applicable} · SHA-256: ${String(sm.report_sha256 || '').slice(0, 16)}…`;
@@ -4700,7 +4752,7 @@ if ($('brain-mode-toggle-btn')) {
     try {
       const st = await api('/api/v2/brain/status');
       const next = (st && st.mode === 'local_only') ? 'auto' : 'local_only';
-      await api('/api/v2/brain/mode', { method: 'POST', body: JSON.stringify({ mode: next }) });
+      await api('/api/v2/brain/mode', { mode: next });
       loadBrain();
     } catch (e) {}
   };
@@ -4709,7 +4761,7 @@ if ($('brain-warmup-btn')) {
   $('brain-warmup-btn').onclick = async () => {
     const outEl = $('brain-distill-out');
     try {
-      const r = await api('/api/v2/brain/warmup', { method: 'POST', body: '{}' });
+      const r = await api('/api/v2/brain/warmup', {});
       if (outEl) outEl.textContent = 'Warmup: ' + JSON.stringify(r);
     } catch (e) {}
   };
@@ -4719,7 +4771,7 @@ if ($('ark-drill-btn')) {
     const outEl = $('ark-drill-out');
     if (outEl) outEl.textContent = '...';
     try {
-      const r = await api('/api/v2/ark/phoenix-drill', { method: 'POST', body: '{}' });
+      const r = await api('/api/v2/ark/phoenix-drill', {});
       if (outEl) outEl.textContent = (r.ok ? 'OK ($0)' : 'FAIL') + ' · steps=' + String((r.steps || []).length);
     } catch (e) {
       if (outEl) outEl.textContent = String(e.message || e);
@@ -4730,7 +4782,7 @@ if ($('ark-shamir-btn')) {
   $('ark-shamir-btn').onclick = async () => {
     const outEl = $('ark-drill-out');
     try {
-      const r = await api('/api/v2/ark/shamir-split', { method: 'POST', body: JSON.stringify({ k: 3, n: 5 }) });
+      const r = await api('/api/v2/ark/shamir-split', { k: 3, n: 5 });
       if (outEl) outEl.textContent = (S.ark_shamir_warn || r.warning || '') + ' (' + String((r.shares || []).length) + ' shares ready)';
     } catch (e) {
       if (outEl) outEl.textContent = String(e.message || e);
@@ -4753,13 +4805,136 @@ if ($('ark-audit-btn')) {
     } catch (e) {}
   };
 }
+if ($('ark-council-btn')) {
+  $('ark-council-btn').onclick = async () => {
+    const task = ($('ark-council-input') ? $('ark-council-input').value : '').trim();
+    const out = $('ark-council-out');
+    if (!task) return;
+    if (out) out.textContent = S.loading;
+    try {
+      const r = await api('/api/v2/ark/council', { task });
+      if (out) {
+        out.textContent = '';
+        const v = r.votes || {};
+        _kv(out, {
+          approved: String(Boolean(r.approved)),
+          lance_veto: String(Boolean((v.lance || {}).veto)),
+          aria_hits: (v.aria || {}).recalled_count || 0,
+          pixel_chain: String(Boolean((v.pixel || {}).audit_chain_valid)),
+        });
+        for (const msg of [(v.lance || {}).verdict, (v.aria || {}).verdict, (v.pixel || {}).verdict, r.consensus]) {
+          if (msg) out.appendChild(_el('p', 'panel-sub', String(msg).slice(0, 260)));
+        }
+      }
+    } catch (e) {
+      if (out) out.textContent = String(e.message || e);
+    }
+  };
+}
+async function refreshArkBranches() {
+  const box = $('ark-branch-out');
+  if (!box || !token) return;
+  try {
+    const r = await api('/api/v2/ark/branches');
+    box.textContent = '';
+    const list = (r && r.branches) || [];
+    if (!list.length) {
+      box.appendChild(_el('p', 'panel-sub', S.empty));
+      return;
+    }
+    for (const b of list.slice(0, 8)) {
+      const row = _el('div', 'att-row');
+      row.appendChild(_el('span', 'att-name', String(b.name || b.branch_id) + ' [' + String(b.status || '') + ']'));
+      row.appendChild(_el('span', 'att-val', String(b.records_count || 0) + ' rec'));
+      box.appendChild(row);
+    }
+  } catch (e) {}
+}
+if ($('ark-branch-create-btn')) {
+  $('ark-branch-create-btn').onclick = async () => {
+    const nm = ($('ark-branch-input') ? $('ark-branch-input').value : '').trim() || 'hypothesis';
+    try {
+      await api('/api/v2/ark/branches', { action: 'create', name: nm });
+      await refreshArkBranches();
+    } catch (e) {}
+  };
+}
+if ($('ark-branch-list-btn')) {
+  $('ark-branch-list-btn').onclick = () => refreshArkBranches();
+}
+if ($('ark-proof-btn')) {
+  $('ark-proof-btn').onclick = async () => {
+    const rid = ($('ark-proof-input') ? $('ark-proof-input').value : '').trim();
+    const out = $('ark-proof-out');
+    if (!rid) return;
+    if (out) out.textContent = S.loading;
+    try {
+      const r = await api('/api/v2/ark/proof', { record_id: rid });
+      if (out) {
+        out.textContent = '';
+        if (!r.ok) {
+          out.textContent = String(r.error || S.failed);
+        } else {
+          _kv(out, {
+            merkle_root: String(r.merkle_root || '').slice(0, 18) + '…',
+            tree_records: r.total_records_in_tree || 0,
+            siblings: (r.siblings || []).length,
+          });
+          out.appendChild(_el('p', 'panel-sub', String(r.scheme || '')));
+        }
+      }
+    } catch (e) {
+      if (out) out.textContent = String(e.message || e);
+    }
+  };
+}
+if ($('ark-mesh-btn')) {
+  $('ark-mesh-btn').onclick = async () => {
+    const out = $('ark-mesh-out');
+    if (!out) return;
+    out.textContent = S.loading;
+    try {
+      const r = await api('/api/v2/ark/mesh/peers');
+      out.textContent = '';
+      const nd = (r && r.node) || {};
+      _kv(out, {
+        node_id: String(nd.node_id || '').slice(0, 18),
+        device: String(nd.device_name || ''),
+        paired_peers: ((r && r.peers) || []).filter(p => Number(p.trusted) === 1).length,
+        total_peers: ((r && r.peers) || []).length,
+      });
+    } catch (e) {
+      if (out) out.textContent = String(e.message || e);
+    }
+  };
+}
+if ($('ark-guardian-btn')) {
+  $('ark-guardian-btn').onclick = async () => {
+    const out = $('ark-mesh-out');
+    if (!out) return;
+    out.textContent = S.loading;
+    try {
+      const r = await api('/api/v2/ark/guardian-tick');
+      out.textContent = '';
+      _kv(out, {
+        health_score: String(r.health_score || 0) + '/100',
+        audit_chain_valid: String(Boolean(r.audit_chain_valid)),
+        open_commitments: r.open_commitments_count || 0,
+        overdue: (r.overdue_commitments || []).length,
+      });
+      if (r.digest) out.appendChild(_el('p', 'panel-sub', String(r.digest)));
+    } catch (e) {
+      if (out) out.textContent = String(e.message || e);
+    }
+  };
+}
 
 if ($('brain-distill-btn')) {
   $('brain-distill-btn').onclick = async () => {
     const outEl = $('brain-distill-out');
     if (outEl) outEl.textContent = '...';
     try {
-      const r = await api('/api/v2/brain/distill', { method: 'POST', body: JSON.stringify({ format: 'both' }) });
+      const r = await api('/api/v2/brain/distill', { format: 'both' });
       if (outEl) {
         outEl.textContent = 'OK: ' + String(r.exported_examples || 0) + ' examples · SHA-256: ' + String(r.dataset_sha256 || '').slice(0, 16) + '…';
       }
@@ -4775,7 +4950,7 @@ if ($('brain-phoenix-local-btn')) {
     const outEl = $('brain-phoenix-out');
     if (!p) { if (outEl) outEl.textContent = S.brain_phoenix_ph || 'Path required'; return; }
     try {
-      const r = await api('/api/v2/brain/phoenix-restore', { method: 'POST', body: JSON.stringify({ source: 'local', backup_path: p }) });
+      const r = await api('/api/v2/brain/phoenix-restore', { source: 'local', backup_path: p });
       if (outEl) outEl.textContent = JSON.stringify(r);
     } catch (e) {
       if (outEl) outEl.textContent = String(e.message || e);
@@ -4787,7 +4962,7 @@ if ($('brain-phoenix-arweave-btn')) {
   $('brain-phoenix-arweave-btn').onclick = async () => {
     const outEl = $('brain-phoenix-out');
     try {
-      const r = await api('/api/v2/brain/phoenix-restore', { method: 'POST', body: JSON.stringify({ source: 'arweave' }) });
+      const r = await api('/api/v2/brain/phoenix-restore', { source: 'arweave' });
       if (outEl) outEl.textContent = JSON.stringify(r);
     } catch (e) {
       if (outEl) outEl.textContent = S.brain_locked_note || String(e.message || e);
@@ -5475,6 +5650,45 @@ def page() -> tuple[str, str]:
             <p class="panel-sub" data-i18n="ark_shamir_warn">{s['ark_shamir_warn']}</p>
           </div>
           <p id="ark-drill-out" class="panel-sub"></p>
+        </div>
+        <div class="box">
+          <h3 class="box-title" data-i18n="ark_council_title">{s['ark_council_title']}</h3>
+          <div class="toolbar">
+            <input id="ark-council-input" type="text" data-i18n-placeholder="ark_council_ph" placeholder="{s['ark_council_ph']}">
+          </div>
+          <div class="rec-actions">
+            <button id="ark-council-btn" class="btn-primary" data-i18n="ark_council_btn">{s['ark_council_btn']}</button>
+          </div>
+          <div id="ark-council-out"></div>
+        </div>
+        <div class="box">
+          <h3 class="box-title" data-i18n="ark_branch_title">{s['ark_branch_title']}</h3>
+          <div class="toolbar">
+            <input id="ark-branch-input" type="text" data-i18n-placeholder="ark_branch_ph" placeholder="{s['ark_branch_ph']}">
+          </div>
+          <div class="rec-actions">
+            <button id="ark-branch-create-btn" class="btn-primary" data-i18n="ark_branch_create_btn">{s['ark_branch_create_btn']}</button>
+            <button id="ark-branch-list-btn" data-i18n="ark_branch_list_btn">{s['ark_branch_list_btn']}</button>
+          </div>
+          <div id="ark-branch-out"></div>
+        </div>
+        <div class="box">
+          <h3 class="box-title" data-i18n="ark_proof_title">{s['ark_proof_title']}</h3>
+          <div class="toolbar">
+            <input id="ark-proof-input" type="text" data-i18n-placeholder="ark_proof_ph" placeholder="{s['ark_proof_ph']}">
+          </div>
+          <div class="rec-actions">
+            <button id="ark-proof-btn" data-i18n="ark_proof_btn">{s['ark_proof_btn']}</button>
+          </div>
+          <div id="ark-proof-out"></div>
+        </div>
+        <div class="box">
+          <h3 class="box-title" data-i18n="ark_mesh_title">{s['ark_mesh_title']}</h3>
+          <div class="rec-actions">
+            <button id="ark-mesh-btn" data-i18n="ark_mesh_btn">{s['ark_mesh_btn']}</button>
+            <button id="ark-guardian-btn" class="btn-primary" data-i18n="ark_guardian_btn">{s['ark_guardian_btn']}</button>
+          </div>
+          <div id="ark-mesh-out"></div>
         </div>
       </section>
     </main>
