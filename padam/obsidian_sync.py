@@ -159,10 +159,20 @@ def sync_obsidian(
                         )
                         quarantined_protected += 1
                     else:
-                        mem.store.execute(
-                            "UPDATE memory SET content=?, content_hash=?, last_seen_at=? WHERE id=?",
-                            (body, body_hash, _utc_now(), rec_id),
-                        )
+                        # Фаза 2 аудита GLM, CONN-02: раньше UPDATE content ставил текст файла действующим без проверки.
+                        # Теперь два пути. Заметка с признаками приказа или атаки (те же проверки, что у
+                        # remember(guarded=True)) не трогает запись: новая версия идёт через охраняемый remember и
+                        # оседает в карантине. Чистая правка обновляет ту же запись — секреты при этом маскируются.
+                        from . import guard as _guard, safety as _safety
+                        if not trusted_owner and (_safety.looks_like_instruction(body) or _guard.flags(body)):
+                            mem.remember(body, kind=existing["kind"], scope=existing["scope"],
+                                         origin="obsidian", guarded=True, agent_id="obsidian-sync")
+                        else:
+                            clean_body, _red = _safety.redact(body)
+                            mem.store.execute(
+                                "UPDATE memory SET content=?, content_hash=?, last_seen_at=? WHERE id=?",
+                                (clean_body, _sha256(clean_body) if clean_body != body else body_hash, _utc_now(), rec_id),
+                            )
                         mem.store.execute(
                             """INSERT INTO obsidian_sync_state (rec_id, rel_path, last_sha256, synced_at)
                                VALUES (?, ?, ?, ?)

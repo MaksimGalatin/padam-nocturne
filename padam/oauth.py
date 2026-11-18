@@ -242,7 +242,8 @@ class LocalOAuth21Server:
         state = auth_req["state"]
         sep = "&" if "?" in redirect_uri else "?"
 
-        decision = (params.get("decision") or "approve").strip().lower()
+        # Фаза 2 аудита GLM, CONN-04: молчание — не согласие. Без явного decision=approve выдаётся отказ.
+        decision = (params.get("decision") or "deny").strip().lower()
         if decision != "approve":
             q = {"error": "access_denied"}
             if state:

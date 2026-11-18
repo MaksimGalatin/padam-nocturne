@@ -150,11 +150,20 @@ async function saveStoredConfig(cfg) {
   }
 }
 
+// Фаза 2 аудита GLM, CONN-03: токен владельца уходит только на локальный PADAM (127.0.0.1 / localhost / [::1]).
+// Сменённый в настройках «Local API URL» на чужой адрес не получит ни заголовок Authorization, ни #t= в адресе.
+function isLocalApi(url) {
+  try {
+    const h = new URL(url).hostname.replace(/^\[|\]$/g, '');
+    return h === '127.0.0.1' || h === 'localhost' || h === '::1';
+  } catch (_e) { return false; }
+}
+
 async function refreshStats() {
   const cfg = await getStoredConfig();
   const apiUrl = (cfg.apiUrl || 'http://127.0.0.1:8078').replace(/\/+$/, '');
   const headers = {};
-  if (cfg.apiToken) headers['Authorization'] = `Bearer ${cfg.apiToken}`;
+  if (cfg.apiToken && isLocalApi(apiUrl)) headers['Authorization'] = `Bearer ${cfg.apiToken}`;
   try {
     const resp = await fetch(`${apiUrl}/stats`, { headers });
     if (!resp.ok) return;
@@ -174,6 +183,10 @@ async function sendToPadam(content, title, url) {
   const apiToken = ($('api-token').value || cfg.apiToken || '').trim();
   if (!apiToken) {
     showMsg(S.noToken, false);
+    return;
+  }
+  if (!isLocalApi(apiUrl)) {
+    showMsg('Local API URL must be 127.0.0.1 / localhost: the owner token is never sent elsewhere.', false);
     return;
   }
   const prefix = title ? `[${title}] (${url || 'web'}): ` : `(${url || 'web'}): `;
@@ -217,7 +230,7 @@ $('btn-save-cfg').onclick = async () => {
 $('btn-open-studio').onclick = async () => {
   const apiUrl = ($('api-url').value.trim() || 'http://127.0.0.1:8078').replace(/\/+$/, '');
   const apiToken = $('api-token').value.trim();
-  const target = apiToken ? `${apiUrl}/studio#t=${encodeURIComponent(apiToken)}&tab=review` : `${apiUrl}/studio`;
+  const target = (apiToken && isLocalApi(apiUrl)) ? `${apiUrl}/studio#t=${encodeURIComponent(apiToken)}&tab=review` : `${apiUrl}/studio`;
   if (typeof chrome !== 'undefined' && chrome.tabs?.create) {
     chrome.tabs.create({ url: target });
   } else {

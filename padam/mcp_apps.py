@@ -132,7 +132,10 @@ function mcpCall(method, params) {
   });
 }
 window.addEventListener("message", (ev) => {
-  const msg = ev && ev.data;
+  // Фаза 2 аудита GLM, MCP-09: принимаем сообщения только от родителя — клиента MCP, который показал это окно.
+  // Отправка идёт с targetOrigin "*" вынужденно: у изолированного фрейма клиента origin бывает «null».
+  if (!ev || ev.source !== window.parent) return;
+  const msg = ev.data;
   if (!msg || typeof msg !== "object") return;
   if (msg.method === "ui/notifications/host-context-changed" && msg.params && msg.params.theme) {
     document.documentElement.setAttribute("data-theme", msg.params.theme === "dark" ? "dark" : "light");

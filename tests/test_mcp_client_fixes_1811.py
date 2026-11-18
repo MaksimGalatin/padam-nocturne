@@ -210,6 +210,7 @@ def test_item4_5_6_7_agent_id_session_pack_batch_and_aliases(tmp_path: Path, mon
     prev = mcp_server._memory
     mcp_server._memory = mem
     repo = tmp_path / "repo"
+    monkeypatch.setenv("PADAM_REPO_ROOT", str(repo))  # MCP-07: корень проекта закреплён
     repo.mkdir()
     sample = repo / "sample.py"
     sample.write_text("def x():\n    return 1\n", encoding="utf-8")

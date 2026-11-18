@@ -1538,8 +1538,14 @@ def settle_paid_order(
     compute_share_pct: float | None = None,
     settlement_currency: str | None = None,
     now_ts: float | None = None,
+    actor=None,
 ) -> dict[str, Any]:
     """Фиксирует оплату заказа, 90-дневное закрепление клиента и долю агента в ожидании (до accepted + 14д)."""
+    # Фаза 2 аудита GLM, SOV-04: проверка владельца ВНУТРИ, а не только у вызывающих — функция начисляет
+    # долю агента в казну, и новый вызов без гейта не должен кредитовать её из поддельной продажи.
+    # actor=None — локальный процесс владельца (CLI, вебхук после проверки HMAC); по сети приходит ActorContext.
+    from . import roles as _roles
+    _roles.require_owner(actor, "settle_paid")
     order = _get_order(memory, order_id)
     prefs = get_freelance_prefs(memory)
     gross = round(max(0.0, float(paid_usdt if paid_usdt is not None else order["budget_usdt"])), 4)

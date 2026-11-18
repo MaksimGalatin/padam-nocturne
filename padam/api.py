@@ -1876,6 +1876,7 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(200, _fa.settle_paid_order(
                         mem(),
                         str(data.get("order_id") or ""),
+                        actor=actor,
                         paid_usdt=data.get("paid_usdt"),
                         agent_id=aid,
                         agent_share_pct=data.get("agent_share_pct") if data.get("agent_share_pct") is not None else data.get("compute_share_pct"),

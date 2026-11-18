@@ -89,10 +89,11 @@ def speak_local(text: str, *, dry_run: bool = False) -> dict[str, Any]:
             check=True,
         )
     elif engine == "macos_say":
-        subprocess.run(["say", clean_text], timeout=15, check=True)
+        # Фаза 2 аудита GLM, SUP-07: текст — через stdin, не аргументом: «-o файл …» в тексте иначе читался как флаг.
+        subprocess.run(["say"], input=clean_text, text=True, timeout=15, check=True)
     elif engine == "espeak":
         cmd = shutil.which("espeak-ng") or shutil.which("espeak") or "espeak"
-        subprocess.run([cmd, clean_text], timeout=15, check=True)
+        subprocess.run([cmd, "--stdin"], input=clean_text, text=True, timeout=15, check=True)
 
     return {
         "ok": True,

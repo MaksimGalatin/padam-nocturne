@@ -4629,8 +4629,19 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
 
     if name == "padam_code_anchor":
         from . import code_anchor as _ca
+        from pathlib import Path
         act = str(args.get("action") or "check").lower()
-        root = str(args.get("repo_root") or ".")
+        # Фаза 2 аудита GLM, MCP-07: корень репозитория закреплён у владельца (PADAM_REPO_ROOT, иначе папка, из
+        # которой запущен сервер). Аргумент агента принимается только внутри закреплённого корня — иначе агент
+        # подсовывал «чистую» копию (ложная свежесть) или читал SHA-256 любого файла диска (~/.ssh).
+        pinned = Path(os.environ.get("PADAM_REPO_ROOT") or os.getcwd()).resolve()
+        asked = args.get("repo_root")
+        root_p = pinned if not asked else Path(str(asked)).resolve()
+        try:
+            root_p.relative_to(pinned)
+        except ValueError:
+            raise PermissionError(f"repo_root must be inside the pinned project root (PADAM_REPO_ROOT): {asked!r}")
+        root = str(root_p)
         if act == "anchor":
             payload = _ca.anchor_fact_to_file(m, str(args.get("memory_id") or ""), str(args.get("file_path") or ""), repo_root=root, symbol_name=str(args.get("symbol_name") or ""))
         else:
@@ -6055,6 +6066,9 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
     eff_rate_limit = config.mcp_rate_limit() if rate_limit is None else max(0, int(rate_limit))
     eff_rate_window = float(config.MCP_RATE_WINDOW_S if rate_window_s is None else rate_window_s)
     rate_limiter = _SessionRateLimiter(eff_rate_limit, eff_rate_window) if eff_rate_limit > 0 else None
+    # Фаза 2 аудита GLM, MCP-08: предел ОДНОВРЕМЕННЫХ постоянных SSE-потоков — иначе горстка GET-соединений
+    # занимала все потоки сервера (ограничитель частоты стоял только на POST).
+    sse_slots = threading.BoundedSemaphore(max(1, int(os.environ.get("PADAM_MCP_MAX_SSE", "8") or 8)))
 
     last_activity_ts = [time.monotonic()]
     rem_worker = None
@@ -6372,15 +6386,21 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                     return None
 
                 # Постоянный SSE-поток (1.4 + v2 resume по Last-Event-ID): без Content-Length, с мгновенным flush.
-                sid_stop = _session_stop_event(req_sid)
-                self.protocol_version = "HTTP/1.0"
-                self.send_response(200)
-                self.send_header("Content-Type", "text/event-stream; charset=utf-8")
-                self.send_header("Cache-Control", "no-cache")
-                self.send_header("Connection", "close")
-                self.send_header("X-Accel-Buffering", "no")
-                self.send_header("Mcp-Session-Id", req_sid)
-                self.end_headers()
+                if not sse_slots.acquire(blocking=False):
+                    return self._send_json(429, {"error": "too many open SSE streams", "retryAfterSeconds": 5})
+                try:
+                    sid_stop = _session_stop_event(req_sid)
+                    self.protocol_version = "HTTP/1.0"
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                    self.send_header("Cache-Control", "no-cache")
+                    self.send_header("Connection", "close")
+                    self.send_header("X-Accel-Buffering", "no")
+                    self.send_header("Mcp-Session-Id", req_sid)
+                    self.end_headers()
+                except BaseException:
+                    sse_slots.release()   # обрыв на заголовках не должен уносить слот
+                    raise
                 try:
                     if resume_after is not None:
                         cursor = resume_after
@@ -6423,6 +6443,8 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                             last_ka = time.monotonic()
                 except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
                     pass
+                finally:
+                    sse_slots.release()
                 return None
             return self._send_json(404, {"error": "not found"})
 
@@ -6450,9 +6472,9 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                     except ValueError as exc:
                         return self._send_json(400, {"error": "invalid_client_metadata", "error_description": str(exc)})
                 if path == "/oauth/authorize":
-                    auth_hdr = self.headers.get("Authorization", "")
-                    if not oa_params.get("owner_token") and auth_hdr.startswith("Bearer "):
-                        oa_params["owner_token"] = auth_hdr[7:].strip()
+                    # Фаза 2 аудита GLM, CONN-04: токен владельца для согласия — только из поля формы согласия.
+                    # Из заголовка Authorization его больше не берём: процесс, узнавший токен, не выпускает себе
+                    # OAuth-доступ без страницы согласия.
                     try:
                         redir = oauth_srv.approve_or_deny(oa_params)
                     except PermissionError as exc:

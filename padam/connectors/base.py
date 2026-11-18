@@ -95,8 +95,18 @@ def default_http_call(
 ) -> tuple[int, dict[str, str], bytes]:
     """Безопасный HTTP-запрос без сторонних библиотек с обработкой 4xx/5xx."""
     req = urllib.request.Request(url, data=body, headers=headers, method=method)
+    # Фаза 2 аудита GLM, CONN-01: запрос с Bearer-токеном Notion/Slack/GitHub/Drive идёт только через net_guard —
+    # HTTPS, без внутренних/metadata-адресов, с проверкой каждого перенаправления. Иначе api_base из настроек
+    # (мисконфиг или подмена) уносил токен на чужой хост или во внутреннюю сеть.
+    from .. import net_guard as _ng
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        _ng.validate_outbound_url(url, allow_localhost=False, require_https=True)
+    except ValueError as e:
+        raise ConnectorError(t(f"адрес коннектора запрещён политикой сети: {e}",
+                               f"connector URL refused by network policy: {e}")) from e
+    try:
+        with _ng.safe_urlopen(req, timeout=timeout, allow_localhost=False, require_https=True,
+                              max_redirects=5) as resp:
             resp_headers = {k.lower(): v for k, v in resp.headers.items()}
             return resp.status, resp_headers, resp.read()
     except urllib.error.HTTPError as e:
