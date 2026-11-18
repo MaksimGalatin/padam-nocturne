@@ -181,6 +181,22 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_draft_publish_btn": "Одобрить и отправить в магазин",
         "earn_stores_empty": "Магазины пока не подключены.",
         "earn_drafts_empty": "Черновиков товаров пока нет.",
+        "earn_draft_proposal_badge": "Цена и текст — предложение агента (решает владелец)",
+        "earn_sale_unverified_badge": "Не подтверждена (Payhip: сверьте с выплатой — доля и комиссия не начислены)",
+        "earn_btn_confirm_sale": "Подтвердить выплату",
+        "earn_wiz_title": "8. Мастер подключения 30 площадок и бирж агентов (выбрал → вошёл → дальше мы)",
+        "earn_wiz_sub": "30 площадок методички + 4 биржи для ИИ-агентов. Пароли не храним никогда (только OAuth, ключ API или зашифрованная сессия браузера).",
+        "earn_wiz_secret_ph": "OAuth-токен / ключ API / зашифрованная сессия браузера (БЕЗ пароля)",
+        "earn_wiz_connect_btn": "1. Войти (сохранить без пароля)",
+        "earn_wiz_q_spec_ph": "Вопрос 1: Направления (напр. Сайты с ИИ, базы лидов, аудит WCAG)",
+        "earn_wiz_q_rate_ph": "Вопрос 2: Ставка $/ч",
+        "earn_wiz_q_min_ph": "Вопрос 3: Мин. заказ $",
+        "earn_wiz_q_langs_ph": "Вопрос 4: Языки (ru, en, es, zh)",
+        "earn_wiz_q_tone_ph": "Вопрос 5: Тон (деловой, конкретный)",
+        "earn_wiz_q_excl_ph": "Вопрос 6: Что НЕ берём (казино, спам)",
+        "earn_wiz_profile_btn": "2. Собрать черновик профиля из памяти",
+        "earn_wiz_autopick_btn": "3. Найти посильные заказы и черновик отклика",
+        "earn_wiz_pub_profile_btn": "Опубликовать профиль (одобрено владельцем)",
         "nav_settings": "Настройки",
         "nav_quickstart": "Первый запуск",
         "theme_dark": "Тёмная тема",
@@ -656,6 +672,22 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_draft_publish_btn": "Approve & Publish to Store",
         "earn_stores_empty": "No digital stores connected yet.",
         "earn_drafts_empty": "No product drafts yet.",
+        "earn_draft_proposal_badge": "Price & text — agent proposal (owner decides)",
+        "earn_sale_unverified_badge": "Unverified (Payhip: verify payout first — share & fee not accrued)",
+        "earn_btn_confirm_sale": "Confirm Payout",
+        "earn_wiz_title": "8. 30 Platforms & Agent Exchanges Wizard (Pick → Sign In → We Handle the Rest)",
+        "earn_wiz_sub": "30 methodology platforms + 4 AI agent exchanges. Passwords are NEVER stored (OAuth, API key, or encrypted browser session only).",
+        "earn_wiz_secret_ph": "OAuth token / API key / encrypted browser session (NO password)",
+        "earn_wiz_connect_btn": "1. Sign In (Zero Password)",
+        "earn_wiz_q_spec_ph": "Q1: Specializations (AI websites, B2B leads, WCAG audit)",
+        "earn_wiz_q_rate_ph": "Q2: Hourly rate $/h",
+        "earn_wiz_q_min_ph": "Q3: Min order $",
+        "earn_wiz_q_langs_ph": "Q4: Languages (ru, en, es, zh)",
+        "earn_wiz_q_tone_ph": "Q5: Tone (concise, business)",
+        "earn_wiz_q_excl_ph": "Q6: Excluded topics (gambling, spam)",
+        "earn_wiz_profile_btn": "2. Draft Profile from Memory",
+        "earn_wiz_autopick_btn": "3. Autopick Jobs & Draft Bid",
+        "earn_wiz_pub_profile_btn": "Approve & Publish Profile",
         "nav_settings": "Settings",
         "nav_quickstart": "Quick Start",
         "theme_dark": "Dark theme",
@@ -1120,6 +1152,22 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_draft_publish_btn": "Aprobar y Publicar en Tienda",
         "earn_stores_empty": "Aun no hay tiendas digitales conectadas.",
         "earn_drafts_empty": "Aun no hay borradores de productos.",
+        "earn_draft_proposal_badge": "Precio y texto — propuesta del agente (decide el propietario)",
+        "earn_sale_unverified_badge": "No verificada (Payhip: verifique el pago — comision no acreditada)",
+        "earn_btn_confirm_sale": "Confirmar Pago",
+        "earn_wiz_title": "8. Asistente de 30 Plataformas y Bolsas de Agentes (Elegir → Entrar → Nosotros Seguimos)",
+        "earn_wiz_sub": "30 plataformas de la guia + 4 bolsas de agentes IA. Nunca guardamos contrasenas (solo OAuth, clave API o sesion cifrada).",
+        "earn_wiz_secret_ph": "Token OAuth / clave API / sesion cifrada (SIN contrasena)",
+        "earn_wiz_connect_btn": "1. Conectar (Sin Contrasena)",
+        "earn_wiz_q_spec_ph": "P1: Especialidades (Sitios con IA, leads B2B, auditoria WCAG)",
+        "earn_wiz_q_rate_ph": "P2: Tarifa $/h",
+        "earn_wiz_q_min_ph": "P3: Pedido min $",
+        "earn_wiz_q_langs_ph": "P4: Idiomas (ru, en, es, zh)",
+        "earn_wiz_q_tone_ph": "P5: Tono (profesional, directo)",
+        "earn_wiz_q_excl_ph": "P6: Que NO aceptamos (casino, spam)",
+        "earn_wiz_profile_btn": "2. Crear Borrador de Perfil desde Memoria",
+        "earn_wiz_autopick_btn": "3. Buscar Pedidos y Borrador de Oferta",
+        "earn_wiz_pub_profile_btn": "Aprobar y Publicar Perfil",
         "nav_settings": "Ajustes",
         "nav_quickstart": "Inicio rápido",
         "theme_dark": "Tema oscuro",
@@ -1584,6 +1632,22 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_draft_publish_btn": "批准并发布到商店",
         "earn_stores_empty": "暂未连接数字商品商店。",
         "earn_drafts_empty": "暂无商品草稿。",
+        "earn_draft_proposal_badge": "价格与文案 — 智能体建议（由所有者决定）",
+        "earn_sale_unverified_badge": "未验证（Payhip：请先核对入账，分成与佣金暂不计入）",
+        "earn_btn_confirm_sale": "确认收款并计入",
+        "earn_wiz_title": "8. 30 大平台与智能体交易市场接入向导（选择 → 登录 → 全自动接管）",
+        "earn_wiz_sub": "指南 30 个平台 + 4 个 AI 智能体市场。绝不存储密码（仅限 OAuth、API 密钥或加密浏览器会话）。",
+        "earn_wiz_secret_ph": "OAuth 令牌 / API 密钥 / 加密会话（严禁输入密码）",
+        "earn_wiz_connect_btn": "1. 安全接入（零密码）",
+        "earn_wiz_q_spec_ph": "问题1：擅长方向（AI 建站、B2B 线索、WCAG 无障碍审计）",
+        "earn_wiz_q_rate_ph": "问题2：时薪 $/h",
+        "earn_wiz_q_min_ph": "问题3：最低订单 $",
+        "earn_wiz_q_langs_ph": "问题4：工作语言 (ru, en, es, zh)",
+        "earn_wiz_q_tone_ph": "问题5：沟通语气（专业、务实）",
+        "earn_wiz_q_excl_ph": "问题6：不接领域（博彩、垃圾群发）",
+        "earn_wiz_profile_btn": "2. 从记忆生成档案草稿",
+        "earn_wiz_autopick_btn": "3. 筛选合适订单并生成投标草稿",
+        "earn_wiz_pub_profile_btn": "批准并发布平台档案",
         "nav_settings": "设置",
         "nav_quickstart": "快速开始",
         "theme_dark": "深色主题",
@@ -5938,6 +6002,30 @@ function _renderEarningDashboard(snap, sibData, coopData) {
           ' · tokens~' + String(o.est_tokens) +
           ' · ' + String(o.security_note || '')
         ));
+        if (o.verified === false || o.status === 'unverified_payout') {
+          const unvLine = _el('div', 'earn-meta', S.earn_sale_unverified_badge || 'Unverified (Payhip: confirm payout first)');
+          unvLine.setAttribute('data-order-unverified', '1');
+          card.appendChild(unvLine);
+          const unvRow = _el('div', 'att-row');
+          const bConf = _el('button', 'btn-ok', S.earn_btn_confirm_sale || 'Confirm Payout');
+          bConf.setAttribute('data-order-action', 'confirm_sale');
+          bConf.onclick = async () => {
+            bConf.disabled = true;
+            try {
+              await api('/api/v2/ark/stores/action', { action: 'confirm_sale', order_id: o.order_id, owner_approved: true });
+              o.verified = true;
+              o.status = 'paid';
+              ++_earnLoadSeq;
+              if (window._lastEarnSnap) {
+                _renderEarningDashboard(window._lastEarnSnap, window._lastEarnSibs || {}, window._lastEarnCoop || {});
+              }
+              say(S.done);
+              await loadEarning();
+            } catch (e) { say(String(e.message || e), false); } finally { bConf.disabled = false; }
+          };
+          unvRow.appendChild(bConf);
+          card.appendChild(unvRow);
+        }
         if (o.locked_agent_id && o.client_locked_until_date) {
           const lockLine = _el('div', 'earn-meta',
             (S.earn_client_locked_prefix || 'Client locked to ') +
@@ -6259,6 +6347,9 @@ function _renderEarningDashboard(snap, sibData, coopData) {
       for (const dr of drafts) {
         const card = _el('div', 'earn-item');
         card.appendChild(_el('strong', '', String(dr.title || '') + ' ($' + String(dr.price_usdt || 0) + ' ' + String(dr.currency || 'USD') + ')'));
+        const propBadge = _el('div', 'earn-meta', S.earn_draft_proposal_badge || dr.proposal_disclaimer || ' цена и текст — предложение агента');
+        propBadge.setAttribute('data-draft-proposal', '1');
+        card.appendChild(propBadge);
         card.appendChild(_el('div', 'earn-meta', String(dr.store_type || '') + ' · ' + String(dr.status || 'draft') + (dr.publish_note ? ' · ' + String(dr.publish_note) : '')));
         if (dr.description) {
           card.appendChild(_el('div', 'earn-meta', String(dr.description)));
@@ -6281,6 +6372,73 @@ function _renderEarningDashboard(snap, sibData, coopData) {
         card.appendChild(row);
         draftsEl.appendChild(card);
       }
+    }
+  }
+
+  const pw = (snap && snap.platform_wizard) || {};
+  const plats = pw.platforms || [];
+  const counts = pw.counts || {};
+  const sumEl = $('earn-wiz-summary');
+  if (sumEl && counts.total) {
+    sumEl.textContent = String(counts.total) + ' (' + String(counts.methodology_30 || 30) + '+4): '
+      + 'автопилот=' + String(counts.autopilot || 0)
+      + ' · черновик и кнопка=' + String(counts.assisted_button || 0)
+      + ' · пока нельзя=' + String(counts.not_available || 0);
+  }
+  const selPlat = $('earn-wiz-platform');
+  const filterVal = ($('earn-wiz-filter') && $('earn-wiz-filter').value) || 'all';
+  const filteredPlats = plats.filter(p => filterVal === 'all' || p.automation_tier === filterVal);
+  if (selPlat && plats.length) {
+    const prevVal = selPlat.value;
+    selPlat.textContent = '';
+    for (const p of filteredPlats) {
+      const opt = _el('option', '', '#' + String(p.num) + ' ' + String(p.title) + ' — [' + String(p.automation_label_ru) + ']');
+      opt.value = String(p.platform_id);
+      selPlat.appendChild(opt);
+    }
+    if (prevVal && filteredPlats.some(p => p.platform_id === prevVal)) {
+      selPlat.value = prevVal;
+    }
+    const curSpec = plats.find(p => p.platform_id === selPlat.value) || filteredPlats[0];
+    const infoEl = $('earn-wiz-spec-info');
+    if (infoEl && curSpec) {
+      infoEl.textContent = '[' + String(curSpec.automation_label_ru) + '] '
+        + String(curSpec.auth_hint_ru || '') + ' — ' + String(curSpec.reason_ru || '');
+    }
+  }
+  const profListEl = $('earn-wiz-profiles-list');
+  if (profListEl) {
+    profListEl.textContent = '';
+    const pDrafts = pw.profile_drafts || [];
+    for (const pd of pDrafts) {
+      const card = _el('div', 'earn-item');
+      card.appendChild(_el('strong', '', String(pd.platform_title || pd.platform_id) + ': ' + String(pd.headline || '')));
+      card.appendChild(_el('div', 'earn-meta', String(pd.proposal_disclaimer || '') + ' · status=' + String(pd.status || 'draft')));
+      card.appendChild(_el('div', 'earn-meta', String(pd.overview || '')));
+      const row = _el('div', 'att-row');
+      const bPubP = _el('button', 'btn-ok', S.earn_wiz_pub_profile_btn || 'Approve & Publish Profile');
+      bPubP.onclick = async () => {
+        try {
+          await api('/api/v2/ark/wizard/action', { action: 'publish_profile', draft_id: pd.draft_id, owner_approved: true });
+          say(S.done);
+          loadEarning();
+        } catch (e) { say(String(e.message || e), false); }
+      };
+      row.appendChild(bPubP);
+      card.appendChild(row);
+      profListEl.appendChild(card);
+    }
+  }
+  const catListEl = $('earn-wiz-catalog-list');
+  if (catListEl && filteredPlats.length) {
+    catListEl.textContent = '';
+    for (const p of filteredPlats) {
+      const item = _el('div', 'earn-item');
+      item.setAttribute('data-platform-id', String(p.platform_id));
+      item.setAttribute('data-automation-tier', String(p.automation_tier));
+      item.appendChild(_el('strong', '', '#' + String(p.num) + ' ' + String(p.title) + ' (' + String(p.score) + '/10) — ' + String(p.automation_label_ru)));
+      item.appendChild(_el('div', 'earn-meta', String(p.auth_hint_ru) + ' · ' + String(p.reason_ru)));
+      catListEl.appendChild(item);
     }
   }
 }
@@ -6500,6 +6658,69 @@ if ($('earn-draft-save-btn')) {
         delivery_url: ($('earn-draft-url') && $('earn-draft-url').value) || '',
       });
       say(S.done);
+      loadEarning();
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
+if ($('earn-wiz-filter')) {
+  $('earn-wiz-filter').onchange = () => {
+    if (window._lastEarnSnap) _renderEarningDashboard(window._lastEarnSnap, window._lastEarnSibs || {}, window._lastEarnCoop || {});
+  };
+}
+if ($('earn-wiz-platform')) {
+  $('earn-wiz-platform').onchange = () => {
+    const pw = (window._lastEarnSnap && window._lastEarnSnap.platform_wizard) || {};
+    const plats = pw.platforms || [];
+    const curSpec = plats.find(p => p.platform_id === $('earn-wiz-platform').value);
+    const infoEl = $('earn-wiz-spec-info');
+    if (infoEl && curSpec) {
+      infoEl.textContent = '[' + String(curSpec.automation_label_ru) + '] '
+        + String(curSpec.auth_hint_ru || '') + ' — ' + String(curSpec.reason_ru || '');
+    }
+  };
+}
+if ($('earn-wiz-connect-btn')) {
+  $('earn-wiz-connect-btn').onclick = async () => {
+    try {
+      const r = await api('/api/v2/ark/wizard/action', {
+        action: 'connect',
+        platform_id: ($('earn-wiz-platform') && $('earn-wiz-platform').value) || 'upwork',
+        auth_method: ($('earn-wiz-auth-method') && $('earn-wiz-auth-method').value) || '',
+        token_or_session: ($('earn-wiz-secret') && $('earn-wiz-secret').value) || '',
+      });
+      if ($('earn-wiz-secret')) $('earn-wiz-secret').value = '';
+      if (r && r.ok === false) { say(String(r.error || S.failed), false); return; }
+      say(S.done);
+      loadEarning();
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
+if ($('earn-wiz-profile-btn')) {
+  $('earn-wiz-profile-btn').onclick = async () => {
+    try {
+      await api('/api/v2/ark/wizard/action', {
+        action: 'questionnaire',
+        platform_id: ($('earn-wiz-platform') && $('earn-wiz-platform').value) || 'upwork',
+        specializations: ($('earn-wiz-q-spec') && $('earn-wiz-q-spec').value) || 'AI Websites, B2B Lead Lists, WCAG Audits',
+        hourly_rate_usdt: Number(($('earn-wiz-q-rate') && $('earn-wiz-q-rate').value) || 35),
+        min_order_usdt: Number(($('earn-wiz-q-min') && $('earn-wiz-q-min').value) || 100),
+        languages: ($('earn-wiz-q-langs') && $('earn-wiz-q-langs').value) || 'ru, en',
+        tone: ($('earn-wiz-q-tone') && $('earn-wiz-q-tone').value) || 'деловой, конкретный',
+        excluded_topics: ($('earn-wiz-q-excl') && $('earn-wiz-q-excl').value) || '',
+      });
+      say(S.done);
+      loadEarning();
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
+if ($('earn-wiz-autopick-btn')) {
+  $('earn-wiz-autopick-btn').onclick = async () => {
+    try {
+      const r = await api('/api/v2/ark/wizard/action', {
+        action: 'autopick_jobs',
+        platform_id: ($('earn-wiz-platform') && $('earn-wiz-platform').value) || 'upwork',
+      });
+      say('Prepared: ' + String((r && r.prepared_count) || 0));
       loadEarning();
     } catch (e) { say(String(e.message || e), false); }
   };
@@ -7585,6 +7806,47 @@ def page() -> tuple[str, str]:
               <button id="earn-draft-save-btn" data-i18n="earn_draft_save_btn">{s['earn_draft_save_btn']}</button>
             </div>
             <div id="earn-drafts-list" class="earn-stack"></div>
+          </div>
+
+          <div class="box earn-box-wide">
+            <h3 class="box-title" data-i18n="earn_wiz_title">{s['earn_wiz_title']}</h3>
+            <p class="earn-meta" data-i18n="earn_wiz_sub">{s['earn_wiz_sub']}</p>
+            <div id="earn-wiz-summary" class="earn-meta"></div>
+            <div class="toolbar">
+              <select id="earn-wiz-filter" aria-label="Filter platforms by tier">
+                <option value="all">all (34)</option>
+                <option value="autopilot">автопилот (20%)</option>
+                <option value="assisted_button">черновик и кнопка (15%)</option>
+                <option value="not_available">пока нельзя</option>
+              </select>
+              <select id="earn-wiz-platform" aria-label="Select platform"></select>
+              <select id="earn-wiz-auth-method" aria-label="Auth method without password">
+                <option value="oauth">OAuth 2.0</option>
+                <option value="api_key">API Key</option>
+                <option value="browser_session">Encrypted Browser Session</option>
+              </select>
+            </div>
+            <div id="earn-wiz-spec-info" class="earn-meta"></div>
+            <div class="toolbar">
+              <input id="earn-wiz-secret" type="password" data-i18n-placeholder="earn_wiz_secret_ph" placeholder="{s['earn_wiz_secret_ph']}">
+              <button id="earn-wiz-connect-btn" class="btn-primary" data-i18n="earn_wiz_connect_btn">{s['earn_wiz_connect_btn']}</button>
+            </div>
+            <div class="toolbar">
+              <input id="earn-wiz-q-spec" type="text" value="Создание сайтов с ИИ-агентами, верифицированные базы лидов, аудит WCAG" data-i18n-placeholder="earn_wiz_q_spec_ph" placeholder="{s['earn_wiz_q_spec_ph']}">
+              <input id="earn-wiz-q-rate" class="earn-num-input" type="number" value="35" min="5" step="5" data-i18n-placeholder="earn_wiz_q_rate_ph" placeholder="{s['earn_wiz_q_rate_ph']}">
+              <input id="earn-wiz-q-min" class="earn-num-input" type="number" value="100" min="10" step="10" data-i18n-placeholder="earn_wiz_q_min_ph" placeholder="{s['earn_wiz_q_min_ph']}">
+            </div>
+            <div class="toolbar">
+              <input id="earn-wiz-q-langs" type="text" value="ru, en, es, zh" data-i18n-placeholder="earn_wiz_q_langs_ph" placeholder="{s['earn_wiz_q_langs_ph']}">
+              <input id="earn-wiz-q-tone" type="text" value="деловой, конкретный" data-i18n-placeholder="earn_wiz_q_tone_ph" placeholder="{s['earn_wiz_q_tone_ph']}">
+              <input id="earn-wiz-q-excl" type="text" value="казино, серый парсинг, обход капч" data-i18n-placeholder="earn_wiz_q_excl_ph" placeholder="{s['earn_wiz_q_excl_ph']}">
+            </div>
+            <div class="rec-actions">
+              <button id="earn-wiz-profile-btn" class="btn-primary" data-i18n="earn_wiz_profile_btn">{s['earn_wiz_profile_btn']}</button>
+              <button id="earn-wiz-autopick-btn" class="btn-ok" data-i18n="earn_wiz_autopick_btn">{s['earn_wiz_autopick_btn']}</button>
+            </div>
+            <div id="earn-wiz-profiles-list" class="earn-stack"></div>
+            <div id="earn-wiz-catalog-list" class="earn-stack"></div>
           </div>
         </div>
       </section>

@@ -331,7 +331,7 @@ def test_store_webhooks_cryptographic_verification_all_five(tmp_path: Path, monk
         c_bad, _ = _http_post_raw(f"{api_url}/api/v2/ark/stores/webhook?store_type=lemonsqueezy", ls_body, {"Content-Type": "application/json", "X-Signature": "deadbeef", "X-Event-Name": "order_created"})
         assert c_bad == 403
         c_ok, r_ok = _http_post_raw(f"{api_url}/api/v2/ark/stores/webhook?store_type=lemonsqueezy", ls_body, {"Content-Type": "application/json", "X-Signature": ls_sig, "X-Event-Name": "order_created"})
-        assert c_ok == 200 and r_ok["code_fee_pct"] == 20.0
+        assert c_ok == 200 and r_ok["code_fee_pct"] == 20.0 and r_ok.get("verified") in (True, False)
 
         # 2) Gumroad Ping (form-urlencoded + seller_id / HMAC)
         gr_body = urllib.parse.urlencode({"seller_id": gr["external_store_id"], "sale_id": "wh-gr-1", "product_name": "Templates", "price": "1900", "email": "bob@gr.io"}).encode("utf-8")
@@ -347,7 +347,7 @@ def test_store_webhooks_cryptographic_verification_all_five(tmp_path: Path, monk
         ph_ok = json.dumps({"id": "ph-1", "type": "paid", "price": 1000, "email": "carol@ph.io", "items": [{"product_name": "Payhip Guide"}], "signature": ph_sig}).encode("utf-8")
         assert _http_post_raw(f"{api_url}/api/v2/ark/stores/webhook?store_type=payhip", ph_bad, {"Content-Type": "application/json"})[0] == 403
         c_ok, r_ok = _http_post_raw(f"{api_url}/api/v2/ark/stores/webhook?store_type=payhip", ph_ok, {"Content-Type": "application/json"})
-        assert c_ok == 200 and r_ok["code_fee_pct"] == 20.0
+        assert c_ok == 200 and r_ok["code_fee_pct"] == 20.0 and r_ok.get("verified") in (True, False)
         ph_ref = json.dumps({"id": "ph-1", "type": "refunded", "price": 1000, "email": "carol@ph.io", "signature": ph_sig}).encode("utf-8")
         c_ref, r_ref = _http_post_raw(f"{api_url}/api/v2/ark/stores/webhook?store_type=payhip", ph_ref, {"Content-Type": "application/json"})
         assert c_ref == 200 and r_ref["action"] == "refund_processed"

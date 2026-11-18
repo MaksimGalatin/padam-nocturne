@@ -307,6 +307,7 @@ def _ensure(memory) -> None:
             ("accepted_at", "REAL"),
             ("agent_payout_status", "TEXT NOT NULL DEFAULT ''"),
             ("payout_cancel_reason", "TEXT NOT NULL DEFAULT ''"),
+            ("sale_verified", "INTEGER NOT NULL DEFAULT 1"),
         ):
             if col not in order_cols:
                 conn.execute(f"ALTER TABLE ark_freelance_order ADD COLUMN {col} {col_def}")
@@ -445,7 +446,8 @@ def freelance_locks_status() -> dict[str, Any]:
 
 def _clean_platform(raw: str) -> str:
     val = str(raw or "fiverr_desk").strip().lower()
-    if val not in SUPPORTED_PLATFORMS and val not in DIGITAL_STORE_PLATFORMS:
+    from . import platform_wizard as _pw
+    if val not in SUPPORTED_PLATFORMS and val not in DIGITAL_STORE_PLATFORMS and val not in _pw.CATALOG_BY_ID:
         raise ValueError(
             f"Неподдерживаемая площадка: {val}. Доступны: {', '.join(SUPPORTED_PLATFORMS + DIGITAL_STORE_PLATFORMS)}"
         )
@@ -1058,6 +1060,7 @@ def list_orders(memory, *, status: str | None = None, limit: int = 30, now_ts: f
             d["client_lock_status"] = ""
             d["client_locked_until_date"] = _date_utc(d.get("client_locked_until_ts"))
             d["client_locked_until_iso"] = _iso_utc(d.get("client_locked_until_ts"))
+        d["verified"] = bool(int(d.get("sale_verified", 1) if d.get("sale_verified") is not None else 1))
         d["accepted_iso"] = _iso_utc(d.get("accepted_at"))
         le = ledger_by_order.get(str(d["order_id"]))
         if le is not None:
@@ -1844,7 +1847,13 @@ def freelance_dashboard_snapshot(memory) -> dict[str, Any]:
         "supported_modes": list(SUPPORTED_MODES),
         "supported_currencies": list(SUPPORTED_CURRENCIES),
         "digital_stores": _digital_stores_safe(memory),
+        "platform_wizard": _platform_wizard_safe(memory),
     }
+
+
+def _platform_wizard_safe(memory) -> dict[str, Any]:
+    from . import platform_wizard
+    return platform_wizard.platform_wizard_snapshot(memory)
 
 
 def _digital_stores_safe(memory) -> dict[str, Any]:

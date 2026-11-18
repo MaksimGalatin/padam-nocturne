@@ -112,7 +112,7 @@ STARTER_PRODUCT_DRAFTS: tuple[dict[str, Any], ...] = (
         "title": "Базы лидов из исследования цифровой доступности",
         "description": (
             "Кураторская выборка публичных B2B-доменов и технических отчётов по доступности интерфейсов (WCAG) "
-            "для предложений по аудиту и исправлению UI без персональных данных."
+            "для подготовки коммерческих предложений по аудиту и исправлению UI."
         ),
         "price_usdt": 49.0,
         "currency": "USD",
@@ -549,6 +549,7 @@ def _public_draft_dict(row: dict[str, Any]) -> dict[str, Any]:
         "external_url": row["external_url"],
         "publish_note": row["publish_note"],
         "is_starter": bool(row["is_starter"]),
+        "proposal_disclaimer": "цена и текст — предложение агента",
         "updated_at": row["updated_at"],
     }
 
@@ -671,7 +672,23 @@ def seed_starter_product_drafts(memory) -> dict[str, Any]:
             drafts.append(res["draft"])
             created += 1
         else:
-            drafts.append(_public_draft_dict(dict(existing)))
+            ex_dict = dict(existing)
+            if "персональных данных" in str(ex_dict.get("description") or ""):
+                res = upsert_product_draft(
+                    memory,
+                    draft_id=item["draft_id"],
+                    store_type=item["store_type"],
+                    title=item["title"],
+                    description=item["description"],
+                    price_usdt=float(ex_dict.get("price_usdt") or item["price_usdt"]),
+                    currency=str(ex_dict.get("currency") or item["currency"]),
+                    delivery_url=str(ex_dict.get("delivery_url") or item["delivery_url"]),
+                    file_ref=str(ex_dict.get("file_ref") or item["file_ref"]),
+                    is_starter=True,
+                )
+                drafts.append(res["draft"])
+            else:
+                drafts.append(_public_draft_dict(ex_dict))
     return {"ok": True, "created_count": created, "drafts": drafts}
 
 
@@ -909,6 +926,16 @@ def _ingest_autopilot_sale_or_refund(
             return {"ok": True, "action": "refund_ignored_unknown_order", "external_sale_id": ext_id}
         if existing["status"] == "refunded":
             return {"ok": True, "action": "refund_already_recorded", "order_id": existing["order_id"], "external_sale_id": ext_id}
+        if existing["status"] == "unverified_payout":
+            now_r = float(now_ts if now_ts is not None else time.time())
+            with freelance_autonomy._lock_of(memory):
+                memory.store.conn.execute(
+                    "UPDATE ark_freelance_order SET status = 'refunded', payout_cancel_reason = ?, updated_at = ? "
+                    "WHERE user_id = ? AND order_id = ?",
+                    (refund_reason[:200], now_r, memory.user_id, existing["order_id"]),
+                )
+                memory.store.conn.commit()
+            return {"ok": True, "action": "refund_processed", "order_id": existing["order_id"], "external_sale_id": ext_id}
         disputed = freelance_autonomy.dispute_held_payout(
             memory,
             order_id=existing["order_id"],
@@ -952,6 +979,31 @@ def _ingest_autopilot_sale_or_refund(
         now_ts=now_ts,
     )
     order_id = str(ingested["order_id"])
+    # Замечание 1 (Payhip): подпись sha256(api_key) постоянная и не зависит от тела, а API продаж у Payhip нет.
+    # Продажи с Payhip помечаются «не подтверждена» (verified=False) и НЕ начисляются в итоговые суммы до кнопки владельца.
+    if st == "payhip":
+        now_s = float(now_ts if now_ts is not None else time.time())
+        with freelance_autonomy._lock_of(memory):
+            conn = memory.store.conn
+            conn.execute(
+                "UPDATE ark_freelance_order SET status = 'unverified_payout', sale_verified = 0, "
+                "updated_at = ? WHERE user_id = ? AND order_id = ?",
+                (now_s, memory.user_id, order_id),
+            )
+            conn.commit()
+        return {
+            "ok": True,
+            "action": "sale_pending_owner_verification",
+            "verified": False,
+            "order_id": order_id,
+            "external_sale_id": ext_id,
+            "work_mode": "autopilot",
+            "code_fee_pct": freelance_autonomy.AUTOPILOT_FEE_PCT,
+            "gross_usdt": price,
+            "note": "Payhip: продажа не подтверждена (verified=false) — подпись sha256(api_key) статична; доли и комиссия не начислены до подтверждения владельцем.",
+            "client_lock": ingested.get("client_lock"),
+        }
+
     settled = freelance_autonomy.settle_paid_order(
         memory,
         order_id,
@@ -968,6 +1020,7 @@ def _ingest_autopilot_sale_or_refund(
     return {
         "ok": True,
         "action": "sale_ingested_autopilot",
+        "verified": True,
         "order_id": order_id,
         "external_sale_id": ext_id,
         "work_mode": "autopilot",
@@ -976,6 +1029,61 @@ def _ingest_autopilot_sale_or_refund(
         "settled": settled,
         "accepted": accepted,
         "client_lock": ingested.get("client_lock"),
+    }
+
+
+def confirm_unverified_store_sale(
+    memory,
+    order_id: str,
+    *,
+    owner_approved: bool = False,
+    now_ts: float | None = None,
+) -> dict[str, Any]:
+    """Подтверждает продажу Payhip кнопкой владельца (owner_approved=True) после сверки с выплатой и начисляет доли."""
+    _ensure_schema(memory)
+    if not owner_approved:
+        raise PermissionError("Подтверждение выплаты Payhip требует явного действия владельца (owner_approved=True).")
+    oid = str(order_id or "").strip()
+    with freelance_autonomy._lock_of(memory):
+        row = memory.store.conn.execute(
+            "SELECT * FROM ark_freelance_order WHERE user_id = ? AND order_id = ?",
+            (memory.user_id, oid),
+        ).fetchone()
+    if row is None:
+        raise KeyError(f"Заказ не найден: {oid}")
+    ord_d = dict(row)
+    if ord_d.get("status") == "paid" and int(ord_d.get("sale_verified", 1)) == 1:
+        return {"ok": True, "verified": True, "already_confirmed": True, "order_id": oid}
+
+    price = float(ord_d.get("proposed_usdt") or ord_d.get("budget_usdt") or 0.0)
+    aid = str(ord_d.get("assigned_agent") or "aifa")
+    now_s = float(now_ts if now_ts is not None else time.time())
+    with freelance_autonomy._lock_of(memory):
+        memory.store.conn.execute(
+            "UPDATE ark_freelance_order SET sale_verified = 1, status = 'evaluated', updated_at = ? "
+            "WHERE user_id = ? AND order_id = ?",
+            (now_s, memory.user_id, oid),
+        )
+        memory.store.conn.commit()
+    settled = freelance_autonomy.settle_paid_order(
+        memory,
+        oid,
+        paid_usdt=price,
+        agent_id=aid,
+        now_ts=now_s,
+    )
+    accepted = freelance_autonomy.accept_delivery(
+        memory,
+        oid,
+        accepted_by="owner_verified_payhip",
+        now_ts=now_s,
+    )
+    return {
+        "ok": True,
+        "verified": True,
+        "order_id": oid,
+        "settled": settled,
+        "accepted": accepted,
     }
 
 

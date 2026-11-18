@@ -54,8 +54,8 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action", "/api/v2/ark/stores/action", "/api/v2/ark/phoenix-beacon/action", "/api/v2/local-model", "/api/v2/family/post", "/api/v2/family/reflex/decide"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance", "/api/v2/ark/stores", "/api/v2/local-model", "/api/v2/family/feed", "/api/v2/family/reflexes"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action", "/api/v2/ark/stores/action", "/api/v2/ark/wizard/action", "/api/v2/ark/phoenix-beacon/action", "/api/v2/local-model", "/api/v2/family/post", "/api/v2/family/reflex/decide"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance", "/api/v2/ark/stores", "/api/v2/ark/wizard", "/api/v2/local-model", "/api/v2/family/feed", "/api/v2/family/reflexes"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
 
@@ -568,6 +568,11 @@ class Handler(BaseHTTPRequestHandler):
                 from . import digital_stores as _ds
                 with mem().store._lock:
                     return self._send(200, _ds.digital_stores_snapshot(mem(), auto_seed_starters=True))
+            if путь.path == "/api/v2/ark/wizard":
+                roles.require_owner(actor, "brain_status")
+                from . import platform_wizard as _pw
+                with mem().store._lock:
+                    return self._send(200, _pw.platform_wizard_snapshot(mem()))
             if путь.path == "/api/v2/qa-benchmark":
                 roles.require_owner(actor, "aifa_security")
                 from pathlib import Path as _Path
@@ -1774,7 +1779,60 @@ class Handler(BaseHTTPRequestHandler):
                         str(data.get("store_account_id") or ""),
                         allow_localhost=bool(data.get("allow_localhost", False)),
                     ))
+                if act == "confirm_sale":
+                    return self._send(200, _ds.confirm_unverified_store_sale(
+                        mem(),
+                        str(data.get("order_id") or ""),
+                        owner_approved=bool(data.get("owner_approved", False)),
+                    ))
                 return self._send(200, _ds.digital_stores_snapshot(mem(), auto_seed_starters=True))
+
+            if self.path == "/api/v2/ark/wizard/action":
+                roles.require_owner(actor, "ark_freelance")
+                from . import platform_wizard as _pw
+                act = str(data.get("action") or "status").lower()
+                aid = str(data.get("agent_id") or "aifa")
+                if act == "catalog":
+                    return self._send(200, _pw.list_platform_catalog(
+                        category=str(data.get("category") or ""),
+                        automation_tier=str(data.get("automation_tier") or ""),
+                    ))
+                if act == "connect":
+                    return self._send(200, _pw.connect_platform_step(
+                        mem(),
+                        platform_id=str(data.get("platform_id") or ""),
+                        auth_method=str(data.get("auth_method") or ""),
+                        token_or_session=str(data.get("token_or_session") or data.get("oauth_token") or data.get("api_key") or ""),
+                        account_label=str(data.get("account_label") or ""),
+                        agent_id=aid,
+                        password=str(data.get("password") or ""),
+                    ))
+                if act == "questionnaire":
+                    return self._send(200, _pw.submit_questionnaire_and_build_profile_draft(
+                        mem(),
+                        platform_id=str(data.get("platform_id") or ""),
+                        specializations=str(data.get("specializations") or ""),
+                        hourly_rate_usdt=float(data.get("hourly_rate_usdt") or 35.0),
+                        min_order_usdt=float(data.get("min_order_usdt") or 100.0),
+                        languages=str(data.get("languages") or "ru, en"),
+                        tone=str(data.get("tone") or "деловой, конкретный"),
+                        excluded_topics=str(data.get("excluded_topics") or ""),
+                        agent_id=aid,
+                    ))
+                if act == "publish_profile":
+                    return self._send(200, _pw.publish_profile_draft(
+                        mem(),
+                        str(data.get("draft_id") or ""),
+                        owner_approved=bool(data.get("owner_approved", False)),
+                    ))
+                if act == "autopick_jobs":
+                    return self._send(200, _pw.autopick_and_prepare_jobs(
+                        mem(),
+                        platform_id=str(data.get("platform_id") or ""),
+                        candidate_jobs=data.get("candidate_jobs") if isinstance(data.get("candidate_jobs"), list) else None,
+                        agent_id=aid,
+                    ))
+                return self._send(200, _pw.platform_wizard_snapshot(mem()))
 
             if self.path == "/api/v2/ark/jobs":
                 roles.require_owner(actor, "ark_jobs")
