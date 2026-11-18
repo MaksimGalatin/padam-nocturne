@@ -605,6 +605,17 @@ def execute_approved_topup(
     if row["status"] != "approved":
         raise PermissionError(f"Cannot execute proposal {proposal_id} without owner approval (status={row['status']!r})")
 
+    # Аудит GLM 18.11.2026, AUT-10: дневной предел — на сутки, а не на один вызов. Сумма исполненных за 24 часа
+    # плюс эта заявка не может превысить PADAM_TREASURY_DAILY_CAP_USDT, сколько бы заявок ни было одобрено.
+    import os as _os
+    дневной = float(_os.environ.get("PADAM_TREASURY_DAILY_CAP_USDT", "25.0") or "25.0")
+    за_сутки = float(conn.execute(
+        "SELECT COALESCE(SUM(amount_usdt), 0) FROM ark_topup_proposal WHERE user_id = ? AND status = 'executed' "
+        "AND executed_at >= ?", (memory.user_id, time.time() - 86400)).fetchone()[0] or 0.0)
+    if за_сутки + float(row["amount_usdt"]) > дневной + 1e-9:
+        raise PermissionError(
+            f"Daily treasury cap ${дневной} reached: ${за_сутки} already executed in 24 h, this proposal is ${row['amount_usdt']}")
+
     tm = treasury_manager or sovereign_ops.get_treasury_manager()
     tx_res = tm.execute_topup(
         provider=row["provider"],

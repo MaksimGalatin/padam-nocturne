@@ -35,3 +35,21 @@ def test_откат_подписывает_восстановленное_пре
     rows = m.store.query("SELECT id, kind, content, owner_sig FROM memory WHERE kind='preference' AND content IS NOT NULL")
     assert rows, res
     assert all(integrity.valid(key, r) for r in rows)
+
+
+def test_дневной_предел_казны_на_сутки_а_не_на_вызов(tmp_path, monkeypatch):
+    import pytest
+    from padam import token_autonomy as ta
+
+    class _Казна:
+        def execute_topup(self, **kw):
+            return {"ok": True, "simulated": True, **kw}
+
+    monkeypatch.setenv("PADAM_TREASURY_DAILY_CAP_USDT", "25")
+    m = Memory(user_id="u", store=Store(tmp_path / "t.db"))
+    ids = [ta.propose_plan_or_topup(m, amount_usdt=20.0)["proposal_id"] for _ in range(2)]
+    for pid in ids:
+        ta.decide_topup_proposal(m, pid, approve=True)
+    assert ta.execute_approved_topup(m, ids[0], treasury_manager=_Казна())["status"] == "executed"
+    with pytest.raises(PermissionError):
+        ta.execute_approved_topup(m, ids[1], treasury_manager=_Казна())   # 20 + 20 > 25 за сутки
