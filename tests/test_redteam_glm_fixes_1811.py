@@ -261,7 +261,14 @@ def test_token_files_owner_only_permissions(tmp_path: Path, monkeypatch):
     state_path = tmp_path / "mcp-daemon-abc123.json"
     write_daemon_state(state_path, {"pid": 1234, "port": 9411, "token": "daemon_tok_secret_123"})
     assert state_path.exists()
-    assert net_guard.verify_owner_only_permissions(state_path) is True
+    if not net_guard.verify_owner_only_permissions(state_path):
+        import os as _os
+        diag = ""
+        if _os.name == "nt":
+            import subprocess as _sp
+            diag = (f"owner={net_guard._windows_current_user_sid()} dacl={net_guard._windows_file_dacl_sids(state_path)} "
+                    f"icacls={_sp.run(['icacls', str(state_path)], capture_output=True, text=True).stdout!r}")
+        raise AssertionError(f"файл с токеном доступен не только владельцу: {diag}")
 
     # 3b. cabinet_session.json (без внешнего keystore — проверка файлового fallback)
     sess_file = tmp_path / "cabinet" / "session.json"
