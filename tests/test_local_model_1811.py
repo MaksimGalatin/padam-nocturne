@@ -83,3 +83,19 @@ def test_api_только_с_этого_компьютера(tmp_path):
     finally:
         srv.shutdown(); srv.server_close()
         api._state.clear(); api._state.update(prev)
+
+
+def test_блок_рассуждения_не_показывается(tmp_path, monkeypatch):
+    fake = tmp_path / "qwen3-test.gguf"
+    fake.write_bytes(b"GGUF" + b"\0" * 32)
+    local_model.save(gguf_path=str(fake))
+
+    class Подставная:
+        def create_chat_completion(self, **kw):
+            return {"choices": [{"message": {"content": "<think>\n\n</think>\n\nThe Architect is Maksim Galatin."}}]}
+
+    monkeypatch.setattr(cpu_engine, "_has_llama_cpp", lambda: True)
+    monkeypatch.setitem(__import__("sys").modules, "llama_cpp", type("M", (), {})())
+    monkeypatch.setitem(cpu_engine._GGUF_CACHE, "path", str(fake.resolve()))
+    monkeypatch.setitem(cpu_engine._GGUF_CACHE, "llm", Подставная())
+    assert cpu_engine._run_gguf_if_configured("Who?", [], {}) == "The Architect is Maksim Galatin."

@@ -299,6 +299,9 @@ def _run_gguf_if_configured(
             raw_p = f"System: {sys_ctx[:2000]}\nUser: {clean_q[:2000]}\nAssistant:"
             res = llm(raw_p, max_tokens=max_tok, temperature=temp)
             txt = str((((res or {}).get("choices") or [{}])[0]).get("text") or "").strip()
+        # 18.11.2026: модели с рассуждением (Qwen3, DeepSeek-R1) даже с /no_think присылают блок <think>…</think>;
+        # человеку он не нужен — показываем только ответ.
+        txt = re.sub(r"<think>.*?</think>", "", txt, flags=re.S).strip()
         if txt:
             _GGUF_CACHE["last_error"] = ""
             return safety.redact(txt)[0]
