@@ -309,6 +309,67 @@ class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
     http_error_301 = http_error_303 = http_error_307 = http_error_308 = http_error_302
 
 
+def _peer_guarded(base: type, *, allow_localhost: bool, allow_ipv6_loopback: bool) -> type:
+    """Фаза 2 аудита GLM, NETGUARD-01: проверка адреса В МОМЕНТ СОЕДИНЕНИЯ, а не только при валидации.
+
+    validate_outbound_url резолвит имя один раз, а соединение резолвило его заново: подменный DNS
+    (rebinding) отдавал публичный адрес на проверке и внутренний — на соединении; SERVFAIL на проверке
+    вовсе пропускал имя. Здесь сокет открывается, берётся его реальный адрес собеседника (getpeername)
+    и проверяется теми же правилами — до TLS и до первого байта запроса. Редиректы идут через те же
+    соединения, поэтому закрыты тем же.
+    """
+
+    class _Guarded(base):  # type: ignore[misc, valid-type]
+        def __init__(self, *a: Any, **kw: Any) -> None:
+            super().__init__(*a, **kw)
+            raw_create = self._create_connection
+
+            def _create(address: Any, *ca: Any, **ckw: Any) -> socket.socket:
+                sock = raw_create(address, *ca, **ckw)
+                # Через прокси собеседник — сам прокси, его выбрал владелец машины: адрес цели проверен валидатором.
+                if getattr(self, "_tunnel_host", None) or urllib.request.getproxies():
+                    return sock
+                try:
+                    peer = ipaddress.ip_address(str(sock.getpeername()[0]).split("%", 1)[0])
+                    host = str(self.host or "").strip("[]").rstrip(".").lower()
+                    try:
+                        ipaddress.ip_address(host)
+                        local_name = True
+                    except ValueError:
+                        local_name = host == "localhost" or host.endswith(".localhost")
+                    _check_ip_allowed(
+                        peer,
+                        allow_localhost=allow_localhost and local_name,
+                        allow_ipv6_loopback=allow_ipv6_loopback and local_name,
+                    )
+                except Exception:
+                    sock.close()
+                    raise
+                return sock
+
+            self._create_connection = _create
+
+    return _Guarded
+
+
+class _GuardedHTTPHandler(urllib.request.HTTPHandler):
+    def __init__(self, conn_cls: type) -> None:
+        super().__init__()
+        self._conn_cls = conn_cls
+
+    def http_open(self, req: urllib.request.Request) -> Any:
+        return self.do_open(self._conn_cls, req)
+
+
+class _GuardedHTTPSHandler(urllib.request.HTTPSHandler):
+    def __init__(self, conn_cls: type) -> None:
+        super().__init__()
+        self._conn_cls = conn_cls
+
+    def https_open(self, req: urllib.request.Request) -> Any:
+        return self.do_open(self._conn_cls, req, context=self._context)
+
+
 def safe_urlopen(
     req_or_url: urllib.request.Request | str,
     *,
@@ -352,9 +413,10 @@ def safe_urlopen(
         require_https=require_https,
         max_redirects=max_redirects,
     )
+    policy = dict(allow_localhost=allow_localhost, allow_ipv6_loopback=allow_ipv6_loopback)
     opener = urllib.request.build_opener(
-        urllib.request.HTTPHandler(),
-        urllib.request.HTTPSHandler(),
+        _GuardedHTTPHandler(_peer_guarded(http.client.HTTPConnection, **policy)),
+        _GuardedHTTPSHandler(_peer_guarded(http.client.HTTPSConnection, **policy)),
         redirect_handler,
     )
     return opener.open(req, timeout=timeout)

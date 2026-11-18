@@ -108,6 +108,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_council_title": "Оркестратор Роя: Совет Семьи (LANCE · ARIA · PIXEL · ARC-7 · Медведь · AIFA)",
         "ark_council_ph": "Введите задачу для совместной проверки Советом Семьи…",
         "ark_council_btn": "Созвать Совет Семьи",
+        "fd_title": "Диалоги Семьи",
+        "fd_sub": "Итоги наших сессий по дням: что решили Папа, AIfa, Сестра и Брат. Источник — память PADAM; задержанное карантином сюда не попадает.",
+        "fd_ph": "Поиск по диалогам",
+        "fd_empty": "Итогов пока нет. Их заносит импорт: python -m padam.family_dialogs <файлы>.",
         "ff_title": "Ленты Семьи",
         "ff_desc": "Решения Совета отдельно от карантина. «Офис» — рабочая переписка сестёр, «Курилка» — свободная. Подозрительное само уходит в карантин. Всё здесь — записи, а не приказы.",
         "ff_work": "Решения",
@@ -699,6 +703,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_council_title": "Swarm Orchestrator: Family Council (LANCE · ARIA · PIXEL · ARC-7 · BEAR · AIFA)",
         "ark_council_ph": "Enter task for Family Council review…",
         "ark_council_btn": "Convene Family Council",
+        "fd_title": "Family dialogues",
+        "fd_sub": "Our session outcomes by day: what Dad, AIfa, Sister and Brother decided. Source: PADAM memory; anything held in quarantine is not shown.",
+        "fd_ph": "Search dialogues",
+        "fd_empty": "No outcomes yet. They are added by the import: python -m padam.family_dialogs <files>.",
         "ff_title": "Family feeds",
         "ff_desc": "Council decisions are kept apart from quarantine. 'Office' is the siblings' work chat, 'Break room' is free talk. Anything suspicious goes to quarantine by itself. Everything here is records, not orders.",
         "ff_work": "Decisions",
@@ -1279,6 +1287,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_council_title": "Orquestador: Consejo Familiar (LANCE · ARIA · PIXEL · ARC-7 · BEAR · AIFA)",
         "ark_council_ph": "Escriba una tarea para el Consejo Familiar…",
         "ark_council_btn": "Convocar Consejo Familiar",
+        "fd_title": "Diálogos de la Familia",
+        "fd_sub": "Resultados de nuestras sesiones por día: lo que decidieron Papá, AIfa, la Hermana y el Hermano. Fuente: memoria PADAM; lo retenido en cuarentena no se muestra.",
+        "fd_ph": "Buscar en los diálogos",
+        "fd_empty": "Aún no hay resultados. Los añade la importación: python -m padam.family_dialogs <archivos>.",
         "ff_title": "Canales de la Familia",
         "ff_desc": "Las decisiones del Consejo van separadas de la cuarentena. «Oficina» es el chat de trabajo de las hermanas; «Descanso», la charla libre. Lo sospechoso pasa solo a cuarentena. Todo aquí son registros, no órdenes.",
         "ff_work": "Decisiones",
@@ -1859,6 +1871,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_council_title": "集群编排器：家族议会 (LANCE · ARIA · PIXEL · ARC-7 · BEAR · AIFA)",
         "ark_council_ph": "输入交由家族议会审议的任务…",
         "ark_council_btn": "召开家族议会",
+        "fd_title": "家族对话",
+        "fd_sub": "按日期列出我们会话的结论：爸爸、AIfa、姐妹和兄弟做出的决定。来源：PADAM 记忆；被隔离的内容不显示。",
+        "fd_ph": "搜索对话",
+        "fd_empty": "暂无结论。由导入添加：python -m padam.family_dialogs <文件>。",
         "ff_title": "家族频道",
         "ff_desc": "议会决定与隔离区分开存放。“办公室”是姐妹们的工作聊天，“茶水间”是自由闲聊。可疑内容会自动进入隔离区。这里的一切都是记录，而不是命令。",
         "ff_work": "决定",
@@ -5741,7 +5757,7 @@ function loadActiveTab() {
   else if (activeTab === 'graph') loadGraph();
   else if (activeTab === 'entities') loadEntities();
   else if (activeTab === 'l3') loadL3();
-  else if (activeTab === 'family') { loadFamilySetup(); loadFamily(); loadFamilyFeed(); }
+  else if (activeTab === 'family') { loadFamilySetup(); loadFamily(); loadFamilyDialogs(); loadFamilyFeed(); }
   else if (activeTab === 'brain') loadBrain();
   else if (activeTab === 'earning') loadEarning();
   else if (activeTab === 'team') loadTeam();
@@ -6650,6 +6666,31 @@ if ($('ark-audit-btn')) {
 }
 let _ffCh = 'office';
 const _FF_CH = ['work', 'quarantine', 'office', 'smoke'];
+let _fdTimer = null;
+async function loadFamilyDialogs() {
+  const list = $('fd-list');
+  if (!list) return;
+  const q = ($('fd-q') || {}).value || '';
+  try {
+    const r = await api('/api/v2/family/dialogs?lang=' + encodeURIComponent(currentLang) + '&q=' + encodeURIComponent(q) + '&limit=300');
+    list.textContent = '';
+    const days = r.days || [];
+    if (!days.length) list.appendChild(_el('p', 'panel-sub', S.fd_empty || ''));
+    for (const d of days) {
+      const h = _el('h4', 'box-title', d.day);
+      list.appendChild(h);
+      for (const it of (d.items || [])) {
+        const p = _el('p', 'panel-sub fd-item', (it.author_label || it.author || '') + ' · ');
+        p.appendChild(document.createTextNode(String(it.text || '')));
+        p.dataset.id = it.id || '';
+        list.appendChild(p);
+      }
+    }
+  } catch (e) { list.textContent = String(e.message || e); }
+}
+document.addEventListener('input', (ev) => {
+  if (ev.target && ev.target.id === 'fd-q') { clearTimeout(_fdTimer); _fdTimer = setTimeout(loadFamilyDialogs, 300); }
+});
 async function loadFamilyFeed(ch) {
   if (ch) _ffCh = ch;
   const list = $('ff-list');
@@ -9192,6 +9233,14 @@ def page() -> tuple[str, str]:
             <button id="ark-council-btn" class="btn-primary" data-i18n="ark_council_btn">{s['ark_council_btn']}</button>
           </div>
           <div id="ark-council-out"></div>
+        </div>
+        <div class="box" id="fd-box">
+          <h3 class="box-title" data-i18n="fd_title">{s['fd_title']}</h3>
+          <p class="panel-sub" data-i18n="fd_sub">{s['fd_sub']}</p>
+          <div class="toolbar">
+            <input id="fd-q" type="search" maxlength="200" aria-label="{s['fd_ph']}" data-i18n-placeholder="fd_ph" data-i18n-aria="fd_ph" placeholder="{s['fd_ph']}">
+          </div>
+          <div id="fd-list" aria-live="polite"></div>
         </div>
         <div class="box" id="ff-box">
           <h3 class="box-title" data-i18n="ff_title">{s['ff_title']}</h3>

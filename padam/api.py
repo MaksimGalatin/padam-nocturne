@@ -55,7 +55,7 @@ from .store import Store
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
 OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action", "/api/v2/ark/stores/action", "/api/v2/ark/wizard/action", "/api/v2/ark/partner/action", "/api/v2/ark/phoenix-beacon/action", "/api/v2/local-model", "/api/v2/family/post", "/api/v2/family/reflex/decide", "/api/v2/quarantine/council"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance", "/api/v2/ark/stores", "/api/v2/ark/wizard", "/api/v2/ark/partner", "/api/v2/local-model", "/api/v2/family/feed", "/api/v2/family/reflexes", "/api/v2/quarantine/council"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance", "/api/v2/ark/stores", "/api/v2/ark/wizard", "/api/v2/ark/partner", "/api/v2/local-model", "/api/v2/family/feed", "/api/v2/family/reflexes", "/api/v2/quarantine/council", "/api/v2/family/dialogs"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
 
@@ -589,6 +589,17 @@ class Handler(BaseHTTPRequestHandler):
                 roles.require_owner(actor, "quarantine_council")
                 from . import quarantine_council as _qc
                 return self._send(200, {"verdicts": _qc.verdicts(mem())})
+            if путь.path == "/api/v2/family/dialogs":
+                # «Диалоги Семьи» (слово Папы 18.11): итоги сессий из памяти, лента по дням, поиск.
+                roles.require_owner(actor, "family_dialogs")
+                from . import family_dialogs as _fd
+                qs_fd = parse_qs(путь.query)
+                return self._send(200, _fd.list_dialogs(
+                    mem(),
+                    query=(qs_fd.get("q") or [""])[0],
+                    limit=int((qs_fd.get("limit") or ["300"])[0] or 300),
+                    lang=(qs_fd.get("lang") or ["ru"])[0],
+                ))
             if путь.path == "/api/v2/local-model":
                 roles.require_owner(actor, "settings")
                 from . import local_model as _lm
@@ -2383,6 +2394,28 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(500, {"error": str(e)})
 
 
+# Порты, на которые Chromium не пускает (net/base/port_util.cc, kRestrictedPorts). Studio открывается в браузере,
+# поэтому при случайном порте (port=0) такой порт брать нельзя: 18.11.2026 тест Studio получил 1723 (PPTP) и
+# упал с net::ERR_UNSAFE_PORT — это и были «плавающие» падения Playwright-тестов.
+_BROWSER_UNSAFE_PORTS = frozenset((
+    1, 7, 9, 11, 13, 15, 17, 19, 20, 21, 22, 23, 25, 37, 42, 43, 53, 69, 77, 79, 87, 95, 101, 102, 103, 104,
+    109, 110, 111, 113, 115, 117, 119, 123, 135, 137, 139, 143, 161, 179, 389, 427, 465, 512, 513, 514, 515,
+    526, 530, 531, 532, 540, 548, 554, 556, 563, 587, 601, 636, 989, 990, 993, 995, 1719, 1720, 1723, 2049,
+    3659, 4045, 4190, 5060, 5061, 6000, 6566, 6665, 6666, 6667, 6668, 6669, 6679, 6697, 10080,
+))
+
+
+def _bind_browser_safe(port: int, handler) -> ThreadingHTTPServer:
+    """Сервер на 127.0.0.1; при port=0 перевыбирает порт, пока не выпадет разрешённый браузером."""
+    srv = ThreadingHTTPServer(("127.0.0.1", port), handler)
+    for _ in range(32):
+        if port != 0 or srv.server_address[1] not in _BROWSER_UNSAFE_PORTS:
+            return srv
+        srv.server_close()
+        srv = ThreadingHTTPServer(("127.0.0.1", port), handler)
+    return srv
+
+
 def make_viewer_server(memory: Memory | None = None, port: int = 8078) -> tuple[ThreadingHTTPServer, str]:
     """Сервер просмотра памяти: только 127.0.0.1, токен создаётся на каждый запуск. Возвращает (сервер, ссылка)."""
     _state["token"] = secrets.token_urlsafe(24)
@@ -2391,7 +2424,7 @@ def make_viewer_server(memory: Memory | None = None, port: int = 8078) -> tuple[
     _state["studio_default"] = False
     if memory is not None:
         _state["memory"] = memory
-    srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    srv = _bind_browser_safe(port, Handler)
     return srv, f"http://127.0.0.1:{srv.server_address[1]}/ui#t={_state['token']}"
 
 
@@ -2425,7 +2458,7 @@ def make_studio_server(memory: Memory | None = None, port: int = 8078) -> tuple[
     _state["studio_default"] = True
     if memory is not None:
         _state["memory"] = memory
-    srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    srv = _bind_browser_safe(port, Handler)
     return srv, f"http://127.0.0.1:{srv.server_address[1]}/studio#t={_state['token']}"
 
 

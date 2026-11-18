@@ -17,10 +17,12 @@ RUN groupadd --gid 10001 padam \
     && chown -R padam:padam /data /app \
     && chmod 0700 /data
 
-COPY pyproject.toml README.md README.ru.md LICENSE ./
+COPY pyproject.toml README.md README.ru.md LICENSE requirements.lock ./
 COPY padam ./padam
 
-RUN pip install --no-cache-dir -e .
+# Фаза 2 аудита GLM, CI-01: зависимости — строго по хешам из requirements.lock (подменённое колесо pip
+# отвергнет), сам пакет — без подтягивания зависимостей, чтобы мимо lock-файла не прошло ничего.
+RUN pip install --no-cache-dir --require-hashes -r requirements.lock     && pip install --no-cache-dir --no-deps -e .
 
 USER padam
 VOLUME ["/data"]

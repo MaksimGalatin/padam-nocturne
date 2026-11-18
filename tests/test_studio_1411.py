@@ -3942,11 +3942,13 @@ def test_step_2_10_lockfile_audit_and_sbom_ci():
     lock_file = repo_root / "requirements.lock"
     assert lock_file.is_file()
     lock_text = lock_file.read_text(encoding="utf-8")
+    # Фаза 2 аудита GLM, CI-01: lock-файл с хешами — строки «--hash=sha256:…» относятся к пакету над ними.
     pinned = [
-        line.strip()
+        line.strip().rstrip("\\").strip()
         for line in lock_text.splitlines()
-        if line.strip() and not line.lstrip().startswith("#")
+        if line.strip() and not line.lstrip().startswith("#") and not line.lstrip().startswith("--hash=")
     ]
+    assert lock_text.count("--hash=sha256:") >= len(pinned), "У каждого пакета в requirements.lock должен быть хеш (CI-01)"
     assert len(pinned) >= 9
     for pkg in ("numpy==", "requests==", "cryptography=="):
         assert any(line.startswith(pkg) for line in pinned), f"Missing pinned {pkg} in requirements.lock"

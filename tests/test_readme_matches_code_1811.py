@@ -33,7 +33,9 @@ def test_нет_зашитого_числа_экранов_studio():
 def test_таблица_сети_на_4_языках_и_адреса_из_кода():
     api = _read("padam/api.py")
     mcp = _read("padam/mcp_server.py")
-    assert 'ThreadingHTTPServer(("127.0.0.1", port), Handler)' in api            # Studio: адрес зашит
+    # Studio: адрес зашит — с 18.11 сокет создаёт _bind_browser_safe (обходит порты, запрещённые браузером)
+    assert 'ThreadingHTTPServer(("127.0.0.1", port), handler)' in api
+    assert 'srv = _bind_browser_safe(port, Handler)' in api
     assert 'p.add_argument("--host", default="127.0.0.1")' in api                 # REST API по умолчанию
     assert 'hp.add_argument("--host", default="127.0.0.1")' in mcp                # MCP по HTTP по умолчанию
     for lg, f in READMES.items():
