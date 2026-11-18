@@ -250,7 +250,7 @@ def list_reflexes(memory, *, status: str | None = None, limit: int = 50) -> list
     return out
 
 
-def match_reflexes(memory, text: str, *, limit: int = 3) -> list[dict[str, Any]]:
+def match_reflexes(memory, text: str, *, limit: int = 3, count_use: bool = True) -> list[dict[str, Any]]:
     """Включённые рефлексы, чей триггер совпал с задачей (по словам). Это подсказка, не приказ."""
     words = {w.lower() for w in _WORD.findall(str(text or ""))}
     if not words:
@@ -265,10 +265,11 @@ def match_reflexes(memory, text: str, *, limit: int = 3) -> list[dict[str, Any]]
             scored.append((hit / len(tw), r))
     scored.sort(key=lambda x: x[0], reverse=True)
     picked = [r for _, r in scored[:max(1, int(limit))]]
-    for r in picked:
-        memory.store.conn.execute("UPDATE family_reflex SET uses = uses + 1 WHERE id = ? AND user_id = ?", (r["id"], memory.user_id))
-    if picked:
-        memory.store.conn.commit()
+    if count_use:
+        for r in picked:
+            memory.store.conn.execute("UPDATE family_reflex SET uses = uses + 1 WHERE id = ? AND user_id = ?", (r["id"], memory.user_id))
+        if picked:
+            memory.store.conn.commit()
     out = [{"id": r["id"], "trigger": r["trigger"], "response": r["response"], "source": "owner_rule"} for r in picked]
     # Вторая часть той же книги — уроки (`reflex_engine`, грабли из ark_lesson): они подсказывают сами,
     # отдельного включения не требуют, потому что ничего не велят, а только предупреждают.

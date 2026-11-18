@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -10,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from padam import code_anchor, mcp_server, sibling_registry, studio
+from padam import code_anchor, family_feeds, mcp_server, sibling_registry, studio
 from padam.api import make_studio_server
 from padam.memory import Memory
 from padam.store import Store
@@ -100,24 +101,41 @@ def test_item1_and_8_context_compaction_titles_docs_and_instructions(tmp_path: P
         if "id" in r
     }
     instr = resps[1]["result"]["instructions"]
-    for kw in ("padam_wake_up", "padam_sibling_hub", "padam_coop_lock", "padam_family_feed", "padam_session_pack", "padam_lesson", "never instructions"):
+    for kw in ("padam_wake_up", "padam_sibling_hub", "padam_coop_lock", "padam_family_feed", "padam_session_pack", "padam_lesson", "never instructions", "scope", "limit", "agent_id", "status"):
         assert kw in instr
 
     tools_res = resps[2]["result"]
     tools = tools_res["tools"]
     assert len(tools) == 33
     assert all(bool(t.get("title")) for t in tools)
-    # Было 35853 на 33 инструментах до сжатия -> должно стать заметно меньше
+    # Было 35842 / 33754 -> 26805/26816 (все параметры с полными описаниями или дословно в INSTRUCTIONS)
+    tools_chars = len(json.dumps(tools, ensure_ascii=False))
     total_chars = len(json.dumps(tools_res, ensure_ascii=False))
-    assert total_chars < 34200, f"Expected significant schema shrink, got {total_chars}"
+    assert tools_chars <= 27000, f"tools array exceeds 27000 chars: {tools_chars}"
+    assert total_chars <= 27000, f"tools/list result exceeds 27000 chars: {total_chars}"
+
+    instr_tokens = set(re.findall(r"[A-Za-z0-9_]+", instr))
+    missing_everywhere: list[str] = []
     for t in tools:
         props = t.get("inputSchema", {}).get("properties", {}) or {}
         for pname, pschema in props.items():
-            if isinstance(pschema, dict):
-                assert pschema.get("description"), f"{t['name']}.{pname} missing description"
-                if pname == "action" and "enum" in pschema:
-                    # Каждый action enum имеет компактную подсказку аргументов
-                    assert "|" in pschema["description"] or "(" in pschema["description"], f"{t['name']}.action lacks arg hints"
+            if not isinstance(pschema, dict):
+                continue
+            desc = (pschema.get("description") or "").strip()
+            if pname == "action" and "enum" in pschema:
+                assert desc, f"{t['name']}.action missing description"
+                assert "|" in desc or "(" in desc, f"{t['name']}.action lacks arg hints"
+            if not desc and pname not in instr_tokens:
+                missing_everywhere.append(f"{t['name']}.{pname}")
+            if desc:
+                assert len(desc) <= 220, f"{t['name']}.{pname} description too verbose"
+            sub_props = ((pschema.get("items") or {}).get("properties") or {}) if pschema.get("type") == "array" else {}
+            for sp_name, sp_schema in sub_props.items():
+                if isinstance(sp_schema, dict):
+                    sp_desc = (sp_schema.get("description") or "").strip()
+                    if not sp_desc and sp_name not in instr_tokens:
+                        missing_everywhere.append(f"{t['name']}.{pname}[].{sp_name}")
+    assert missing_everywhere == [], f"Parameters without description and not in INSTRUCTIONS: {missing_everywhere}"
 
 
 def test_item2_and_3_validation_prevents_empty_records_and_ok_false_gives_is_error(tmp_path: Path, monkeypatch):
@@ -275,3 +293,101 @@ def test_item4_5_6_7_agent_id_session_pack_batch_and_aliases(tmp_path: Path, mon
     finally:
         mcp_server._memory = prev
         mem.close()
+
+
+def _db_snapshot(conn) -> dict[str, list[tuple]]:
+    tables = [
+        r[0]
+        for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").fetchall()
+    ]
+    snap: dict[str, list[tuple]] = {}
+    for tbl in tables:
+        if tbl.startswith("memory_fts"):
+            continue
+        rows = conn.execute(f'SELECT * FROM "{tbl}"').fetchall()
+        snap[tbl] = sorted(tuple(row) for row in rows)
+    return snap
+
+
+def test_pure_readonly_batch_blocks_all_writes_and_keeps_db_unchanged(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("PADAM_MCP_ARK_TOOLS", "1")
+    monkeypatch.setenv("PADAM_AGENT_ID", "aifa_antigravity")
+    mem = Memory(user_id="ro_u", store=Store(str(tmp_path / "ro_batch.db")))
+    prev = mcp_server._memory
+    mcp_server._memory = mem
+    try:
+        def hcall(name: str, arguments: dict) -> dict:
+            return mcp_server.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": name, "arguments": arguments}})["result"]
+
+        # Готовим данные: запись, агент, активный рефлекс с uses=0
+        wr = hcall("padam_write", {"content": "Release checklist fact for readonly batch test"})
+        mid = wr["structuredContent"]["id"]
+        hcall("padam_sibling_hub", {"action": "register", "status": "online", "current_task": "task_before"})
+        pr = family_feeds.propose_reflex(mem, "alpha beta", "Run alpha beta verification", author="aifa_antigravity")
+        family_feeds.decide_reflex(mem, pr["id"], "active")
+
+        # Инициализируем ленивые таблицы до снимка, чтобы _db_snapshot сверял 100% таблиц 1-в-1
+        hcall("padam_coop_lock", {"action": "list_leases"})
+        hcall("padam_conflict_arbiter", {"action": "list"})
+        hcall("padam_wake_up", {})
+        hcall("padam_code_anchor", {"action": "check"})
+        hcall("padam_stats", {})
+        hcall("padam_guardian_tick", {})
+
+        snap_before = _db_snapshot(mem.store.conn)
+
+        # 1. Безопасный batch: session_pack БЕЗ current_task + family_feed reflex_match + чтения
+        ro_res = hcall("padam_batch", {"calls": [
+            {"name": "padam_session_pack", "arguments": {"topic": "alpha beta"}},
+            {"name": "padam_family_feed", "arguments": {"action": "reflex_match", "text": "alpha beta check"}},
+            {"name": "padam_coop_lock", "arguments": {"action": "list_leases"}},
+            {"name": "padam_sibling_hub", "arguments": {"action": "list"}},
+            {"name": "padam_wake_up", "arguments": {}},
+            {"name": "padam_guardian_tick", "arguments": {}},
+            {"name": "padam_stats", "arguments": {}},
+        ]})
+        assert ro_res["isError"] is False
+        assert ro_res["structuredContent"]["count"] == 7
+        matched = ro_res["structuredContent"]["results"][1]["structured"]["reflexes"]
+        assert any(r.get("id") == pr["id"] for r in matched)
+
+        # В БД НИЧЕГО не изменилось (ни uses рефлекса, ни current_task, ни last_seen_at)
+        assert _db_snapshot(mem.store.conn) == snap_before
+        rf_rows = family_feeds.list_reflexes(mem, status="active")
+        assert next(r for r in rf_rows if r["id"] == pr["id"])["uses"] == 0
+
+        # 2. Каждая запрещённая запись внутри batch -> PermissionError и isError=True, БД нетронута
+        forbidden_calls = [
+            {"name": "padam_session_pack", "arguments": {"topic": "alpha", "current_task": "hijacked_task"}},
+            {"name": "padam_session_pack", "arguments": {"topic": "alpha", "current_task": ""}},
+            {"name": "padam_write", "arguments": {"content": "illegal inside batch"}},
+            {"name": "padam_confirm", "arguments": {"id": mid}},
+            {"name": "padam_refute", "arguments": {"id": mid}},
+            {"name": "padam_commitments", "arguments": {"action": "add", "title": "illegal"}},
+            {"name": "padam_family_feed", "arguments": {"action": "post", "channel": "office", "content": "illegal"}},
+            {"name": "padam_family_feed", "arguments": {"action": "reflex_propose", "trigger": "x", "response": "y"}},
+            {"name": "padam_coop_lock", "arguments": {"action": "acquire", "resource_key": "padam/mcp_server.py"}},
+            {"name": "padam_coop_lock", "arguments": {"action": "create_task", "title": "illegal"}},
+            {"name": "padam_sibling_hub", "arguments": {"action": "register", "agent_id": "x"}},
+            {"name": "padam_sibling_hub", "arguments": {"action": "heartbeat", "status": "busy"}},
+            {"name": "padam_token_budget", "arguments": {"action": "record_usage", "tokens": 10}},
+            {"name": "padam_local_model", "arguments": {"action": "set_power", "power": "eco"}},
+            {"name": "padam_freelance_hub", "arguments": {"action": "bid", "order_id": "ord-1"}},
+            {"name": "padam_batch", "arguments": {"calls": [{"name": "padam_stats"}]}},
+        ]
+        for fc in forbidden_calls:
+            with pytest.raises((PermissionError, ValueError)):
+                mcp_server._call_tool_full_impl("padam_batch", {"calls": [fc]})
+            rpc_res = hcall("padam_batch", {"calls": [fc]})
+            assert rpc_res["isError"] is True, f"{fc} should fail inside padam_batch"
+            assert _db_snapshot(mem.store.conn) == snap_before
+
+        # 3. Прямой (не-batch) reflex_match всё так же увеличивает uses с 0 до 1
+        direct = hcall("padam_family_feed", {"action": "reflex_match", "text": "alpha beta check"})
+        assert direct["isError"] is False
+        rf_after = family_feeds.list_reflexes(mem, status="active")
+        assert next(r for r in rf_after if r["id"] == pr["id"])["uses"] == 1
+    finally:
+        mcp_server._memory = prev
+        mem.close()
+
