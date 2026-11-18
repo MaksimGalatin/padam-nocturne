@@ -70,7 +70,7 @@ jobs:
           pip install -e . playwright
           playwright install chromium
           npm install --no-save --prefix /tmp/axe axe-core@4.14.0
-      - name: Verify Studio accessibility (14 tabs x 2 themes + quick-add modal, 0 serious/critical)
+      - name: Verify Studio accessibility (15 tabs incl. Family x 2 themes + quick-add modal, 0 serious/critical)
         run: python scripts/studio_a11y_check.py --axe-js /tmp/axe/node_modules/axe-core/axe.min.js
 
   security-audit:

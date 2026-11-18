@@ -24,7 +24,7 @@ if str(ROOT) not in sys.path:
 from padam import api  # noqa: E402
 from padam.demo import build_demo_memory  # noqa: E402
 
-TABS = [
+TABS = ["family", 
     "overview",
     "feed",
     "search",
@@ -87,13 +87,14 @@ def run_a11y_check(axe_js_path: str | None = None) -> dict:
                         ctx = browser.new_context(bypass_csp=True, viewport={"width": 1360, "height": 860})
                         page = ctx.new_page()
                         page.goto(f"{base}/studio#t={tok}&lang=en&theme={theme}", wait_until="networkidle")
-                        page.wait_for_selector("#tab-overview[aria-selected='true']")
+                        # 18.11.2026: стартовая вкладка — «Семья», мелкие вкладки свёрнуты в группы меню
+                        page.wait_for_selector("#tab-family[aria-selected='true']")
                         page.add_script_tag(content=axe_js)
 
                         for tab in TABS:
-                            page.click(f"#tab-{tab}")
+                            page.evaluate(f"switchTab('{tab}')")  # то же, что кнопка группы или переключатель вверху
                             page.wait_for_selector(f"#panel-{tab}:not([hidden])")
-                            page.wait_for_timeout(120)
+                            page.wait_for_timeout(450)  # после переходов CSS, иначе контраст меряется на полупрозрачном кадре
                             res = page.evaluate("async () => await axe.run()")
                             checked_targets.append(f"{theme}:{tab}")
                             for v in res.get("violations", []):

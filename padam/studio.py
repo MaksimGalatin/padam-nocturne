@@ -3744,13 +3744,14 @@ function buildNavGroups() {
   for (const g of NAV_GROUPS) {
     if (!g.key) { for (const tb of g.tabs) { const b = $('tab-' + tb); if (b) nav.appendChild(b); } continue; }
     const gb = _el('button', 'nav-tab nav-group-btn');
-    gb.type = 'button'; gb.dataset.group = g.key; gb.setAttribute('aria-selected', 'false');
+    gb.type = 'button'; gb.dataset.group = g.key; gb.setAttribute('role', 'tab'); gb.setAttribute('aria-selected', 'false');
     gb.textContent = S[g.key] || g.key;
     gb.onclick = () => switchTab(g.last || g.tabs[0]);
     nav.appendChild(gb);
     for (const tb of g.tabs) { const b = $('tab-' + tb); if (b) hidden.appendChild(b); }
   }
-  nav.appendChild(hidden);
+  // скрытые кнопки вкладок живут вне списка меню: в role=tablist допустимы только вкладки
+  nav.parentNode.insertBefore(hidden, nav.nextSibling);
 }
 function syncNavGroups(tab) {
   let strip = $('subnav');
@@ -3766,7 +3767,7 @@ function syncNavGroups(tab) {
     for (const tb of g.tabs) {
       const src = $('tab-' + tb);
       const chip = _el('button', 'subnav-chip' + (tb === tab ? ' subnav-on' : ''), src ? src.textContent.trim().split(String.fromCharCode(10))[0].trim() : tb);
-      chip.type = 'button'; chip.setAttribute('aria-pressed', String(tb === tab));
+      chip.type = 'button'; chip.setAttribute('role', 'tab'); chip.setAttribute('aria-selected', String(tb === tab));
       chip.onclick = () => switchTab(tb);
       strip.appendChild(chip);
     }
