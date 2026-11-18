@@ -3735,6 +3735,8 @@ def test_step_1_3_mcp_tasks_and_sampling(tmp_path, monkeypatch):
 
 def test_step_2_5_encrypted_backup_restore_and_studio_ui(tmp_path):
     """Пункт 2.5: зашифрованный backup/restore со сверкой SHA-256 + экран Резервная копия в Studio (4 языка)."""
+    # 18.11.2026: предел HTTP 5 -> 30 с. Тест однажды упал в полном прогоне под нагрузкой; повторить не удалось
+    # (30 из 30 под нагрузкой после изоляции PADAM_HOME/PADAM_DB в conftest). 5 с — лишний источник случайных падений.
     import base64
     import urllib.error
     import urllib.request
@@ -3786,7 +3788,7 @@ def test_step_2_5_encrypted_backup_restore_and_studio_ui(tmp_path):
         mt = re.match(r"^(http://127\.0\.0\.1:\d+)/studio#t=(.+)$", url)
         base, tok = mt.group(1), mt.group(2)
 
-        with urllib.request.urlopen(f"{base}/studio", timeout=5) as rp:
+        with urllib.request.urlopen(f"{base}/studio", timeout=30) as rp:
             html = rp.read().decode("utf-8")
         assert 'id="panel-backup"' in html
         assert 'id="backup-create-btn"' in html
@@ -3806,7 +3808,7 @@ def test_step_2_5_encrypted_backup_restore_and_studio_ui(tmp_path):
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {tok}"},
             method="POST",
         )
-        with urllib.request.urlopen(req_b, timeout=5) as rb:
+        with urllib.request.urlopen(req_b, timeout=30) as rb:
             bdata = json.loads(rb.read().decode("utf-8"))
         assert bdata["ok"] is True and bdata["db_sha256"] and bdata["backup_b64"]
 
@@ -3818,7 +3820,7 @@ def test_step_2_5_encrypted_backup_restore_and_studio_ui(tmp_path):
             method="POST",
         )
         with pytest.raises(urllib.error.HTTPError) as e_http:
-            urllib.request.urlopen(req_bad, timeout=5)
+            urllib.request.urlopen(req_bad, timeout=30)
         assert e_http.value.code == 400
 
         # Успешное восстановление по /backup/restore после удаления записи в m1
@@ -3831,7 +3833,7 @@ def test_step_2_5_encrypted_backup_restore_and_studio_ui(tmp_path):
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {tok}"},
             method="POST",
         )
-        with urllib.request.urlopen(req_ok, timeout=5) as ro:
+        with urllib.request.urlopen(req_ok, timeout=30) as ro:
             rdata = json.loads(ro.read().decode("utf-8"))
         assert rdata["ok"] is True and rdata["checksum_match"] is True
         assert m1.stats()["active"] == 2
