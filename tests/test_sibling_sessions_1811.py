@@ -18,9 +18,9 @@ def test_три_сессии_одного_агента_видны_отдельн
     assert len(ss) == 3 and {s["agent_id"] for s in ss} == {"aifa_claude"}
     first = next(s for s in ss if s["session_id"] == "100@1")
     assert first["calls"] == 2 and first["last_action"] == "padam_write"
-    # пульс агента обновлён сессией
-    ag = [a for a in sr.list_siblings(m) if a["agent_id"] == "aifa_claude"][0]
-    assert ag["status"] == "online"
+    # основная база памяти не тронута: учёт в отдельном файле
+    names = {r[0] for r in m.store.conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    assert "ark_sibling_session" not in names
 
 
 def test_в_действии_нет_аргументов_и_мусора(tmp_path):

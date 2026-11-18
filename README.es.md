@@ -196,7 +196,7 @@ Desde PyPI: `pip install padam-nocturne`. El código más reciente directo desde
 | POST | `/sleep` | ejecutar NOCTURNE |
 | POST | `/import` | cargar una exportación o importar desde ChatGPT / Claude / Markdown / mem0 |
 
-**Memoria en el navegador (`padam studio` y `padam viewer`).** `padam studio` abre la aplicación local completa de 10 pantallas solo en este equipo (`127.0.0.1`):
+**Memoria en el navegador (`padam studio` y `padam viewer`).** `padam studio` abre la aplicación local completa solo en este equipo (`127.0.0.1`):
 - **Resumen y Doctor** — contadores de registros activos/retenidos/reemplazados/revocados, desglose por tipo, último sueño NOCTURNE y semáforo de seguridad (`padam doctor`) en lenguaje claro;
 - **Flujo de memoria** — línea temporal día por día, filtros por tipo, agente y texto, escritura rápida del propietario, historial de versiones, confirmar y refutar;
 - **Búsqueda híbrida (`--explain`)** — recupera registros y muestra la fórmula exacta de puntuación (`rrf × imp × conf × decay`) y las estrategias que coincidieron;
@@ -232,7 +232,7 @@ Disponible en **4 idiomas** (`ru`, `en`, `es`, `zh`, tomando por defecto el idio
 | `confirm` · `refute` | un registro sigue siendo cierto · ya no es cierto |
 | `timeline` | historial de versiones de un registro |
 | `forget` | revocar un registro con sus versiones, copias exactas y episodios origen, destruyendo sus claves; `--with-derived` también borra conclusiones derivadas; `--receipt <archivo>` guarda la prueba de eliminación en JSON y HTML |
-| `studio` · `viewer` · `demo` | aplicación local de 10 pantallas · visor ligero de una página · base de demostración segura |
+| `studio` · `viewer` · `demo` | aplicación local completa · visor ligero de una página · base de demostración segura |
 | `profile` · `audit` | resumen firmado de identidad y preferencias · registro de auditoría de acciones |
 | `import-external` · `export-md` | importar desde ChatGPT, Claude, carpeta Markdown/Obsidian o mem0 (con `origin: external`) · exportar registros activos a carpeta Markdown/Obsidian |
 | `alias add\|remove\|list` | alias de términos: si renombras un proyecto, buscar por el nombre nuevo encuentra los registros antiguos |
@@ -321,6 +321,21 @@ Las tres fueron verificadas de extremo a extremo con `l3-verify` contra Arweave 
 ---
 
 ## Modelo de seguridad
+
+### Dónde escucha PADAM en la red (comprobado en el código, 18.11.2026)
+
+| Parte | Por defecto | ¿Puede ser pública? |
+|---|---|---|
+| MCP por stdio (`padam-mcp`, `uvx padam-nocturne`) | sin red — tuberías hacia el agente | no |
+| MCP por HTTP (`padam serve --http`) | `127.0.0.1:8079` | solo con `--host` y un token |
+| API REST (`python -m padam api`) | `127.0.0.1` | solo con `--host`; entonces el token es obligatorio |
+| Studio y la app de escritorio (`padam studio`) | `127.0.0.1`, puerto aleatorio, token de un solo uso | no — la dirección está fijada en el código |
+| Proxy DLP (`padam dlp-proxy`) | `127.0.0.1` | solo con `--host` |
+| Descubrimiento en la red local | desactivado (`PADAM_LAN_DISCOVERY`) | solo direcciones privadas |
+| Llamadas salientes | ninguna por defecto | solo lo que usted activa: L3 (Arweave/Solana), conectores, el puente de socios AIfa a `aifa.works` (requiere su clave de gabinete), API de plataformas y tiendas |
+
+No hay un servidor PADAM en internet público. `aifa.works/api/mcp` es un servicio alojado aparte de AIfa Works, usado solo por el puente de socios opcional.
+
 
 - **Claves por registro.** Cada registro se cifra con su propia clave AES-256-GCM. Destruir esa única clave es lo que significa «olvidar» en un almacén inmutable: el texto cifrado sigue en Arweave, pero nadie podrá volver a leerlo jamás.
 - **Los registros sobre quién eres llevan tu firma.** Los registros `identity` y `preference` guardados a través de PADAM se firman con una clave de propietario situada junto a la base de datos; cualquiera escrito bordeando PADAM carece de firma válida, se marca en las búsquedas y aparece en `padam trust-protected`.

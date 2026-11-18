@@ -239,7 +239,9 @@ def test_export_import_roundtrip(tmp_path):
 
     dst = Memory("u", Store(tmp_path / "dst.db"))
     assert dst.import_(payload) == 2
-    assert dst.stats()["active"] == 2
+    # 18.11.2026 (аудит GLM MEM-01): защищённый вид из файла (preference) ждёт проверки владельца
+    st = dst.stats()
+    assert st["active"] == 1 and st["quarantined"] == 1
     dst.close()
 
 

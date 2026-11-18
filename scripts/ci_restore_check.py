@@ -106,6 +106,11 @@ def run_restore_check() -> dict:
             )
             payload = json.loads(payload_text)
 
+            # Восстановление своей выгрузки на той же машине: тот же ключ владельца рядом с базой. Тогда подпись
+            # записей подтверждается, и защищённые виды не уходят на проверку (аудит GLM MEM-01, 18.11.2026).
+            import shutil as _sh
+            for _src_key in db1.parent.glob(db1.name + "*.key"):
+                _sh.copy(_src_key, db2.parent / _src_key.name.replace(db1.name, db2.name))
             mem_json = Memory(user_id=mem_src.user_id, store=Store(db2))
             try:
                 added = mem_json.import_(payload, overwrite=False)

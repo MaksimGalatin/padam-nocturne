@@ -210,7 +210,7 @@ def cmd_import(m: Memory, a) -> int:
         return 0
     with open(a.file, encoding="utf-8") as f:
         payload = json.load(f)
-    n = m.import_(payload, overwrite=a.overwrite)
+    n = m.import_(payload, overwrite=a.overwrite, restore_forgotten=bool(getattr(a, "restore_forgotten", False)))
     print(f"{GREEN}{t('Загружено записей', 'Records imported')}: {n}{RESET}")
     return 0
 
@@ -1355,6 +1355,7 @@ def main(argv=None) -> int:
                                         "load an export back (or external format with --format)"))
     s.add_argument("file")
     s.add_argument("--overwrite", action="store_true")
+    s.add_argument("--restore-forgotten", action="store_true", help="owner only: bring back records that were forgotten")
     s.add_argument("--format", choices=["padam", "auto", "chatgpt", "claude", "markdown", "obsidian", "mem0"],
                    default="padam", help=t("формат источника", "source format"))
     s.add_argument("--scope", default="global")

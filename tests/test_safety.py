@@ -448,7 +448,9 @@ def test_import_over_revoked_record_does_not_corrupt_the_index(mem):
     _, mid = mem.remember("The family secret of the owner is Hidden", kind="fact")
     выгрузка = mem.export()
     mem.revoke(mid)
-    assert mem.import_(выгрузка, overwrite=True) == 1
+    # 18.11.2026 (аудит GLM MEM-01): по умолчанию забытое не воскрешается; вернуть можно только явным решением владельца
+    assert mem.import_(выгрузка, overwrite=True) == 0
+    assert mem.import_(выгрузка, overwrite=True, restore_forgotten=True) == 1
     assert mem.recall("family secret")[0].id == mid
 
 

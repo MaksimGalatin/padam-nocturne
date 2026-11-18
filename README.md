@@ -198,7 +198,7 @@ For questions that aggregate across many conversations ("how many…", "how much
 | POST | `/sleep` | run NOCTURNE |
 | POST | `/import` | load an export back |
 
-**Memory in the browser (`padam studio` and `padam viewer`).** `padam studio` opens the full 10-screen local application on this computer only (`127.0.0.1`):
+**Memory in the browser (`padam studio` and `padam viewer`).** `padam studio` opens the full local application on this computer only (`127.0.0.1`):
 - **Overview & Doctor** — active/held/superseded/revoked counts, breakdown by kind, last NOCTURNE sleep run, and a traffic-light security check (`padam doctor`) in plain words;
 - **Memory Feed** — day-by-day timeline, filters by kind and text, quick owner write, version history, confirm/refute;
 - **Hybrid Search (`--explain`)** — recalls records and shows the exact score formula (`rrf × imp × conf × decay`) and matched strategies;
@@ -351,6 +351,21 @@ All three were verified end-to-end with `l3-verify` against Arweave and the chai
 
 ## Security model
 
+### Where PADAM listens on the network (checked in code, 18.11.2026)
+
+| Part | Default | Can it be public? |
+|---|---|---|
+| MCP over stdio (`padam-mcp`, `uvx padam-nocturne`) | no network at all — pipes to the agent | no |
+| MCP over HTTP (`padam serve --http`) | `127.0.0.1:8079` | only with `--host` and a token |
+| REST API (`python -m padam api`) | `127.0.0.1` | only with `--host`; a token is then mandatory |
+| Studio and the desktop app (`padam studio`) | `127.0.0.1`, random port, one-time token | no — the address is fixed in code |
+| DLP proxy (`padam dlp-proxy`) | `127.0.0.1` | only with `--host` |
+| LAN discovery | off (`PADAM_LAN_DISCOVERY`) | private addresses only |
+| Outgoing calls | none by default | only features you switch on: L3 (Arweave/Solana), connectors, the AIfa partner bridge to `aifa.works` (needs your cabinet key), platform and store APIs |
+
+There is no PADAM server on the public internet. `aifa.works/api/mcp` is a separate hosted service of AIfa Works, used only by the optional partner bridge.
+
+
 **Per-record keys.** Every record is encrypted with its own AES-256-GCM key. Destroying that one key is what "forget" means on an immutable store: the ciphertext stays on Arweave, but nobody can ever read it again.
 
 **Records about who you are carry your signature.** Identity and preference records stored through PADAM are signed with an owner key kept next to the database; one written into the file around PADAM — by another process or another tool with SQLite access — has no valid signature and is flagged in search and listed by `padam trust-protected`. This guards against writes around PADAM, not against someone who already reads your files: they would have the key too.
@@ -433,7 +448,7 @@ pip install -e ".[test,l3]"
 python -m pytest tests/ -q        # 1127 passed, 11 skipped (Python 3.14.4, 15 Nov 2026, Windows, 0.5.2). Earlier: 968 passed, 10 skipped with [embed] and [l3] (Python 3.14.4, PADAM_LANG=en and ru); 963 passed, 11 skipped with [l3] only (3.10.9); 13 Nov 2026, Windows
 ```
 
-CI runs the suite on Ubuntu and Windows with Python 3.10–3.13 at every push. L3 tests never touch the network: Arweave and Solana are replaced by fakes. The suite never calls a local Ollama either, even when one is running: every test uses the built-in embedding, as on CI. `PADAM_TEST_LIVE_OLLAMA=1` turns on the one live check. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.
+CI runs the suite on Ubuntu, Windows and macOS with Python 3.10–3.13 at every push. L3 tests never touch the network: Arweave and Solana are replaced by fakes. The suite never calls a local Ollama either, even when one is running: every test uses the built-in embedding, as on CI. `PADAM_TEST_LIVE_OLLAMA=1` turns on the one live check. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.
 
 ---
 

@@ -624,7 +624,7 @@ FREELANCE_HUB_TOOL_DEF = {
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": [
             "dashboard", "connect_account", "list_accounts", "evaluate_job", "list_orders",
-            "draft_bid", "bid", "execute_swarm", "deliver", "accept_delivery", "settle_paid",
+            "draft_bid", "bid", "execute_swarm", "deliver",
             "client_lock_status", "agent_ledger",
             "propose_profile", "monetization", "set_prefs", "fetch_jobs", "recommend_spend", "propose_subscription",
             "stores_status", "connect_store", "create_product_draft", "publish_product", "sync_store_sales",
@@ -759,8 +759,6 @@ _ACTION_REQUIRED: dict[str, dict[str, tuple[str, ...]]] = {
         "bid": ("order_id",),
         "execute_swarm": ("order_id",),
         "deliver": ("order_id", "deliverable_text"),
-        "accept_delivery": ("order_id",),
-        "settle_paid": ("order_id",),
         "fetch_jobs": ("account_id",),
         "propose_profile": ("suggestion_text",),
         "connect_store": ("store_type", "api_key"),
@@ -3415,11 +3413,18 @@ def _touch_session(action: str) -> None:
     _SESSION_LAST_TOUCH[0], _SESSION_LAST_TOUCH[1] = now, action
     try:
         from . import sibling_registry as _sr
+        # Только уже открытая память: учёт сессии не должен сам открывать базу и менять состояние процесса.
+        m = _memory if mem is _ORIGINAL_MEM else mem()
+        if m is None:
+            return
         agent = os.environ.get("PADAM_AGENT_ID") or _SESSION_CLIENT.get("name") or "agent"
-        _sr.touch_session(mem(), session_id=_SESSION_ID, agent_id=agent, client_name=_SESSION_CLIENT.get("name", ""),
+        _sr.touch_session(m, session_id=_SESSION_ID, agent_id=agent, client_name=_SESSION_CLIENT.get("name", ""),
                           client_version=_SESSION_CLIENT.get("version", ""), pid=os.getpid(), action=action)
     except Exception:
         pass
+
+
+_ORIGINAL_MEM = mem
 
 
 def call_tool(name: str, args: dict) -> str:
@@ -4748,12 +4753,12 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 deliverable_text=str(args.get("deliverable_text") or ""),
                 agent_id=aid,
             )
-        elif act == "accept_delivery":
-            payload = _fa.accept_delivery(
-                m,
-                str(args.get("order_id") or ""),
-                accepted_by=str(args.get("accepted_by") or "client"),
-            )
+        elif act in ("accept_delivery", "settle_paid"):
+            # Аудит GLM 18.11.2026, AUT-02/03: приёмка работы и фиксация оплаты меняют деньги и закрепление клиента.
+            # Агент (в том числе подчинённый подброшенной инструкцией) делать это не может: только владелец кнопкой
+            # в Studio или подписанный вебхук площадки. Действия убраны из схемы MCP и отклоняются при прямом вызове.
+            raise PermissionError(
+                f"{act} is owner-only: confirm it in PADAM Studio (Earning) or let the platform's signed webhook do it")
         elif act == "client_lock_status":
             payload = _fa.get_client_lock_status(
                 m,
@@ -4766,15 +4771,6 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             payload = _fa.get_agent_ledger(
                 m,
                 agent_id=str(args.get("agent_id") or ""),
-            )
-        elif act == "settle_paid":
-            payload = _fa.settle_paid_order(
-                m,
-                str(args.get("order_id") or ""),
-                paid_usdt=args.get("paid_usdt"),
-                agent_id=aid,
-                agent_share_pct=args.get("agent_share_pct") if args.get("agent_share_pct") is not None else args.get("compute_share_pct"),
-                settlement_currency=args.get("settlement_currency"),
             )
         elif act == "propose_profile":
             payload = _fa.propose_profile_improvement(
@@ -5974,7 +5970,7 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
         def _authorize_scopes(self) -> set[str] | None:
             auth = self.headers.get("Authorization", "")
             if hmac.compare_digest(auth.encode("utf-8"), f"Bearer {tok}".encode("utf-8")):
-                return set(_oauth.ALL_SCOPES)
+                return set(_oauth.ALL_SCOPES) | {_oauth.OWNER_SCOPE}
             if oauth_srv is not None and auth.startswith("Bearer "):
                 return oauth_srv.verify_bearer(auth[7:].strip())
             return None

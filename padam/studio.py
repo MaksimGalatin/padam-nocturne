@@ -6002,7 +6002,8 @@ async function loadFamily() {
       const item = _el('div', 'earn-item');
       item.appendChild(_el('strong', '', String(a.display_name || a.agent_id)));
       item.appendChild(_el('div', 'earn-meta', String(a.role || '')));
-      const seen = Date.parse(String(a.last_heartbeat_at || ''));
+      const mineS = sessions.filter(ss => ss.agent_id === a.agent_id).map(ss => Date.parse(String(ss.last_seen_at || ''))).filter(isFinite);
+      const seen = Math.max(Date.parse(String(a.last_heartbeat_at || '')) || 0, ...(mineS.length ? mineS : [0])) || NaN;
       const quiet = isFinite(seen) && (Date.now() - seen) > 3600 * 1000;
       const when = isFinite(seen) ? new Date(seen).toLocaleString(currentLang === 'zh' ? 'zh-CN' : currentLang, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
       item.appendChild(_el('div', 'earn-meta', quiet ? ('⏸ ' + S.fam_quiet + ' ' + when) : ('🟢 ' + S.fam_status + ': ' + String(a.status || '') + ' · ' + S.fam_seen + ': ' + when)));

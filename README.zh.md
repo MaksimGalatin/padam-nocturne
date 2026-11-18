@@ -194,7 +194,7 @@ claude mcp add padam -- uvx padam-nocturne
 | POST | `/sleep` | 运行 NOCTURNE 睡眠整合 |
 | POST | `/import` | 导入备份或从 ChatGPT / Claude / Markdown / mem0 导入外部记忆 |
 
-**浏览器可视化工作台（`padam studio` 与 `padam viewer`）。** `padam studio` 在本机（`127.0.0.1`）打开完整的 10 屏本地管理应用：
+**浏览器可视化工作台（`padam studio` 与 `padam viewer`）。** `padam studio` 在本机（`127.0.0.1`）打开完整的 本地管理应用：
 - **总览与安全体检（Overview & Doctor）** —— 活跃/待审/更替/已撤销计数、类型分布、最近一次 NOCTURNE 睡眠报告，以及通俗易懂的红黄绿安全体检（`padam doctor`）；
 - **记忆时间流（Memory Feed）** —— 按日分组浏览、按类型/智能体/文本过滤、主人快速写入、版本历史、确认与否定；
 - **混合搜索详解（Hybrid Search `--explain`）** —— 展示精确计分公式（`rrf × imp × conf × decay`）与命中的检索策略；
@@ -230,7 +230,7 @@ python -m padam demo --studio
 | `confirm` · `refute` | 确认记录仍有效 · 标记记录已失效 |
 | `timeline` | 查看记录的版本历史 |
 | `forget` | 撤销记录及其所有版本、副本与源事件并销毁密钥；`--with-derived` 同时擦除派生结论；`--receipt <文件>` 生成 JSON 与 HTML 删除证明 |
-| `studio` · `viewer` · `demo` | 10 屏本地管理应用 · 轻量单页查看器 · 创建安全演示数据库 |
+| `studio` · `viewer` · `demo` | 本地管理应用 · 轻量单页查看器 · 创建安全演示数据库 |
 | `profile` · `audit` | 输出主人签名的身份与偏好画像 · 查看或导出操作审计日志 |
 | `import-external` · `export-md` | 从 ChatGPT、Claude、Markdown/Obsidian 文件夹或 mem0 导入（强制 `origin: external`） · 将活跃记录导出为 Markdown/Obsidian 笔记库 |
 | `alias add\|remove\|list` | 术语别名：项目改名后用新名称搜索仍可命中旧记录 |
@@ -319,6 +319,21 @@ python -m padam l3-verify                 # 独立校验：重新下载 Arweave 
 ---
 
 ## 安全模型
+
+### PADAM 在网络上监听哪里（已按代码核对，2026-11-18）
+
+| 组件 | 默认 | 能否公开？ |
+|---|---|---|
+| stdio 方式的 MCP（`padam-mcp`、`uvx padam-nocturne`） | 完全不使用网络 — 与智能体之间是管道 | 否 |
+| HTTP 方式的 MCP（`padam serve --http`） | `127.0.0.1:8079` | 仅在使用 `--host` 并设置令牌时 |
+| REST API（`python -m padam api`） | `127.0.0.1` | 仅在使用 `--host` 时，此时令牌为必填 |
+| Studio 与桌面应用（`padam studio`） | `127.0.0.1`，随机端口，一次性令牌 | 否 — 地址固定在代码中 |
+| DLP 代理（`padam dlp-proxy`） | `127.0.0.1` | 仅在使用 `--host` 时 |
+| 局域网发现 | 关闭（`PADAM_LAN_DISCOVERY`） | 仅限私有地址 |
+| 外发请求 | 默认没有 | 仅限您自己开启的功能：L3（Arweave/Solana）、连接器、通往 `aifa.works` 的 AIfa 合作伙伴桥（需要您的账户密钥）、平台和商店的 API |
+
+公共互联网上没有 PADAM 服务器。`aifa.works/api/mcp` 是 AIfa Works 的独立托管服务，仅供可选的合作伙伴桥使用。
+
 
 - **每条记录独立密钥。** 每条记录均使用独立的 AES-256-GCM 密钥加密。在不可篡改的存储层上，“遗忘”意味着销毁这把专属密钥：Arweave 上的密文虽然保留，但永远无法被任何人解密。
 - **身份与偏好记录带有主人签名。** 通过 PADAM 写入的 `identity` 与 `preference` 记录均由保存在数据库旁的主人密钥签名；任何绕过 PADAM 直接写入 SQLite 的记录都无法通过签名校验，会在搜索中被标记并由 `padam trust-protected` 列出。

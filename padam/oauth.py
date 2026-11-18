@@ -16,12 +16,14 @@ import time
 from urllib.parse import urlencode, urlsplit
 
 ALL_SCOPES: tuple[str, ...] = ("padam:read", "padam:write", "padam:sleep")
+# Аудит GLM 18.11.2026, MCP-02/03: всё, что не перечислено явно, требует права владельца. Его даёт только
+# bearer-токен владельца (padam serve --token); через OAuth-регистрацию сторонний клиент его не получает.
+OWNER_SCOPE = "padam:owner"
 
 READ_TOOLS: frozenset[str] = frozenset({
     "padam_search",
     "padam_timeline",
     "padam_stats",
-    "padam_export",
     "padam_profile",
     "padam_recent",
 })
@@ -45,7 +47,9 @@ def required_scope_for_rpc(req: dict) -> str | None:
             return "padam:write"
         if name in SLEEP_TOOLS:
             return "padam:sleep"
-        return "padam:read"
+        if name in READ_TOOLS:
+            return "padam:read"
+        return OWNER_SCOPE  # padam_export, деньги, площадки, забывание и всё новое — только владелец
     if method in ("tasks/create", "tasks/cancel"):
         return "padam:sleep"
     if method in (

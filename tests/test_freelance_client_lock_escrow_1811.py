@@ -191,7 +191,11 @@ def test_mcp_client_lock_agent_ledger_batch_readonly_and_accept_blocked(tmp_path
         assert ev["isError"] is False
         oid = ev["structuredContent"]["order_id"]
         hcall("padam_freelance_hub", {"action": "deliver", "order_id": oid, "deliverable_text": "All checked"})
-        hcall("padam_freelance_hub", {"action": "settle_paid", "order_id": oid, "paid_usdt": 100.0})
+        # 18.11.2026 (аудит GLM AUT-02): агент не фиксирует оплату — это делает владелец (Studio) или вебхук площадки
+        bad_settle = hcall("padam_freelance_hub", {"action": "settle_paid", "order_id": oid, "paid_usdt": 100.0})
+        assert bad_settle["isError"] is True
+        from padam import freelance_autonomy as _fa
+        _fa.settle_paid_order(mem, oid, paid_usdt=100.0, agent_id="agent_mcp")
 
         # Прогрев ленивых таблиц до снимка
         hcall("padam_stats", {})
@@ -220,10 +224,12 @@ def test_mcp_client_lock_agent_ledger_batch_readonly_and_accept_blocked(tmp_path
         assert bat_bad["isError"] is True
         assert _db_snapshot(mem.store.conn) == snap_before
 
-        # Прямой вызов accept_delivery -> работает
+        # 18.11.2026 (аудит GLM AUT-03): прямой вызов accept_delivery агентом отклоняется, БД нетронута
         acc = hcall("padam_freelance_hub", {"action": "accept_delivery", "order_id": oid, "accepted_by": "client_lead"})
-        assert acc["isError"] is False
-        assert acc["structuredContent"]["delivery_accepted"] is True
+        assert acc["isError"] is True
+        assert _db_snapshot(mem.store.conn) == snap_before
+        # владелец принимает работу в Studio (та же функция без MCP)
+        assert _fa.accept_delivery(mem, oid, accepted_by="client_lead")["delivery_accepted"] is True
     finally:
         mcp_server._memory = prev
         mem.close()

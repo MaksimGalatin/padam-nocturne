@@ -1893,7 +1893,8 @@ class Memory:
                 raise InterruptedError("export cancelled")
             d = dict(r)
             d.pop("embedding", None)          # бинарь в выгрузке бесполезен
-            d.pop("owner_sig", None)          # подпись имеет смысл только с ключом этой машины
+            # Подпись остаётся в выгрузке: при импорте на этой же машине она доказывает, что запись — своя и не
+            # подменена (аудит GLM MEM-01). На другой машине ключ другой, и запись просто уходит на проверку.
             h = d.pop("content_hash", None)
             d["content_hash"] = h.hex() if h else None
             # 0.4.14: колонка базы называется по-русски, а выгрузку читают люди по всему миру — в файле
@@ -1943,12 +1944,25 @@ class Memory:
             "typed_links": typed_links,
         }
 
-    def import_(self, payload: dict, overwrite: bool = False) -> int:
-        """Загрузка выгрузки обратно. Возвращает число внесённых записей."""
+    def import_(self, payload: dict, overwrite: bool = False, restore_forgotten: bool = False) -> int:
+        """Загрузка выгрузки обратно. Возвращает число внесённых записей.
+
+        restore_forgotten — только явным решением владельца (CLI --restore-forgotten): вернуть из своей выгрузки
+        записи, которые были забыты. По умолчанию забытое не воскрешается: квитанция забвения должна оставаться правдой.
+        """
         if payload.get("format") != "padam-export/1":
             raise ValueError(t("неизвестный формат выгрузки", "unknown export format"))
         added = 0
+        # Аудит GLM 18.11.2026, MEM-01: файл выгрузки — чужой ввод. Забытое не воскрешается, приказы и защищённые
+        # виды уходят на проверку владельцу, статус/важность/уверенность из файла не принимаются как есть.
+        забытые = {r[0] for r in self.store.query(
+            "SELECT memory_id FROM forget_receipt WHERE user_id = ?", (self.user_id,))} if self.store.one(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='forget_receipt'") else set()
         for rec in payload.get("memory", []):
+            if not isinstance(rec, dict) or not isinstance(rec.get("id"), str):
+                continue
+            if rec["id"] in забытые and not restore_forgotten:
+                continue  # доказуемое забвение: квитанция есть — запись не возвращается ни при каком overwrite
             # Импорт идёт теми же воротами, что и обычная запись: секреты вычищаются, размер ограничен.
             # Файл выгрузки мог быть изменён, а восстановленная запись потом попадает в контекст модели.
             ch = bytes.fromhex(rec["content_hash"]) if rec.get("content_hash") else None
@@ -1969,6 +1983,27 @@ class Memory:
                 continue
             if exists:
                 self.store.execute("DELETE FROM memory WHERE id = ?", (rec["id"],))
+            статус = rec.get("status", "active")
+            if статус not in ("active", "superseded", "quarantined", "revoked", "rejected"):  # неактивные — как есть
+                статус = "quarantined"
+            причина = rec.get("quarantine_reason")
+            текст = str(rec.get("content") or "")
+            try:
+                ключ_владельца, _ = integrity.owner_key(self.store)
+                своя = bool(rec.get("owner_sig")) and ch is not None and integrity.valid(
+                    ключ_владельца, {"owner_sig": rec.get("owner_sig"), "id": rec["id"], "kind": rec.get("kind", "fact"),
+                                    "content": rec.get("content")})
+            except Exception:
+                своя = False
+            if not своя and статус == "active" and (safety.looks_like_instruction(текст) or rec.get("kind") in ("identity", "preference")):
+                статус, причина = "quarantined", "import: held for owner review (instruction-like text or protected kind)"
+            def _доля(v, d):
+                try:
+                    return min(1.0, max(0.0, float(v)))
+                except (TypeError, ValueError):
+                    return d
+            rec = {**rec, "status": статус, "quarantine_reason": причина,
+                   "importance": _доля(rec.get("importance", 0.5), 0.5), "confidence": _доля(rec.get("confidence", 1.0), 1.0)}
             vec = embeddings.embed(rec["content"]) if rec.get("content") else None
             self.store.execute(
                 """INSERT INTO memory
@@ -1996,6 +2031,8 @@ class Memory:
                  embeddings.метка_модели() if vec is not None else None,
                  # Без ключа восстановленная запись не находилась бы как спорящая (см. `_по_ключу`).
                  classify.разобрать_факт(rec["content"])[0] if rec.get("content") else None))
+            if своя:
+                self.store.execute("UPDATE memory SET owner_sig = ? WHERE id = ?", (rec.get("owner_sig"), rec["id"]))
             added += 1
         # Связи восстанавливаются только между записями этого человека (проверяет _связать).
         for link in list(payload.get("links") or []) + list(payload.get("typed_links") or []):

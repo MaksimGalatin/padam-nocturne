@@ -89,7 +89,11 @@ def test_owner_key_lives_next_to_the_database(tmp_path):
     m.remember("Меня зовут Алиса", kind="identity")
     путь = integrity.key_path(m.store)
     assert путь.exists() and len(путь.read_text().strip()) == 64
-    assert "owner_sig" not in json.dumps(m.export()), "подпись в выгрузку не уходит"
+    # 18.11.2026 (аудит GLM MEM-01): подпись уходит в выгрузку, чтобы своя выгрузка на этой же машине
+    # восстанавливалась без проверки; сам ключ в выгрузку не попадает никогда.
+    выгрузка = json.dumps(m.export())
+    assert "owner_sig" in выгрузка
+    assert путь.read_text().strip() not in выгрузка, "ключ владельца в выгрузку не уходит"
     m.close()
 
 
