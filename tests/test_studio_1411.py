@@ -230,7 +230,8 @@ def test_studio_server_endpoints_and_forget_receipt(tmp_path):
             assert "default-src 'none'" in csp
             assert "img-src 'none'" in csp
             assert token not in html
-            assert "5432" not in html
+            # 17.11.2026: не голые цифры «5432» — они случайно встречаются в UUID записей (тест мигал в CI)
+            assert "порту 5432" not in html and "порта 5432" not in html
 
         # 2. Без заголовка Authorization при активном токене все маршруты данных возвращают 401
         for path in ("/overview", "/doctor", "/graph", "/l3", "/settings", "/forget-receipts", "/records"):
@@ -268,7 +269,8 @@ def test_studio_server_endpoints_and_forget_receipt(tmp_path):
         assert rc and rc["memory_id"] == id2
         assert rc["wiped_count"] == 2
         assert len(rc["content_hash_sha256"]) == 64
-        assert "5432" not in json.dumps(rc, ensure_ascii=False)
+        _rc = json.dumps(rc, ensure_ascii=False)
+        assert "порту 5432" not in _rc and "порта 5432" not in _rc
 
         code, _, rlist = _http_json(f"{base}/forget-receipts", token=token)
         assert code == 200
@@ -2619,7 +2621,8 @@ def test_item5_roles_teams_isolation_and_old_db(tmp_path):
             mcp_res_w = mcp_server.call_tool("padam_write", {"content": "Should be denied"})
             assert "Permission denied" in mcp_res_w
             mcp_res_s = mcp_server.call_tool("padam_search", {"query": "lunch budget 470"})
-            assert "470" not in mcp_res_s
+            # 17.11.2026: текст скрытой записи целиком — голые «470» случайно встречаются в UUID и времени
+            assert "lunch budget is 470" not in mcp_res_s
         finally:
             mcp_server._memory = prev_mcp_mem
             if old_actor_env is None:
