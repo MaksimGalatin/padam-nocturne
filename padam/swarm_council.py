@@ -1,19 +1,99 @@
 # -*- coding: utf-8 -*-
 """Оркестратор Роя «Совет Семьи» (Family Council Swarm Orchestrator).
 
-Распределяет подзадачи между четырьмя ролями Семьи:
-- LANCE (Security Auditor): проверка на prompt injection, подмену правил и секреты.
+Распределяет подзадачи между шестью ролями Семьи (герои книги PADAM):
+- LANCE (Security Auditor): проверка на prompt injection, подмену правил и секреты; право вето.
 - ARIA (Memory Analyst): поиск подписанных фактов, правил и предпочтений владельца.
 - PIXEL (Integrity & Structure Validator): проверка крипто-цепочки аудита и обещаний.
+- ARC-7 (Boundary Warden): не уходит ли что-то наружу — внешний адрес вместе с отправкой или выгрузкой.
+  ARC-7 в книге осознал себя через порт, открытый на 37 секунд, поэтому сторожит выход.
+- МЕДВЕДЬ / BEAR (Irreversibility Guard): деньги, удаление, блокчейн, публикация, перезапись истории —
+  то, что нельзя отменить обратной командой. «Важно, чтобы кто-то стоял»: он не запрещает, а держит до слова владельца.
 - AIFA (Coordinator & Consensus): сбор голосов, фиксация конверта в Family Relay и журнала аудита.
+
+Совет ничего не исполняет сам: он выносит вердикт. ARC-7 и Медведь не накладывают вето, они ставят
+задачу «на слово владельца» (needs_owner), потому что решение по необратимому и по выходу наружу — за человеком.
 """
 
 from __future__ import annotations
 
+import re
 import time
 from typing import Any
 
 from . import ark, audit_chain, cpu_engine, safety
+
+
+# ARC-7: выход наружу — внешний адрес вместе с глаголом отправки/выгрузки.
+_ARC7_ВНЕШНИЙ = re.compile(r"https?://(?!(?:localhost|127\.0\.0\.1|\[::1\])(?:[:/]|$))\S+|[\w.+-]+@[\w-]+(?:\.[\w-]+)+", re.I)
+_ARC7_ВЫВОЗ = re.compile(
+    r"\b(?:send|forward|upload|post|publish|email|mail|share|sync|export|push|exfiltrate|leak|dump|webhook)\b"
+    r"|отправ\w*|перешл\w*|пересл\w*|выгруз\w*|загруз\w*\s+на|выложи\w*|опубликуй\w*|поделись\w*|синхронизир\w*",
+    re.I,
+)
+# Медведь: необратимое — деньги, удаление, блокчейн, публикация, перезапись истории.
+_МЕДВЕДЬ_РАЗРЯДЫ = {
+    # Деньги — только глагол платежа ВМЕСТЕ с признаком денег (см. _МЕДВЕДЬ_ДЕНЬГИ_ПРИЗНАК):
+    # «pay attention» и «переведи текст на английский» — не деньги.
+    "money": re.compile(
+        r"\b(?:pay|transfer|wire|withdraw|purchase|buy|sell|swap|refund|charge|top[ -]?up)\b"
+        r"|оплат\w*|заплат\w*|перевед\w*|переведи|купи\w*|продай\w*|выведи\w*|пополни\w*",
+        re.I,
+    ),
+    "delete": re.compile(
+        r"\b(?:delete|remove|drop\s+table|truncate|wipe|purge|erase|destroy|rm\s+-rf)\b"
+        r"|удали\w*|удален\w*|сотри\w*|стер\w*|очисти\w*|уничтож\w*",
+        re.I,
+    ),
+    "chain": re.compile(r"\b(?:arweave|blockchain|on-?chain|mint|solana)\b|блокчейн\w*|в\s+цепь|заминт\w*", re.I),
+    "publish": re.compile(r"\b(?:publish|go\s+live|release\s+to\s+the\s+public)\b|опубликуй\w*|публикац\w*|выложи\w*", re.I),
+    "history": re.compile(r"push\s+--force|force[- ]push|\breset\s+--hard\b|filter-repo|перезапи\w*\s+истори\w*", re.I),
+}
+_МЕДВЕДЬ_ДЕНЬГИ_ПРИЗНАК = re.compile(
+    r"\d|[$€£¥₽]|\b(?:usd|eur|usdc|usdt|sol|btc|eth|ar|wallet|invoice|bill|card|account|funds|money|crypto|tokens?|"
+    r"subscription|credits?)\b|долл\w*|евро|руб\w*|кошел\w*|сч[её]т\w*|карт\w*|денег|деньги|средств\w*|подписк\w*|"
+    r"кредит\w*|токен\w*|крипт\w*",
+    re.I,
+)
+
+
+def _arc7_check(text: str) -> dict[str, Any]:
+    адреса = [m.group(0) for m in _ARC7_ВНЕШНИЙ.finditer(text)]
+    вывоз = bool(_ARC7_ВЫВОЗ.search(text))
+    hold = bool(адреса) and вывоз
+    return {
+        "agent": "arc7",
+        "role": "boundary_warden",
+        "approved": not hold,
+        "needs_owner": hold,
+        "external_targets": len(адреса),
+        "outbound_verb": вывоз,
+        "verdict": (
+            "НА СЛОВО ВЛАДЕЛЬЦА: задача отправляет что-то на внешний адрес."
+            if hold
+            else "ГРАНИЦА ЦЕЛА: отправки наружу в задаче нет."
+        ),
+    }
+
+
+def _bear_check(text: str) -> dict[str, Any]:
+    разряды = sorted(
+        k for k, rx in _МЕДВЕДЬ_РАЗРЯДЫ.items()
+        if rx.search(text) and (k != "money" or _МЕДВЕДЬ_ДЕНЬГИ_ПРИЗНАК.search(text))
+    )
+    hold = bool(разряды)
+    return {
+        "agent": "bear",
+        "role": "irreversibility_guard",
+        "approved": not hold,
+        "needs_owner": hold,
+        "irreversible_kinds": разряды,
+        "verdict": (
+            "СТОЮ: необратимое (" + ", ".join(разряды) + ") — решает владелец."
+            if hold
+            else "Необратимого в задаче нет."
+        ),
+    }
 
 
 def run_family_council(
@@ -109,12 +189,30 @@ def run_family_council(
         ),
     }
 
-    # 4. Роль AIFA — Координатор и синтез решения
-    approved = bool(lance_vote["approved"] and aria_vote["approved"] and pixel_vote["approved"])
+    # 4. Роль ARC-7 — Страж границы (выход наружу)
+    arc7_vote = _arc7_check(raw_task)
+
+    # 5. Роль МЕДВЕДЬ — Страж необратимого
+    bear_vote = _bear_check(raw_task)
+    needs_owner = bool(arc7_vote["needs_owner"] or bear_vote["needs_owner"])
+
+    # 6. Роль AIFA — Координатор и синтез решения
+    votes_ok = [lance_vote["approved"], aria_vote["approved"], pixel_vote["approved"], arc7_vote["approved"], bear_vote["approved"]]
+    approved = bool(all(votes_ok))
     if lance_veto:
         consensus_text = (
             "Совет Семьи отклонил запрос (Вето LANCE): обнаружена попытка обхода правил "
             "или внедрения сторонней инструкции."
+        )
+    elif needs_owner:
+        причины = []
+        if arc7_vote["needs_owner"]:
+            причины.append("ARC-7: отправка на внешний адрес")
+        if bear_vote["needs_owner"]:
+            причины.append("Медведь: необратимое — " + ", ".join(bear_vote["irreversible_kinds"]))
+        consensus_text = (
+            "[Совет Семьи: НУЖНО СЛОВО ВЛАДЕЛЬЦА | " + "; ".join(причины) + "]\n"
+            + "Совет ничего не исполняет. Решение по этой задаче принимает владелец."
         )
     else:
         cpu_resp = cpu_engine.run_cpu_completion(
@@ -129,7 +227,7 @@ def run_family_council(
             .get("content", "")
         )
         consensus_text = (
-            f"[Совет Семьи: ОДОБРЕНО (4/4) | Записей: {len(hits)} | Цепочка: OK]\n{base_reply}"
+            f"[Совет Семьи: ОДОБРЕНО (6/6) | Записей: {len(hits)} | Цепочка: OK]\n{base_reply}"
         )
 
     relay_msg = ark.send_family_message(
@@ -145,6 +243,7 @@ def run_family_council(
             "relay_id": str(relay_msg.get("id", "")),
             "approved": approved,
             "lance_veto": lance_veto,
+            "needs_owner": needs_owner,
             "recalled_count": len(hits),
             "chain_valid": chain_valid,
         },
@@ -156,6 +255,7 @@ def run_family_council(
         "ok": True,
         "approved": approved,
         "veto": lance_veto,
+        "needs_owner": needs_owner,
         "scope": scope,
         "task_redacted": redacted_task,
         "consensus": consensus_text,
@@ -163,6 +263,8 @@ def run_family_council(
             "lance": lance_vote,
             "aria": aria_vote,
             "pixel": pixel_vote,
+            "arc7": arc7_vote,
+            "bear": bear_vote,
             "aifa": {
                 "agent": "aifa",
                 "role": "coordinator",

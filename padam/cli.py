@@ -1922,7 +1922,7 @@ def main(argv=None) -> int:
         print(json.dumps(rep, ensure_ascii=False, indent=2))
         return 0 if rep.get("approved") else 2
 
-    sac = sub.add_parser("ark-council", help="Convene Family Council swarm orchestrator (LANCE, ARIA, PIXEL, AIFA)")
+    sac = sub.add_parser("ark-council", help="Convene Family Council swarm orchestrator (LANCE, ARIA, PIXEL, ARC-7, BEAR, AIFA)")
     sac.add_argument("task", nargs="+")
     sac.add_argument("--scope", default="global")
     sac.set_defaults(fn=cmd_ark_council)

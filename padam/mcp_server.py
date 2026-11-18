@@ -788,7 +788,7 @@ LESSON_TOOL_DEF = {
 }
 FAMILY_COUNCIL_TOOL_DEF = {
     "name": "padam_family_council",
-    "description": "Convene Family Council swarm orchestrator (LANCE security veto, ARIA memory, PIXEL integrity, AIFA consensus).",
+    "description": "Convene Family Council swarm orchestrator (LANCE security veto, ARIA memory, PIXEL integrity, ARC-7 outbound boundary, BEAR irreversible actions held for the owner, AIFA consensus). The council only gives a verdict and never executes the task.",
     "inputSchema": {
         "type": "object",
         "properties": {

@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **Family Council of six** (`padam/swarm_council.py`, Studio, `padam ark-council`, `padam_family_council`): two new
+  roles from the PADAM book. **ARC-7** guards the boundary: a task that sends something to an outside address (a URL
+  other than localhost, or an email) together with a send/upload/publish verb is held for the owner. **BEAR** guards
+  what cannot be undone: money (a payment verb together with an amount, currency, wallet or invoice), deletion,
+  blockchain, publishing and history rewrites. Neither vetoes; both set `needs_owner`, and the council still executes
+  nothing. "Pay attention", "payment page design" and "translate the text" are not treated as money
+  (`tests/test_family_council_six.py`).
+
 ## 0.6.4 — 17 November 2026
 
 The Consciousness Ark: memory that can wake an agent up, keep its promises, survive a broken disk and move between

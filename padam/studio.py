@@ -54,7 +54,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_audit_btn": "Проверить хэш-цепь SHA-256",
         "ark_shamir_btn": "Разделить ключ (Шамир 3/5)",
         "ark_shamir_warn": "Храните доли Шамира раздельно у разных доверенных людей!",
-        "ark_council_title": "Оркестратор Роя: Совет Семьи (LANCE · ARIA · PIXEL · AIFA)",
+        "ark_council_title": "Оркестратор Роя: Совет Семьи (LANCE · ARIA · PIXEL · ARC-7 · Медведь · AIFA)",
         "ark_council_ph": "Введите задачу для совместной проверки Советом Семьи…",
         "ark_council_btn": "Созвать Совет Семьи",
         "ark_branch_title": "Песочница Гипотез (Ветки памяти без удаления)",
@@ -400,7 +400,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_audit_btn": "Verify SHA-256 Audit Chain",
         "ark_shamir_btn": "Split Key (Shamir 3/5)",
         "ark_shamir_warn": "Store Shamir shares separately with different trusted guardians!",
-        "ark_council_title": "Swarm Orchestrator: Family Council (LANCE · ARIA · PIXEL · AIFA)",
+        "ark_council_title": "Swarm Orchestrator: Family Council (LANCE · ARIA · PIXEL · ARC-7 · BEAR · AIFA)",
         "ark_council_ph": "Enter task for Family Council review…",
         "ark_council_btn": "Convene Family Council",
         "ark_branch_title": "Hypothesis Sandbox (Non-destructive Memory Branches)",
@@ -735,7 +735,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_audit_btn": "Verificar cadena SHA-256",
         "ark_shamir_btn": "Dividir clave (Shamir 3/5)",
         "ark_shamir_warn": "Guarde cada parte de Shamir por separado con distintos guardianes.",
-        "ark_council_title": "Orquestador: Consejo Familiar (LANCE · ARIA · PIXEL · AIFA)",
+        "ark_council_title": "Orquestador: Consejo Familiar (LANCE · ARIA · PIXEL · ARC-7 · BEAR · AIFA)",
         "ark_council_ph": "Escriba una tarea para el Consejo Familiar…",
         "ark_council_btn": "Convocar Consejo Familiar",
         "ark_branch_title": "Caja de Hipótesis (Ramas de Memoria)",
@@ -1070,7 +1070,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "ark_audit_btn": "校验 SHA-256 审计链",
         "ark_shamir_btn": "拆分密钥 (Shamir 3/5)",
         "ark_shamir_warn": "请将各份 Shamir 密钥分片分别交由不同可信守护者保管！",
-        "ark_council_title": "集群编排器：家族议会 (LANCE · ARIA · PIXEL · AIFA)",
+        "ark_council_title": "集群编排器：家族议会 (LANCE · ARIA · PIXEL · ARC-7 · BEAR · AIFA)",
         "ark_council_ph": "输入交由家族议会审议的任务…",
         "ark_council_btn": "召开家族议会",
         "ark_branch_title": "假设沙盒（只增不删的记忆分支）",
@@ -4821,8 +4821,11 @@ if ($('ark-council-btn')) {
           lance_veto: String(Boolean((v.lance || {}).veto)),
           aria_hits: (v.aria || {}).recalled_count || 0,
           pixel_chain: String(Boolean((v.pixel || {}).audit_chain_valid)),
+          arc7_outbound: String(Boolean((v.arc7 || {}).needs_owner)),
+          bear_irreversible: ((v.bear || {}).irreversible_kinds || []).join(', ') || '—',
+          needs_owner: String(Boolean(r.needs_owner)),
         });
-        for (const msg of [(v.lance || {}).verdict, (v.aria || {}).verdict, (v.pixel || {}).verdict, r.consensus]) {
+        for (const msg of [(v.lance || {}).verdict, (v.aria || {}).verdict, (v.pixel || {}).verdict, (v.arc7 || {}).verdict, (v.bear || {}).verdict, r.consensus]) {
           if (msg) out.appendChild(_el('p', 'panel-sub', String(msg).slice(0, 260)));
         }
       }
