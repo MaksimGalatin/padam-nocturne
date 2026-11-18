@@ -69,6 +69,13 @@ SUPPORTED_PLATFORMS = (
     "kwork_desk",
     "custom_webhook",
 )
+DIGITAL_STORE_PLATFORMS = (
+    "lemonsqueezy",
+    "gumroad",
+    "payhip",
+    "sellfy",
+    "whop",
+)
 
 SUPPORTED_MODES = ("oauth_api", "desk", "webhook")
 SUPPORTED_CURRENCIES = ("USDT_TRC20", "GALATIN")
@@ -438,8 +445,10 @@ def freelance_locks_status() -> dict[str, Any]:
 
 def _clean_platform(raw: str) -> str:
     val = str(raw or "fiverr_desk").strip().lower()
-    if val not in SUPPORTED_PLATFORMS:
-        raise ValueError(f"Неподдерживаемая площадка: {val}. Доступны: {', '.join(SUPPORTED_PLATFORMS)}")
+    if val not in SUPPORTED_PLATFORMS and val not in DIGITAL_STORE_PLATFORMS:
+        raise ValueError(
+            f"Неподдерживаемая площадка: {val}. Доступны: {', '.join(SUPPORTED_PLATFORMS + DIGITAL_STORE_PLATFORMS)}"
+        )
     return val
 
 
@@ -786,6 +795,11 @@ _DEFAULT_EXCHANGE_FEE_PCT = {
     "upwork_api": 10.0,
     "freelancer_api": 10.0,
     "custom_webhook": 0.0,
+    "lemonsqueezy": 5.0,
+    "gumroad": 10.0,
+    "payhip": 5.0,
+    "sellfy": 2.0,
+    "whop": 3.0,
 }
 
 
@@ -1829,7 +1843,13 @@ def freelance_dashboard_snapshot(memory) -> dict[str, Any]:
         "supported_platforms": list(SUPPORTED_PLATFORMS),
         "supported_modes": list(SUPPORTED_MODES),
         "supported_currencies": list(SUPPORTED_CURRENCIES),
+        "digital_stores": _digital_stores_safe(memory),
     }
+
+
+def _digital_stores_safe(memory) -> dict[str, Any]:
+    from . import digital_stores
+    return digital_stores.digital_stores_snapshot(memory, auto_seed_starters=True)
 
 
 @_synchronized_memory

@@ -163,6 +163,24 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_payout_cancelled": "отменено",
         "earn_btn_accept": "Принято клиентом",
         "earn_btn_refund": "Возврат",
+        "earn_stores_title": "7. Магазины цифровых товаров (Автопилот 20%)",
+        "earn_stores_sub": "Только API-ключи или вебхуки (без паролей). Продажи идут по ставке автопилота (комиссия CODE 20%).",
+        "earn_store_label_ph": "Название магазина (напр. Основной Gumroad)",
+        "earn_store_url_ph": "URL API магазина (необязательно)",
+        "earn_store_key_ph": "API-ключ / OAuth token магазина",
+        "earn_store_wh_ph": "Webhook secret (HMAC / ws_... необязательно)",
+        "earn_store_seller_ph": "Seller ID (для Gumroad Ping, необязательно)",
+        "earn_store_connect_btn": "Проверить и подключить",
+        "earn_store_seed_btn": "3 стартовых черновика",
+        "earn_store_sync_btn": "Синхронизировать продажи",
+        "earn_draft_title_ph": "Название цифрового товара…",
+        "earn_draft_desc_ph": "Описание товара…",
+        "earn_draft_price_ph": "Цена USD",
+        "earn_draft_url_ph": "Ссылка выдачи / файла",
+        "earn_draft_save_btn": "Сохранить черновик",
+        "earn_draft_publish_btn": "Одобрить и отправить в магазин",
+        "earn_stores_empty": "Магазины пока не подключены.",
+        "earn_drafts_empty": "Черновиков товаров пока нет.",
         "nav_settings": "Настройки",
         "nav_quickstart": "Первый запуск",
         "theme_dark": "Тёмная тема",
@@ -620,6 +638,24 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_payout_cancelled": "cancelled",
         "earn_btn_accept": "Accepted",
         "earn_btn_refund": "Refund",
+        "earn_stores_title": "7. Digital Product Stores (20% Autopilot)",
+        "earn_stores_sub": "API keys & webhooks only (zero passwords). Sales run on autopilot (20% CODE fee).",
+        "earn_store_label_ph": "Store label (e.g. Main Gumroad)",
+        "earn_store_url_ph": "Custom store API URL (optional)",
+        "earn_store_key_ph": "Store API key / OAuth token",
+        "earn_store_wh_ph": "Webhook secret (HMAC / ws_... optional)",
+        "earn_store_seller_ph": "Seller ID (for Gumroad Ping, optional)",
+        "earn_store_connect_btn": "Verify & Connect Store",
+        "earn_store_seed_btn": "Seed 3 Starter Drafts",
+        "earn_store_sync_btn": "Sync Sales",
+        "earn_draft_title_ph": "Digital product title…",
+        "earn_draft_desc_ph": "Product description…",
+        "earn_draft_price_ph": "Price USD",
+        "earn_draft_url_ph": "Delivery / file URL",
+        "earn_draft_save_btn": "Save Draft",
+        "earn_draft_publish_btn": "Approve & Publish to Store",
+        "earn_stores_empty": "No digital stores connected yet.",
+        "earn_drafts_empty": "No product drafts yet.",
         "nav_settings": "Settings",
         "nav_quickstart": "Quick Start",
         "theme_dark": "Dark theme",
@@ -1066,6 +1102,24 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_payout_cancelled": "cancelado",
         "earn_btn_accept": "Aceptado",
         "earn_btn_refund": "Reembolso",
+        "earn_stores_title": "7. Tiendas Digitales (Piloto Automatico 20%)",
+        "earn_stores_sub": "Solo claves API y webhooks (sin contrasenas). Ventas en piloto automatico (20% CODE).",
+        "earn_store_label_ph": "Nombre de tienda (ej. Gumroad Principal)",
+        "earn_store_url_ph": "URL API de tienda (opcional)",
+        "earn_store_key_ph": "Clave API / token OAuth de tienda",
+        "earn_store_wh_ph": "Webhook secret (HMAC / ws_... opcional)",
+        "earn_store_seller_ph": "Seller ID (para Gumroad Ping, opcional)",
+        "earn_store_connect_btn": "Verificar y Conectar",
+        "earn_store_seed_btn": "3 Borradores Iniciales",
+        "earn_store_sync_btn": "Sincronizar Ventas",
+        "earn_draft_title_ph": "Titulo del producto digital…",
+        "earn_draft_desc_ph": "Descripcion del producto…",
+        "earn_draft_price_ph": "Precio USD",
+        "earn_draft_url_ph": "URL de entrega",
+        "earn_draft_save_btn": "Guardar Borrador",
+        "earn_draft_publish_btn": "Aprobar y Publicar en Tienda",
+        "earn_stores_empty": "Aun no hay tiendas digitales conectadas.",
+        "earn_drafts_empty": "Aun no hay borradores de productos.",
         "nav_settings": "Ajustes",
         "nav_quickstart": "Inicio rápido",
         "theme_dark": "Tema oscuro",
@@ -1512,6 +1566,24 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_payout_cancelled": "已取消",
         "earn_btn_accept": "客户验收",
         "earn_btn_refund": "退款取消",
+        "earn_stores_title": "7. 数字商品商店（20% 自动驾驶）",
+        "earn_stores_sub": "仅使用 API 密钥与 Webhook（零密码存储）。自动成交按 20% CODE 费率结算。",
+        "earn_store_label_ph": "商店标签（如 Gumroad 主店）",
+        "earn_store_url_ph": "自定义商店 API 地址（可选）",
+        "earn_store_key_ph": "商店 API 密钥 / OAuth 令牌",
+        "earn_store_wh_ph": "Webhook 密钥（HMAC / ws_... 可选）",
+        "earn_store_seller_ph": "Seller ID（Gumroad Ping 用，可选）",
+        "earn_store_connect_btn": "验证并连接商店",
+        "earn_store_seed_btn": "生成 3 个初始草稿",
+        "earn_store_sync_btn": "同步销售订单",
+        "earn_draft_title_ph": "数字商品标题…",
+        "earn_draft_desc_ph": "商品描述…",
+        "earn_draft_price_ph": "价格 USD",
+        "earn_draft_url_ph": "交付链接",
+        "earn_draft_save_btn": "保存商品草稿",
+        "earn_draft_publish_btn": "批准并发布到商店",
+        "earn_stores_empty": "暂未连接数字商品商店。",
+        "earn_drafts_empty": "暂无商品草稿。",
         "nav_settings": "设置",
         "nav_quickstart": "快速开始",
         "theme_dark": "深色主题",
@@ -6139,6 +6211,78 @@ function _renderEarningDashboard(snap, sibData, coopData) {
       subjective_experiences: lp.experiences_count || 0,
     });
   }
+
+  const ds = (snap && snap.digital_stores) || {};
+  const storesEl = $('earn-stores-list');
+  if (storesEl) {
+    storesEl.textContent = '';
+    const stores = ds.connected_stores || [];
+    if (!stores.length) {
+      storesEl.appendChild(_el('p', 'earn-meta', S.earn_stores_empty || 'No digital stores connected yet.'));
+    } else {
+      for (const st of stores) {
+        const card = _el('div', 'earn-item');
+        card.appendChild(_el('strong', '', String(st.title || st.store_type) + ' · ' + String(st.store_label || st.owner_name || '')));
+        const caps = st.capabilities || {};
+        const capTxt = (caps.supports_product_write ? 'API write OK' : 'API read-only products')
+          + ' · ' + (caps.supports_sales_pull ? 'Sales pull OK' : 'Webhook-only sales')
+          + ' · ' + String(st.currency || 'USD')
+          + (st.owner_email ? ' · ' + String(st.owner_email) : '');
+        card.appendChild(_el('div', 'earn-meta', capTxt));
+        const row = _el('div', 'att-row');
+        if (caps.supports_sales_pull) {
+          const bSync = _el('button', '', S.earn_store_sync_btn || 'Sync Sales');
+          bSync.onclick = async () => {
+            try {
+              const r = await api('/api/v2/ark/stores/action', { action: 'sync_sales', store_account_id: st.store_account_id });
+              say(String(st.title || st.store_type) + ': +' + String(r.imported_count || 0));
+              loadEarning();
+            } catch (e) { say(String(e.message || e), false); }
+          };
+          row.appendChild(bSync);
+        } else {
+          row.appendChild(_el('span', 'badge', 'webhook'));
+        }
+        card.appendChild(row);
+        storesEl.appendChild(card);
+      }
+    }
+  }
+
+  const draftsEl = $('earn-drafts-list');
+  if (draftsEl) {
+    draftsEl.textContent = '';
+    const drafts = ds.product_drafts || [];
+    if (!drafts.length) {
+      draftsEl.appendChild(_el('p', 'earn-meta', S.earn_drafts_empty || 'No product drafts yet.'));
+    } else {
+      for (const dr of drafts) {
+        const card = _el('div', 'earn-item');
+        card.appendChild(_el('strong', '', String(dr.title || '') + ' ($' + String(dr.price_usdt || 0) + ' ' + String(dr.currency || 'USD') + ')'));
+        card.appendChild(_el('div', 'earn-meta', String(dr.store_type || '') + ' · ' + String(dr.status || 'draft') + (dr.publish_note ? ' · ' + String(dr.publish_note) : '')));
+        if (dr.description) {
+          card.appendChild(_el('div', 'earn-meta', String(dr.description)));
+        }
+        const row = _el('div', 'att-row');
+        const bPub = _el('button', 'btn-ok', S.earn_draft_publish_btn || 'Approve & Publish');
+        bPub.onclick = async () => {
+          try {
+            const res = await api('/api/v2/ark/stores/action', {
+              action: 'publish_draft',
+              draft_id: dr.draft_id,
+              store_type: dr.store_type,
+              owner_approved: true,
+            });
+            say(String(res.note || (res.draft && res.draft.publish_note) || S.done));
+            loadEarning();
+          } catch (e) { say(String(e.message || e), false); }
+        };
+        row.appendChild(bPub);
+        card.appendChild(row);
+        draftsEl.appendChild(card);
+      }
+    }
+  }
 }
 
 let _earnLoadSeq = 0;
@@ -6314,6 +6458,50 @@ if ($('earn-auto-start-btn')) {
 if ($('earn-auto-stop-btn')) {
   $('earn-auto-stop-btn').onclick = async () => {
     try { await api('/api/v2/ark/freelance/action', { action: 'autopilot_stop' }); say(S.done); loadEarning(); } catch (e) { say(String(e.message || e), false); }
+  };
+}
+if ($('earn-store-connect-btn')) {
+  $('earn-store-connect-btn').onclick = async () => {
+    try {
+      await api('/api/v2/ark/stores/action', {
+        action: 'connect_store',
+        store_type: ($('earn-store-type') && $('earn-store-type').value) || 'gumroad',
+        store_label: ($('earn-store-label') && $('earn-store-label').value) || '',
+        api_base_url: ($('earn-store-api-url') && $('earn-store-api-url').value) || '',
+        api_key: ($('earn-store-key') && $('earn-store-key').value) || '',
+        webhook_secret: ($('earn-store-wh-secret') && $('earn-store-wh-secret').value) || '',
+        seller_id: ($('earn-store-seller-id') && $('earn-store-seller-id').value) || '',
+      });
+      if ($('earn-store-key')) $('earn-store-key').value = '';
+      if ($('earn-store-wh-secret')) $('earn-store-wh-secret').value = '';
+      say(S.done);
+      loadEarning();
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
+if ($('earn-store-seed-btn')) {
+  $('earn-store-seed-btn').onclick = async () => {
+    try {
+      await api('/api/v2/ark/stores/action', { action: 'seed_drafts' });
+      say(S.done);
+      loadEarning();
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
+if ($('earn-draft-save-btn')) {
+  $('earn-draft-save-btn').onclick = async () => {
+    try {
+      await api('/api/v2/ark/stores/action', {
+        action: 'save_draft',
+        store_type: ($('earn-store-type') && $('earn-store-type').value) || 'gumroad',
+        title: ($('earn-draft-title') && $('earn-draft-title').value) || '',
+        description: ($('earn-draft-desc') && $('earn-draft-desc').value) || '',
+        price_usdt: Number(($('earn-draft-price') && $('earn-draft-price').value) || 19),
+        delivery_url: ($('earn-draft-url') && $('earn-draft-url').value) || '',
+      });
+      say(S.done);
+      loadEarning();
+    } catch (e) { say(String(e.message || e), false); }
   };
 }
 if ($('earn-hw-rec-btn')) {
@@ -7361,6 +7549,42 @@ def page() -> tuple[str, str]:
               <button id="earn-beacon-btn" data-i18n="earn_beacon_btn">{s['earn_beacon_btn']}</button>
             </div>
             <div id="earn-beacon-out" class="earn-stack"></div>
+          </div>
+
+          <div class="box earn-box-wide">
+            <h3 class="box-title" data-i18n="earn_stores_title">{s['earn_stores_title']}</h3>
+            <p class="earn-meta" data-i18n="earn_stores_sub">{s['earn_stores_sub']}</p>
+            <div class="toolbar">
+              <select id="earn-store-type" aria-label="Digital store">
+                <option value="lemonsqueezy">Lemon Squeezy</option>
+                <option value="gumroad">Gumroad</option>
+                <option value="payhip">Payhip</option>
+                <option value="sellfy">Sellfy</option>
+                <option value="whop">Whop</option>
+              </select>
+              <input id="earn-store-label" type="text" data-i18n-placeholder="earn_store_label_ph" placeholder="{s['earn_store_label_ph']}">
+              <input id="earn-store-seller-id" type="text" data-i18n-placeholder="earn_store_seller_ph" placeholder="{s['earn_store_seller_ph']}">
+            </div>
+            <div class="toolbar">
+              <input id="earn-store-api-url" type="text" data-i18n-placeholder="earn_store_url_ph" placeholder="{s['earn_store_url_ph']}">
+              <input id="earn-store-key" type="password" data-i18n-placeholder="earn_store_key_ph" placeholder="{s['earn_store_key_ph']}">
+              <input id="earn-store-wh-secret" type="password" data-i18n-placeholder="earn_store_wh_ph" placeholder="{s['earn_store_wh_ph']}">
+            </div>
+            <div class="rec-actions">
+              <button id="earn-store-connect-btn" class="btn-primary" data-i18n="earn_store_connect_btn">{s['earn_store_connect_btn']}</button>
+              <button id="earn-store-seed-btn" data-i18n="earn_store_seed_btn">{s['earn_store_seed_btn']}</button>
+            </div>
+            <div id="earn-stores-list" class="earn-stack"></div>
+            <div class="toolbar">
+              <input id="earn-draft-title" type="text" data-i18n-placeholder="earn_draft_title_ph" placeholder="{s['earn_draft_title_ph']}">
+              <input id="earn-draft-price" class="earn-num-input" type="number" value="19" min="1" step="1" data-i18n-placeholder="earn_draft_price_ph" placeholder="{s['earn_draft_price_ph']}">
+            </div>
+            <div class="toolbar">
+              <input id="earn-draft-desc" type="text" data-i18n-placeholder="earn_draft_desc_ph" placeholder="{s['earn_draft_desc_ph']}">
+              <input id="earn-draft-url" type="text" data-i18n-placeholder="earn_draft_url_ph" placeholder="{s['earn_draft_url_ph']}">
+              <button id="earn-draft-save-btn" data-i18n="earn_draft_save_btn">{s['earn_draft_save_btn']}</button>
+            </div>
+            <div id="earn-drafts-list" class="earn-stack"></div>
           </div>
         </div>
       </section>
