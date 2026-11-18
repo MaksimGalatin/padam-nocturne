@@ -23,12 +23,14 @@ def build_session_pack(
     topic: str = "",
     scope: str = "global",
     max_tokens: int = 1200,
+    current_task: str | None = None,
 ) -> dict[str, Any]:
     """Собирает целостный, ограждённый пакет пробуждения с контролем бюджета токенов."""
     budget_tokens = max(150, min(8000, int(max_tokens)))
     max_chars = budget_tokens * 4
 
-    sibling_registry.heartbeat_sibling(memory, agent_id, status="online", current_task=topic or None)
+    explicit_task = str(current_task).strip() if current_task is not None and str(current_task).strip() else None
+    sibling_registry.heartbeat_sibling(memory, agent_id, status="online", current_task=explicit_task)
     prof = memory.profile(scope=scope)
     leases = coop_broker.list_leases(memory)
     tasks = coop_broker.list_tasks(memory, limit=10)

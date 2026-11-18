@@ -40,9 +40,10 @@ def _ensure(memory) -> None:
 def _safe_resolve_under_root(repo_root: str | Path, rel_path: str) -> Path:
     root = Path(repo_root).resolve()
     raw = str(rel_path or "").strip()
-    if not raw or Path(raw).is_absolute():
-        raise ValueError("file_path must be a relative path inside repo_root")
-    target = (root / raw).resolve()
+    if not raw:
+        raise ValueError("file_path must be a non-empty path inside repo_root")
+    cand = Path(raw)
+    target = cand.resolve() if cand.is_absolute() else (root / raw).resolve()
     try:
         target.relative_to(root)
     except ValueError as exc:

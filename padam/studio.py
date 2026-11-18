@@ -146,6 +146,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_hw_rec_btn": "Подбор под моё железо ($0)",
         "earn_job_hours_ph": "Часы (напр. 4)",
         "earn_job_rate_ph": "Ставка $/ч",
+        "earn_job_budget_lbl": "Бюджет (USDT)",
+        "earn_job_hours_lbl": "Часы (ч)",
+        "earn_job_rate_lbl": "Ставка ($/ч)",
+        "earn_job_tokens_lbl": "Токены (~)",
         "earn_bid_preview_title": "Черновик отклика (только предпросмотр — не отправлено):",
         "earn_btn_send_bid": "Отправить отклик",
         "earn_bid_draft_ready": "Черновик отклика подготовлен из памяти и профиля (не отправлен).",
@@ -589,6 +593,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_hw_rec_btn": "Hardware Match ($0)",
         "earn_job_hours_ph": "Hours (e.g. 4)",
         "earn_job_rate_ph": "Rate $/h",
+        "earn_job_budget_lbl": "Budget (USDT)",
+        "earn_job_hours_lbl": "Hours (h)",
+        "earn_job_rate_lbl": "Rate ($/h)",
+        "earn_job_tokens_lbl": "Tokens (~)",
         "earn_bid_preview_title": "Bid draft (preview only — not sent):",
         "earn_btn_send_bid": "Send Bid",
         "earn_bid_draft_ready": "Bid draft prepared from memory and profile (not sent).",
@@ -1021,6 +1029,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_hw_rec_btn": "Ajuste por Hardware ($0)",
         "earn_job_hours_ph": "Horas (ej. 4)",
         "earn_job_rate_ph": "Tarifa $/h",
+        "earn_job_budget_lbl": "Presupuesto (USDT)",
+        "earn_job_hours_lbl": "Horas (h)",
+        "earn_job_rate_lbl": "Tarifa ($/h)",
+        "earn_job_tokens_lbl": "Tokens (~)",
         "earn_bid_preview_title": "Borrador de oferta (solo vista previa — no enviado):",
         "earn_btn_send_bid": "Enviar Oferta",
         "earn_bid_draft_ready": "Borrador preparado desde memoria y perfil (no enviado).",
@@ -1453,6 +1465,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_hw_rec_btn": "匹配本机离线模型 ($0)",
         "earn_job_hours_ph": "预计工时（小时）",
         "earn_job_rate_ph": "目标时薪 $/h",
+        "earn_job_budget_lbl": "预算 (USDT)",
+        "earn_job_hours_lbl": "工时 (小时)",
+        "earn_job_rate_lbl": "目标时薪 ($/h)",
+        "earn_job_tokens_lbl": "预计 Token",
         "earn_bid_preview_title": "投标草稿（仅预览 — 尚未发送）：",
         "earn_btn_send_bid": "发送投标",
         "earn_bid_draft_ready": "已根据记忆与档案生成投标草稿（未发送）。",
@@ -2891,6 +2907,31 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 .earn-num-input {
   max-width: 150px;
+}
+.earn-num-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.earn-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.earn-field label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.earn-field .earn-num-input {
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
 .btn-ok {
   border-color: var(--ok);
@@ -7109,11 +7150,25 @@ def page() -> tuple[str, str]:
             <div class="toolbar">
               <input id="earn-job-brief" type="text" data-i18n-placeholder="earn_job_brief_ph" placeholder="{s['earn_job_brief_ph']}">
             </div>
-            <div class="toolbar">
-              <input id="earn-job-budget" class="earn-num-input" type="number" value="50" min="1" step="1" data-i18n-placeholder="earn_job_budget_ph" placeholder="{s['earn_job_budget_ph']}">
-              <input id="earn-job-hours" class="earn-num-input" type="number" value="4" min="0.5" step="0.5" data-i18n-placeholder="earn_job_hours_ph" placeholder="{s['earn_job_hours_ph']}">
-              <input id="earn-job-rate" class="earn-num-input" type="number" value="25" min="1" step="1" data-i18n-placeholder="earn_job_rate_ph" placeholder="{s['earn_job_rate_ph']}">
-              <input id="earn-job-tokens" class="earn-num-input" type="number" value="25000" min="500" step="500" data-i18n-placeholder="earn_job_tokens_ph" placeholder="{s['earn_job_tokens_ph']}">
+            <div class="earn-num-grid">
+              <div class="earn-field">
+                <label for="earn-job-budget" data-i18n="earn_job_budget_lbl">{s['earn_job_budget_lbl']}</label>
+                <input id="earn-job-budget" class="earn-num-input" type="number" value="50" min="1" step="1" data-i18n-placeholder="earn_job_budget_ph" placeholder="{s['earn_job_budget_ph']}">
+              </div>
+              <div class="earn-field">
+                <label for="earn-job-hours" data-i18n="earn_job_hours_lbl">{s['earn_job_hours_lbl']}</label>
+                <input id="earn-job-hours" class="earn-num-input" type="number" value="4" min="0.5" step="0.5" data-i18n-placeholder="earn_job_hours_ph" placeholder="{s['earn_job_hours_ph']}">
+              </div>
+              <div class="earn-field">
+                <label for="earn-job-rate" data-i18n="earn_job_rate_lbl">{s['earn_job_rate_lbl']}</label>
+                <input id="earn-job-rate" class="earn-num-input" type="number" value="25" min="1" step="1" data-i18n-placeholder="earn_job_rate_ph" placeholder="{s['earn_job_rate_ph']}">
+              </div>
+              <div class="earn-field">
+                <label for="earn-job-tokens" data-i18n="earn_job_tokens_lbl">{s['earn_job_tokens_lbl']}</label>
+                <input id="earn-job-tokens" class="earn-num-input" type="number" value="25000" min="500" step="500" data-i18n-placeholder="earn_job_tokens_ph" placeholder="{s['earn_job_tokens_ph']}">
+              </div>
+            </div>
+            <div class="rec-actions">
               <button id="earn-eval-btn" class="btn-primary" data-i18n="earn_job_eval_btn">{s['earn_job_eval_btn']}</button>
             </div>
             <div id="earn-orders-list" class="earn-stack"></div>

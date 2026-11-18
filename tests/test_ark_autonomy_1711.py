@@ -265,10 +265,14 @@ def test_block_a_2_six_new_mcp_tools_real_stdio_gating(tmp_path):
             proc.stdin.flush()
 
             listed = [t["name"] for t in rpc({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})["result"]["tools"]]
+            rec_id_for_proof = "nonexistent"
+            if flag_val == "1":
+                rw = rpc({"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "padam_write", "arguments": {"content": "Anchor record for selective proof"}}})
+                rec_id_for_proof = rw.get("result", {}).get("structuredContent", {}).get("id") or "nonexistent"
             call_args = {
                 "padam_family_council": {"task": "Check status"},
                 "padam_memory_branch": {"action": "list"},
-                "padam_selective_proof": {"action": "create", "record_id": "nonexistent"},
+                "padam_selective_proof": {"action": "create", "record_id": rec_id_for_proof},
                 "padam_guardian_tick": {},
                 "padam_mesh_sync": {"action": "peers"},
                 "padam_multimodal_inspect": {"filename": "note.txt", "text": "clean diagram"},

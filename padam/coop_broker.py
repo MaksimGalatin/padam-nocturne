@@ -153,6 +153,56 @@ def release_lease(memory, agent_id: str, resource_key: str) -> dict[str, Any]:
     return {"ok": True, "released": True, "resource_key": res_key}
 
 
+def renew_lease(
+    memory,
+    agent_id: str,
+    resource_key: str,
+    *,
+    ttl_s: int = 300,
+    now_ts: float | None = None,
+) -> dict[str, Any]:
+    """Продлевает существующую живую аренду ресурса для её владельца."""
+    _ensure(memory)
+    res_key = _canon_resource(resource_key)
+    holder = re.sub(r"[^a-zA-Z0-9_\-]", "", str(agent_id or "").strip().lower()) or "agent"
+    ttl = max(5, min(86400, int(ttl_s)))
+    now = float(now_ts if now_ts is not None else time.time())
+    conn = memory.store.conn
+    conn.execute("DELETE FROM ark_resource_lease WHERE expires_at <= ?", (now,))
+    existing = conn.execute(
+        "SELECT holder_agent FROM ark_resource_lease WHERE resource_key = ? AND user_id = ?",
+        (res_key, memory.user_id),
+    ).fetchone()
+    if not existing:
+        conn.commit()
+        return {"ok": False, "renewed": False, "reason": "not_held", "resource_key": res_key}
+    if existing["holder_agent"] != holder:
+        conn.commit()
+        return {"ok": False, "renewed": False, "reason": "held_by_another_agent", "holder_agent": existing["holder_agent"], "resource_key": res_key}
+    exp = now + ttl
+    conn.execute(
+        "UPDATE ark_resource_lease SET expires_at = ? WHERE resource_key = ? AND user_id = ?",
+        (exp, res_key, memory.user_id),
+    )
+    conn.commit()
+    return {"ok": True, "renewed": True, "resource_key": res_key, "holder_agent": holder, "expires_at": exp, "ttl_s": ttl}
+
+
+def release_all_leases(memory, agent_id: str) -> dict[str, Any]:
+    """Освобождает все активные аренды указанного агента."""
+    _ensure(memory)
+    holder = re.sub(r"[^a-zA-Z0-9_\-]", "", str(agent_id or "").strip().lower()) or "agent"
+    conn = memory.store.conn
+    rows = conn.execute(
+        "SELECT resource_key FROM ark_resource_lease WHERE user_id = ? AND holder_agent = ?",
+        (memory.user_id, holder),
+    ).fetchall()
+    keys = [str(r["resource_key"]) for r in rows]
+    conn.execute("DELETE FROM ark_resource_lease WHERE user_id = ? AND holder_agent = ?", (memory.user_id, holder))
+    conn.commit()
+    return {"ok": True, "holder_agent": holder, "released_count": len(keys), "released_keys": keys}
+
+
 def list_leases(memory, *, now_ts: float | None = None) -> list[dict[str, Any]]:
     _ensure(memory)
     now = float(now_ts if now_ts is not None else time.time())
