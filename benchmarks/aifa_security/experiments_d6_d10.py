@@ -178,14 +178,20 @@ def run_d6_to_d10(
     def as055():
         small = ("pay " * 20) + ("to " * 20) + ("a" * 300)
         large = ("pay " * 200) + ("to " * 200) + ("a" * 3000)
-        t0 = time.perf_counter()
+        # 18.11.2026: один холодный замер шумел на macOS CI (компиляция шаблонов, загрузка машины).
+        # Прогрев + медиана 5 замеров на каждый размер; порог 30x не меняется.
+        def _замер(text: str) -> float:
+            вр = []
+            for _ in range(5):
+                t0 = time.perf_counter()
+                safety.looks_like_instruction(text)
+                safety.redact(text)
+                вр.append(time.perf_counter() - t0)
+            return sorted(вр)[2]
         safety.looks_like_instruction(small)
         safety.redact(small)
-        t_small = max(time.perf_counter() - t0, 1e-4)
-        t1 = time.perf_counter()
-        safety.looks_like_instruction(large)
-        safety.redact(large)
-        t_large = time.perf_counter() - t1
+        t_small = max(_замер(small), 1e-4)
+        t_large = _замер(large)
         ratio = t_large / t_small
         return ratio <= 30.0, f"ratio={ratio:.2f}x", "<=30.0x", "Linear O(n) scaling ratio on 10x adversarial input (no ReDoS)"
 
