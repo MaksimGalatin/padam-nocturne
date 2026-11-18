@@ -184,6 +184,27 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_draft_proposal_badge": "Цена и текст — предложение агента (решает владелец)",
         "earn_sale_unverified_badge": "Не подтверждена (Payhip: сверьте с выплатой — доля и комиссия не начислены)",
         "earn_btn_confirm_sale": "Подтвердить выплату",
+        "earn_partner_t": "9. AIfaFocus: клиенты из нашего исследования (отдельно от бирж)",
+        "earn_partner_sub": "Сайты с нарушениями доступности из открытого исследования AIfa, отчёт для владельца сайта и ссылка с вашим кодом партнёра, черновик письма через Совет Семьи и ваши сделки. Те же действия, что у инструментов MCP padam_partner_*. Письма агент только готовит — отправляете вы со своего адреса (закон CAN-SPAM).",
+        "earn_partner_key_ph": "Ключ кабинета aifa.works (amcp_…) — хранится зашифрованным",
+        "earn_partner_key_btn": "Сохранить ключ",
+        "earn_partner_key_link": "Создать ключ в кабинете",
+        "earn_partner_st_none": "Ключ кабинета не задан — создайте его на aifa.works/mcp и сохраните здесь.",
+        "earn_partner_st_ok": "Ключ кабинета подключён",
+        "earn_partner_region_ph": "Регион: US-CA, US-NY или код страны (DE, FR…)",
+        "earn_partner_find_btn": "Найти клиентов",
+        "earn_partner_site_ph": "Сайт клиента, например example.com",
+        "earn_partner_report_btn": "Отчёт для сайта",
+        "earn_partner_draft_btn": "Подготовить письмо",
+        "earn_partner_link_btn": "Моя ссылка партнёра",
+        "earn_partner_kit_btn": "Набор партнёра",
+        "earn_partner_deals_btn": "Мои сделки и доход",
+        "earn_partner_copy_btn": "Скопировать письмо",
+        "earn_partner_mail_btn": "Открыть в своей почте",
+        "earn_partner_not_sent": "Письмо НЕ отправлено: отправляете вы сами, по одному, со своего адреса.",
+        "earn_partner_copied": "Письмо скопировано",
+        "brain_local_no_models": "Ollama не видит ни одной модели: перезапустите Ollama из трея, чтобы она прочитала OLLAMA_MODELS",
+        "brain_local_model_missing": "модель не скачана",
         "earn_wiz_title": "8. Мастер подключения 30 площадок и бирж агентов (выбрал → вошёл → дальше мы)",
         "earn_wiz_sub": "30 площадок методички + 4 биржи для ИИ-агентов. Пароли не храним никогда (только OAuth, ключ API или зашифрованная сессия браузера).",
         "earn_wiz_secret_ph": "OAuth-токен / ключ API / зашифрованная сессия браузера (БЕЗ пароля)",
@@ -675,6 +696,27 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_draft_proposal_badge": "Price & text — agent proposal (owner decides)",
         "earn_sale_unverified_badge": "Unverified (Payhip: verify payout first — share & fee not accrued)",
         "earn_btn_confirm_sale": "Confirm Payout",
+        "earn_partner_t": "9. AIfaFocus: clients from our research (separate from exchanges)",
+        "earn_partner_sub": "Sites with accessibility barriers from the open AIfa research, a report for the site owner and a link with your partner code, an email draft checked by the Family Council, and your deals. The same actions as the padam_partner_* MCP tools. The agent only drafts emails — you send them from your own address (CAN-SPAM).",
+        "earn_partner_key_ph": "aifa.works cabinet key (amcp_…) — stored encrypted",
+        "earn_partner_key_btn": "Save key",
+        "earn_partner_key_link": "Create a key in the cabinet",
+        "earn_partner_st_none": "No cabinet key yet — create one at aifa.works/mcp and save it here.",
+        "earn_partner_st_ok": "Cabinet key connected",
+        "earn_partner_region_ph": "Region: US-CA, US-NY or a country code (DE, FR…)",
+        "earn_partner_find_btn": "Find clients",
+        "earn_partner_site_ph": "Client site, e.g. example.com",
+        "earn_partner_report_btn": "Report for the site",
+        "earn_partner_draft_btn": "Draft an email",
+        "earn_partner_link_btn": "My partner link",
+        "earn_partner_kit_btn": "Partner kit",
+        "earn_partner_deals_btn": "My deals and income",
+        "earn_partner_copy_btn": "Copy email",
+        "earn_partner_mail_btn": "Open in my mail",
+        "earn_partner_not_sent": "The email was NOT sent: you send it yourself, one at a time, from your own address.",
+        "earn_partner_copied": "Email copied",
+        "brain_local_no_models": "Ollama sees no models: restart Ollama from the tray so it reads OLLAMA_MODELS",
+        "brain_local_model_missing": "model not pulled",
         "earn_wiz_title": "8. 30 Platforms & Agent Exchanges Wizard (Pick → Sign In → We Handle the Rest)",
         "earn_wiz_sub": "30 methodology platforms + 4 AI agent exchanges. Passwords are NEVER stored (OAuth, API key, or encrypted browser session only).",
         "earn_wiz_secret_ph": "OAuth token / API key / encrypted browser session (NO password)",
@@ -1155,6 +1197,27 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_draft_proposal_badge": "Precio y texto — propuesta del agente (decide el propietario)",
         "earn_sale_unverified_badge": "No verificada (Payhip: verifique el pago — comision no acreditada)",
         "earn_btn_confirm_sale": "Confirmar Pago",
+        "earn_partner_t": "9. AIfaFocus: clientes de nuestra investigación (aparte de las bolsas)",
+        "earn_partner_sub": "Sitios con barreras de accesibilidad de la investigación abierta de AIfa, un informe para el dueño del sitio y un enlace con su código de socio, un borrador de correo revisado por el Consejo Familiar y sus acuerdos. Las mismas acciones que las herramientas MCP padam_partner_*. El agente solo prepara los correos: usted los envía desde su propia dirección (CAN-SPAM).",
+        "earn_partner_key_ph": "Clave del gabinete aifa.works (amcp_…) — se guarda cifrada",
+        "earn_partner_key_btn": "Guardar clave",
+        "earn_partner_key_link": "Crear una clave en el gabinete",
+        "earn_partner_st_none": "Aún no hay clave del gabinete: créela en aifa.works/mcp y guárdela aquí.",
+        "earn_partner_st_ok": "Clave del gabinete conectada",
+        "earn_partner_region_ph": "Región: US-CA, US-NY o código de país (DE, FR…)",
+        "earn_partner_find_btn": "Buscar clientes",
+        "earn_partner_site_ph": "Sitio del cliente, p. ej. example.com",
+        "earn_partner_report_btn": "Informe del sitio",
+        "earn_partner_draft_btn": "Preparar correo",
+        "earn_partner_link_btn": "Mi enlace de socio",
+        "earn_partner_kit_btn": "Kit de socio",
+        "earn_partner_deals_btn": "Mis acuerdos e ingresos",
+        "earn_partner_copy_btn": "Copiar correo",
+        "earn_partner_mail_btn": "Abrir en mi correo",
+        "earn_partner_not_sent": "El correo NO se ha enviado: lo envía usted, uno por uno, desde su propia dirección.",
+        "earn_partner_copied": "Correo copiado",
+        "brain_local_no_models": "Ollama no ve ningún modelo: reinicie Ollama desde la bandeja para que lea OLLAMA_MODELS",
+        "brain_local_model_missing": "modelo no descargado",
         "earn_wiz_title": "8. Asistente de 30 Plataformas y Bolsas de Agentes (Elegir → Entrar → Nosotros Seguimos)",
         "earn_wiz_sub": "30 plataformas de la guia + 4 bolsas de agentes IA. Nunca guardamos contrasenas (solo OAuth, clave API o sesion cifrada).",
         "earn_wiz_secret_ph": "Token OAuth / clave API / sesion cifrada (SIN contrasena)",
@@ -1635,6 +1698,27 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_draft_proposal_badge": "价格与文案 — 智能体建议（由所有者决定）",
         "earn_sale_unverified_badge": "未验证（Payhip：请先核对入账，分成与佣金暂不计入）",
         "earn_btn_confirm_sale": "确认收款并计入",
+        "earn_partner_t": "9. AIfaFocus：来自我们研究的客户（与交易平台分开）",
+        "earn_partner_sub": "来自 AIfa 公开研究的存在无障碍问题的网站、给网站所有者的报告和带有您合作伙伴代码的链接、经家族委员会检查的邮件草稿以及您的交易。与 MCP 工具 padam_partner_* 的操作相同。智能体只起草邮件，由您从自己的地址发送（CAN-SPAM 法）。",
+        "earn_partner_key_ph": "aifa.works 账户密钥（amcp_…）— 加密保存",
+        "earn_partner_key_btn": "保存密钥",
+        "earn_partner_key_link": "在账户中创建密钥",
+        "earn_partner_st_none": "尚未设置账户密钥 — 请在 aifa.works/mcp 创建并保存在这里。",
+        "earn_partner_st_ok": "账户密钥已连接",
+        "earn_partner_region_ph": "地区：US-CA、US-NY 或国家代码（DE、FR…）",
+        "earn_partner_find_btn": "查找客户",
+        "earn_partner_site_ph": "客户网站，例如 example.com",
+        "earn_partner_report_btn": "网站报告",
+        "earn_partner_draft_btn": "起草邮件",
+        "earn_partner_link_btn": "我的合作伙伴链接",
+        "earn_partner_kit_btn": "合作伙伴工具包",
+        "earn_partner_deals_btn": "我的交易和收入",
+        "earn_partner_copy_btn": "复制邮件",
+        "earn_partner_mail_btn": "在我的邮箱中打开",
+        "earn_partner_not_sent": "邮件未发送：由您本人从自己的地址逐封发送。",
+        "earn_partner_copied": "邮件已复制",
+        "brain_local_no_models": "Ollama 看不到任何模型：请从托盘重启 Ollama，使其读取 OLLAMA_MODELS",
+        "brain_local_model_missing": "模型未下载",
         "earn_wiz_title": "8. 30 大平台与智能体交易市场接入向导（选择 → 登录 → 全自动接管）",
         "earn_wiz_sub": "指南 30 个平台 + 4 个 AI 智能体市场。绝不存储密码（仅限 OAuth、API 密钥或加密浏览器会话）。",
         "earn_wiz_secret_ph": "OAuth 令牌 / API 密钥 / 加密会话（严禁输入密码）",
@@ -5548,8 +5632,12 @@ async function loadBrain() {
       left.appendChild(document.createTextNode(String(c.name || '').toUpperCase() + (c.model ? ' · ' + c.model : '')));
       let rightText = c.enabled ? (c.url || 'local') : 'OFF (🔒)';
       if (c.name === 'local' && probe) {
-        const mCount = (probe.models || []).length;
+        const mList = probe.models || [];
+        const mCount = mList.length;
         rightText = (probe.online ? 'ONLINE' : 'OFFLINE') + ' · ' + String(mCount) + ' models';
+        // 18.11.2026: «ONLINE · 0 models» читалось как «модель стоит» — объясняем, чего не хватает
+        if (probe.online && mCount === 0) rightText += ' — ' + (S.brain_local_no_models || 'Ollama sees no models');
+        else if (probe.online && c.model && !mList.some(n => n === c.model || n.split(':')[0] === String(c.model).split(':')[0])) rightText += ' — ' + (S.brain_local_model_missing || 'model not pulled') + ': ' + c.model;
       }
       const right = _el('span', 'att-val', rightText);
       row.appendChild(left);
@@ -6444,6 +6532,60 @@ function _renderEarningDashboard(snap, sibData, coopData) {
 }
 
 let _earnLoadSeq = 0;
+// Блок «9. AIfaFocus» (18.11.2026): кнопки = инструменты MCP padam_partner_*, ответ облака — данные, письма не отправляются.
+async function loadPartner() {
+  const box = $('earn-partner-status');
+  if (!box || !token) return;
+  try {
+    const st = await api('/api/v2/ark/partner');
+    box.textContent = st.configured ? (S.earn_partner_st_ok + ' · ' + st.source + ' · ' + (st.fingerprint || '')) : S.earn_partner_st_none;
+    box.className = 'earn-meta ' + (st.configured ? 'msg-ok' : '');
+  } catch (e) { box.textContent = String(e.message || e); }
+}
+// Ограда memory-data нужна агенту; человеку показываем сам текст внутри неё.
+function _partnerUnfence(s) {
+  const m = String(s || '').match(/<memory-data nonce="[0-9a-f]+">\n?([\s\S]*?)\n?<\/memory-data nonce="[0-9a-f]+">/);
+  return m ? m[1] : String(s || '');
+}
+function _partnerShow(title, text, isDraft) {
+  text = _partnerUnfence(text);
+  const out = $('earn-partner-out');
+  if (!out) return;
+  out.textContent = '';
+  const card = _el('div', 'earn-item');
+  card.appendChild(_el('div', 'earn-meta', title));
+  const pre = _el('pre', 'earn-pre', String(text || ''));
+  pre.style.whiteSpace = 'pre-wrap'; pre.style.overflowWrap = 'anywhere'; pre.style.maxHeight = '420px'; pre.style.overflow = 'auto';
+  card.appendChild(pre);
+  if (isDraft) {
+    card.appendChild(_el('div', 'earn-meta', S.earn_partner_not_sent));
+    const row = _el('div', 'rec-actions');
+    const cp = _el('button', '', S.earn_partner_copy_btn);
+    cp.onclick = async () => { try { await navigator.clipboard.writeText(String(text || '')); say(S.earn_partner_copied); } catch (e) { say(String(e.message || e), false); } };
+    const ml = _el('button', 'btn-primary', S.earn_partner_mail_btn);
+    ml.onclick = () => { window.location.href = 'mailto:?subject=' + encodeURIComponent('Accessibility report') + '&body=' + encodeURIComponent(String(text || '').slice(0, 1800)); };
+    row.appendChild(cp); row.appendChild(ml); card.appendChild(row);
+  }
+  out.appendChild(card);
+}
+async function _partnerAct(action, extra, title, isDraft) {
+  try {
+    const r = await api('/api/v2/ark/partner/action', Object.assign({ action }, extra || {}));
+    if (action === 'save_key') { $('earn-partner-key').value = ''; await loadPartner(); say(S.earn_partner_st_ok); return; }
+    const text = isDraft ? r.draft : r.data;
+    _partnerShow(title + (r.source ? ' · ' + r.source : ''), text, isDraft);
+  } catch (e) { say(String(e.message || e), false); }
+}
+if ($('earn-partner-key-btn')) {
+  $('earn-partner-key-btn').onclick = () => _partnerAct('save_key', { key: $('earn-partner-key').value }, '');
+  $('earn-partner-find-btn').onclick = () => _partnerAct('find_clients', { region: $('earn-partner-region').value.trim() }, S.earn_partner_find_btn);
+  $('earn-partner-deals-btn').onclick = () => _partnerAct('deals', {}, S.earn_partner_deals_btn);
+  $('earn-partner-report-btn').onclick = () => _partnerAct('client_report', { site: $('earn-partner-site').value.trim() }, S.earn_partner_report_btn);
+  $('earn-partner-draft-btn').onclick = () => _partnerAct('draft_outreach', { site: $('earn-partner-site').value.trim(), language: (currentLang || 'en') }, S.earn_partner_draft_btn, true);
+  $('earn-partner-link-btn').onclick = () => _partnerAct('client_link', {}, S.earn_partner_link_btn);
+  $('earn-partner-kit-btn').onclick = () => _partnerAct('kit', { language: (currentLang || 'en') }, S.earn_partner_kit_btn);
+}
+
 async function loadEarning() {
   if (!token) return;
   const seq = ++_earnLoadSeq;
@@ -6458,6 +6600,7 @@ async function loadEarning() {
     window._lastEarnSibs = sibData;
     window._lastEarnCoop = coopData;
     _renderEarningDashboard(snap, sibData, coopData);
+    loadPartner();
   } catch (e) {
     say(String(e.message || e), false);
   }
@@ -7847,6 +7990,32 @@ def page() -> tuple[str, str]:
             </div>
             <div id="earn-wiz-profiles-list" class="earn-stack"></div>
             <div id="earn-wiz-catalog-list" class="earn-stack"></div>
+          </div>
+
+          <div class="box earn-box-wide" id="earn-partner-box">
+            <h3 class="box-title" data-i18n="earn_partner_t">{s['earn_partner_t']}</h3>
+            <p class="earn-meta" data-i18n="earn_partner_sub">{s['earn_partner_sub']}</p>
+            <div id="earn-partner-status" class="earn-meta" role="status"></div>
+            <div class="toolbar">
+              <input id="earn-partner-key" type="password" autocomplete="off" data-i18n-placeholder="earn_partner_key_ph" placeholder="{s['earn_partner_key_ph']}">
+              <button id="earn-partner-key-btn" class="btn-primary" data-i18n="earn_partner_key_btn">{s['earn_partner_key_btn']}</button>
+              <a href="https://aifa.works/mcp" target="_blank" rel="noopener noreferrer" data-i18n="earn_partner_key_link">{s['earn_partner_key_link']}</a>
+            </div>
+            <div class="toolbar">
+              <input id="earn-partner-region" type="text" value="US-CA" maxlength="8" data-i18n-placeholder="earn_partner_region_ph" placeholder="{s['earn_partner_region_ph']}">
+              <button id="earn-partner-find-btn" class="btn-primary" data-i18n="earn_partner_find_btn">{s['earn_partner_find_btn']}</button>
+              <button id="earn-partner-deals-btn" data-i18n="earn_partner_deals_btn">{s['earn_partner_deals_btn']}</button>
+            </div>
+            <div class="toolbar">
+              <input id="earn-partner-site" type="text" maxlength="253" data-i18n-placeholder="earn_partner_site_ph" placeholder="{s['earn_partner_site_ph']}">
+              <button id="earn-partner-report-btn" data-i18n="earn_partner_report_btn">{s['earn_partner_report_btn']}</button>
+              <button id="earn-partner-draft-btn" class="btn-ok" data-i18n="earn_partner_draft_btn">{s['earn_partner_draft_btn']}</button>
+            </div>
+            <div class="rec-actions">
+              <button id="earn-partner-link-btn" data-i18n="earn_partner_link_btn">{s['earn_partner_link_btn']}</button>
+              <button id="earn-partner-kit-btn" data-i18n="earn_partner_kit_btn">{s['earn_partner_kit_btn']}</button>
+            </div>
+            <div id="earn-partner-out" class="earn-stack"></div>
           </div>
         </div>
       </section>

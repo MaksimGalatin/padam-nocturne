@@ -18,6 +18,8 @@
 """
 from __future__ import annotations
 
+import contextvars
+import hashlib
 import json
 import os
 import urllib.error
@@ -41,8 +43,12 @@ def _адрес() -> str:
     return url
 
 
+# Ключ кабинета, сохранённый владельцем в Studio (блок «9. AIfaFocus»), подставляется на время одного вызова.
+_ключ_студии: contextvars.ContextVar[str] = contextvars.ContextVar("padam_partner_studio_key", default="")
+
+
 def _ключ() -> str:
-    key = os.environ.get("PADAM_AIFA_MCP_TOKEN", "").strip()
+    key = os.environ.get("PADAM_AIFA_MCP_TOKEN", "").strip() or _ключ_студии.get().strip()
     if not key:
         raise PermissionError(
             "PADAM_AIFA_MCP_TOKEN is not set: create a key in your cabinet at https://aifa.works/mcp "
@@ -217,3 +223,98 @@ def dispatch(memory, name: str, args: dict[str, Any]) -> dict[str, Any]:
     if name == "padam_partner_draft_outreach":
         return draft_outreach(memory, str(args.get("site") or ""), language=str(args.get("language") or "en"), note=str(args.get("note") or ""))
     raise ValueError(f"unknown partner tool {name}")
+
+
+# ---------- Studio, блок «9. AIfaFocus» (18.11.2026): та же логика, что у padam_partner_*, без второй копии ----------
+
+_DDL_KEY = """CREATE TABLE IF NOT EXISTS ark_partner_key (
+    user_id TEXT PRIMARY KEY,
+    key_enc TEXT NOT NULL,
+    fingerprint TEXT NOT NULL,
+    updated_at REAL NOT NULL
+)"""
+
+
+def _ensure_key_table(memory) -> None:
+    with memory.store._lock:
+        memory.store.conn.execute(_DDL_KEY)
+        memory.store.conn.commit()
+
+
+def save_studio_key(memory, key: str) -> dict[str, Any]:
+    """Сохраняет ключ кабинета aifa.works зашифрованным (AES-256-GCM ключом владельца). В ответе — только отпечаток."""
+    import time
+    from . import freelance_autonomy
+
+    k = str(key or "").strip()
+    if not k.startswith("amcp_") or len(k) < 16:
+        raise ValueError("the cabinet key starts with amcp_ — create it at https://aifa.works/mcp")
+    _ensure_key_table(memory)
+    fp = hashlib.sha256(k.encode("utf-8")).hexdigest()[:12]
+    enc = freelance_autonomy._seal_secret(memory, k)
+    with memory.store._lock:
+        memory.store.conn.execute(
+            "INSERT INTO ark_partner_key(user_id, key_enc, fingerprint, updated_at) VALUES (?,?,?,?) "
+            "ON CONFLICT(user_id) DO UPDATE SET key_enc=excluded.key_enc, fingerprint=excluded.fingerprint, updated_at=excluded.updated_at",
+            (memory.user_id, enc, fp, time.time()),
+        )
+        memory.store.conn.commit()
+    return studio_status(memory)
+
+
+def _saved_key(memory) -> tuple[str, str]:
+    from . import freelance_autonomy
+
+    _ensure_key_table(memory)
+    with memory.store._lock:
+        row = memory.store.conn.execute(
+            "SELECT key_enc, fingerprint FROM ark_partner_key WHERE user_id=?", (memory.user_id,)
+        ).fetchone()
+    if not row:
+        return "", ""
+    try:
+        return freelance_autonomy._unseal_secret(memory, row[0]), str(row[1])
+    except Exception:
+        return "", str(row[1])
+
+
+def studio_status(memory) -> dict[str, Any]:
+    """Состояние блока для Studio: есть ли ключ (окружение или сохранённый), отпечаток, адрес облака. Ключа в ответе нет."""
+    env_key = os.environ.get("PADAM_AIFA_MCP_TOKEN", "").strip()
+    saved, fp = _saved_key(memory)
+    source = "env" if env_key else ("saved" if saved else "none")
+    return {
+        "configured": source != "none",
+        "source": source,
+        "fingerprint": hashlib.sha256(env_key.encode("utf-8")).hexdigest()[:12] if env_key else fp,
+        "mcp_tools_enabled": enabled(),
+        "cloud": АДРЕС_ПО_УМОЛЧАНИЮ,
+        "create_key_url": "https://aifa.works/mcp",
+        "tools": list(TOOL_NAMES),
+        "sends_email": False,
+    }
+
+
+def studio_action(memory, action: str, data: dict[str, Any]) -> dict[str, Any]:
+    """Одно действие кнопки Studio = один инструмент padam_partner_* (паритет). Письма не отправляются никогда."""
+    act = str(action or "").strip().lower()
+    if act == "status":
+        return studio_status(memory)
+    if act == "save_key":
+        return save_studio_key(memory, str(data.get("key") or ""))
+    имя = {
+        "find_clients": "padam_partner_find_clients",
+        "client_report": "padam_partner_client_report",
+        "client_link": "padam_partner_client_link",
+        "kit": "padam_partner_kit",
+        "deals": "padam_partner_deals",
+        "draft_outreach": "padam_partner_draft_outreach",
+    }.get(act)
+    if not имя:
+        raise ValueError(f"unknown action {act!r}")
+    saved, _ = _saved_key(memory)
+    метка = _ключ_студии.set(saved)
+    try:
+        return dispatch(memory, имя, data)
+    finally:
+        _ключ_студии.reset(метка)
