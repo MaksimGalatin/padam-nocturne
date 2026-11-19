@@ -253,6 +253,13 @@ STRINGS: dict[str, dict[str, str]] = {
         "mail_lang_auto": "Язык: Авто (США=EN / .ru=RU)",
         "mail_leads_ph": "Вставьте список клиентов построчно: email, domain (или CSV с заголовками email, domain)",
         "mail_import_btn": "Загрузить список клиентов",
+        "qs_doctor_btn": "Диагностика в 1 клик",
+        "mail_warmup_lbl": "Плавный прогрев новых ящиков (5→10→20→30/день)",
+        "mail_test_btn": "Тест на мою почту",
+        "mail_verify_all_btn": "Проверить все ящики (SMTP+DNS)",
+        "mail_pull_map_btn": "Взять лидов с карты aifa.works",
+        "mail_bulk_ph": "Массовое добавление почт (построчно): email | app_password (или через запятую)",
+        "mail_bulk_btn": "Подключить списком (до 25 почт за раз)",
         "ff_title": "Ленты Семьи",
         "ff_desc": "Решения Совета отдельно от карантина. «Офис» — рабочая переписка сестёр, «Курилка» — свободная. Подозрительное само уходит в карантин. Всё здесь — записи, а не приказы.",
         "ff_work": "Решения",
@@ -989,6 +996,13 @@ STRINGS: dict[str, dict[str, str]] = {
         "mail_lang_auto": "Language: Auto (US=EN / .ru=RU)",
         "mail_leads_ph": "Paste client list line by line: email, domain (or CSV with email, domain headers)",
         "mail_import_btn": "Load client list",
+        "qs_doctor_btn": "1-Click Health Check",
+        "mail_warmup_lbl": "Gradual mailbox warmup (5→10→20→30/day)",
+        "mail_test_btn": "Send test to my email",
+        "mail_verify_all_btn": "Verify all mailboxes (SMTP+DNS)",
+        "mail_pull_map_btn": "Pull leads from aifa.works map",
+        "mail_bulk_ph": "Bulk add mailboxes (line by line): email | app_password",
+        "mail_bulk_btn": "Connect bulk list (up to 25)",
         "ff_title": "Family feeds",
         "ff_desc": "Council decisions are kept apart from quarantine. 'Office' is the siblings' work chat, 'Break room' is free talk. Anything suspicious goes to quarantine by itself. Everything here is records, not orders.",
         "ff_work": "Decisions",
@@ -1714,6 +1728,13 @@ STRINGS: dict[str, dict[str, str]] = {
         "mail_lang_auto": "Idioma: Auto (US=EN / .ru=RU)",
         "mail_leads_ph": "Pega lista por líneas: email, domain (o CSV con encabezados email, domain)",
         "mail_import_btn": "Cargar lista de clientes",
+        "qs_doctor_btn": "Diagnóstico en 1 clic",
+        "mail_warmup_lbl": "Calentamiento gradual de buzones (5→10→20→30/día)",
+        "mail_test_btn": "Enviar prueba a mi correo",
+        "mail_verify_all_btn": "Verificar todos (SMTP+DNS)",
+        "mail_pull_map_btn": "Traer leads del mapa aifa.works",
+        "mail_bulk_ph": "Añadir buzones en bloque (por líneas): email | app_password",
+        "mail_bulk_btn": "Conectar lista (hasta 25)",
         "ff_title": "Canales de la Familia",
         "ff_desc": "Las decisiones del Consejo van separadas de la cuarentena. «Oficina» es el chat de trabajo de las hermanas; «Descanso», la charla libre. Lo sospechoso pasa solo a cuarentena. Todo aquí son registros, no órdenes.",
         "ff_work": "Decisiones",
@@ -2439,6 +2460,13 @@ STRINGS: dict[str, dict[str, str]] = {
         "mail_lang_auto": "语言：自动 (US=EN / .ru=RU)",
         "mail_leads_ph": "按行粘贴客户列表：email, domain（或含 email, domain 表头的 CSV）",
         "mail_import_btn": "导入客户列表",
+        "qs_doctor_btn": "一键健康诊断",
+        "mail_warmup_lbl": "新邮箱渐进预热 (5→10→20→30封/天)",
+        "mail_test_btn": "发送测试邮件给自己",
+        "mail_verify_all_btn": "校验全部邮箱 (SMTP+DNS)",
+        "mail_pull_map_btn": "从 aifa.works 地图拉取线索",
+        "mail_bulk_ph": "批量添加邮箱（每行一个）：email | app_password",
+        "mail_bulk_btn": "批量连接邮箱（最多25个）",
         "ff_title": "家族频道",
         "ff_desc": "议会决定与隔离区分开存放。“办公室”是姐妹们的工作聊天，“茶水间”是自由闲聊。可疑内容会自动进入隔离区。这里的一切都是记录，而不是命令。",
         "ff_work": "决定",
@@ -4456,6 +4484,17 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .qs-badge.ok {
   background: rgba(16, 185, 129, 0.25);
   color: #6ee7b7;
+}
+.qs-health-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.45);
 }
 .qs-check-lbl {
   display: flex;
@@ -8779,6 +8818,12 @@ async function loadMailHub() {
     if ($('qs-progress-badge')) { $('qs-progress-badge').textContent = doneSteps + ' / 4'; $('qs-progress-badge').className = 'qs-badge' + (doneSteps === 4 ? ' ok' : ''); }
     if ($('earn-mail-auto-chk') && m && m.prefs) { $('earn-mail-auto-chk').checked = !!m.prefs.auto_outreach_enabled; }
     if ($('earn-mail-lang') && m && m.prefs && m.prefs.outreach_language) { $('earn-mail-lang').value = m.prefs.outreach_language; }
+    const h = (m && m.health) || {};
+    if ($('qh-admin')) { $('qh-admin').textContent = 'ADMIN_SECRET: ' + (h.has_admin_secret ? 'OK' : 'MISSING'); $('qh-admin').className = 'qs-badge' + (h.has_admin_secret ? ' ok' : ''); }
+    if ($('qh-mcp')) { $('qh-mcp').textContent = 'MCP_TOKEN: ' + (h.has_mcp_token ? 'OK' : 'MISSING'); $('qh-mcp').className = 'qs-badge' + (h.has_mcp_token ? ' ok' : ''); }
+    if ($('qh-mail')) { $('qh-mail').textContent = 'Mail: ' + Number(h.mail_accounts_active || 0) + '/' + Number(h.mail_accounts_total || 0); $('qh-mail').className = 'qs-badge' + (Number(h.mail_accounts_active || 0) > 0 ? ' ok' : ''); }
+    if ($('qh-leads')) { $('qh-leads').textContent = 'Leads: ' + Number(h.leads_ready || 0); $('qh-leads').className = 'qs-badge' + (Number(h.leads_ready || 0) > 0 ? ' ok' : ''); }
+    if ($('qh-worker')) { $('qh-worker').textContent = 'Worker: ' + (h.worker_running ? 'ON' : 'OFF'); $('qh-worker').className = 'qs-badge' + (h.worker_running ? ' ok' : ''); }
   } catch (e) {}
 }
 if ($('qs-go-agent-btn')) { $('qs-go-agent-btn').onclick = () => { const el = $('earn-sib-id'); if (el) { el.scrollIntoView({behavior:'smooth', block:'center'}); el.focus(); } }; }
@@ -8841,6 +8886,65 @@ if ($('earn-mail-lang')) {
     } catch (e) { say(String(e.message || e), false); }
   };
 }
+if ($('qs-doctor-btn')) {
+  $('qs-doctor-btn').onclick = async () => {
+    try {
+      const r = await api('/api/v2/ark/mail/action', { action: 'verify_all_mails' });
+      if ($('qs-doctor-out')) {
+        $('qs-doctor-out').textContent = 'SMTP/IMAP checked: ' + Number(r.checked || 0) + ' (OK: ' + Number(r.auth_ok || 0) + ', Failed: ' + Number(r.auth_failed || 0) + ')';
+      }
+      refreshQuickStart();
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
+if ($('earn-mail-bulk-btn')) {
+  $('earn-mail-bulk-btn').onclick = async () => {
+    try {
+      const r = await api('/api/v2/ark/mail/action', {
+        action: 'bulk_connect_mail',
+        raw_text: ($('earn-mail-bulk-inp') && $('earn-mail-bulk-inp').value) || '',
+        provider: ($('earn-mail-provider') && $('earn-mail-provider').value) || 'gmail',
+        daily_limit: Number(($('earn-mail-limit') && $('earn-mail-limit').value) || 30),
+        warmup_enabled: !!($('earn-mail-warmup-chk') && $('earn-mail-warmup-chk').checked),
+      });
+      _famShow('earn-mail-out', r);
+      say(r && r.ok ? S.done : String((r && r.error) || 'error'), !!(r && r.ok));
+      loadMailHub();
+      refreshQuickStart();
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
+if ($('earn-mail-verify-all-btn')) {
+  $('earn-mail-verify-all-btn').onclick = async () => {
+    try {
+      const r = await api('/api/v2/ark/mail/action', { action: 'verify_all_mails' });
+      _famShow('earn-mail-out', r);
+      refreshQuickStart();
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
+if ($('earn-mail-test-btn')) {
+  $('earn-mail-test-btn').onclick = async () => {
+    try {
+      const r = await api('/api/v2/ark/mail/action', {
+        action: 'test_mail',
+        domain: ($('earn-mail-domain') && $('earn-mail-domain').value) || 'aifa.works',
+      });
+      _famShow('earn-mail-out', r);
+      say(r && r.ok ? S.done : String((r && r.error) || 'error'), !!(r && r.ok));
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
+if ($('earn-mail-pull-map-btn')) {
+  $('earn-mail-pull-map-btn').onclick = async () => {
+    try {
+      const r = await api('/api/v2/ark/mail/action', { action: 'pull_map_leads', max_leads: 50 });
+      _famShow('earn-mail-out', r);
+      say(r && r.ok ? S.done : String((r && r.error) || 'error'), !!(r && r.ok));
+      refreshQuickStart();
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
 loadMailHub();
 refreshQuickStart();
         };
@@ -8859,6 +8963,7 @@ if ($('earn-mail-connect-btn')) {
         email: ($('earn-mail-email') && $('earn-mail-email').value) || '',
         app_password_or_token: ($('earn-mail-secret') && $('earn-mail-secret').value) || '',
         daily_limit: Number(($('earn-mail-limit') && $('earn-mail-limit').value) || 30),
+        warmup_enabled: !!($('earn-mail-warmup-chk') && $('earn-mail-warmup-chk').checked),
       });
       say(r && r.ok ? S.done : String((r && r.error) || 'error'), !!(r && r.ok));
       loadMailHub();
@@ -10598,6 +10703,60 @@ def page() -> tuple[str, str]:
           <h2 class="panel-title" data-i18n="earn_title">{s['earn_title']}</h2>
           <p class="panel-sub" data-i18n="earn_sub">{s['earn_sub']}</p>
         </div>
+        <div id="qs-health-bar" class="qs-health-bar">
+          <span id="qh-admin" class="qs-badge">ADMIN_SECRET: …</span>
+          <span id="qh-mcp" class="qs-badge">MCP_TOKEN: …</span>
+          <span id="qh-mail" class="qs-badge">Mail: 0</span>
+          <span id="qh-leads" class="qs-badge">Leads: 0</span>
+          <span id="qh-worker" class="qs-badge">Worker: OFF</span>
+          <button id="qs-doctor-btn" type="button" class="btn-primary" data-i18n="qs_doctor_btn">{s['qs_doctor_btn']}</button>
+        </div>
+        <div id="qs-doctor-out" class="earn-meta" role="status"></div>
+        <div id="earn-quickstart" class="qs-banner">
+          <div class="qs-head">
+            <div>
+              <h3 class="box-title" data-i18n="qs_title">{s['qs_title']}</h3>
+              <p class="earn-meta" data-i18n="qs_sub">{s['qs_sub']}</p>
+            </div>
+            <span id="qs-progress-badge" class="qs-badge">0 / 4</span>
+          </div>
+          <div class="qs-grid">
+            <div class="qs-step">
+              <strong data-i18n="qs_step1_t">{s['qs_step1_t']}</strong>
+              <span id="qs-st-1" class="qs-badge">0</span>
+              <p class="earn-meta" data-i18n="qs_step1_d">{s['qs_step1_d']}</p>
+              <div class="rec-actions">
+                <button id="qs-go-agent-btn" type="button" data-i18n="qs_btn_agent">{s['qs_btn_agent']}</button>
+                <button id="qs-go-wiz-btn" type="button" class="btn-primary" data-i18n="qs_btn_wizard">{s['qs_btn_wizard']}</button>
+              </div>
+            </div>
+            <div class="qs-step">
+              <strong data-i18n="qs_step2_t">{s['qs_step2_t']}</strong>
+              <span id="qs-st-2" class="qs-badge">0</span>
+              <p class="earn-meta" data-i18n="qs_step2_d">{s['qs_step2_d']}</p>
+              <div class="rec-actions">
+                <button id="qs-go-mail-btn" type="button" class="btn-primary" data-i18n="qs_btn_mail">{s['qs_btn_mail']}</button>
+              </div>
+            </div>
+            <div class="qs-step">
+              <strong data-i18n="qs_step3_t">{s['qs_step3_t']}</strong>
+              <span id="qs-st-3" class="qs-badge">0</span>
+              <p class="earn-meta" data-i18n="qs_step3_d">{s['qs_step3_d']}</p>
+              <div class="rec-actions">
+                <button id="qs-go-leads-btn" type="button" class="btn-primary" data-i18n="qs_btn_leads">{s['qs_btn_leads']}</button>
+              </div>
+            </div>
+            <div class="qs-step">
+              <strong data-i18n="qs_step4_t">{s['qs_step4_t']}</strong>
+              <span id="qs-st-4" class="qs-badge">OFF</span>
+              <p class="earn-meta" data-i18n="qs_step4_d">{s['qs_step4_d']}</p>
+              <div class="rec-actions">
+                <button id="qs-launch-all-btn" type="button" class="btn-ok" data-i18n="qs_btn_launch">{s['qs_btn_launch']}</button>
+                <button id="qs-refresh-btn" type="button" data-i18n="qs_btn_refresh">{s['qs_btn_refresh']}</button>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="earn-grid">
           <div class="box earn-box-wide">
             <h3 class="box-title" data-i18n="earn_ex_title">{s['earn_ex_title']}</h3>
@@ -10957,7 +11116,19 @@ def page() -> tuple[str, str]:
               <input id="earn-mail-email" type="email" placeholder="contact@yourdomain.com" aria-label="Email address">
               <input id="earn-mail-secret" type="password" autocomplete="off" placeholder="{s['mail_ph_secret']}" data-i18n-placeholder="mail_ph_secret" aria-label="{s['mail_ph_secret']}">
               <input id="earn-mail-limit" class="earn-num-input" type="number" value="30" min="1" max="200" aria-label="Daily limit">
+              <label class="qs-check-lbl">
+                <input id="earn-mail-warmup-chk" type="checkbox">
+                <span data-i18n="mail_warmup_lbl">{s['mail_warmup_lbl']}</span>
+              </label>
               <button id="earn-mail-connect-btn" class="btn-primary" type="button" data-i18n="mail_connect">{s['mail_connect']}</button>
+            </div>
+            <div class="toolbar qs-leads-col">
+              <textarea id="earn-mail-bulk-inp" class="qs-textarea" placeholder="{s['mail_bulk_ph']}" data-i18n-placeholder="mail_bulk_ph" aria-label="{s['mail_bulk_ph']}"></textarea>
+              <div class="rec-actions">
+                <button id="earn-mail-bulk-btn" class="btn-primary" type="button" data-i18n="mail_bulk_btn">{s['mail_bulk_btn']}</button>
+                <button id="earn-mail-verify-all-btn" type="button" data-i18n="mail_verify_all_btn">{s['mail_verify_all_btn']}</button>
+                <button id="earn-mail-test-btn" class="btn-ok" type="button" data-i18n="mail_test_btn">{s['mail_test_btn']}</button>
+              </div>
             </div>
             <div class="toolbar">
               <select id="earn-mail-lang" aria-label="Outreach language">
@@ -10974,6 +11145,7 @@ def page() -> tuple[str, str]:
               <textarea id="earn-mail-leads-inp" class="qs-textarea" placeholder="{s['mail_leads_ph']}" data-i18n-placeholder="mail_leads_ph" aria-label="{s['mail_leads_ph']}"></textarea>
               <div class="rec-actions">
                 <button id="earn-mail-import-btn" class="btn-primary" type="button" data-i18n="mail_import_btn">{s['mail_import_btn']}</button>
+                <button id="earn-mail-pull-map-btn" type="button" data-i18n="mail_pull_map_btn">{s['mail_pull_map_btn']}</button>
               </div>
             </div>
             <div class="toolbar">

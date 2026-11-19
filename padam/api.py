@@ -2212,6 +2212,31 @@ class Handler(BaseHTTPRequestHandler):
                             str(data.get("domain") or ""),
                             language=str(data.get("language") or "ru"),
                         )
+                    elif act_m == "test_mail":
+                        res_m = _ea.send_test_email_to_self(
+                            mem(),
+                            mail_id=str(data.get("mail_id") or ""),
+                            target_email=str(data.get("target_email") or ""),
+                            domain=str(data.get("domain") or "aifa.works"),
+                        )
+                    elif act_m == "bulk_connect_mail":
+                        res_m = _ea.bulk_connect_mail(
+                            mem(),
+                            str(data.get("raw_text") or ""),
+                            default_provider=str(data.get("provider") or "gmail"),
+                            default_daily_limit=int(data.get("daily_limit") or 30),
+                            verify_connection=bool(data.get("verify_connection", True)),
+                            warmup_enabled=bool(data.get("warmup_enabled", False)),
+                        )
+                    elif act_m == "verify_all_mails":
+                        res_m = _ea.verify_all_mail_accounts(mem(), allow_live_dns=bool(data.get("allow_live_dns", False)))
+                    elif act_m == "check_mail_dns":
+                        res_m = _ea.check_mail_dns_health(str(data.get("domain") or ""), allow_live_dns=bool(data.get("allow_live_dns", False)))
+                    elif act_m == "pull_map_leads":
+                        res_m = _ea.pull_partner_map_leads(mem(), max_leads=int(data.get("max_leads") or 50))
+                    elif act_m == "archive_accounting_csv":
+                        from . import freelance_autonomy as _fa
+                        res_m = _fa.archive_monthly_accounting_csv(mem())
                     elif act_m == "import_leads":
                         res_m = _ea.import_outreach_leads(
                             mem(),

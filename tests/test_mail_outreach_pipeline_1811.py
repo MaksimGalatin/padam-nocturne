@@ -525,3 +525,122 @@ def test_universal_onboarding_leads_autolang_and_autopilot_outreach(tmp_path):
         assert "Отписаться" in by_to["info@pekarnya.ru"]["body"] or "STOP" in by_to["info@pekarnya.ru"]["body"]
     finally:
         email_autonomy.set_mail_transport(None)
+
+
+def test_top10_features_full_coverage(tmp_path, monkeypatch):
+    """Проверка всех 10 доработок: прогрев, массовые почты, тест себе, DNS, карта, патчи, вложения, CSV-архив и MCP."""
+    import http.server
+    import json as _json
+    import threading as _th
+    import time as _time
+    from padam import email_autonomy, family_feeds, freelance_autonomy, mcp_server, site_scanner
+
+    mem = _make_mem(tmp_path)
+    sent_pkts: list[dict] = []
+
+    def _mock_tr(pkt: dict):
+        if pkt.get("op") == "send":
+            sent_pkts.append(dict(pkt))
+            return {"ok": True, "message_id": f"m-{len(sent_pkts)}"}
+        return {"ok": True, "messages": []}
+
+    email_autonomy.set_mail_transport(_mock_tr)
+
+    class _Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path.startswith("/map/outreach_us_index.json"):
+                body = _json.dumps({
+                    "domains": {
+                        "alpha-dental.com": {"email": "frontdesk@alpha-dental.com", "company": "Alpha Dental"},
+                        "beta-legal.com": {"email": "info@beta-legal.com", "company": "Beta Legal"},
+                    }
+                }).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
+            if self.path.startswith("/api/admin/service-orders"):
+                body = b"order_id,amount,currency\nord-1,149.00,USD\n"
+                self.send_response(200)
+                self.send_header("Content-Type", "text/csv")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
+            self.send_response(404)
+            self.end_headers()
+
+        def log_message(self, *args):
+            return
+
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
+    port = srv.server_address[1]
+    _th.Thread(target=srv.serve_forever, daemon=True).start()
+
+    try:
+        # 1. Массовое подключение почт с плавным прогревом
+        bulk = email_autonomy.bulk_connect_mail(
+            mem,
+            "b1@test.com | pass1\nb2@test.com | pass2 | yandex | 40\n",
+            warmup_enabled=True,
+        )
+        assert bulk["ok"] is True and bulk["connected"] == 2
+        accs = email_autonomy.list_mail_accounts(mem)
+        assert accs[0]["effective_daily_limit"] == 5  # день 0 -> лимит прогрева 5
+
+        # 2. Проверка прогрева на 8-й день (лимит 20)
+        assert email_autonomy.effective_daily_limit(
+            {"daily_limit": 30, "warmup_enabled": 1, "created_at": _time.time() - 8 * 86400}
+        ) == 20
+
+        # 3. Тест на свою почту + вложение HTML
+        t_res = email_autonomy.send_test_email_to_self(mem, domain="alpha-dental.com")
+        assert t_res["ok"] is True
+        assert any(p.get("attachment_name") == "aifa_test_report.html" for p in sent_pkts)
+
+        # 4. Проверка всех ящиков + DNS
+        v_res = email_autonomy.verify_all_mail_accounts(mem)
+        assert v_res["ok"] is True and v_res["auth_ok"] == 2
+        assert v_res["results"][0]["dns"]["mx_ok"] is True
+
+        # 5. Забор лидов с карты
+        pull = email_autonomy.pull_partner_map_leads(
+            mem, max_leads=10, allow_localhost=True, map_url=f"http://127.0.0.1:{port}/map/outreach_us_index.json"
+        )
+        assert pull["ok"] is True and pull["imported"] == 2
+
+        # 6. Генерация готовых HTML/CSS-патчей
+        patches = site_scanner.build_fix_patches([
+            {"id": "image-alt", "sample_selector": "img.hero", "help": "alt"},
+            {"id": "color-contrast", "sample_selector": ".btn", "help": "contrast"},
+        ])
+        assert len(patches) == 2 and "alt=" in patches[0]["patch"] and ".btn" in patches[1]["patch"]
+
+        # 7. Ежемесячный архив бухгалтерского CSV
+        arch_dir = tmp_path / "accounting"
+        arch = freelance_autonomy.archive_monthly_accounting_csv(
+            mem, base_url=f"http://127.0.0.1:{port}", admin_secret="sec-123", archive_dir=arch_dir, allow_localhost=True
+        )
+        assert arch["ok"] is True and arch["archived"] is True
+        assert Path(arch["path"]).read_text(encoding="utf-8").startswith("order_id,amount")
+
+        # 8. Проброс новых действий в MCP (padam_freelance_hub)
+        monkeypatch.setenv("PADAM_MCP_ARK_TOOLS", "1")
+        monkeypatch.setattr(mcp_server, "mem", lambda: mem)
+        r_imp = _json.loads(mcp_server.call_tool("padam_freelance_hub", {"action": "import_leads", "brief": "mcp@example.com, example.com"}))
+        assert r_imp["ok"] is True
+        r_prefs = _json.loads(mcp_server.call_tool("padam_freelance_hub", {"action": "set_mail_prefs", "language": "en"}))
+        assert r_prefs["ok"] is True and r_prefs["outreach_language"] == "en"
+        r_ver = _json.loads(mcp_server.call_tool("padam_freelance_hub", {"action": "verify_all_mails"}))
+        assert r_ver["ok"] is True and r_ver["auth_ok"] == 2
+
+        # 9. Строка здоровья в mail_hub_snapshot
+        snap = email_autonomy.mail_hub_snapshot(mem)
+        assert "health" in snap and snap["health"]["mail_accounts_active"] == 2
+        assert len(family_feeds.read(mem, "office")) >= 0
+    finally:
+        email_autonomy.set_mail_transport(None)
+        srv.shutdown()
+        srv.server_close()

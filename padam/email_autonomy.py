@@ -139,6 +139,8 @@ def _ensure_mail_schema(memory) -> None:
             )
             """
         )
+        from .store import add_column_safe as _acs
+        _acs(conn, "ark_mail_account", "warmup_enabled", "INTEGER NOT NULL DEFAULT 0")
         conn.commit()
         memory.store.__dict__["_padam_mail_schema_ok"] = True
 
@@ -163,9 +165,29 @@ def _clean_domain(raw: str) -> str:
     return dom[:253]
 
 
+def effective_daily_limit(row: dict[str, Any], *, now_ts: float | None = None) -> int:
+    """Возвращает эффективный суточный лимит ящика с учётом плавного прогрева (5 -> 10 -> 20 -> daily_limit)."""
+    base_lim = max(1, min(200, int(row.get("daily_limit") or 30)))
+    if not int(row.get("warmup_enabled") or 0):
+        return base_lim
+    created = float(row.get("created_at") or 0.0)
+    cur_now = time.time() if now_ts is None else float(now_ts)
+    age_days = max(0.0, (cur_now - created) / 86400.0) if created > 0 else 0.0
+    if age_days < 3.0:
+        cap = 5
+    elif age_days < 7.0:
+        cap = 10
+    elif age_days < 14.0:
+        cap = 20
+    else:
+        cap = base_lim
+    return max(1, min(base_lim, cap))
+
+
 def _public_mail_dict(row: dict[str, Any]) -> dict[str, Any]:
     today = _today_utc()
     sent_today = int(row.get("sent_today") or 0) if str(row.get("last_sent_day") or "") == today else 0
+    eff_lim = effective_daily_limit(row)
     return {
         "mail_id": row["mail_id"],
         "email": row["email"],
@@ -178,8 +200,10 @@ def _public_mail_dict(row: dict[str, Any]) -> dict[str, Any]:
         "secret_configured": bool(row.get("secret_enc")),
         "secret_fp": row.get("secret_fp") or "",
         "daily_limit": int(row["daily_limit"]),
+        "effective_daily_limit": eff_lim,
+        "warmup_enabled": bool(int(row.get("warmup_enabled") or 0)),
         "sent_today": sent_today,
-        "remaining_today": max(0, int(row["daily_limit"]) - sent_today),
+        "remaining_today": max(0, eff_lim - sent_today),
         "status": row["status"],
         "last_error": row.get("last_error") or "",
         "updated_at": float(row.get("updated_at") or 0.0),
@@ -245,6 +269,7 @@ def connect_mail_account(
     display_name: str = "Maksim Galatin · CODE Eternal LLC",
     daily_limit: int = 30,
     verify_connection: bool = True,
+    warmup_enabled: bool = False,
 ) -> dict[str, Any]:
     """Подключает почтовый ящик (Gmail/Yandex/Mail.ru/Outlook/SMTP+IMAP/Resend), шифруя секрет AES-256-GCM."""
     _ensure_mail_schema(memory)
@@ -297,10 +322,10 @@ def connect_mail_account(
                 """
                 UPDATE ark_mail_account
                 SET display_name=?, provider=?, smtp_host=?, smtp_port=?, imap_host=?, imap_port=?,
-                    secret_enc=?, secret_fp=?, daily_limit=?, status='active', last_error='', updated_at=?
+                    secret_enc=?, secret_fp=?, daily_limit=?, warmup_enabled=?, status='active', last_error='', updated_at=?
                 WHERE mail_id=? AND user_id=?
                 """,
-                (str(display_name)[:120], prov, s_host, s_port, i_host, i_port, secret_enc, secret_fp, lim, now, mail_id, memory.user_id),
+                (str(display_name)[:120], prov, s_host, s_port, i_host, i_port, secret_enc, secret_fp, lim, 1 if warmup_enabled else 0, now, mail_id, memory.user_id),
             )
         else:
             mail_id = f"mail-{secrets.token_hex(5)}"
@@ -309,11 +334,11 @@ def connect_mail_account(
                 INSERT INTO ark_mail_account (
                     mail_id, user_id, email, display_name, provider,
                     smtp_host, smtp_port, imap_host, imap_port,
-                    secret_enc, secret_fp, daily_limit, sent_today, last_sent_day,
+                    secret_enc, secret_fp, daily_limit, warmup_enabled, sent_today, last_sent_day,
                     status, last_error, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, '', 'active', '', ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, '', 'active', '', ?, ?)
                 """,
-                (mail_id, memory.user_id, clean_em, str(display_name)[:120], prov, s_host, s_port, i_host, i_port, secret_enc, secret_fp, lim, now, now),
+                (mail_id, memory.user_id, clean_em, str(display_name)[:120], prov, s_host, s_port, i_host, i_port, secret_enc, secret_fp, lim, 1 if warmup_enabled else 0, now, now),
             )
         conn.commit()
         row = dict(conn.execute("SELECT * FROM ark_mail_account WHERE mail_id=? AND user_id=?", (mail_id, memory.user_id)).fetchone())
@@ -508,7 +533,7 @@ def _pick_mail_account(memory, mail_id: str = "") -> dict[str, Any] | None:
         if mail_id and d["mail_id"] != mail_id:
             continue
         sent_today = int(d.get("sent_today") or 0) if str(d.get("last_sent_day") or "") == today else 0
-        if sent_today < int(d.get("daily_limit") or 30):
+        if sent_today < effective_daily_limit(d):
             return d
     return None
 
@@ -521,6 +546,7 @@ def _deliver_email_via_account(
     subject: str,
     body: str,
     html_body: str = "",
+    html_attachment_name: str = "",
 ) -> dict[str, Any]:
     secret = freelance_autonomy._unseal_secret(memory, str(acc["secret_enc"]))
     if _MAIL_TRANSPORT is not None:
@@ -532,6 +558,7 @@ def _deliver_email_via_account(
             "subject": subject,
             "body": body,
             "html_body": html_body,
+            "attachment_name": html_attachment_name,
         }) or {"ok": True}
 
     if os.environ.get("PYTEST_CURRENT_TEST"):
@@ -566,6 +593,9 @@ def _deliver_email_via_account(
     msg.set_content(body, subtype="plain", charset="utf-8")
     if html_body:
         msg.add_alternative(html_body, subtype="html", charset="utf-8")
+    if html_attachment_name and (html_body or body):
+        att_bytes = (html_body or f"<pre>{_html.escape(body)}</pre>").encode("utf-8")
+        msg.add_attachment(att_bytes, maintype="text", subtype="html", filename=str(html_attachment_name)[:80])
 
     ctx = ssl.create_default_context()
     if int(acc["smtp_port"]) == 465:
@@ -609,6 +639,7 @@ def send_outreach_email(
     subject: str,
     body: str,
     html_body: str = "",
+    html_attachment_name: str = "",
     mail_id: str = "",
     direction: str = "outbound_first",
     stop_file_path: Path | None = None,
@@ -634,7 +665,7 @@ def send_outreach_email(
     if direction == "outbound_first" and "STOP" not in str(body or "").upper():
         body = str(body or "").rstrip() + "\n\n" + COMPLIANCE_FOOTER
     try:
-        res = _deliver_email_via_account(memory, acc, to_email=clean_to, subject=subject, body=body, html_body=html_body)
+        res = _deliver_email_via_account(memory, acc, to_email=clean_to, subject=subject, body=body, html_body=html_body, html_attachment_name=html_attachment_name)
     except smtplib.SMTPRecipientsRefused as exc:      # п. 20: адрес отклонён сервером — это отказ доставки
         record_bounce(memory, clean_to, stop_file_path=stop_file_path)
         return {"ok": False, "bounced": True, "error": f"Адрес отклонён почтовым сервером: {exc}"}
@@ -1053,6 +1084,17 @@ def mail_hub_snapshot(memory) -> dict[str, Any]:
         "leads_count": leads_cnt,
         "local_csv_available": local_csv_ok,
         "prefs": prefs,
+        "health": {
+            "has_admin_secret": bool(str(os.environ.get("PADAM_AIFA_ADMIN_SECRET") or "").strip()),
+            "has_mcp_token": bool(str(os.environ.get("PADAM_AIFA_MCP_TOKEN") or "").strip()),
+            "mail_accounts_total": len(accounts),
+            "mail_accounts_active": sum(1 for a in accounts if a.get("status") == "active"),
+            "leads_ready": leads_cnt + (2618 if local_csv_ok else 0),
+            "worker_running": bool(
+                freelance_autonomy._AUTOPILOT_WORKER_THREAD is not None
+                and freelance_autonomy._AUTOPILOT_WORKER_THREAD.is_alive()
+            ),
+        },
         "recent_logs": logs,
     }
 
@@ -1228,3 +1270,222 @@ def run_follow_up_cycle(
         else:
             skipped += 1
     return {"ok": True, "follow_ups_sent": sent, "skipped": skipped}
+
+
+def check_mail_dns_health(email_or_domain: str, *, allow_live_dns: bool = False) -> dict[str, Any]:
+    """Предполётная проверка DNS-записей (MX, SPF, DMARC) домена почтового ящика."""
+    import socket as _sock
+    import subprocess as _sp
+
+    dom = _clean_domain(email_or_domain)
+    if not dom:
+        return {"ok": False, "domain": "", "error": "Некорректный домен."}
+    if os.environ.get("PYTEST_CURRENT_TEST") and not allow_live_dns:
+        return {
+            "ok": True,
+            "skipped": True,
+            "domain": dom,
+            "mx_ok": True,
+            "spf_ok": True,
+            "dmarc_ok": True,
+            "warnings": [],
+        }
+
+    mx_ok = False
+    spf_ok = False
+    dmarc_ok = False
+    try:
+        if _sock.getaddrinfo(dom, None):
+            mx_ok = True
+    except Exception:
+        pass
+    for kind, host, marker in (("spf", dom, "v=spf1"), ("dmarc", f"_dmarc.{dom}", "v=dmarc1")):
+        try:
+            out = _sp.check_output(["nslookup", "-type=txt", host], stderr=_sp.STDOUT, timeout=5).decode("utf-8", errors="ignore").lower()
+            if marker in out:
+                if kind == "spf":
+                    spf_ok = True
+                else:
+                    dmarc_ok = True
+        except Exception:
+            pass
+    warnings = []
+    if not mx_ok:
+        warnings.append("Домен не резолвится / проверьте MX.")
+    if not spf_ok:
+        warnings.append("Не найдена TXT SPF-запись (v=spf1).")
+    if not dmarc_ok:
+        warnings.append("Не найдена TXT _dmarc запись (v=DMARC1).")
+    return {"ok": mx_ok and spf_ok, "domain": dom, "mx_ok": mx_ok, "spf_ok": spf_ok, "dmarc_ok": dmarc_ok, "warnings": warnings}
+
+
+def send_test_email_to_self(
+    memory,
+    *,
+    mail_id: str = "",
+    target_email: str = "",
+    domain: str = "aifa.works",
+) -> dict[str, Any]:
+    """Отправляет 1 тестовое письмо себе с примером отчёта (обходит 30-дневную бронь)."""
+    _ensure_mail_schema(memory)
+    accs = [a for a in list_mail_accounts(memory) if a.get("status") == "active"]
+    if not accs:
+        return {"ok": False, "error": "Нет ни одной активной подключённой почты."}
+    chosen = next((a for a in accs if mail_id and a["mail_id"] == mail_id), accs[0])
+    to_addr = _clean_email(target_email) or chosen["email"]
+    from . import partner_bridge
+    pkg = partner_bridge.build_business_outreach(memory, domain or "aifa.works", language="ru", allow_live_fetch=False)
+    html_att = (
+        "<!doctype html><html lang='ru'><meta charset='utf-8'><body>"
+        f"<h2>Тестовый отчёт AIfa для {to_addr}</h2>"
+        f"<pre>{_html.escape(pkg.get('site_report') or '')}</pre>"
+        "</body></html>"
+    )
+    return send_outreach_email(
+        memory,
+        to_email=to_addr,
+        domain=domain or "aifa.works",
+        subject="[ТЕСТ] Проверка доставляемости AIfa Studio",
+        body=pkg["email_body"],
+        html_body=html_att,
+        html_attachment_name="aifa_test_report.html",
+        mail_id=chosen["mail_id"],
+        direction="test_self",
+    )
+
+
+def bulk_connect_mail(
+    memory,
+    raw_text: str,
+    *,
+    default_provider: str = "gmail",
+    default_daily_limit: int = 30,
+    verify_connection: bool = True,
+    warmup_enabled: bool = False,
+) -> dict[str, Any]:
+    """Массово подключает до 20 почт из текста: email | app_password [| provider [| limit]]."""
+    _ensure_mail_schema(memory)
+    lines = [ln.strip() for ln in str(raw_text or "").splitlines() if ln.strip() and not ln.strip().startswith("#")]
+    if not lines:
+        return {"ok": False, "error": "Список почт пуст.", "connected": 0, "errors": 0}
+    connected = 0
+    errors = 0
+    details: list[dict[str, Any]] = []
+    for ln in lines[:25]:
+        parts = [pt.strip() for pt in re.split(r"[|;,\t]+", ln) if pt.strip()]
+        if len(parts) < 2 and ":" in ln:
+            parts = [pt.strip() for pt in ln.split(":", 1)]
+        if len(parts) < 2:
+            errors += 1
+            details.append({"line": ln[:40], "ok": False, "error": "Нужно: email | app_password"})
+            continue
+        em = parts[0]
+        sec = parts[1]
+        prov = parts[2].lower() if len(parts) > 2 and parts[2].lower() in MAIL_PROVIDER_PRESETS else default_provider
+        lim = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else default_daily_limit
+        try:
+            r = connect_mail_account(
+                memory,
+                email=em,
+                provider=prov,
+                app_password_or_token=sec,
+                daily_limit=lim,
+                verify_connection=verify_connection,
+                warmup_enabled=warmup_enabled,
+            )
+            if r.get("ok"):
+                connected += 1
+                details.append({"email": em, "ok": True})
+            else:
+                errors += 1
+                details.append({"email": em, "ok": False, "error": r.get("error")})
+        except Exception as exc:
+            errors += 1
+            details.append({"email": em, "ok": False, "error": str(exc)})
+    return {"ok": connected > 0, "connected": connected, "errors": errors, "details": details}
+
+
+def verify_all_mail_accounts(memory, *, allow_live_dns: bool = False) -> dict[str, Any]:
+    """Проверяет SMTP/IMAP-вход и DNS (MX/SPF/DMARC) по всем подключённым почтам."""
+    _ensure_mail_schema(memory)
+    with freelance_autonomy._lock_of(memory):
+        rows = [dict(r) for r in memory.store.conn.execute("SELECT * FROM ark_mail_account WHERE user_id=?", (memory.user_id,)).fetchall()]
+    ok_cnt = 0
+    fail_cnt = 0
+    results: list[dict[str, Any]] = []
+    for r in rows:
+        sec = freelance_autonomy._unseal_secret(memory, str(r["secret_enc"]))
+        chk = _verify_smtp_imap_live(
+            provider=str(r["provider"]),
+            email=str(r["email"]),
+            secret=sec,
+            smtp_host=str(r["smtp_host"]),
+            smtp_port=int(r["smtp_port"]),
+            imap_host=str(r["imap_host"]),
+            imap_port=int(r["imap_port"]),
+        )
+        dns = check_mail_dns_health(str(r["email"]), allow_live_dns=allow_live_dns)
+        if chk.get("ok"):
+            ok_cnt += 1
+        else:
+            fail_cnt += 1
+        results.append({
+            "mail_id": r["mail_id"],
+            "email": r["email"],
+            "auth_ok": bool(chk.get("ok")),
+            "auth_error": chk.get("error", ""),
+            "dns": dns,
+        })
+    return {"ok": True, "checked": len(results), "auth_ok": ok_cnt, "auth_failed": fail_cnt, "results": results}
+
+
+def pull_partner_map_leads(
+    memory,
+    *,
+    max_leads: int = 50,
+    allow_localhost: bool = False,
+    map_url: str = "",
+) -> dict[str, Any]:
+    """Подтягивает свежие незанятые лиды с карты aifa.works в локальную БД ark_outreach_leads."""
+    _ensure_mail_schema(memory)
+    if os.environ.get("PYTEST_CURRENT_TEST") and not allow_localhost and not map_url:
+        return {"ok": False, "skipped": True, "error": "Внешняя сеть отключена в тестах.", "imported": 0}
+    target = str(map_url or os.environ.get("PADAM_AIFA_MAP_INDEX_URL") or "https://aifa.works/map/outreach_us_index.json").strip()
+    try:
+        clean_u = net_guard.validate_outbound_url(target, allow_localhost=allow_localhost, allow_http_localhost=True, require_https=not allow_localhost)
+        req = urllib.request.Request(clean_u, headers={"Accept": "application/json", "User-Agent": "AIfa-Partner-Bridge/1.0"})
+        with net_guard.safe_urlopen(req, timeout=15, allow_localhost=allow_localhost, allow_http_localhost=True, require_https=not allow_localhost) as r:
+            data = json.loads(r.read().decode("utf-8", errors="replace"))
+    except Exception as exc:
+        return {"ok": False, "error": f"Не удалось загрузить карту лидов: {exc}", "imported": 0}
+
+    items: list[dict[str, Any]] = []
+    if isinstance(data, dict):
+        if isinstance(data.get("items"), list):
+            items = data["items"]
+        elif isinstance(data.get("domains"), dict):
+            items = [{"domain": k, **(v if isinstance(v, dict) else {})} for k, v in data["domains"].items()]
+        else:
+            items = [{"domain": k, **(v if isinstance(v, dict) else {})} for k, v in data.items() if "." in str(k)]
+    elif isinstance(data, list):
+        items = [x for x in data if isinstance(x, dict)]
+
+    lim = max(1, min(500, int(max_leads or 50)))
+    lines: list[str] = []
+    for it in items:
+        if len(lines) >= lim:
+            break
+        dom = _clean_domain(it.get("domain") or it.get("d") or it.get("host") or it.get("h") or "")
+        if not dom:
+            continue
+        em = _clean_email(it.get("email") or it.get("e") or f"info@{dom}")
+        blocked, _ = is_blocked_by_stop_or_claim(memory, email=em, domain=dom)
+        if blocked:
+            continue
+        comp = str(it.get("company") or it.get("name") or dom).replace(",", " ")[:100]
+        lines.append(f"{em}, {dom}, {comp}")
+    if not lines:
+        return {"ok": True, "imported": 0, "total_leads": len(list_outreach_leads(memory, limit=1000))}
+    imp = import_outreach_leads(memory, "\n".join(lines), source="aifa_works_map")
+    imp["source"] = "aifa_works_map"
+    return imp

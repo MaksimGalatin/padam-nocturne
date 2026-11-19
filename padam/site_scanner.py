@@ -122,6 +122,35 @@ def _same_origin_url(base_parsed: urllib.parse.SplitResult, href: str, *, allow_
         return None
 
 
+_RULE_PATCH_TEMPLATES: dict[str, str] = {
+    "html-has-lang": '<html lang="en"> <!-- укажите основной язык страницы -->',
+    "document-title": "<title>Название компании — Главная</title>",
+    "image-alt": '<img src="..." alt="Краткое описание изображения" />',
+    "label": '<label for="field-id">Подпись поля</label>\n<input id="field-id" ... />',
+    "color-contrast": "/* Увеличьте контраст текста минимум до 4.5:1 */\n{sel} {{ color: #111827; background-color: #ffffff; }}",
+    "button-name": '<button type="button" aria-label="Понятное название действия">...</button>',
+    "link-name": '<a href="..." aria-label="Куда ведёт ссылка">Понятный текст ссылки</a>',
+    "landmark-one-main": '<main id="main-content"><!-- Основное содержимое страницы --></main>',
+    "page-has-heading-one": "<h1>Главный заголовок страницы</h1>",
+    "region": '<section aria-label="Название раздела">...</section>',
+}
+
+
+def build_fix_patches(issues_by_rule: list[dict[str, Any]]) -> list[dict[str, str]]:
+    """Генерирует готовые HTML/CSS-патчи по найденным нарушениям axe-core."""
+    patches: list[dict[str, str]] = []
+    for item in issues_by_rule[:15]:
+        rid = str(item.get("id") or "")
+        sel = str(item.get("sample_selector") or rid or "selector")
+        tpl = _RULE_PATCH_TEMPLATES.get(
+            rid,
+            f"<!-- Исправьте правило {rid} для элемента {sel}: {item.get('help', '')} -->",
+        )
+        snippet = tpl.format(sel=sel) if "{sel}" in tpl else tpl
+        patches.append({"rule_id": rid, "selector": sel, "patch": snippet})
+    return patches
+
+
 def _render_reports(
     target_url: str,
     pages: list[dict[str, Any]],
@@ -172,6 +201,21 @@ def _render_reports(
         "<table><thead><tr><th>Правило</th><th>Уровень</th><th>Узлов</th><th>Рекомендация и пример</th></tr></thead>"
         f"<tbody>{table_body}</tbody></table></body></html>"
     )
+    patches = build_fix_patches(issues_by_rule)
+    if patches:
+        lines.append("")
+        lines.append("Готовые HTML/CSS-патчи (скопируй и вставь):")
+        for pt in patches[:8]:
+            lines.append(f"- [{pt['rule_id']}] ({pt['selector']}):\n{pt['patch']}")
+        patches_html = "".join(
+            f"<li><strong>{html.escape(pt['rule_id'])}</strong> (<code>{html.escape(pt['selector'])}</code>)"
+            f"<pre style='background:#f4f4f5;padding:8px;border-radius:6px;overflow:auto'>{html.escape(pt['patch'])}</pre></li>"
+            for pt in patches[:10]
+        )
+        html_report = html_report.replace(
+            "</body></html>",
+            f"<h2>Готовые HTML/CSS-патчи</h2><ol>{patches_html}</ol></body></html>",
+        )
     return "\n".join(lines), html_report
 
 
@@ -355,6 +399,7 @@ def scan_website_accessibility(
         "moderate_count": counts["moderate"],
         "minor_count": counts["minor"],
         "issues_by_rule": issues_sorted,
+        "patches": build_fix_patches(issues_sorted),
         "pages": pages_result,
         "text_summary": text_summary,
         "html_report": html_report,

@@ -5088,6 +5088,38 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 body=str(args.get("body") or ""),
                 mail_id=str(args.get("mail_id") or ""),
             )
+        elif act == "import_leads":
+            from . import email_autonomy as _ea
+            payload = _ea.import_outreach_leads(
+                m,
+                str(args.get("raw_text") or args.get("brief") or args.get("suggestion_text") or ""),
+                source="mcp",
+            )
+        elif act == "set_mail_prefs":
+            from . import email_autonomy as _ea
+            payload = _ea.set_mail_prefs(
+                m,
+                auto_outreach_enabled=args.get("auto_outreach_enabled"),
+                outreach_language=args.get("language"),
+                daily_batch_limit=args.get("daily_limit"),
+            )
+        elif act == "pull_map_leads":
+            from . import email_autonomy as _ea
+            payload = _ea.pull_partner_map_leads(m, max_leads=int(args.get("daily_limit") or 50))
+        elif act == "verify_all_mails":
+            from . import email_autonomy as _ea
+            payload = _ea.verify_all_mail_accounts(m)
+        elif act == "check_mail_dns":
+            from . import email_autonomy as _ea
+            payload = _ea.check_mail_dns_health(str(args.get("domain") or args.get("client_domain") or ""))
+        elif act == "test_mail":
+            from . import email_autonomy as _ea
+            payload = _ea.send_test_email_to_self(
+                m,
+                mail_id=str(args.get("mail_id") or ""),
+                target_email=str(args.get("client_email") or ""),
+                domain=str(args.get("domain") or args.get("client_domain") or "aifa.works"),
+            )
         elif act == "check_inbox":
             from . import email_autonomy as _ea
             payload = _ea.process_inbox_replies(m, mail_id=str(args.get("mail_id") or ""))

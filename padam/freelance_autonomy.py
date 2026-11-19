@@ -2720,6 +2720,11 @@ def run_autopilot_cycle(memory, *, allow_localhost: bool = False) -> dict[str, A
     except Exception:
         pass
 
+    try:
+        archive_monthly_accounting_csv(memory, allow_localhost=allow_localhost)
+    except Exception:
+        pass
+
     payout_res = release_matured_payouts(memory)
     released_cnt = int(payout_res.get("released_count") or 0) if isinstance(payout_res, dict) else 0
     # Grok-аудит 18.11, п. 2: заметка — для владельца, человеческим языком: что готово и что ему сделать.
@@ -2925,7 +2930,7 @@ def sync_site_orders(
                         if _ea.list_mail_accounts(memory):
                             body_txt = deliverable
                             if scan_res.get("ok") and scan_res.get("html_report"):
-                                body_txt += "\n\nПолный HTML-отчёт приложен в системе и сохранён в карточке заказа."
+                                body_txt += "\n\nПолный HTML-отчёт приложен к письму файлом и сохранён в карточке заказа."
                             _ea.send_outreach_email(
                                 memory,
                                 to_email=client_email,
@@ -2933,10 +2938,23 @@ def sync_site_orders(
                                 subject=f"Готовый отчёт по заказу {oid_ext} ({slug})",
                                 body=body_txt,
                                 html_body=str(scan_res.get("html_report") or "") if isinstance(scan_res, dict) else "",
+                                html_attachment_name=f"wcag-report-{oid_ext}.html",
                                 direction="order_delivery",
                             )
                     except Exception:
                         pass
+                try:
+                    from . import family_feeds as _ff
+                    _ff.post(
+                        memory,
+                        "office",
+                        "aifa",
+                        f"Новый оплаченный заказ {oid_ext} ({slug}) для {website or 'сайта'} на ${amount:.2f} USD — скан и отчёт готовы.",
+                        kind="order_paid",
+                        ref=oid_ext,
+                    )
+                except Exception:
+                    pass
 
                 if slug in ("quick-audit", "fix-pack", "lite-audit"):
                     now_rc = time.time()
@@ -2973,3 +2991,39 @@ def sync_site_orders(
                     )
                     memory.store.conn.commit()
     return {"ok": True, "imported": imported, "executed": executed}
+
+
+def archive_monthly_accounting_csv(
+    memory,
+    *,
+    base_url: str = "",
+    admin_secret: str = "",
+    archive_dir: Any = None,
+    allow_localhost: bool = False,
+) -> dict[str, Any]:
+    """Ежемесячно сохраняет полный бухгалтерский CSV (услуги, подписки, память, возвраты) на диск."""
+    from pathlib import Path as _Path
+    secret = str(admin_secret or os.environ.get("PADAM_AIFA_ADMIN_SECRET") or "").strip()
+    if not secret:
+        return {"ok": True, "skipped": True, "reason": "no_admin_secret"}
+    ym = time.strftime("%Y-%m", time.gmtime())
+    out_dir = _Path(archive_dir) if archive_dir is not None else (_Path.home() / ".padam" / "accounting")
+    out_file = out_dir / f"{ym}_service_orders.csv"
+    if out_file.is_file() and out_file.stat().st_size > 0:
+        return {"ok": True, "skipped": True, "reason": "already_archived_this_month", "path": str(out_file)}
+    target_base = str(base_url or os.environ.get("PADAM_AIFA_DIGITAL_URL") or "https://www.aifa.digital").rstrip("/")
+    clean_base = _validate_api_url(target_base, allow_localhost=allow_localhost)
+    req = urllib.request.Request(
+        f"{clean_base}/api/admin/service-orders?format=csv&scope=all",
+        headers={"Authorization": f"Bearer {secret}", "Accept": "text/csv"},
+        method="GET",
+    )
+    try:
+        with net_guard.safe_urlopen(req, timeout=15, allow_localhost=allow_localhost, allow_http_localhost=True, require_https=not allow_localhost) as r:
+            csv_bytes = r.read()
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_file.write_bytes(csv_bytes)
+    audit_chain.append_audit(memory, "monthly_accounting_archived", {"month": ym, "bytes": len(csv_bytes)}, agent_id="aifa")
+    return {"ok": True, "archived": True, "path": str(out_file), "bytes": len(csv_bytes)}
