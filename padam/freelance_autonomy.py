@@ -23,6 +23,7 @@ import hmac
 import json
 import os
 import re
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -2414,9 +2415,14 @@ def set_autopilot_state(memory, *, running: bool, interval_s: float = 300.0, not
     return get_autopilot_state(memory)
 
 
+_AUTOPILOT_WORKER_LOCK = threading.RLock()
+_AUTOPILOT_WORKER_STOP = threading.Event()
+_AUTOPILOT_WORKER_THREAD: threading.Thread | None = None
+
+
 @_synchronized_memory
 def run_autopilot_cycle(memory, *, allow_localhost: bool = False) -> dict[str, Any]:
-    """Один непрерывный шаг работы Роя на подключённых биржах (только если autopilot_running=True)."""
+    """Полный автономный цикл Роя: опрос бирж и магазинов -> отклики -> исполнение -> безопасная сдача -> выплаты."""
     st = get_autopilot_state(memory)
     if not st["autopilot_running"]:
         return {"ok": True, "skipped": True, "reason": "autopilot_stopped_by_owner", "state": st}
@@ -2439,11 +2445,86 @@ def run_autopilot_cycle(memory, *, allow_localhost: bool = False) -> dict[str, A
         elif res.get("ok"):
             fetched_total += int(res.get("accepted_count") or 0)
 
-    release_matured_payouts(memory)
-    note = f"Цикл завершён: опрошено площадок={checked}, принято заказов={fetched_total}, требуют перевхода={len(reauth_needed)}."
+    # Шаг 2: опрос подключённых цифровых магазинов (5 autopilot-площадок)
+    stores_synced = 0
+    stores_sales_accepted = 0
+    try:
+        from . import digital_stores as _ds
+        for st_row in _ds.list_connected_stores(memory):
+            if str(st_row.get("status") or "") not in ("verified", "active", "connected"):
+                continue
+            stores_synced += 1
+            s_res = _ds.sync_store_sales(memory, str(st_row["store_account_id"]), allow_localhost=allow_localhost)
+            if s_res.get("ok"):
+                stores_sales_accepted += int(s_res.get("imported_count") or s_res.get("synced_count") or 0)
+    except Exception:
+        pass
+
+    # Шаг 3: автоотклик на проверенные заказы на площадках с включённым автопилотом
+    bids_dispatched = 0
+    orders_executed = 0
+    deliveries_packaged = 0
+    try:
+        from . import platform_wizard as _pw
+        _pw._ensure_stage3_schema(memory)
+        ap_rows = memory.store.conn.execute(
+            "SELECT platform_id FROM ark_platform_autopilot_config WHERE user_id = ? AND autopilot_enabled = 1 AND halted_reason = ''",
+            (memory.user_id,),
+        ).fetchall()
+        ap_platforms = {str(r["platform_id"]) for r in ap_rows}
+        if ap_platforms:
+            cand_orders = memory.store.conn.execute(
+                "SELECT * FROM ark_freelance_order WHERE user_id = ? AND status IN ('new', 'evaluated') ORDER BY created_at ASC LIMIT 10",
+                (memory.user_id,),
+            ).fetchall()
+            for orow in cand_orders:
+                pid = str(orow["platform"] or "").lower()
+                if pid not in ap_platforms:
+                    continue
+                d_res = _pw.dispatch_platform_autopilot_action(
+                    memory,
+                    platform_id=pid,
+                    order_id=str(orow["order_id"]),
+                    title=str(orow["title"] or ""),
+                    brief=str(orow["brief_redacted"] or ""),
+                    budget_usdt=float(orow["budget_usdt"] or 0.0),
+                    agent_id=str(orow["assigned_agent"] or "aifa"),
+                )
+                if d_res.get("sent"):
+                    bids_dispatched += 1
+
+        # Шаг 4: исполнение и безопасная сдача принятых автопилотных заказов
+        work_orders = memory.store.conn.execute(
+            "SELECT * FROM ark_freelance_order WHERE user_id = ? AND platform_fee_pct >= 20.0 AND status IN ('accepted', 'bid_placed') ORDER BY created_at ASC LIMIT 5",
+            (memory.user_id,),
+        ).fetchall()
+        for wrow in work_orders:
+            oid = str(wrow["order_id"])
+            aid = str(wrow["assigned_agent"] or "aifa")
+            ex_res = execute_order_with_swarm(memory, oid, agent_id=aid)
+            if ex_res.get("ok"):
+                orders_executed += 1
+                deliverable = (
+                    f"Выполнено автономно агентом {aid} для площадки {wrow['platform']}.\n"
+                    f"Задача: {wrow['title']}\n"
+                    f"Статус проверки: пройдено (Swarm Council + deterministic_verify)."
+                )
+                pkg_res = package_safe_delivery(memory, oid, deliverable_text=deliverable, agent_id=aid)
+                if pkg_res.get("ok"):
+                    deliveries_packaged += 1
+    except Exception as _ap_exc:
+        raise RuntimeError(f'autopilot_step_error: {_ap_exc}') from _ap_exc
+
+    payout_res = release_matured_payouts(memory)
+    released_cnt = int(payout_res.get("released_count") or 0) if isinstance(payout_res, dict) else 0
+    note = (
+        f"Цикл завершён: биржи={checked} (+{fetched_total}), магазины={stores_synced} (+{stores_sales_accepted}), "
+        f"отклики={bids_dispatched}, исполнено={orders_executed}, сдано={deliveries_packaged}, "
+        f"выплат={released_cnt}, перевход={len(reauth_needed)}."
+    )
     memory.store.conn.execute(
         "UPDATE ark_freelance_prefs SET autopilot_last_tick_at = ?, autopilot_last_note = ? WHERE user_id = ?",
-        (time.time(), note, memory.user_id),
+        (time.time(), note[:200], memory.user_id),
     )
     memory.store.conn.commit()
     return {
@@ -2451,6 +2532,52 @@ def run_autopilot_cycle(memory, *, allow_localhost: bool = False) -> dict[str, A
         "skipped": False,
         "accounts_polled": checked,
         "accepted_orders": fetched_total,
+        "stores_synced": stores_synced,
+        "stores_sales_accepted": stores_sales_accepted,
+        "bids_dispatched": bids_dispatched,
+        "orders_executed": orders_executed,
+        "deliveries_packaged": deliveries_packaged,
+        "payouts_released": released_cnt,
         "reauth_needed": reauth_needed,
         "state": get_autopilot_state(memory),
     }
+
+
+def ensure_autopilot_worker(memory_factory, *, allow_localhost: bool = False) -> dict[str, Any]:
+    """Запускает фоновый демон-поток автопилота (один на процесс), если он ещё не запущен."""
+    global _AUTOPILOT_WORKER_THREAD
+    with _AUTOPILOT_WORKER_LOCK:
+        if _AUTOPILOT_WORKER_THREAD is not None and _AUTOPILOT_WORKER_THREAD.is_alive():
+            return {"ok": True, "worker_running": True, "already_running": True}
+        _AUTOPILOT_WORKER_STOP.clear()
+
+        def _loop() -> None:
+            while not _AUTOPILOT_WORKER_STOP.is_set():
+                interval = 30.0
+                try:
+                    m = memory_factory() if callable(memory_factory) else memory_factory
+                    st = get_autopilot_state(m)
+                    if not st.get("autopilot_running"):
+                        break
+                    interval = max(5.0, min(3600.0, float(st.get("interval_s") or 300.0)))
+                    run_autopilot_cycle(m, allow_localhost=allow_localhost)
+                except Exception:
+                    pass
+                _AUTOPILOT_WORKER_STOP.wait(timeout=interval)
+
+        th = threading.Thread(target=_loop, name="padam-autopilot-worker", daemon=True)
+        _AUTOPILOT_WORKER_THREAD = th
+        th.start()
+        return {"ok": True, "worker_running": True, "already_running": False}
+
+
+def stop_autopilot_worker() -> dict[str, Any]:
+    """Останавливает фоновый демон-поток автопилота."""
+    global _AUTOPILOT_WORKER_THREAD
+    with _AUTOPILOT_WORKER_LOCK:
+        _AUTOPILOT_WORKER_STOP.set()
+        th = _AUTOPILOT_WORKER_THREAD
+        if th is not None and th.is_alive() and th is not threading.current_thread():
+            th.join(timeout=1.5)
+        _AUTOPILOT_WORKER_THREAD = None
+    return {"ok": True, "worker_running": False}

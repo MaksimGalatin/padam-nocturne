@@ -1926,8 +1926,11 @@ class Handler(BaseHTTPRequestHandler):
                 if act == "release_payouts":
                     return self._send(200, _fa.release_matured_payouts(mem()))
                 if act == "autopilot_start":
-                    return self._send(200, _fa.set_autopilot_state(mem(), running=True, interval_s=float(data.get("interval_s") or 300.0)))
+                    st_ap = _fa.set_autopilot_state(mem(), running=True, interval_s=float(data.get("interval_s") or 300.0))
+                    _fa.ensure_autopilot_worker(mem, allow_localhost=bool(data.get("allow_localhost", False)))
+                    return self._send(200, st_ap)
                 if act == "autopilot_stop":
+                    _fa.stop_autopilot_worker()
                     return self._send(200, _fa.set_autopilot_state(mem(), running=False))
                 if act == "autopilot_tick":
                     return self._send(200, _fa.run_autopilot_cycle(mem(), allow_localhost=bool(data.get("allow_localhost", False))))
@@ -2065,7 +2068,11 @@ class Handler(BaseHTTPRequestHandler):
                             account_label=str(data.get("account_label") or ""),
                             agent_id=aid,
                             password=str(data.get("password") or ""),
+                            auto_start_autopilot=bool(data.get("auto_start_autopilot", True)),
                         )
+                        if res_wz.get("autopilot_started"):
+                            from . import freelance_autonomy as _fa
+                            _fa.ensure_autopilot_worker(mem)
                     elif act == "set_autopilot":
                         res_wz = _pw.set_platform_autopilot(
                             mem(),
@@ -2424,6 +2431,12 @@ def make_viewer_server(memory: Memory | None = None, port: int = 8078) -> tuple[
     _state["studio_default"] = False
     if memory is not None:
         _state["memory"] = memory
+        try:
+            from . import freelance_autonomy as _fa
+            if _fa.get_autopilot_state(memory).get("autopilot_running"):
+                _fa.ensure_autopilot_worker(lambda: _state["memory"])
+        except Exception:
+            pass
     srv = _bind_browser_safe(port, Handler)
     return srv, f"http://127.0.0.1:{srv.server_address[1]}/ui#t={_state['token']}"
 

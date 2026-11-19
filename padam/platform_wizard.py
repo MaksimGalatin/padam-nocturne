@@ -1133,12 +1133,35 @@ MILESTONE_RULES_URLS: dict[str, str] = {
 }
 
 
+PLATFORM_AUTH_URLS: dict[str, tuple[str, str]] = {
+    "upwork": ("https://www.upwork.com/nx/signup/", "https://www.upwork.com/ab/account-security/login"),
+    "fiverr": ("https://www.fiverr.com/join", "https://www.fiverr.com/login"),
+    "freelancer": ("https://www.freelancer.com/signup", "https://www.freelancer.com/login"),
+    "peopleperhour": ("https://www.peopleperhour.com/site/register", "https://www.peopleperhour.com/site/login"),
+    "contra": ("https://contra.com/sign-up", "https://contra.com/login"),
+    "kwork": ("https://kwork.ru/signup", "https://kwork.ru/login"),
+    "fl_ru": ("https://www.fl.ru/account/registration-choice/", "https://www.fl.ru/login/"),
+    "lemonsqueezy": ("https://auth.lemonsqueezy.com/signup/business-intent", "https://auth.lemonsqueezy.com/login"),
+    "gumroad": ("https://gumroad.com/signup", "https://gumroad.com/login"),
+    "payhip": ("https://payhip.com/auth/register", "https://payhip.com/auth/login"),
+    "whop": ("https://whop.com/login/", "https://whop.com/login/"),
+    "stan_store": ("https://www.stan.store", "https://www.stan.store"),
+    "etsy": ("https://www.etsy.com/join", "https://www.etsy.com/signin"),
+    "sellfy": ("https://sellfy.com/user/register", "https://sellfy.com/user/login"),
+    "aifafocus_mcp": ("https://aifa.works/cabinet", "https://aifa.works/cabinet"),
+    "olas_mech": ("https://olas.network/mech-marketplace", "https://olas.network/mech-marketplace"),
+    "fetch_agentverse": ("https://agentverse.ai/", "https://agentverse.ai/"),
+    "relevance_ai": ("https://app.relevanceai.com/signup", "https://app.relevanceai.com/login"),
+}
+
+
 def _enrich_platform_entry(p: dict[str, Any]) -> dict[str, Any]:
     out = dict(p)
     pid = str(out["platform_id"])
     base_u = str(out.get("url") or "").rstrip("/")
-    out.setdefault("signup_url", f"{base_u}/signup?oauth=google")
-    out.setdefault("login_url", f"{base_u}/login")
+    pair = PLATFORM_AUTH_URLS.get(pid)
+    out.setdefault("signup_url", pair[0] if pair else f"{base_u}/signup")
+    out.setdefault("login_url", pair[1] if pair else f"{base_u}/login")
     forbids = pid in FORBIDS_BOTS_PLATFORMS or out.get("automation_tier") != "autopilot"
     out["forbids_bots"] = bool(forbids)
     out["bot_warning_ru"] = BOT_WARNING_RU if forbids else ""
@@ -1286,6 +1309,7 @@ def one_click_platform_auth(
     account_label: str = "",
     agent_id: str = "aifa",
     password: str = "",
+    auto_start_autopilot: bool = False,
 ) -> dict[str, Any]:
     """Регистрация через Google ('signup') или Вход ('login') в отдельном окне профиля PADAM без хранения пароля."""
     _ensure_stage3_schema(memory)
@@ -1385,9 +1409,28 @@ def one_click_platform_auth(
         )
         conn.commit()
 
+    # Синхронизируем активный аккаунт с freelance_autonomy, чтобы цикл агента сразу видел площадку
+    try:
+        from . import browser_session as _bs
+        api_spec = _bs.OFFICIAL_PLATFORM_APIS.get(pid)
+        api_base = str(api_spec.get("base_url") or "") if api_spec else ""
+        ex_rows = freelance_autonomy.list_exchange_accounts(memory)
+        has_ex = any(str(r.get("platform") or "").lower() == pid and r.get("status") == "active" for r in ex_rows)
+        if not has_ex:
+            freelance_autonomy.connect_exchange_account(
+                memory,
+                platform=pid,
+                mode="desk",
+                account_label=label,
+                agent_id=aid[:48],
+                api_base_url=api_base,
+            )
+    except Exception:
+        pass
+
     q_state = get_missing_onboarding_questions(memory, pid)
     auto_profile = None
-    if q_state["missing_count"] == 0 and spec["automation_tier"] != "not_available":
+    if (q_state["missing_count"] == 0 or auto_start_autopilot) and spec["automation_tier"] != "not_available":
         pf = q_state["prefilled_from_memory"]
         auto_profile = submit_questionnaire_and_build_profile_draft(
             memory,
@@ -1400,6 +1443,13 @@ def one_click_platform_auth(
             excluded_topics=str(pf.get("excluded_topics") or ""),
             agent_id=aid,
         )["profile_draft"]
+
+    autopilot_started = False
+    if auto_start_autopilot and spec["automation_tier"] == "autopilot":
+        ap_res = set_platform_autopilot(memory, platform_id=pid, autopilot_enabled=True)
+        autopilot_started = bool(ap_res.get("autopilot_enabled"))
+        if autopilot_started:
+            freelance_autonomy.set_autopilot_state(memory, running=True)
 
     office_note = (
         f"[{spec['title']}] Однокликовый вход ({flow}): открыт {target_url} в изолированном профиле {profile_dir}. "
@@ -1438,6 +1488,7 @@ def one_click_platform_auth(
         "missing_questions": q_state["missing_questions"],
         "prefilled_from_memory": q_state["prefilled_from_memory"],
         "auto_filled_profile": auto_profile,
+        "autopilot_started": autopilot_started,
         "bot_warning_ru": spec["bot_warning_ru"],
         "bot_warning_url": spec["bot_warning_url"],
     }
@@ -1664,6 +1715,32 @@ def dispatch_platform_autopilot_action(
         tr_captcha = bool(tr_resp.get("captcha") or tr_captcha)
         if not tr_captcha and tr_status != 429 and tr_resp.get("sent", True) is not False and 200 <= tr_status < 300:
             tr_confirmed_sent = True
+    else:
+        # Живой транспорт без подмены: официальные API площадок или синхронизация цифровых магазинов
+        from . import browser_session as _bs, digital_stores as _ds
+        if pid in _ds.STORE_SPECS:
+            st_row = _ds._find_store_row(memory, pid)
+            if st_row is not None:
+                sync_res = _ds.sync_store_sales(memory, str(st_row["store_account_id"]))
+                if sync_res.get("ok"):
+                    tr_confirmed_sent = True
+                elif int(sync_res.get("status_code") or 0) == 429:
+                    tr_status = 429
+        elif pid in _bs.OFFICIAL_PLATFORM_APIS and _bs.OFFICIAL_PLATFORM_APIS[pid].get("allows_api_bidding"):
+            ord_row = freelance_autonomy._get_order(memory, order_id)
+            ext_id = str(ord_row.get("external_job_id") or "")
+            if ext_id:
+                api_res = official_platform_api_action(
+                    memory,
+                    platform_id=pid,
+                    op="place_bid",
+                    project_id=ext_id,
+                    bid_amount_usdt=float(budget_usdt or 100.0),
+                    pitch_text=str(draft.get("bid_text") or ""),
+                )
+                tr_status = int(api_res.get("status_code") or tr_status)
+                if api_res.get("ok"):
+                    tr_confirmed_sent = True
 
     if tr_captcha or tr_status == 429:
         reason = "captcha_required" if tr_captcha else "http_429_rate_limit"

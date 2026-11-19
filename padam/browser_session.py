@@ -78,6 +78,15 @@ OFFICIAL_PLATFORM_APIS: dict[str, dict[str, Any]] = {
         "allows_api_bidding": False,
         "docs_url": "https://docs.github.com/en/rest",
     },
+    "fetch_agentverse": {
+        "base_url": "https://agentverse.ai/v1",
+        "whoami_path": "/agents",
+        "jobs_search_path": "/almanac/search",
+        "place_bid_path": "",
+        "auth_header": "Bearer",
+        "allows_api_bidding": False,
+        "docs_url": "https://fetch.ai/docs/guides/agentverse/agentverse-mailbox/utilising-the-agentverse-hosting-service",
+    },
 }
 
 
@@ -93,7 +102,11 @@ def resolve_profile_dir(profile_rel_dir: str) -> Path:
 def _is_auth_url(url: str) -> bool:
     parsed = urllib.parse.urlparse(str(url or "").lower())
     path_and_q = f"{parsed.path}?{parsed.query}"
-    for marker in ("/login", "/signin", "/sign-in", "/signup", "/sign-up", "/register", "oauth=google", "accounts.google.com"):
+    for marker in (
+        "/login", "/signin", "/sign-in", "/signup", "/sign-up", "/register",
+        "/oauth", "oauth=google", "accounts.google.com", "consent.google",
+        "github.com/login", "appleid.apple.com",
+    ):
         if marker in path_and_q or marker in parsed.netloc:
             return True
     return False
@@ -144,31 +157,52 @@ def run_interactive_browser_auth(
 
     try:
         with sync_playwright() as p:
-            try:
-                ctx = p.chromium.launch_persistent_context(
-                    user_data_dir=str(abs_profile),
-                    headless=False,
-                    viewport={"width": 1280, "height": 840},
-                )
-            except Exception as launch_exc:
+            ctx = None
+            last_launch_exc: Exception | None = None
+            for channel_opt in ("chrome", "msedge", None):
+                try:
+                    kw: dict[str, Any] = {
+                        "user_data_dir": str(abs_profile),
+                        "headless": False,
+                        "viewport": {"width": 1280, "height": 840},
+                        "args": ["--disable-blink-features=AutomationControlled"],
+                        "ignore_default_args": ["--enable-automation"],
+                    }
+                    if channel_opt:
+                        kw["channel"] = channel_opt
+                    ctx = p.chromium.launch_persistent_context(**kw)
+                    break
+                except Exception as launch_exc:
+                    last_launch_exc = launch_exc
+            if ctx is None:
                 return {
                     "ok": False,
                     "status": "error",
-                    "error": f"{INSTALL_BROWSER_HINT_RU} ({launch_exc})",
+                    "error": f"{INSTALL_BROWSER_HINT_RU} ({last_launch_exc})",
                 }
 
             try:
                 page = ctx.pages[0] if ctx.pages else ctx.new_page()
                 page.goto(target_url, wait_until="domcontentloaded", timeout=30000)
+                initial_cookies = {
+                    (str(c.get("name") or ""), str(c.get("value") or ""))
+                    for c in ctx.cookies()
+                }
 
                 while time.time() < deadline:
                     if page.is_closed():
                         break
                     cur_url = page.url or ""
                     cookies = ctx.cookies()
+                    fresh_cookies = [
+                        c for c in cookies
+                        if (str(c.get("name") or ""), str(c.get("value") or "")) not in initial_cookies
+                    ]
                     left_auth_page = bool(cur_url and not cur_url.startswith("about:") and not _is_auth_url(cur_url))
-                    has_sess_cookie = _has_authenticated_cookie(cookies, target_url)
-                    if has_sess_cookie and (left_auth_page or len(cookies) >= 2):
+                    has_sess_cookie = _has_authenticated_cookie(fresh_cookies, target_url) or (
+                        left_auth_page and _has_authenticated_cookie(cookies, target_url)
+                    )
+                    if left_auth_page and (has_sess_cookie or len(fresh_cookies) >= 2):
                         cookie_map = {
                             str(c.get("name")): str(c.get("value"))
                             for c in cookies
