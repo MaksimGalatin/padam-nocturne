@@ -4441,6 +4441,17 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   background: rgba(16, 185, 129, 0.25);
   color: #6ee7b7;
 }
+.qs-check-lbl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.qs-leads-col {
+  flex-direction: column;
+  align-items: stretch;
+}
 .qs-textarea {
   width: 100%;
   min-height: 70px;
@@ -10936,12 +10947,12 @@ def page() -> tuple[str, str]:
                 <option value="en">English (US/Global)</option>
                 <option value="ru">Русский</option>
               </select>
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+              <label class="qs-check-lbl">
                 <input id="earn-mail-auto-chk" type="checkbox">
                 <span data-i18n="mail_auto_lbl">{s['mail_auto_lbl']}</span>
               </label>
             </div>
-            <div class="toolbar" style="flex-direction:column;align-items:stretch">
+            <div class="toolbar qs-leads-col">
               <textarea id="earn-mail-leads-inp" class="qs-textarea" placeholder="{s['mail_leads_ph']}" data-i18n-placeholder="mail_leads_ph" aria-label="{s['mail_leads_ph']}"></textarea>
               <div class="rec-actions">
                 <button id="earn-mail-import-btn" class="btn-primary" type="button" data-i18n="mail_import_btn">{s['mail_import_btn']}</button>
