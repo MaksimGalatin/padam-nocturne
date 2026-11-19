@@ -2699,13 +2699,24 @@ def run_autopilot_cycle(memory, *, allow_localhost: bool = False) -> dict[str, A
     except Exception:
         pass
 
-    # Шаг 5: обработка входящих писем аутрича (STOP -> стоп-лист, «Шлите список» -> автоответ с отчётом)
+    # Шаг 5: входящие ответы, авто-дожим и фоновая рассылка первых писем (если включена)
     inbox_res: dict[str, Any] = {"processed": 0, "reports_sent": 0, "stopped": 0, "escalated": 0}
+    outreach_sent = 0
     try:
         from . import email_autonomy as _ea
-        if _ea.list_mail_accounts(memory):
+        mail_accs = _ea.list_mail_accounts(memory)
+        if mail_accs:
             inbox_res = _ea.process_inbox_replies(memory)
             _ea.run_follow_up_cycle(memory)
+            mprefs = _ea.get_mail_prefs(memory)
+            if mprefs.get("auto_outreach_enabled") and any(a.get("status") == "active" for a in mail_accs):
+                b_res = _ea.run_outreach_batch(
+                    memory,
+                    max_emails=int(mprefs.get("daily_batch_limit") or 20),
+                    language=str(mprefs.get("outreach_language") or "auto"),
+                    allow_live_fetch=allow_localhost,
+                )
+                outreach_sent = int(b_res.get("sent") or 0)
     except Exception:
         pass
 
@@ -2744,6 +2755,7 @@ def run_autopilot_cycle(memory, *, allow_localhost: bool = False) -> dict[str, A
         "inbox_reports_sent": int(inbox_res.get("reports_sent") or 0),
         "inbox_stopped": int(inbox_res.get("stopped") or 0),
         "inbox_escalated": int(inbox_res.get("escalated") or 0),
+        "outreach_sent": outreach_sent,
         "drafted_bids": drafted,
         "reauth_needed": reauth_needed,
         "owner_note": note,

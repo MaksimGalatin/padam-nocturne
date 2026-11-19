@@ -477,3 +477,51 @@ def test_site_scanner_25pages_and_14day_recheck(tmp_path):
         email_autonomy.set_mail_transport(None)
         server.shutdown()
         server.server_close()
+
+
+def test_universal_onboarding_leads_autolang_and_autopilot_outreach(tmp_path):
+    """Любой пользователь MCP загружает свой список клиентов и включает авто-рассылку в фоне на нужном языке."""
+    from padam import email_autonomy, freelance_autonomy
+
+    mem = _make_mem(tmp_path)
+    sent_pkts: list[dict] = []
+
+    def _mock_tr(pkt: dict):
+        if pkt.get("op") == "send":
+            sent_pkts.append(dict(pkt))
+            return {"ok": True, "message_id": f"m-{len(sent_pkts)}"}
+        if pkt.get("op") == "fetch":
+            return {"ok": True, "messages": []}
+        return {"ok": True}
+
+    email_autonomy.set_mail_transport(_mock_tr)
+    try:
+        assert email_autonomy.connect_mail_account(
+            mem,
+            email="user@mybiz.com",
+            provider="gmail",
+            app_password_or_token="app-pass-16chars",
+            daily_limit=30,
+        )["ok"] is True
+
+        imp = email_autonomy.import_outreach_leads(
+            mem,
+            "owner@floridabakery.com, floridabakery.com\ninfo@pekarnya.ru, pekarnya.ru\n",
+        )
+        assert imp["ok"] is True and imp["imported"] == 2 and imp["total_leads"] == 2
+
+        pr = email_autonomy.set_mail_prefs(mem, auto_outreach_enabled=True, outreach_language="auto", daily_batch_limit=10)
+        assert pr["ok"] is True and pr["auto_outreach_enabled"] is True
+
+        freelance_autonomy.set_autopilot_state(mem, running=True)
+        ap = freelance_autonomy.run_autopilot_cycle(mem)
+        assert ap["ok"] is True
+        assert ap["outreach_sent"] == 2
+        assert len(sent_pkts) == 2
+
+        by_to = {p["to_email"]: p for p in sent_pkts}
+        # Для .com автоматически выбран английский, для .ru — русский
+        assert "Stop" in by_to["owner@floridabakery.com"]["body"] or "STOP" in by_to["owner@floridabakery.com"]["body"]
+        assert "Отписаться" in by_to["info@pekarnya.ru"]["body"] or "STOP" in by_to["info@pekarnya.ru"]["body"]
+    finally:
+        email_autonomy.set_mail_transport(None)

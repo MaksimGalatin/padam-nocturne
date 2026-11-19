@@ -230,6 +230,26 @@ STRINGS: dict[str, dict[str, str]] = {
         "you": "Вы",
         "mail_batch": "Запустить пакет рассылки",
         "mail_followup": "Дожим (через 4 дня)",
+        "qs_title": "Быстрый старт за 2 минуты: подключите всё в 4 клика",
+        "qs_sub": "Сделайте 4 простых шага один раз — дальше автопилот и ваши агенты работают сами 24/7 (рассылка, ответы, заказы, сдача).",
+        "qs_step1_t": "1. Агенты и биржи",
+        "qs_step1_d": "Подключите ИИ-агентов (АИфа, Сестра) и войдите на нужные биржи через Google.",
+        "qs_btn_agent": "Подключить агента",
+        "qs_btn_wizard": "Открыть биржи (34)",
+        "qs_step2_t": "2. Почты для рассылки",
+        "qs_step2_d": "Добавьте 1 или 12 рабочих почт (Gmail App Password, Яндекс, Mail.ru, SMTP).",
+        "qs_btn_mail": "Подключить почту",
+        "qs_step3_t": "3. База клиентов",
+        "qs_step3_d": "Вставьте список email/доменов или используйте встроенную базу карты.",
+        "qs_btn_leads": "Загрузить базу",
+        "qs_step4_t": "4. Запуск 24/7",
+        "qs_step4_d": "Включите фоновый автопилот + рассылку одной кнопкой.",
+        "qs_btn_launch": "Запустить всё 24/7",
+        "qs_btn_refresh": "Обновить статус",
+        "mail_auto_lbl": "Авто-рассылка первых писем в фоне",
+        "mail_lang_auto": "Язык: Авто (США=EN / .ru=RU)",
+        "mail_leads_ph": "Вставьте список клиентов построчно: email, domain (или CSV с заголовками email, domain)",
+        "mail_import_btn": "Загрузить список клиентов",
         "ff_title": "Ленты Семьи",
         "ff_desc": "Решения Совета отдельно от карантина. «Офис» — рабочая переписка сестёр, «Курилка» — свободная. Подозрительное само уходит в карантин. Всё здесь — записи, а не приказы.",
         "ff_work": "Решения",
@@ -943,6 +963,26 @@ STRINGS: dict[str, dict[str, str]] = {
         "you": "You",
         "mail_batch": "Run outreach batch",
         "mail_followup": "Follow-up (after 4 days)",
+        "qs_title": "2-Minute Quick Start: Connect Everything in 4 Clicks",
+        "qs_sub": "Complete 4 simple steps once — then autopilot and your agents run 24/7 (outreach, replies, orders, delivery).",
+        "qs_step1_t": "1. Agents & Exchanges",
+        "qs_step1_d": "Connect AI agents and sign in to target freelance platforms with Google.",
+        "qs_btn_agent": "Connect agent",
+        "qs_btn_wizard": "Open platforms (34)",
+        "qs_step2_t": "2. Outreach Mailboxes",
+        "qs_step2_d": "Add 1 to 12 work mailboxes (Gmail App Password, Yandex, Mail.ru, SMTP).",
+        "qs_btn_mail": "Connect mailbox",
+        "qs_step3_t": "3. Client Leads",
+        "qs_step3_d": "Paste your email/domain list or use the built-in map database.",
+        "qs_btn_leads": "Load leads",
+        "qs_step4_t": "4. Launch 24/7",
+        "qs_step4_d": "Turn on background autopilot + outreach in one click.",
+        "qs_btn_launch": "Launch All 24/7",
+        "qs_btn_refresh": "Refresh status",
+        "mail_auto_lbl": "Auto-send first outreach emails in background",
+        "mail_lang_auto": "Language: Auto (US=EN / .ru=RU)",
+        "mail_leads_ph": "Paste client list line by line: email, domain (or CSV with email, domain headers)",
+        "mail_import_btn": "Load client list",
         "ff_title": "Family feeds",
         "ff_desc": "Council decisions are kept apart from quarantine. 'Office' is the siblings' work chat, 'Break room' is free talk. Anything suspicious goes to quarantine by itself. Everything here is records, not orders.",
         "ff_work": "Decisions",
@@ -1645,6 +1685,26 @@ STRINGS: dict[str, dict[str, str]] = {
         "you": "Usted",
         "mail_batch": "Lanzar lote de envíos",
         "mail_followup": "Seguimiento (a los 4 días)",
+        "qs_title": "Inicio rápido en 2 minutos: conecta todo en 4 clics",
+        "qs_sub": "Completa 4 pasos simples una vez y el piloto automático y tus agentes trabajarán 24/7.",
+        "qs_step1_t": "1. Agentes y bolsas",
+        "qs_step1_d": "Conecta agentes de IA e inicia sesión en las plataformas con Google.",
+        "qs_btn_agent": "Conectar agente",
+        "qs_btn_wizard": "Abrir bolsas (34)",
+        "qs_step2_t": "2. Correos de envío",
+        "qs_step2_d": "Añade de 1 a 12 buzones (Gmail App Password, Yandex, Mail.ru, SMTP).",
+        "qs_btn_mail": "Conectar correo",
+        "qs_step3_t": "3. Base de clientes",
+        "qs_step3_d": "Pega tu lista email/dominio o usa el mapa integrado.",
+        "qs_btn_leads": "Cargar base",
+        "qs_step4_t": "4. Lanzar 24/7",
+        "qs_step4_d": "Activa piloto automático + envíos en un clic.",
+        "qs_btn_launch": "Lanzar todo 24/7",
+        "qs_btn_refresh": "Actualizar estado",
+        "mail_auto_lbl": "Auto-envío de primeros correos en segundo plano",
+        "mail_lang_auto": "Idioma: Auto (US=EN / .ru=RU)",
+        "mail_leads_ph": "Pega lista por líneas: email, domain (o CSV con encabezados email, domain)",
+        "mail_import_btn": "Cargar lista de clientes",
         "ff_title": "Canales de la Familia",
         "ff_desc": "Las decisiones del Consejo van separadas de la cuarentena. «Oficina» es el chat de trabajo de las hermanas; «Descanso», la charla libre. Lo sospechoso pasa solo a cuarentena. Todo aquí son registros, no órdenes.",
         "ff_work": "Decisiones",
@@ -2347,6 +2407,26 @@ STRINGS: dict[str, dict[str, str]] = {
         "you": "您",
         "mail_batch": "运行批量外联",
         "mail_followup": "跟进（4天后）",
+        "qs_title": "2分钟快速上手：4步完成全部配置",
+        "qs_sub": "只需一次完成以下4步，自动驾驶与智能体即可7×24小时全自动运行。",
+        "qs_step1_t": "1. 连接智能体与平台",
+        "qs_step1_d": "连接AI智能体并通过Google登录自由职业平台。",
+        "qs_btn_agent": "连接智能体",
+        "qs_btn_wizard": "打开平台向导(34)",
+        "qs_step2_t": "2. 连接发件邮箱",
+        "qs_step2_d": "添加1至12个工作邮箱（Gmail应用密码、Yandex、SMTP）。",
+        "qs_btn_mail": "连接邮箱",
+        "qs_step3_t": "3. 客户线索库",
+        "qs_step3_d": "粘贴邮箱/域名列表或使用内置地图数据库。",
+        "qs_btn_leads": "导入客户库",
+        "qs_step4_t": "4. 一键全自动运行",
+        "qs_step4_d": "一键开启后台自动驾驶与自动外呼发信。",
+        "qs_btn_launch": "一键启动 24/7",
+        "qs_btn_refresh": "刷新状态",
+        "mail_auto_lbl": "后台自动发送首封开发信",
+        "mail_lang_auto": "语言：自动 (US=EN / .ru=RU)",
+        "mail_leads_ph": "按行粘贴客户列表：email, domain（或含 email, domain 表头的 CSV）",
+        "mail_import_btn": "导入客户列表",
         "ff_title": "家族频道",
         "ff_desc": "议会决定与隔离区分开存放。“办公室”是姐妹们的工作聊天，“茶水间”是自由闲聊。可疑内容会自动进入隔离区。这里的一切都是记录，而不是命令。",
         "ff_work": "决定",
@@ -4317,6 +4397,67 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     height: 100vh;
     overflow-y: auto;
   }
+}
+.qs-banner {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(59, 130, 246, 0.12));
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.qs-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.qs-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.qs-step {
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.qs-badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.2);
+  color: #e2e8f0;
+  align-self: flex-start;
+}
+.qs-badge.ok {
+  background: rgba(16, 185, 129, 0.25);
+  color: #6ee7b7;
+}
+.qs-textarea {
+  width: 100%;
+  min-height: 70px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(15, 23, 42, 0.5);
+  color: inherit;
+  font-family: inherit;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+@media (max-width: 1100px) {
+  .qs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .qs-grid { grid-template-columns: minmax(0, 1fr); }
 }
 .earn-grid {
   display: grid;
@@ -8594,7 +8735,85 @@ async function loadMailHub() {
         const btn = _el('button', '', a.status === 'active' ? (S.mail_pause || 'Pause') : (S.mail_resume || 'Resume'));
         btn.onclick = async () => {
           await api('/api/v2/ark/mail/action', { action: 'pause_mail', mail_id: a.mail_id, status: a.status === 'active' ? 'paused' : 'active' });
-          loadMailHub();
+          async function refreshQuickStart() {
+  if (!$('earn-quickstart')) return;
+  try {
+    const [m, f] = await Promise.all([api('/api/v2/ark/mail'), api('/api/v2/ark/freelance')]);
+    const exCnt = (f && f.accounts ? f.accounts.length : 0);
+    const sibCnt = (f && f.swarm ? f.swarm.length : 0);
+    const mailCnt = (m && m.accounts ? m.accounts.length : 0);
+    const leadsCnt = Number((m && m.leads_count) || 0) + ((m && m.local_csv_available) ? 2618 : 0);
+    const autoOn = !!(f && f.autopilot && f.autopilot.autopilot_running) && !!(m && m.prefs && m.prefs.auto_outreach_enabled);
+    if ($('qs-st-1')) { $('qs-st-1').textContent = (sibCnt + exCnt) + ' OK'; $('qs-st-1').className = 'qs-badge' + ((sibCnt + exCnt) > 0 ? ' ok' : ''); }
+    if ($('qs-st-2')) { $('qs-st-2').textContent = mailCnt + ' OK'; $('qs-st-2').className = 'qs-badge' + (mailCnt > 0 ? ' ok' : ''); }
+    if ($('qs-st-3')) { $('qs-st-3').textContent = leadsCnt + ' leads'; $('qs-st-3').className = 'qs-badge' + (leadsCnt > 0 ? ' ok' : ''); }
+    if ($('qs-st-4')) { $('qs-st-4').textContent = autoOn ? 'ON 24/7' : 'OFF'; $('qs-st-4').className = 'qs-badge' + (autoOn ? ' ok' : ''); }
+    const doneSteps = ((sibCnt + exCnt) > 0 ? 1 : 0) + (mailCnt > 0 ? 1 : 0) + (leadsCnt > 0 ? 1 : 0) + (autoOn ? 1 : 0);
+    if ($('qs-progress-badge')) { $('qs-progress-badge').textContent = doneSteps + ' / 4'; $('qs-progress-badge').className = 'qs-badge' + (doneSteps === 4 ? ' ok' : ''); }
+    if ($('earn-mail-auto-chk') && m && m.prefs) { $('earn-mail-auto-chk').checked = !!m.prefs.auto_outreach_enabled; }
+    if ($('earn-mail-lang') && m && m.prefs && m.prefs.outreach_language) { $('earn-mail-lang').value = m.prefs.outreach_language; }
+  } catch (e) {}
+}
+if ($('qs-go-agent-btn')) { $('qs-go-agent-btn').onclick = () => { const el = $('earn-sib-id'); if (el) { el.scrollIntoView({behavior:'smooth', block:'center'}); el.focus(); } }; }
+if ($('qs-go-wiz-btn')) { $('qs-go-wiz-btn').onclick = () => { const el = $('earn-wizard-box'); if (el) { el.scrollIntoView({behavior:'smooth', block:'start'}); } }; }
+if ($('qs-go-mail-btn')) { $('qs-go-mail-btn').onclick = () => { const el = $('earn-mail-email'); if (el) { el.scrollIntoView({behavior:'smooth', block:'center'}); el.focus(); } }; }
+if ($('qs-go-leads-btn')) { $('qs-go-leads-btn').onclick = () => { const el = $('earn-mail-leads-inp'); if (el) { el.scrollIntoView({behavior:'smooth', block:'center'}); el.focus(); } }; }
+if ($('qs-refresh-btn')) { $('qs-refresh-btn').onclick = () => { loadMailHub(); refreshQuickStart(); }; }
+if ($('qs-launch-all-btn')) {
+  $('qs-launch-all-btn').onclick = async () => {
+    try {
+      await api('/api/v2/ark/mail/action', {
+        action: 'set_mail_prefs',
+        auto_outreach_enabled: true,
+        outreach_language: ($('earn-mail-lang') && $('earn-mail-lang').value) || 'auto',
+      });
+      await api('/api/v2/ark/freelance/action', { action: 'autopilot_start' });
+      say(S.done, true);
+      loadEarning();
+      loadMailHub();
+      refreshQuickStart();
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
+if ($('earn-mail-import-btn')) {
+  $('earn-mail-import-btn').onclick = async () => {
+    try {
+      const r = await api('/api/v2/ark/mail/action', {
+        action: 'import_leads',
+        raw_text: ($('earn-mail-leads-inp') && $('earn-mail-leads-inp').value) || '',
+      });
+      _famShow('earn-mail-out', r);
+      say(r && r.ok ? S.done : String((r && r.error) || 'error'), !!(r && r.ok));
+      refreshQuickStart();
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
+if ($('earn-mail-auto-chk')) {
+  $('earn-mail-auto-chk').onchange = async () => {
+    try {
+      await api('/api/v2/ark/mail/action', {
+        action: 'set_mail_prefs',
+        auto_outreach_enabled: !!$('earn-mail-auto-chk').checked,
+        outreach_language: ($('earn-mail-lang') && $('earn-mail-lang').value) || 'auto',
+      });
+      say(S.done, true);
+      refreshQuickStart();
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
+if ($('earn-mail-lang')) {
+  $('earn-mail-lang').onchange = async () => {
+    try {
+      await api('/api/v2/ark/mail/action', {
+        action: 'set_mail_prefs',
+        outreach_language: $('earn-mail-lang').value || 'auto',
+      });
+      say(S.done, true);
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
+loadMailHub();
+refreshQuickStart();
         };
         card.appendChild(btn);
         list.appendChild(card);
@@ -10350,6 +10569,51 @@ def page() -> tuple[str, str]:
           <h2 class="panel-title" data-i18n="earn_title">{s['earn_title']}</h2>
           <p class="panel-sub" data-i18n="earn_sub">{s['earn_sub']}</p>
         </div>
+        <div id="earn-quickstart" class="qs-banner">
+          <div class="qs-head">
+            <div>
+              <h3 class="box-title" data-i18n="qs_title">{s['qs_title']}</h3>
+              <p class="earn-meta" data-i18n="qs_sub">{s['qs_sub']}</p>
+            </div>
+            <span id="qs-progress-badge" class="qs-badge">0 / 4</span>
+          </div>
+          <div class="qs-grid">
+            <div class="qs-step">
+              <strong data-i18n="qs_step1_t">{s['qs_step1_t']}</strong>
+              <span id="qs-st-1" class="qs-badge">0</span>
+              <p class="earn-meta" data-i18n="qs_step1_d">{s['qs_step1_d']}</p>
+              <div class="rec-actions">
+                <button id="qs-go-agent-btn" type="button" data-i18n="qs_btn_agent">{s['qs_btn_agent']}</button>
+                <button id="qs-go-wiz-btn" type="button" class="btn-primary" data-i18n="qs_btn_wizard">{s['qs_btn_wizard']}</button>
+              </div>
+            </div>
+            <div class="qs-step">
+              <strong data-i18n="qs_step2_t">{s['qs_step2_t']}</strong>
+              <span id="qs-st-2" class="qs-badge">0</span>
+              <p class="earn-meta" data-i18n="qs_step2_d">{s['qs_step2_d']}</p>
+              <div class="rec-actions">
+                <button id="qs-go-mail-btn" type="button" class="btn-primary" data-i18n="qs_btn_mail">{s['qs_btn_mail']}</button>
+              </div>
+            </div>
+            <div class="qs-step">
+              <strong data-i18n="qs_step3_t">{s['qs_step3_t']}</strong>
+              <span id="qs-st-3" class="qs-badge">0</span>
+              <p class="earn-meta" data-i18n="qs_step3_d">{s['qs_step3_d']}</p>
+              <div class="rec-actions">
+                <button id="qs-go-leads-btn" type="button" class="btn-primary" data-i18n="qs_btn_leads">{s['qs_btn_leads']}</button>
+              </div>
+            </div>
+            <div class="qs-step">
+              <strong data-i18n="qs_step4_t">{s['qs_step4_t']}</strong>
+              <span id="qs-st-4" class="qs-badge">OFF</span>
+              <p class="earn-meta" data-i18n="qs_step4_d">{s['qs_step4_d']}</p>
+              <div class="rec-actions">
+                <button id="qs-launch-all-btn" type="button" class="btn-ok" data-i18n="qs_btn_launch">{s['qs_btn_launch']}</button>
+                <button id="qs-refresh-btn" type="button" data-i18n="qs_btn_refresh">{s['qs_btn_refresh']}</button>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="earn-grid">
           <div class="box earn-box-wide">
             <h3 class="box-title" data-i18n="earn_ex_title">{s['earn_ex_title']}</h3>
@@ -10559,7 +10823,7 @@ def page() -> tuple[str, str]:
             <div id="earn-drafts-list" class="earn-stack"></div>
           </div>
 
-          <div class="box earn-box-wide">
+          <div class="box earn-box-wide" id="earn-wizard-box">
             <h3 class="box-title" data-i18n="earn_wiz_title">{s['earn_wiz_title']}</h3>
             <p class="earn-meta" data-i18n="earn_wiz_sub">{s['earn_wiz_sub']}</p>
             <div id="earn-wiz-summary" class="earn-meta"></div>
@@ -10665,6 +10929,23 @@ def page() -> tuple[str, str]:
               <input id="earn-mail-secret" type="password" autocomplete="off" placeholder="{s['mail_ph_secret']}" data-i18n-placeholder="mail_ph_secret" aria-label="{s['mail_ph_secret']}">
               <input id="earn-mail-limit" class="earn-num-input" type="number" value="30" min="1" max="200" aria-label="Daily limit">
               <button id="earn-mail-connect-btn" class="btn-primary" type="button" data-i18n="mail_connect">{s['mail_connect']}</button>
+            </div>
+            <div class="toolbar">
+              <select id="earn-mail-lang" aria-label="Outreach language">
+                <option value="auto" data-i18n="mail_lang_auto">{s['mail_lang_auto']}</option>
+                <option value="en">English (US/Global)</option>
+                <option value="ru">Русский</option>
+              </select>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+                <input id="earn-mail-auto-chk" type="checkbox">
+                <span data-i18n="mail_auto_lbl">{s['mail_auto_lbl']}</span>
+              </label>
+            </div>
+            <div class="toolbar" style="flex-direction:column;align-items:stretch">
+              <textarea id="earn-mail-leads-inp" class="qs-textarea" placeholder="{s['mail_leads_ph']}" data-i18n-placeholder="mail_leads_ph" aria-label="{s['mail_leads_ph']}"></textarea>
+              <div class="rec-actions">
+                <button id="earn-mail-import-btn" class="btn-primary" type="button" data-i18n="mail_import_btn">{s['mail_import_btn']}</button>
+              </div>
             </div>
             <div class="toolbar">
               <input id="earn-mail-domain" type="text" placeholder="{s['mail_ph_domain']}" data-i18n-placeholder="mail_ph_domain" aria-label="{s['mail_ph_domain']}">

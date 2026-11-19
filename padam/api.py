@@ -2212,11 +2212,24 @@ class Handler(BaseHTTPRequestHandler):
                             str(data.get("domain") or ""),
                             language=str(data.get("language") or "ru"),
                         )
+                    elif act_m == "import_leads":
+                        res_m = _ea.import_outreach_leads(
+                            mem(),
+                            str(data.get("raw_text") or ""),
+                            source=str(data.get("source") or "studio"),
+                        )
+                    elif act_m == "set_mail_prefs":
+                        res_m = _ea.set_mail_prefs(
+                            mem(),
+                            auto_outreach_enabled=data.get("auto_outreach_enabled"),
+                            outreach_language=data.get("outreach_language"),
+                            daily_batch_limit=data.get("daily_batch_limit"),
+                        )
                     elif act_m == "run_outreach_batch":
                         res_m = _ea.run_outreach_batch(
                             mem(),
                             max_emails=int(data.get("max_emails") or 20),
-                            language=str(data.get("language") or "ru"),
+                            language=str(data.get("language") or "auto"),
                         )
                     elif act_m == "run_follow_up":
                         res_m = _ea.run_follow_up_cycle(

@@ -114,6 +114,31 @@ def _ensure_mail_schema(memory) -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ark_outreach_leads (
+                lead_id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                email TEXT NOT NULL,
+                domain TEXT NOT NULL,
+                company TEXT NOT NULL DEFAULT '',
+                region TEXT NOT NULL DEFAULT '',
+                source TEXT NOT NULL DEFAULT 'manual',
+                created_at REAL NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ark_mail_prefs (
+                user_id TEXT PRIMARY KEY,
+                auto_outreach_enabled INTEGER NOT NULL DEFAULT 0,
+                outreach_language TEXT NOT NULL DEFAULT 'auto',
+                daily_batch_limit INTEGER NOT NULL DEFAULT 20,
+                updated_at REAL NOT NULL
+            )
+            """
+        )
         conn.commit()
         memory.store.__dict__["_padam_mail_schema_ok"] = True
 
@@ -876,13 +901,141 @@ def process_inbox_replies(
     }
 
 
+_DEFAULT_US_CSV = Path(
+    r"E:/Aifa/ВАЖНЫЕ ДОКУМЕНТЫ!!!!!!!!!!!!!!!!!!!!!!!!!/09_ЗАРАБОТОК И МОНЕТИЗАЦИЯ/ГОТОВЫЕ_БАЗЫ_ДЛЯ_ЗАПУСКА/БАЗА_АУТРИЧА_США_с_почтой.csv"
+)
+
+
+def get_mail_prefs(memory) -> dict[str, Any]:
+    """Возвращает настройки фоновой рассылки и языка писем."""
+    _ensure_mail_schema(memory)
+    with freelance_autonomy._lock_of(memory):
+        row = memory.store.conn.execute(
+            "SELECT * FROM ark_mail_prefs WHERE user_id = ?",
+            (memory.user_id,),
+        ).fetchone()
+    if row is None:
+        return {
+            "auto_outreach_enabled": False,
+            "outreach_language": "auto",
+            "daily_batch_limit": 20,
+        }
+    return {
+        "auto_outreach_enabled": bool(int(row["auto_outreach_enabled"] or 0)),
+        "outreach_language": str(row["outreach_language"] or "auto"),
+        "daily_batch_limit": max(1, min(200, int(row["daily_batch_limit"] or 20))),
+    }
+
+
+def set_mail_prefs(
+    memory,
+    *,
+    auto_outreach_enabled: bool | None = None,
+    outreach_language: str | None = None,
+    daily_batch_limit: int | None = None,
+) -> dict[str, Any]:
+    """Сохраняет настройки фоновой авто-рассылки первых писем."""
+    cur = get_mail_prefs(memory)
+    auto_en = cur["auto_outreach_enabled"] if auto_outreach_enabled is None else bool(auto_outreach_enabled)
+    lang = cur["outreach_language"] if outreach_language is None else str(outreach_language or "auto").strip().lower()
+    if lang not in ("auto", "en", "ru"):
+        lang = "auto"
+    lim = cur["daily_batch_limit"] if daily_batch_limit is None else max(1, min(200, int(daily_batch_limit or 20)))
+    now = time.time()
+    with freelance_autonomy._lock_of(memory):
+        memory.store.conn.execute(
+            """
+            INSERT INTO ark_mail_prefs (user_id, auto_outreach_enabled, outreach_language, daily_batch_limit, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                auto_outreach_enabled = excluded.auto_outreach_enabled,
+                outreach_language = excluded.outreach_language,
+                daily_batch_limit = excluded.daily_batch_limit,
+                updated_at = excluded.updated_at
+            """,
+            (memory.user_id, 1 if auto_en else 0, lang, lim, now),
+        )
+        memory.store.conn.commit()
+    return {"ok": True, **get_mail_prefs(memory)}
+
+
+def import_outreach_leads(memory, raw_text: str, *, source: str = "manual") -> dict[str, Any]:
+    """Импортирует список клиентов (построчно email[, domain[, company]] или CSV с заголовками) в БД."""
+    import csv as _csv
+    import io as _io
+
+    _ensure_mail_schema(memory)
+    txt = str(raw_text or "").strip()
+    if not txt:
+        return {"ok": False, "error": "Пустой список клиентов.", "imported": 0}
+
+    rows_parsed: list[tuple[str, str, str, str]] = []
+    lines = [ln.strip() for ln in txt.splitlines() if ln.strip()]
+    first_low = lines[0].lower() if lines else ""
+    if any(h in first_low for h in ("email", "почта", "domain", "домен")) and ("," in first_low or ";" in first_low or "\t" in first_low):
+        delim = ";" if (";" in first_low and "," not in first_low) else ("\t" if "\t" in first_low and "," not in first_low else ",")
+        reader = _csv.DictReader(_io.StringIO(txt), delimiter=delim)
+        for r in reader:
+            em = _clean_email(r.get("email") or r.get("почта") or r.get("mail") or "")
+            dom = _clean_domain(r.get("domain") or r.get("домен") or r.get("website") or r.get("сайт") or em)
+            comp = str(r.get("company") or r.get("компания") or r.get("title") or "").strip()[:120]
+            reg = str(r.get("region") or r.get("регион") or "").strip()[:80]
+            if em and dom:
+                rows_parsed.append((em, dom, comp, reg))
+    else:
+        for ln in lines:
+            parts = [p.strip() for p in re.split(r"[,;\t]+", ln) if p.strip()]
+            if not parts:
+                continue
+            em = _clean_email(parts[0])
+            if not em and len(parts) > 1:
+                em = _clean_email(parts[1])
+                dom = _clean_domain(parts[0])
+            else:
+                dom = _clean_domain(parts[1] if len(parts) > 1 else em)
+            comp = parts[2][:120] if len(parts) > 2 else ""
+            if em and dom:
+                rows_parsed.append((em, dom, comp, ""))
+
+    if not rows_parsed:
+        return {"ok": False, "error": "Не найдено ни одного корректного email.", "imported": 0}
+
+    now = time.time()
+    inserted = 0
+    with freelance_autonomy._lock_of(memory):
+        conn = memory.store.conn
+        for em, dom, comp, reg in rows_parsed[:2000]:
+            lid = "lead_" + hashlib.sha256(f"{memory.user_id}:{em}:{dom}".encode("utf-8")).hexdigest()[:16]
+            cur = conn.execute(
+                "INSERT OR IGNORE INTO ark_outreach_leads (lead_id, user_id, email, domain, company, region, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (lid, memory.user_id, em, dom, comp, reg, str(source or "manual")[:40], now),
+            )
+            if cur.rowcount:
+                inserted += 1
+        conn.commit()
+        total_cnt = int(conn.execute("SELECT COUNT(*) FROM ark_outreach_leads WHERE user_id=?", (memory.user_id,)).fetchone()[0])
+    return {"ok": True, "imported": inserted, "total_leads": total_cnt}
+
+
+def list_outreach_leads(memory, *, limit: int = 200) -> list[dict[str, Any]]:
+    _ensure_mail_schema(memory)
+    with freelance_autonomy._lock_of(memory):
+        rows = memory.store.conn.execute(
+            "SELECT lead_id, email, domain, company, region, source, created_at FROM ark_outreach_leads WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
+            (memory.user_id, max(1, min(1000, int(limit or 200)))),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def mail_hub_snapshot(memory) -> dict[str, Any]:
     """Сводка почтового авто-конвейера для Studio и MCP."""
     _ensure_mail_schema(memory)
     accounts = list_mail_accounts(memory)
+    prefs = get_mail_prefs(memory)
     with freelance_autonomy._lock_of(memory):
         conn = memory.store.conn
         stop_cnt = int(conn.execute("SELECT COUNT(*) FROM ark_outreach_stop_list WHERE user_id=?", (memory.user_id,)).fetchone()[0])
+        leads_cnt = int(conn.execute("SELECT COUNT(*) FROM ark_outreach_leads WHERE user_id=?", (memory.user_id,)).fetchone()[0])
         logs = [
             dict(r)
             for r in conn.execute(
@@ -890,34 +1043,66 @@ def mail_hub_snapshot(memory) -> dict[str, Any]:
                 (memory.user_id,),
             ).fetchall()
         ]
+    local_csv_ok = _DEFAULT_US_CSV.is_file()
     return {
         "ok": True,
         "providers": list(MAIL_PROVIDER_PRESETS.keys()),
         "provider_presets": MAIL_PROVIDER_PRESETS,
         "accounts": accounts,
         "stop_list_count": stop_cnt,
+        "leads_count": leads_cnt,
+        "local_csv_available": local_csv_ok,
+        "prefs": prefs,
         "recent_logs": logs,
     }
+
+def _pick_outreach_lang(domain: str, language: str) -> str:
+    lang_clean = str(language or "auto").strip().lower()
+    if lang_clean in ("ru", "en"):
+        return lang_clean
+    d = str(domain or "").lower()
+    if d.endswith((".ru", ".by", ".kz", ".su", ".xn--p1ai")):
+        return "ru"
+    return "en"
+
 
 def run_outreach_batch(
     memory,
     *,
     csv_path: Path | None = None,
     max_emails: int = 20,
-    language: str = "ru",
+    language: str = "auto",
     allow_live_fetch: bool = False,
     stop_file_path: Path | None = None,
 ) -> dict[str, Any]:
-    """Пакетная рассылка по базе карты с ротацией подключённых почт, проверкой 30-дневной брони и стоп-листа."""
+    """Пакетная рассылка по базе (загруженные лиды или CSV) с ротацией почт, 30-дневной бронью и стоп-листом."""
     import csv as _csv
     from . import partner_bridge
 
     _ensure_mail_schema(memory)
-    target_csv = csv_path or Path(
-        r"E:/Aifa/ВАЖНЫЕ ДОКУМЕНТЫ!!!!!!!!!!!!!!!!!!!!!!!!!/09_ЗАРАБОТОК И МОНЕТИЗАЦИЯ/ГОТОВЫЕ_БАЗЫ_ДЛЯ_ЗАПУСКА/БАЗА_АУТРИЧА_США_с_почтой.csv"
-    )
-    if not target_csv.is_file():
-        return {"ok": False, "error": f"CSV базы не найден: {target_csv}", "sent": 0}
+    rows_iter: list[dict[str, Any]] = []
+    source_used = "leads_db"
+    if csv_path is not None:
+        if not Path(csv_path).is_file():
+            return {"ok": False, "error": f"CSV базы не найден: {csv_path}", "sent": 0}
+        with Path(csv_path).open("r", encoding="utf-8-sig", errors="replace") as f:
+            rows_iter = list(_csv.DictReader(f))
+        source_used = "csv_arg"
+    else:
+        db_leads = list_outreach_leads(memory, limit=1000)
+        if db_leads:
+            rows_iter = db_leads
+            source_used = "leads_db"
+        elif _DEFAULT_US_CSV.is_file():
+            with _DEFAULT_US_CSV.open("r", encoding="utf-8-sig", errors="replace") as f:
+                rows_iter = list(_csv.DictReader(f))
+            source_used = "default_us_csv"
+        else:
+            return {
+                "ok": False,
+                "error": "Нет базы клиентов: вставьте список email/domain в блоке 10 Студии или передайте csv_path.",
+                "sent": 0,
+            }
 
     lim = max(1, min(500, int(max_emails or 20)))
     sent = 0
@@ -925,48 +1110,48 @@ def run_outreach_batch(
     errors = 0
     results: list[dict[str, Any]] = []
 
-    with target_csv.open("r", encoding="utf-8-sig", errors="replace") as f:
-        for row in _csv.DictReader(f):
-            if sent >= lim:
+    for row in rows_iter:
+        if sent >= lim:
+            break
+        to_em = _clean_email(row.get("почта") or row.get("email") or "")
+        dom = _clean_domain(row.get("домен") or row.get("domain") or to_em)
+        if not to_em or not dom:
+            skipped += 1
+            continue
+        blocked, reason = is_blocked_by_stop_or_claim(memory, email=to_em, domain=dom, stop_file_path=stop_file_path)
+        if blocked:
+            skipped += 1
+            continue
+
+        target_lang = _pick_outreach_lang(dom, language)
+        pkg = partner_bridge.build_business_outreach(
+            memory,
+            dom,
+            language=target_lang,
+            site_record=row,
+            allow_live_fetch=allow_live_fetch,
+        )
+        s_res = send_outreach_email(
+            memory,
+            to_email=to_em,
+            domain=dom,
+            subject=pkg["email_subject"],
+            body=pkg["email_body"],
+            direction="outbound_first",
+            stop_file_path=stop_file_path,
+        )
+        if s_res.get("ok"):
+            sent += 1
+            results.append({"domain": dom, "to": to_em, "from": s_res["from_email"], "lang": target_lang})
+        elif s_res.get("blocked"):
+            skipped += 1
+        else:
+            errors += 1
+            results.append({"domain": dom, "error": s_res.get("error")})
+            if "Нет активной почты" in str(s_res.get("error") or ""):
                 break
-            to_em = _clean_email(row.get("почта") or row.get("email") or "")
-            dom = _clean_domain(row.get("домен") or row.get("domain") or to_em)
-            if not to_em or not dom:
-                skipped += 1
-                continue
-            blocked, reason = is_blocked_by_stop_or_claim(memory, email=to_em, domain=dom, stop_file_path=stop_file_path)
-            if blocked:
-                skipped += 1
-                continue
 
-            pkg = partner_bridge.build_business_outreach(
-                memory,
-                dom,
-                language=language,
-                site_record=row,
-                allow_live_fetch=allow_live_fetch,
-            )
-            s_res = send_outreach_email(
-                memory,
-                to_email=to_em,
-                domain=dom,
-                subject=pkg["email_subject"],
-                body=pkg["email_body"],
-                direction="outbound_first",
-                stop_file_path=stop_file_path,
-            )
-            if s_res.get("ok"):
-                sent += 1
-                results.append({"domain": dom, "to": to_em, "from": s_res["from_email"]})
-            elif s_res.get("blocked"):
-                skipped += 1
-            else:
-                errors += 1
-                results.append({"domain": dom, "error": s_res.get("error")})
-                if "Нет активной почты" in str(s_res.get("error") or ""):
-                    break
-
-    return {"ok": True, "sent": sent, "skipped": skipped, "errors": errors, "results": results}
+    return {"ok": True, "source": source_used, "sent": sent, "skipped": skipped, "errors": errors, "results": results}
 
 
 def run_follow_up_cycle(
