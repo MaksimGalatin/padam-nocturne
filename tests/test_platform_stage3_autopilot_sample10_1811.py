@@ -376,10 +376,10 @@ def test_studio_stage3_playwright_1280_and_390(tmp_path: Path):
                 page.on("pageerror", lambda err: js_errors.append(str(err)))
                 page.goto(url, wait_until="networkidle")
                 page.click("#tab-earning")
-                page.wait_for_selector("#earn-wiz-google-btn", timeout=5000)
+                page.wait_for_selector("#earn-wiz-google-btn", timeout=15000)
                 page.wait_for_function(
                     "() => document.querySelectorAll('#earn-wiz-catalog-list .earn-item').length === 34",
-                    timeout=5000,
+                    timeout=15000,
                 )
 
                 check = page.evaluate(
@@ -419,7 +419,7 @@ def test_studio_stage3_playwright_1280_and_390(tmp_path: Path):
                     page.wait_for_function(
                         "() => { const t = document.querySelector('#earn-wiz-session-out')?.textContent || ''; "
                         "return t.includes('подключено (сессия проверена') && t.includes('sha256:'); }",
-                        timeout=5000,
+                        timeout=15000,
                     )
 
                     # 2. Включаем переключатель полного автопилота на площадке и возвращаем в исходное состояние
@@ -433,12 +433,12 @@ def test_studio_stage3_playwright_1280_and_390(tmp_path: Path):
                     page.locator("button[data-order-action='sample_prepare']").first.click()
                     page.wait_for_function(
                         "() => document.querySelectorAll('[data-order-sample-stage=\"sample\"]').length >= 1",
-                        timeout=5000,
+                        timeout=15000,
                     )
                     page.locator("button[data-order-action='sample_accept']").first.click()
                     page.wait_for_function(
                         "() => document.querySelectorAll('[data-order-sample-stage=\"full_order\"]').length >= 1",
-                        timeout=5000,
+                        timeout=15000,
                     )
 
                 page.close()

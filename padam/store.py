@@ -201,9 +201,21 @@ CREATE TABLE IF NOT EXISTS audit_log (
     scope       TEXT,
     kind        TEXT,
     outcome     TEXT,
-    detail      TEXT
+    detail      TEXT,
+    seq         INTEGER,
+    prev_hash   TEXT,
+    entry_hash  TEXT
 );
 CREATE INDEX IF NOT EXISTS audit_log_user ON audit_log (user_id, created_at DESC);
+
+-- MEM-02 (Antigravity): якорь головы цепи журнала, подписанный ключом владельца
+CREATE TABLE IF NOT EXISTS audit_log_anchor (
+    user_id    TEXT PRIMARY KEY,
+    head_seq   INTEGER NOT NULL,
+    head_hash  TEXT NOT NULL,
+    head_hmac  TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
 
 -- В1: командные пространства и роли с солёными SHA-256 токенами
 CREATE TABLE IF NOT EXISTS workspace (
@@ -482,7 +494,8 @@ class Store:
                              "agent_id": "TEXT", "visibility": "TEXT DEFAULT 'private'", "workspace_id": "TEXT",
                              "learned_at": "TEXT", "invalidated_at": "TEXT"},
                   "memory_link": {"relation": "TEXT DEFAULT 'derived'",
-                                  "learned_at": "TEXT", "invalidated_at": "TEXT"}}
+                                  "learned_at": "TEXT", "invalidated_at": "TEXT"},
+                  "audit_log": {"seq": "INTEGER", "prev_hash": "TEXT", "entry_hash": "TEXT"}}
         for таблица, колонки in НУЖНЫЕ.items():
             try:
                 есть = {r["name"] for r in
@@ -523,6 +536,9 @@ class Store:
                    updated_at TEXT NOT NULL
                )"""
         )
+        self.conn.execute(
+            """CREATE INDEX IF NOT EXISTS audit_log_seq
+               ON audit_log (user_id, seq)""")
         self.conn.execute(
             """CREATE TABLE IF NOT EXISTS app_access_event (
                    seq INTEGER PRIMARY KEY AUTOINCREMENT,

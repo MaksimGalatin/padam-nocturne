@@ -2837,14 +2837,51 @@ class Memory:
                     agent_id = agent_id or row["agent_id"]
             ev_id = new_id()
             ts = now_iso()
-            # Запись в audit_log не меняет таблицу memory, поэтому пишем через counters без сброса кэша поиска.
-            self.store.counters([(
-                """INSERT INTO audit_log
-                   (id, user_id, created_at, action, memory_id, actor, agent_id, scope, kind, outcome, detail)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-                (ev_id, self.user_id, ts, action, memory_id,
-                 actor or "user", agent_id, scope or "global", kind, outcome, detail),
-            )])
+            from . import audit_chain as _ac
+            actor_norm = actor or "user"
+            scope_norm = scope or "global"
+            key = self._ключ_подписи()
+            with self.store._lock:
+                prev_row = self.store.conn.execute(
+                    "SELECT seq, entry_hash FROM audit_log WHERE user_id = ? AND seq IS NOT NULL ORDER BY seq DESC LIMIT 1",
+                    (self.user_id,),
+                ).fetchone()
+                seq = (int(prev_row["seq"]) + 1) if prev_row else 1
+                prev_hash = str(prev_row["entry_hash"]) if prev_row else ("0" * 64)
+                entry_hash = _ac.compute_audit_log_hash(
+                    ev_id=ev_id,
+                    user_id=self.user_id,
+                    created_at=ts,
+                    action=action,
+                    memory_id=memory_id,
+                    actor=actor_norm,
+                    agent_id=agent_id,
+                    scope=scope_norm,
+                    kind=kind,
+                    outcome=outcome,
+                    detail=detail,
+                    prev_hash=prev_hash,
+                    seq=seq,
+                )
+                head_hmac = _ac.sign_audit_log_head(key, self.user_id, seq, entry_hash)
+                # Запись в audit_log не меняет таблицу memory и counters-совместимо не трогает store.writes.
+                self.store.conn.execute(
+                    """INSERT INTO audit_log
+                       (id, user_id, created_at, action, memory_id, actor, agent_id, scope, kind, outcome, detail, seq, prev_hash, entry_hash)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (ev_id, self.user_id, ts, action, memory_id,
+                     actor_norm, agent_id, scope_norm, kind, outcome, detail, seq, prev_hash, entry_hash),
+                )
+                self.store.conn.execute(
+                    """INSERT INTO audit_log_anchor (user_id, head_seq, head_hash, head_hmac, updated_at)
+                       VALUES (?, ?, ?, ?, ?)
+                       ON CONFLICT(user_id) DO UPDATE SET
+                       head_seq=excluded.head_seq, head_hash=excluded.head_hash,
+                       head_hmac=excluded.head_hmac, updated_at=excluded.updated_at""",
+                    (self.user_id, seq, entry_hash, head_hmac, ts),
+                )
+                self.store.conn.commit()
+            _ac.save_audit_log_watermark(self, seq, entry_hash, key)
             ev = {
                 "id": ev_id,
                 "user_id": self.user_id,

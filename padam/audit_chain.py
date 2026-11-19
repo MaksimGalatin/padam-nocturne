@@ -187,7 +187,217 @@ def _load_audit_watermark_seq(memory) -> int:
     return mem_wm
 
 
-def verify_audit_chain(memory) -> dict[str, Any]:
+# Аудит GLM фаза 2, MEM-02 (работа Antigravity из _wt_sister_live_1811, перенесено 19.11.2026): журнал audit_log
+# связан хэш-цепью с HMAC-якорем. Поправки при переносе: записи до цепи (seq IS NULL) — история, проверяются
+# только связанные; кэш водяного знака — на объекте хранилища, не по id().
+def compute_audit_log_hash(
+    *,
+    ev_id: str,
+    user_id: str,
+    created_at: str,
+    action: str,
+    memory_id: str | None,
+    actor: str | None,
+    agent_id: str | None,
+    scope: str | None,
+    kind: str | None,
+    outcome: str | None,
+    detail: str | None,
+    prev_hash: str,
+    seq: int,
+) -> str:
+    payload = json.dumps(
+        {
+            "id": str(ev_id),
+            "user_id": str(user_id),
+            "created_at": str(created_at),
+            "action": str(action),
+            "memory_id": memory_id,
+            "actor": actor or "user",
+            "agent_id": agent_id,
+            "scope": scope or "global",
+            "kind": kind,
+            "outcome": outcome,
+            "detail": detail,
+            "prev_hash": str(prev_hash),
+            "seq": int(seq),
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(b"auditlog-v1|" + payload.encode("utf-8")).hexdigest()
+
+
+def sign_audit_log_head(key: bytes, user_id: str, head_seq: int, head_hash: str) -> str:
+    return hmac.new(
+        key,
+        f"auditlog-anchor-v1|{user_id}|{int(head_seq)}|{head_hash}".encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def save_audit_log_watermark(memory, seq: int, head_hash: str, key: bytes) -> None:
+    store = memory.store
+    prev = store.__dict__.setdefault("_padam_auditlog_watermarks", {}).get(memory.user_id, 0)
+    if seq > prev:
+        store.__dict__.setdefault("_padam_auditlog_watermarks", {})[memory.user_id] = seq
+    wpath = _watermark_path(store)
+    if wpath is None:
+        return
+    try:
+        data = json.loads(wpath.read_text(encoding="utf-8")) if wpath.exists() else {}
+    except Exception:
+        data = {}
+    al_users = dict(data.get("audit_log_users") or {})
+    rec = {"head_seq": int(seq), "head_hash": head_hash}
+    rec["hmac"] = hmac.new(key, f"alwm|{memory.user_id}|{seq}|{head_hash}".encode("utf-8"), hashlib.sha256).hexdigest()
+    al_users[memory.user_id] = rec
+    data["audit_log_users"] = al_users
+    wpath.write_text(json.dumps(data, ensure_ascii=False, sort_keys=True), encoding="utf-8")
+    net_guard.restrict_file_to_owner(wpath)
+
+
+def _load_audit_log_watermark_seq(memory) -> int:
+    store = memory.store
+    mem_wm = store.__dict__.setdefault("_padam_auditlog_watermarks", {}).get(memory.user_id, 0)
+    wpath = _watermark_path(store)
+    if wpath is None or not wpath.exists():
+        return mem_wm
+    try:
+        data = json.loads(wpath.read_text(encoding="utf-8"))
+        u_rec = (data.get("audit_log_users") or {}).get(memory.user_id)
+        if not isinstance(u_rec, dict):
+            return mem_wm
+        seq = int(u_rec.get("head_seq") or 0)
+        head_hash = str(u_rec.get("head_hash") or "")
+        key, _ = integrity.owner_key(store)
+        expected = hmac.new(key, f"alwm|{memory.user_id}|{seq}|{head_hash}".encode("utf-8"), hashlib.sha256).hexdigest()
+        if hmac.compare_digest(expected, str(u_rec.get("hmac") or "")):
+            return max(mem_wm, seq)
+    except Exception:
+        pass
+    return mem_wm
+
+
+def verify_audit_log_chain(memory) -> dict[str, Any]:
+    conn = memory.store.conn
+    has_tbl = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='audit_log'"
+    ).fetchone()
+    if not has_tbl:
+        return {"audit_log_ok": True, "audit_log_length": 0}
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(audit_log)").fetchall()}
+    if not {"seq", "prev_hash", "entry_hash"} <= cols:
+        return {"audit_log_ok": False, "audit_log_length": 0, "audit_log_reason": "audit_log_missing_chain_columns"}
+
+    rows = conn.execute(
+        "SELECT id, user_id, created_at, action, memory_id, actor, agent_id, scope, kind, outcome, detail, "
+        "seq, prev_hash, entry_hash FROM audit_log WHERE user_id = ? AND seq IS NOT NULL ORDER BY seq ASC, rowid ASC",
+        (memory.user_id,),
+    ).fetchall()
+    has_anchor_tbl = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='audit_log_anchor'"
+    ).fetchone()
+    anchor = (
+        conn.execute(
+            "SELECT head_seq, head_hash, head_hmac FROM audit_log_anchor WHERE user_id = ?",
+            (memory.user_id,),
+        ).fetchone()
+        if has_anchor_tbl
+        else None
+    )
+
+    if not rows:
+        if anchor and int(anchor["head_seq"]) > 0:
+            return {"audit_log_ok": False, "audit_log_length": 0, "audit_log_reason": "audit_log_tail_truncated"}
+        wm_seq = _load_audit_log_watermark_seq(memory)
+        if wm_seq > 0:
+            return {
+                "audit_log_ok": False,
+                "audit_log_length": 0,
+                "audit_log_expected_min_seq": wm_seq,
+                "audit_log_reason": "audit_log_wiped",
+            }
+        return {"audit_log_ok": True, "audit_log_length": 0, "audit_log_head_hash": "0" * 64}
+
+    expected_prev = "0" * 64
+    expected_seq = 1
+    for r in rows:
+        if r["seq"] is None or not r["prev_hash"] or not r["entry_hash"]:
+            return {"audit_log_ok": False, "audit_log_length": len(rows), "audit_log_reason": "audit_log_unchained_row"}
+        if int(r["seq"]) != expected_seq:
+            return {
+                "audit_log_ok": False,
+                "audit_log_length": len(rows),
+                "audit_log_broken_seq": expected_seq,
+                "audit_log_reason": "audit_log_seq_gap",
+            }
+        if str(r["prev_hash"]) != expected_prev:
+            return {
+                "audit_log_ok": False,
+                "audit_log_length": len(rows),
+                "audit_log_broken_seq": expected_seq,
+                "audit_log_reason": "audit_log_prev_hash_mismatch",
+            }
+        recalc = compute_audit_log_hash(
+            ev_id=str(r["id"]),
+            user_id=str(r["user_id"]),
+            created_at=str(r["created_at"]),
+            action=str(r["action"]),
+            memory_id=r["memory_id"],
+            actor=r["actor"],
+            agent_id=r["agent_id"],
+            scope=r["scope"],
+            kind=r["kind"],
+            outcome=r["outcome"],
+            detail=r["detail"],
+            prev_hash=str(r["prev_hash"]),
+            seq=expected_seq,
+        )
+        if str(r["entry_hash"]) != recalc:
+            return {
+                "audit_log_ok": False,
+                "audit_log_length": len(rows),
+                "audit_log_broken_seq": expected_seq,
+                "audit_log_reason": "audit_log_entry_hash_mismatch",
+            }
+        expected_prev = str(r["entry_hash"])
+        expected_seq += 1
+
+    last_seq = expected_seq - 1
+    if not anchor:
+        return {
+            "audit_log_ok": False,
+            "audit_log_length": len(rows),
+            "audit_log_broken_seq": last_seq,
+            "audit_log_reason": "audit_log_missing_anchor",
+        }
+    if int(anchor["head_seq"]) != last_seq or str(anchor["head_hash"]) != expected_prev:
+        return {
+            "audit_log_ok": False,
+            "audit_log_length": len(rows),
+            "audit_log_broken_seq": last_seq,
+            "audit_log_reason": "audit_log_tail_truncated",
+        }
+    key, _ = integrity.owner_key(memory.store)
+    expected_hmac = sign_audit_log_head(key, memory.user_id, last_seq, expected_prev)
+    if not hmac.compare_digest(str(anchor["head_hmac"] or ""), expected_hmac):
+        return {
+            "audit_log_ok": False,
+            "audit_log_length": len(rows),
+            "audit_log_broken_seq": last_seq,
+            "audit_log_reason": "audit_log_anchor_hmac_mismatch",
+        }
+    return {
+        "audit_log_ok": True,
+        "audit_log_length": len(rows),
+        "audit_log_head_seq": last_seq,
+        "audit_log_head_hash": expected_prev,
+    }
+
+
+def _verify_ark_chain_only(memory) -> dict[str, Any]:
     conn = memory.store.conn
     conn.executescript(_AUDIT_DDL)
     rows = conn.execute(
@@ -250,3 +460,14 @@ def verify_audit_chain(memory) -> dict[str, Any]:
         "anchored": True,
         "ots_date": anchor["ots_date"],
     }
+
+
+def verify_audit_chain(memory) -> dict[str, Any]:
+    res = _verify_ark_chain_only(memory)
+    al = verify_audit_log_chain(memory)
+    res.update(al)
+    if not al.get("audit_log_ok", True):
+        if res.get("ok"):
+            res["reason"] = str(al.get("audit_log_reason") or "audit_log_tampered")
+        res["ok"] = False
+    return res
