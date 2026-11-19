@@ -10755,60 +10755,6 @@ def page() -> tuple[str, str]:
           <h2 class="panel-title" data-i18n="earn_title">{s['earn_title']}</h2>
           <p class="panel-sub" data-i18n="earn_sub">{s['earn_sub']}</p>
         </div>
-        <div id="qs-health-bar" class="qs-health-bar">
-          <span id="qh-admin" class="qs-badge">ADMIN_SECRET: …</span>
-          <span id="qh-mcp" class="qs-badge">MCP_TOKEN: …</span>
-          <span id="qh-mail" class="qs-badge">Mail: 0</span>
-          <span id="qh-leads" class="qs-badge">Leads: 0</span>
-          <span id="qh-worker" class="qs-badge">Worker: OFF</span>
-          <button id="qs-doctor-btn" type="button" class="btn-primary" data-i18n="qs_doctor_btn">{s['qs_doctor_btn']}</button>
-        </div>
-        <div id="qs-doctor-out" class="earn-meta" role="status"></div>
-        <div id="earn-quickstart" class="qs-banner">
-          <div class="qs-head">
-            <div>
-              <h3 class="box-title" data-i18n="qs_title">{s['qs_title']}</h3>
-              <p class="earn-meta" data-i18n="qs_sub">{s['qs_sub']}</p>
-            </div>
-            <span id="qs-progress-badge" class="qs-badge">0 / 4</span>
-          </div>
-          <div class="qs-grid">
-            <div class="qs-step">
-              <strong data-i18n="qs_step1_t">{s['qs_step1_t']}</strong>
-              <span id="qs-st-1" class="qs-badge">0</span>
-              <p class="earn-meta" data-i18n="qs_step1_d">{s['qs_step1_d']}</p>
-              <div class="rec-actions">
-                <button id="qs-go-agent-btn" type="button" data-i18n="qs_btn_agent">{s['qs_btn_agent']}</button>
-                <button id="qs-go-wiz-btn" type="button" class="btn-primary" data-i18n="qs_btn_wizard">{s['qs_btn_wizard']}</button>
-              </div>
-            </div>
-            <div class="qs-step">
-              <strong data-i18n="qs_step2_t">{s['qs_step2_t']}</strong>
-              <span id="qs-st-2" class="qs-badge">0</span>
-              <p class="earn-meta" data-i18n="qs_step2_d">{s['qs_step2_d']}</p>
-              <div class="rec-actions">
-                <button id="qs-go-mail-btn" type="button" class="btn-primary" data-i18n="qs_btn_mail">{s['qs_btn_mail']}</button>
-              </div>
-            </div>
-            <div class="qs-step">
-              <strong data-i18n="qs_step3_t">{s['qs_step3_t']}</strong>
-              <span id="qs-st-3" class="qs-badge">0</span>
-              <p class="earn-meta" data-i18n="qs_step3_d">{s['qs_step3_d']}</p>
-              <div class="rec-actions">
-                <button id="qs-go-leads-btn" type="button" class="btn-primary" data-i18n="qs_btn_leads">{s['qs_btn_leads']}</button>
-              </div>
-            </div>
-            <div class="qs-step">
-              <strong data-i18n="qs_step4_t">{s['qs_step4_t']}</strong>
-              <span id="qs-st-4" class="qs-badge">OFF</span>
-              <p class="earn-meta" data-i18n="qs_step4_d">{s['qs_step4_d']}</p>
-              <div class="rec-actions">
-                <button id="qs-launch-all-btn" type="button" class="btn-ok" data-i18n="qs_btn_launch">{s['qs_btn_launch']}</button>
-                <button id="qs-refresh-btn" type="button" data-i18n="qs_btn_refresh">{s['qs_btn_refresh']}</button>
-              </div>
-            </div>
-          </div>
-        </div>
         <div class="earn-grid">
           <div class="box earn-box-wide">
             <h3 class="box-title" data-i18n="earn_ex_title">{s['earn_ex_title']}</h3>
@@ -10853,6 +10799,14 @@ def page() -> tuple[str, str]:
             </div>
             <div id="earn-sim-out" class="earn-meta" role="status"></div>
           </div>
+        <div id="qs-health-bar" class="qs-health-bar">
+          <span id="qh-admin" class="qs-badge">ADMIN_SECRET: …</span>
+          <span id="qh-mcp" class="qs-badge">MCP_TOKEN: …</span>
+          <span id="qh-mail" class="qs-badge">Mail: 0</span>
+          <span id="qh-leads" class="qs-badge">Leads: 0</span>
+          <span id="qh-worker" class="qs-badge">Worker: OFF</span>
+          <button id="qs-doctor-btn" type="button" class="btn-primary" data-i18n="qs_doctor_btn">{s['qs_doctor_btn']}</button>
+        </div>
         <details id="earn-quickstart" class="qs-banner" open>
           <summary class="qs-head">
             <div>

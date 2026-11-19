@@ -1366,6 +1366,31 @@ BTN_TIPS: dict[str, dict[str, str]] = {
         "en": "Saves the name of the local Ollama model that Studio uses to answer questions about memory (for example llama3.2:3b). Runs on your computer, $0.",
         "es": "Guarda el nombre del modelo local de Ollama con el que Studio responde preguntas sobre la memoria (por ejemplo llama3.2:3b). Funciona en su equipo, $0.",
         "zh": "保存 Studio 用于回答记忆问题的本地 Ollama 模型名称（例如 llama3.2:3b）。在您的电脑上运行，$0。"},
+    "earn-mail-bulk-btn": {
+        "ru": "Подключает сразу несколько рабочих ящиков: по строке «почта | пароль приложения», до 25 штук. Основной пароль ящика не нужен.",
+        "en": "Connects several work mailboxes at once: one line «email | app password» each, up to 25. The main mailbox password is not needed.",
+        "es": "Conecta varios buzones a la vez: una línea «correo | contraseña de aplicación» por buzón, hasta 25. No hace falta la contraseña principal.",
+        "zh": "一次连接多个工作邮箱：每行“邮箱 | 应用专用密码”，最多 25 个。不需要邮箱主密码。"},
+    "earn-mail-pull-map-btn": {
+        "ru": "Берёт адресатов с карты исследования aifa.works (сайты с нарушениями доступности) в базу рассылки. Писем при этом не отправляет.",
+        "en": "Pulls contacts from the aifa.works research map (sites with accessibility violations) into the outreach base. Sends no emails.",
+        "es": "Trae contactos del mapa de investigación de aifa.works (sitios con fallos de accesibilidad) a la base de envíos. No envía correos.",
+        "zh": "从 aifa.works 研究地图（存在无障碍问题的网站）导入联系人到外联库。不会发送邮件。"},
+    "earn-mail-test-btn": {
+        "ru": "Отправляет одно тестовое письмо с отчётом на ваш же ящик — посмотреть, как письмо выглядит у получателя. Чужим людям ничего не уходит.",
+        "en": "Sends one test email with a report to your own mailbox — to see how it looks to a recipient. Nothing goes to other people.",
+        "es": "Envía un correo de prueba con el informe a su propio buzón, para ver cómo lo recibe el destinatario. No se envía nada a terceros.",
+        "zh": "向您自己的邮箱发送一封带报告的测试邮件，查看收件人看到的样子。不会发给其他人。"},
+    "earn-mail-verify-all-btn": {
+        "ru": "Проверяет вход во все подключённые ящики (SMTP и IMAP) и показывает, какие работают, а какие нет. Писем не отправляет.",
+        "en": "Checks sign-in to all connected mailboxes (SMTP and IMAP) and shows which work and which do not. Sends no emails.",
+        "es": "Comprueba el acceso a todos los buzones conectados (SMTP e IMAP) y muestra cuáles funcionan. No envía correos.",
+        "zh": "检查所有已连接邮箱的登录（SMTP 和 IMAP），显示哪些可用、哪些不可用。不会发送邮件。"},
+    "qs-doctor-btn": {
+        "ru": "Диагностика в один клик: проверяет ящики, ключи сайта и воркер и показывает в строке здоровья, что работает, а что нужно поправить.",
+        "en": "One-click diagnostics: checks mailboxes, site keys and the worker and shows in the health bar what works and what needs fixing.",
+        "es": "Diagnóstico en un clic: comprueba buzones, claves del sitio y el worker y muestra en la barra de salud qué funciona y qué corregir.",
+        "zh": "一键诊断：检查邮箱、网站密钥和工作进程，并在健康栏中显示哪些正常、哪些需要修复。"},
     "earn-mail-batch-btn": {
         "ru": "Запускает пакет рассылки по базе карты исследования: письма владельцам сайтов с нарушениями с подключённых ящиков, по очереди и в пределах их суточных лимитов; стоп-лист и 30-дневная бронь домена соблюдаются. Это отправка настоящим людям — нажимает только владелец.",
         "en": "Starts an outreach batch from the research map: emails to owners of sites with violations, rotating your mailboxes within their daily limits; the stop list and 30-day domain hold are respected. This emails real people — owner only.",

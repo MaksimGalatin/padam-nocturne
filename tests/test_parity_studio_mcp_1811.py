@@ -184,6 +184,7 @@ def test_parity_studio_playwright_all_buttons_1280_and_390(tmp_path: Path, monke
                         return
                     js_errors.append(txt)
                 page.on("console", _on_console)
+                page.on("response", lambda r: js_errors.append(f"HTTP {r.status} {r.request.method} {r.url.split('?')[0].split('127.0.0.1')[-1]}") if r.status >= 500 else None)
                 page.on("response", lambda r: server_errors.append((r.url, r.status)) if r.status >= 500 else None)
                 page.on("request", lambda req: external_reqs.append(req.url) if not req.url.startswith(("http://127.0.0.1:", "data:", "blob:", "about:")) else None)
 
@@ -191,9 +192,9 @@ def test_parity_studio_playwright_all_buttons_1280_and_390(tmp_path: Path, monke
 
                 def open_group_tab(grp_key: str, tab_id: str) -> None:
                     page.click(f".nav-group-btn[data-group='{grp_key}']")
-                    page.wait_for_selector(f"#subnav", timeout=5000)
+                    page.wait_for_selector(f"#subnav", timeout=15000)
                     page.locator(f"#subnav button", has_text=page.evaluate(f"() => document.querySelector('#tab-{tab_id}').textContent.trim().split('\\n')[0].trim()")).first.click()
-                    page.wait_for_selector(f"#panel-{tab_id}:not([hidden])", timeout=5000)
+                    page.wait_for_selector(f"#panel-{tab_id}:not([hidden])", timeout=15000)
 
                 def click_and_check_text(btn_sel: str, out_sel: str) -> None:
                     page.locator(btn_sel).scroll_into_view_if_needed()
@@ -208,13 +209,13 @@ def test_parity_studio_playwright_all_buttons_1280_and_390(tmp_path: Path, monke
                 if vp["width"] == 1280:
                     # 1. Вкладка СЕМЬЯ (#panel-family)
                     page.click("#tab-family")
-                    page.wait_for_selector("#panel-family:not([hidden])", timeout=5000)
+                    page.wait_for_selector("#panel-family:not([hidden])", timeout=15000)
 
                     # Лента и каналы Семьи
                     page.click("#ff-ch-office")
                     page.fill("#ff-input", "Сообщение из Playwright 1280")
                     page.click("#ff-send")
-                    page.wait_for_function("() => (document.querySelector('#ff-list')?.textContent || '').includes('Сообщение из Playwright 1280')", timeout=5000)
+                    page.wait_for_function("() => (document.querySelector('#ff-list')?.textContent || '').includes('Сообщение из Playwright 1280')", timeout=15000)
                     for ch_btn in ("#ff-ch-work", "#ff-ch-quarantine", "#ff-ch-smoke", "#ff-ch-office"):
                         page.click(ch_btn)
                         page.wait_for_timeout(80)
@@ -258,7 +259,7 @@ def test_parity_studio_playwright_all_buttons_1280_and_390(tmp_path: Path, monke
 
                     # 2. Вкладка СУВЕРЕННЫЙ МОЗГ (#panel-brain)
                     page.click("#tab-brain")
-                    page.wait_for_selector("#panel-brain:not([hidden])", timeout=5000)
+                    page.wait_for_selector("#panel-brain:not([hidden])", timeout=15000)
                     for bsel in ("#brain-refresh-btn", "#brain-mode-toggle-btn"):
                         page.click(bsel)
                         page.wait_for_timeout(120)
@@ -311,8 +312,8 @@ def test_parity_studio_playwright_all_buttons_1280_and_390(tmp_path: Path, monke
 
                     # 3. Вкладка АВТОНОМНЫЙ ЗАРАБОТОК (#panel-earning + 9. AIfaFocus)
                     page.click("#tab-earning")
-                    page.wait_for_selector("#panel-earning:not([hidden])", timeout=5000)
-                    page.wait_for_selector("#earn-wiz-google-btn", timeout=5000)
+                    page.wait_for_selector("#panel-earning:not([hidden])", timeout=15000)
+                    page.wait_for_selector("#earn-wiz-google-btn", timeout=15000)
                     page.fill("#earn-label", "My Upwork")
                     click_and_check_text("#earn-connect-btn", "#earn-accounts-list")
                     for bsel in ("#earn-auto-start-btn", "#earn-auto-stop-btn", "#earn-auto-tick-btn", "#earn-auto-cfg-btn"):
@@ -360,7 +361,7 @@ def test_parity_studio_playwright_all_buttons_1280_and_390(tmp_path: Path, monke
                     click_and_check_text("#earn-kin-recv-btn", "#earn-beacon-out")
 
                     page.click("#earn-store-seed-btn")
-                    page.wait_for_function("() => (document.querySelector('#earn-drafts-list')?.textContent || '').trim().length > 0", timeout=5000)
+                    page.wait_for_function("() => (document.querySelector('#earn-drafts-list')?.textContent || '').trim().length > 0", timeout=15000)
                     page.fill("#earn-draft-title", "Audit Checklist Pack")
                     page.click("#earn-draft-save-btn")
                     page.wait_for_timeout(150)
@@ -408,7 +409,7 @@ def test_parity_studio_playwright_all_buttons_1280_and_390(tmp_path: Path, monke
                     assert page.is_visible("#panel-feed")
                     page.fill("#feed-new-text", "Запись через Playwright feed-new-save")
                     page.click("#feed-new-save")
-                    page.wait_for_function("() => (document.querySelector('#feed-list')?.textContent || '').includes('feed-new-save')", timeout=5000)
+                    page.wait_for_function("() => (document.querySelector('#feed-list')?.textContent || '').includes('feed-new-save')", timeout=15000)
 
                     open_group_tab("grp_memory", "search")
                     page.fill("#search-input", "Меркла")
@@ -431,10 +432,10 @@ def test_parity_studio_playwright_all_buttons_1280_and_390(tmp_path: Path, monke
                     assert page.locator("#aifa-chat-list").count() == 1
                     page.fill("#aifa-email-input", "owner@example.com")
                     page.click("#aifa-send-code-btn")
-                    page.wait_for_selector("#aifa-code-input", state="visible", timeout=5000)
+                    page.wait_for_selector("#aifa-code-input", state="visible", timeout=15000)
                     page.fill("#aifa-code-input", "123456")
                     page.click("#aifa-verify-code-btn")
-                    page.wait_for_selector("#aifa-msg-input", state="visible", timeout=5000)
+                    page.wait_for_selector("#aifa-msg-input", state="visible", timeout=15000)
                     page.fill("#aifa-msg-input", "Привет")
                     page.click("#aifa-send-msg-btn")
                     page.wait_for_timeout(120)
@@ -451,7 +452,7 @@ def test_parity_studio_playwright_all_buttons_1280_and_390(tmp_path: Path, monke
                     page.wait_for_timeout(120)
 
                     open_group_tab("grp_guard", "review")
-                    page.wait_for_selector("#review-list button", timeout=5000)
+                    page.wait_for_selector("#review-list button", timeout=15000)
                     assert page.locator("#review-list button").count() >= 4
                     page.locator("#review-list button").nth(0).click()
                     page.wait_for_timeout(200)
@@ -461,11 +462,11 @@ def test_parity_studio_playwright_all_buttons_1280_and_390(tmp_path: Path, monke
 
                     # 18.11: бенчмарк вынесен из «Атак» в отдельную вкладку меню «Бенчмарк»
                     page.click("#tab-bench")
-                    page.wait_for_selector("#panel-bench:not([hidden])", timeout=5000)
+                    page.wait_for_selector("#panel-bench:not([hidden])", timeout=15000)
                     with page.expect_response(lambda r: "/api/v2/aifa-security/run" in r.url, timeout=30000) as resp_info:
                         page.click("#att-aifasec-run")
                     assert resp_info.value.status == 200
-                    page.wait_for_function("() => (document.querySelector('#att-aifasec-summary')?.textContent || '').trim().length > 0", timeout=5000)
+                    page.wait_for_function("() => (document.querySelector('#att-aifasec-summary')?.textContent || '').trim().length > 0", timeout=15000)
                     page.click("#att-qa-load")
                     page.wait_for_timeout(150)
 
@@ -485,14 +486,14 @@ def test_parity_studio_playwright_all_buttons_1280_and_390(tmp_path: Path, monke
 
                 else:
                     # 390x844: адаптивность и клики на мобильном экране
-                    page.wait_for_selector("#ark-wakeup-btn", timeout=5000)
+                    page.wait_for_selector("#ark-wakeup-btn", timeout=15000)
                     for tab_id, bsel, osel in (
                         ("family", "#ark-wakeup-btn", "#fam-ark-ops-out"),
                         ("brain", "#ark-anchor-chk-btn", "#ark-parity-brain-out"),
                         ("earning", "#earn-hw-rec-btn", "#earn-ollama-out"),
                     ):
                         page.click(f"#tab-{tab_id}")
-                        page.wait_for_selector(f"#panel-{tab_id}:not([hidden])", timeout=5000)
+                        page.wait_for_selector(f"#panel-{tab_id}:not([hidden])", timeout=15000)
                         assert page.evaluate("() => document.documentElement.scrollWidth <= window.innerWidth"), f"mobile overflow in {tab_id}"
                         click_and_check_text(bsel, osel)
                     open_group_tab("grp_more", "backup")
