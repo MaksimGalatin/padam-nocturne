@@ -638,6 +638,7 @@ FREELANCE_HUB_TOOL_DEF = {
             "wizard_catalog", "wizard_connect", "wizard_questionnaire", "wizard_publish_profile", "wizard_autopick_jobs",
             "signup", "login", "autopilot_config", "autopilot_tick", "autopilot_dispatch",
             "sample_prepare", "sample_reject", "official_api",
+            "mail_status", "connect_mail", "pause_mail", "send_outreach", "check_inbox", "add_stop", "build_outreach",
         ], "default": "dashboard", "description": "evaluate_job(title)|wizard(platform)"},
         "platform": {**_S, "description": "Platform"}, "mode": {"type": "string", "enum": ["oauth_api", "desk", "webhook"], "description": "Mode"},
         "account_label": _S, "agent_id": _S, "skills": {**_SA, "description": "Skills"},
@@ -652,6 +653,9 @@ FREELANCE_HUB_TOOL_DEF = {
         "compute_share_pct": _N, "agent_share_pct": _N,
         "settlement_currency": {"type": "string", "enum": ["USDT_TRC20", "GALATIN"], "description": "Coin"},
         "api_base_url": _S, "provider_id": _S,
+        "email": _S, "to_email": _S, "mail_id": _S, "app_password_or_token": _S,
+        "smtp_host": _S, "smtp_port": _I, "imap_host": _S, "imap_port": _I,
+        "daily_limit": _I, "domain": _S, "subject": _S, "body": _S, "language": _S, "target": _S,
         "monthly_tokens_need": _I, "suggestion_text": _S,
         "client_email": _S, "client_domain": _S,
         "client_external_id": _S,
@@ -3607,7 +3611,7 @@ _BATCH_ALLOWED_READONLY_ACTIONS: dict[str, tuple[str, frozenset[str]]] = {
     "padam_family_feed": ("read", frozenset({"read", "counts", "reflex_list", "reflex_match"})),
     "padam_token_budget": ("status", frozenset({"status", "list_proposals"})),
     "padam_local_model": ("status", frozenset({"status"})),
-    "padam_freelance_hub": ("dashboard", frozenset({"dashboard", "list_accounts", "list_orders", "monetization", "recommend_spend", "client_lock_status", "agent_ledger", "stores_status", "wizard_catalog", "autopilot_config"})),
+    "padam_freelance_hub": ("dashboard", frozenset({"dashboard", "list_accounts", "list_orders", "monetization", "recommend_spend", "client_lock_status", "agent_ledger", "stores_status", "wizard_catalog", "autopilot_config", "mail_status"})),
 }
 
 
@@ -5024,6 +5028,48 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
         elif act == "seed_drafts":
             from . import digital_stores as _ds
             payload = _ds.seed_starter_product_drafts(m)
+        elif act == "mail_status":
+            from . import email_autonomy as _ea
+            payload = _ea.mail_hub_snapshot(m)
+        elif act == "connect_mail":
+            from . import email_autonomy as _ea
+            payload = _ea.connect_mail_account(
+                m,
+                email=str(args.get("email") or ""),
+                provider=str(args.get("provider_id") or args.get("provider") or "gmail"),
+                app_password_or_token=str(args.get("app_password_or_token") or args.get("oauth_token") or ""),
+                smtp_host=str(args.get("smtp_host") or ""),
+                smtp_port=int(args.get("smtp_port") or 0),
+                imap_host=str(args.get("imap_host") or ""),
+                imap_port=int(args.get("imap_port") or 0),
+                daily_limit=int(args.get("daily_limit") or 30),
+            )
+        elif act == "pause_mail":
+            from . import email_autonomy as _ea
+            payload = _ea.set_mail_account_status(m, str(args.get("mail_id") or ""), status=str(args.get("status") or "paused"))
+        elif act == "send_outreach":
+            from . import email_autonomy as _ea
+            payload = _ea.send_outreach_email(
+                m,
+                to_email=str(args.get("to_email") or ""),
+                domain=str(args.get("domain") or ""),
+                subject=str(args.get("subject") or ""),
+                body=str(args.get("body") or ""),
+                mail_id=str(args.get("mail_id") or ""),
+            )
+        elif act == "check_inbox":
+            from . import email_autonomy as _ea
+            payload = _ea.process_inbox_replies(m, mail_id=str(args.get("mail_id") or ""))
+        elif act == "add_stop":
+            from . import email_autonomy as _ea
+            payload = _ea.add_to_stop_list(m, str(args.get("target") or args.get("email") or args.get("domain") or ""))
+        elif act == "build_outreach":
+            from . import partner_bridge as _pb
+            payload = _pb.build_business_outreach(
+                m,
+                str(args.get("domain") or args.get("site") or ""),
+                language=str(args.get("language") or "ru"),
+            )
         elif act == "official_api":
             from . import platform_wizard as _pw
             payload = _pw.official_platform_api_action(

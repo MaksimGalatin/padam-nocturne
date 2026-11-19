@@ -701,6 +701,12 @@ class Handler(BaseHTTPRequestHandler):
                 with mem().store._lock:
                     snap_wiz = _pw.platform_wizard_snapshot(mem())
                 return self._send(200, snap_wiz)
+            if путь.path == "/api/v2/ark/mail":
+                roles.require_owner(actor, "ark_freelance")
+                from . import email_autonomy as _ea
+                with mem().store._lock:
+                    snap_mail = _ea.mail_hub_snapshot(mem())
+                return self._send(200, snap_mail)
             if путь.path == "/api/v2/qa-benchmark":
                 roles.require_owner(actor, "aifa_security")
                 from pathlib import Path as _Path
@@ -2134,6 +2140,55 @@ class Handler(BaseHTTPRequestHandler):
                     else:
                         res_wz = _pw.platform_wizard_snapshot(mem())
                 return self._send(200, res_wz)
+
+            if self.path == "/api/v2/ark/mail/action":
+                roles.require_owner(actor, "ark_freelance")
+                from . import email_autonomy as _ea, partner_bridge as _pb
+                act_m = str(data.get("action") or "mail_status").lower()
+                try:
+                    if act_m == "connect_mail":
+                        res_m = _ea.connect_mail_account(
+                            mem(),
+                            email=str(data.get("email") or ""),
+                            provider=str(data.get("provider") or "gmail"),
+                            app_password_or_token=str(data.get("app_password_or_token") or ""),
+                            smtp_host=str(data.get("smtp_host") or ""),
+                            smtp_port=int(data.get("smtp_port") or 0),
+                            imap_host=str(data.get("imap_host") or ""),
+                            imap_port=int(data.get("imap_port") or 0),
+                            daily_limit=int(data.get("daily_limit") or 30),
+                            verify_connection=bool(data.get("verify_connection", True)),
+                        )
+                    elif act_m == "pause_mail":
+                        res_m = _ea.set_mail_account_status(
+                            mem(),
+                            str(data.get("mail_id") or ""),
+                            status=str(data.get("status") or "paused"),
+                        )
+                    elif act_m == "send_outreach":
+                        res_m = _ea.send_outreach_email(
+                            mem(),
+                            to_email=str(data.get("to_email") or ""),
+                            domain=str(data.get("domain") or ""),
+                            subject=str(data.get("subject") or ""),
+                            body=str(data.get("body") or ""),
+                            mail_id=str(data.get("mail_id") or ""),
+                        )
+                    elif act_m == "check_inbox":
+                        res_m = _ea.process_inbox_replies(mem(), mail_id=str(data.get("mail_id") or ""))
+                    elif act_m == "add_stop":
+                        res_m = _ea.add_to_stop_list(mem(), str(data.get("target") or ""))
+                    elif act_m == "build_outreach":
+                        res_m = _pb.build_business_outreach(
+                            mem(),
+                            str(data.get("domain") or ""),
+                            language=str(data.get("language") or "ru"),
+                        )
+                    else:
+                        res_m = _ea.mail_hub_snapshot(mem())
+                    return self._send(200, res_m)
+                except ValueError as _ve:
+                    return self._send(400, {"error": str(_ve)})
 
             if self.path == "/api/v2/ark/commitments":
                 roles.require_owner(actor, "brain_status")

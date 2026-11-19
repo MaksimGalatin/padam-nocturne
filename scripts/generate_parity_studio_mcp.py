@@ -206,6 +206,13 @@ PARITY_MAP: dict[tuple[str, str], tuple[str, str, str, str]] = {
     ("padam_freelance_hub", "sample_prepare"): ("panel-earning", "[data-order-action='sample_prepare']", "POST /api/v2/ark/wizard/action", "padam.platform_wizard"),
     ("padam_freelance_hub", "sample_reject"): ("panel-earning", "[data-order-action='sample_reject']", "POST /api/v2/ark/wizard/action", "padam.platform_wizard"),
     ("padam_freelance_hub", "official_api"): ("panel-earning", "#earn-wiz-off-btn | #earn-wiz-off-op", "POST /api/v2/ark/wizard/action", "padam.platform_wizard"),
+    ("padam_freelance_hub", "mail_status"): ("panel-earning", "#earn-mail-box | #earn-mail-status", "GET /api/v2/ark/mail", "padam.email_autonomy"),
+    ("padam_freelance_hub", "connect_mail"): ("panel-earning", "#earn-mail-connect-btn | #earn-mail-email", "POST /api/v2/ark/mail/action", "padam.email_autonomy"),
+    ("padam_freelance_hub", "pause_mail"): ("panel-earning", "#earn-mail-accounts", "POST /api/v2/ark/mail/action", "padam.email_autonomy"),
+    ("padam_freelance_hub", "send_outreach"): ("panel-earning", "#earn-mail-box", "POST /api/v2/ark/mail/action", "padam.email_autonomy"),
+    ("padam_freelance_hub", "check_inbox"): ("panel-earning", "#earn-mail-inbox-btn", "POST /api/v2/ark/mail/action", "padam.email_autonomy"),
+    ("padam_freelance_hub", "add_stop"): ("panel-earning", "#earn-mail-status", "POST /api/v2/ark/mail/action", "padam.email_autonomy"),
+    ("padam_freelance_hub", "build_outreach"): ("panel-earning", "#earn-mail-build-btn | #earn-mail-domain", "POST /api/v2/ark/mail/action", "padam.partner_bridge"),
 
     # padam_phoenix_family
     ("padam_phoenix_family", "status"): ("panel-earning", "#earn-beacon-out | #earn-ollama-out", "POST /api/v2/ark/phoenix-beacon/action", "padam.phoenix_beacon"),

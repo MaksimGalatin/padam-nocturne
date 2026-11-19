@@ -230,6 +230,62 @@ def _fetch_business_profile(domain: str, *, allow_live_fetch: bool = True) -> di
     return info
 
 
+def _plural_ru(n: int, forms: tuple[str, str, str]) -> str:
+    n_abs = abs(int(n))
+    if 11 <= (n_abs % 100) <= 19:
+        return forms[2]
+    m = n_abs % 10
+    if m == 1:
+        return forms[0]
+    if 2 <= m <= 4:
+        return forms[1]
+    return forms[2]
+
+
+def _lookup_map_record(domain: str, *, allow_live_fetch: bool = True) -> dict[str, Any]:
+    import csv as _csv
+    import pathlib as _pl
+
+    clean_dom = str(domain or "").strip().lower()
+    if not clean_dom:
+        return {}
+    csv_candidates = (
+        _pl.Path(r"E:/Aifa/ВАЖНЫЕ ДОКУМЕНТЫ!!!!!!!!!!!!!!!!!!!!!!!!!/09_ЗАРАБОТОК И МОНЕТИЗАЦИЯ/ГОТОВЫЕ_БАЗЫ_ДЛЯ_ЗАПУСКА/ПРОБНЫЙ_ПАКЕТ_10_ЛИДОВ.csv"),
+        _pl.Path(r"E:/Aifa/ВАЖНЫЕ ДОКУМЕНТЫ!!!!!!!!!!!!!!!!!!!!!!!!!/09_ЗАРАБОТОК И МОНЕТИЗАЦИЯ/ГОТОВЫЕ_БАЗЫ_ДЛЯ_ЗАПУСКА/БАЗА_АУТРИЧА_США_с_почтой.csv"),
+    )
+    for cp in csv_candidates:
+        if not cp.is_file():
+            continue
+        try:
+            with cp.open("r", encoding="utf-8-sig", errors="replace") as f:
+                for row in _csv.DictReader(f):
+                    dom_val = str(row.get("домен") or "").strip().lower()
+                    if dom_val == clean_dom:
+                        return dict(row)
+        except Exception:
+            continue
+    if allow_live_fetch and not os.environ.get("PYTEST_CURRENT_TEST"):
+        try:
+            import urllib.parse as _up, urllib.request as _ur
+            from . import net_guard as _ng
+            u = f"https://aifa.works/api/site-report?d={_up.quote(clean_dom)}"
+            req = _ur.Request(u, headers={"User-Agent": "PADAM-Studio/0.6.5"})
+            with _ng.safe_urlopen(req, timeout=5, require_https=True) as r:
+                data = json.loads(r.read().decode("utf-8", "replace"))
+            for item in data.get("records") or []:
+                if item.get("layer") == "c" and isinstance(item.get("detail"), dict):
+                    det = item["detail"]
+                    return {
+                        "домен": clean_dom,
+                        "нарушений_всего": det.get("t", 0),
+                        "critical": det.get("c", 0),
+                        "serious": det.get("s", 0),
+                    }
+        except Exception:
+            pass
+    return {}
+
+
 def build_business_outreach(
     memory,
     site: str,
@@ -245,6 +301,8 @@ def build_business_outreach(
     t_start = _time.perf_counter()
     clean_dom = str(site or "").strip().lower().removeprefix("https://").removeprefix("http://").split("/")[0]
     rec = dict(site_record or {})
+    if not rec and clean_dom:
+        rec = _lookup_map_record(clean_dom, allow_live_fetch=allow_live_fetch)
     total_v = int(rec.get("violations") or rec.get("нарушений_всего") or 0)
     crit_v = int(rec.get("critical") or 0)
     ser_v = int(rec.get("serious") or 0)
@@ -273,22 +331,27 @@ def build_business_outreach(
         + f"Цена проблемы для бизнеса: {impact_ru}."
     )
 
+    w_nar = _plural_ru(total_v, ("нарушение", "нарушения", "нарушений"))
+    w_bar = _plural_ru(total_v, ("барьер", "барьера", "барьеров"))
+    w_crit = _plural_ru(crit_v, ("критическое", "критических", "критических"))
+    w_ser = _plural_ru(ser_v, ("серьёзное", "серьёзных", "серьёзных"))
+
     site_report_ru = (
         f"ПОЛНЫЙ ОТЧЁТ ПО ДОСТУПНОСТИ САЙТА {clean_dom}\n"
         f"Источник: открытое исследование доступности CODE Eternal / AIfa Works (WCAG 2.1 AA, axe-core).\n"
-        f"Итого на главной странице: {total_v} нарушений (критических: {crit_v}, серьёзных: {ser_v}).\n"
+        f"Итого на главной странице: {total_v} {w_nar} (критических: {crit_v}, серьёзных: {ser_v}).\n"
         f"Главные технические барьеры:\n" + "\n".join(explained_rules) + "\n"
         f"Самостоятельная проверка за 1 минуту (бесплатно, без регистрации): https://aifa.works/accessibility?url={clean_dom}"
     )
 
     lang = language if language in ("ru", "en", "es", "zh", "de") else "ru"
     if lang == "ru":
-        email_subject = f"{biz_name}: {total_v} барьеров на {clean_dom} ({crit_v} критических) — как не терять клиентов и не попасть под штраф ADA"
+        email_subject = f"{biz_name}: {total_v} {w_bar} на {clean_dom} ({crit_v} {_plural_ru(crit_v, ('критический', 'критических', 'критических'))}) — как не терять клиентов и не попасть под штраф ADA"
         email_body = (
             f"Здравствуйте!\n\n"
             f"Мы изучили сайт {biz_name} ({clean_dom})" + (f" в {place}" if place else "") + ". "
             f"Ваш проект работает в нише «{niche_ru}», где каждый прямой визит на сайт и каждая заявка или бронь напрямую дают выручку.\n\n"
-            f"В рамках открытого исследования доступности мы замерили главную страницу {clean_dom} по стандарту WCAG 2.1 AA (axe-core) и зафиксировали {total_v} нарушений, из них {crit_v} критических и {ser_v} серьёзных.\n\n"
+            f"В рамках открытого исследования доступности мы замерили главную страницу {clean_dom} по стандарту WCAG 2.1 AA (axe-core) и зафиксировали {total_v} {w_nar}, из них {crit_v} {w_crit} и {ser_v} {w_ser}.\n\n"
             f"Что именно ломается у живых посетителей прямо сейчас:\n"
             + "\n".join(explained_rules)
             + f"\n\nДля вашего бизнеса это означает простую вещь: {impact_ru}. Кроме прямой потери заказов, критические ошибки WCAG по статистике в США становятся самой частой причиной досудебных претензий по закону ADA Title III.\n\n"

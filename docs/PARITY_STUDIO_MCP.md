@@ -4,13 +4,13 @@
 
 ## Сводка по всем инструментам и действиям MCP
 
-- Всего инструментов MCP (с учётом всех 6 флагов, `_ALL_TOOLS_BY_NAME`): **46** (по умолчанию: **9**, `PADAM_MCP_ARK_TOOLS=1`: **34** и **27153/27000** символов в `tools/list`, с `PADAM_MCP_PARTNER_TOOLS=1`: **40**).
-- Всего пар `(инструмент, action)`: **173**.
-- Есть в MCP: **173 из 173**
-- Есть в Studio (вкладка + кнопка/поле): **173 из 173**
-- Есть в API (`padam/api.py`): **173 из 173**
-- Покрыто автотестами: **173 из 173**
-- Проверено реальным нажатием в Playwright (1280×800 и 390×844): **173 из 173**
+- Всего инструментов MCP (с учётом всех 6 флагов, `_ALL_TOOLS_BY_NAME`): **46** (по умолчанию: **9**, `PADAM_MCP_ARK_TOOLS=1`: **34** и **27718/27000** символов в `tools/list`, с `PADAM_MCP_PARTNER_TOOLS=1`: **40**).
+- Всего пар `(инструмент, action)`: **180**.
+- Есть в MCP: **180 из 180**
+- Есть в Studio (вкладка + кнопка/поле): **180 из 180**
+- Есть в API (`padam/api.py`): **180 из 180**
+- Покрыто автотестами: **175 из 180**
+- Проверено реальным нажатием в Playwright (1280×800 и 390×844): **173 из 180**
 - Контролов Studio только для владельца (намеренно закрытых в MCP по аудиту GLM): **13**
 
 ## 1. Полная таблица MCP → Studio → API
@@ -167,6 +167,13 @@
 | `padam_freelance_hub` | `sample_prepare` | Да | Да: `panel-earning` → `[data-order-action='sample_prepare']` | Да: `POST /api/v2/ark/wizard/action` | Да | Да |
 | `padam_freelance_hub` | `sample_reject` | Да | Да: `panel-earning` → `[data-order-action='sample_reject']` | Да: `POST /api/v2/ark/wizard/action` | Да | Да |
 | `padam_freelance_hub` | `official_api` | Да | Да: `panel-earning` → `#earn-wiz-off-btn, #earn-wiz-off-op` | Да: `POST /api/v2/ark/wizard/action` | Да | Да |
+| `padam_freelance_hub` | `mail_status` | Да | Да: `panel-earning` → `#earn-mail-box, #earn-mail-status` | Да: `GET /api/v2/ark/mail` | Нет | Нет |
+| `padam_freelance_hub` | `connect_mail` | Да | Да: `panel-earning` → `#earn-mail-connect-btn, #earn-mail-email` | Да: `POST /api/v2/ark/mail/action` | Да | Нет |
+| `padam_freelance_hub` | `pause_mail` | Да | Да: `panel-earning` → `#earn-mail-accounts` | Да: `POST /api/v2/ark/mail/action` | Нет | Нет |
+| `padam_freelance_hub` | `send_outreach` | Да | Да: `panel-earning` → `#earn-mail-box` | Да: `POST /api/v2/ark/mail/action` | Да | Нет |
+| `padam_freelance_hub` | `check_inbox` | Да | Да: `panel-earning` → `#earn-mail-inbox-btn` | Да: `POST /api/v2/ark/mail/action` | Нет | Нет |
+| `padam_freelance_hub` | `add_stop` | Да | Да: `panel-earning` → `#earn-mail-status` | Да: `POST /api/v2/ark/mail/action` | Нет | Нет |
+| `padam_freelance_hub` | `build_outreach` | Да | Да: `panel-earning` → `#earn-mail-build-btn, #earn-mail-domain` | Да: `POST /api/v2/ark/mail/action` | Нет | Нет |
 | `padam_phoenix_family` | `status` | Да | Да: `panel-earning` → `#earn-beacon-out, #earn-ollama-out` | Да: `POST /api/v2/ark/phoenix-beacon/action` | Да | Да |
 | `padam_phoenix_family` | `bind_ollama` | Да | Да: `panel-earning` → `#earn-ollama-btn, #earn-ollama-url` | Да: `POST /api/v2/ark/phoenix-beacon/action` | Да | Да |
 | `padam_phoenix_family` | `pull_ollama` | Да | Да: `panel-earning` → `#earn-ollama-pull-btn, #earn-ollama-model` | Да: `POST /api/v2/ark/phoenix-beacon/action` | Да | Да |

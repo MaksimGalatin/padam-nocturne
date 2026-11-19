@@ -2515,6 +2515,15 @@ def run_autopilot_cycle(memory, *, allow_localhost: bool = False) -> dict[str, A
     except Exception as _ap_exc:
         raise RuntimeError(f'autopilot_step_error: {_ap_exc}') from _ap_exc
 
+    # Шаг 5: обработка входящих писем аутрича (STOP -> стоп-лист, «Шлите список» -> автоответ с отчётом)
+    inbox_res: dict[str, Any] = {"processed": 0, "reports_sent": 0, "stopped": 0, "escalated": 0}
+    try:
+        from . import email_autonomy as _ea
+        if _ea.list_mail_accounts(memory):
+            inbox_res = _ea.process_inbox_replies(memory)
+    except Exception:
+        pass
+
     payout_res = release_matured_payouts(memory)
     released_cnt = int(payout_res.get("released_count") or 0) if isinstance(payout_res, dict) else 0
     note = (
@@ -2538,6 +2547,10 @@ def run_autopilot_cycle(memory, *, allow_localhost: bool = False) -> dict[str, A
         "orders_executed": orders_executed,
         "deliveries_packaged": deliveries_packaged,
         "payouts_released": released_cnt,
+        "inbox_processed": int(inbox_res.get("processed") or 0),
+        "inbox_reports_sent": int(inbox_res.get("reports_sent") or 0),
+        "inbox_stopped": int(inbox_res.get("stopped") or 0),
+        "inbox_escalated": int(inbox_res.get("escalated") or 0),
         "reauth_needed": reauth_needed,
         "state": get_autopilot_state(memory),
     }

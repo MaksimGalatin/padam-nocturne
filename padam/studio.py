@@ -7855,6 +7855,65 @@ if ($('earn-prefs-save-btn')) {
   };
 }
 
+async function loadMailHub() {
+  if (!$('earn-mail-box')) return;
+  try {
+    const d = await api('/api/v2/ark/mail');
+    if ($('earn-mail-status')) {
+      $('earn-mail-status').textContent = 'Ящиков: ' + ((d.accounts || []).length) + ' · В стоп-листе: ' + (d.stop_list_count || 0);
+    }
+    const list = $('earn-mail-accounts');
+    if (list) {
+      list.textContent = '';
+      for (const a of (d.accounts || [])) {
+        const card = _el('div', 'earn-card');
+        card.appendChild(_el('strong', '', a.email + ' (' + a.provider + ')'));
+        card.appendChild(_el('div', 'earn-meta', 'Сегодня: ' + a.sent_today + '/' + a.daily_limit + ' · Статус: ' + a.status));
+        const btn = _el('button', '', a.status === 'active' ? 'Пауза' : 'Включить');
+        btn.onclick = async () => {
+          await api('/api/v2/ark/mail/action', { action: 'pause_mail', mail_id: a.mail_id, status: a.status === 'active' ? 'paused' : 'active' });
+          loadMailHub();
+        };
+        card.appendChild(btn);
+        list.appendChild(card);
+      }
+    }
+  } catch (e) {}
+}
+if ($('earn-mail-connect-btn')) {
+  $('earn-mail-connect-btn').onclick = async () => {
+    try {
+      const r = await api('/api/v2/ark/mail/action', {
+        action: 'connect_mail',
+        provider: ($('earn-mail-provider') && $('earn-mail-provider').value) || 'gmail',
+        email: ($('earn-mail-email') && $('earn-mail-email').value) || '',
+        app_password_or_token: ($('earn-mail-secret') && $('earn-mail-secret').value) || '',
+        daily_limit: Number(($('earn-mail-limit') && $('earn-mail-limit').value) || 30),
+      });
+      say(r && r.ok ? S.done : String((r && r.error) || 'error'), !!(r && r.ok));
+      loadMailHub();
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
+if ($('earn-mail-inbox-btn')) {
+  $('earn-mail-inbox-btn').onclick = async () => {
+    try {
+      const r = await api('/api/v2/ark/mail/action', { action: 'check_inbox' });
+      _famShow('earn-mail-out', r);
+      loadMailHub();
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
+if ($('earn-mail-build-btn')) {
+  $('earn-mail-build-btn').onclick = async () => {
+    try {
+      const r = await api('/api/v2/ark/mail/action', { action: 'build_outreach', domain: ($('earn-mail-domain') && $('earn-mail-domain').value) || '' });
+      _famShow('earn-mail-out', r);
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
+loadMailHub();
+
 if ($('earn-auto-start-btn')) {
   $('earn-auto-start-btn').onclick = async () => {
     try { await api('/api/v2/ark/freelance/action', { action: 'autopilot_start' }); say(S.done); loadEarning(); } catch (e) { say(String(e.message || e), false); }
@@ -9791,6 +9850,33 @@ def page() -> tuple[str, str]:
               <button id="earn-partner-kit-btn" data-i18n="earn_partner_kit_btn">{s['earn_partner_kit_btn']}</button>
             </div>
             <div id="earn-partner-out" class="earn-stack"></div>
+          </div>
+
+          <div class="box earn-box-wide" id="earn-mail-box">
+            <h3 class="box-title">10. Почтовый авто-конвейер (мульти-почта, ответы «Шлите список» и стоп-лист STOP)</h3>
+            <p class="earn-meta">Подключите нужное количество рабочих почт (секреты шифруются AES-256-GCM). Агент сам шлёт письма с ротацией лимита, отвечает на «Шлите список» печатным отчётом, заносит STOP в чёрный список и передаёт сложные вопросы вам.</p>
+            <div class="toolbar">
+              <select id="earn-mail-provider" aria-label="Mail provider">
+                <option value="gmail">Gmail (App Password)</option>
+                <option value="yandex">Яндекс.Почта</option>
+                <option value="mailru">Mail.ru</option>
+                <option value="outlook">Outlook</option>
+                <option value="smtp_imap">Свой SMTP + IMAP</option>
+                <option value="resend">Resend API</option>
+              </select>
+              <input id="earn-mail-email" type="email" placeholder="contact@yourdomain.com" aria-label="Email address">
+              <input id="earn-mail-secret" type="password" autocomplete="off" placeholder="App Password / API-ключ" aria-label="App Password or API token">
+              <input id="earn-mail-limit" class="earn-num-input" type="number" value="30" min="1" max="200" aria-label="Daily limit">
+              <button id="earn-mail-connect-btn" class="btn-primary">Подключить почту</button>
+            </div>
+            <div class="toolbar">
+              <input id="earn-mail-domain" type="text" placeholder="Домен с карты (например havanacabanakeywesthotel.com)" aria-label="Target domain">
+              <button id="earn-mail-build-btn" class="btn-ok">Собрать отчёт, сводку и письмо</button>
+              <button id="earn-mail-inbox-btn" class="btn-primary">Проверить входящие (STOP / «Шлите список»)</button>
+            </div>
+            <div id="earn-mail-status" class="earn-meta" role="status"></div>
+            <div id="earn-mail-accounts" class="earn-stack"></div>
+            <div id="earn-mail-out" class="earn-stack"></div>
           </div>
         </div>
       </section>
