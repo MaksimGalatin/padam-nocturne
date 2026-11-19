@@ -82,6 +82,36 @@ def inject(lang: str, text: str) -> str:
     return text[:j] + NL + block + text[j:]
 
 
+RSTART, REND = "<!-- rest-more:start -->", "<!-- rest-more:end -->"
+RTITLE = {"en": ("More REST endpoints (owner only)", "Method", "Path", "Purpose"),
+          "ru": ("Ещё адреса REST (только владелец)", "Метод", "Путь", "Назначение"),
+          "es": ("Más endpoints REST (solo el dueño)", "Método", "Ruta", "Propósito"),
+          "zh": ("更多 REST 接口（仅所有者）", "方法", "路径", "用途")}
+
+
+def rest_missing(text: str) -> list[str]:
+    from padam import api
+    base = re.sub(re.escape(RSTART) + r".*?" + re.escape(REND), "", text, flags=re.S)
+    return [r for r in sorted(api.OWNER_GET) if "<code>" + r + "</code>" not in base]
+
+
+def inject_rest(lang: str, text: str) -> str:
+    """Блок «Ещё адреса REST»: каждый GET-адрес владельца из кода, которого нет в основной таблице."""
+    from padam.rest_help_i18n import REST_HELP
+    title, h_m, h_p, h_purpose = RTITLE[lang]
+    miss = rest_missing(text)
+    rows = "".join("<tr><td><code>GET</code></td><td><code>" + html.escape(r) + "</code></td><td>"
+                   + html.escape((REST_HELP.get(r) or {}).get(lang, "")) + "</td></tr>" for r in miss)
+    block = (RSTART + NL + "<h2>" + title + " (" + str(len(miss)) + ")</h2>" + NL
+             + '<div class="table-wrap"><table><thead><tr><th>' + h_m + "</th><th>" + h_p + "</th><th>" + h_purpose
+             + "</th></tr></thead><tbody>" + rows + "</tbody></table></div>" + NL + REND)
+    if RSTART in text:
+        return re.sub(re.escape(RSTART) + r".*?" + re.escape(REND), lambda _m: block, text, flags=re.S)
+    i = text.index("/health</code>") if "/health</code>" in text else -1
+    j = text.index("</table></div>", i) + len("</table></div>") if i >= 0 else text.rindex("</main>")
+    return text[:j] + NL + block + text[j:]
+
+
 def build() -> dict[str, int]:
     out = {}
     for lang in TITLE:

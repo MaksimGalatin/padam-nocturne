@@ -902,7 +902,7 @@ def build_site(out_dir: Path = DEFAULT_OUT) -> list[Path]:
                 _sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
                 _sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
                 import gen_reference_cli as _g
-                content = _g.inject(lang, content)
+                content = _g.inject_rest(lang, _g.inject(lang, content))
             target.write_text(content, encoding="utf-8", newline="\n")
             written.append(target)
 

@@ -48,3 +48,22 @@ def test_у_каждой_команды_есть_перевод_es_zh(cmds):
     text = (g.SITE / "en" / "reference.html").read_text(encoding="utf-8")
     в_разделе = re.findall(r"<code>([^<]+)</code>", re.search(re.escape(g.START) + r"(.*?)" + re.escape(g.END), text, re.S).group(1))
     assert set(в_разделе) <= set(CLI_HELP_ES) and set(в_разделе) <= set(CLI_HELP_ZH)
+
+
+@pytest.mark.parametrize("lang", ["en", "ru", "es", "zh"])
+def test_каждый_rest_адрес_владельца_есть_в_справочнике(lang):
+    from padam import api
+    from padam.rest_help_i18n import REST_HELP
+    text = (g.SITE / lang / "reference.html").read_text(encoding="utf-8")
+    нет = [r for r in sorted(api.OWNER_GET) if "<code>" + r + "</code>" not in text]
+    assert not нет, f"{lang}: нет адресов {нет} — допишите padam/rest_help_i18n.py и пересоберите docs/build_site.py"
+    блок = re.search(re.escape(g.RSTART) + r"(.*?)" + re.escape(g.REND), text, re.S).group(1)
+    for d in re.findall(r"</code></td><td>([^<]*)</td></tr>", блок):
+        assert d.strip()
+        if lang == "ru":
+            assert КИР.search(d), d
+        elif lang == "zh":
+            assert ХАНЬ.search(d), d
+        else:
+            assert not КИР.search(d), d
+    assert set(re.findall(r"<td><code>(/[^<]+)</code>", блок)) <= set(REST_HELP)
