@@ -11,3 +11,4 @@ New decisions use `0000-template.md`. Added 2026-11-19 (roadmap item N10).
 | [0004](0004-connection-under-lock.md) | Every use of the shared SQLite connection goes through the store lock | `padam/store.py` `_ConnUnderLock` |
 | [0005](0005-per-record-keys-crypto-shredding.md) | Forgetting = destroying a per-record key, with a receipt | `padam/memory.py`, `padam/audit_chain.py` |
 | [0006](0006-hash-chained-audit-log.md) | The audit log is hash-chained and anchored with an owner HMAC | `padam/audit_chain.py` |
+| [0007](0007-plugins-owner-approved-by-fingerprint.md) | Community plugins load only after owner approval of this exact code | `padam/plugins.py` |

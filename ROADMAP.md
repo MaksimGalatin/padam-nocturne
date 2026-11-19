@@ -11,6 +11,7 @@ Last update: 2026-11-19.
 - Local observability: per-call JSON log with trace_id, `padam latency` p50/p95 (ADR-0002).
 - Restore drill: `padam restore-drill` — backup → restore to a temp file → verify fingerprint.
 - Personal data inventory: `padam privacy-inventory`.
+- Plugin SDK v1: `padam plugin list|approve|revoke|run` — loads only owner-approved code (ADR-0007).
 
 ## Next
 - Answer accuracy with a local model on LOCOMO (published only after a cold, reproducible run).
@@ -19,7 +20,7 @@ Last update: 2026-11-19.
 - Restore drill on a monthly schedule in CI.
 
 ## Later
-- Plugin SDK: community tools in a sandbox without access to the core.
+- Plugin SDK v2: more capabilities and a shared registry (v1 shipped: owner-approved plugins pinned by code fingerprint, read-only memory facade, ADR-0007).
 - Mobile companion (PWA) for one-tap owner approvals.
 
 ## Not planned (on purpose)

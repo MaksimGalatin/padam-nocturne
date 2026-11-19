@@ -886,6 +886,21 @@ def cmd_privacy_inventory(m: Memory, a) -> int:
     return 0
 
 
+def cmd_plugin(m: Memory, a) -> int:
+    """B6 Сестры: плагины сообщества — список, одобрение владельцем (по отпечатку кода), отзыв, запуск инструмента."""
+    from . import plugins
+    if a.op == "list":
+        r = plugins.list_plugins()
+    elif a.op == "approve":
+        r = plugins.approve(a.name)
+    elif a.op == "revoke":
+        r = plugins.revoke(a.name)
+    else:
+        r = plugins.run_tool(m, a.name, json.loads(a.args or "{}"))
+    print(json.dumps(r, ensure_ascii=False, indent=2, default=str))
+    return 0
+
+
 def cmd_latency(m: Memory, a) -> int:
     """B1 Сестры: сводка задержек MCP-инструментов за день из локального журнала (p50/p95, цель p95 < 200 мс)."""
     from . import observability
@@ -1376,6 +1391,13 @@ def main(argv=None) -> int:
     s = sub.add_parser("latency", help=t("задержки MCP-инструментов за день (p50/p95)", "MCP tool latency for a day (p50/p95)"))
     s.add_argument("--day", default=None)
     s.set_defaults(fn=cmd_latency)
+
+    s = sub.add_parser("plugin", help=t("плагины: list | approve <имя> | revoke <имя> | run <плагин.инструмент>",
+                                        "plugins: list | approve <name> | revoke <name> | run <plugin.tool>"))
+    s.add_argument("op", choices=["list", "approve", "revoke", "run"])
+    s.add_argument("name", nargs="?", default="")
+    s.add_argument("--args", default="{}")
+    s.set_defaults(fn=cmd_plugin)
 
     s = sub.add_parser("privacy-inventory", help=t("опись личных данных: что и где хранится", "personal data inventory"))
     s.set_defaults(fn=cmd_privacy_inventory)
