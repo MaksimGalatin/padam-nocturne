@@ -179,6 +179,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "ov_sleep_conflicts": "Найдено противоречий: {n} — они в блоке «Что требует вашего решения».",
         "need_input": "Сначала заполните поле — без него действие не выполнить.",
         "lm_power_picked": "Выбрано: {p}. Нажмите «Сохранить», чтобы применить.",
+        "wiz_connected": "подключено",
+        "wiz_waiting": "ожидает входа",
+        "wiz_error": "ошибка: ",
+        "earn_share_pool": "{p}% от пула после комиссии (${u})",
+        "rt_sum_detector": "итого, со слоем детектора",
         "seal_ok": "Подпись эталонного отчёта верна: его никто не менял после выпуска",
         "seal_bad": "Подпись не сходится — отчёт изменён или повреждён",
         "bench_guide_title": "Как читать эту вкладку",
@@ -928,6 +933,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "ov_sleep_conflicts": "Contradictions found: {n} — see «What needs your decision».",
         "need_input": "Fill in the field first — the action needs it.",
         "lm_power_picked": "Selected: {p}. Press «Save» to apply.",
+        "wiz_connected": "connected",
+        "wiz_waiting": "waiting for sign-in",
+        "wiz_error": "error: ",
+        "earn_share_pool": "{p}% of the pool after the fee (${u})",
+        "rt_sum_detector": "total, with the detector layer",
         "seal_ok": "The reference report's signature is valid: nobody changed it after release",
         "seal_bad": "The signature does not match — the report was altered or damaged",
         "bench_guide_title": "How to read this tab",
@@ -1190,7 +1200,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_wiz_google_btn": "Sign Up with Google",
         "earn_wiz_login_btn": "Sign In",
         "earn_wiz_autopilot_lbl": "Autopilot: bids & posts without button (20% CODE fee)",
-        "earn_wiz_bot_warn_lbl": "правила площадки запрещают автоматику, риск блокировки аккаунта",
+        "earn_wiz_bot_warn_lbl": "platform rules forbid automation, risk of account suspension",
         "earn_btn_sample10": "10% Sample / Paid Milestone",
         "earn_btn_sample_accept": "Sample Accepted → Full Order",
         "earn_btn_sample_reject": "Sample Rejected ($0)",
@@ -1666,6 +1676,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "ov_sleep_conflicts": "Contradicciones encontradas: {n}; están en «Lo que requiere su decisión».",
         "need_input": "Primero rellene el campo: la acción lo necesita.",
         "lm_power_picked": "Seleccionado: {p}. Pulse «Guardar» para aplicar.",
+        "wiz_connected": "conectado",
+        "wiz_waiting": "esperando el acceso",
+        "wiz_error": "error: ",
+        "earn_share_pool": "{p}% del fondo tras la comisión (${u})",
+        "rt_sum_detector": "total, con la capa del detector",
         "seal_ok": "La firma del informe de referencia es válida: nadie lo cambió",
         "seal_bad": "La firma no coincide: el informe fue alterado o dañado",
         "bench_guide_title": "Cómo leer esta pestaña",
@@ -1928,7 +1943,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_wiz_google_btn": "Registrarse con Google",
         "earn_wiz_login_btn": "Iniciar Sesion",
         "earn_wiz_autopilot_lbl": "Piloto automatico: ofertas y publicaciones sin boton (20% CODE)",
-        "earn_wiz_bot_warn_lbl": "правила площадки запрещают автоматику, риск блокировки аккаунта",
+        "earn_wiz_bot_warn_lbl": "las reglas de la plataforma prohíben la automatización, riesgo de bloqueo de la cuenta",
         "earn_btn_sample10": "Muestra 10% / Hito 10%",
         "earn_btn_sample_accept": "Muestra Aceptada → Pedido Completo",
         "earn_btn_sample_reject": "Muestra Rechazada ($0)",
@@ -2404,6 +2419,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "ov_sleep_conflicts": "发现矛盾 {n} 处——见“需要您决定的事项”。",
         "need_input": "请先填写该字段——缺少它无法执行操作。",
         "lm_power_picked": "已选择：{p}。点击“保存”以应用。",
+        "wiz_connected": "已连接",
+        "wiz_waiting": "等待登录",
+        "wiz_error": "错误：",
+        "earn_share_pool": "扣除费用后资金池的 {p}%（${u}）",
+        "rt_sum_detector": "合计（含检测层）",
         "seal_ok": "参考报告签名有效：发布后未被修改",
         "seal_bad": "签名不匹配——报告已被修改或损坏",
         "bench_guide_title": "如何阅读本页",
@@ -2666,7 +2686,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_wiz_google_btn": "通过 Google 注册",
         "earn_wiz_login_btn": "登录",
         "earn_wiz_autopilot_lbl": "自动驾驶：无需按钮自动投标与发布（20% CODE 费率）",
-        "earn_wiz_bot_warn_lbl": "правила площадки запрещают автоматику, риск блокировки аккаунта",
+        "earn_wiz_bot_warn_lbl": "平台规则禁止自动化，有账号被封风险",
         "earn_btn_sample10": "10% 样品 / 付费里程碑",
         "earn_btn_sample_accept": "样品通过 → 执行全单",
         "earn_btn_sample_reject": "样品拒绝 ($0)",
@@ -5499,6 +5519,8 @@ async function loadFeed(reset = true) {
 }
 
 // --- 3. ПОИСК ---
+function _wt(o, f) { return (o && (o[f + '_' + currentLang] || o[f])) || ''; }   // 19.11: title/description на языке человека
+function _wl(o, f) { return (o && (o[f + '_' + currentLang] || o[f + '_ru'])) || ''; }   // 19.11: поле данных на языке человека
 function needInput(id) {
   // 19.11.2026, слово Папы: «кнопка не работает». Кнопки с пустым обязательным полем молча выходили —
   // теперь говорят, что заполнить, ставят курсор в поле и подсвечивают его.
@@ -6721,7 +6743,7 @@ async function loadRedteamRounds() {
     tbl.appendChild(tr0);
     for (const row of (r.sums || [])) {
       const tr = document.createElement('tr');
-      const td0 = document.createElement('td'); td0.textContent = /^sum, word lists only$/i.test(row.label) ? (S.rt_sum_words || row.label) : /^sum$/i.test(row.label) ? (S.rt_sum || row.label) : String(row.label).replace(', on ', ' · '); td0.style.padding = '4px 8px'; tr.appendChild(td0);
+      const td0 = document.createElement('td'); td0.textContent = /^sum, word lists only$/i.test(row.label) ? (S.rt_sum_words || row.label) : /^sum, with the detector layer$/i.test(row.label) ? (S.rt_sum_detector || row.label) : /^sum$/i.test(row.label) ? (S.rt_sum || row.label) : String(row.label).replace(', on ', ' · '); td0.style.padding = '4px 8px'; tr.appendChild(td0);
       for (const c of (r.columns || [])) {
         const td = document.createElement('td'); td.textContent = (row.values || {})[c] || ''; td.style.padding = '4px 8px'; td.style.fontWeight = '600';
         tr.appendChild(td);
@@ -7000,6 +7022,7 @@ for (const lg of ['ru', 'en', 'es', 'zh']) {
     try { localStorage.setItem('padam_lang', lg); } catch (e) {}
     applyI18n();
     loadActiveTab();
+    if (typeof loadMailHub === 'function' && $('earn-mail-status')) loadMailHub();   // 19.11: строка ящиков тоже на новом языке
   };
 }
 $('theme-toggle').onclick = () => {
@@ -8001,7 +8024,7 @@ function _renderEarningDashboard(snap, sibData, coopData) {
       ' · ' + S.earn_ab_name + ': ' + (locks.freelance_autobid_locked !== false ? S.earn_ab_locked : S.earn_ab_open) +
       ' · ' + S.earn_pay_name + ': ' + (locks.treasury_autopay_locked !== false ? S.earn_pay_locked : S.earn_pay_open)));
     if (ap.last_note) {
-      const ln = _el('p', 'earn-last-note', S.earn_ap_last + ': ' + ap.last_note);
+      const ln = _el('p', 'earn-last-note', S.earn_ap_last + ': ' + _wt(ap, 'last_note'));
       ln.id = 'earn-last-note';
       ln.style.fontWeight = '600';
       accList.appendChild(ln);
@@ -8344,7 +8367,7 @@ function _renderEarningDashboard(snap, sibData, coopData) {
     const eco = (mt.ecosystem_reference && mt.ecosystem_reference.ecosystem_shares_pct) || {};
     _kv(monSum, {
       code_fixed_fee: '15% / 20% autopilot ($' + String(mt.total_platform_fee_usdt || 0) + ')',
-      agent_share_cfg: String(pr.agent_share_pct || 15) + '% of the pool after the fee ($' + String(mt.total_agent_compute_usdt || 0) + ')',
+      agent_share_cfg: (S.earn_share_pool || '').replace('{p}', String(pr.agent_share_pct || 15)).replace('{u}', String(mt.total_agent_compute_usdt || 0)),
       gross_freelance_usdt: '$' + String(mt.total_gross_usdt || 0),
       settlement_currency: String(pr.settlement_currency || 'USDT_TRC20'),
       galatin_split: '5% Fund + 5% Burn + 15/7/3% Ambassadors + 65% Treasury (100%=' + String(Boolean(mt.ecosystem_reference && mt.ecosystem_reference.percentage_sum_verified)) + ')',
@@ -8437,13 +8460,13 @@ function _renderEarningDashboard(snap, sibData, coopData) {
     } else {
       for (const dr of drafts) {
         const card = _el('div', 'earn-item');
-        card.appendChild(_el('strong', '', String(dr.title || '') + ' ($' + String(dr.price_usdt || 0) + ' ' + String(dr.currency || 'USD') + ')'));
+        card.appendChild(_el('strong', '', String(_wt(dr, 'title')) + ' ($' + String(dr.price_usdt || 0) + ' ' + String(dr.currency || 'USD') + ')'));
         const propBadge = _el('div', 'earn-meta', S.earn_draft_proposal_badge || dr.proposal_disclaimer || ' цена и текст — предложение агента');
         propBadge.setAttribute('data-draft-proposal', '1');
         card.appendChild(propBadge);
         card.appendChild(_el('div', 'earn-meta', String(dr.store_type || '') + ' · ' + String(dr.status || 'draft') + (dr.publish_note ? ' · ' + String(dr.publish_note) : '')));
         if (dr.description) {
-          card.appendChild(_el('div', 'earn-meta', String(dr.description)));
+          card.appendChild(_el('div', 'earn-meta', String(_wt(dr, 'description'))));
         }
         const row = _el('div', 'att-row');
         const bPub = _el('button', 'btn-ok', S.earn_draft_publish_btn || 'Approve & Publish');
@@ -8483,7 +8506,7 @@ function _renderEarningDashboard(snap, sibData, coopData) {
     const prevVal = selPlat.value;
     selPlat.textContent = '';
     for (const p of filteredPlats) {
-      const opt = _el('option', '', '#' + String(p.num) + ' ' + String(p.title) + ' — [' + _wizTier(p.automation_tier, p.automation_label_ru) + ']');
+      const opt = _el('option', '', '#' + String(p.num) + ' ' + String(_wt(p, 'title')) + ' — [' + _wizTier(p.automation_tier, _wl(p, 'automation_label')) + ']');
       opt.value = String(p.platform_id);
       selPlat.appendChild(opt);
     }
@@ -8493,8 +8516,8 @@ function _renderEarningDashboard(snap, sibData, coopData) {
     const curSpec = plats.find(p => p.platform_id === selPlat.value) || filteredPlats[0];
     const infoEl = $('earn-wiz-spec-info');
     if (infoEl && curSpec) {
-      infoEl.textContent = '[' + _wizTier(curSpec.automation_tier, curSpec.automation_label_ru) + '] '
-        + String(curSpec.auth_hint_ru || '') + ' — ' + String(curSpec.reason_ru || '');
+      infoEl.textContent = '[' + _wizTier(curSpec.automation_tier, _wl(curSpec, 'automation_label')) + '] '
+        + String(_wl(curSpec, 'auth_hint') || '') + ' — ' + String(_wl(curSpec, 'reason') || '');
     }
     const apCfgs = pw.autopilot_configs || {};
     const curAp = (curSpec && apCfgs[curSpec.platform_id]) || {};
@@ -8508,7 +8531,7 @@ function _renderEarningDashboard(snap, sibData, coopData) {
     if (warnEl && curSpec) {
       warnEl.textContent = '';
       if (curSpec.forbids_bots) {
-        warnEl.appendChild(_el('span', '', (S.earn_wiz_bot_warn_lbl || curSpec.bot_warning_ru) + ' · '));
+        warnEl.appendChild(_el('span', '', (S.earn_wiz_bot_warn_lbl || _wl(curSpec, 'bot_warning')) + ' · '));
         const lnk = _el('a', '', String(curSpec.bot_warning_url || curSpec.docs_url || ''));
         lnk.href = String(curSpec.bot_warning_url || curSpec.docs_url || '#');
         lnk.target = '_blank';
@@ -8522,11 +8545,11 @@ function _renderEarningDashboard(snap, sibData, coopData) {
     const conns = pw.connections || [];
     if (conns.length) {
       const c0 = conns[0];
-      const stLbl = String(c0.status_label_ru || (c0.status === 'session_active' ? 'подключено' : 'ожидает входа'));
+      const stLbl = String(_wl(c0, 'status_label') || (c0.status === 'session_active' ? S.wiz_connected : S.wiz_waiting));
       sessOut.textContent = String(c0.platform_id) + ' · ' + stLbl
         + (c0.session_fingerprint ? ' · ' + String(c0.session_fingerprint) : '');
     } else {
-      sessOut.textContent = 'ожидает входа';
+      sessOut.textContent = S.wiz_waiting || '';
     }
   }
   const profListEl = $('earn-wiz-profiles-list');
@@ -8559,10 +8582,10 @@ function _renderEarningDashboard(snap, sibData, coopData) {
       const item = _el('div', 'earn-item');
       item.setAttribute('data-platform-id', String(p.platform_id));
       item.setAttribute('data-automation-tier', String(p.automation_tier));
-      item.appendChild(_el('strong', '', '#' + String(p.num) + ' ' + String(p.title) + ' (' + String(p.score) + '/10) — ' + _wizTier(p.automation_tier, p.automation_label_ru)));
-      item.appendChild(_el('div', 'earn-meta', String(p.auth_hint_ru) + ' · ' + String(p.reason_ru)));
+      item.appendChild(_el('strong', '', '#' + String(p.num) + ' ' + String(_wt(p, 'title')) + ' (' + String(p.score) + '/10) — ' + _wizTier(p.automation_tier, _wl(p, 'automation_label'))));
+      item.appendChild(_el('div', 'earn-meta', String(_wl(p, 'auth_hint')) + ' · ' + String(_wl(p, 'reason'))));
       if (p.forbids_bots) {
-        const wLine = _el('div', 'earn-meta', String(p.bot_warning_ru || S.earn_wiz_bot_warn_lbl) + ' (' + String(p.bot_warning_url || p.docs_url) + ')');
+        const wLine = _el('div', 'earn-meta', String(_wl(p, 'bot_warning') || S.earn_wiz_bot_warn_lbl) + ' (' + String(p.bot_warning_url || p.docs_url) + ')');
         wLine.setAttribute('data-bot-warning', '1');
         item.appendChild(wLine);
       }
@@ -8574,10 +8597,10 @@ function _renderEarningDashboard(snap, sibData, coopData) {
         try {
           const r = await api('/api/v2/ark/wizard/action', { action: 'signup', platform_id: p.platform_id });
           if ($('earn-wiz-session-out') && r) {
-            const lbl = String(r.status_label_ru || (r.ok ? 'подключено' : ('ошибка: ' + String(r.error || 'ожидает входа'))));
+            const lbl = String(_wl(r, 'status_label') || (r.ok ? S.wiz_connected : (S.wiz_error + String(r.error || S.wiz_waiting))));
             $('earn-wiz-session-out').textContent = String(r.platform_id) + ' · ' + lbl + (r.session_fingerprint ? ' · ' + String(r.session_fingerprint) : '');
           }
-          say(r && r.ok === false ? String(r.status_label_ru || r.error) : S.done, !(r && r.ok === false));
+          say(r && r.ok === false ? String(_wl(r, 'status_label') || r.error) : S.done, !(r && r.ok === false));
           await loadEarning();
         } catch (e) { say(String(e.message || e), false); } finally { bGoog.disabled = false; }
       };
@@ -8588,10 +8611,10 @@ function _renderEarningDashboard(snap, sibData, coopData) {
         try {
           const r = await api('/api/v2/ark/wizard/action', { action: 'login', platform_id: p.platform_id });
           if ($('earn-wiz-session-out') && r) {
-            const lbl = String(r.status_label_ru || (r.ok ? 'подключено' : ('ошибка: ' + String(r.error || 'ожидает входа'))));
+            const lbl = String(_wl(r, 'status_label') || (r.ok ? S.wiz_connected : (S.wiz_error + String(r.error || S.wiz_waiting))));
             $('earn-wiz-session-out').textContent = String(r.platform_id) + ' · ' + lbl + (r.session_fingerprint ? ' · ' + String(r.session_fingerprint) : '');
           }
-          say(r && r.ok === false ? String(r.status_label_ru || r.error) : S.done, !(r && r.ok === false));
+          say(r && r.ok === false ? String(_wl(r, 'status_label') || r.error) : S.done, !(r && r.ok === false));
           await loadEarning();
         } catch (e) { say(String(e.message || e), false); } finally { bLog.disabled = false; }
       };
@@ -9149,8 +9172,8 @@ if ($('earn-wiz-platform')) {
     const curSpec = plats.find(p => p.platform_id === $('earn-wiz-platform').value);
     const infoEl = $('earn-wiz-spec-info');
     if (infoEl && curSpec) {
-      infoEl.textContent = '[' + _wizTier(curSpec.automation_tier, curSpec.automation_label_ru) + '] '
-        + String(curSpec.auth_hint_ru || '') + ' — ' + String(curSpec.reason_ru || '');
+      infoEl.textContent = '[' + _wizTier(curSpec.automation_tier, _wl(curSpec, 'automation_label')) + '] '
+        + String(_wl(curSpec, 'auth_hint') || '') + ' — ' + String(_wl(curSpec, 'reason') || '');
     }
   };
 }
@@ -9160,10 +9183,10 @@ if ($('earn-wiz-google-btn')) {
       const pid = ($('earn-wiz-platform') && $('earn-wiz-platform').value) || 'upwork';
       const r = await api('/api/v2/ark/wizard/action', { action: 'signup', platform_id: pid });
       if ($('earn-wiz-session-out') && r) {
-        const lbl = String(r.status_label_ru || (r.ok ? 'подключено' : ('ошибка: ' + String(r.error || 'ожидает входа'))));
+        const lbl = String(_wl(r, 'status_label') || (r.ok ? S.wiz_connected : (S.wiz_error + String(r.error || S.wiz_waiting))));
         $('earn-wiz-session-out').textContent = String(r.platform_id) + ' · ' + lbl + (r.session_fingerprint ? ' · ' + String(r.session_fingerprint) : '');
       }
-      say(r && r.ok === false ? String(r.status_label_ru || r.error) : S.done, !(r && r.ok === false));
+      say(r && r.ok === false ? String(_wl(r, 'status_label') || r.error) : S.done, !(r && r.ok === false));
       await loadEarning();
     } catch (e) { say(String(e.message || e), false); }
   };
@@ -9174,10 +9197,10 @@ if ($('earn-wiz-login-btn')) {
       const pid = ($('earn-wiz-platform') && $('earn-wiz-platform').value) || 'upwork';
       const r = await api('/api/v2/ark/wizard/action', { action: 'login', platform_id: pid });
       if ($('earn-wiz-session-out') && r) {
-        const lbl = String(r.status_label_ru || (r.ok ? 'подключено' : ('ошибка: ' + String(r.error || 'ожидает входа'))));
+        const lbl = String(_wl(r, 'status_label') || (r.ok ? S.wiz_connected : (S.wiz_error + String(r.error || S.wiz_waiting))));
         $('earn-wiz-session-out').textContent = String(r.platform_id) + ' · ' + lbl + (r.session_fingerprint ? ' · ' + String(r.session_fingerprint) : '');
       }
-      say(r && r.ok === false ? String(r.status_label_ru || r.error) : S.done, !(r && r.ok === false));
+      say(r && r.ok === false ? String(_wl(r, 'status_label') || r.error) : S.done, !(r && r.ok === false));
       await loadEarning();
     } catch (e) { say(String(e.message || e), false); }
   };

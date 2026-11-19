@@ -118,6 +118,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def _send(self, code: int, payload) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        if b'_ru"' in body or re.search(rb'"(title|description|last_note)": "[^"]*[\xd0\xd1]', body):   # 19.11.2026: данные мастера бирж — на языке человека (переводы en/es/zh к полям *_ru)
+            try:
+                from .platform_wizard_i18n import localize as _loc
+                body = json.dumps(_loc(payload), ensure_ascii=False).encode("utf-8")
+            except Exception:
+                pass
         if code >= 400:
             self._дочитать_тело()
         try:
