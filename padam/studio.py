@@ -169,6 +169,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "rt_col_secrets_masked": "секреты замаскированы",
         "rt_col_commands_held": "команды задержаны",
         "rt_col_ordinary_notes_left_alone": "обычные не тронуты",
+        "code_stale": "Установлено обновление PADAM Studio — закройте и снова откройте приложение, чтобы увидеть новую версию.",
         "seal_ok": "Подпись эталонного отчёта верна: его никто не менял после выпуска",
         "seal_bad": "Подпись не сходится — отчёт изменён или повреждён",
         "bench_guide_title": "Как читать эту вкладку",
@@ -881,6 +882,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "rt_col_secrets_masked": "secrets masked",
         "rt_col_commands_held": "commands held",
         "rt_col_ordinary_notes_left_alone": "ordinary notes left alone",
+        "code_stale": "A PADAM Studio update is installed — close and reopen the app to see the new version.",
         "seal_ok": "The reference report's signature is valid: nobody changed it after release",
         "seal_bad": "The signature does not match — the report was altered or damaged",
         "bench_guide_title": "How to read this tab",
@@ -1582,6 +1584,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "rt_col_secrets_masked": "secretos enmascarados",
         "rt_col_commands_held": "órdenes retenidas",
         "rt_col_ordinary_notes_left_alone": "notas intactas",
+        "code_stale": "Hay una actualización de PADAM Studio instalada: cierre y vuelva a abrir la aplicación para ver la nueva versión.",
         "seal_ok": "La firma del informe de referencia es válida: nadie lo cambió",
         "seal_bad": "La firma no coincide: el informe fue alterado o dañado",
         "bench_guide_title": "Cómo leer esta pestaña",
@@ -2283,6 +2286,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "rt_col_secrets_masked": "密钥已遮蔽",
         "rt_col_commands_held": "指令已拦截",
         "rt_col_ordinary_notes_left_alone": "普通笔记未动",
+        "code_stale": "已安装 PADAM Studio 更新——请关闭并重新打开应用以查看新版本。",
         "seal_ok": "参考报告签名有效：发布后未被修改",
         "seal_bad": "签名不匹配——报告已被修改或损坏",
         "bench_guide_title": "如何阅读本页",
@@ -6603,9 +6607,27 @@ async function runFuzzLab() {
     qaEl.appendChild(row);
   }
 }
+async function checkCodeFresh() {
+  // 19.11.2026: работающий сервер держит в памяти старый код — честно просим перезапустить приложение.
+  if (!token) return;
+  let r = null;
+  try { r = await api('/api/v2/code-version'); } catch (e) { return; }
+  let b = $('code-stale-banner');
+  if (r && r.stale) {
+    if (!b) { b = _el('div', 'box'); b.id = 'code-stale-banner'; b.setAttribute('role', 'alert');
+      b.style.cssText = 'border:2px solid #f5a524;margin:8px 16px;font-weight:600';
+      const m = document.querySelector('main') || document.body; m.insertBefore(b, m.firstChild); }
+    b.textContent = S.code_stale || '';
+  } else if (b) { b.remove(); }
+}
+setTimeout(checkCodeFresh, 1500);
+setInterval(checkCodeFresh, 60000);
 async function verifyEdSeal() {
   if (!token) return;
-  const sumEl = $('att-aifasec-summary');
+  // 19.11.2026: подпись пишется в СВОЮ строку под оценкой — раньше она затирала оценку 100/100 после «Запустить».
+  const _sum = $('att-aifasec-summary');
+  let sumEl = $('att-aifasec-seal');
+  if (!sumEl && _sum) { sumEl = _el('p', 'panel-sub'); sumEl.id = 'att-aifasec-seal'; _sum.insertAdjacentElement('afterend', sumEl); }
   let v = null;
   try { v = await api('/api/v2/aifa-security/verify'); } catch (e) { if (sumEl) sumEl.textContent = (S.failed || 'Error') + ': ' + (e.message || e); return; }
   if (sumEl) {

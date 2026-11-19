@@ -417,6 +417,73 @@ def unpack(blob: bytes | None) -> np.ndarray | None:
     return np.frombuffer(blob, dtype=np.float32)
 
 
+class _ConnUnderLock:
+    """19.11.2026: соединение, у которого каждое обращение идёт под замком хранилища.
+
+    CI (Windows, 3.10) упал на «cannot commit - no transaction is active» в параллельных запусках совета карантина:
+    24 модуля (около 230 мест) ходят в store.conn напрямую, мимо замка, и commit одного потока попадал в середину
+    чужой транзакции. Чинить поштучно — значит пропустить следующее место; поэтому замок встроен в само соединение.
+    Замок RLock: методы Store, уже держащие его, берут его повторно без взаимной блокировки."""
+
+    __slots__ = ("_c", "_l")
+
+    def __init__(self, conn, lock):
+        object.__setattr__(self, "_c", conn)
+        object.__setattr__(self, "_l", lock)
+
+    @property
+    def raw(self):
+        return self._c
+
+    def execute(self, *a, **k):
+        with self._l:
+            return self._c.execute(*a, **k)
+
+    def executemany(self, *a, **k):
+        with self._l:
+            return self._c.executemany(*a, **k)
+
+    def executescript(self, *a, **k):
+        with self._l:
+            return self._c.executescript(*a, **k)
+
+    def commit(self):
+        with self._l:
+            return self._c.commit()
+
+    def rollback(self):
+        with self._l:
+            return self._c.rollback()
+
+    def close(self):
+        with self._l:
+            return self._c.close()
+
+    def backup(self, target, *a, **k):
+        with self._l:
+            return self._c.backup(getattr(target, "raw", target), *a, **k)
+
+    def __enter__(self):
+        self._l.acquire()
+        try:
+            return self._c.__enter__()
+        except BaseException:
+            self._l.release()
+            raise
+
+    def __exit__(self, *exc):
+        try:
+            return self._c.__exit__(*exc)
+        finally:
+            self._l.release()
+
+    def __getattr__(self, name):
+        return getattr(self._c, name)
+
+    def __setattr__(self, name, value):
+        setattr(self._c, name, value)
+
+
 class Store:
     def __init__(self, path: Path | str | None = None):
         self.path = Path(path) if path else config.DB_PATH
@@ -445,7 +512,8 @@ class Store:
         # 18.11.2026: замер роя (20 процессов в один файл) давал 4–6 % «database is locked»: неявная транзакция
         # начиналась как чтение и при первой записи пыталась повыситься до записи — в WAL SQLite отбивает это сразу,
         # не дожидаясь busy_timeout. IMMEDIATE берёт замок записи в начале транзакции: писатели встают в очередь.
-        self.conn = sqlite3.connect(str(self.path), timeout=15.0, check_same_thread=False, isolation_level="IMMEDIATE")
+        self.conn = _ConnUnderLock(sqlite3.connect(str(self.path), timeout=15.0, check_same_thread=False,
+                                                    isolation_level="IMMEDIATE"), self._lock)
         self.conn.row_factory = sqlite3.Row
         # 18.11.2026: при 20 процессах в один файл хвост очереди писателей изредка превышал 5 с — часть записей
         # терялась с «database is locked». 30 с ожидания срабатывают только при давке; замер 20 и 40 процессов: 0 ошибок.

@@ -297,7 +297,7 @@ def restore_backup_bytes(
                     (dest.parent / (dest.stem + ".owner.key")).write_bytes(key_bytes)
             else:
                 with memory.store._lock:
-                    src_conn.backup(memory.store.conn)
+                    src_conn.backup(getattr(memory.store.conn, "raw", memory.store.conn))  # цель — настоящее соединение
                     after_records_sha = _canonical_records_sha256(memory.store.conn, memory.user_id)
                     snap_after = Path(td) / "after_check.db"
                     chk_conn = sqlite3.connect(str(snap_after))
