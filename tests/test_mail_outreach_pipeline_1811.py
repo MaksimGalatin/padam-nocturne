@@ -149,3 +149,67 @@ def test_mail_hub_studio_api_and_business_outreach_ru(tmp_path: Path):
         email_autonomy.set_mail_transport(None)
         srv.shutdown()
         srv.server_close()
+
+
+def test_sync_site_orders_from_aifa_digital_to_studio(tmp_path: Path, monkeypatch):
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from padam import freelance_autonomy
+
+    monkeypatch.setenv("PADAM_FREELANCE_ALLOW_LOCALHOST", "1")
+    mem = _make_mem(tmp_path)
+
+    class _MockOrdersSrv(BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            return
+
+        def do_GET(self):
+            assert self.headers.get("Authorization") == "Bearer adm-test-sec"
+            payload = {
+                "ok": True,
+                "orders": [
+                    {
+                        "order_id": "A11Y-QUICK-AUDIT-17990001",
+                        "slug": "quick-audit",
+                        "email": "hotel@keywest.example",
+                        "website": "https://havanacabanakeywesthotel.com",
+                        "amount": 149.0,
+                        "status": "paid",
+                    }
+                ],
+            }
+            raw = json.dumps(payload).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
+
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), _MockOrdersSrv)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        res = freelance_autonomy.sync_site_orders(
+            mem,
+            base_url=f"http://127.0.0.1:{srv.server_address[1]}",
+            admin_secret="adm-test-sec",
+            allow_localhost=True,
+        )
+        assert res["ok"] is True
+        assert res["imported"] == 1
+        assert res["executed"] == 1
+
+        orders = freelance_autonomy.list_orders(mem, limit=10)
+        matched = [o for o in orders if o.get("external_job_id") == "A11Y-QUICK-AUDIT-17990001"]
+        assert len(matched) == 1
+        assert matched[0]["status"] == "delivered"
+
+        # Повторный вызов не создаёт дубликат
+        res2 = freelance_autonomy.sync_site_orders(
+            mem,
+            base_url=f"http://127.0.0.1:{srv.server_address[1]}",
+            admin_secret="adm-test-sec",
+            allow_localhost=True,
+        )
+        assert res2["ok"] is True and res2["imported"] == 0
+    finally:
+        srv.shutdown()
+        srv.server_close()

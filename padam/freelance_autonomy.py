@@ -2631,6 +2631,13 @@ def run_autopilot_cycle(memory, *, allow_localhost: bool = False) -> dict[str, A
     except Exception as _ap_exc:
         raise RuntimeError(f'autopilot_step_error: {_ap_exc}') from _ap_exc
 
+    # Шаг 4.5: подтягивание оплаченных заказов с сайта (service_orders -> Студия)
+    site_orders_res: dict[str, Any] = {"imported": 0, "executed": 0}
+    try:
+        site_orders_res = sync_site_orders(memory, allow_localhost=allow_localhost)
+    except Exception:
+        pass
+
     # Шаг 5: обработка входящих писем аутрича (STOP -> стоп-лист, «Шлите список» -> автоответ с отчётом)
     inbox_res: dict[str, Any] = {"processed": 0, "reports_sent": 0, "stopped": 0, "escalated": 0}
     try:
@@ -2669,6 +2676,7 @@ def run_autopilot_cycle(memory, *, allow_localhost: bool = False) -> dict[str, A
         "orders_executed": orders_executed,
         "deliveries_packaged": deliveries_packaged,
         "payouts_released": released_cnt,
+        "site_orders_imported": int(site_orders_res.get("imported") or 0),
         "inbox_processed": int(inbox_res.get("processed") or 0),
         "inbox_reports_sent": int(inbox_res.get("reports_sent") or 0),
         "inbox_stopped": int(inbox_res.get("stopped") or 0),
@@ -2718,3 +2726,77 @@ def stop_autopilot_worker() -> dict[str, Any]:
             th.join(timeout=1.5)
         _AUTOPILOT_WORKER_THREAD = None
     return {"ok": True, "worker_running": False}
+
+@_synchronized_memory
+def sync_site_orders(
+    memory,
+    *,
+    base_url: str = "",
+    admin_secret: str = "",
+    allow_localhost: bool = False,
+) -> dict[str, Any]:
+    """Забирает оплаченные заказы услуг (service_orders) с aifa.digital в очередь Студии и запускает исполнение."""
+    _ensure(memory)
+    secret = str(admin_secret or os.environ.get("PADAM_AIFA_ADMIN_SECRET") or "").strip()
+    if not secret:
+        return {"ok": True, "skipped": True, "reason": "no_admin_secret", "imported": 0}
+    target_base = str(base_url or os.environ.get("PADAM_AIFA_DIGITAL_URL") or "https://www.aifa.digital").rstrip("/")
+    clean_base = _validate_api_url(target_base, allow_localhost=allow_localhost)
+    req = urllib.request.Request(
+        f"{clean_base}/api/admin/service-orders?format=json",
+        headers={"Authorization": f"Bearer {secret}", "Accept": "application/json"},
+        method="GET",
+    )
+    try:
+        with net_guard.safe_urlopen(req, timeout=10, allow_localhost=allow_localhost, allow_http_localhost=True, require_https=True) as r:
+            payload = json.loads(r.read().decode("utf-8", errors="replace"))
+    except Exception as exc:
+        return {"ok": False, "error": str(exc), "imported": 0}
+
+    rows = payload.get("orders") if isinstance(payload, dict) else []
+    if not isinstance(rows, list):
+        return {"ok": False, "error": "invalid_orders_payload", "imported": 0}
+
+    imported = 0
+    executed = 0
+    for item in rows[:50]:
+        if not isinstance(item, dict):
+            continue
+        oid_ext = str(item.get("order_id") or "").strip()
+        if not oid_ext:
+            continue
+        exists = memory.store.conn.execute(
+            "SELECT order_id FROM ark_freelance_order WHERE user_id=? AND external_job_id=? LIMIT 1",
+            (memory.user_id, oid_ext),
+        ).fetchone()
+        if exists:
+            continue
+
+        slug = str(item.get("slug") or "quick-audit")
+        website = str(item.get("website") or "")
+        amount = float(item.get("amount") or 0.0)
+        ev = evaluate_and_ingest_job(
+            memory,
+            platform="aifafocus_mcp",
+            title=f"[Site Order {oid_ext}] {slug} для {website or 'сайта'}",
+            brief=f"Оплаченный заказ на сайте ({slug}) для {website}. Клиент: {item.get('email', '')}.",
+            budget_usdt=amount,
+            estimated_tokens=20000,
+            external_job_id=oid_ext,
+            assigned_agent="aifa",
+            work_mode="autopilot",
+            client_email=str(item.get("email") or ""),
+            client_domain=website,
+        )
+        if ev.get("ok"):
+            imported += 1
+            local_oid = str(ev["order_id"])
+            ex_res = execute_order_with_swarm(memory, local_oid, agent_id="aifa")
+            if ex_res.get("ok"):
+                executed += 1
+                deliverable = (
+                    f"Заказ {oid_ext} ({slug}) для {website} принят и выполнен в изолированной ветке.\n"
+                    f"Сумма: ${amount:.2f} USD. Готово к передаче клиенту и повторной проверке через 14 дней."
+                )
+                package_safe_delivery(memory, local_oid, deliverable_text=deliverable, agent_id="aifa")
+    return {"ok": True, "imported": imported, "executed": executed}
