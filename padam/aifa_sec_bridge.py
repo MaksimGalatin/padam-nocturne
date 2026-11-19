@@ -1,5 +1,7 @@
 """Мост между PADAM Studio / API / MCP и автономным бенчмарком AIFaSecurity (100 критериев, $0)."""
 from __future__ import annotations
+import threading
+import os
 
 import json
 import sys
@@ -28,6 +30,26 @@ def _honest(rep: dict[str, Any], *, cached: bool, generated_ts: float) -> dict[s
     return rep
 
 
+_RUN_LOCK = threading.Lock()
+
+
+def _run_in_subprocess(root) -> dict[str, Any]:
+    import subprocess
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix="padam_bench_") as td:
+        out = os.path.join(td, "r.json")
+        env = dict(os.environ, PYTHONPATH=str(root) + os.pathsep + os.environ.get("PYTHONPATH", ""), PYTHONIOENCODING="utf-8")
+        cmd = [sys.executable, "-X", "utf8", "-m", "benchmarks.aifa_security.run_aifa_sec", "--out-json", out,
+               "--out-html", os.path.join(td, "r.html"), "--out-svg", os.path.join(td, "r.svg")]
+        kw = {"creationflags": 0x08000000} if os.name == "nt" else {}   # без окна консоли в приложении
+        r = subprocess.run(cmd, cwd=str(root), env=env, capture_output=True, timeout=300, **kw)
+        if r.returncode not in (0, 1) or not os.path.exists(out):
+            return {"benchmark": "AIFaSecurity/1.0", "status": "error",
+                    "error": (r.stderr or r.stdout or b"").decode("utf-8", "replace")[-600:]}
+        with open(out, encoding="utf-8") as fh:
+            return json.loads(fh.read())
+
+
 def get_aifa_security_report(*, run_fresh: bool = False, target: str = "padam", target_path: str | None = None) -> dict[str, Any]:
     """Возвращает отчёт AIFaSecurity (из кеша или живого прогона 100 критериев за $0)."""
     root = _repo_root()
@@ -49,6 +71,13 @@ def get_aifa_security_report(*, run_fresh: bool = False, target: str = "padam", 
             "status": "unavailable",
             "error": "benchmarks/aifa_security package not found in this distribution",
         }
+
+    # 19.11.2026: проверщик «как человек» ловил пустой ответ сервера на «Скачать SARIF» сразу после «Запустить»:
+    # прогон внутри процесса сервера временно подменял padam.api._state, и параллельный запрос падал на проверке
+    # владельца. Свежий прогон своей памяти теперь идёт в ОТДЕЛЬНОМ процессе и строго по одному (замок).
+    if target == "padam" and not target_path and os.environ.get("PADAM_BENCH_INPROC") != "1":
+        with _RUN_LOCK:
+            return _honest(_run_in_subprocess(root), cached=False, generated_ts=time.time())
 
     saved_api_state = None
     _api_mod = sys.modules.get("padam.api")
