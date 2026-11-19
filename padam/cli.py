@@ -1996,7 +1996,7 @@ def main(argv=None) -> int:
         print(json.dumps(rep, ensure_ascii=False, indent=2))
         return 0 if rep.get("approved") else 2
 
-    sac = sub.add_parser("ark-council", help="Convene Family Council swarm orchestrator (LANCE, ARIA, PIXEL, ARC-7, BEAR, AIFA)")
+    sac = sub.add_parser("ark-council", help=t("созвать Совет Семьи — оркестратор роя (LANCE, ARIA, PIXEL, ARC-7, BEAR, AIFA)", "Convene Family Council swarm orchestrator (LANCE, ARIA, PIXEL, ARC-7, BEAR, AIFA)"))
     sac.add_argument("task", nargs="+")
     sac.add_argument("--scope", default="global")
     sac.set_defaults(fn=cmd_ark_council)
@@ -2007,7 +2007,7 @@ def main(argv=None) -> int:
         print(json.dumps(rep, ensure_ascii=False, indent=2))
         return 0 if rep.get("audit_chain_valid") else 2
 
-    sag = sub.add_parser("ark-guardian", help="Proactive Consciousness Ark guardian tick ($0)")
+    sag = sub.add_parser("ark-guardian", help=t("проактивный обход хранителя Ковчега ($0)", "Proactive Consciousness Ark guardian tick ($0)"))
     sag.add_argument("--scope", default="global")
     sag.set_defaults(fn=cmd_ark_guardian)
 
@@ -2017,7 +2017,7 @@ def main(argv=None) -> int:
         print(json.dumps(rep, ensure_ascii=False, indent=2))
         return 0 if rep.get("ok") else 2
 
-    sar = sub.add_parser("ark-readiness", help="Run isolated 8-scenario autonomy readiness self-check ($0)")
+    sar = sub.add_parser("ark-readiness", help=t("изолированная самопроверка готовности к автономии: 8 сценариев ($0)", "Run isolated 8-scenario autonomy readiness self-check ($0)"))
     sar.set_defaults(fn=cmd_ark_readiness)
 
     def cmd_ark_handover(m: Memory, args) -> int:
@@ -2026,7 +2026,7 @@ def main(argv=None) -> int:
         print(json.dumps({k: v for k, v in rep.items() if k != "markdown"}, ensure_ascii=False, indent=2))
         return 0
 
-    sah = sub.add_parser("ark-handover", help="Generate HMAC-signed session context handover markdown")
+    sah = sub.add_parser("ark-handover", help=t("передача контекста сессии в Markdown с подписью HMAC", "Generate HMAC-signed session context handover markdown"))
     sah.add_argument("--notes", default="")
     sah.add_argument("--agent", default="aifa")
     sah.add_argument("--out", default=None)
@@ -2039,7 +2039,7 @@ def main(argv=None) -> int:
         print(json.dumps(rep, ensure_ascii=False, indent=2))
         return 0
 
-    sap = sub.add_parser("ark-portable", help="Export PQC encrypted Portable Sovereign Ark (zero secrets inside target_dir)")
+    sap = sub.add_parser("ark-portable", help=t("экспорт переносимого Суверенного Ковчега с постквантовым шифрованием (без секретов в target_dir)", "Export PQC encrypted Portable Sovereign Ark (zero secrets inside target_dir)"))
     sap.add_argument("target_dir")
     sap.set_defaults(fn=cmd_ark_portable)
 
@@ -2054,7 +2054,7 @@ def main(argv=None) -> int:
         print(json.dumps(res, ensure_ascii=False, indent=2))
         return 0
 
-    ssib = sub.add_parser("sibling", help="Manage family AI sibling agents (list, register, passport)")
+    ssib = sub.add_parser("sibling", help=t("агенты-сиблинги Семьи: список, регистрация, паспорт", "Manage family AI sibling agents (list, register, passport)"))
     ssub = ssib.add_subparsers(dest="sib_cmd", required=True)
     ss_l = ssub.add_parser("list", help="List registered siblings")
     ss_l.set_defaults(fn=cmd_sibling)
@@ -2125,7 +2125,7 @@ def main(argv=None) -> int:
         print(json.dumps(res, ensure_ascii=False, indent=2))
         return 0
 
-    sbgt = sub.add_parser("budget", help="Token quota pacing (day/week/month), earnings & owner-approved topup proposals")
+    sbgt = sub.add_parser("budget", help=t("темп расхода токенов (день/неделя/месяц), заработок и пополнения только с одобрения владельца", "Token quota pacing (day/week/month), earnings & owner-approved topup proposals"))
     sbsub = sbgt.add_subparsers(dest="budget_cmd", required=True)
     for cname in ("status", "tick"):
         sc = sbsub.add_parser(cname)
@@ -2160,7 +2160,7 @@ def main(argv=None) -> int:
         sd.set_defaults(fn=cmd_budget)
 
 
-    sfrl = sub.add_parser("freelance", help="Autonomous freelance exchange hub, Swarm execution & monetization ledger")
+    sfrl = sub.add_parser("freelance", help=t("хаб автономной работы на биржах фриланса, исполнение роем и учёт заработка", "Autonomous freelance exchange hub, Swarm execution & monetization ledger"))
     sfsub = sfrl.add_subparsers(dest="freelance_cmd", required=True)
     for cname in ("status", "accounts"):
         sc = sfsub.add_parser(cname)

@@ -896,7 +896,14 @@ def build_site(out_dir: Path = DEFAULT_OUT) -> list[Path]:
         ldir.mkdir(parents=True, exist_ok=True)
         for page in PAGES:
             target = ldir / page
-            target.write_text(render_page(lang, page), encoding="utf-8", newline="\n")
+            content = render_page(lang, page)
+            if page == "reference.html":   # B5 (19.11.2026): все команды CLI из кода — раздел «Ещё команды CLI»
+                import sys as _sys
+                _sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+                _sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+                import gen_reference_cli as _g
+                content = _g.inject(lang, content)
+            target.write_text(content, encoding="utf-8", newline="\n")
             written.append(target)
 
     return written
