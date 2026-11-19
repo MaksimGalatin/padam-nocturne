@@ -345,3 +345,130 @@ def test_top20_подвал_и_отказы_доставки(tmp_path: Path):
         assert r2["ok"] is False and r2.get("blocked") is True
     finally:
         email_autonomy.set_mail_transport(None)
+def test_site_scanner_25pages_and_14day_recheck(tmp_path):
+    """Реальный 25-страничный локальный Playwright + axe-core скан внутри sync_site_orders и 14-дневный перемер."""
+    import http.server
+    import json as _json
+    import threading as _th
+    import time as _time
+    from padam import email_autonomy, freelance_autonomy, site_scanner
+
+    pages_html = {
+        "/": "<html><head><title></title></head><body><h1>Home</h1><img src='/x.png'><a href='/about'>About</a><a href='/contact'>Contact</a></body></html>",
+        "/about": "<html lang='en'><head><title>About</title></head><body><input type='text' id='n1'><a href='/'>Home</a></body></html>",
+        "/contact": "<html lang='en'><head><title>Contact</title></head><body><form><input type='email' name='mail'></form><img src='/y.png'></body></html>",
+    }
+
+    sent_deliveries: list[dict] = []
+
+    class _Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path.startswith("/api/admin/service-orders"):
+                payload = _json.dumps(
+                    {
+                        "ok": True,
+                        "orders": [
+                            {
+                                "order_id": "ord-scan-101",
+                                "slug": "quick-audit",
+                                "website": f"http://127.0.0.1:{self.server.server_address[1]}/",
+                                "email": "client-scan@example.com",
+                                "amount": 149.0,
+                            }
+                        ],
+                    }
+                ).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+                return
+            body = pages_html.get(self.path, "<html><body>Not found</body></html>").encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            return
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
+    port = server.server_address[1]
+    th = _th.Thread(target=server.serve_forever, daemon=True)
+    th.start()
+
+    mem = _make_mem(tmp_path)
+    def _mock_transport(pkt: dict):
+        op = pkt.get("op")
+        if op == "send":
+            sent_deliveries.append(dict(pkt))
+            return {"ok": True, "message_id": f"msg-{len(sent_deliveries)}"}
+        if op == "fetch":
+            return {"ok": True, "messages": []}
+        return {"ok": True}
+
+    email_autonomy.set_mail_transport(_mock_transport)
+    try:
+        # Подключаем один ящик для автоотправки готового отчёта клиенту
+        assert email_autonomy.connect_mail_account(
+            mem,
+            email="reports@code.test",
+            provider="gmail",
+            app_password_or_token="app-pass-1",
+            daily_limit=30,
+        )["ok"] is True
+
+        # Прямой тест сканера на 3 страницах
+        direct = site_scanner.scan_website_accessibility(
+            f"http://127.0.0.1:{port}/",
+            max_pages=25,
+            allow_localhost=True,
+        )
+        assert direct["ok"] is True
+        assert direct["pages_scanned"] == 3
+        assert direct["total_violations"] >= 3
+        assert "axe-core" == direct["engine"]
+
+        # Тест sync_site_orders: импорт + Playwright/axe-core скан + отправка отчёта клиенту + постановка на 14-дневный перемер
+        sync_res = freelance_autonomy.sync_site_orders(
+            mem,
+            base_url=f"http://127.0.0.1:{port}",
+            admin_secret="test-secret-xyz",
+            allow_localhost=True,
+        )
+        assert sync_res["ok"] is True
+        assert sync_res["imported"] == 1
+        assert sync_res["executed"] == 1
+        assert len(sent_deliveries) == 1
+        assert "Проверено страниц: 3" in sent_deliveries[0]["body"]
+        assert "<!doctype html>" in sent_deliveries[0]["html_body"]
+
+        rc_row = mem.store.conn.execute(
+            "SELECT * FROM ark_site_rechecks WHERE recheck_id = 'rc-ord-scan-101'"
+        ).fetchone()
+        assert rc_row is not None
+        assert rc_row["done_at"] == 0.0
+        assert int(rc_row["initial_violations"]) >= 3
+
+        # Сдвигаем due_at в прошлое и прогоняем цикл автопилота — 14-дневный перемер должен выполниться!
+        mem.store.conn.execute(
+            "UPDATE ark_site_rechecks SET due_at = ? WHERE recheck_id = 'rc-ord-scan-101'",
+            (_time.time() - 60.0,),
+        )
+        mem.store.conn.commit()
+        freelance_autonomy.set_autopilot_state(mem, running=True)
+        ap = freelance_autonomy.run_autopilot_cycle(mem, allow_localhost=True)
+        assert ap["ok"] is True
+        assert ap["rechecks_completed"] >= 1
+
+        rc_done = mem.store.conn.execute(
+            "SELECT * FROM ark_site_rechecks WHERE recheck_id = 'rc-ord-scan-101'"
+        ).fetchone()
+        assert float(rc_done["done_at"]) > 0.0
+        assert int(rc_done["recheck_violations"]) >= 3
+    finally:
+        email_autonomy.set_mail_transport(None)
+        server.shutdown()
+        server.server_close()

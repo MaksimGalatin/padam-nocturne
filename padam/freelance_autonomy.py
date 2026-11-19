@@ -2661,6 +2661,44 @@ def run_autopilot_cycle(memory, *, allow_localhost: bool = False) -> dict[str, A
     except Exception:
         pass
 
+    # Шаг 4.6: 14-дневные перемеры доступности для выполненных аудитов/фиксов
+    rechecks_completed = 0
+    try:
+        now_rc_tick = time.time()
+        has_rc_tbl = memory.store.conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ark_site_rechecks'"
+        ).fetchone()
+        if has_rc_tbl:
+            rc_cols = {
+                str(r["name"])
+                for r in memory.store.conn.execute("PRAGMA table_info(ark_site_rechecks)").fetchall()
+            }
+            if "recheck_violations" not in rc_cols:
+                memory.store.conn.execute(
+                    "ALTER TABLE ark_site_rechecks ADD COLUMN recheck_violations INTEGER NOT NULL DEFAULT 0"
+                )
+            due_rows = memory.store.conn.execute(
+                "SELECT recheck_id, website FROM ark_site_rechecks WHERE user_id = ? AND done_at = 0.0 AND due_at <= ? ORDER BY due_at ASC LIMIT 5",
+                (memory.user_id, now_rc_tick),
+            ).fetchall()
+            if due_rows:
+                from . import site_scanner as _ss
+                for drow in due_rows:
+                    w_url = str(drow["website"] or "").strip()
+                    rc_v = 0
+                    if w_url:
+                        rc_scan = _ss.scan_website_accessibility(w_url, max_pages=25, allow_localhost=allow_localhost)
+                        if rc_scan.get("ok"):
+                            rc_v = int(rc_scan.get("total_violations") or 0)
+                    memory.store.conn.execute(
+                        "UPDATE ark_site_rechecks SET done_at = ?, recheck_violations = ? WHERE recheck_id = ?",
+                        (time.time(), rc_v, str(drow["recheck_id"])),
+                    )
+                    rechecks_completed += 1
+                memory.store.conn.commit()
+    except Exception:
+        pass
+
     # Шаг 5: обработка входящих писем аутрича (STOP -> стоп-лист, «Шлите список» -> автоответ с отчётом)
     inbox_res: dict[str, Any] = {"processed": 0, "reports_sent": 0, "stopped": 0, "escalated": 0}
     try:
@@ -2701,6 +2739,7 @@ def run_autopilot_cycle(memory, *, allow_localhost: bool = False) -> dict[str, A
         "deliveries_packaged": deliveries_packaged,
         "payouts_released": released_cnt,
         "site_orders_imported": int(site_orders_res.get("imported") or 0),
+        "rechecks_completed": rechecks_completed,
         "inbox_processed": int(inbox_res.get("processed") or 0),
         "inbox_reports_sent": int(inbox_res.get("reports_sent") or 0),
         "inbox_stopped": int(inbox_res.get("stopped") or 0),
@@ -2783,6 +2822,8 @@ def sync_site_orders(
     base_url: str = "",
     admin_secret: str = "",
     allow_localhost: bool = False,
+    max_scan_pages: int = 25,
+    send_delivery_email: bool = True,
 ) -> dict[str, Any]:
     """Забирает оплаченные заказы услуг (service_orders) с aifa.digital в очередь Студии и запускает исполнение."""
     _ensure(memory)
@@ -2844,14 +2885,47 @@ def sync_site_orders(
             if ex_res.get("ok"):
                 executed += 1
                 from . import partner_bridge as _pb
+                from . import site_scanner as _ss
                 pkg = _pb.build_business_outreach(memory, website or oid_ext, language="ru", allow_live_fetch=False)
+                scan_res: dict[str, Any] = {}
+                if website and slug in ("quick-audit", "fix-pack", "lite-audit"):
+                    scan_res = _ss.scan_website_accessibility(
+                        website,
+                        max_pages=max_scan_pages,
+                        allow_localhost=allow_localhost,
+                    )
+                scan_section = ""
+                if scan_res.get("ok") and scan_res.get("text_summary"):
+                    scan_section = "\n\n" + str(scan_res["text_summary"])
                 deliverable = (
                     f"Заказ {oid_ext} ({slug}) для {website} выполнен.\n"
                     f"Сумма: ${amount:.2f} USD.\n\n"
                     f"{pkg.get('business_summary', '')}\n\n"
                     f"{pkg.get('site_report', '')}"
+                    f"{scan_section}"
                 )
                 package_safe_delivery(memory, local_oid, deliverable_text=deliverable, agent_id="aifa")
+
+                client_email = str(item.get("email") or "").strip()
+                if send_delivery_email and client_email and "@" in client_email:
+                    try:
+                        from . import email_autonomy as _ea
+                        if _ea.list_mail_accounts(memory):
+                            body_txt = deliverable
+                            if scan_res.get("ok") and scan_res.get("html_report"):
+                                body_txt += "\n\nПолный HTML-отчёт приложен в системе и сохранён в карточке заказа."
+                            _ea.send_outreach_email(
+                                memory,
+                                to_email=client_email,
+                                domain=website or "aifa.digital",
+                                subject=f"Готовый отчёт по заказу {oid_ext} ({slug})",
+                                body=body_txt,
+                                html_body=str(scan_res.get("html_report") or "") if isinstance(scan_res, dict) else "",
+                                direction="order_delivery",
+                            )
+                    except Exception:
+                        pass
+
                 if slug in ("quick-audit", "fix-pack", "lite-audit"):
                     now_rc = time.time()
                     memory.store.conn.execute(
@@ -2862,13 +2936,28 @@ def sync_site_orders(
                             order_id TEXT NOT NULL,
                             website TEXT NOT NULL,
                             due_at REAL NOT NULL,
-                            done_at REAL NOT NULL DEFAULT 0.0
+                            done_at REAL NOT NULL DEFAULT 0.0,
+                            initial_violations INTEGER NOT NULL DEFAULT 0,
+                            recheck_violations INTEGER NOT NULL DEFAULT 0
                         )
                         """
                     )
+                    rc_cols = {
+                        str(r["name"])
+                        for r in memory.store.conn.execute("PRAGMA table_info(ark_site_rechecks)").fetchall()
+                    }
+                    if "initial_violations" not in rc_cols:
+                        memory.store.conn.execute(
+                            "ALTER TABLE ark_site_rechecks ADD COLUMN initial_violations INTEGER NOT NULL DEFAULT 0"
+                        )
+                    if "recheck_violations" not in rc_cols:
+                        memory.store.conn.execute(
+                            "ALTER TABLE ark_site_rechecks ADD COLUMN recheck_violations INTEGER NOT NULL DEFAULT 0"
+                        )
+                    init_v = int(scan_res.get("total_violations") or 0) if isinstance(scan_res, dict) else 0
                     memory.store.conn.execute(
-                        "INSERT OR IGNORE INTO ark_site_rechecks (recheck_id, user_id, order_id, website, due_at, done_at) VALUES (?, ?, ?, ?, ?, 0.0)",
-                        (f"rc-{oid_ext}", memory.user_id, local_oid, website, now_rc + 14.0 * 86400.0),
+                        "INSERT OR IGNORE INTO ark_site_rechecks (recheck_id, user_id, order_id, website, due_at, done_at, initial_violations, recheck_violations) VALUES (?, ?, ?, ?, ?, 0.0, ?, 0)",
+                        (f"rc-{oid_ext}", memory.user_id, local_oid, website, now_rc + 14.0 * 86400.0, init_v),
                     )
                     memory.store.conn.commit()
     return {"ok": True, "imported": imported, "executed": executed}
