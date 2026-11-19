@@ -463,7 +463,9 @@ def test_parity_studio_playwright_all_buttons_1280_and_390(tmp_path: Path, monke
                     # 18.11: бенчмарк вынесен из «Атак» в отдельную вкладку меню «Бенчмарк»
                     page.click("#tab-bench")
                     page.wait_for_selector("#panel-bench:not([hidden])", timeout=15000)
-                    with page.expect_response(lambda r: "/api/v2/aifa-security/run" in r.url, timeout=30000) as resp_info:
+                    # 19.11.2026: свежий прогон 100 проверок идёт в отдельном процессе (f22cbc7 — иначе гонка с SARIF);
+                    # в покое 4–9 с, но под нагрузкой полного набора (1600 тестов параллельно) превышал 30 с.
+                    with page.expect_response(lambda r: "/api/v2/aifa-security/run" in r.url, timeout=120000) as resp_info:
                         page.click("#att-aifasec-run")
                     assert resp_info.value.status == 200
                     page.wait_for_function("() => (document.querySelector('#att-aifasec-summary')?.textContent || '').trim().length > 0", timeout=15000)
