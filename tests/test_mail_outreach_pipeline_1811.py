@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 import json
 from pathlib import Path
 import threading
@@ -347,6 +349,9 @@ def test_top20_подвал_и_отказы_доставки(tmp_path: Path):
         email_autonomy.set_mail_transport(None)
 def test_site_scanner_25pages_and_14day_recheck(tmp_path):
     """Реальный 25-страничный локальный Playwright + axe-core скан внутри sync_site_orders и 14-дневный перемер."""
+    # 19.11.2026: в матрице CI Playwright не ставится (только в задании accessibility) — без него сканер честно
+    # отдаёт ok=False; тест пропускается, а не краснит 12 систем.
+    pytest.importorskip("playwright.sync_api")
     import http.server
     import json as _json
     import threading as _th
@@ -426,7 +431,7 @@ def test_site_scanner_25pages_and_14day_recheck(tmp_path):
             max_pages=25,
             allow_localhost=True,
         )
-        assert direct["ok"] is True
+        assert direct["ok"] is True, direct.get("error") or direct.get("reason")
         assert direct["pages_scanned"] == 3
         assert direct["total_violations"] >= 3
         assert "axe-core" == direct["engine"]
