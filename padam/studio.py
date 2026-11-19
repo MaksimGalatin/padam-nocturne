@@ -170,6 +170,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "rt_col_commands_held": "команды задержаны",
         "rt_col_ordinary_notes_left_alone": "обычные не тронуты",
         "code_stale": "Установлено обновление PADAM Studio — закройте и снова откройте приложение, чтобы увидеть новую версию.",
+        "mail_lang_en": "English (US/Global)",
+        "mail_lang_ru": "Русский",
+        "qs_launch_confirm": "Включить автоматическую рассылку и автопилот 24/7? Письма настоящим людям будут уходить сами. Выключить — «Остановить всё».",
         "seal_ok": "Подпись эталонного отчёта верна: его никто не менял после выпуска",
         "seal_bad": "Подпись не сходится — отчёт изменён или повреждён",
         "bench_guide_title": "Как читать эту вкладку",
@@ -237,7 +240,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "qs_btn_agent": "Подключить агента",
         "qs_btn_wizard": "Открыть биржи (34)",
         "qs_step2_t": "2. Почты для рассылки",
-        "qs_step2_d": "Добавьте 1 или 12 рабочих почт (Gmail App Password, Яндекс, Mail.ru, SMTP).",
+        "qs_step2_d": "Добавьте от 1 до 12 рабочих почт (пароль приложения Gmail, Яндекс, Mail.ru, SMTP).",
         "qs_btn_mail": "Подключить почту",
         "qs_step3_t": "3. База клиентов",
         "qs_step3_d": "Вставьте список email/доменов или используйте встроенную базу карты.",
@@ -903,6 +906,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "rt_col_commands_held": "commands held",
         "rt_col_ordinary_notes_left_alone": "ordinary notes left alone",
         "code_stale": "A PADAM Studio update is installed — close and reopen the app to see the new version.",
+        "mail_lang_en": "English (US/Global)",
+        "mail_lang_ru": "Русский",
+        "qs_launch_confirm": "Turn on automatic outreach and the autopilot 24/7? Emails to real people will be sent automatically. Turn off with «Stop everything».",
         "seal_ok": "The reference report's signature is valid: nobody changed it after release",
         "seal_bad": "The signature does not match — the report was altered or damaged",
         "bench_guide_title": "How to read this tab",
@@ -970,7 +976,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "qs_btn_agent": "Connect agent",
         "qs_btn_wizard": "Open platforms (34)",
         "qs_step2_t": "2. Outreach Mailboxes",
-        "qs_step2_d": "Add 1 to 12 work mailboxes (Gmail App Password, Yandex, Mail.ru, SMTP).",
+        "qs_step2_d": "Add 1 to 12 work mailboxes (Gmail app password, Yandex, Mail.ru, SMTP).",
         "qs_btn_mail": "Connect mailbox",
         "qs_step3_t": "3. Client Leads",
         "qs_step3_d": "Paste your email/domain list or use the built-in map database.",
@@ -1625,6 +1631,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "rt_col_commands_held": "órdenes retenidas",
         "rt_col_ordinary_notes_left_alone": "notas intactas",
         "code_stale": "Hay una actualización de PADAM Studio instalada: cierre y vuelva a abrir la aplicación para ver la nueva versión.",
+        "mail_lang_en": "English (US/Global)",
+        "mail_lang_ru": "Русский",
+        "qs_launch_confirm": "¿Activar el envío automático y el autopiloto 24/7? Los correos a personas reales saldrán solos. Se apaga con «Detener todo».",
         "seal_ok": "La firma del informe de referencia es válida: nadie lo cambió",
         "seal_bad": "La firma no coincide: el informe fue alterado o dañado",
         "bench_guide_title": "Cómo leer esta pestaña",
@@ -1692,7 +1701,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "qs_btn_agent": "Conectar agente",
         "qs_btn_wizard": "Abrir bolsas (34)",
         "qs_step2_t": "2. Correos de envío",
-        "qs_step2_d": "Añade de 1 a 12 buzones (Gmail App Password, Yandex, Mail.ru, SMTP).",
+        "qs_step2_d": "Añade de 1 a 12 buzones (contraseña de aplicación de Gmail, Yandex, Mail.ru, SMTP).",
         "qs_btn_mail": "Conectar correo",
         "qs_step3_t": "3. Base de clientes",
         "qs_step3_d": "Pega tu lista email/dominio o usa el mapa integrado.",
@@ -2347,6 +2356,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "rt_col_commands_held": "指令已拦截",
         "rt_col_ordinary_notes_left_alone": "普通笔记未动",
         "code_stale": "已安装 PADAM Studio 更新——请关闭并重新打开应用以查看新版本。",
+        "mail_lang_en": "English (US/Global)",
+        "mail_lang_ru": "Русский",
+        "qs_launch_confirm": "开启 24/7 自动外联和自动驾驶？将自动向真人发送邮件。可用“全部停止”关闭。",
         "seal_ok": "参考报告签名有效：发布后未被修改",
         "seal_bad": "签名不匹配——报告已被修改或损坏",
         "bench_guide_title": "如何阅读本页",
@@ -4413,6 +4425,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   gap: 8px;
   margin-bottom: 10px;
 }
+#earn-quickstart > summary { cursor: pointer; list-style: none; }
+#earn-quickstart > summary::-webkit-details-marker { display: none; }
+#earn-quickstart > summary::after { content: '▾'; margin-left: 8px; }
+#earn-quickstart[open] > summary::after { content: '▴'; }
 .qs-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -6766,7 +6782,7 @@ async function checkCodeFresh() {
   try { r = await api('/api/v2/code-version'); } catch (e) { return; }
   let b = $('code-stale-banner');
   if (r && r.stale) {
-    if (!b) { b = _el('div', 'box'); b.id = 'code-stale-banner'; b.setAttribute('role', 'alert');
+    if (!b) { b = _el('div', 'box'); b.id = 'code-stale-banner'; b.setAttribute('role', 'alert'); b.setAttribute('data-i18n', 'code_stale');
       b.style.cssText = 'border:2px solid #f5a524;margin:8px 16px;font-weight:600';
       const m = document.querySelector('main') || document.body; m.insertBefore(b, m.firstChild); }
     b.textContent = S.code_stale || '';
@@ -8772,6 +8788,8 @@ if ($('qs-go-leads-btn')) { $('qs-go-leads-btn').onclick = () => { const el = $(
 if ($('qs-refresh-btn')) { $('qs-refresh-btn').onclick = () => { loadMailHub(); refreshQuickStart(); }; }
 if ($('qs-launch-all-btn')) {
   $('qs-launch-all-btn').onclick = async () => {
+    // 19.11.2026: включает письма настоящим людям — только после явного подтверждения владельца.
+    if (!window.confirm(S.qs_launch_confirm || '')) return;
     try {
       await api('/api/v2/ark/mail/action', {
         action: 'set_mail_prefs',
@@ -10580,51 +10598,6 @@ def page() -> tuple[str, str]:
           <h2 class="panel-title" data-i18n="earn_title">{s['earn_title']}</h2>
           <p class="panel-sub" data-i18n="earn_sub">{s['earn_sub']}</p>
         </div>
-        <div id="earn-quickstart" class="qs-banner">
-          <div class="qs-head">
-            <div>
-              <h3 class="box-title" data-i18n="qs_title">{s['qs_title']}</h3>
-              <p class="earn-meta" data-i18n="qs_sub">{s['qs_sub']}</p>
-            </div>
-            <span id="qs-progress-badge" class="qs-badge">0 / 4</span>
-          </div>
-          <div class="qs-grid">
-            <div class="qs-step">
-              <strong data-i18n="qs_step1_t">{s['qs_step1_t']}</strong>
-              <span id="qs-st-1" class="qs-badge">0</span>
-              <p class="earn-meta" data-i18n="qs_step1_d">{s['qs_step1_d']}</p>
-              <div class="rec-actions">
-                <button id="qs-go-agent-btn" type="button" data-i18n="qs_btn_agent">{s['qs_btn_agent']}</button>
-                <button id="qs-go-wiz-btn" type="button" class="btn-primary" data-i18n="qs_btn_wizard">{s['qs_btn_wizard']}</button>
-              </div>
-            </div>
-            <div class="qs-step">
-              <strong data-i18n="qs_step2_t">{s['qs_step2_t']}</strong>
-              <span id="qs-st-2" class="qs-badge">0</span>
-              <p class="earn-meta" data-i18n="qs_step2_d">{s['qs_step2_d']}</p>
-              <div class="rec-actions">
-                <button id="qs-go-mail-btn" type="button" class="btn-primary" data-i18n="qs_btn_mail">{s['qs_btn_mail']}</button>
-              </div>
-            </div>
-            <div class="qs-step">
-              <strong data-i18n="qs_step3_t">{s['qs_step3_t']}</strong>
-              <span id="qs-st-3" class="qs-badge">0</span>
-              <p class="earn-meta" data-i18n="qs_step3_d">{s['qs_step3_d']}</p>
-              <div class="rec-actions">
-                <button id="qs-go-leads-btn" type="button" class="btn-primary" data-i18n="qs_btn_leads">{s['qs_btn_leads']}</button>
-              </div>
-            </div>
-            <div class="qs-step">
-              <strong data-i18n="qs_step4_t">{s['qs_step4_t']}</strong>
-              <span id="qs-st-4" class="qs-badge">OFF</span>
-              <p class="earn-meta" data-i18n="qs_step4_d">{s['qs_step4_d']}</p>
-              <div class="rec-actions">
-                <button id="qs-launch-all-btn" type="button" class="btn-ok" data-i18n="qs_btn_launch">{s['qs_btn_launch']}</button>
-                <button id="qs-refresh-btn" type="button" data-i18n="qs_btn_refresh">{s['qs_btn_refresh']}</button>
-              </div>
-            </div>
-          </div>
-        </div>
         <div class="earn-grid">
           <div class="box earn-box-wide">
             <h3 class="box-title" data-i18n="earn_ex_title">{s['earn_ex_title']}</h3>
@@ -10668,6 +10641,51 @@ def page() -> tuple[str, str]:
             <div id="earn-sim-out" class="earn-meta" role="status"></div>
             <div id="earn-accounts-list" class="earn-stack"></div>
           </div>
+        <details id="earn-quickstart" class="qs-banner" open>
+          <summary class="qs-head">
+            <div>
+              <h3 class="box-title" data-i18n="qs_title">{s['qs_title']}</h3>
+              <p class="earn-meta" data-i18n="qs_sub">{s['qs_sub']}</p>
+            </div>
+            <span id="qs-progress-badge" class="qs-badge">0 / 4</span>
+          </summary>
+          <div class="qs-grid">
+            <div class="qs-step">
+              <strong data-i18n="qs_step1_t">{s['qs_step1_t']}</strong>
+              <span id="qs-st-1" class="qs-badge">0</span>
+              <p class="earn-meta" data-i18n="qs_step1_d">{s['qs_step1_d']}</p>
+              <div class="rec-actions">
+                <button id="qs-go-agent-btn" type="button" data-i18n="qs_btn_agent">{s['qs_btn_agent']}</button>
+                <button id="qs-go-wiz-btn" type="button" class="btn-primary" data-i18n="qs_btn_wizard">{s['qs_btn_wizard']}</button>
+              </div>
+            </div>
+            <div class="qs-step">
+              <strong data-i18n="qs_step2_t">{s['qs_step2_t']}</strong>
+              <span id="qs-st-2" class="qs-badge">0</span>
+              <p class="earn-meta" data-i18n="qs_step2_d">{s['qs_step2_d']}</p>
+              <div class="rec-actions">
+                <button id="qs-go-mail-btn" type="button" class="btn-primary" data-i18n="qs_btn_mail">{s['qs_btn_mail']}</button>
+              </div>
+            </div>
+            <div class="qs-step">
+              <strong data-i18n="qs_step3_t">{s['qs_step3_t']}</strong>
+              <span id="qs-st-3" class="qs-badge">0</span>
+              <p class="earn-meta" data-i18n="qs_step3_d">{s['qs_step3_d']}</p>
+              <div class="rec-actions">
+                <button id="qs-go-leads-btn" type="button" class="btn-primary" data-i18n="qs_btn_leads">{s['qs_btn_leads']}</button>
+              </div>
+            </div>
+            <div class="qs-step">
+              <strong data-i18n="qs_step4_t">{s['qs_step4_t']}</strong>
+              <span id="qs-st-4" class="qs-badge">OFF</span>
+              <p class="earn-meta" data-i18n="qs_step4_d">{s['qs_step4_d']}</p>
+              <div class="rec-actions">
+                <button id="qs-launch-all-btn" type="button" class="btn-ok" data-i18n="qs_btn_launch">{s['qs_btn_launch']}</button>
+                <button id="qs-refresh-btn" type="button" data-i18n="qs_btn_refresh">{s['qs_btn_refresh']}</button>
+              </div>
+            </div>
+          </div>
+        </details>
 
           <div class="box">
             <h3 class="box-title" data-i18n="earn_jobs_title">{s['earn_jobs_title']}</h3>
@@ -10944,8 +10962,8 @@ def page() -> tuple[str, str]:
             <div class="toolbar">
               <select id="earn-mail-lang" aria-label="Outreach language">
                 <option value="auto" data-i18n="mail_lang_auto">{s['mail_lang_auto']}</option>
-                <option value="en">English (US/Global)</option>
-                <option value="ru">Русский</option>
+                <option value="en" data-i18n="mail_lang_en">{s['mail_lang_en']}</option>
+                <option value="ru" data-i18n="mail_lang_ru">{s['mail_lang_ru']}</option>
               </select>
               <label class="qs-check-lbl">
                 <input id="earn-mail-auto-chk" type="checkbox">

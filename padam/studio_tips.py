@@ -1326,6 +1326,41 @@ BTN_TIPS: dict[str, dict[str, str]] = {
         "en": "Shows how many bids, and for how much, the autopilot would have sent in the last 24 hours.",
         "es": "Muestra cuántas ofertas y por cuánto habría enviado en 24 horas.",
         "zh": "显示过去24小时自动驾驶本会发送的投标数量和金额。"},
+    "qs-go-agent-btn": {
+        "ru": "Прокручивает к полю «ID агента» в блоке Семьи: впишите имя агента (например, aifa_claude), чтобы он работал от вашей памяти.",
+        "en": "Scrolls to the «Agent ID» field in the Family block: enter the agent name (for example aifa_claude) so it works from your memory.",
+        "es": "Desplaza al campo «ID del agente» del bloque Familia: escriba el nombre del agente (por ejemplo aifa_claude) para que trabaje con su memoria.",
+        "zh": "滚动到“家庭”区块的“代理 ID”字段：填写代理名称（例如 aifa_claude），让它使用您的记忆工作。"},
+    "qs-go-wiz-btn": {
+        "ru": "Открывает мастер 34 бирж фриланса: у каждой указано, что можно автоматически, что — черновиком с вашей кнопкой, а что пока нельзя.",
+        "en": "Opens the wizard for 34 freelance platforms: each shows what can run automatically, what is a draft with your button, and what is not supported yet.",
+        "es": "Abre el asistente de 34 plataformas: cada una indica qué puede ser automático, qué es borrador con su botón y qué aún no.",
+        "zh": "打开 34 个自由职业平台向导：每个平台注明可自动执行的内容、需您点击的草稿以及暂不支持的内容。"},
+    "qs-go-mail-btn": {
+        "ru": "Прокручивает к подключению рабочей почты: адрес и пароль приложения от вашего ящика (не основной пароль). Можно подключить до 12 ящиков.",
+        "en": "Scrolls to connecting a work mailbox: the address and an app password of your mailbox (not the main password). Up to 12 mailboxes.",
+        "es": "Desplaza a conectar un buzón: la dirección y una contraseña de aplicación (no la principal). Hasta 12 buzones.",
+        "zh": "滚动到连接工作邮箱：邮箱地址和应用专用密码（不是主密码）。最多可连接 12 个邮箱。"},
+    "qs-go-leads-btn": {
+        "ru": "Прокручивает к полю загрузки базы адресатов: вставьте список адресов или строк «имя, почта, сайт».",
+        "en": "Scrolls to the contact list field: paste addresses or lines «name, email, website».",
+        "es": "Desplaza al campo de la lista de contactos: pegue direcciones o líneas «nombre, correo, sitio».",
+        "zh": "滚动到联系人列表字段：粘贴邮箱地址或“姓名, 邮箱, 网站”格式的行。"},
+    "qs-launch-all-btn": {
+        "ru": "Включает автоматическую рассылку и автопилот заказов 24/7: письма настоящим людям будут уходить сами с подключённых ящиков, в пределах суточных лимитов, со стоп-листом. Перед включением спросит подтверждение. Выключить — «Остановить всё».",
+        "en": "Turns on automatic outreach and the order autopilot 24/7: emails to real people will be sent by themselves from your mailboxes, within daily limits, with the stop list. Asks for confirmation first. To turn off — «Stop everything».",
+        "es": "Activa el envío automático y el autopiloto 24/7: los correos a personas reales saldrán solos desde sus buzones, dentro de los límites diarios y con la lista STOP. Pide confirmación antes. Para apagar — «Detener todo».",
+        "zh": "开启 24/7 自动外联和订单自动驾驶：将从您的邮箱自动向真人发信，遵守每日上限和停发名单。开启前会请求确认。关闭请点“全部停止”。"},
+    "qs-refresh-btn": {
+        "ru": "Перечитывает состояние четырёх шагов быстрого старта: агент, почта, база адресатов, автопилот.",
+        "en": "Re-reads the state of the four quick-start steps: agent, mail, contact list, autopilot.",
+        "es": "Vuelve a leer el estado de los cuatro pasos: agente, correo, lista de contactos, autopiloto.",
+        "zh": "重新读取快速开始四个步骤的状态：代理、邮箱、联系人列表、自动驾驶。"},
+    "earn-mail-import-btn": {
+        "ru": "Загружает вставленный список клиентов в базу адресатов: дубли и адреса из стоп-листа отбрасываются. Писем при этом не отправляет.",
+        "en": "Loads the pasted client list into the contact base: duplicates and stop-listed addresses are dropped. Sends no emails.",
+        "es": "Carga la lista pegada en la base de contactos: se descartan duplicados y direcciones de la lista STOP. No envía correos.",
+        "zh": "将粘贴的客户列表导入联系人库：去除重复和停发名单中的地址。不会发送邮件。"},
     "earn-mail-batch-btn": {
         "ru": "Запускает пакет рассылки по базе карты исследования: письма владельцам сайтов с нарушениями с подключённых ящиков, по очереди и в пределах их суточных лимитов; стоп-лист и 30-дневная бронь домена соблюдаются. Это отправка настоящим людям — нажимает только владелец.",
         "en": "Starts an outreach batch from the research map: emails to owners of sites with violations, rotating your mailboxes within their daily limits; the stop list and 30-day domain hold are respected. This emails real people — owner only.",

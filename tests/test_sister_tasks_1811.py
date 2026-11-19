@@ -186,13 +186,14 @@ def test_studio_earning_desktop_1280x800_accounts_visible_and_bid_flow_playwrigh
                         count: items.length,
                         allInsideViewportY: rects.every(r => r.top >= 0 && r.bottom <= window.innerHeight),
                         ordText: (document.getElementById('earn-orders-list') || {}).textContent || '',
+                        dbg: Array.from(document.querySelectorAll('#panel-earning > *, #earn-accounts-list .earn-item')).map(e => (e.id || e.className) + ':' + Math.round(e.getBoundingClientRect().top) + '-' + Math.round(e.getBoundingClientRect().bottom)).join(' | '),
                     };
                 }"""
             )
             assert desk_metrics["scrollY"] == 0
             assert desk_metrics["overflow"] is False
             assert desk_metrics["count"] == 5
-            assert desk_metrics["allInsideViewportY"] is True
+            assert desk_metrics["allInsideViewportY"] is True, desk_metrics.get("dbg")
             assert "99.99" not in desk_metrics["ordText"]
             assert "fee=25%" in desk_metrics["ordText"]
             assert "/h" in desk_metrics["ordText"]
