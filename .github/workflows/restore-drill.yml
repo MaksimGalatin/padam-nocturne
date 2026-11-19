@@ -1,0 +1,34 @@
+# N6 дорожной карты Сестры (19.11.2026): ежемесячное учение восстановления.
+# Создаёт память на 300 записей, делает зашифрованную копию, восстанавливает во временный файл и сверяет отпечаток.
+# Репозиторий публичный — минуты GitHub Actions бесплатны.
+name: restore-drill
+on:
+  schedule:
+    - cron: "17 4 1 * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  drill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - name: Учение восстановления
+        env:
+          PADAM_HOME: ${{ runner.temp }}/padam
+          PADAM_DB: ${{ runner.temp }}/padam/m.db
+          PADAM_EMBEDDER: builtin
+        run: |
+          python - <<'PY'
+          from padam.memory import Memory
+          from padam.store import Store
+          import os
+          m = Memory(user_id="drill", store=Store(os.environ["PADAM_DB"]))
+          for i in range(300):
+              m.remember(f"drill record {i}: value {i * 7}", kind="fact")
+          PY
+          PADAM_USER=drill padam restore-drill --json

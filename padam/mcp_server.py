@@ -5839,6 +5839,12 @@ def _handle_legacy(req: dict) -> dict | None:
             _t0_call = time.perf_counter()
             text, structured = _call_tool_full(name, args)
             _audit_mcp_call(name, args, ok=structured is not None, duration_ms=(time.perf_counter() - _t0_call) * 1000)
+            try:   # B1 Сестры: локальный журнал вызова с trace_id (без аргументов)
+                from . import observability as _obs
+                _obs.log_call(name, ok=structured is not None, duration_ms=(time.perf_counter() - _t0_call) * 1000,
+                              action=str(args.get("action") or ""))
+            except Exception:
+                pass
             if structured is None:
                 lang_res, explicit_res = resolve_error_lang(req=req)
                 if explicit_res and lang_res != "en":

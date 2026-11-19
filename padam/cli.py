@@ -868,6 +868,32 @@ def cmd_forget(m: Memory, a) -> int:
     return 1
 
 
+def cmd_restore_drill(m: Memory, a) -> int:
+    """N6 Сестры: учение восстановления — копия → восстановление во временный файл → сверка отпечатка. Живая база не меняется."""
+    from . import restore_drill
+    r = restore_drill.run_drill(m)
+    print(json.dumps(r, ensure_ascii=False, indent=2) if getattr(a, "json", False) else
+          (t("✅ Учение восстановления пройдено", "✅ Restore drill passed") if r["ok"] else
+           t("❌ Учение восстановления НЕ пройдено", "❌ Restore drill FAILED"))
+          + f" · {r['records_restored']} · {r['records_sha256_source']} = {r['records_sha256_restored']} · {r['elapsed_s']} s")
+    return 0 if r["ok"] else 1
+
+
+def cmd_privacy_inventory(m: Memory, a) -> int:
+    """N8 Сестры: опись личных данных — какие таблицы, сколько записей, где файл, что уходит наружу."""
+    from . import privacy_inventory
+    print(json.dumps(privacy_inventory.inventory(m), ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_latency(m: Memory, a) -> int:
+    """B1 Сестры: сводка задержек MCP-инструментов за день из локального журнала (p50/p95, цель p95 < 200 мс)."""
+    from . import observability
+    r = observability.latency_summary(getattr(a, "day", None))
+    print(json.dumps(r, ensure_ascii=False, indent=2))
+    return 0
+
+
 def cmd_doctor(m: Memory, a) -> int:
     """0.4.2: состояние безопасности одним отчётом (внешний разбор 09.11.2026: настроек много, и неверный
     выключатель равен утечке). Ничего не меняет. Код выхода 1, если есть хоть одно предупреждение."""
@@ -1341,6 +1367,18 @@ def main(argv=None) -> int:
                                                       "create snapshot and safely repair defects"))
     s.add_argument("--json", action="store_true", help=t("вывести глубокий аудит в JSON", "print deep audit as JSON"))
     s.set_defaults(fn=cmd_doctor)
+
+    s = sub.add_parser("restore-drill", help=t("учение восстановления: копия → восстановление во временный файл → сверка",
+                                               "restore drill: backup → restore to a temp file → verify"))
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_restore_drill)
+
+    s = sub.add_parser("latency", help=t("задержки MCP-инструментов за день (p50/p95)", "MCP tool latency for a day (p50/p95)"))
+    s.add_argument("--day", default=None)
+    s.set_defaults(fn=cmd_latency)
+
+    s = sub.add_parser("privacy-inventory", help=t("опись личных данных: что и где хранится", "personal data inventory"))
+    s.set_defaults(fn=cmd_privacy_inventory)
 
     s = sub.add_parser("timeline", help=t("история версий записи", "version history of a record"))
     s.add_argument("id")
