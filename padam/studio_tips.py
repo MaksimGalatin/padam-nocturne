@@ -1361,6 +1361,11 @@ BTN_TIPS: dict[str, dict[str, str]] = {
         "en": "Loads the pasted client list into the contact base: duplicates and stop-listed addresses are dropped. Sends no emails.",
         "es": "Carga la lista pegada en la base de contactos: se descartan duplicados y direcciones de la lista STOP. No envía correos.",
         "zh": "将粘贴的客户列表导入联系人库：去除重复和停发名单中的地址。不会发送邮件。"},
+    "set-ask-model-save-btn": {
+        "ru": "Сохраняет имя локальной модели Ollama, которой Студия отвечает на вопросы к памяти (например, llama3.2:3b). Модель работает на вашем компьютере, $0.",
+        "en": "Saves the name of the local Ollama model that Studio uses to answer questions about memory (for example llama3.2:3b). Runs on your computer, $0.",
+        "es": "Guarda el nombre del modelo local de Ollama con el que Studio responde preguntas sobre la memoria (por ejemplo llama3.2:3b). Funciona en su equipo, $0.",
+        "zh": "保存 Studio 用于回答记忆问题的本地 Ollama 模型名称（例如 llama3.2:3b）。在您的电脑上运行，$0。"},
     "earn-mail-batch-btn": {
         "ru": "Запускает пакет рассылки по базе карты исследования: письма владельцам сайтов с нарушениями с подключённых ящиков, по очереди и в пределах их суточных лимитов; стоп-лист и 30-дневная бронь домена соблюдаются. Это отправка настоящим людям — нажимает только владелец.",
         "en": "Starts an outreach batch from the research map: emails to owners of sites with violations, rotating your mailboxes within their daily limits; the stop list and 30-day domain hold are respected. This emails real people — owner only.",

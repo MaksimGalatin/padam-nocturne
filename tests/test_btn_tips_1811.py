@@ -11,6 +11,6 @@ def test_описания_кнопок_полные():
     кнопки = set(re.findall(r'<button[^>]*\bid="([\w-]+)"', страница))
     assert not (кнопки - set(BTN_TIPS)), f"кнопки без описания: {sorted(кнопки - set(BTN_TIPS))}"
     for bid, t in BTN_TIPS.items():
-        assert f'id="{bid}"' in страница, bid
+        assert f'id="{bid}"' in страница or f".id = '{bid}'" in страница, bid   # 19.11: кнопки, созданные скриптом
         for язык in ("ru", "en", "es", "zh"):
             assert len((t.get(язык) or "").strip()) >= (4 if язык == "zh" else 8), (bid, язык)

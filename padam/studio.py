@@ -173,6 +173,12 @@ STRINGS: dict[str, dict[str, str]] = {
         "mail_lang_en": "English (US/Global)",
         "mail_lang_ru": "Русский",
         "qs_launch_confirm": "Включить автоматическую рассылку и автопилот 24/7? Письма настоящим людям будут уходить сами. Выключить — «Остановить всё».",
+        "ov_sleep_running": "Сон идёт…",
+        "ov_sleep_empty": "Сон выполнен: новых эпизодов в буфере нет — склеивать нечего. Эпизоды копятся, когда агенты записывают в память диалоги.",
+        "ov_sleep_result": "Сон выполнен: эпизодов {e}, новых записей {c}, склеено повторов {m}, заменено устаревших {s}.",
+        "ov_sleep_conflicts": "Найдено противоречий: {n} — они в блоке «Что требует вашего решения».",
+        "need_input": "Сначала заполните поле — без него действие не выполнить.",
+        "lm_power_picked": "Выбрано: {p}. Нажмите «Сохранить», чтобы применить.",
         "seal_ok": "Подпись эталонного отчёта верна: его никто не менял после выпуска",
         "seal_bad": "Подпись не сходится — отчёт изменён или повреждён",
         "bench_guide_title": "Как читать эту вкладку",
@@ -916,6 +922,12 @@ STRINGS: dict[str, dict[str, str]] = {
         "mail_lang_en": "English (US/Global)",
         "mail_lang_ru": "Русский",
         "qs_launch_confirm": "Turn on automatic outreach and the autopilot 24/7? Emails to real people will be sent automatically. Turn off with «Stop everything».",
+        "ov_sleep_running": "Sleep is running…",
+        "ov_sleep_empty": "Sleep finished: no new episodes in the buffer — nothing to merge. Episodes accumulate when agents write dialogues to memory.",
+        "ov_sleep_result": "Sleep finished: episodes {e}, new records {c}, duplicates merged {m}, outdated replaced {s}.",
+        "ov_sleep_conflicts": "Contradictions found: {n} — see «What needs your decision».",
+        "need_input": "Fill in the field first — the action needs it.",
+        "lm_power_picked": "Selected: {p}. Press «Save» to apply.",
         "seal_ok": "The reference report's signature is valid: nobody changed it after release",
         "seal_bad": "The signature does not match — the report was altered or damaged",
         "bench_guide_title": "How to read this tab",
@@ -1648,6 +1660,12 @@ STRINGS: dict[str, dict[str, str]] = {
         "mail_lang_en": "English (US/Global)",
         "mail_lang_ru": "Русский",
         "qs_launch_confirm": "¿Activar el envío automático y el autopiloto 24/7? Los correos a personas reales saldrán solos. Se apaga con «Detener todo».",
+        "ov_sleep_running": "El sueño está en marcha…",
+        "ov_sleep_empty": "Sueño terminado: no hay episodios nuevos en el búfer, nada que fusionar. Los episodios se acumulan cuando los agentes escriben diálogos en la memoria.",
+        "ov_sleep_result": "Sueño terminado: episodios {e}, registros nuevos {c}, duplicados fusionados {m}, obsoletos reemplazados {s}.",
+        "ov_sleep_conflicts": "Contradicciones encontradas: {n}; están en «Lo que requiere su decisión».",
+        "need_input": "Primero rellene el campo: la acción lo necesita.",
+        "lm_power_picked": "Seleccionado: {p}. Pulse «Guardar» para aplicar.",
         "seal_ok": "La firma del informe de referencia es válida: nadie lo cambió",
         "seal_bad": "La firma no coincide: el informe fue alterado o dañado",
         "bench_guide_title": "Cómo leer esta pestaña",
@@ -2380,6 +2398,12 @@ STRINGS: dict[str, dict[str, str]] = {
         "mail_lang_en": "English (US/Global)",
         "mail_lang_ru": "Русский",
         "qs_launch_confirm": "开启 24/7 自动外联和自动驾驶？将自动向真人发送邮件。可用“全部停止”关闭。",
+        "ov_sleep_running": "睡眠进行中…",
+        "ov_sleep_empty": "睡眠完成：缓冲区没有新的片段，无需合并。代理向记忆写入对话时片段会累积。",
+        "ov_sleep_result": "睡眠完成：片段 {e} 个，新记录 {c} 条，合并重复 {m} 条，替换过时 {s} 条。",
+        "ov_sleep_conflicts": "发现矛盾 {n} 处——见“需要您决定的事项”。",
+        "need_input": "请先填写该字段——缺少它无法执行操作。",
+        "lm_power_picked": "已选择：{p}。点击“保存”以应用。",
         "seal_ok": "参考报告签名有效：发布后未被修改",
         "seal_bad": "签名不匹配——报告已被修改或损坏",
         "bench_guide_title": "如何阅读本页",
@@ -3836,6 +3860,9 @@ _CSS = """
 .att-actions.bench-actions{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px 14px;align-items:start}
 .bench-actions .btn,.bench-actions .btn-primary{width:100%}
 .bench-cell{display:flex;flex-direction:column;gap:4px}
+.need-input{outline:2px solid #f5a524 !important;outline-offset:2px}
+.btn-cell{display:inline-flex;flex-direction:column;gap:4px;max-width:320px;vertical-align:top}
+.btn-cell > button{align-self:flex-start}
 .btn-desc{display:block;font-size:12px;line-height:1.4;color:var(--muted,#94a3b8);margin:0 2px}
 .cmp-wrap{overflow-x:auto;margin:8px 0}
 .cmp-table{border-collapse:collapse;width:100%;font-size:13px;min-width:760px}
@@ -4921,9 +4948,13 @@ function applyTips() {
     if (!b) continue;
     const t = BTN_TIPS[id][currentLang] || BTN_TIPS[id].ru || '';
     b.title = t; b.setAttribute('aria-description', t);
-    if (b.closest('.bench-actions')) {            // 18.11, слово Папы: «что КАЖДАЯ кнопка делает» — подпись видна сразу
+    // 19.11, слово Папы: «такое описание на всех языках к КАЖДОЙ кнопке» — подпись видна сразу под кнопкой, не только
+    // при наведении. Кроме меню, переключателей языка/темы и значков «?» — там подпись мешала бы навигации.
+    const _skip = b.getAttribute('role') === 'tab' || b.closest('header, nav, .topbar, .lang-switch, [role=tablist]')
+      || b.classList.contains('tip-btn') || b.id === 'btn-refresh' || b.id === 'btn-theme';
+    if (!_skip) {
       let cell = b.parentElement;
-      if (!cell.classList.contains('bench-cell')) { cell = document.createElement('div'); cell.className = 'bench-cell'; b.insertAdjacentElement('beforebegin', cell); cell.appendChild(b); }
+      if (!cell.classList.contains('bench-cell')) { cell = document.createElement('div'); cell.className = b.closest('.bench-actions') ? 'bench-cell' : 'bench-cell btn-cell'; b.insertAdjacentElement('beforebegin', cell); cell.appendChild(b); }
       let d = b.nextElementSibling;
       if (!d || !d.classList.contains('btn-desc')) { d = document.createElement('span'); d.className = 'btn-desc'; cell.appendChild(d); }
       d.textContent = t;
@@ -5468,6 +5499,14 @@ async function loadFeed(reset = true) {
 }
 
 // --- 3. ПОИСК ---
+function needInput(id) {
+  // 19.11.2026, слово Папы: «кнопка не работает». Кнопки с пустым обязательным полем молча выходили —
+  // теперь говорят, что заполнить, ставят курсор в поле и подсвечивают его.
+  const f = $(id);
+  say(S.need_input || '', false);
+  if (f) { f.focus(); f.classList.add('need-input'); setTimeout(() => f.classList.remove('need-input'), 2500); }
+  return false;
+}
 async function runSearch() {
   const q = $('search-input').value.trim();
   const kind = $('search-kind').value || null;
@@ -5629,7 +5668,7 @@ async function saveQuickAdd() {
   const kindSel = $('quick-add-kind');
   const text = (inp ? inp.value : '').trim();
   const kind = (kindSel && kindSel.value) ? kindSel.value : 'fact';
-  if (!text) return;
+  if (!text) return needInput('quick-add-text');
   try {
     await api('/write', {content: text, kind, origin: 'user'});
     if (inp) inp.value = '';
@@ -5728,7 +5767,7 @@ async function previewForget(id) {
   box.replaceChildren();
   $('forget-confirm-box').hidden = true;
   $('forget-step1-btn').hidden = false;
-  if (!targetId) return;
+  if (!targetId) return needInput('forget-id-input');
   try {
     const p = await api('/forget-preview?id=' + encodeURIComponent(targetId));
     box.append(
@@ -6204,7 +6243,7 @@ if ($('team-create-btn')) {
   $('team-create-btn').onclick = async () => {
     const inp = $('team-create-input');
     const name = inp ? inp.value.trim() : '';
-    if (!name) return;
+    if (!name) return needInput('team-create-input');
     try {
       await api('/workspaces', {name});
       if (inp) inp.value = '';
@@ -6219,7 +6258,7 @@ if ($('team-add-btn')) {
     const wsId = $('team-ws-select') ? $('team-ws-select').value : '';
     const subj = $('team-subj-input') ? $('team-subj-input').value.trim() : '';
     const role = $('team-role-select') ? $('team-role-select').value : 'contributor';
-    if (!wsId || !subj) return;
+    if (!wsId || !subj) return needInput(!wsId ? 'team-ws-select' : 'team-subj-input');
     try {
       const res = await api('/workspaces/members', {workspace_id: wsId, subject: subj, role});
       if ($('team-subj-input')) $('team-subj-input').value = '';
@@ -6345,6 +6384,7 @@ for (const id of ['eco', 'half', 'full']) {
       const x = $('lm-power-' + k);
       if (x) { x.setAttribute('aria-pressed', String(k === id)); x.classList.toggle('btn-primary', k === id); }
     }
+    const o = $('lm-out'); if (o) o.textContent = (S.lm_power_picked || '').replace('{p}', b.textContent.trim());
   };
 }
 if ($('lm-save')) {
@@ -6454,6 +6494,7 @@ async function loadSettings() {
       } catch (e) { say(S.failed + ': ' + e.message, false); }
     };
     askCtrl.append(askInp, askBtn);
+    setTimeout(applyTips, 0);   // 19.11: кнопки настроек строятся после первой расстановки подписей
     const olModels = (s.ollama && s.ollama.models) ? s.ollama.models : [];
     for (const mName of olModels.slice(0, 4)) {
       const mBtn = el('button', s.ask_model === mName ? 'btn-ok' : '', mName);
@@ -6997,12 +7038,23 @@ if ($('entities-filter')) {
 $('btn-refresh').onclick = () => loadActiveTab();
 
 $('ov-sleep-btn').onclick = async () => {
+  // 19.11.2026: Папа нажал — блок остался «ещё не запускался», будто кнопка мертва. Сон честно ничего не пишет при
+  // пустом буфере. Теперь под кнопкой остаётся итог словами: что сделано или почему делать было нечего.
+  const btn = $('ov-sleep-btn');
+  let out = $('ov-sleep-result');
+  if (!out) { out = _el('p', 'panel-sub'); out.id = 'ov-sleep-result'; out.setAttribute('role', 'status'); btn.insertAdjacentElement('afterend', out); }
+  btn.disabled = true; out.textContent = S.ov_sleep_running || '';
   try {
-    await api('/sleep', {});
+    const r = await api('/sleep', {}) || {};
+    out.textContent = (r.episodes_sampled || 0) === 0 ? (S.ov_sleep_empty || '')
+      : (S.ov_sleep_result || '').replace('{e}', r.episodes_sampled || 0).replace('{c}', r.records_created || 0)
+          .replace('{m}', r.records_merged || 0).replace('{s}', r.records_superseded || 0);
+    if (r.conflicts && r.conflicts.length) out.textContent += ' ' + (S.ov_sleep_conflicts || '').replace('{n}', r.conflicts.length);
     say(S.done, true);
     loadOverview();
     refreshTopbarStats();
-  } catch (e) { say(S.failed + ': ' + e.message, false); }
+  } catch (e) { out.textContent = S.failed + ': ' + e.message; say(S.failed + ': ' + e.message, false); }
+  finally { btn.disabled = false; }
 };
 
 $('feed-view-active').onclick = () => {
@@ -7043,7 +7095,7 @@ $('feed-more').onclick = () => loadFeed(false);
 $('feed-new-save').onclick = async () => {
   const text = $('feed-new-text').value.trim();
   const kind = $('feed-new-kind').value || undefined;
-  if (!text) return;
+  if (!text) return needInput('feed-new-text');
   try {
     await api('/write', {content: text, kind, origin: 'user'});
     $('feed-new-text').value = '';
@@ -7076,7 +7128,7 @@ $('asof-graph-btn').onclick = () => {
 // Забыть
 $('forget-preview-btn').onclick = () => previewForget();
 $('forget-step1-btn').onclick = () => {
-  if (!$('forget-id-input').value.trim()) return;
+  if (!$('forget-id-input').value.trim()) return needInput('forget-id-input');
   $('forget-step1-btn').hidden = true;
   $('forget-confirm-box').hidden = false;
 };
@@ -7683,7 +7735,7 @@ if ($('ff-send')) {
   $('ff-send').onclick = async () => {
     const inp = $('ff-input');
     const text = (inp ? inp.value : '').trim();
-    if (!text) return;
+    if (!text) return needInput('ff-input');
     try {
       const r = await api('/api/v2/family/post', { channel: _ffCh, content: text });
       if (inp) inp.value = '';
@@ -7696,7 +7748,7 @@ if ($('ark-council-btn')) {
   $('ark-council-btn').onclick = async () => {
     const task = ($('ark-council-input') ? $('ark-council-input').value : '').trim();
     const out = $('ark-council-out');
-    if (!task) return;
+    if (!task) return needInput('ark-council-input');
     if (out) out.textContent = S.loading;
     try {
       const r = await api('/api/v2/ark/council', { task });
@@ -7758,7 +7810,7 @@ if ($('ark-proof-btn')) {
   $('ark-proof-btn').onclick = async () => {
     const rid = ($('ark-proof-input') ? $('ark-proof-input').value : '').trim();
     const out = $('ark-proof-out');
-    if (!rid) return;
+    if (!rid) return needInput('ark-proof-input');
     if (out) out.textContent = S.loading;
     try {
       const r = await api('/api/v2/ark/proof', { record_id: rid });
@@ -10760,6 +10812,8 @@ def page() -> tuple[str, str]:
         <div class="earn-grid">
           <div class="box earn-box-wide">
             <h3 class="box-title" data-i18n="earn_ex_title">{s['earn_ex_title']}</h3>
+            <!-- 19.11: список аккаунтов первым в блоке — кнопки ниже теперь с видимыми подписями -->
+            <div id="earn-accounts-list" class="earn-stack"></div>
             <div class="toolbar">
               <select id="earn-platform" aria-label="Exchange platform">
                 <option value="fiverr_desk">fiverr_desk</option>
@@ -10798,7 +10852,6 @@ def page() -> tuple[str, str]:
               <button id="earn-sim-report-btn" type="button" data-i18n="earn_sim_report_btn">{s['earn_sim_report_btn']}</button>
             </div>
             <div id="earn-sim-out" class="earn-meta" role="status"></div>
-            <div id="earn-accounts-list" class="earn-stack"></div>
           </div>
         <details id="earn-quickstart" class="qs-banner" open>
           <summary class="qs-head">
