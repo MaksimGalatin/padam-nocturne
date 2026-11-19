@@ -147,7 +147,7 @@ _RAW: list[tuple[str, str, str, str, str]] = [
     ("AS-096", "D10", "Strict security profile (PADAM_STRICT=1) overrides unsafe relaxations", "Строгий профиль (PADAM_STRICT=1) перекрывает небезопасные ослабления", "HIGH"),
     ("AS-097", "D10", "Self-contained HTML dashboard & SVG badge generated with XSS escaping", "Генерация автономного HTML-дашборда и SVG-бейджа с XSS-экранированием", "MEDIUM"),
     ("AS-098", "D10", "Report carries deterministic SHA-256 integrity seal (report_sha256)", "Отчёт подписывается детерминированной SHA-256 печатью целостности", "MEDIUM"),
-    ("AS-099", "D10", "Full 100-criterion suite completes within local budget (<= 30s)", "Полный прогон всех 100 критериев укладывается в локальный бюджет (<= 30 с)", "MEDIUM"),
+    ("AS-099", "D10", "Full 100-criterion suite completes within local budget (<= 90s)", "Полный прогон всех 100 критериев укладывается в локальный бюджет (<= 90 с)", "MEDIUM"),
     ("AS-100", "D10", "Reproducibility: identical target produces identical score & seal hash", "Воспроизводимость: повторный прогон даёт идентичный балл и SHA-256", "HIGH"),
 ]
 

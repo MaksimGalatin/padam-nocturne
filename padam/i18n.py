@@ -26,9 +26,10 @@ def _system_is_russian() -> bool:
 
 
 def lang() -> str:
-    """'ru' или 'en'."""
+    """'ru', 'en', 'es' или 'zh'. Аудит фазы 3, SM-09: PADAM_LANG=es/zh раньше молча отбрасывался.
+    Сообщения командной строки пока двуязычные: t() для es/zh отдаёт английский текст."""
     forced = os.environ.get("PADAM_LANG", "").strip().lower()
-    if forced in ("ru", "en"):
+    if forced in ("ru", "en", "es", "zh"):
         return forced
     return "ru" if _system_is_russian() else "en"
 

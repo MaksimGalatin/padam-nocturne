@@ -59,6 +59,12 @@ TIPS: dict[str, dict[str, str]] = {
         "en": "The headline defense benchmark from the article: outside AI models write new attacks blind, each set hashed before the run. The number is how many cases were handled correctly.",
         "es": "El benchmark principal del artículo: modelos externos escriben ataques a ciegas; cada conjunto se hashea antes. El número es cuántos casos se manejaron bien.",
         "zh": "文章中的核心防御基准：外部 AI 模型盲写新攻击，每组在运行前做哈希。数字表示正确处理的用例数。"},
+    "mail_title": {
+        "ru": "Здесь агент ведёт рассылку отчётов владельцам сайтов с нарушениями: подключаете ящики, он шлёт письма в пределах суточного лимита, читает ответы, соблюдает отписку STOP. Письма незнакомым людям уходят только после вашего запуска.",
+        "en": "Here the agent runs outreach to owners of sites with violations: you connect mailboxes, it sends within the daily limit, reads replies and honours STOP. Emails to strangers go out only after you start it.",
+        "es": "Aquí el agente envía informes a dueños de sitios con fallos: usted conecta buzones, envía dentro del límite diario, lee respuestas y respeta STOP. Solo envía a desconocidos tras su arranque.",
+        "zh": "代理在此向有问题网站的所有者发送报告：您连接邮箱，它在每日上限内发送、读取回复并遵守STOP。只有在您启动后才会给陌生人发信。",
+    },
     "att_aifasec_title": {
         "ru": "AIFaSecurity-100: сто детерминированных проверок защиты памяти без ИИ-судьи. «Запустить» — свежий прогон за секунды; отчёт подписан Ed25519, его можно скачать и проверить.",
         "en": "AIFaSecurity-100: one hundred deterministic memory-security checks with no AI judge. “Run” gives a fresh result in seconds; the report is Ed25519-signed.",
@@ -1285,4 +1291,49 @@ BTN_TIPS: dict[str, dict[str, str]] = {
         "en": "Opens Help: how memory works and what each section does.",
         "es": "Abre Ayuda: cómo funciona la memoria y cada sección.",
         "zh": "打开“帮助”：记忆如何工作以及各部分的作用。"},
+    "earn-mail-connect-btn": {
+        "ru": "Подключает рабочий почтовый ящик для рассылки: провайдер, адрес, пароль приложения (шифруется) и суточный лимит писем.",
+        "en": "Connects a work mailbox for outreach: provider, address, app password (encrypted) and a daily email limit.",
+        "es": "Conecta un buzón de trabajo: proveedor, dirección, contraseña de aplicación (cifrada) y límite diario.",
+        "zh": "连接用于外联的工作邮箱：服务商、地址、应用密码（加密）和每日发信上限。"},
+    "earn-mail-build-btn": {
+        "ru": "Готовит по домену с карты отчёт о нарушениях, короткую сводку и письмо владельцу сайта. Само письмо не отправляет.",
+        "en": "For a domain from the map, prepares the violations report, a short summary and an email to the site owner. Does not send it.",
+        "es": "Para un dominio del mapa prepara el informe, un resumen y el correo al dueño del sitio. No lo envía.",
+        "zh": "针对地图中的域名生成问题报告、简短摘要和给网站所有者的邮件。不会发送。"},
+    "earn-mail-inbox-btn": {
+        "ru": "Читает входящие: ответ STOP — адрес в стоп-лист навсегда; «Шлите список» — ответ с отчётом; остальное — вам на решение.",
+        "en": "Reads the inbox: STOP — the address goes on the stop list forever; “Send the list” — reply with the report; anything else — to you.",
+        "es": "Lee la entrada: STOP — a la lista para siempre; «Envíen la lista» — respuesta con el informe; lo demás — para usted.",
+        "zh": "读取收件箱：STOP——地址永久加入停发名单；“请发清单”——回复报告；其他——交给您处理。"},
+    "earn-stop-all-btn": {
+        "ru": "Одной кнопкой останавливает всё, что может действовать само: автопилот и его фоновый поток, автоотклики на всех площадках, рассылку со всех ящиков. Ничего не удаляет — включается теми же кнопками.",
+        "en": "One button stops everything that can act on its own: the autopilot and its worker, auto-bids on every platform, outreach from every mailbox. Deletes nothing — turn things back on with the same buttons.",
+        "es": "Un botón detiene todo lo que actúa solo: piloto y su proceso, ofertas automáticas, envíos de todos los buzones. No borra nada.",
+        "zh": "一键停止所有自动行为：自动驾驶及其后台线程、所有平台自动投标、所有邮箱外联。不删除任何内容。"},
+    "earn-sim-on-btn": {
+        "ru": "Включает симуляцию: автопилот собирает заказы и готовит отклики, но ничего не отправляет — только записывает, что ушло бы.",
+        "en": "Turns on simulation: the autopilot collects jobs and prepares bids but sends nothing — it only records what would have gone out.",
+        "es": "Activa la simulación: prepara ofertas pero no envía nada, solo registra.",
+        "zh": "开启模拟：自动驾驶收集订单并准备投标，但不发送，只记录。"},
+    "earn-sim-off-btn": {
+        "ru": "Переводит в боевой режим: автоотклики уходят на площадки, где включён автопилот. Только владелец.",
+        "en": "Switches to live mode: auto-bids go out on platforms with autopilot on. Owner only.",
+        "es": "Pasa a modo real: las ofertas salen. Solo el dueño.",
+        "zh": "切换到实战模式：在开启自动驾驶的平台发送投标。仅限所有者。"},
+    "earn-sim-report-btn": {
+        "ru": "Показывает, сколько откликов и на какую сумму автопилот отправил бы за последние 24 часа.",
+        "en": "Shows how many bids, and for how much, the autopilot would have sent in the last 24 hours.",
+        "es": "Muestra cuántas ofertas y por cuánto habría enviado en 24 horas.",
+        "zh": "显示过去24小时自动驾驶本会发送的投标数量和金额。"},
+    "earn-mail-batch-btn": {
+        "ru": "Запускает пакет рассылки по базе карты исследования: письма владельцам сайтов с нарушениями с подключённых ящиков, по очереди и в пределах их суточных лимитов; стоп-лист и 30-дневная бронь домена соблюдаются. Это отправка настоящим людям — нажимает только владелец.",
+        "en": "Starts an outreach batch from the research map: emails to owners of sites with violations, rotating your mailboxes within their daily limits; the stop list and 30-day domain hold are respected. This emails real people — owner only.",
+        "es": "Lanza un lote de envíos del mapa: correos a dueños de sitios con fallos, rotando buzones dentro de sus límites; se respetan la lista STOP y la reserva de 30 días. Son personas reales: solo el dueño.",
+        "zh": "按研究地图启动批量外联：在每日上限内轮换邮箱，向有问题网站的所有者发信；遵守停发名单和30天域名保留。这是给真人发信——仅限所有者。"},
+    "earn-mail-followup-btn": {
+        "ru": "Отправляет одно повторное письмо тем, кто не ответил на первое за 4 дня. Повторно тому же адресу не пишет, стоп-лист соблюдается.",
+        "en": "Sends one follow-up to those who did not answer the first email within 4 days. Never twice to the same address; the stop list is respected.",
+        "es": "Envía un único seguimiento a quien no respondió en 4 días. Nunca dos veces; se respeta la lista STOP.",
+        "zh": "向4天内未回复首封邮件的人发送一封跟进邮件。同一地址不重复，遵守停发名单。"},
 }

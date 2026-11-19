@@ -1950,6 +1950,14 @@ class Handler(BaseHTTPRequestHandler):
                     st_ap = _fa.set_autopilot_state(mem(), running=True, interval_s=float(data.get("interval_s") or 300.0), actor=actor)
                     _fa.ensure_autopilot_worker(mem, allow_localhost=bool(data.get("allow_localhost", False)))
                     return self._send(200, st_ap)
+                if act == "stop_all":          # ТОП-20 Сестры, п. 12
+                    return self._send(200, _fa.stop_everything(mem(), actor=actor))
+                if act in ("simulation_on", "simulation_off"):   # п. 8
+                    from . import platform_wizard as _pw_sim
+                    return self._send(200, _pw_sim.set_autopilot_simulation(mem(), act == "simulation_on", actor=actor))
+                if act == "simulation_report":
+                    from . import platform_wizard as _pw_sim
+                    return self._send(200, _pw_sim.autopilot_simulation_report(mem(), hours=float(data.get("hours") or 24)))
                 if act == "autopilot_stop":
                     _fa.stop_autopilot_worker()
                     return self._send(200, _fa.set_autopilot_state(mem(), running=False, actor=actor))

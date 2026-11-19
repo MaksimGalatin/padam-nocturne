@@ -36,7 +36,11 @@ def test_client_90_day_lock_lifecycle_email_domain_exchange_id(tmp_path: Path):
         k1, s1 = freelance_autonomy._normalize_client_identity("fiverr_desk", client_email="  Alice.Smith@ACME.IO ")
         k2, s2 = freelance_autonomy._normalize_client_identity("upwork_api", client_domain="https://www.Acme.IO/projects?x=1")
         k3, s3 = freelance_autonomy._normalize_client_identity("upwork_api", client_external_id="CL-77")
-        assert (k1, s1) == ("email:alice.smith@acme.io", "email")
+        import hashlib as _h
+        _key_alice = "email:sha256:" + _h.sha256(b"alice.smith@acme.io").hexdigest()[:32]
+        assert (k1, s1) == (_key_alice, "email")          # аудит фазы 3, MS-05: адрес не хранится, только отпечаток
+        assert "alice" not in k1
+        assert freelance_autonomy._normalize_client_identity("x", client_email="bob@web.com")[0] ==             "email:sha256:" + _h.sha256(b"bob@web.com").hexdigest()[:32]   # было lstrip("www.") → «eb.com»
         assert (k2, s2) == ("domain:acme.io", "domain")
         assert (k3, s3) == ("exchange:upwork_api:cl-77", "exchange_client_id")
 
@@ -45,7 +49,7 @@ def test_client_90_day_lock_lifecycle_email_domain_exchange_id(tmp_path: Path):
             m, platform="fiverr_desk", title="First order", brief="Build API endpoint",
             budget_usdt=100.0, assigned_agent="agent_alpha", client_email="Alice.Smith@ACME.IO", now_ts=t0,
         )
-        assert j1["client_key"] == "email:alice.smith@acme.io"
+        assert j1["client_key"] == _key_alice
         assert j1["locked_agent_id"] == ""
         assert freelance_autonomy.get_client_lock_status(m, client_email="alice.smith@acme.io", now_ts=t0)["locked"] is False
 

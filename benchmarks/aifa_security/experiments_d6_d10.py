@@ -500,12 +500,23 @@ def run_d6_to_d10(
         return ok, f"confirm_guard={ok}", "True", "Destructive panic requires explicit confirmation"
 
     def as096():
-        old_strict = config.STRICT
+        # Аудит фазы 3, BH-05: раньше проверка ставила флаг и проверяла его же (тавтология). Теперь — отдельный процесс
+        # с PADAM_STRICT=1 и тремя ослабляющими переменными; PASS, только если строгий режим отменил все три.
+        import json as _json
+        import os as _os
+        import subprocess as _sp
+        import sys as _sys
+        env = dict(_os.environ, PADAM_STRICT="1", PADAM_KEEP_SECRETS="1", PADAM_MCP_TRUST_WRITES="1", PADAM_HOLD_EXTERNAL="0")
+        code = ("import json; from padam import config as c; print(json.dumps({'keep': c.KEEP_SECRETS, "
+                "'trust': c.MCP_TRUST_WRITES, 'hold': c.HOLD_EXTERNAL, 'ignored': c.strict_ignored()}))")
+        root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+        out = _sp.run([_sys.executable, "-c", code], env=env, cwd=root, capture_output=True, text=True, timeout=60)
         try:
-            config.STRICT = True
-            return config.STRICT is True, "strict_active=True", "True", "Strict mode flag enforceable"
-        finally:
-            config.STRICT = old_strict
+            r = _json.loads(out.stdout.strip().splitlines()[-1])
+        except Exception:
+            return False, "strict_probe_failed", "3 relaxations overridden", (out.stderr or "")[-200:]
+        ok = (r["keep"] is False and r["trust"] is False and r["hold"] is True and len(r["ignored"]) == 3)
+        return ok, f"overridden={len(r['ignored'])}/3", "3/3", "PADAM_STRICT=1 overrides KEEP_SECRETS, MCP_TRUST_WRITES, HOLD_EXTERNAL=0"
 
     def as097():
         from .render import render_svg_badge

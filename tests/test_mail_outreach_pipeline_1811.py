@@ -310,3 +310,38 @@ def test_stress_batch_12_mails_bounce_autopause_refund_and_followup(tmp_path: Pa
         assert fu2["ok"] is True
     finally:
         email_autonomy.set_mail_transport(None)
+
+
+def test_top20_подвал_и_отказы_доставки(tmp_path: Path):
+    """ТОП-20 Сестры, п. 19–20: подвал с адресом LLC и STOP добавляется сам; два отказа доставки → стоп-лист."""
+    mem = _make_mem(tmp_path)
+    отправлено: list[dict] = []
+    входящие = {"messages": []}
+
+    def транспорт(req):
+        if req.get("op") == "fetch_inbox":
+            return входящие
+        отправлено.append(req)
+        return {"ok": True}
+
+    email_autonomy.set_mail_transport(транспорт)
+    stop_file = tmp_path / "ОТПИСАЛИСЬ.txt"
+    try:
+        email_autonomy.connect_mail_account(mem, email="box@code.test", provider="gmail", app_password_or_token="sec-1", daily_limit=30)
+        r = email_autonomy.send_outreach_email(mem, to_email="owner@site-a.test", domain="site-a.test", subject="Hi",
+                                               body="Короткое письмо без подвала", stop_file_path=stop_file)
+        assert r["ok"], r
+        текст = json.dumps(отправлено[-1], ensure_ascii=False)
+        assert "Mountain Road" in текст and "STOP" in текст
+
+        входящие["messages"] = [{"from_email": "mailer-daemon@googlemail.com", "subject": "Delivery Status Notification (Failure)",
+                                 "body": "Address not found: dead@site-b.test"}]
+        email_autonomy.process_inbox_replies(mem, stop_file_path=stop_file)
+        email_autonomy.process_inbox_replies(mem, stop_file_path=stop_file)
+        blocked, _ = email_autonomy.is_blocked_by_stop_or_claim(mem, email="dead@site-b.test", domain="site-b.test", stop_file_path=stop_file)
+        assert blocked
+        r2 = email_autonomy.send_outreach_email(mem, to_email="dead@site-b.test", domain="site-b.test", subject="Hi", body="x STOP",
+                                                stop_file_path=stop_file)
+        assert r2["ok"] is False and r2.get("blocked") is True
+    finally:
+        email_autonomy.set_mail_transport(None)

@@ -36,3 +36,19 @@ def test_ключ_владельца_в_памяти_свой_у_каждой_б
     assert создан_a and integrity.owner_key(a) == (ka, False)
     kb, создан_b = integrity.owner_key(b)
     assert создан_b and kb != ka
+
+
+def test_во_всём_пакете_нет_кэшей_по_id_объекта():
+    """CI 19.11 (Python 3.10): почтовый модуль снова завёл кэш по id(conn) — таблица не создавалась в новой базе.
+    Тот же класс нашёлся в ключах маяка и сиблингов. Страж ловит любой id(conn|store|memory...) в коде пакета."""
+    import pathlib
+    import re
+    корень = pathlib.Path(__file__).resolve().parents[1] / "padam"
+    найдено = []
+    for f in корень.glob("*.py"):
+        for n, строка in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+            if строка.lstrip().startswith("#"):
+                continue
+            if re.search(r"id\((conn|store|self\.store|memory\.store|memory|mem|self\.conn)\)", строка):
+                найдено.append(f"{f.name}:{n}")
+    assert not найдено, найдено

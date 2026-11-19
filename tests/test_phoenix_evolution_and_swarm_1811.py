@@ -158,6 +158,10 @@ def test_referral_3_tier_and_empty_tiers_go_to_burn(tmp_path):
         assert by_lvl[1]["to_user_id"] == "amb_3" and by_lvl[1]["amount_usdt"] == pytest.approx(2.25)
         assert by_lvl[2]["to_user_id"] == "amb_2" and by_lvl[2]["amount_usdt"] == pytest.approx(1.05)
         assert by_lvl[3]["to_user_id"] == "amb_1" and by_lvl[3]["amount_usdt"] == pytest.approx(0.45)
+        # Аудит фазы 3, FA-10: повторное распределение по тому же заказу не удваивает начисления
+        freelance_autonomy._distribute_referral_and_burn(u4, j4["order_id"], 15.0)
+        n_rw = u4.store.conn.execute("SELECT COUNT(*) FROM ark_referral_reward WHERE order_id = ?", (j4["order_id"],)).fetchone()[0]
+        assert n_rw == 3, n_rw
         assert eco["percentage_sum_verified"] is True
     finally:
         for mm in (u1, u2, u3, u4):

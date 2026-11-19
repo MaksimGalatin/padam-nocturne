@@ -274,6 +274,12 @@ def _ensure(memory) -> None:
             s = stmt.strip()
             if s:
                 conn.execute(s)
+        # Аудит фазы 3, FA-10: уникальность начисления (order_id, tier_level). Если в старой базе уже есть дубли —
+        # индекс не создаётся (ничего не удаляем без слова владельца), вставка всё равно идёт через OR IGNORE.
+        try:
+            conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_ark_ref_order_tier ON ark_referral_reward (order_id, tier_level)")
+        except Exception:
+            pass
         # Миграция старых таблиц без потери данных
         existing = {r["name"] for r in conn.execute("PRAGMA table_info(ark_exchange_account)").fetchall()}
         for col, col_def in (
@@ -358,9 +364,12 @@ def _normalize_client_identity(
     if em and "@" in em:
         local, _, host = em.partition("@")
         local = local.strip()
-        host = host.strip().lstrip("www.")
+        host = host.strip()
+        if host.startswith("www."):   # 18.11: было lstrip("www.") — срезало любые w и точки («web.com» → «eb.com»)
+            host = host[4:]
         if local and host:
-            return f"email:{local}@{host}"[:160], "email"
+            # Аудит фазы 3, MS-05: адрес клиента не храним — только отпечаток (закрепление работает так же).
+            return "email:sha256:" + hashlib.sha256(f"{local}@{host}".encode("utf-8")).hexdigest()[:32], "email"
     if dom:
         if "://" in dom:
             dom = urllib.parse.urlparse(dom).netloc or dom
@@ -776,9 +785,19 @@ def fetch_jobs_from_exchange(
 
     ingested: list[dict[str, Any]] = []
     rejected = 0
+    # Аудит фазы 3, FA-12: суточный предел приёма заказов. Без него биржа-вредитель (или зависший /jobs) за сутки
+    # заливала бы сотни тысяч строк. PADAM_AUTOPILOT_DAILY_INGEST_CAP, по умолчанию 200 заказов за 24 ч.
+    cap = int(os.environ.get("PADAM_AUTOPILOT_DAILY_INGEST_CAP", "200") or 200)
+    since = time.time() - 86400.0
+    done_24h = int(memory.store.conn.execute(
+        "SELECT COUNT(*) FROM ark_freelance_order WHERE user_id = ? AND created_at >= ?", (memory.user_id, since)).fetchone()[0])
+    cap_reached = False
     for j in raw_jobs[:30]:
         if not isinstance(j, dict):
             continue
+        if done_24h + len(ingested) >= cap:
+            cap_reached = True
+            break
         res = evaluate_and_ingest_job(
             memory,
             platform=acc["platform"],
@@ -804,6 +823,8 @@ def fetch_jobs_from_exchange(
         "accepted_count": len(ingested) - rejected,
         "rejected_security_count": rejected,
         "orders": ingested,
+        "daily_ingest_cap": cap,
+        "daily_ingest_cap_reached": cap_reached,
     }
 
 
@@ -2022,12 +2043,14 @@ def _distribute_referral_and_burn(memory, order_id: str, platform_fee_usdt: floa
         if target_uid:
             amt = round(platform_fee_usdt * (pct / 100.0), 4)
             rid = f"rwd-{uuid.uuid4().hex[:10]}"
-            memory.store.conn.execute(
-                "INSERT INTO ark_referral_reward (reward_id, order_id, from_user_id, to_user_id, tier_level, pct_of_fee, amount_usdt, created_at) "
+            # Аудит фазы 3, FA-10: одно начисление на заказ и уровень (уникальный индекс + OR IGNORE) — повтор не удвоит.
+            cur_rw = memory.store.conn.execute(
+                "INSERT OR IGNORE INTO ark_referral_reward (reward_id, order_id, from_user_id, to_user_id, tier_level, pct_of_fee, amount_usdt, created_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (rid, order_id, memory.user_id, target_uid, lvl, pct, amt, now),
             )
-            ambassadors_paid.append({"level": lvl, "to_user_id": target_uid, "pct_of_fee": pct, "amount_usdt": amt})
+            ambassadors_paid.append({"level": lvl, "to_user_id": target_uid, "pct_of_fee": pct, "amount_usdt": amt,
+                                     **({} if cur_rw.rowcount else {"duplicate": True})})
         else:
             # Пустые амбассадорские уровни уходят в сжигание (до максимума 30%: 5 + 15 + 7 + 3)
             burn_pct += pct
@@ -2715,6 +2738,31 @@ def ensure_autopilot_worker(memory_factory, *, allow_localhost: bool = False) ->
         _AUTOPILOT_WORKER_THREAD = th
         th.start()
         return {"ok": True, "worker_running": True, "already_running": False}
+
+
+def stop_everything(memory, *, actor=None) -> dict[str, Any]:
+    """ТОП-20 Сестры, п. 12: большая красная кнопка «СТОП ВСЁ» — одним действием и только владельцем:
+    автопилот и его фоновый поток, автоотклики на всех площадках, все почтовые ящики на паузу.
+    Ничего не удаляет: включается всё обратно теми же кнопками."""
+    from . import roles as _roles
+    _roles.require_owner(actor, "stop_everything")
+    set_autopilot_state(memory, running=False, note="СТОП ВСЁ: владелец остановил автопилот, автоотклики и рассылку.", actor=actor)
+    stop_autopilot_worker()
+    platforms = mails = 0
+    with _lock_of(memory):
+        conn = memory.store.conn
+        try:
+            platforms = conn.execute("UPDATE ark_platform_autopilot_config SET autopilot_enabled = 0 WHERE user_id = ? "
+                                     "AND autopilot_enabled = 1", (memory.user_id,)).rowcount
+        except Exception:
+            platforms = 0
+        try:
+            mails = conn.execute("UPDATE ark_mail_account SET status = 'paused' WHERE user_id = ? AND status = 'active'",
+                                 (memory.user_id,)).rowcount
+        except Exception:
+            mails = 0
+        conn.commit()
+    return {"ok": True, "autopilot_running": False, "platform_autopilots_disabled": platforms, "mailboxes_paused": mails}
 
 
 def stop_autopilot_worker() -> dict[str, Any]:

@@ -43,9 +43,9 @@ def test_parity_matrix_zero_gaps_and_4_languages():
     rc = parity_gen.main()
     assert rc == 0
     doc = (parity_gen.ROOT / "docs" / "PARITY_STUDIO_MCP.md").read_text(encoding="utf-8")
-    assert "181 из 181" in doc
-    assert "Есть в Studio (вкладка + кнопка/поле): **181 из 181**" in doc
-    assert "Есть в API (`padam/api.py`): **181 из 181**" in doc
+    assert "174 из 174" in doc
+    assert "Есть в Studio (вкладка + кнопка/поле): **174 из 174**" in doc
+    assert "Есть в API (`padam/api.py`): **174 из 174**" in doc
     assert "НЕТ:" not in doc
 
     ru_keys = set(studio.STRINGS["ru"].keys())
@@ -95,7 +95,16 @@ def test_parity_mcp_and_api_new_actions_and_owner_guards(tmp_path: Path, monkeyp
         r_sd = hcall("padam_freelance_hub", {"action": "seed_drafts"})
         assert r_sd.get("isError") is not True
         r_rp = hcall("padam_freelance_hub", {"action": "release_payouts"})
-        assert r_rp.get("isError") is not True
+        assert r_rp.get("isError") is True        # аудит фазы 3, FA-11: разблокировка выплат — только владелец
+        r_tk = hcall("padam_freelance_hub", {"action": "autopilot_tick"})
+        assert r_tk.get("isError") is True        # FA-11: внеочередной шаг автопилота — только владелец
+        # 18.11: письмо незнакомому и подключение ящика с паролем — только владелец в Studio, не агент через MCP
+        r_so = hcall("padam_freelance_hub", {"action": "send_outreach", "to_email": "x@example.org", "domain": "example.org", "subject": "s", "body": "b"})
+        assert r_so.get("isError") is True
+        r_cm = hcall("padam_freelance_hub", {"action": "connect_mail", "email": "a@b.test", "app_password_or_token": "x"})
+        assert r_cm.get("isError") is True
+        for act_mass in ("run_outreach_batch", "run_follow_up"):   # массовая рассылка незнакомым — только владелец
+            assert hcall("padam_freelance_hub", {"action": act_mass}).get("isError") is True, act_mass
         # sample_reject через оба алиаса (freelance_hub + platform_connect)
         o_smp = freelance_autonomy.evaluate_and_ingest_job(m, platform="upwork", title="Sample Rej", brief="Test", budget_usdt=100.0)
         assert hcall("padam_freelance_hub", {"action": "sample_reject", "order_id": o_smp["order_id"]}).get("isError") is not True
@@ -319,7 +328,8 @@ def test_parity_studio_playwright_all_buttons_1280_and_390(tmp_path: Path, monke
                         page.wait_for_selector(sel, timeout=8000)
                         with page.expect_response(lambda r: "/api/v2/ark/freelance" in r.url and r.request.method == "GET", timeout=8000):
                             page.locator(sel).first.click()
-                        page.wait_for_selector("button[data-order-action='draft_bid']", timeout=5000)
+                        # 18.11: перерисовка ленты заказов под нагрузкой машины занимала больше 5 с — ждём до 15 с
+                        page.wait_for_selector("button[data-order-action='draft_bid']", timeout=15000)
 
                     for bsel in ("#earn-fetch-jobs-btn", "#earn-lock-chk-btn"):
                         click_and_check_text(bsel, "#earn-orders-list")

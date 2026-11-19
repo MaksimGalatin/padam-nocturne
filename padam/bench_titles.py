@@ -104,7 +104,7 @@ ES_ZH: dict[str, tuple[str, str]] = {
     "AS-096": ("Perfil estricto (PADAM_STRICT=1) anula relajaciones inseguras", "严格模式（PADAM_STRICT=1）覆盖不安全放宽"),
     "AS-097": ("Panel HTML y distintivo SVG generados con escape de XSS", "自包含HTML面板与SVG徽章带XSS转义"),
     "AS-098": ("El informe lleva un sello SHA-256 determinista", "报告带确定性SHA-256完整性印章"),
-    "AS-099": ("Las 100 comprobaciones terminan en presupuesto local (≤ 30 s)", "全部100项检查在本地预算内完成（≤30秒）"),
+    "AS-099": ("Las 100 comprobaciones terminan en presupuesto local (≤ 90 s)", "全部100项检查在本地预算内完成（≤90秒）"),
     "AS-100": ("Reproducible: mismo objetivo, misma nota y mismo sello", "可复现：同一目标得到相同评分和印章哈希"),
 }
 

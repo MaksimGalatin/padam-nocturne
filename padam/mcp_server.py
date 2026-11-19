@@ -237,7 +237,7 @@ TOOLS = [
     },
     {
         "name": "padam_export",
-        "description": "Export memory JSON on owner request only.",
+        "description": "Export memory JSON. Owner confirms via elicitation when the client supports it; PADAM_MCP_EXPORT_CONFIRM=strict always requires it.",
         "annotations": _hints(True, False, True),
         "inputSchema": {
             "type": "object",
@@ -616,7 +616,7 @@ MCP_TELEMETRY_TOOL_DEF = {
 TOKEN_BUDGET_TOOL_DEF = {
     "name": "padam_token_budget", "title": _TITLES["padam_token_budget"], "description": "Quotas",
     "inputSchema": {"type": "object", "properties": {
-        "action": {"type": "string", "enum": ["status", "set_plan", "record_usage", "apply_pacing", "record_earning", "propose_topup", "timer_tick", "list_proposals"], "default": "status", "description": "record_usage(tokens)|topup(usdt)"},
+        "action": {"type": "string", "enum": ["status", "set_plan", "record_usage", "apply_pacing", "propose_topup", "timer_tick", "list_proposals"], "default": "status", "description": "record_usage(tokens)|topup(usdt)"},
         "provider": _S, "agent_id": _S, "tier_name": _S,
         "daily_token_limit": _I, "weekly_token_limit": _I,
         "monthly_token_limit": _I, "tokens": {**_I, "description": "Tokens"},
@@ -635,12 +635,12 @@ FREELANCE_HUB_TOOL_DEF = {
             "dashboard", "connect_account", "list_accounts", "evaluate_job", "list_orders",
             "draft_bid", "bid", "dispatch_bid", "execute_swarm", "deliver",
             "client_lock_status", "agent_ledger", "propose_profile", "monetization", "set_prefs",
-            "fetch_jobs", "recommend_spend", "propose_subscription", "bind_referral", "release_payouts",
+            "fetch_jobs", "recommend_spend", "propose_subscription", "bind_referral",
             "stores_status", "connect_store", "seed_drafts", "create_product_draft", "publish_product", "sync_store_sales",
             "wizard_catalog", "wizard_connect", "wizard_questionnaire", "wizard_publish_profile", "wizard_autopick_jobs",
-            "signup", "login", "autopilot_config", "autopilot_tick", "autopilot_dispatch",
+            "signup", "login", "autopilot_config", "autopilot_dispatch",
             "sample_prepare", "sample_reject", "official_api",
-            "mail_status", "connect_mail", "pause_mail", "send_outreach", "check_inbox", "add_stop", "build_outreach", "run_outreach_batch", "run_follow_up",
+            "mail_status", "pause_mail", "check_inbox", "add_stop", "build_outreach",
         ], "default": "dashboard", "description": "evaluate_job(title)|wizard(platform)"},
         "platform": {**_S, "description": "Platform"}, "mode": {"type": "string", "enum": ["oauth_api", "desk", "webhook"], "description": "Mode"},
         "account_label": _S, "agent_id": _S, "skills": {**_SA, "description": "Skills"},
@@ -998,6 +998,25 @@ _state_lock = threading.RLock()
 _notify_cond = threading.Condition(_state_lock)
 _client_capabilities: dict = {}
 _caps_ctx: contextvars.ContextVar[dict | None] = contextvars.ContextVar("padam_mcp_caps", default=None)
+def _audit_mcp_call(name: str, args: dict, *, ok: bool, duration_ms: float) -> None:
+    """ТОП-20 Сестры, п. 4: каждый вызов MCP-инструмента, МЕНЯЮЩЕГО данные, — запись в хэш-цепь аудита (кто, инструмент,
+    отпечаток аргументов, итог, время). Сами аргументы не пишутся: в них может быть текст памяти или секрет.
+    Инструменты только для чтения не пишутся — иначе каждый поиск был бы записью на диск."""
+    try:
+        tool = _active_tools_by_name().get(name) or {}
+        if (tool.get("annotations") or {}).get("readOnlyHint"):
+            return
+        import hashlib as _hl
+        from . import audit_chain as _ac
+        digest = _hl.sha256(json.dumps(args, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")).hexdigest()
+        _ac.append_audit(mem(), "mcp_call", {"tool": name, "action": str(args.get("action") or ""), "args_sha256": digest,
+                                             "ok": bool(ok), "duration_ms": round(float(duration_ms), 1)},
+                         agent_id=os.environ.get("PADAM_AGENT_ID") or "mcp")
+    except Exception:
+        pass   # журнал не должен ломать сам вызов
+
+
+_BENCH_LAST_RUN = -1e9   # аудит фазы 3, SM-08: частота свежего прогона бенчмарка из MCP
 _actor_token_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar("padam_mcp_actor_token", default=None)
 _session_scope_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar("padam_mcp_session_scope", default=None)
 _error_lang_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar("padam_mcp_error_lang", default=None)
@@ -4758,6 +4777,8 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
         elif act == "apply_pacing":
             payload = _ta.apply_adaptive_pacing(m, prov)
         elif act == "record_earning":
+            # Аудит фазы 3, SM-11: агент не может сам записать себе доход — только подтверждённые оплаты и владелец.
+            raise PermissionError("padam_token_budget action=record_earning is owner-only: earnings come from signed payment webhooks or PADAM Studio.")
             payload = _ta.record_agent_earning(
                 m, aid,
                 source=str(args.get("source") or "service"),
@@ -4993,7 +5014,9 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 account_label=str(args.get("account_label") or ""),
                 agent_id=aid,
             )
-        elif act in ("set_autopilot", "sample_accept", "autopilot_start", "autopilot_stop"):
+        elif act in ("set_autopilot", "sample_accept", "autopilot_start", "autopilot_stop", "autopilot_tick", "release_payouts"):
+            # Аудит фазы 3, FA-11 (18.11.2026): внеочередной шаг автопилота и разблокировка выплат — тоже только владелец.
+            # Фоновый цикл вызывает функции напрямую, а не через MCP, поэтому автономия от запрета не страдает.
             # Аудит GLM AUT-09, класс (18.11.2026): тот же запрет, что в padam_platform_connect — автопилот и
             # «клиент принял образец» включает только владелец кнопкой в Studio, не агент через MCP.
             raise PermissionError(f"padam_freelance_hub action={act} is owner-only: use the button in PADAM Studio.")
@@ -5034,6 +5057,7 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             from . import email_autonomy as _ea
             payload = _ea.mail_hub_snapshot(m)
         elif act == "connect_mail":
+            raise PermissionError("padam_freelance_hub action=connect_mail is owner-only: use PADAM Studio (Earning → Mail).")
             from . import email_autonomy as _ea
             payload = _ea.connect_mail_account(
                 m,
@@ -5049,7 +5073,12 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
         elif act == "pause_mail":
             from . import email_autonomy as _ea
             payload = _ea.set_mail_account_status(m, str(args.get("mail_id") or ""), status=str(args.get("status") or "paused"))
-        elif act == "send_outreach":
+        elif act in ("send_outreach", "connect_mail", "run_outreach_batch", "run_follow_up"):
+            # 18.11.2026 (сверка аудита фазы 3): через MCP агент — или подброшенная в текст инструкция — мог отправить
+            # письмо с любым адресатом и текстом из рабочего ящика владельца и подключить ящик с паролем. Отправка
+            # незнакомым и подключение ящиков — только владелец в PADAM Studio. Автоответ на «Шлите список» и рассылка,
+            # запущенная владельцем, идут внутри PADAM, не через MCP.
+            raise PermissionError(f"padam_freelance_hub action={act} is owner-only: use PADAM Studio (Earning → Mail).")
             from . import email_autonomy as _ea
             payload = _ea.send_outreach_email(
                 m,
@@ -5112,7 +5141,17 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             payload = json.loads(qa_p.read_text(encoding="utf-8")) if qa_p.exists() else {"status": "not_run_yet"}
         else:
             from . import aifa_sec_bridge as _asb
-            payload = _asb.get_aifa_security_report(run_fresh=(act_b == "run"))
+            fresh = act_b == "run"
+            # Аудит фазы 3, SM-08: свежий прогон занимает процессор ~10 с — агент может запускать не чаще раза в минуту,
+            # иначе получает последний отчёт с пометкой.
+            global _BENCH_LAST_RUN
+            if fresh and time.monotonic() - _BENCH_LAST_RUN < 60.0:
+                payload = _asb.get_aifa_security_report(run_fresh=False)
+                payload = dict(payload, rate_limited=True, note="fresh run allowed once per 60 s; returned the latest report")
+            else:
+                if fresh:
+                    _BENCH_LAST_RUN = time.monotonic()
+                payload = _asb.get_aifa_security_report(run_fresh=fresh)
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
 
     if name == "padam_platform_connect":
@@ -5797,7 +5836,9 @@ def _handle_legacy(req: dict) -> dict | None:
                 return err(-32003, str(exc))
             return ok({"task": _start_sleep_task(m_cur, args, ttl=int(task_req.get("ttl") or 60000))})
         try:
+            _t0_call = time.perf_counter()
             text, structured = _call_tool_full(name, args)
+            _audit_mcp_call(name, args, ok=structured is not None, duration_ms=(time.perf_counter() - _t0_call) * 1000)
             if structured is None:
                 lang_res, explicit_res = resolve_error_lang(req=req)
                 if explicit_res and lang_res != "en":

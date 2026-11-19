@@ -70,3 +70,10 @@ def _сброс_общей_памяти_api():
         _mcp._memory = None          # то же у MCP-сервера: следующий тест не пишет в базу предыдущего
     except Exception:
         pass
+
+
+@pytest.fixture(autouse=True)
+def _свой_журнал_казны(tmp_path, monkeypatch):
+    """18.11.2026, аудит фазы 3 FA-06: окно пополнений казны хранится в файле. Каждому тесту — свой файл,
+    чтобы тесты не делили предел и не писали в домашнюю папку пользователя."""
+    monkeypatch.setenv("PADAM_TREASURY_LOG", str(tmp_path / "treasury_topup_log.json"))

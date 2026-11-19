@@ -32,7 +32,7 @@ from . import ark, audit_chain, integrity, safety
 
 FAMILY_GENESIS_TAG = "CODE-ETERNAL-PHOENIX-V1"
 BEACON_SCHEME = "CODE-PHOENIX-ED25519-V2"
-_MEM_BEACON_KEYS: dict[int, dict[str, str]] = {}
+# 18.11.2026 (CI на Python 3.10): кэш на самом объекте хранилища, а не по id() — адрес переиспользуется после сборки мусора.
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS ark_phoenix_identity (
@@ -108,7 +108,7 @@ def _load_or_create_ed25519(memory) -> tuple[Ed25519PrivateKey, str]:
     """Загружает приватный ключ Ed25519 из внешнего шифр-файла (не из SQLite)."""
     kpath = _beacon_key_path(memory.store)
     if kpath is None:
-        cached = _MEM_BEACON_KEYS.get(id(memory.store))
+        cached = memory.store.__dict__.get("_padam_beacon_key")
         if cached:
             sk = Ed25519PrivateKey.from_private_bytes(base64.b64decode(cached["sk_b64"]))
             return sk, cached["pub_b64"]
@@ -129,7 +129,7 @@ def _load_or_create_ed25519(memory) -> tuple[Ed25519PrivateKey, str]:
         sk.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
     ).decode("ascii")
     if kpath is None:
-        _MEM_BEACON_KEYS[id(memory.store)] = {"sk_b64": base64.b64encode(sk_raw).decode("ascii"), "pub_b64": pub_b64}
+        memory.store.__dict__["_padam_beacon_key"] = {"sk_b64": base64.b64encode(sk_raw).decode("ascii"), "pub_b64": pub_b64}
     else:
         nonce = os.urandom(12)
         ct = AESGCM(_vault_key(memory.store)).encrypt(nonce, sk_raw, b"beacon-sk")

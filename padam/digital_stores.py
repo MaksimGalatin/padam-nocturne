@@ -1379,7 +1379,11 @@ def verify_and_process_store_webhook(
 
     # 2. Идемпотентность вебхука
     payload_hash = hashlib.sha256(raw_body).hexdigest()
-    event_key = f"{st}:{acc['store_account_id']}:{ext_event_id or payload_hash[:16]}"
+    # Аудит фазы 3, FA-08: вебхук без номера продажи давал ext_event_id вида «sale:» — все такие вебхуки сливались в один
+    # ключ, и каждая следующая продажа молча считалась повтором. Пустой номер → ключ из отпечатка тела.
+    if not ext_event_id or ext_event_id.endswith(":"):
+        ext_event_id = f"{ext_event_id}{payload_hash[:16]}"
+    event_key = f"{st}:{acc['store_account_id']}:{ext_event_id}"
     conn = memory.store.conn
     with freelance_autonomy._lock_of(memory):
         dup = conn.execute(

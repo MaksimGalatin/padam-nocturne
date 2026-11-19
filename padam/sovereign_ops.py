@@ -187,9 +187,11 @@ class TreasuryComputeManager:
         if amt <= 0 or amt > daily_cap:
             raise ValueError(f"Topup amount ${amt} out of allowed bounds (0, ${daily_cap}]")
         # Фаза 2 аудита GLM, SOV-01: предел суточный и ЗДЕСЬ, а не только в обёртке execute_approved_topup —
-        # прямой вызов N раз по ${daily_cap} не должен обходить его. Скользящие 24 часа в этом процессе.
+        # прямой вызов N раз по ${daily_cap} не должен обходить его.
+        # Аудит фазы 3, FA-06: окно 24 ч хранится на диске (рядом с базой), а не только в памяти процесса —
+        # перезапуск больше не обнуляет предел.
         now_s = time.time()
-        hist = [(ts, a) for ts, a in getattr(self, "_topup_history", []) if now_s - ts < 86400]
+        hist = [(ts, a) for ts, a in self._load_topup_log() if now_s - ts < 86400]
         if sum(a for _, a in hist) + amt > daily_cap + 1e-9:
             raise ValueError(f"Daily treasury cap ${daily_cap} reached in the last 24 h")
         if self._transfer_fn is None:
@@ -211,7 +213,31 @@ class TreasuryComputeManager:
         }
         self._executed_keys[key] = record
         self._topup_history = hist + [(now_s, round(amt, 4))]
+        self._save_topup_log(self._topup_history)
         return record
+
+    @staticmethod
+    def _topup_log_path():
+        from pathlib import Path
+        from . import config as _cfg
+        return Path(os.environ.get("PADAM_TREASURY_LOG") or (Path(_cfg.DB_PATH).parent / "treasury_topup_log.json"))
+
+    def _load_topup_log(self) -> list:
+        mem_hist = list(getattr(self, "_topup_history", []))
+        try:
+            disk = json.loads(self._topup_log_path().read_text(encoding="utf-8"))
+            disk_hist = [(float(x[0]), float(x[1])) for x in disk if isinstance(x, (list, tuple)) and len(x) == 2]
+        except (OSError, ValueError):
+            disk_hist = []
+        return sorted(set(mem_hist) | set(disk_hist))
+
+    def _save_topup_log(self, hist: list) -> None:
+        try:
+            p = self._topup_log_path()
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(json.dumps([[ts, a] for ts, a in hist]), encoding="utf-8")
+        except OSError:
+            pass
 
 
 _TREASURY_MANAGER = TreasuryComputeManager()

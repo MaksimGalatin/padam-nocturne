@@ -194,6 +194,11 @@ def test_real_http_exchange_stand_retries_bids_and_signed_webhook(monkeypatch, t
         assert fetched["fetched_count"] == 2
         assert fetched["accepted_count"] == 1
         assert fetched["rejected_security_count"] == 1
+        # Аудит фазы 3, FA-12: суточный предел приёма — при пределе 1 новые заказы не принимаются
+        monkeypatch.setenv("PADAM_AUTOPILOT_DAILY_INGEST_CAP", "1")
+        again = freelance_autonomy.fetch_jobs_from_exchange(m, acc["account_id"], allow_localhost=True)
+        assert again["ok"] is True and again["daily_ingest_cap_reached"] is True and again["fetched_count"] == 0
+        monkeypatch.delenv("PADAM_AUTOPILOT_DAILY_INGEST_CAP")
 
         clean_order = next(o for o in fetched["orders"] if o["ok"])
         oid = clean_order["order_id"]

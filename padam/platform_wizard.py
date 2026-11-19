@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import secrets
+import os
 import time
 from typing import Any
 
@@ -1616,6 +1617,63 @@ def set_platform_autopilot(
     return {"ok": True, **get_platform_autopilot_config(memory, pid)}
 
 
+_SIM_DDL = ("CREATE TABLE IF NOT EXISTS ark_autopilot_sim (user_id TEXT PRIMARY KEY, sim_on INTEGER NOT NULL DEFAULT 0, "
+            "since REAL NOT NULL DEFAULT 0)",
+            "CREATE TABLE IF NOT EXISTS ark_autopilot_sim_log (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, "
+            "platform_id TEXT NOT NULL, order_id TEXT NOT NULL, budget_usdt REAL NOT NULL, pitch_preview TEXT NOT NULL, "
+            "created_at REAL NOT NULL)")
+
+
+def _sim_schema(memory) -> None:
+    for stmt in _SIM_DDL:
+        memory.store.conn.execute(stmt)
+
+
+def autopilot_simulation_state(memory) -> dict[str, Any]:
+    """Включён ли режим симуляции автопилота (ТОП-20 Сестры, п. 8)."""
+    with freelance_autonomy._lock_of(memory):
+        _sim_schema(memory)
+        row = memory.store.conn.execute("SELECT sim_on, since FROM ark_autopilot_sim WHERE user_id = ?", (memory.user_id,)).fetchone()
+    return {"on": bool(row and row[0]), "since": float(row[1]) if row else 0.0}
+
+
+def set_autopilot_simulation(memory, on: bool, *, actor=None) -> dict[str, Any]:
+    """Включает/выключает симуляцию. Выключить (перейти в боевой режим) может только владелец."""
+    from . import roles as _roles
+    _roles.require_owner(actor, "autopilot_simulation")
+    with freelance_autonomy._lock_of(memory):
+        _sim_schema(memory)
+        memory.store.conn.execute(
+            "INSERT INTO ark_autopilot_sim (user_id, sim_on, since) VALUES (?, ?, ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET sim_on = excluded.sim_on, since = excluded.since",
+            (memory.user_id, 1 if on else 0, time.time()))
+        memory.store.conn.commit()
+    return {"ok": True, **autopilot_simulation_state(memory)}
+
+
+def _log_simulated_bid(memory, pid: str, order_id: str, budget: float, pitch: str) -> None:
+    with freelance_autonomy._lock_of(memory):
+        _sim_schema(memory)
+        memory.store.conn.execute(
+            "INSERT INTO ark_autopilot_sim_log (user_id, platform_id, order_id, budget_usdt, pitch_preview, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)", (memory.user_id, pid, order_id, budget, str(pitch)[:300], time.time()))
+        memory.store.conn.commit()
+
+
+def autopilot_simulation_report(memory, *, hours: float = 24.0) -> dict[str, Any]:
+    """Сводка симуляции: сколько откликов ушло бы, на какую сумму, по площадкам."""
+    since = time.time() - float(hours) * 3600.0
+    with freelance_autonomy._lock_of(memory):
+        _sim_schema(memory)
+        rows = memory.store.conn.execute(
+            "SELECT platform_id, COUNT(*), COALESCE(SUM(budget_usdt), 0) FROM ark_autopilot_sim_log "
+            "WHERE user_id = ? AND created_at >= ? GROUP BY platform_id", (memory.user_id, since)).fetchall()
+    by = {str(r[0]): {"bids": int(r[1]), "budget_usdt": round(float(r[2]), 2)} for r in rows}
+    return {"ok": True, "hours": hours, "simulation": autopilot_simulation_state(memory),
+            "would_send_bids": sum(v["bids"] for v in by.values()),
+            "would_bid_usdt": round(sum(v["budget_usdt"] for v in by.values()), 2), "by_platform": by}
+
+
 def dispatch_platform_autopilot_action(
     memory,
     *,
@@ -1722,6 +1780,20 @@ def dispatch_platform_autopilot_action(
             "retry_after_s": round(float(cfg["min_pause_s"]) - (now_s - last_at), 2),
             "order_id": order_id,
         }
+
+    # 5а. ТОП-20 Сестры, п. 10: потолок одной ставки. Дороже — только кнопкой владельца.
+    max_bid = float(os.environ.get("PADAM_AUTOPILOT_MAX_BID_USDT", "500") or 500)
+    if float(budget_usdt or 0.0) > max_bid:
+        return {"ok": False, "sent": False, "status": "bid_over_ceiling_needs_owner", "max_bid_usdt": max_bid,
+                "budget_usdt": float(budget_usdt), "order_id": order_id,
+                "note": f"Ставка выше потолка ${max_bid:g}: отправка только кнопкой владельца."}
+
+    # 5б. ТОП-20 Сестры, п. 8: режим симуляции — отклик записывается как «был бы отправлен», наружу не уходит.
+    if autopilot_simulation_state(memory)["on"]:
+        _log_simulated_bid(memory, pid, order_id, float(budget_usdt or 0.0), draft.get("bid_text") or "")
+        return {"ok": True, "sent": False, "status": "simulated", "order_id": order_id, "platform_id": pid,
+                "budget_usdt": float(budget_usdt or 0.0),
+                "note": "Режим симуляции: отклик НЕ отправлен, записан в сводку «что было бы отправлено»."}
 
     # 6. Вызов транспорта и реакция на 429 / капчу (капчу НИКОГДА не обходим!)
     tr_status = int(simulated_http_status or 200)

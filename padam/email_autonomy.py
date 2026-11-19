@@ -29,7 +29,7 @@ import urllib.request
 from . import audit_chain, coop_broker, family_feeds, freelance_autonomy, net_guard, safety
 
 
-_INITIALIZED_MAIL_DBS: set[int] = set()
+# 18.11.2026 (CI на Python 3.10): кэш на самом объекте хранилища, а не по id() — адрес переиспользуется после сборки мусора.
 
 # Пресеты популярных почтовых провайдеров (SMTP SSL + IMAP SSL)
 MAIL_PROVIDER_PRESETS: dict[str, dict[str, Any]] = {
@@ -58,11 +58,10 @@ def set_mail_transport(fn: Callable[[dict[str, Any]], dict[str, Any]] | None) ->
 
 def _ensure_mail_schema(memory) -> None:
     conn = memory.store.conn
-    key = id(conn)
-    if key in _INITIALIZED_MAIL_DBS:
+    if memory.store.__dict__.get("_padam_mail_schema_ok"):
         return
     with freelance_autonomy._lock_of(memory):
-        if key in _INITIALIZED_MAIL_DBS:
+        if memory.store.__dict__.get("_padam_mail_schema_ok"):
             return
         conn.execute(
             """
@@ -116,7 +115,7 @@ def _ensure_mail_schema(memory) -> None:
             """
         )
         conn.commit()
-        _INITIALIZED_MAIL_DBS.add(key)
+        memory.store.__dict__["_padam_mail_schema_ok"] = True
 
 
 def _today_utc(now_ts: float | None = None) -> str:
@@ -335,6 +334,53 @@ def set_mail_account_status(memory, mail_id: str, *, status: str = "paused") -> 
     return {"ok": True, "account": _public_mail_dict(dict(row))}
 
 
+COMPLIANCE_FOOTER = (
+    "CODE Eternal LLC · 1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA\n"
+    "Reply STOP to unsubscribe — ответьте STOP, и мы больше не напишем на этот адрес."
+)
+BOUNCE_LIMIT = 2
+_BOUNCE_SENDERS = ("mailer-daemon", "postmaster", "mail-daemon")
+_BOUNCE_SUBJECTS = ("undeliverable", "delivery status notification", "mail delivery failed", "returned mail",
+                    "delivery failure", "недоставлен", "не доставлено", "ошибка доставки")
+
+
+def _is_bounce_notice(sender: str, subject: str) -> bool:
+    local = str(sender or "").split("@", 1)[0].lower()
+    subj = str(subject or "").lower()
+    return local in _BOUNCE_SENDERS or any(k in subj for k in _BOUNCE_SUBJECTS)
+
+
+def _bounced_addresses(body: str, *, own: str = "") -> list[str]:
+    found = []
+    for m in re.findall(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", str(body or "")):
+        e = _clean_email(m)
+        if e and e != _clean_email(own) and e.split("@", 1)[0] not in _BOUNCE_SENDERS and e not in found:
+            found.append(e)
+    return found[:5]
+
+
+def record_bounce(memory, address: str, *, stop_file_path: Path | None = None) -> dict[str, Any]:
+    """Учитывает отказ доставки; после BOUNCE_LIMIT отказов адрес уходит в стоп-лист (п. 20 ТОП-20 Сестры)."""
+    _ensure_mail_schema(memory)
+    addr = _clean_email(address)
+    if not addr:
+        return {"ok": False}
+    with freelance_autonomy._lock_of(memory):
+        conn = memory.store.conn
+        conn.execute("CREATE TABLE IF NOT EXISTS ark_mail_bounce (user_id TEXT NOT NULL, address TEXT NOT NULL, "
+                     "count INTEGER NOT NULL DEFAULT 0, updated_at REAL NOT NULL, PRIMARY KEY (user_id, address))")
+        conn.execute("INSERT INTO ark_mail_bounce (user_id, address, count, updated_at) VALUES (?, ?, 1, ?) "
+                     "ON CONFLICT(user_id, address) DO UPDATE SET count = count + 1, updated_at = excluded.updated_at",
+                     (memory.user_id, addr, time.time()))
+        n = int(conn.execute("SELECT count FROM ark_mail_bounce WHERE user_id = ? AND address = ?",
+                             (memory.user_id, addr)).fetchone()[0])
+        conn.commit()
+    suppressed = n >= BOUNCE_LIMIT
+    if suppressed:
+        add_to_stop_list(memory, addr, reason="bounce", stop_file_path=stop_file_path)
+    return {"ok": True, "address": addr, "bounces": n, "suppressed": suppressed}
+
+
 def add_to_stop_list(
     memory,
     target: str,
@@ -473,6 +519,8 @@ def _deliver_email_via_account(
             "to": [to_email],
             "subject": subject,
             "text": body,
+            # ТОП-20 Сестры, п. 19: отписка в заголовке и у Resend, а не только у SMTP.
+            "headers": {"List-Unsubscribe": f"<mailto:{acc['email']}?subject=Unsubscribe>"},
         }
         if html_body:
             payload["html"] = html_body
@@ -556,7 +604,15 @@ def send_outreach_email(
     if not acc:
         return {"ok": False, "error": "Нет активной почты или исчерпан суточный лимит писем на подключённых ящиках."}
 
-    res = _deliver_email_via_account(memory, acc, to_email=clean_to, subject=subject, body=body, html_body=html_body)
+    # ТОП-20 Сестры, п. 19 (CAN-SPAM): в каждом первом письме — почтовый адрес отправителя и способ отписки,
+    # даже если текст собран не нашим шаблоном.
+    if direction == "outbound_first" and "STOP" not in str(body or "").upper():
+        body = str(body or "").rstrip() + "\n\n" + COMPLIANCE_FOOTER
+    try:
+        res = _deliver_email_via_account(memory, acc, to_email=clean_to, subject=subject, body=body, html_body=html_body)
+    except smtplib.SMTPRecipientsRefused as exc:      # п. 20: адрес отклонён сервером — это отказ доставки
+        record_bounce(memory, clean_to, stop_file_path=stop_file_path)
+        return {"ok": False, "bounced": True, "error": f"Адрес отклонён почтовым сервером: {exc}"}
     if not res.get("ok"):
         return {"ok": False, "error": str(res.get("error") or "Сбой отправки письма.")}
 
@@ -693,6 +749,8 @@ def process_inbox_replies(
             if not sender:
                 continue
 
+            # Уведомления о недоставке обрабатывает ветка kind == "bounce" ниже (Antigravity, ТОП-22): адрес в стоп-лист,
+            # запись в журнал, автопауза ящика при доле отказов выше 3 %. Отказ SMTP-сервера при отправке — record_bounce().
             kind = classify_inbound_reply(subj, body)
             if kind == "bounce":
                 # Вытаскиваем адрес получателя из тела отбоя, если это Mail Delivery Subsystem

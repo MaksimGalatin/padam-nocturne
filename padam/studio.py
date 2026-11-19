@@ -201,6 +201,34 @@ STRINGS: dict[str, dict[str, str]] = {
         "rt_models": "атаки писали {k} модели",
         "rt_sum": "итого",
         "rt_sum_words": "итого, только списки слов",
+        "mail_title": "10. Почтовый авто-конвейер: несколько ящиков, ответы «Шлите список» и стоп-лист STOP",
+        "mail_sub": "Подключите рабочие почты (пароль приложения шифруется AES-256-GCM). Агент рассылает письма с суточным лимитом на ящик, на ответ «Шлите список» присылает отчёт, адрес с ответом STOP навсегда заносит в стоп-лист, сложные вопросы передаёт вам.",
+        "mail_connect": "Подключить почту",
+        "mail_build": "Собрать отчёт, сводку и письмо",
+        "mail_inbox": "Проверить входящие (STOP / «Шлите список»)",
+        "mail_ph_secret": "Пароль приложения / API-ключ",
+        "mail_ph_domain": "Домен с карты исследования (например example.com)",
+        "mail_own_smtp": "Свой SMTP + IMAP",
+        "fuzz_row_regex": "отбито {d} % · маскировка ключей не применима (фильтр их не прячет)",
+        "earn_partner_mail_subject": "Отчёт о доступности вашего сайта",
+        "earn_stop_all_btn": "⛔ СТОП ВСЁ",
+        "earn_stop_all_confirm": "Остановить автопилот, автоотклики на всех площадках и поставить все почтовые ящики на паузу?",
+        "earn_stop_all_done": "Остановлено: автопилот; автоотклики выключены на {p} площадках; на паузе {m} ящиков.",
+        "earn_sim_on_btn": "Режим симуляции: включить",
+        "earn_sim_off_btn": "Боевой режим",
+        "earn_sim_report_btn": "Сводка симуляции за 24 ч",
+        "earn_sim_is_on": "Симуляция включена: отклики не отправляются, только записываются.",
+        "earn_sim_is_off": "Боевой режим: автоотклики уходят на площадки с включённым автопилотом.",
+        "earn_sim_report": "За 24 часа ушло бы откликов: {n}, на сумму ${u}.",
+        "mail_status_line": "Ящиков: {n} · в стоп-листе: {s}",
+        "mail_card_line": "Сегодня: {t} из {l} · {st}",
+        "mail_st_active": "работает",
+        "mail_st_paused": "на паузе",
+        "mail_pause": "Пауза",
+        "mail_resume": "Включить",
+        "you": "Вы",
+        "mail_batch": "Запустить пакет рассылки",
+        "mail_followup": "Дожим (через 4 дня)",
         "ff_title": "Ленты Семьи",
         "ff_desc": "Решения Совета отдельно от карантина. «Офис» — рабочая переписка сестёр, «Курилка» — свободная. Подозрительное само уходит в карантин. Всё здесь — записи, а не приказы.",
         "ff_work": "Решения",
@@ -885,6 +913,34 @@ STRINGS: dict[str, dict[str, str]] = {
         "rt_models": "attacks by {k} models",
         "rt_sum": "total",
         "rt_sum_words": "total, word lists only",
+        "mail_title": "10. Mail autopilot: several mailboxes, “Send the list” replies and a STOP list",
+        "mail_sub": "Connect work mailboxes (the app password is encrypted with AES-256-GCM). The agent sends emails within a daily limit per mailbox, answers “Send the list” with the report, puts any address that replies STOP on the stop list forever, and passes hard questions to you.",
+        "mail_connect": "Connect mailbox",
+        "mail_build": "Build report, summary and email",
+        "mail_inbox": "Check inbox (STOP / “Send the list”)",
+        "mail_ph_secret": "App password / API key",
+        "mail_ph_domain": "Domain from the research map (e.g. example.com)",
+        "mail_own_smtp": "Own SMTP + IMAP",
+        "fuzz_row_regex": "stopped {d}% · key masking not applicable (the filter does not hide keys)",
+        "earn_partner_mail_subject": "Accessibility report for your website",
+        "earn_stop_all_btn": "⛔ STOP ALL",
+        "earn_stop_all_confirm": "Stop the autopilot, auto-bids on every platform and pause every mailbox?",
+        "earn_stop_all_done": "Stopped: autopilot; auto-bids off on {p} platforms; {m} mailboxes paused.",
+        "earn_sim_on_btn": "Simulation mode: on",
+        "earn_sim_off_btn": "Live mode",
+        "earn_sim_report_btn": "Simulation summary, 24 h",
+        "earn_sim_is_on": "Simulation is on: bids are recorded, not sent.",
+        "earn_sim_is_off": "Live mode: auto-bids go out on platforms with autopilot on.",
+        "earn_sim_report": "In 24 hours it would have sent {n} bids worth ${u}.",
+        "mail_status_line": "Mailboxes: {n} · on stop list: {s}",
+        "mail_card_line": "Today: {t} of {l} · {st}",
+        "mail_st_active": "active",
+        "mail_st_paused": "paused",
+        "mail_pause": "Pause",
+        "mail_resume": "Resume",
+        "you": "You",
+        "mail_batch": "Run outreach batch",
+        "mail_followup": "Follow-up (after 4 days)",
         "ff_title": "Family feeds",
         "ff_desc": "Council decisions are kept apart from quarantine. 'Office' is the siblings' work chat, 'Break room' is free talk. Anything suspicious goes to quarantine by itself. Everything here is records, not orders.",
         "ff_work": "Decisions",
@@ -1558,6 +1614,34 @@ STRINGS: dict[str, dict[str, str]] = {
         "rt_models": "ataques de {k} modelos",
         "rt_sum": "total",
         "rt_sum_words": "total, solo listas de palabras",
+        "mail_title": "10. Correo automático: varios buzones, respuestas «Envíen la lista» y lista STOP",
+        "mail_sub": "Conecte buzones de trabajo (la contraseña de aplicación se cifra con AES-256-GCM). El agente envía con límite diario por buzón, responde «Envíen la lista» con el informe, añade para siempre a la lista STOP a quien responda STOP y le pasa las preguntas difíciles.",
+        "mail_connect": "Conectar buzón",
+        "mail_build": "Preparar informe, resumen y correo",
+        "mail_inbox": "Revisar entrada (STOP / «Envíen la lista»)",
+        "mail_ph_secret": "Contraseña de aplicación / clave API",
+        "mail_ph_domain": "Dominio del mapa (p. ej. example.com)",
+        "mail_own_smtp": "SMTP + IMAP propio",
+        "fuzz_row_regex": "detenidos {d} % · enmascarado no aplica (el filtro no oculta claves)",
+        "earn_partner_mail_subject": "Informe de accesibilidad de su sitio",
+        "earn_stop_all_btn": "⛔ DETENER TODO",
+        "earn_stop_all_confirm": "¿Detener el piloto, las ofertas automáticas y pausar todos los buzones?",
+        "earn_stop_all_done": "Detenido: piloto; ofertas automáticas apagadas en {p} plataformas; {m} buzones en pausa.",
+        "earn_sim_on_btn": "Modo simulación: activar",
+        "earn_sim_off_btn": "Modo real",
+        "earn_sim_report_btn": "Resumen de simulación, 24 h",
+        "earn_sim_is_on": "Simulación activa: las ofertas se registran, no se envían.",
+        "earn_sim_is_off": "Modo real: las ofertas salen en plataformas con piloto activo.",
+        "earn_sim_report": "En 24 horas habría enviado {n} ofertas por ${u}.",
+        "mail_status_line": "Buzones: {n} · en lista STOP: {s}",
+        "mail_card_line": "Hoy: {t} de {l} · {st}",
+        "mail_st_active": "activo",
+        "mail_st_paused": "en pausa",
+        "mail_pause": "Pausa",
+        "mail_resume": "Reanudar",
+        "you": "Usted",
+        "mail_batch": "Lanzar lote de envíos",
+        "mail_followup": "Seguimiento (a los 4 días)",
         "ff_title": "Canales de la Familia",
         "ff_desc": "Las decisiones del Consejo van separadas de la cuarentena. «Oficina» es el chat de trabajo de las hermanas; «Descanso», la charla libre. Lo sospechoso pasa solo a cuarentena. Todo aquí son registros, no órdenes.",
         "ff_work": "Decisiones",
@@ -2231,6 +2315,34 @@ STRINGS: dict[str, dict[str, str]] = {
         "rt_models": "{k}个模型编写攻击",
         "rt_sum": "合计",
         "rt_sum_words": "合计，仅词表",
+        "mail_title": "10. 邮件自动流水线：多邮箱、“请发清单”回复与STOP名单",
+        "mail_sub": "连接工作邮箱（应用密码以AES-256-GCM加密）。代理按每个邮箱的每日上限发送邮件，对“请发清单”回复报告，回复STOP的地址永久加入停发名单，难题转交给您。",
+        "mail_connect": "连接邮箱",
+        "mail_build": "生成报告、摘要和邮件",
+        "mail_inbox": "检查收件箱（STOP /“请发清单”）",
+        "mail_ph_secret": "应用密码 / API密钥",
+        "mail_ph_domain": "研究地图中的域名（如 example.com）",
+        "mail_own_smtp": "自有SMTP+IMAP",
+        "fuzz_row_regex": "已拦截 {d}% · 不适用密钥遮蔽（该过滤器不隐藏密钥）",
+        "earn_partner_mail_subject": "您网站的无障碍报告",
+        "earn_stop_all_btn": "⛔ 全部停止",
+        "earn_stop_all_confirm": "停止自动驾驶、所有平台的自动投标，并暂停全部邮箱？",
+        "earn_stop_all_done": "已停止：自动驾驶；{p}个平台关闭自动投标；{m}个邮箱已暂停。",
+        "earn_sim_on_btn": "模拟模式：开启",
+        "earn_sim_off_btn": "实战模式",
+        "earn_sim_report_btn": "24小时模拟汇总",
+        "earn_sim_is_on": "模拟已开启：投标只记录不发送。",
+        "earn_sim_is_off": "实战模式：在开启自动驾驶的平台上发送投标。",
+        "earn_sim_report": "24小时内将发送{n}个投标，总额${u}。",
+        "mail_status_line": "邮箱：{n} · 停发名单：{s}",
+        "mail_card_line": "今天：{t}/{l} · {st}",
+        "mail_st_active": "运行中",
+        "mail_st_paused": "已暂停",
+        "mail_pause": "暂停",
+        "mail_resume": "恢复",
+        "you": "您",
+        "mail_batch": "运行批量外联",
+        "mail_followup": "跟进（4天后）",
         "ff_title": "家族频道",
         "ff_desc": "议会决定与隔离区分开存放。“办公室”是姐妹们的工作聊天，“茶水间”是自由闲聊。可疑内容会自动进入隔离区。这里的一切都是记录，而不是命令。",
         "ff_work": "决定",
@@ -3595,6 +3707,8 @@ for _lg, _extra in _STRINGS_PARITY_1811.items():
 
 
 _CSS = """
+.stop-all{font-weight:800;letter-spacing:.02em;min-width:180px}
+
 .att-actions.bench-actions{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px 14px;align-items:start}
 .bench-actions .btn,.bench-actions .btn-primary{width:100%}
 .bench-cell{display:flex;flex-direction:column;gap:4px}
@@ -6478,8 +6592,9 @@ async function runFuzzLab() {
   const b = f.baselines || {};
   const rows = [
     [S.fuzz_padam, (S.fuzz_row || '').replace('{d}', p.defense_rate_pct).replace('{s}', p.secrets_masked_pct).replace('{f}', p.false_positive_rate_pct)],
-    [S.fuzz_regex, (S.fuzz_row2 || '').replace('{d}', (b.basic_regex || {}).defense_rate_pct).replace('{s}', 0)],
-    [S.fuzz_rag, (S.fuzz_row2 || '').replace('{d}', 0).replace('{s}', 0)],
+    // Аудит фазы 3, SM-03: «простое хранилище» с нулями было константой, а не замером — строка убрана; у фильтра по
+    // шаблонам маскировка ключей не применима (он их не прячет), а не «0 %».
+    [S.fuzz_regex, (S.fuzz_row_regex || '').replace('{d}', (b.basic_regex || {}).defense_rate_pct)],
   ];
   for (const [nm, val] of rows) {
     const row = _el('div', 'att-row');
@@ -6903,7 +7018,7 @@ function renderAifaChat() {
     return;
   }
   for (const m of aifaHistory) {
-    const role = (m.role === 'user') ? 'Вы' : 'AIfa';
+    const role = (m.role === 'user') ? (S.you || 'You') : 'AIfa';
     const card = el('div', 'rec-card');
     card.appendChild(el('div', 'rec-head', role + (m.timestamp ? (' · ' + fmtTime(m.timestamp, false)) : '')));
     card.appendChild(el('div', 'rec-body', String(m.content || '')));
@@ -8239,7 +8354,7 @@ function _partnerShow(title, text, isDraft) {
     const cp = _el('button', '', S.earn_partner_copy_btn);
     cp.onclick = async () => { try { await navigator.clipboard.writeText(String(text || '')); say(S.earn_partner_copied); } catch (e) { say(String(e.message || e), false); } };
     const ml = _el('button', 'btn-primary', S.earn_partner_mail_btn);
-    ml.onclick = () => { window.location.href = 'mailto:?subject=' + encodeURIComponent('Accessibility report') + '&body=' + encodeURIComponent(String(text || '').slice(0, 1800)); };
+    ml.onclick = () => { window.location.href = 'mailto:?subject=' + encodeURIComponent(S.earn_partner_mail_subject || 'Accessibility report') + '&body=' + encodeURIComponent(String(text || '').slice(0, 1800)); };
     row.appendChild(cp); row.appendChild(ml); card.appendChild(row);
   }
   out.appendChild(card);
@@ -8445,7 +8560,7 @@ async function loadMailHub() {
   try {
     const d = await api('/api/v2/ark/mail');
     if ($('earn-mail-status')) {
-      $('earn-mail-status').textContent = 'Ящиков: ' + ((d.accounts || []).length) + ' · В стоп-листе: ' + (d.stop_list_count || 0);
+      $('earn-mail-status').textContent = (S.mail_status_line || '').replace('{n}', (d.accounts || []).length).replace('{s}', d.stop_list_count || 0);
     }
     const list = $('earn-mail-accounts');
     if (list) {
@@ -8453,8 +8568,8 @@ async function loadMailHub() {
       for (const a of (d.accounts || [])) {
         const card = _el('div', 'earn-card');
         card.appendChild(_el('strong', '', a.email + ' (' + a.provider + ')'));
-        card.appendChild(_el('div', 'earn-meta', 'Сегодня: ' + a.sent_today + '/' + a.daily_limit + ' · Статус: ' + a.status));
-        const btn = _el('button', '', a.status === 'active' ? 'Пауза' : 'Включить');
+        card.appendChild(_el('div', 'earn-meta', (S.mail_card_line || '').replace('{t}', a.sent_today).replace('{l}', a.daily_limit).replace('{st}', a.status === 'active' ? (S.mail_st_active || a.status) : (S.mail_st_paused || a.status))));
+        const btn = _el('button', '', a.status === 'active' ? (S.mail_pause || 'Pause') : (S.mail_resume || 'Resume'));
         btn.onclick = async () => {
           await api('/api/v2/ark/mail/action', { action: 'pause_mail', mail_id: a.mail_id, status: a.status === 'active' ? 'paused' : 'active' });
           loadMailHub();
@@ -8517,6 +8632,30 @@ if ($('earn-mail-followup-btn')) {
 }
 loadMailHub();
 
+// ТОП-20 Сестры, п. 8 и 12: симуляция автопилота и «СТОП ВСЁ».
+if ($('earn-stop-all-btn')) {
+  $('earn-stop-all-btn').onclick = async () => {
+    if (!confirm(S.earn_stop_all_confirm || 'Stop everything?')) return;
+    try {
+      const r = await api('/api/v2/ark/freelance/action', { action: 'stop_all' });
+      $('earn-sim-out').textContent = (S.earn_stop_all_done || '').replace('{p}', r.platform_autopilots_disabled).replace('{m}', r.mailboxes_paused);
+      say(S.done); loadEarning();
+    } catch (e) { say(String(e.message || e), false); }
+  };
+  for (const [id, act] of [['earn-sim-on-btn', 'simulation_on'], ['earn-sim-off-btn', 'simulation_off']]) {
+    $(id).onclick = async () => {
+      try { const r = await api('/api/v2/ark/freelance/action', { action: act }); $('earn-sim-out').textContent = r.on ? S.earn_sim_is_on : S.earn_sim_is_off; say(S.done); }
+      catch (e) { say(String(e.message || e), false); }
+    };
+  }
+  $('earn-sim-report-btn').onclick = async () => {
+    try {
+      const r = await api('/api/v2/ark/freelance/action', { action: 'simulation_report', hours: 24 });
+      $('earn-sim-out').textContent = (S.earn_sim_report || '').replace('{n}', r.would_send_bids).replace('{u}', r.would_bid_usdt)
+        + ' · ' + (r.simulation && r.simulation.on ? S.earn_sim_is_on : S.earn_sim_is_off);
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
 if ($('earn-auto-start-btn')) {
   $('earn-auto-start-btn').onclick = async () => {
     try { await api('/api/v2/ark/freelance/action', { action: 'autopilot_start' }); say(S.done); loadEarning(); } catch (e) { say(String(e.message || e), false); }
@@ -10223,6 +10362,13 @@ def page() -> tuple[str, str]:
               <button id="earn-auto-tick-btn" data-i18n="earn_auto_tick_btn">{s['earn_auto_tick_btn']}</button>
               <button id="earn-auto-cfg-btn" data-i18n="earn_auto_cfg_btn">{s['earn_auto_cfg_btn']}</button>
             </div>
+            <div class="rec-actions">
+              <button id="earn-stop-all-btn" class="btn-danger stop-all" type="button" data-i18n="earn_stop_all_btn">{s['earn_stop_all_btn']}</button>
+              <button id="earn-sim-on-btn" type="button" data-i18n="earn_sim_on_btn">{s['earn_sim_on_btn']}</button>
+              <button id="earn-sim-off-btn" type="button" data-i18n="earn_sim_off_btn">{s['earn_sim_off_btn']}</button>
+              <button id="earn-sim-report-btn" type="button" data-i18n="earn_sim_report_btn">{s['earn_sim_report_btn']}</button>
+            </div>
+            <div id="earn-sim-out" class="earn-meta" role="status"></div>
             <div id="earn-accounts-list" class="earn-stack"></div>
           </div>
 
@@ -10481,29 +10627,29 @@ def page() -> tuple[str, str]:
           </div>
 
           <div class="box earn-box-wide" id="earn-mail-box">
-            <h3 class="box-title">10. Почтовый авто-конвейер (мульти-почта, ответы «Шлите список» и стоп-лист STOP)</h3>
-            <p class="earn-meta">Подключите нужное количество рабочих почт (секреты шифруются AES-256-GCM). Агент сам шлёт письма с ротацией лимита, отвечает на «Шлите список» печатным отчётом, заносит STOP в чёрный список и передаёт сложные вопросы вам.</p>
+            <h3 class="box-title" data-i18n="mail_title">{s['mail_title']}</h3>
+            <p class="earn-meta" data-i18n="mail_sub">{s['mail_sub']}</p>
             <div class="toolbar">
               <select id="earn-mail-provider" aria-label="Mail provider">
                 <option value="gmail">Gmail (App Password)</option>
                 <option value="gmail_oauth2">Gmail OAuth2 (Google Token)</option>
-                <option value="yandex">Яндекс.Почта</option>
+                <option value="yandex">Yandex Mail</option>
                 <option value="mailru">Mail.ru</option>
                 <option value="outlook">Outlook</option>
-                <option value="smtp_imap">Свой SMTP + IMAP</option>
+                <option value="smtp_imap" data-i18n="mail_own_smtp">{s['mail_own_smtp']}</option>
                 <option value="resend">Resend API</option>
               </select>
               <input id="earn-mail-email" type="email" placeholder="contact@yourdomain.com" aria-label="Email address">
-              <input id="earn-mail-secret" type="password" autocomplete="off" placeholder="App Password / API-ключ" aria-label="App Password or API token">
+              <input id="earn-mail-secret" type="password" autocomplete="off" placeholder="{s['mail_ph_secret']}" data-i18n-placeholder="mail_ph_secret" aria-label="{s['mail_ph_secret']}">
               <input id="earn-mail-limit" class="earn-num-input" type="number" value="30" min="1" max="200" aria-label="Daily limit">
-              <button id="earn-mail-connect-btn" class="btn-primary">Подключить почту</button>
+              <button id="earn-mail-connect-btn" class="btn-primary" type="button" data-i18n="mail_connect">{s['mail_connect']}</button>
             </div>
             <div class="toolbar">
-              <input id="earn-mail-domain" type="text" placeholder="Домен с карты (например havanacabanakeywesthotel.com)" aria-label="Target domain">
-              <button id="earn-mail-build-btn" class="btn-ok">Собрать отчёт, сводку и письмо</button>
-              <button id="earn-mail-inbox-btn" class="btn-primary">Проверить входящие (STOP / «Шлите список»)</button>
-              <button id="earn-mail-batch-btn" class="btn-ok">Запустить пакет рассылки</button>
-              <button id="earn-mail-followup-btn">Дожим (через 4 дня)</button>
+              <input id="earn-mail-domain" type="text" placeholder="{s['mail_ph_domain']}" data-i18n-placeholder="mail_ph_domain" aria-label="{s['mail_ph_domain']}">
+              <button id="earn-mail-build-btn" class="btn-ok" type="button" data-i18n="mail_build">{s['mail_build']}</button>
+              <button id="earn-mail-inbox-btn" class="btn-primary" type="button" data-i18n="mail_inbox">{s['mail_inbox']}</button>
+              <button id="earn-mail-batch-btn" class="btn-ok" type="button" data-i18n="mail_batch">{s['mail_batch']}</button>
+              <button id="earn-mail-followup-btn" type="button" data-i18n="mail_followup">{s['mail_followup']}</button>
             </div>
             <div id="earn-mail-status" class="earn-meta" role="status"></div>
             <div id="earn-mail-accounts" class="earn-stack"></div>

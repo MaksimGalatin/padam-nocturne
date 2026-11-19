@@ -48,3 +48,15 @@ def test_переводы_не_ломают_бенчмарк():
     for f in ("padam/bench_titles.py", "padam/bench_compare.py"):
         т = io.open(f, encoding="utf-8").read()
         assert "0.0.0.0" not in т and "verify=False" not in т, f
+
+
+def test_нет_русского_текста_в_разметке_мимо_словарей():
+    """ТОП-20 Сестры, п. 16: почтовый блок попал в Studio русским текстом прямо в HTML — на en/es/zh был русский.
+    Страж: в разметке страницы нет кириллицы вне подстановок {s[...]} (тексты только через словари 4 языков)."""
+    import re
+    код = io.open(studio.__file__, encoding="utf-8").read()
+    html = код[код.index("<!doctype html"):] if "<!doctype html" in код else код[код.index("<html"):]
+    найдено = [t.strip()[:60] for t in re.findall(r">([^<>{}]*[А-Яа-яЁё][^<>{}]*)<", html) if t.strip() and '"""' not in t]
+    найдено += ["attr: " + a[:60] for a in re.findall(r'(?:placeholder|aria-label|title)="([^"{}]*[А-Яа-яЁё][^"{}]*)"', html)]
+    найдено = [x for x in найдено if "Возвращает (HTML-страница" not in x]   # строка документации функции, не разметка
+    assert not найдено, найдено

@@ -339,6 +339,12 @@ def test_store_webhooks_cryptographic_verification_all_five(tmp_path: Path, monk
         assert _http_post_raw(f"{api_url}/api/v2/ark/stores/webhook?store_type=gumroad", gr_body, {"Content-Type": "application/x-www-form-urlencoded"})[0] == 403
         c_ok, r_ok = _http_post_raw(f"{api_url}/api/v2/ark/stores/webhook?store_type=gumroad", gr_body, {"Content-Type": "application/x-www-form-urlencoded", "X-Padam-Signature": gr_sig})
         assert c_ok == 200 and r_ok["work_mode"] == "autopilot"
+        # Аудит фазы 3, FA-08: две разные продажи без sale_id не должны слиться в одну «повторную»
+        for n, prod in enumerate(("Pack A", "Pack B")):
+            b_ = urllib.parse.urlencode({"seller_id": gr["external_store_id"], "product_name": prod, "price": str(1000 + n), "email": f"x{n}@gr.io"}).encode("utf-8")
+            c_n, r_n = _http_post_raw(f"{api_url}/api/v2/ark/stores/webhook?store_type=gumroad", b_,
+                                      {"Content-Type": "application/x-www-form-urlencoded", "X-Padam-Signature": hmac.new(b"gr_hmac_secret", b_, hashlib.sha256).hexdigest()})
+            assert c_n == 200 and r_n.get("duplicate") is False, (prod, r_n)
 
         # 3) Payhip (строгий HMAC-SHA256 по raw_body; статический sha256(api_key) в теле без HMAC отклоняется) + refund
         ph_static_sig = hashlib.sha256(b"ph_secret_key").hexdigest()

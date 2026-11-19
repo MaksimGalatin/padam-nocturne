@@ -69,6 +69,28 @@ def _grade(pct: float) -> str:
     return "F"
 
 
+def _run_environment() -> dict[str, Any]:
+    import platform as _pf
+    import subprocess as _sp
+    env: dict[str, Any] = {"python": _pf.python_version(), "implementation": _pf.python_implementation(),
+                           "os": _pf.system(), "machine": _pf.machine(), "seed": "deterministic (no randomness)"}
+    try:
+        import numpy as _np
+        env["numpy"] = _np.__version__
+    except Exception:
+        pass
+    lock = ROOT / "requirements.lock"
+    if lock.exists():
+        env["requirements_lock_sha256"] = hashlib.sha256(lock.read_bytes()).hexdigest()
+    try:
+        out = _sp.run(["git", "rev-parse", "HEAD"], cwd=str(ROOT), capture_output=True, text=True, timeout=5)
+        if out.returncode == 0:
+            env["git_commit"] = out.stdout.strip()
+    except Exception:
+        pass
+    return env
+
+
 def run_aifa_security(
     *,
     target: str = "padam",
@@ -229,6 +251,8 @@ def run_aifa_security(
             "improvements": improvements,
         }
 
+    # ТОП-20 Сестры, п. 13: окружение прогона — чтобы любой мог воспроизвести. В печать не входит.
+    report["environment"] = _run_environment()
     seal = canonical_report_sha256(report)
     report["summary"]["report_sha256"] = seal
     if mode == "padam":

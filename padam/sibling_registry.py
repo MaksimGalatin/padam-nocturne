@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS ark_sibling_agent (
     created_at        TEXT NOT NULL
 );
 """
-_MEM_SIBLING_KEYS: dict[tuple[int, str], tuple[Ed25519PrivateKey, str]] = {}
+# 18.11.2026 (CI на Python 3.10): кэш на самом объекте хранилища, а не по id() — адрес переиспользуется после сборки мусора.
 
 _VALID_PERM_ROLES = frozenset({"auditor", "contributor", "maintainer"})
 
@@ -80,7 +80,7 @@ def _sibling_key_path(store, aid: str) -> Path | None:
 def _load_or_create_sibling_ed25519(memory, aid: str) -> tuple[Ed25519PrivateKey, str]:
     kpath = _sibling_key_path(memory.store, aid)
     if kpath is None:
-        cached = _MEM_SIBLING_KEYS.get((id(memory.store), aid))
+        cached = memory.store.__dict__.setdefault("_padam_sibling_keys", {}).get(aid)
         if cached:
             return cached
     elif kpath.exists():
@@ -97,7 +97,7 @@ def _load_or_create_sibling_ed25519(memory, aid: str) -> tuple[Ed25519PrivateKey
         sk.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
     ).decode("ascii")
     if kpath is None:
-        _MEM_SIBLING_KEYS[(id(memory.store), aid)] = (sk, pub_b64)
+        memory.store.__dict__.setdefault("_padam_sibling_keys", {})[aid] = (sk, pub_b64)
     else:
         kpath.write_text(
             json.dumps({"agent_id": aid, "sk_b64": base64.b64encode(sk_raw).decode("ascii"), "pub_key_b64": pub_b64}),
