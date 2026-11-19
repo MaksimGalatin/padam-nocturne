@@ -213,6 +213,8 @@ PARITY_MAP: dict[tuple[str, str], tuple[str, str, str, str]] = {
     ("padam_freelance_hub", "check_inbox"): ("panel-earning", "#earn-mail-inbox-btn", "POST /api/v2/ark/mail/action", "padam.email_autonomy"),
     ("padam_freelance_hub", "add_stop"): ("panel-earning", "#earn-mail-status", "POST /api/v2/ark/mail/action", "padam.email_autonomy"),
     ("padam_freelance_hub", "build_outreach"): ("panel-earning", "#earn-mail-build-btn | #earn-mail-domain", "POST /api/v2/ark/mail/action", "padam.partner_bridge"),
+    ("padam_freelance_hub", "run_outreach_batch"): ("panel-earning", "#earn-mail-batch-btn", "POST /api/v2/ark/mail/action", "padam.email_autonomy"),
+    ("padam_freelance_hub", "run_follow_up"): ("panel-earning", "#earn-mail-followup-btn", "POST /api/v2/ark/mail/action", "padam.email_autonomy"),
 
     # padam_phoenix_family
     ("padam_phoenix_family", "status"): ("panel-earning", "#earn-beacon-out | #earn-ollama-out", "POST /api/v2/ark/phoenix-beacon/action", "padam.phoenix_beacon"),

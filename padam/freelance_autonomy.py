@@ -2644,6 +2644,7 @@ def run_autopilot_cycle(memory, *, allow_localhost: bool = False) -> dict[str, A
         from . import email_autonomy as _ea
         if _ea.list_mail_accounts(memory):
             inbox_res = _ea.process_inbox_replies(memory)
+            _ea.run_follow_up_cycle(memory)
     except Exception:
         pass
 
@@ -2794,9 +2795,32 @@ def sync_site_orders(
             ex_res = execute_order_with_swarm(memory, local_oid, agent_id="aifa")
             if ex_res.get("ok"):
                 executed += 1
+                from . import partner_bridge as _pb
+                pkg = _pb.build_business_outreach(memory, website or oid_ext, language="ru", allow_live_fetch=False)
                 deliverable = (
-                    f"Заказ {oid_ext} ({slug}) для {website} принят и выполнен в изолированной ветке.\n"
-                    f"Сумма: ${amount:.2f} USD. Готово к передаче клиенту и повторной проверке через 14 дней."
+                    f"Заказ {oid_ext} ({slug}) для {website} выполнен.\n"
+                    f"Сумма: ${amount:.2f} USD.\n\n"
+                    f"{pkg.get('business_summary', '')}\n\n"
+                    f"{pkg.get('site_report', '')}"
                 )
                 package_safe_delivery(memory, local_oid, deliverable_text=deliverable, agent_id="aifa")
+                if slug in ("quick-audit", "fix-pack", "lite-audit"):
+                    now_rc = time.time()
+                    memory.store.conn.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS ark_site_rechecks (
+                            recheck_id TEXT PRIMARY KEY,
+                            user_id TEXT NOT NULL,
+                            order_id TEXT NOT NULL,
+                            website TEXT NOT NULL,
+                            due_at REAL NOT NULL,
+                            done_at REAL NOT NULL DEFAULT 0.0
+                        )
+                        """
+                    )
+                    memory.store.conn.execute(
+                        "INSERT OR IGNORE INTO ark_site_rechecks (recheck_id, user_id, order_id, website, due_at, done_at) VALUES (?, ?, ?, ?, ?, 0.0)",
+                        (f"rc-{oid_ext}", memory.user_id, local_oid, website, now_rc + 14.0 * 86400.0),
+                    )
+                    memory.store.conn.commit()
     return {"ok": True, "imported": imported, "executed": executed}

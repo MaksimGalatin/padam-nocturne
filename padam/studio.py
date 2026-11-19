@@ -8497,6 +8497,24 @@ if ($('earn-mail-build-btn')) {
     } catch (e) { say(String(e.message || e), false); }
   };
 }
+if ($('earn-mail-batch-btn')) {
+  $('earn-mail-batch-btn').onclick = async () => {
+    try {
+      const r = await api('/api/v2/ark/mail/action', { action: 'run_outreach_batch', max_emails: 20 });
+      _famShow('earn-mail-out', r);
+      loadMailHub();
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
+if ($('earn-mail-followup-btn')) {
+  $('earn-mail-followup-btn').onclick = async () => {
+    try {
+      const r = await api('/api/v2/ark/mail/action', { action: 'run_follow_up', max_emails: 10 });
+      _famShow('earn-mail-out', r);
+      loadMailHub();
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
 loadMailHub();
 
 if ($('earn-auto-start-btn')) {
@@ -10468,6 +10486,7 @@ def page() -> tuple[str, str]:
             <div class="toolbar">
               <select id="earn-mail-provider" aria-label="Mail provider">
                 <option value="gmail">Gmail (App Password)</option>
+                <option value="gmail_oauth2">Gmail OAuth2 (Google Token)</option>
                 <option value="yandex">Яндекс.Почта</option>
                 <option value="mailru">Mail.ru</option>
                 <option value="outlook">Outlook</option>
@@ -10483,6 +10502,8 @@ def page() -> tuple[str, str]:
               <input id="earn-mail-domain" type="text" placeholder="Домен с карты (например havanacabanakeywesthotel.com)" aria-label="Target domain">
               <button id="earn-mail-build-btn" class="btn-ok">Собрать отчёт, сводку и письмо</button>
               <button id="earn-mail-inbox-btn" class="btn-primary">Проверить входящие (STOP / «Шлите список»)</button>
+              <button id="earn-mail-batch-btn" class="btn-ok">Запустить пакет рассылки</button>
+              <button id="earn-mail-followup-btn">Дожим (через 4 дня)</button>
             </div>
             <div id="earn-mail-status" class="earn-meta" role="status"></div>
             <div id="earn-mail-accounts" class="earn-stack"></div>

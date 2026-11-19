@@ -640,7 +640,7 @@ FREELANCE_HUB_TOOL_DEF = {
             "wizard_catalog", "wizard_connect", "wizard_questionnaire", "wizard_publish_profile", "wizard_autopick_jobs",
             "signup", "login", "autopilot_config", "autopilot_tick", "autopilot_dispatch",
             "sample_prepare", "sample_reject", "official_api",
-            "mail_status", "connect_mail", "pause_mail", "send_outreach", "check_inbox", "add_stop", "build_outreach",
+            "mail_status", "connect_mail", "pause_mail", "send_outreach", "check_inbox", "add_stop", "build_outreach", "run_outreach_batch", "run_follow_up",
         ], "default": "dashboard", "description": "evaluate_job(title)|wizard(platform)"},
         "platform": {**_S, "description": "Platform"}, "mode": {"type": "string", "enum": ["oauth_api", "desk", "webhook"], "description": "Mode"},
         "account_label": _S, "agent_id": _S, "skills": {**_SA, "description": "Skills"},
@@ -5072,6 +5072,16 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 str(args.get("domain") or args.get("site") or ""),
                 language=str(args.get("language") or "ru"),
             )
+        elif act == "run_outreach_batch":
+            from . import email_autonomy as _ea
+            payload = _ea.run_outreach_batch(
+                m,
+                max_emails=int(args.get("daily_limit") or 20),
+                language=str(args.get("language") or "ru"),
+            )
+        elif act == "run_follow_up":
+            from . import email_autonomy as _ea
+            payload = _ea.run_follow_up_cycle(m, max_emails=int(args.get("daily_limit") or 10))
         elif act == "official_api":
             from . import platform_wizard as _pw
             payload = _pw.official_platform_api_action(

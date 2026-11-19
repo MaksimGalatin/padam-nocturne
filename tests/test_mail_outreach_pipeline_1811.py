@@ -213,3 +213,100 @@ def test_sync_site_orders_from_aifa_digital_to_studio(tmp_path: Path, monkeypatc
     finally:
         srv.shutdown()
         srv.server_close()
+
+
+def test_stress_batch_12_mails_bounce_autopause_refund_and_followup(tmp_path: Path):
+    import csv as _csv
+    import time as _time
+    from padam import freelance_autonomy
+
+    mem = _make_mem(tmp_path)
+    stop_file = tmp_path / "ОТПИСАЛИСЬ.txt"
+    csv_file = tmp_path / "batch_30.csv"
+    with csv_file.open("w", encoding="utf-8-sig", newline="") as f:
+        w = _csv.DictWriter(f, fieldnames=["домен", "название", "штат", "город", "почта", "нарушений_всего", "critical", "serious", "правила"])
+        w.writeheader()
+        for i in range(30):
+            w.writerow({
+                "домен": f"biz{i}.example.com",
+                "название": f"Biz {i}",
+                "штат": "Florida",
+                "город": "Miami",
+                "почта": f"owner{i}@biz{i}.example.com",
+                "нарушений_всего": "12",
+                "critical": "4",
+                "serious": "8",
+                "правила": "color-contrast",
+            })
+
+    sent_log: list[dict] = []
+    inbox_by_mail: dict[str, list[dict]] = {}
+
+    def _fake_mail(req: dict):
+        op = req.get("op")
+        if op == "verify":
+            return {"ok": True}
+        if op == "send":
+            sent_log.append(req)
+            return {"ok": True}
+        if op == "fetch_inbox":
+            return {"ok": True, "messages": inbox_by_mail.pop(req.get("email"), [])}
+        return {"ok": True}
+
+    email_autonomy.set_mail_transport(_fake_mail)
+    try:
+        # 1. Подключаем 12 прогретых ящиков
+        for m_idx in range(12):
+            res_c = email_autonomy.connect_mail_account(
+                mem,
+                email=f"sender{m_idx}@code.test",
+                provider="gmail_oauth2" if m_idx % 2 else "gmail",
+                app_password_or_token=f"tok-box-{m_idx}",
+                daily_limit=30,
+            )
+            assert res_c["ok"] is True
+
+        # 2. Пакетная рассылка 24 писем (по 2 с каждого из 12 ящиков за счёт ротации)
+        batch = email_autonomy.run_outreach_batch(mem, csv_path=csv_file, max_emails=24, language="ru", stop_file_path=stop_file)
+        assert batch["ok"] is True and batch["sent"] == 24 and batch["errors"] == 0
+        from_set = {x["from"] for x in batch["results"]}
+        assert len(from_set) == 12
+
+        # Повторный запуск по тем же первым 24 — пропускает по 30-дневной броне и досылает оставшиеся 6
+        batch2 = email_autonomy.run_outreach_batch(mem, csv_path=csv_file, max_emails=24, language="ru", stop_file_path=stop_file)
+        assert batch2["sent"] == 6 and batch2["skipped"] == 24
+
+        # 3. Входящие: на ящик sender0 приходили письма -> 1 bounce (при 2-3 письмах >3% если >=10 отправок),
+        # поэтому симулируем 10 отправок на sender0 и 1 bounce -> автопауза ящика!
+        for k in range(8):
+            email_autonomy.send_outreach_email(
+                mem, to_email=f"extra{k}@ex{k}.com", domain=f"ex{k}.com", subject="T", body="B",
+                mail_id=email_autonomy.list_mail_accounts(mem)[0]["mail_id"], stop_file_path=stop_file,
+            )
+        inbox_by_mail["sender0@code.test"] = [
+            {"from_email": "mailer-daemon@googlemail.com", "subject": "Delivery Status Notification (Failure)", "body": "550 5.1.1 Address not found: owner0@biz0.example.com"},
+            {"from_email": "owner1@biz1.example.com", "domain": "biz1.example.com", "subject": "Re: Biz 1", "body": "Шлите список пожалуйста!"},
+            {"from_email": "owner2@biz2.example.com", "domain": "biz2.example.com", "subject": "Re: Biz 2", "body": "Верните деньги, нужен возврат (refund)!"},
+            {"from_email": "owner3@biz3.example.com", "domain": "biz3.example.com", "subject": "Re: Biz 3", "body": "STOP writing"},
+        ]
+        inb = email_autonomy.process_inbox_replies(mem, stop_file_path=stop_file)
+        assert inb["reports_sent"] == 1
+        assert inb["stopped"] == 2  # 1 bounce + 1 STOP
+        assert inb["escalated"] == 1  # refund_urgent
+
+        # Ящик sender0 должен автоматически встать на паузу (>3% отбоев при >=10 отправках)
+        s0 = [a for a in email_autonomy.list_mail_accounts(mem) if a["email"] == "sender0@code.test"][0]
+        assert s0["status"] == "paused" and s0["last_error"] == "auto_paused_high_bounce_rate"
+
+        # 4. Дожим: состариваем outbound_first на 5 дней назад и запускаем run_follow_up_cycle
+        old_ts = _time.time() - 5.0 * 86400.0
+        mem.store.conn.execute("UPDATE ark_outreach_log SET created_at = ? WHERE direction = 'outbound_first'", (old_ts,))
+        mem.store.conn.commit()
+        fu = email_autonomy.run_follow_up_cycle(mem, wait_days=4.0, max_emails=5, stop_file_path=stop_file)
+        assert fu["ok"] is True and fu["follow_ups_sent"] == 5
+
+        # Повторный дожим по тем же 5 не уходит (уже есть outbound_followup)
+        fu2 = email_autonomy.run_follow_up_cycle(mem, wait_days=4.0, max_emails=5, stop_file_path=stop_file)
+        assert fu2["ok"] is True
+    finally:
+        email_autonomy.set_mail_transport(None)

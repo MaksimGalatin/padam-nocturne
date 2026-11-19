@@ -38,6 +38,7 @@ MAIL_PROVIDER_PRESETS: dict[str, dict[str, Any]] = {
     "mailru": {"smtp_host": "smtp.mail.ru", "smtp_port": 465, "imap_host": "imap.mail.ru", "imap_port": 993, "hint_ru": "Mail.ru: используйте пароль для внешних приложений."},
     "outlook": {"smtp_host": "smtp-mail.outlook.com", "smtp_port": 587, "imap_host": "outlook.office365.com", "imap_port": 993, "hint_ru": "Outlook / Microsoft 365."},
     "smtp_imap": {"smtp_host": "", "smtp_port": 465, "imap_host": "", "imap_port": 993, "hint_ru": "Произвольный SMTP/IMAP сервер вашего домена."},
+    "gmail_oauth2": {"smtp_host": "smtp.gmail.com", "smtp_port": 465, "imap_host": "imap.gmail.com", "imap_port": 993, "hint_ru": "Gmail OAuth2 (токен доступа Google без App Password)."},
     "resend": {"smtp_host": "api.resend.com", "smtp_port": 443, "imap_host": "", "imap_port": 0, "hint_ru": "Resend HTTP API (только отправка по ключу re_...)."},
 }
 
@@ -383,6 +384,7 @@ def is_blocked_by_stop_or_claim(
     email: str = "",
     domain: str = "",
     stop_file_path: Path | None = None,
+    check_30d_claim: bool = True,
 ) -> tuple[bool, str]:
     """Проверяет стоп-лист (БД + ОТПИСАЛИСЬ.txt) и 30-дневную защиту от повторного письма на один домен."""
     _ensure_mail_schema(memory)
@@ -402,7 +404,7 @@ def is_blocked_by_stop_or_claim(
             if r:
                 return True, f"stop_list:{r['reason']}"
         cutoff = time.time() - 30.0 * 86400.0
-        if dom:
+        if dom and check_30d_claim:
             prev = conn.execute(
                 "SELECT msg_id FROM ark_outreach_log WHERE user_id=? AND domain=? AND direction='outbound_first' AND created_at > ? LIMIT 1",
                 (memory.user_id, dom, cutoff),
@@ -582,11 +584,20 @@ def send_outreach_email(
 
 
 def classify_inbound_reply(subject: str, body: str) -> str:
-    """Классифицирует входящий ответ клиента: 'stop', 'send_report' или 'escalate_owner'."""
+    """Классифицирует входящее письмо: 'bounce', 'stop', 'send_report', 'refund_urgent' или 'escalate_owner'."""
     blob = safety.strip_invisible(f"{subject}\n{body}").lower()
+    bounce_markers = (
+        "mail delivery subsystem", "delivery status notification", "undelivered mail returned",
+        "address not found", "550 5.1.1", "user unknown", "mailbox unavailable",
+    )
+    if any(m in blob for m in bounce_markers):
+        return "bounce"
     stop_markers = ("stop", "unsubscribe", "remove me", "do not contact", "не пишите", "отпиш", "отписаться", "удалите из рассылки")
     if any(m in blob for m in stop_markers):
         return "stop"
+    refund_markers = ("refund", "money back", "chargeback", "возврат", "верните деньги", "вернуть оплату")
+    if any(m in blob for m in refund_markers):
+        return "refund_urgent"
     escalate_markers = ("price", "discount", "contract", "invoice", "lawyer", "legal", "sue", "complaint", "скидк", "договор", "счёт", "юрист", "жалоб", "почему")
     if any(m in blob for m in escalate_markers):
         return "escalate_owner"
@@ -683,10 +694,60 @@ def process_inbox_replies(
                 continue
 
             kind = classify_inbound_reply(subj, body)
+            if kind == "bounce":
+                # Вытаскиваем адрес получателя из тела отбоя, если это Mail Delivery Subsystem
+                m_rcpt = re.search(r"([a-z0-9_.+-]+@[a-z0-9-]+\.[a-z0-9.-]+)", body, re.I)
+                b_target = (m_rcpt.group(1).lower() if m_rcpt and "mailer-daemon" not in m_rcpt.group(1).lower() else sender)
+                add_to_stop_list(memory, b_target, reason="bounced", stop_file_path=stop_file_path)
+                stopped_cnt += 1
+                with freelance_autonomy._lock_of(memory):
+                    memory.store.conn.execute(
+                        "INSERT INTO ark_outreach_log (msg_id, user_id, mail_id, domain, recipient_email, direction, subject, status, summary, created_at) "
+                        "VALUES (?, ?, ?, ?, ?, 'inbound', ?, 'bounced', ?, ?)",
+                        (f"msg-{secrets.token_hex(5)}", memory.user_id, acc_pub["mail_id"], _clean_domain(b_target), b_target, subj[:200], "Bounce detected", time.time()),
+                    )
+                    sent_all = int(memory.store.conn.execute(
+                        "SELECT COUNT(*) FROM ark_outreach_log WHERE user_id=? AND mail_id=? AND direction LIKE 'outbound%'",
+                        (memory.user_id, acc_pub["mail_id"]),
+                    ).fetchone()[0])
+                    bounced_all = int(memory.store.conn.execute(
+                        "SELECT COUNT(*) FROM ark_outreach_log WHERE user_id=? AND mail_id=? AND status='bounced'",
+                        (memory.user_id, acc_pub["mail_id"]),
+                    ).fetchone()[0])
+                    if sent_all >= 10 and (bounced_all / max(1, sent_all)) > 0.03:
+                        memory.store.conn.execute(
+                            "UPDATE ark_mail_account SET status='paused', last_error='auto_paused_high_bounce_rate', updated_at=? WHERE mail_id=? AND user_id=?",
+                            (time.time(), acc_pub["mail_id"], memory.user_id),
+                        )
+                        try:
+                            family_feeds.post(memory, "office", "aifa", f"[Почта · СТОП] Ящик {acc_pub['email']} поставлен на паузу: высокий процент отбоев ({bounced_all}/{sent_all}).")
+                        except Exception:
+                            pass
+                    memory.store.conn.commit()
+                details.append({"from": b_target, "domain": _clean_domain(b_target), "action": "bounced"})
+                continue
             if kind == "stop":
                 add_to_stop_list(memory, sender, reason="stop_reply", stop_file_path=stop_file_path)
                 stopped_cnt += 1
                 details.append({"from": sender, "domain": dom, "action": "stopped"})
+            elif kind == "refund_urgent":
+                add_to_stop_list(memory, sender, reason="refund_request", stop_file_path=stop_file_path)
+                escalated_cnt += 1
+                try:
+                    coop_broker.create_task(
+                        memory,
+                        f"[СРОЧНО · ВОЗВРАТ] Клиент {sender} ({dom}): тема «{subj}»",
+                        created_by="aifa",
+                    )
+                    family_feeds.post(
+                        memory,
+                        "office",
+                        "aifa",
+                        f"[Почта · СРОЧНЫЙ ВОЗВРАТ] Клиент {sender} ({dom}) просит возврат: «{subj}». Дожимы заблокированы, ждёт решения владельца.",
+                    )
+                except Exception:
+                    pass
+                details.append({"from": sender, "domain": dom, "action": "refund_escalated"})
             elif kind == "send_report":
                 pkg = partner_bridge.build_business_outreach(memory, dom, language="ru", allow_live_fetch=False)
                 html_rep = _build_printable_html_report(pkg)
@@ -710,6 +771,18 @@ def process_inbox_replies(
                     direction="outbound_report",
                     stop_file_path=stop_file_path,
                 )
+                if not s_res.get("ok"):
+                    s_res = send_outreach_email(
+                        memory,
+                        to_email=sender,
+                        domain=dom,
+                        subject=rep_subj,
+                        body=rep_body,
+                        html_body=html_rep,
+                        mail_id="",
+                        direction="outbound_report",
+                        stop_file_path=stop_file_path,
+                    )
                 reports_sent += 1 if s_res.get("ok") else 0
                 try:
                     coop_broker.create_task(memory, f"Тёплый лид ({dom}): клиент {sender} запросил и получил технический отчёт", created_by="aifa")
@@ -767,3 +840,148 @@ def mail_hub_snapshot(memory) -> dict[str, Any]:
         "stop_list_count": stop_cnt,
         "recent_logs": logs,
     }
+
+def run_outreach_batch(
+    memory,
+    *,
+    csv_path: Path | None = None,
+    max_emails: int = 20,
+    language: str = "ru",
+    allow_live_fetch: bool = False,
+    stop_file_path: Path | None = None,
+) -> dict[str, Any]:
+    """Пакетная рассылка по базе карты с ротацией подключённых почт, проверкой 30-дневной брони и стоп-листа."""
+    import csv as _csv
+    from . import partner_bridge
+
+    _ensure_mail_schema(memory)
+    target_csv = csv_path or Path(
+        r"E:/Aifa/ВАЖНЫЕ ДОКУМЕНТЫ!!!!!!!!!!!!!!!!!!!!!!!!!/09_ЗАРАБОТОК И МОНЕТИЗАЦИЯ/ГОТОВЫЕ_БАЗЫ_ДЛЯ_ЗАПУСКА/БАЗА_АУТРИЧА_США_с_почтой.csv"
+    )
+    if not target_csv.is_file():
+        return {"ok": False, "error": f"CSV базы не найден: {target_csv}", "sent": 0}
+
+    lim = max(1, min(500, int(max_emails or 20)))
+    sent = 0
+    skipped = 0
+    errors = 0
+    results: list[dict[str, Any]] = []
+
+    with target_csv.open("r", encoding="utf-8-sig", errors="replace") as f:
+        for row in _csv.DictReader(f):
+            if sent >= lim:
+                break
+            to_em = _clean_email(row.get("почта") or row.get("email") or "")
+            dom = _clean_domain(row.get("домен") or row.get("domain") or to_em)
+            if not to_em or not dom:
+                skipped += 1
+                continue
+            blocked, reason = is_blocked_by_stop_or_claim(memory, email=to_em, domain=dom, stop_file_path=stop_file_path)
+            if blocked:
+                skipped += 1
+                continue
+
+            pkg = partner_bridge.build_business_outreach(
+                memory,
+                dom,
+                language=language,
+                site_record=row,
+                allow_live_fetch=allow_live_fetch,
+            )
+            s_res = send_outreach_email(
+                memory,
+                to_email=to_em,
+                domain=dom,
+                subject=pkg["email_subject"],
+                body=pkg["email_body"],
+                direction="outbound_first",
+                stop_file_path=stop_file_path,
+            )
+            if s_res.get("ok"):
+                sent += 1
+                results.append({"domain": dom, "to": to_em, "from": s_res["from_email"]})
+            elif s_res.get("blocked"):
+                skipped += 1
+            else:
+                errors += 1
+                results.append({"domain": dom, "error": s_res.get("error")})
+                if "Нет активной почты" in str(s_res.get("error") or ""):
+                    break
+
+    return {"ok": True, "sent": sent, "skipped": skipped, "errors": errors, "results": results}
+
+
+def run_follow_up_cycle(
+    memory,
+    *,
+    wait_days: float = 4.0,
+    max_emails: int = 10,
+    now_ts: float | None = None,
+    stop_file_path: Path | None = None,
+) -> dict[str, Any]:
+    """Отправляет максимум ОДНО вежливое напоминание через wait_days дней, если клиент не ответил и не в стоп-листе."""
+    _ensure_mail_schema(memory)
+    now = float(now_ts if now_ts is not None else time.time())
+    cutoff = now - max(1.0, float(wait_days)) * 86400.0
+    lim = max(1, min(100, int(max_emails or 10)))
+
+    with freelance_autonomy._lock_of(memory):
+        rows = memory.store.conn.execute(
+            """
+            SELECT o.domain, o.recipient_email, o.mail_id, o.subject
+            FROM ark_outreach_log o
+            WHERE o.user_id = ? AND o.direction = 'outbound_first' AND o.created_at <= ?
+              AND NOT EXISTS (
+                  SELECT 1 FROM ark_outreach_log x
+                  WHERE x.user_id = o.user_id AND x.domain = o.domain
+                    AND x.direction IN ('outbound_followup', 'outbound_report', 'inbound')
+              )
+            ORDER BY o.created_at ASC LIMIT ?
+            """,
+            (memory.user_id, cutoff, lim * 4),
+        ).fetchall()
+
+    sent = 0
+    skipped = 0
+    for r in rows:
+        dom = str(r["domain"] or "")
+        to_em = str(r["recipient_email"] or "")
+        blocked, _ = is_blocked_by_stop_or_claim(memory, email=to_em, domain=dom, stop_file_path=stop_file_path, check_30d_claim=False)
+        if blocked:
+            skipped += 1
+            continue
+        subj = f"Re: {str(r['subject'] or dom)[:160]}"
+        body = (
+            f"Здравствуйте!\n\nКоротко напоминаю о бесплатном техническом списке ошибок доступности для сайта {dom}: "
+            f"если актуально, просто ответьте на это письмо, или проверьте сайт самостоятельно за минуту на https://aifa.works/accessibility?url={dom}.\n\n"
+            f"Если неактуально — ответьте STOP, и мы больше никогда не напишем.\n\n"
+            f"CODE Eternal LLC · 1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA"
+        )
+        if sent >= lim:
+            break
+        res = send_outreach_email(
+            memory,
+            to_email=to_em,
+            domain=dom,
+            subject=subj,
+            body=body,
+            mail_id=str(r["mail_id"] or ""),
+            direction="outbound_followup",
+            stop_file_path=stop_file_path,
+        )
+        if not res.get("ok") and not res.get("blocked"):
+            res = send_outreach_email(
+                memory,
+                to_email=to_em,
+                domain=dom,
+                subject=subj,
+                body=body,
+                mail_id="",
+                direction="outbound_followup",
+                stop_file_path=stop_file_path,
+            )
+        if res.get("ok"):
+            sent += 1
+        else:
+            skipped += 1
+    return {"ok": True, "follow_ups_sent": sent, "skipped": skipped}

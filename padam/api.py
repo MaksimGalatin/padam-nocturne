@@ -2199,6 +2199,18 @@ class Handler(BaseHTTPRequestHandler):
                             str(data.get("domain") or ""),
                             language=str(data.get("language") or "ru"),
                         )
+                    elif act_m == "run_outreach_batch":
+                        res_m = _ea.run_outreach_batch(
+                            mem(),
+                            max_emails=int(data.get("max_emails") or 20),
+                            language=str(data.get("language") or "ru"),
+                        )
+                    elif act_m == "run_follow_up":
+                        res_m = _ea.run_follow_up_cycle(
+                            mem(),
+                            wait_days=float(data.get("wait_days") or 4.0),
+                            max_emails=int(data.get("max_emails") or 10),
+                        )
                     else:
                         res_m = _ea.mail_hub_snapshot(mem())
                     return self._send(200, res_m)
