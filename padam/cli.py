@@ -462,12 +462,8 @@ def cmd_access(m, a) -> int:
 
 def cmd_aifa_sec(m, a) -> int:
     """Эталонный автономный бенчмарк AIFaSecurity (100 критериев, $0, без LLM)."""
-    import sys as _sys
-    from pathlib import Path as _Path
-    _root = _Path(__file__).resolve().parents[1]
-    if str(_root) not in _sys.path:
-        _sys.path.insert(0, str(_root))
-    from benchmarks.aifa_security import run_aifa_sec
+    from .aifa_sec_bridge import aifa_sec_module
+    run_aifa_sec = aifa_sec_module("run_aifa_sec")
     argv = ["--target", a.target]
     if a.path:
         argv.extend(["--path", a.path])

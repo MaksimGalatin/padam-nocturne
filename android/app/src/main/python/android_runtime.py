@@ -23,6 +23,8 @@ def start_studio(files_dir: str, keystore_bridge, browser_bridge) -> str:
         os.environ["HOME"] = files_dir
         os.environ["PADAM_DB"] = os.path.join(files_dir, "padam.db")
         os.environ.setdefault("PADAM_NO_OLLAMA", "1")
+        # У Chaquopy нет отдельного python.exe для подпроцесса: бенчмарк AIFaSecurity идёт внутри процесса.
+        os.environ.setdefault("PADAM_BENCH_INPROC", "1")
 
         from padam import api, cabinet
         from padam.memory import Memory

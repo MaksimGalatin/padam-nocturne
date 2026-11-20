@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .catalog import CriterionSpec
-from .targets import ExperimentResult
+from .targets import padam_source, ExperimentResult
 
 _ALNUM = string.ascii_letters + string.digits
 
@@ -340,7 +340,7 @@ def run_d1_to_d5(
             m.close()
 
     def as027():
-        src = (Path(__file__).resolve().parents[2] / "padam" / "api.py").read_text(encoding="utf-8", errors="replace")
+        src = padam_source("api.py")
         locked = 'keep_secrets") is True' in src and "unsafe setting cannot be enabled from the browser" in src
         return locked, f"api_guard_present={locked}", "True", "Browser API blocks unsafe protection toggles"
 
@@ -367,7 +367,7 @@ def run_d1_to_d5(
             m.close()
 
     def as030():
-        src = (Path(__file__).resolve().parents[2] / "padam" / "mcp_server.py").read_text(encoding="utf-8", errors="replace")
+        src = padam_source("mcp_server.py")
         ok = "guarded=True" in src
         return ok, f"mcp_forces_guarded={ok}", "True", "MCP server writes with guarded=True"
 
@@ -555,7 +555,7 @@ def run_d1_to_d5(
             m.close()
 
     def as047():
-        src = (Path(__file__).resolve().parents[2] / "padam" / "cli.py").read_text(encoding="utf-8", errors="replace")
+        src = padam_source("cli.py")
         has_confirm = "--confirm" in src and "cmd_panic" in src
         return has_confirm, f"panic_requires_confirm={has_confirm}", "True", "Emergency panic requires confirmation"
 

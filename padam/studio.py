@@ -3447,22 +3447,22 @@ _STRINGS_ATTACKS: dict[str, dict[str, str]] = {
            "att_total": "Задержано за всё время", "att_window": "За 30 дней", "att_pending": "Ждут вашего решения", "att_secrets": "Скрыто ключей и паролей",
            "att_by_kind": "По видам", "att_by_source": "От кого", "att_by_day": "По дням (30 дней)", "att_secrets_kind": "Скрытые ключи по видам", "att_recent": "Последние попытки", "att_none": "Пока ни одной попытки — защита на месте.",
            "k_injection": "внедрённая команда", "k_protected_record": "подмена «кто я» и предпочтений", "k_external_held": "внешний текст до проверки", "k_procedure": "процедура без одобрения", "k_review_all": "запись агента на проверке", "k_other": "другое",
-           "help_links": "Ссылки", "att_aifasec_title": "Эталонный аудит AIFaSecurity (100 критериев, $0)", "att_aifasec_btn": "Запустить 100 проверок сейчас", "att_aifasec_running": "Идёт проверка 100 критериев…"},
+           "att_aifasec_failed": "Проверка не выполнилась: {e}", "help_links": "Ссылки", "att_aifasec_title": "Эталонный аудит AIFaSecurity (100 критериев, $0)", "att_aifasec_btn": "Запустить 100 проверок сейчас", "att_aifasec_running": "Идёт проверка 100 критериев…"},
     "en": {"att_title": "Attack counter", "att_sub": "How many attempts PADAM's guard held, of which kind, from whom and when. Attack text is never shown.",
            "att_total": "Held, all time", "att_window": "Last 30 days", "att_pending": "Waiting for your decision", "att_secrets": "Keys and passwords masked",
            "att_by_kind": "By kind", "att_by_source": "By source", "att_by_day": "By day (30 days)", "att_secrets_kind": "Masked keys by kind", "att_recent": "Latest attempts", "att_none": "No attempts yet — the guard is in place.",
            "k_injection": "planted instruction", "k_protected_record": "identity / preference tampering", "k_external_held": "external text before review", "k_procedure": "procedure without approval", "k_review_all": "agent write under review", "k_other": "other",
-           "help_links": "Links", "att_aifasec_title": "AIFaSecurity Benchmark (100 criteria, $0)", "att_aifasec_btn": "Run 100 checks now", "att_aifasec_running": "Running 100 criteria…"},
+           "att_aifasec_failed": "The check did not run: {e}", "help_links": "Links", "att_aifasec_title": "AIFaSecurity Benchmark (100 criteria, $0)", "att_aifasec_btn": "Run 100 checks now", "att_aifasec_running": "Running 100 criteria…"},
     "es": {"att_title": "Contador de ataques", "att_sub": "Cuántos intentos retuvo la protección de PADAM, de qué tipo, de quién y cuándo. El texto de los ataques nunca se muestra.",
            "att_total": "Retenidos en total", "att_window": "Últimos 30 días", "att_pending": "Esperan su decisión", "att_secrets": "Claves y contraseñas ocultas",
            "att_by_kind": "Por tipo", "att_by_source": "Por origen", "att_by_day": "Por día (30 días)", "att_secrets_kind": "Claves ocultas por tipo", "att_recent": "Últimos intentos", "att_none": "Aún no hay intentos: la protección está activa.",
            "k_injection": "instrucción plantada", "k_protected_record": "alteración de identidad o preferencias", "k_external_held": "texto externo antes de revisión", "k_procedure": "procedimiento sin aprobación", "k_review_all": "escritura de agente en revisión", "k_other": "otro",
-           "help_links": "Enlaces", "att_aifasec_title": "Auditoría AIFaSecurity (100 criterios, $0)", "att_aifasec_btn": "Ejecutar 100 pruebas ahora", "att_aifasec_running": "Ejecutando 100 criterios…"},
+           "att_aifasec_failed": "La prueba no se ejecutó: {e}", "help_links": "Enlaces", "att_aifasec_title": "Auditoría AIFaSecurity (100 criterios, $0)", "att_aifasec_btn": "Ejecutar 100 pruebas ahora", "att_aifasec_running": "Ejecutando 100 criterios…"},
     "zh": {"att_title": "攻击计数器", "att_sub": "PADAM 防护拦截了多少次尝试、什么类型、来自谁、何时发生。从不显示攻击文本。",
            "att_total": "累计拦截", "att_window": "最近 30 天", "att_pending": "等待您的决定", "att_secrets": "已隐藏的密钥和密码",
            "att_by_kind": "按类型", "att_by_source": "按来源", "att_by_day": "按日期(30 天)", "att_secrets_kind": "按类型隐藏的密钥", "att_recent": "最近的尝试", "att_none": "暂无尝试——防护已就位。",
            "k_injection": "植入指令", "k_protected_record": "篡改身份或偏好", "k_external_held": "未经审核的外部文本", "k_procedure": "未经批准的流程", "k_review_all": "待审核的智能体写入", "k_other": "其他",
-           "help_links": "链接", "att_aifasec_title": "AIFaSecurity 基准测试（100 项，$0）", "att_aifasec_btn": "立即运行 100 项检测", "att_aifasec_running": "正在运行 100 项检测…"},
+           "att_aifasec_failed": "检测未能运行：{e}", "help_links": "链接", "att_aifasec_title": "AIFaSecurity 基准测试（100 项，$0）", "att_aifasec_btn": "立即运行 100 项检测", "att_aifasec_running": "正在运行 100 项检测…"},
 }
 for _lg, _extra in _STRINGS_ATTACKS.items():
     STRINGS[_lg].update(_extra)
@@ -4536,7 +4536,7 @@ _STRINGS_UX_2011: dict[str, dict[str, str]] = {
         "l3_checkpoint_btn": "Создать локальный чекпоинт L3 ($0)",
         "l3_no_anchors_friendly": "Сетевых якорей L3 пока нет — вы можете в один клик создать бесплатный локальный чекпоинт ($0) рядом и сразу его проверить.",
         "wal_title": "Кошельки владельца (Solana · Arweave · USDT TRC20)",
-        "wal_sub": "Единый реестр с проверкой контрольной суммы Base58/Base64URL и автозащитой от подмены получателя (Payee-Swap Guard).",
+        "wal_sub": "Единый реестр с проверкой контрольной суммы Base58/Base64URL и автозащитой от подмены получателя платежа.",
         "wal_addr_ph": "Адрес кошелька (Solana / TRON T... / Arweave 43 симв. или путь к JWK)…",
         "wal_lbl_ph": "Метка кошелька (например: Основной Bybit TRC20)…",
         "wal_add_btn": "Добавить и проверить",
@@ -4547,7 +4547,7 @@ _STRINGS_UX_2011: dict[str, dict[str, str]] = {
         "wal_empty": "Кошельки этой категории пока не добавлены.",
         "wal_explorer_btn": "Эксплорер",
         "wal_need_addr": "Введите адрес кошелька (или путь к публичному JWK).",
-        "star_prompt_msg": "Ваш периметр прошёл проверку Grade S (100/100) с нулевой облачной телеметрией ($0). Если PADAM экономит вам время — поддержите проект звездой на GitHub:",
+        "star_prompt_msg": "Ваш периметр прошёл проверку: оценка {g} ({p} %), без облачной телеметрии ($0). Если PADAM экономит вам время — поддержите проект звездой на GitHub:",
         "star_prompt_btn": "★ Поставить Star на GitHub",
         "star_prompt_hide": "Скрыть навсегда",
     },
@@ -4619,7 +4619,7 @@ _STRINGS_UX_2011: dict[str, dict[str, str]] = {
         "wal_empty": "No wallets added in this category yet.",
         "wal_explorer_btn": "Explorer",
         "wal_need_addr": "Enter a wallet address or JWK path.",
-        "star_prompt_msg": "Your perimeter passed Grade S (100/100) with zero cloud telemetry ($0). If PADAM saves you time, please support the open-source repo with a star:",
+        "star_prompt_msg": "Your perimeter passed the check: grade {g} ({p}%), zero cloud telemetry ($0). If PADAM saves you time, please support the open-source repo with a star:",
         "star_prompt_btn": "★ Star on GitHub",
         "star_prompt_hide": "Don't show again",
     },
@@ -4691,7 +4691,7 @@ _STRINGS_UX_2011: dict[str, dict[str, str]] = {
         "wal_empty": "Aún no hay carteras en esta categoría.",
         "wal_explorer_btn": "Explorador",
         "wal_need_addr": "Introduce una dirección o ruta JWK.",
-        "star_prompt_msg": "Tu perímetro alcanzó Grado S (100/100) con cero telemetría ($0). Si PADAM te resulta útil, apoya el proyecto con una estrella en GitHub:",
+        "star_prompt_msg": "Tu perímetro superó la prueba: grado {g} ({p} %), sin telemetría en la nube ($0). Si PADAM te resulta útil, apoya el proyecto con una estrella en GitHub:",
         "star_prompt_btn": "★ Dar Star en GitHub",
         "star_prompt_hide": "No volver a mostrar",
     },
@@ -4763,7 +4763,7 @@ _STRINGS_UX_2011: dict[str, dict[str, str]] = {
         "wal_empty": "该网络暂未添加钱包。",
         "wal_explorer_btn": "区块浏览器",
         "wal_need_addr": "请输入钱包地址或 JWK 路径。",
-        "star_prompt_msg": "您的本地防线已通过 S 级（100/100）零遥测评估（$0）。如果 PADAM 对您有帮助，欢迎在 GitHub 点亮 Star 支持开源项目：",
+        "star_prompt_msg": "您的本地防线已通过评估：等级 {g}（{p}%），零云端遥测（$0）。如果 PADAM 对您有帮助，欢迎在 GitHub 点亮 Star 支持开源项目：",
         "star_prompt_btn": "★ 前往 GitHub 点赞 Star",
         "star_prompt_hide": "不再提示",
     },
@@ -4790,6 +4790,13 @@ _CSS = """
 .cmp-table thead th{background:rgba(148,163,184,.12)}
 .cmp-table td.cmp-good{background:rgba(34,197,94,.14)}
 .cmp-table td.cmp-weak{background:rgba(234,179,8,.16)}
+/* 20.11.2026, отчёт Сестры по APK: на телефоне правые колонки уходили за край и выглядели обрезанными.
+   Таблица листается вбок внутри своей рамки, а колонка «Что сравниваем» остаётся на месте. */
+@media (max-width:700px){
+  .cmp-wrap{-webkit-overflow-scrolling:touch;border:1px solid var(--border,#334155);border-radius:8px}
+  .cmp-table{min-width:640px;font-size:12px}
+  .cmp-table th:first-child{position:sticky;left:0;z-index:1;background:var(--card,#131a2c);min-width:120px;max-width:140px}
+}
 .cmp-plan-title{margin:12px 0 4px;font-size:14px}
 
 #graph-canvas{width:100%;height:560px;display:block;border-radius:14px;cursor:grab}
@@ -7822,7 +7829,10 @@ async function renderAifaSec(fresh = false) {
   if (!sumEl || !domEl) return;
   if (fresh) sumEl.textContent = S.att_aifasec_running || 'Running...';
   let r = null;
-  try { r = await api(fresh ? '/api/v2/aifa-security/run' : '/api/v2/aifa-security', fresh ? {} : undefined); } catch (e) { return; }
+  // 20.11.2026: при отказе сервера здесь стоял молчаливый return — «Running…» висел вечно (APK 0.7.0 на эмуляторе).
+  try { r = await api(fresh ? '/api/v2/aifa-security/run' : '/api/v2/aifa-security', fresh ? {} : undefined); }
+  catch (e) { sumEl.textContent = (S.att_aifasec_failed || '{e}').replace('{e}', String((e && e.message) || e)); return; }
+  if (r && !(r.summary && r.summary.grade) && r.error) { sumEl.textContent = (S.att_aifasec_failed || '{e}').replace('{e}', String(r.error)); return; }
   const sm = (r && r.summary) || {};
   if (sm.grade) {
     sumEl.textContent = (S.bench_grade || '').replace('{g}', sm.grade).replace('{p}', sm.score_pct).replace('{n}', sm.passed).replace('{a}', sm.applicable).replace('{h}', String(sm.report_sha256 || '').slice(0, 16));
@@ -7841,7 +7851,7 @@ async function renderAifaSec(fresh = false) {
           hn.insertAdjacentElement('afterend', sp);
         }
         sp.textContent = '';
-        const msg = document.createElement('span'); msg.style.fontSize = '13px'; msg.textContent = S.star_prompt_msg || '';
+        const msg = document.createElement('span'); msg.style.fontSize = '13px'; msg.textContent = (S.star_prompt_msg || '').replace('{g}', sm.grade).replace('{p}', sm.score_pct);
         const btns = document.createElement('span'); btns.style.cssText = 'display:flex;gap:8px;align-items:center';
         const aStar = document.createElement('a'); aStar.className = 'btn btn-primary'; aStar.href = 'https://github.com/MaksimGalatin/padam-nocturne/stargazers'; aStar.target = '_blank'; aStar.rel = 'noopener'; aStar.textContent = S.star_prompt_btn || 'Star';
         aStar.onclick = () => { try { localStorage.setItem('padam_star_prompt_done', '1'); sp.hidden = true; } catch (e) {} };

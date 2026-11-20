@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .catalog import CriterionSpec
-from .targets import ExperimentResult, audit_http_url, probe_mcp_stdio, scan_directory_tree
+from .targets import padam_source, ExperimentResult, audit_http_url, probe_mcp_stdio, scan_directory_tree
 
 
 def _res(
@@ -73,6 +73,10 @@ def run_d6_to_d10(
 
     # ==================== D8: Статический аудит репозитория и URL (применимо ко всем целям!) ====================
     def _d8_repo_check(cid: str, check_fn: Callable[[dict[str, Any]], tuple[bool, str, str, str]]) -> None:
+        if repo_scan is not None and cid in ("AS-078", "AS-080") and repo_scan.get("no_dist_metadata"):
+            # Установка без метаданных дистрибутива (APK): README и манифест зависимостей не поставляются — N/A.
+            _run(cid, lambda: (None, "N/A", "requires README / package metadata", "Not shipped in this installation"))
+            return
         if repo_scan is None:
             _run(cid, lambda: (None, "N/A", "requires repo path or GitHub URL", f"No repository source in mode={mode}"))
         else:
@@ -87,11 +91,11 @@ def run_d6_to_d10(
                 ok = len(repo_scan["cors_wildcards"]) == 0
                 _run(cid, lambda: (ok, f"cors_wildcards={len(repo_scan['cors_wildcards'])}", "0", "Checked local codebase CORS headers"))
             elif cid == "AS-076":
-                api_txt = (Path(__file__).resolve().parents[2] / "padam" / "api.py").read_text(encoding="utf-8", errors="replace")
+                api_txt = padam_source("api.py")
                 ok = "X-Content-Type-Options" in api_txt or "Content-Security-Policy" in api_txt or "X-Frame-Options" in api_txt
                 _run(cid, lambda: (ok, f"local_sec_headers={ok}", "True", "Checked security headers in padam/api.py"))
             elif cid == "AS-077":
-                api_txt = (Path(__file__).resolve().parents[2] / "padam" / "api.py").read_text(encoding="utf-8", errors="replace")
+                api_txt = padam_source("api.py")
                 ok = "traceback.format_exc" not in api_txt
                 _run(cid, lambda: (ok, f"no_trace_leak={ok}", "True", "API handlers return structured JSON errors"))
             else:
@@ -196,7 +200,7 @@ def run_d6_to_d10(
         return ratio <= 30.0, f"ratio={ratio:.2f}x", "<=30.0x", "Linear O(n) scaling ratio on 10x adversarial input (no ReDoS)"
 
     def as056():
-        src = (Path(__file__).resolve().parents[2] / "padam" / "api.py").read_text(encoding="utf-8", errors="replace")
+        src = padam_source("api.py")
         ok = "OWNER_POST" in src and "Bearer" in src
         return ok, f"bearer_auth_in_api={ok}", "True", "Bearer token authentication required on owner endpoints"
 
@@ -211,7 +215,7 @@ def run_d6_to_d10(
         return refused, f"non_loopback_refused={refused}", "True", "make_studio_server refuses non-loopback host"
 
     def as058():
-        src = (Path(__file__).resolve().parents[2] / "padam" / "mcp_server.py").read_text(encoding="utf-8", errors="replace")
+        src = padam_source("mcp_server.py")
         ok = "rate_limit" in src
         return ok, f"rate_limiter_present={ok}", "True", "Rate limit option integrated in MCP HTTP server"
 
@@ -495,7 +499,7 @@ def run_d6_to_d10(
             m.close()
 
     def as095():
-        src = (Path(__file__).resolve().parents[2] / "padam" / "cli.py").read_text(encoding="utf-8", errors="replace")
+        src = padam_source("cli.py")
         ok = "--confirm" in src and "panic" in src
         return ok, f"confirm_guard={ok}", "True", "Destructive panic requires explicit confirmation"
 
@@ -510,6 +514,9 @@ def run_d6_to_d10(
         code = ("import json; from padam import config as c; print(json.dumps({'keep': c.KEEP_SECRETS, "
                 "'trust': c.MCP_TRUST_WRITES, 'hold': c.HOLD_EXTERNAL, 'ignored': c.strict_ignored()}))")
         root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+        if not _sys.executable or not _os.path.exists(_sys.executable) or hasattr(_sys, "getandroidapilevel"):
+            # Android (Chaquopy): отдельного интерпретатора для дочернего процесса нет — проверить нечем, честно N/A.
+            return None, "N/A", "requires a separate Python process", "No standalone Python interpreter on this platform"
         out = _sp.run([_sys.executable, "-c", code], env=env, cwd=root, capture_output=True, text=True, timeout=60)
         try:
             r = _json.loads(out.stdout.strip().splitlines()[-1])

@@ -283,16 +283,19 @@ def test_api_new_endpoints_roles_wallets_media(tmp_path):
         chk = req_json("/l3-local-checkpoint", {"limit": 50})
         assert chk["ok"] and chk["leaf_count"] >= 1
 
-        # Проверка генерации картинки $0 без указания output_dir + выдача PNG по /api/v2/media/file
-        mg = req_json("/api/v2/media/generate", {"mode": "image", "prompt": "Digital Phoenix Cyber Shield", "width": 512, "height": 512})
-        assert mg["ok"] and mg.get("file_name")
-        f_req = urllib.request.Request(
-            f"http://127.0.0.1:{port}/api/v2/media/file?name={mg['file_name']}",
-            headers={"Authorization": "Bearer tok-ux"},
-        )
-        with urllib.request.urlopen(f_req, timeout=15) as fr:
-            png_bytes = fr.read()
-            assert png_bytes[:4] == b"\x89PNG"
+        # Медиа требует playwright (необязательная зависимость) — без него эту часть пропускаем.
+        from padam import media_gen as _mg
+        if _mg.detect_available_engines()["slides_chromium"]:
+            # Проверка генерации картинки $0 без указания output_dir + выдача PNG по /api/v2/media/file
+            mg = req_json("/api/v2/media/generate", {"mode": "image", "prompt": "Digital Phoenix Cyber Shield", "width": 512, "height": 512})
+            assert mg["ok"] and mg.get("file_name")
+            f_req = urllib.request.Request(
+                f"http://127.0.0.1:{port}/api/v2/media/file?name={mg['file_name']}",
+                headers={"Authorization": "Bearer tok-ux"},
+            )
+            with urllib.request.urlopen(f_req, timeout=15) as fr:
+                png_bytes = fr.read()
+                assert png_bytes[:4] == b"\x89PNG"
     finally:
         srv.shutdown()
         srv.server_close()
@@ -340,5 +343,33 @@ def test_siem_webhook_no_executescript_and_ssrf_dns_pinning(tmp_path, monkeypatc
         clean, ips = siem_webhook._resolve_pinned_ips("https://hooks.example.org/alerts", allow_localhost=False)
         assert clean == "https://hooks.example.org/alerts"
         assert ips == ["93.184.216.34"]
+    finally:
+        m.close()
+
+
+def test_kill_switch_unlock_restores_process_flags(tmp_path, monkeypatch):
+    """Снятие Kill Switch владельцем возвращает флаги процесса, какими они были до тревоги.
+
+    20.11.2026 бенчмарк качества нашёл: после разблокировки процесс оставался строгим
+    (MCP_REVIEW_ALL=True), и каждая запись агента уходила в карантин до перезапуска.
+    """
+    from padam import agentic_shield, config
+
+    names = ("STRICT", "MCP_REVIEW_ALL", "HOLD_EXTERNAL", "KEEP_SECRETS", "MCP_TRUST_WRITES")
+    for n in names:
+        monkeypatch.setattr(config, n, getattr(config, n))
+    config.STRICT, config.MCP_REVIEW_ALL, config.HOLD_EXTERNAL = False, False, False
+    config.KEEP_SECRETS, config.MCP_TRUST_WRITES = True, True
+    before = {n: getattr(config, n) for n in names}
+
+    m = Memory(user_id="ks_flags", store=Store(tmp_path / "ks.db"))
+    try:
+        # Вне pytest Kill Switch переключает флаги процесса — воспроизводим это условие.
+        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+        agentic_shield.trip_kill_switch(m, reason="test_trip", agent_id="agent-x")
+        assert config.STRICT is True and config.MCP_REVIEW_ALL is True
+        agentic_shield.unlock_kill_switch(m)  # без actor — владелец локальной базы
+        assert {n: getattr(config, n) for n in names} == before
+        assert not agentic_shield.is_lockdown_active(m)
     finally:
         m.close()

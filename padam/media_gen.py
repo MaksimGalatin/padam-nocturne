@@ -469,8 +469,15 @@ def detect_available_engines() -> dict[str, Any]:
     sd_bin = (os.environ.get("PADAM_SD_CPP_BIN") or "").strip() or shutil.which("sd") or shutil.which("sd-cli")
     sd_model = (os.environ.get("PADAM_SD_MODEL") or "").strip()
     cf_ok = bool((os.environ.get("CLOUDFLARE_ACCOUNT_ID") or "").strip() and (os.environ.get("CLOUDFLARE_API_TOKEN") or "").strip())
+    # Слайды и PNG рисует Chromium через playwright — это необязательная зависимость.
+    # Без неё честный ответ — «недоступно», а не True (до 20.11.2026 здесь стояло True всегда).
+    try:
+        import importlib.util as _ilu
+        chromium_ok = _ilu.find_spec("playwright") is not None
+    except Exception:
+        chromium_ok = False
     return {
-        "slides_chromium": True,
+        "slides_chromium": chromium_ok,
         "procedural_svg_canvas": True,
         "cloudflare_flux_free_tier": cf_ok,
         "local_sd_cpp": bool(sd_bin and sd_model and Path(sd_model).exists()),

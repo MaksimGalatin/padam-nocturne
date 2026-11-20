@@ -17,6 +17,12 @@ val syncPadamPackage = tasks.register<Sync>("syncPadamPackage") {
     from(rootProject.file("../padam")) {
         exclude("**/__pycache__/**", "**/*.pyc", "**/*.pyo")
     }
+    // Бенчмарк AIFaSecurity-100 кладётся внутрь пакета, как в колесе PyPI (padam/aifa_security).
+    // Без него кнопка «Запустить 100 проверок» в APK 0.7.0 отвечала «package not found» (отчёт Сестры 20.11.2026).
+    from(rootProject.file("../benchmarks/aifa_security")) {
+        include("*.py")
+        into("aifa_security")
+    }
     into(generatedPadamPy.map { it.dir("padam") })
 }
 

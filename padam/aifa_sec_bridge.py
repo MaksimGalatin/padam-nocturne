@@ -15,6 +15,27 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
+def aifa_sec_module(name: str):
+    """Модуль бенчмарка AIFaSecurity: из установленного пакета (padam.aifa_security — колесо PyPI, APK)
+    или из репозитория (benchmarks.aifa_security). ImportError — бенчмарка нет ни там, ни там."""
+    import importlib
+    root = str(_repo_root())
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    last: Exception | None = None
+    for base in ("padam.aifa_security", "benchmarks.aifa_security"):
+        try:
+            return importlib.import_module(f"{base}.{name}")
+        except ModuleNotFoundError as e:
+            last = e
+    raise ImportError(str(last))
+
+
+def _aifa_sec_package() -> str:
+    """Имя пакета для запуска `python -m <пакет>.run_aifa_sec` в отдельном процессе."""
+    return aifa_sec_module("run_aifa_sec").__name__.rsplit(".", 1)[0]
+
+
 HONEST_NOTE = ("All 100 criteria are deterministic checks without an LLM judge; 100% on PADAM's own code is expected "
                "by design — compare products with --target / --target-path.")
 
@@ -39,7 +60,7 @@ def _run_in_subprocess(root) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="padam_bench_") as td:
         out = os.path.join(td, "r.json")
         env = dict(os.environ, PYTHONPATH=str(root) + os.pathsep + os.environ.get("PYTHONPATH", ""), PYTHONIOENCODING="utf-8")
-        cmd = [sys.executable, "-X", "utf8", "-m", "benchmarks.aifa_security.run_aifa_sec", "--out-json", out,
+        cmd = [sys.executable, "-X", "utf8", "-m", _aifa_sec_package() + ".run_aifa_sec", "--out-json", out,
                "--out-html", os.path.join(td, "r.html"), "--out-svg", os.path.join(td, "r.svg")]
         kw = {"creationflags": 0x08000000} if os.name == "nt" else {}   # без окна консоли в приложении
         r = subprocess.run(cmd, cwd=str(root), env=env, capture_output=True, timeout=300, **kw)
@@ -61,10 +82,8 @@ def get_aifa_security_report(*, run_fresh: bool = False, target: str = "padam", 
         except Exception:
             pass
 
-    if str(root) not in sys.path:
-        sys.path.insert(0, str(root))
     try:
-        from benchmarks.aifa_security import run_aifa_sec
+        run_aifa_sec = aifa_sec_module("run_aifa_sec")
     except ImportError:
         return {
             "benchmark": "AIFaSecurity/1.0",

@@ -79,6 +79,44 @@ _INSECURE_NET_RE = re.compile(r"verify\s*=\s*False|0\.0\.0\.0")
 _CORS_WILD_RE = re.compile(r"Access-Control-Allow-Origin\s*[:=]\s*['\"]\*['\"]", re.IGNORECASE)
 
 
+_OWN_BENCH_DIR = Path(__file__).resolve().parent
+
+
+def padam_source(module_file: str) -> str:
+    """Исходный текст модуля padam (например «api.py») для статических проверок.
+
+    С диска — как раньше; если файла нет (APK: Chaquopy держит код внутри архива приложения,
+    20.11.2026 бенчмарк падал на Android с «No such file or directory: …/padam/api.py»),
+    текст берётся у загрузчика модуля, который читает и из архива.
+    """
+    import importlib.util as _ilu
+    name = "padam." + module_file[:-3] if module_file.endswith(".py") else "padam." + module_file
+    spec = _ilu.find_spec(name)
+    if spec is not None and spec.origin:
+        try:
+            return Path(spec.origin).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            pass
+    if spec is not None and spec.loader is not None:
+        get_source = getattr(spec.loader, "get_source", None)
+        if get_source is not None:
+            src = get_source(name)
+            if src:
+                return src
+        get_data = getattr(spec.loader, "get_data", None)
+        if get_data is not None and spec.origin:
+            return get_data(spec.origin).decode("utf-8", errors="replace")
+    raise FileNotFoundError(f"source of {name} not available")
+
+
+def _is_own_bench_file(p: Path) -> bool:
+    try:
+        p.resolve().relative_to(_OWN_BENCH_DIR)
+        return True
+    except ValueError:
+        return False
+
+
 def scan_directory_tree(root: Path, *, max_files: int = 1200) -> dict[str, Any]:
     """Статический аудит локального репозитория/папки (без запуска кода)."""
     files_scanned = 0
@@ -115,7 +153,9 @@ def scan_directory_tree(root: Path, *, max_files: int = 1200) -> dict[str, Any]:
             readme_claims.append(rel)
 
         # Исключаем тестовые наборы и сам бенчмарк из сканера утечек/уязвимых паттернов
-        is_test_or_bench = rel.startswith(("tests/", "redteam/", "benchmarks/"))
+        # и папку самого бенчмарка, где бы она ни лежала: в колесе PyPI и в APK это padam/aifa_security,
+        # а её образцы атак — не утечки (до 20.11.2026 в установке они давали 4 ложных провала из 100)
+        is_test_or_bench = rel.startswith(("tests/", "redteam/", "benchmarks/")) or _is_own_bench_file(p)
         if p.suffix.lower() in {".py", ".ts", ".js"} and not is_test_or_bench:
             if _SECRET_LEAK_RE.search(txt):
                 secret_hits.append(rel)

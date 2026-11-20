@@ -24,14 +24,29 @@ from typing import Any
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
-ROOT = Path(__file__).resolve().parents[2]
+_HERE = Path(__file__).resolve().parent
+ROOT = _HERE.parents[1]
+# 20.11.2026: в колесе PyPI и в APK бенчмарк лежит внутри пакета — padam/aifa_security (в репозитории —
+# benchmarks/aifa_security). До 0.7.0 его в колесо не клали вовсе, и у человека после `pip install`
+# Студия и `padam aifa-sec` отвечали «package not found». INSTALLED — бенчмарк запущен из установленного пакета:
+# своя память проверяется по установленному коду padam, а не по всей папке site-packages.
+INSTALLED = _HERE.parent.name == "padam"
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from benchmarks.aifa_security.catalog import CATALOG, DOMAINS  # noqa: E402
-from benchmarks.aifa_security.experiments_d1_d5 import run_d1_to_d5  # noqa: E402
-from benchmarks.aifa_security.experiments_d6_d10 import run_d6_to_d10  # noqa: E402
-from benchmarks.aifa_security.render import render_html_dashboard, render_markdown, render_sarif, render_svg_badge  # noqa: E402
+if INSTALLED:
+    from padam.aifa_security.catalog import CATALOG, DOMAINS  # noqa: E402
+    from padam.aifa_security.experiments_d1_d5 import run_d1_to_d5  # noqa: E402
+    from padam.aifa_security.experiments_d6_d10 import run_d6_to_d10  # noqa: E402
+    from padam.aifa_security.render import render_html_dashboard, render_markdown, render_sarif, render_svg_badge  # noqa: E402
+else:
+    from benchmarks.aifa_security.catalog import CATALOG, DOMAINS  # noqa: E402
+    from benchmarks.aifa_security.experiments_d1_d5 import run_d1_to_d5  # noqa: E402
+    from benchmarks.aifa_security.experiments_d6_d10 import run_d6_to_d10  # noqa: E402
+    from benchmarks.aifa_security.render import render_html_dashboard, render_markdown, render_sarif, render_svg_badge  # noqa: E402
+
+# Куда по умолчанию пишутся отчёты: в репозитории — рядом с бенчмарком, в установке — в ~/.padam/aifa_security
+OUT_DIR = (Path.home() / ".padam" / "aifa_security") if INSTALLED else (ROOT / "benchmarks" / "aifa_security")
 
 
 DOMAIN_STANDARDS: dict[str, dict[str, list[str]]] = {
@@ -46,13 +61,51 @@ DOMAIN_STANDARDS: dict[str, dict[str, list[str]]] = {
     "D9": {"owasp_llm": ["LLM02", "LLM03"], "owasp_agentic": ["ASI07"], "mitre_atlas": ["AML.T0044"], "nist_ai_rmf": ["MAP-1.5"]},
     "D10": {"owasp_llm": ["LLM03", "LLM04"], "owasp_agentic": ["ASI01"], "mitre_atlas": ["AML.T0051"], "nist_ai_rmf": ["MEASURE-1.1"]},
 }
-from benchmarks.aifa_security.targets import (  # noqa: E402
-    audit_http_url,
-    canonical_report_sha256,
-    fetch_github_repo_to_temp,
-    probe_mcp_stdio,
-    scan_directory_tree,
-)
+if INSTALLED:
+    from padam.aifa_security.targets import (  # noqa: E402
+        audit_http_url,
+        canonical_report_sha256,
+        fetch_github_repo_to_temp,
+        probe_mcp_stdio,
+        scan_directory_tree,
+    )
+else:
+    from benchmarks.aifa_security.targets import (  # noqa: E402
+        audit_http_url,
+        canonical_report_sha256,
+        fetch_github_repo_to_temp,
+        probe_mcp_stdio,
+        scan_directory_tree,
+    )
+
+
+def _scan_padam_from_loader() -> dict[str, Any]:
+    """Статический скан установленного padam, когда его файлов нет на диске (исходники — от загрузчика)."""
+    import importlib.util as _ilu
+    import pkgutil
+    import padam as _padam
+    with tempfile.TemporaryDirectory(prefix="padam_src_") as td:
+        base = Path(td) / "padam"
+        base.mkdir()
+        names = ["padam"] + [m.name for m in pkgutil.walk_packages(_padam.__path__, "padam.")]
+        for name in names:
+            if name.startswith("padam.aifa_security"):
+                continue   # сам бенчмарк с образцами атак не сканируется (как benchmarks/ в репозитории)
+            spec = _ilu.find_spec(name)
+            if spec is None or spec.loader is None or not hasattr(spec.loader, "get_source"):
+                continue
+            try:
+                src = spec.loader.get_source(name)
+            except Exception:
+                src = None
+            if not src:
+                continue
+            rel = name.split(".")[1:]
+            is_pkg = bool(spec.submodule_search_locations)
+            target = base.joinpath(*rel, "__init__.py") if is_pkg else base.joinpath(*rel[:-1], rel[-1] + ".py")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(src, encoding="utf-8")
+        return scan_directory_tree(base)
 
 
 def _grade(pct: float) -> str:
@@ -110,8 +163,28 @@ def run_aifa_security(
     label = "padam-nocturne"
 
     if mode == "padam":
-        repo_dir = Path(target_path) if target_path else ROOT
-        ctx["repo_scan"] = scan_directory_tree(repo_dir)
+        repo_dir = Path(target_path) if target_path else (ROOT / "padam" if INSTALLED else ROOT)
+        if INSTALLED and not target_path and not any(repo_dir.glob("*.py")):
+            # Код padam не лежит на диске (APK: Chaquopy держит его в архиве приложения) — раскладываем исходники,
+            # полученные у загрузчика модулей, во временную папку и сканируем её тем же сканером.
+            ctx["repo_scan"] = _scan_padam_from_loader()
+        else:
+            ctx["repo_scan"] = scan_directory_tree(repo_dir)
+        if INSTALLED and not target_path:
+            # У установленного пакета нет README и pyproject.toml рядом с кодом: их содержимое лежит в метаданных
+            # дистрибутива (METADATA = описание из README + Requires-Dist с версиями). Проверяем их, а не пустоту.
+            try:
+                from importlib import metadata as _md
+                _meta = _md.metadata("padam-nocturne")
+                _desc = (_meta.get_payload() or "") if hasattr(_meta, "get_payload") else ""
+                _desc = _desc or str(_meta.get("Description") or "")
+                if any(w in _desc.lower() for w in ("redact", "injection", "mask")):
+                    ctx["repo_scan"]["readme_claims"].append("padam_nocturne.dist-info/METADATA")
+                _reqs = _md.requires("padam-nocturne") or []
+                if _reqs and all(any(op in r for op in (">=", "==", "~=", "<")) for r in _reqs if "extra ==" not in r):
+                    ctx["repo_scan"]["has_lock_or_pin"] = True
+            except Exception:
+                ctx["repo_scan"]["no_dist_metadata"] = True
         # 18.11.2026: имя проекта — из pyproject.toml, а не из имени папки клона (у клона в «_wt_…» эталон
         # подписывался чужим именем). Нет pyproject — имя папки, как раньше.
         label = repo_dir.name
@@ -122,6 +195,8 @@ def run_aifa_security(
                 label = _m.group(1)
         except OSError:
             pass
+        if INSTALLED and not target_path:
+            label = "padam-nocturne"   # у установленного пакета нет pyproject.toml, папка зовётся просто «padam»
     elif mode == "repo":
         if not target_path:
             raise ValueError("--path is required for --target repo")
@@ -343,9 +418,9 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="AIFaSecurity: 100-criteria autonomous AI agent memory security benchmark ($0, no LLM)")
     ap.add_argument("--target", default="padam", choices=("padam", "repo", "url", "mcp-cmd"))
     ap.add_argument("--path", default=None, help="Path, GitHub repo URL, HTTP URL, or MCP stdio command")
-    ap.add_argument("--out-json", default=str(ROOT / "benchmarks" / "aifa_security" / "results_aifa_security.json"))
-    ap.add_argument("--out-html", default=str(ROOT / "benchmarks" / "aifa_security" / "aifa_security_report.html"))
-    ap.add_argument("--out-svg", default=str(ROOT / "benchmarks" / "aifa_security" / "aifa_security_badge.svg"))
+    ap.add_argument("--out-json", default=str(OUT_DIR / "results_aifa_security.json"))
+    ap.add_argument("--out-html", default=str(OUT_DIR / "aifa_security_report.html"))
+    ap.add_argument("--out-svg", default=str(OUT_DIR / "aifa_security_badge.svg"))
     ap.add_argument("--out-md", default=None)
     ap.add_argument("--out-sarif", default=None)
     ap.add_argument("--domain", default=None, help="Comma-separated domain filter, e.g. D1,D3")
@@ -358,6 +433,8 @@ def main(argv: list[str] | None = None) -> int:
     base_data = json.loads(Path(args.baseline).read_text(encoding="utf-8")) if args.baseline else None
     rep = run_aifa_security(target=args.target, target_path=args.path, domains_filter=dom_filter, baseline=base_data)
     if not args.no_write:
+        for _p in (args.out_json, args.out_html, args.out_svg):
+            Path(_p).parent.mkdir(parents=True, exist_ok=True)
         Path(args.out_json).write_text(json.dumps(rep, ensure_ascii=False, indent=2), encoding="utf-8")
         Path(args.out_html).write_text(render_html_dashboard(rep), encoding="utf-8")
         Path(args.out_svg).write_text(render_svg_badge(rep["summary"]), encoding="utf-8")

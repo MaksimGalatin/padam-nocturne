@@ -46,7 +46,32 @@
 - Browser extensions and the VS Code extension rebuilt for this version; `web-ext lint` passes for Firefox.
 - Android app version 0.7.0.
 
-Verification: 1,664 tests passed (11 skipped), CI on Linux, macOS and Windows.
+### Fixed during release checks
+
+- **Kill Switch unlock now restores the process flags.** Tripping the switch turns on strict mode for the running
+  process (`STRICT`, `MCP_REVIEW_ALL`, `HOLD_EXTERNAL`, …); unlocking cleared the database state but left the process
+  strict, so every agent write kept going to quarantine until restart. Found by the quality benchmark
+  (verified forgetting: 0 of 8 → 8 of 8); regression test added.
+- `detect_available_engines()` reported Chromium slides as available even without the optional `playwright`
+  package; it now checks for it. Media tests run only when it is installed.
+- Studio: the star prompt shows the real grade and score from the run (it said "Grade S (100/100)" from 95 %),
+  in 4 languages; the Russian wallet subtitle no longer mixes in an English term.
+- **AIFaSecurity-100 now ships in the PyPI wheel and the APK.** Up to 0.6.5 the wheel contained only `padam` and
+  `padam.connectors`, so after `pip install padam-nocturne` both `padam aifa-sec` and the Studio "Run" button answered
+  "benchmarks/aifa_security package not found" (measured in a clean virtualenv). The benchmark is now packaged as
+  `padam.aifa_security`; an installed copy audits the installed `padam` package and reads README claims and pinned
+  dependencies from the distribution metadata; reports go to `~/.padam/aifa_security/`. Clean install of the 0.7.0
+  wheel: Grade S, 100 of 100. The scanner skips the benchmark's own attack samples wherever the benchmark lives.
+- **Android:** the benchmark is bundled and runs in-process (no separate interpreter on Android); Studio no longer
+  slides under the status bar on Android 15 (window insets); the comparison table scrolls sideways inside its frame
+  with the first column pinned on narrow screens. All three were found by the emulator walkthrough of the 0.7.0 APK.
+  On Android the benchmark reads module sources through the import loader (the code lives inside the app archive)
+  and marks as N/A the checks it cannot run there (no separate Python process, no package metadata).
+  Emulator (Android 15): Grade S, 96 of 97 applicable. **Known limitation:** AS-064 fails on Android — Chaquopy ships
+  `cryptography` 42.0.8 without ML-KEM / ML-DSA, so post-quantum sync is not available in the Android app yet.
+- Studio: when the benchmark request fails, the card now shows the error instead of "Running…" forever (4 languages).
+
+Verification: 1,671 tests (11 skipped), CI on Linux, macOS and Windows; AIFaSecurity-100 from a clean wheel install: 100 of 100; Android 0.7.0 walked through on an Android 15 emulator.
 
 ## 0.6.5 — 20 November 2026
 

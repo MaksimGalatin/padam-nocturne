@@ -10,8 +10,11 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 
@@ -55,7 +58,17 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         webView = WebView(this)
-        setContentView(webView)
+        // WebView сам отступы содержимого не соблюдает — отступ даёт рамка вокруг него.
+        val root = FrameLayout(this).apply { setBackgroundColor(0xFF080B12.toInt()) }   // цвет фона Студии под шторкой
+        root.addView(webView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+        setContentView(root)
+        // Android 15 (targetSdk 35+) рисует окно от края до края: без отступов Студия заходила под системные
+        // часы и значки сети (отчёт Сестры по APK 0.7.0, 20.11.2026). Отступаем на высоту системных панелей и выреза.
+        ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            insets
+        }
 
         webView.settings.apply {
             javaScriptEnabled = true

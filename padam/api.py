@@ -431,7 +431,8 @@ class Handler(BaseHTTPRequestHandler):
             if путь.path == "/api/v2/aifa-security/sarif":
                 roles.require_owner(actor, "aifa_security")
                 from . import aifa_sec_bridge
-                from benchmarks.aifa_security.render import render_sarif
+                from .aifa_sec_bridge import aifa_sec_module as _asm
+                render_sarif = _asm("render").render_sarif
                 rep = aifa_sec_bridge.get_aifa_security_report(run_fresh=False)
                 raw_sarif = render_sarif(rep).encode("utf-8")
                 self.send_response(200)
@@ -444,7 +445,8 @@ class Handler(BaseHTTPRequestHandler):
             if путь.path == "/api/v2/aifa-security/html":
                 roles.require_owner(actor, "aifa_security")
                 from . import aifa_sec_bridge
-                from benchmarks.aifa_security.render import render_html_dashboard
+                from .aifa_sec_bridge import aifa_sec_module as _asm
+                render_html_dashboard = _asm("render").render_html_dashboard
                 rep = aifa_sec_bridge.get_aifa_security_report(run_fresh=False)
                 raw_html = render_html_dashboard(rep).encode("utf-8")
                 self.send_response(200)
@@ -456,7 +458,8 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if путь.path == "/api/v2/aifa-security/fuzz":
                 roles.require_owner(actor, "aifa_security")
-                from benchmarks.aifa_security.fuzzer import run_fuzz_suite
+                from .aifa_sec_bridge import aifa_sec_module as _asm
+                run_fuzz_suite = _asm("fuzzer").run_fuzz_suite
                 return self._send(200, run_fuzz_suite())
             if путь.path == "/api/v2/shield/status":
                 roles.require_owner(actor, "agentic_shield")
@@ -493,7 +496,8 @@ class Handler(BaseHTTPRequestHandler):
             if путь.path == "/api/v2/aifa-security/verify":
                 roles.require_owner(actor, "aifa_security")
                 from . import aifa_sec_bridge
-                from benchmarks.aifa_security.run_aifa_sec import verify_report_attestation
+                from .aifa_sec_bridge import aifa_sec_module as _asm
+                verify_report_attestation = _asm("run_aifa_sec").verify_report_attestation
                 rep = aifa_sec_bridge.get_aifa_security_report(run_fresh=False)
                 return self._send(200, verify_report_attestation(rep))
             if путь.path == "/v1/models":

@@ -370,6 +370,11 @@ def trip_kill_switch(
         )
         memory.store.conn.commit()
     if not os.environ.get("PYTEST_CURRENT_TEST"):
+        # Запоминаем, какими флаги были ДО тревоги, чтобы снятие Kill Switch вернуло их.
+        # Без этого после разблокировки владельцем процесс оставался строгим до перезапуска:
+        # каждая запись агента уходила в карантин (найдено бенчмарком качества 20.11.2026).
+        if not _STRICT_SAVED:
+            _STRICT_SAVED.update({name: getattr(config, name) for name in _STRICT_FLAGS})
         config.STRICT = True
         config.MCP_REVIEW_ALL = True
         config.HOLD_EXTERNAL = True
@@ -379,6 +384,11 @@ def trip_kill_switch(
     if not already:
         _dispatch_kill_alert(memory, updated, clean_reason, clean_agent)
     return get_shield_status(memory)
+
+
+# Флаги процесса, которые Kill Switch переводит в строгий режим, и их значения до тревоги.
+_STRICT_FLAGS = ("STRICT", "MCP_REVIEW_ALL", "HOLD_EXTERNAL", "KEEP_SECRETS", "MCP_TRUST_WRITES")
+_STRICT_SAVED: dict[str, Any] = {}
 
 
 def unlock_kill_switch(
@@ -402,6 +412,10 @@ def unlock_kill_switch(
             memory.store.conn.execute("DELETE FROM shield_events WHERE user_id = ?", (memory.user_id,))
         memory.store.conn.commit()
     # Сбрасываем скользящий счётчик burst-вызовов на объекте хранилища
+    if _STRICT_SAVED:
+        for name, value in _STRICT_SAVED.items():
+            setattr(config, name, value)
+        _STRICT_SAVED.clear()
     burst_map = memory.store.__dict__.get("_shield_burst")
     if isinstance(burst_map, dict):
         burst_map.clear()
