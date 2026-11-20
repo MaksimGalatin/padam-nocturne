@@ -7461,6 +7461,11 @@ if ('serviceWorker' in navigator) {
 async function loadFamilySetup() {
   const box = $('fam-setup');
   if (!box || !token) return;
+  // 20.11: после смены языка старый текст блока не висит, пока идут запросы (brain/status?probe=1 бывает медленным)
+  if (box.dataset.lang !== currentLang) {
+    box.textContent = '…'; box.dataset.lang = currentLang;
+    if ($('fam-memory')) $('fam-memory').textContent = '…';   // «Последнее в памяти» рисуется в конце этой же функции
+  }
   const get = (u) => api(u).catch(() => null);
   const [sib, br, cab, par, wiz, sto, stt, mem] = await Promise.all([
     get('/api/v2/ark/siblings'), get('/api/v2/brain/status?probe=1'), get('/api/v2/cabinet/status?lang=' + encodeURIComponent(currentLang)),
