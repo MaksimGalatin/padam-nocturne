@@ -2,7 +2,54 @@
 
 ## Unreleased
 
-## 0.6.5 — 18 November 2026
+## 0.6.5 — 20 November 2026
+
+### Security (18–19 November)
+
+- **Independent red-team audit by GLM, three rounds, all findings closed with tests.** Round 1: owner-only money
+  actions, guarded memory import, default-deny OAuth scopes, SSRF guard for every outgoing URL (`padam/net_guard.py`),
+  secrets redacted from URLs and logs, owner-only ACL on token files (Windows and POSIX), strict raw-body webhook
+  signatures, an agent can never approve money, autopilot or a sample for itself through MCP (AUT-04/09/10), memory
+  export through MCP only after a human "yes" (MCP-01), a Phoenix capsule can no longer replace the owner key (PHX-01).
+  Round 2: peer "forget" requests apply only to records shared with that peer (MESH-01), HMAC-signed LAN beacons
+  (MESH-02), pinned family keys instead of a shared seed (MESH-03), a signing key per sibling agent (MESH-04/10), replay
+  and freshness checks in council, handover and mesh deltas (MESH-05/07/09), signed and rollback-protected hardware
+  seal containers (HW-01/02/03), anchor and OpenTimestamps verification with a pinned key (ANCH-01, OTS-01), DNS pinned
+  at connect time (NETGUARD-01), hashed `requirements.lock` with `--require-hashes` in CI and Docker (CI-01), webhook
+  freshness windows, Payhip sales stay unconfirmed until the owner checks them (WH-01/02/03), Ark, info, audit and signature fixes (ARK-01/02/03,
+  INFO-01, AUD-01, SIG-01), connectors, Obsidian and browser extension consent (CONN-01..04). Round 3: 52 findings in
+  money, benchmark, MCP and mail.
+- **Tamper-evident audit log** (MEM-02): every `audit_log` row carries `prev_hash`/`entry_hash`, the chain head is
+  HMAC-anchored with the owner key, and `verify_audit_chain` reports a broken or rolled-back chain.
+- **Red-team suite v2** (`redteam/run_v2.py`) with DNS rebinding / SERVFAIL and webhook replay categories.
+
+### Studio and MCP
+
+- **Benchmark tab «AIFaSecurity-100»** in 4 languages: a fresh run in a separate process, an honest comparison with
+  Mem0 and Zep, SARIF download, and the Ed25519 signature of the report on its own line (`padam_benchmark` in MCP).
+- **Family first**: the Family tab is the default, a 7-button menu, «Set up in 2 minutes», parallel sessions of one
+  agent are visible with a live pulse, and the Family Council can send a record to the Isolator.
+- **Every Studio button has a visible description in 4 languages**; buttons that send email or spend money ask for
+  confirmation first; Studio and its wizards show no text in a foreign language.
+- **Studio ↔ MCP parity**: every Studio action is also an MCP action (checked by a parity test).
+- **Platforms, stage 3**: sign in or sign up with Google through a real browser session; autopilot is off by default
+  with a daily limit; a captcha or HTTP 429 stops the autopilot and creates a task for the owner.
+- **Outreach pipeline** (owner's own mailboxes, nothing is sent without the owner's switch): several mailboxes with
+  gradual warm-up, bulk mailbox import and check, «send one test email to myself», mail-domain DNS check, bounce
+  auto-pause, a 4-day follow-up, automatic replies to «send the report» and STOP, leads from the aifa.works research
+  map, attachments, a health bar and a monthly CSV archive for accounting.
+- **Local website scanner**: up to 25 pages with Playwright and axe-core, re-checks after 14 days.
+- **Quick start in 2 minutes**: universal lead import, language detected automatically.
+- **Update banner**: Studio tells you when a newer version was installed and the window needs a restart.
+
+### Reliability
+
+- The storage connection is shared under a lock (ADR-0004); call log with `trace_id` and p95 (`padam latency`);
+  monthly restore drills and failure drills in CI; Plugin SDK v1 — plugins load only after the owner approves them
+  (`padam plugin …`, ADR-0007); the docs reference (CLI commands and REST endpoints, 4 languages) is generated from
+  the code and a test fails when they drift apart; `ROADMAP.md`, ADR 0001–0007, a personal-data inventory.
+
+### Earlier in 0.6.5 (18 November)
 
 - **CODE fee: 15% when you press the button, 20% on autopilot** (`padam/freelance_autonomy.py`, Studio, MCP
   `work_mode`). The rate is stored in each order, so old orders keep the rate they were made with. The agent's
