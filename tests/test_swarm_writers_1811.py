@@ -13,5 +13,5 @@ def test_рой_12_процессов_без_потерь():
     r = subprocess.run([sys.executable, "-I", "-X", "utf8", str(ROOT / "benchmarks" / "scale" / "concurrent_writers.py"), "12", "25"],
                        capture_output=True, text=True, encoding="utf-8", timeout=600)
     итог = json.loads(r.stdout.strip().splitlines()[-1])
-    assert итог["errors"] == 0, итог
+    assert итог["errors"] == 0, ("виды ошибок: " + "; ".join(итог.get("error_kinds", [])))
     assert итог["rows_in_db"] == итог["writes_attempted"] == 300
