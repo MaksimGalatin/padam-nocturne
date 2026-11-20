@@ -333,6 +333,55 @@ CREATE TABLE IF NOT EXISTS dlp_vault (
 );
 CREATE INDEX IF NOT EXISTS dlp_vault_hash
     ON dlp_vault (user_id, secret_hash);
+
+-- Реестр подключённых агентов (19.11.2026: новый агент -> отдельный граф и живая статистика)
+CREATE TABLE IF NOT EXISTS agent_registry (
+    user_id       TEXT NOT NULL,
+    agent_id      TEXT NOT NULL,
+    display_name  TEXT DEFAULT '',
+    environment   TEXT DEFAULT '',
+    color_hex     TEXT DEFAULT '',
+    first_seen_at TEXT NOT NULL,
+    last_seen_at  TEXT NOT NULL,
+    last_action   TEXT DEFAULT '',
+    writes_count  INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, agent_id)
+);
+
+-- Хронологическая история чистых переписок с каждым агентом (без кода и дампа инструментов)
+CREATE TABLE IF NOT EXISTS chat_thread (
+    id              TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL,
+    agent_id        TEXT NOT NULL,
+    title           TEXT NOT NULL,
+    source_kind     TEXT NOT NULL DEFAULT 'manual',
+    source_ref      TEXT DEFAULT '',
+    started_at      TEXT NOT NULL,
+    last_message_at TEXT NOT NULL,
+    message_count   INTEGER NOT NULL DEFAULT 0,
+    is_worker       INTEGER NOT NULL DEFAULT 0,
+    summary         TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS chat_thread_user_agent
+    ON chat_thread (user_id, agent_id, last_message_at DESC);
+
+CREATE TABLE IF NOT EXISTS chat_message (
+    id           TEXT PRIMARY KEY,
+    thread_id    TEXT NOT NULL,
+    user_id      TEXT NOT NULL,
+    agent_id     TEXT NOT NULL,
+    seq          INTEGER NOT NULL DEFAULT 0,
+    role         TEXT NOT NULL,
+    author_label TEXT DEFAULT '',
+    content      TEXT NOT NULL,
+    created_at   TEXT NOT NULL,
+    content_hash TEXT NOT NULL,
+    FOREIGN KEY(thread_id) REFERENCES chat_thread(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS chat_message_thread
+    ON chat_message (thread_id, seq);
+CREATE INDEX IF NOT EXISTS chat_message_hash
+    ON chat_message (user_id, content_hash);
 """
 
 

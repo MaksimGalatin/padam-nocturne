@@ -22,12 +22,13 @@ def test_top10v4_1_setup_clients_and_catalog_manifests(tmp_path):
     (home / ".codex").mkdir(parents=True)
 
     res = setup_clients.setup_clients(
-        clients=["claude_code", "cursor", "vscode", "codex", "cline", "jetbrains"],
+        clients=["claude_code", "antigravity", "cursor", "vscode", "codex", "cline", "jetbrains"],
         home=home,
         project_dir=proj,
         verify=True,
     )
-    assert res["installed_count"] == 6
+    assert res["installed_count"] == 7
+    assert (home / ".gemini" / "antigravity" / "mcp_config.json").exists()
     assert res["verified"]["ok"] is True
     assert res["verified"]["tools_count"] == 9
     assert res["deeplinks"]["cursor"].startswith("cursor://")

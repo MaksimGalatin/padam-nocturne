@@ -1,12 +1,20 @@
+<p align="center">
+  <img src="./docs/assets/banner.svg" alt="PADAM · NOCTURNE &amp; Agentic Shield" width="100%" />
+</p>
+
 # PADAM · NOCTURNE
 
 <!-- mcp-name: io.github.MaksimGalatin/padam-nocturne -->
 
 ### Memory for AI agents that sleeps, forgets honestly, and can be verified forever
 
-[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%209%20tools-8A2BE2) [![PyPI](https://img.shields.io/pypi/v/padam-nocturne)](https://pypi.org/project/padam-nocturne/)
+[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/core-AGPL--3.0--only-blue) ![action](https://img.shields.io/badge/CI%20Action-Apache--2.0-14B8A6) ![AIFaSecurity](https://img.shields.io/badge/AIFaSecurity--100-Grade%20S%20(100%25)-00C853) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%209%20tools-8A2BE2) [![PyPI](https://img.shields.io/pypi/v/padam-nocturne)](https://pypi.org/project/padam-nocturne/) [![Org](https://img.shields.io/badge/org-CodeOfDigitalEternity-1E293B)](https://github.com/CodeOfDigitalEternity)
 
-**One-click install:** [Install in Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=padam&config=eyJjb21tYW5kIjoicGFkYW0tbWNwIiwiYXJncyI6W119) · [Install in VS Code](vscode:mcp/install?%7B%22name%22%3A%22padam%22%2C%22command%22%3A%22padam-mcp%22%2C%22args%22%3A%5B%5D%7D) · CLI: `padam setup --all`
+**One-click install:** [Install in Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=padam&config=eyJjb21tYW5kIjoicGFkYW0tbWNwIiwiYXJncyI6W119) · [Install in VS Code](vscode:mcp/install?%7B%22name%22%3A%22padam%22%2C%22command%22%3A%22padam-mcp%22%2C%22args%22%3A%5B%5D%7D) · CLI (`13` clients incl. Claude Code & Antigravity): `padam setup --all` · Zero-install run: `uvx padam-nocturne` · [★ Star on GitHub](https://github.com/MaksimGalatin/padam-nocturne/stargazers)
+
+<p align="center">
+  <img src="./docs/assets/demo-quarantine.svg" alt="PADAM Agentic Shield 4-Ring Defense Demo" width="100%" />
+</p>
 
 **Your agent reads a web page today and treats it as memory tomorrow.** PADAM keeps that memory in one local SQLite file and makes it safe to read back:
 
@@ -42,6 +50,7 @@ Part of [CODE Eternal](https://aifa.works) · Project page: [aifa.works/nocturne
 - [The NOCTURNE cycle](#the-nocturne-cycle)
 - [L3 — the eternal, verifiable layer](#l3--the-eternal-verifiable-layer-arweave--solana)
 - [Security model](#security-model)
+- [PADAM Agentic Shield v2, PA1H Archive & $0 Media](#padam-agentic-shield-v2-pa1h-archive--0-media)
 - [Configuration](#configuration)
 - [Tests](#tests)
 - [LongMemEval — measured on a public benchmark](#longmemeval--measured-on-a-public-benchmark)
@@ -411,6 +420,21 @@ Found a weakness in the encryption or the forgetting? Please report it privately
 
 ---
 
+## PADAM Agentic Shield v2, PA1H Archive & $0 Media
+
+PADAM extends local-first memory with four runtime and supply-chain defense rings plus zero-cost creator tooling:
+
+- **Four Agentic Shield Rings & Solana Crypto Shield v2** (`padam/agentic_shield.py`, `padam/solana_crypto_shield.py`):
+  - **Ring 1 — Memory, Unicode & MCP Guard:** 128-bit CSPRNG data fence, multi-layer payload decoder (Unicode Tags `U+E00xx`, Bidi Trojan Source, Base64/Hex/URL/NFKC via `deobfuscate_layers`), SHA-256 MCP tool description rug-pull pinning, and **Canary Honeypot Tokens** that trigger the kill switch on exfiltration.
+  - **Ring 2 — Machine-Speed Kill Switch & Ed25519 Capability Leases:** rolling anomaly rate-limiter plus single-use signed Ed25519 capability leases (`solders`) scoping allowed agent actions, targets, and TTLs, plus signed E2E X25519 + ChaCha20-Poly1305 inter-agent envelopes.
+  - **Ring 3 — Outbound Action & Payee-Swap Gate:** inspects outbound crypto addresses (EVM/BTC/TRON/Solana), IBAN mod-97, Luhn cards, high-entropy secrets, and Levenshtein `<= 2` lookalike domains.
+  - **Ring 4 — Web Supply-Chain, CI/CD & Proof Pack:** audits `<script>` SRI `sha384`, CSP headers, header/hash drift (PCI DSS v4.0.1 Req `6.4.3` & `11.6.1`), routes signed alerts to Slack/Teams/SIEM (`padam/siem_webhook.py`), ships an **Apache-2.0 GitHub Action** (`.github/actions/padam-agentic-shield/`) emitting **SARIF 2.1.0**, and exports a Selective-Disclosure Merkle Proof Pack attested for Solana Memo (`POST /api/v2/shield/lease`, `/api/v2/shield/canary`).
+- **PA1H Compact Hourly Blockchain Chat Archive** (`padam/chain_compact.py`): packs per-hour conversation deltas (`agent_id` dictionary table, relative seconds, automatic `brotli`/`lzma`/`zlib` compression + binary 12-byte header AES-256-GCM without Base64 expansion) and exposes day/hour filtering in Studio & REST (`/api/v2/chats/hour`, `/api/v2/chats/compact-hour`).
+- **$0 Local Media & Slides Generator** (`padam/media_gen.py`): generates 1920x1080/4K slide decks (PNG + PDF + HTML via local Chromium/Playwright) and 1024x1024 offline procedural visuals at `$0`, with automatic cascade support for local `stable-diffusion.cpp` and Cloudflare Workers AI free daily tier (`/api/v2/media/engines`, `/api/v2/media/generate`).
+- **Strict Multi-Agent Isolation:** canonicalizes `agent_id` across `aifa_claude`, `aifa_antigravity`, worker contours (`aifa_claude_worker`, `aifa_antigravity_worker`), and external clients via MCP headers/contextvars (`padam/mcp_server.py`, `padam/chats.py`), separating human conversations from scheduled tasks.
+
+---
+
 ## Configuration
 
 | Variable | Default | Meaning |
@@ -557,7 +581,11 @@ PADAM is the open, local-first memory of CODE Eternal — the project behind AIf
 
 ## License
 
-**AGPL-3.0** ([LICENSE](https://github.com/MaksimGalatin/padam-nocturne/blob/main/LICENSE)). You may use, modify and run it; if you offer it as a network service, you must publish your changes.
-**Commercial license** (closed-source use, SaaS without publishing changes, support): contact@codeofdigitaleternity.com · [aifa.works](https://aifa.works).
+CODE Eternal uses a **four-way licensing & platform boundary** documented in full in [`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md):
 
-© 2026 Maksim Galatin & AIfa · CODE Eternal
+1. **Core Local Engine (`padam/`, MCP Server, Studio & CLI) — AGPL-3.0-only** ([`LICENSE`](https://github.com/MaksimGalatin/padam-nocturne/blob/main/LICENSE)): Free forever for individuals running local memory on their own machine, researchers, and open-source teams under AGPL-3.0-only.
+2. **CI/CD GitHub Action (`.github/actions/padam-agentic-shield/`) — Apache-2.0** ([`action LICENSE`](.github/actions/padam-agentic-shield/LICENSE)): Permissive license with explicit patent grant so organizations can embed the SRI/CSP/MCP scanner in private CI pipelines without copyleft obligations.
+3. **Enterprise Commercial License — Commercial MSA / SOW** ([`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md)): Required for companies using PADAM NOCTURNE or PADAM Agentic Shield inside proprietary software, closed security/SaaS offerings without AGPL source disclosure, or requiring Zero-Telemetry DPA, SLA & IP indemnity (`contact@codeofdigitaleternity.com`).
+4. **Hosted Eternal Memory & Exchange Revenue Share — CODE Eternal Platform Terms**: Hosted Neon/Arweave/Solana plans and managed freelance/marketplace revenue share (`15%–20%`) on [`aifa.works`](https://aifa.works) / [`codeofdigitaleternity.com`](https://www.codeofdigitaleternity.com) are commercial platform services not waived by open-source code access.
+
+© 2026 **CODE Eternal LLC** (New Mexico, USA · Entity ID `0008138873`) · 100% Sole Founder & Owner: **Maksim Galatin** · [GitHub Organization `CodeOfDigitalEternity`](https://github.com/CodeOfDigitalEternity)

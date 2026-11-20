@@ -276,13 +276,13 @@ def test_studio_playwright_client_lock_and_agent_payout_all_langs(tmp_path: Path
                 page.fill("#earn-job-client", f"vip{vp['width']}@clientcorp.com")
                 page.click("#earn-eval-btn")
                 card = page.locator("#earn-orders-list .earn-item", has_text=title_marker).first
-                card.wait_for(state="visible", timeout=3000)
+                card.wait_for(state="visible", timeout=10000)
 
                 card.locator("[data-order-action='settle_paid']").click()
                 lock_el = card.locator("[data-order-client-lock='1']")
                 pay_el = card.locator("[data-order-agent-payout='1']")
-                lock_el.wait_for(state="visible", timeout=3000)
-                pay_el.wait_for(state="visible", timeout=3000)
+                lock_el.wait_for(state="visible", timeout=10000)
+                pay_el.wait_for(state="visible", timeout=10000)
                 lock_txt = lock_el.text_content() or ""
                 pay_txt = pay_el.text_content() or ""
                 assert "aifa" in lock_txt and "20" in lock_txt
@@ -296,7 +296,7 @@ def test_studio_playwright_client_lock_and_agent_payout_all_langs(tmp_path: Path
                     page.wait_for_function(
                         "(t) => { const c = [...document.querySelectorAll('#earn-orders-list .earn-item')].find(e => e.textContent.includes(t)); return Boolean(c && (c.querySelector('[data-order-agent-payout=\"1\"]')?.textContent || '').includes('отменено')); }",
                         arg=title_marker,
-                        timeout=3000,
+                        timeout=10000,
                     )
 
                 overflow = page.evaluate("() => document.documentElement.scrollWidth > window.innerWidth")

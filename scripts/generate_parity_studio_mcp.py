@@ -245,6 +245,24 @@ PARITY_MAP: dict[tuple[str, str], tuple[str, str, str, str]] = {
     ("padam_platform_connect", "autopilot_dispatch"): ("panel-earning", "#earn-wiz-disp-btn", "POST /api/v2/ark/wizard/action", "padam.platform_wizard"),
     ("padam_platform_connect", "sample_prepare"): ("panel-earning", "[data-order-action='sample_prepare']", "POST /api/v2/ark/wizard/action", "padam.platform_wizard"),
     ("padam_platform_connect", "sample_reject"): ("panel-earning", "[data-order-action='sample_reject']", "POST /api/v2/ark/wizard/action", "padam.platform_wizard"),
+
+    # padam_agentic_shield — 19.11.2026: активный Щит (Kill Switch, Outbound Gate, JS Supply-Chain, Proof Pack)
+    ("padam_agentic_shield", "status"): ("panel-attacks", "#sh-refresh-btn | #sh-ks-banner", "GET /api/v2/shield/status", "padam.agentic_shield"),
+    ("padam_agentic_shield", "kill_switch_trip"): ("panel-attacks", "#sh-ks-trip-btn", "POST /api/v2/shield/kill-switch", "padam.agentic_shield"),
+    ("padam_agentic_shield", "kill_switch_reset"): ("panel-attacks", "#sh-ks-reset-btn", "POST /api/v2/shield/kill-switch", "padam.agentic_shield"),
+    ("padam_agentic_shield", "outbound_check"): ("panel-attacks", "#sh-out-check-btn | #sh-out-target", "POST /api/v2/shield/outbound/check", "padam.agentic_shield"),
+    ("padam_agentic_shield", "outbound_list"): ("panel-attacks", "#sh-out-queue", "GET /api/v2/shield/status", "padam.agentic_shield"),
+    ("padam_agentic_shield", "outbound_approve"): ("panel-attacks", "#sh-out-queue", "POST /api/v2/shield/outbound/decide", "padam.agentic_shield"),
+    ("padam_agentic_shield", "outbound_reject"): ("panel-attacks", "#sh-out-queue", "POST /api/v2/shield/outbound/decide", "padam.agentic_shield"),
+    ("padam_agentic_shield", "allowlist_list"): ("panel-attacks", "#sh-allow-list", "GET /api/v2/shield/status", "padam.agentic_shield"),
+    ("padam_agentic_shield", "allowlist_add"): ("panel-attacks", "#sh-allow-add-btn | #sh-allow-val", "POST /api/v2/shield/allowlist", "padam.agentic_shield"),
+    ("padam_agentic_shield", "scan_supply_chain"): ("panel-attacks", "#sh-sc-scan-btn | #sh-sc-url", "POST /api/v2/shield/supply-chain/scan", "padam.supply_chain_guard"),
+    ("padam_agentic_shield", "scan_mcp_tools"): ("panel-attacks", "#sh-mcp-scan-btn | #sh-mcp-input", "POST /api/v2/shield/scan-mcp", "padam.agentic_shield"),
+    ("padam_agentic_shield", "pin_mcp_tools"): ("panel-attacks", "#sh-mcp-pin-btn | #sh-mcp-input", "POST /api/v2/shield/scan-mcp", "padam.agentic_shield"),
+    ("padam_agentic_shield", "scan_unicode"): ("panel-attacks", "#sh-uni-scan-btn | #sh-uni-input", "POST /api/v2/shield/scan-unicode", "padam.agentic_shield"),
+    ("padam_agentic_shield", "webhook_status"): ("panel-attacks", "#sh-wh-box | #sh-wh-fmt", "GET /api/v2/shield/webhook", "padam.siem_webhook"),
+    ("padam_agentic_shield", "webhook_test"): ("panel-attacks", "#sh-wh-test-btn", "POST /api/v2/shield/webhook/test", "padam.siem_webhook"),
+    ("padam_agentic_shield", "proof_pack"): ("panel-attacks", "#sh-proof-gen-btn | #sh-proof-dl-json-btn", "GET /api/v2/shield/proof-pack", "padam.agentic_shield"),
 }
 
 # Обратная таблица: функции Studio, которые намеренно ограничены владельцем или являются UI-сервисом
@@ -263,6 +281,13 @@ STUDIO_EXTRA_CONTROLS: list[tuple[str, str, str, str, str]] = [
     ("panel-brain", "#brain-distill-btn", "POST /api/v2/brain/distill", "Только владелец в Studio (Zero-Leak LoRA)", "Сборка локального датасета личности"),
     ("panel-brain", "#brain-mode-toggle-btn | #brain-warmup-btn", "POST /api/v2/brain/mode | POST /api/v2/brain/warmup", "padam_brain_status (read) / переключатель в Studio", "Управление маршрутизатором моделей"),
     ("panel-family", "#ff-reflexes (active/rejected)", "POST /api/v2/family/reflex/decide", "Только владелец в Studio (loopback)", "Одобрение/отклонение рефлекса Совета меняет правила защиты"),
+    ("panel-attacks", "#sh-ks-reset-btn", "POST /api/v2/shield/kill-switch", "Только владелец в Studio/CLI (SHIELD-01)", "Снятие Kill Switch запрещено агенту через MCP"),
+    ("panel-attacks", "#sh-out-queue", "POST /api/v2/shield/outbound/decide", "Только владелец в Studio (SHIELD-02)", "Одобрение/отклонение исходящего действия запрещено агенту через MCP"),
+    ("panel-attacks", "#sh-allow-add-btn", "POST /api/v2/shield/allowlist", "Только владелец в Studio (SHIELD-03)", "Изменение доверенного списка запрещено агенту через MCP"),
+    ("panel-attacks", "#sh-cfg-save-btn | #sh-ks-block-chk", "POST /api/v2/shield/kill-switch", "Только владелец в Studio (SHIELD-04)", "Смена политики Kill Switch запрещена агенту через MCP"),
+    ("panel-attacks", "#sh-mcp-pin-btn", "POST /api/v2/shield/scan-mcp", "Только владелец в Studio/CLI (SHIELD-05)", "Закрепление эталонных хэшей MCP инструментов запрещено агенту через MCP"),
+    ("panel-attacks", "#sh-wh-save-btn", "POST /api/v2/shield/webhook", "Только владелец в Studio/CLI (SHIELD-06)", "Изменение URL корпоративных оповещений SIEM/Slack запрещено через MCP"),
+    ("panel-chats", "#chats-add-btn | #chats-import-btn", "POST /api/v2/chats | POST /api/v2/chats/import", "Только владелец в Studio/CLI", "Хронология живых переписок по агентам без кода и секретов"),
 ]
 
 

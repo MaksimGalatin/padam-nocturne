@@ -95,10 +95,36 @@ def import_files(memory, paths: Iterable[str | Path], *, author: str = "aifa-cla
     return counts
 
 
+def _parse_dialog_entry(content: str) -> tuple[str, str]:
+    raw = str(content or "").strip()
+    title = ""
+    body = raw
+    m = re.match(r"^\[(20\d{2}-\d{2}-\d{2})(?:\s*·\s*([^\]]+))?\]\s*(.*)$", raw, flags=re.S)
+    if m:
+        title = (m.group(2) or "").strip()
+        body = (m.group(3) or "").strip()
+    if not title:
+        first_line = body.splitlines()[0].strip() if body else ""
+        if len(first_line) <= 120:
+            title = first_line
+        else:
+            title = first_line[:117] + "…"
+    return title[:140], body
+
+
 def list_dialogs(memory, *, query: str = "", limit: int = 300, scope: str = DIALOG_SCOPE,
-                 lang: str = "ru") -> dict[str, Any]:
-    """Лента «Диалогов» по дням — только действующие записи авторов Семьи, по желанию с поиском."""
+                 lang: str = "ru", since: str = "all", day: str = "") -> dict[str, Any]:
+    """Лента «Диалогов» по дням — чистые структурированные карточки, новые сверху, фильтры 24h/date/all."""
+    from datetime import datetime, timedelta, timezone
+    from . import family_admin
+
     lang = lang if lang in ("ru", "en", "es", "zh") else "en"
+    role_matrix = family_admin.get_role_matrix(memory, lang=lang)
+    roles_by_agent: dict[str, list[str]] = {}
+    for rm in role_matrix:
+        aid_r = str(rm.get("agent_id") or "")
+        roles_by_agent.setdefault(aid_r, []).append(str(rm.get("code") or rm.get("role_key")))
+
     authors = list(ALL_AUTHOR_IDS)
     marks = ",".join("?" for _ in authors)
     sql = (f"SELECT id, content, agent_id, created_at FROM memory WHERE user_id = ? AND scope = ? "
@@ -111,20 +137,47 @@ def list_dialogs(memory, *, query: str = "", limit: int = 300, scope: str = DIAL
     sql += " ORDER BY created_at DESC, rowid DESC LIMIT ?"
     params.append(max(1, min(int(limit or 300), 1000)))
     rows = memory.store.query(sql, tuple(params))
+
+    since_norm = str(since or "all").strip().lower()
+    day_filter = str(day or "").strip()[:10]
+    cutoff_iso = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+
     days: dict[str, list[dict[str, Any]]] = {}
+    total_filtered = 0
     for r in rows:
         content = str(r["content"] or "")
         m = re.match(r"^\[(20\d{2}-\d{2}-\d{2})", content)
-        day = m.group(1) if m else str(r["created_at"] or "")[:10]
-        days.setdefault(day, []).append({
+        rec_day = m.group(1) if m else str(r["created_at"] or "")[:10]
+        if since_norm == "24h" and str(r["created_at"] or "") < cutoff_iso:
+            continue
+        if day_filter and rec_day != day_filter:
+            continue
+
+        raw_agent = str(r["agent_id"] or "")
+        canon_author = ALIASES.get(raw_agent, raw_agent)
+        r_codes = list(dict.fromkeys((roles_by_agent.get(raw_agent) or []) + (roles_by_agent.get(canon_author) or [])))
+        if canon_author == "aifa-claude-code" and not r_codes:
+            r_codes = roles_by_agent.get("aifa_claude") or ["LANCE", "PIXEL"]
+        elif canon_author == "antigravity" and not r_codes:
+            r_codes = roles_by_agent.get("aifa_antigravity") or ["ARIA"]
+
+        title, clean_body = _parse_dialog_entry(content)
+        total_filtered += 1
+        days.setdefault(rec_day, []).append({
             "id": r["id"],
-            "author": ALIASES.get(r["agent_id"], r["agent_id"]),
-            "author_label": AUTHORS.get(ALIASES.get(r["agent_id"], r["agent_id"]), {}).get(lang, r["agent_id"]),
-            "text": content[:1500],     # 18.11: 600 знаков обрывали списки коммитов посреди строки
+            "day": rec_day,
+            "created_at": r["created_at"],
+            "author": canon_author,
+            "raw_agent_id": raw_agent,
+            "author_label": AUTHORS.get(canon_author, {}).get(lang, raw_agent),
+            "council_roles": r_codes,
+            "controlled_by": family_admin.describe_agent_controller(raw_agent, "", lang=lang),
+            "title": title,
+            "summary": clean_body[:420],
+            "text": content[:2500],
         })
     ordered = [{"day": d, "items": days[d]} for d in sorted(days, reverse=True)]
-    return {"total": len(rows), "days": ordered, "query": q}
-
+    return {"total": total_filtered, "days": ordered, "query": q, "since": since_norm, "day": day_filter, "roles": role_matrix}
 
 def main(argv: list[str] | None = None) -> int:
     """python -m padam.family_dialogs --db БАЗА --user ID [--author aifa-claude-code] ФАЙЛЫ…"""

@@ -85,10 +85,27 @@ INSTRUCTIONS = (
 )
 
 
+from .memory import canonicalize_agent_id as _canon_agent
+
+_client_agent_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("padam_client_agent", default="")
+
+
 def _default_agent_id(fallback: str = "aifa") -> str:
-    """Текущий ID агента из PADAM_AGENT_ID (если задан) вместо зашитого 'aifa'."""
-    val = str(os.environ.get("PADAM_AGENT_ID") or "").strip()
-    return val or fallback
+    """Текущий ID агента: HTTP/сессионный контекст -> env PADAM_AGENT_ID -> clientInfo.name -> fallback."""
+    for cand in (_client_agent_ctx.get(""), os.environ.get("PADAM_AGENT_ID"), _SESSION_CLIENT.get("name")):
+        c = _canon_agent(cand)
+        if c:
+            return c
+    return fallback
+
+
+def _resolve_agent_arg(args: dict | None, *, keys: tuple[str, ...] = ("agent_id", "agent", "from_agent", "author"), fallback: str = "aifa") -> str:
+    if isinstance(args, dict):
+        for k in keys:
+            v = _canon_agent(args.get(k))
+            if v:
+                return v
+    return _default_agent_id(fallback)
 
 _memory: Memory | None = None
 
@@ -277,6 +294,7 @@ _TITLES = {
     "padam_conflict_arbiter": "Conflicts", "padam_mcp_telemetry": "MCP telemetry",
     "padam_token_budget": "Token budget", "padam_freelance_hub": "Freelance hub",
     "padam_phoenix_family": "Phoenix swarm", "padam_local_model": "Local model",
+    "padam_agentic_shield": "Agentic Shield",
 }
 _OUTPUT_SCHEMAS = {
     "padam_search": {"type": "object", "properties": {"records": {"type": "array"}}, "required": ["records"]},
@@ -715,6 +733,57 @@ PLATFORM_CONNECT_TOOL_DEF = {
     }},
     "annotations": _RW,
 }
+SHIELD_TOOL_DEF = {
+    "name": "padam_agentic_shield",
+    "title": _TITLES["padam_agentic_shield"],
+    "description": "Machine-speed Kill Switch, Outbound & Payee-Swap Gate, JS Supply-Chain Guard, Proof Pack ($0)",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": [
+                    "status",
+                    "kill_switch_trip",
+                    "kill_switch_reset",
+                    "outbound_check",
+                    "outbound_list",
+                    "outbound_approve",
+                    "outbound_reject",
+                    "allowlist_list",
+                    "allowlist_add",
+                    "scan_supply_chain",
+                    "scan_mcp_tools",
+                    "pin_mcp_tools",
+                    "scan_unicode",
+                    "webhook_status",
+                    "webhook_test",
+                    "proof_pack",
+                ],
+                "default": "status",
+                "description": "status|kill_switch_trip|outbound_check|outbound_list|allowlist_list|scan_supply_chain|scan_mcp_tools|scan_unicode|webhook_status|webhook_test|proof_pack (unlock/approve/reject/allowlist_add/pin_mcp_tools are owner-only)",
+            },
+            "tools": {"description": "MCP tools array or mcpServers config JSON/path for scan_mcp_tools"},
+            "server_name": {**_S, "description": "Server name for MCP tool pinning"},
+            "text": {**_S, "description": "Untrusted text for scan_unicode"},
+            "action_type": {**_S, "description": "Outbound action kind (crypto_transfer|http_request|shell_command|email|payment)"},
+            "target": {**_S, "description": "Target wallet, domain or URL"},
+            "payload": {**_S, "description": "Outbound payload or command"},
+            "url": {**_S, "description": "Site URL for JS Supply-Chain & SRI/CSP scan"},
+            "html": {**_S, "description": "Optional offline HTML snapshot to analyze"},
+            "reason": {**_S, "description": "Trip reason"},
+            "gate_id": {**_S, "description": "Outbound gate id"},
+            "entry_type": {**_S, "description": "Allowlist type (domain|wallet|iban|payee)"},
+            "value": {**_S, "description": "Allowlist value"},
+            "agent_id": _S,
+            "use_playwright": {"type": "boolean", "default": False},
+            "allow_localhost": {"type": "boolean", "default": False},
+            "block_writes": {"type": "boolean", "default": False},
+        },
+        "additionalProperties": False,
+    },
+    "annotations": _RW,
+}
 _ALL_TOOLS_BY_NAME = {
     **_TOOLS_BY_NAME,
     "padam_recent": RECENT_TOOL_DEF,
@@ -749,6 +818,7 @@ _ALL_TOOLS_BY_NAME = {
     "padam_local_model": LOCAL_MODEL_TOOL_DEF,
     "padam_platform_connect": PLATFORM_CONNECT_TOOL_DEF,
     "padam_benchmark": BENCHMARK_TOOL_DEF,
+    "padam_agentic_shield": SHIELD_TOOL_DEF,
 }
 
 
@@ -816,6 +886,7 @@ _ACTION_REQUIRED: dict[str, dict[str, tuple[str, ...]]] = {
         "receive_kin_message": ("packet",),
     },
     "padam_local_model": {"set_power": ("power",)},
+    "padam_agentic_shield": {"outbound_check": ("action_type",)},
 }
 
 
@@ -3486,19 +3557,18 @@ def _remember_client(info) -> None:
         _SESSION_CLIENT["version"] = str(info.get("version") or "")[:30]
 
 
-def _touch_session(action: str) -> None:
-    """Не чаще раза в 15 с (или при смене инструмента). Ошибка учёта никогда не ломает вызов инструмента."""
-    now = time.time()
-    if now - _SESSION_LAST_TOUCH[0] < 15 and action == _SESSION_LAST_TOUCH[1]:
-        return
-    _SESSION_LAST_TOUCH[0], _SESSION_LAST_TOUCH[1] = now, action
+def _touch_session(action: str, explicit_agent: str | None = None) -> None:
+    """Отмечает активную сессию агента (после открытия памяти), не меняя основной файл БД."""
     try:
         from . import sibling_registry as _sr
-        # Только уже открытая память: учёт сессии не должен сам открывать базу и менять состояние процесса.
         m = _memory if mem is _ORIGINAL_MEM else mem()
         if m is None:
             return
-        agent = os.environ.get("PADAM_AGENT_ID") or _SESSION_CLIENT.get("name") or "agent"
+        now = time.time()
+        if now - _SESSION_LAST_TOUCH[0] < 15 and action == _SESSION_LAST_TOUCH[1]:
+            return
+        _SESSION_LAST_TOUCH[0], _SESSION_LAST_TOUCH[1] = now, action
+        agent = _canon_agent(explicit_agent) or _default_agent_id("agent")
         _sr.touch_session(m, session_id=_SESSION_ID, agent_id=agent, client_name=_SESSION_CLIENT.get("name", ""),
                           client_version=_SESSION_CLIENT.get("version", ""), pid=os.getpid(), action=action)
     except Exception:
@@ -3613,6 +3683,7 @@ _ФЛАГ_ИНСТРУМЕНТА = {
     **{_n: ("PADAM_MCP_ARK_TOOLS", config.mcp_ark_tools_enabled) for _n in (
         "padam_wake_up", "padam_commitments", "padam_family_relay", "padam_checkpoint", "padam_ark_timeline", "padam_lesson", "padam_family_council", "padam_family_feed", "padam_memory_branch", "padam_selective_proof", "padam_guardian_tick", "padam_mesh_sync", "padam_multimodal_inspect", "padam_sibling_hub", "padam_coop_lock", "padam_session_pack", "padam_code_anchor", "padam_batch", "padam_conflict_arbiter", "padam_mcp_telemetry", "padam_token_budget", "padam_freelance_hub", "padam_phoenix_family", "padam_local_model")},
     **{_n: ("PADAM_MCP_PARTNER_TOOLS", _partner_bridge.enabled) for _n in _partner_bridge.TOOL_NAMES},
+    "padam_agentic_shield": ("PADAM_MCP_SHIELD_TOOLS", config.mcp_shield_tools_enabled),
 }
 
 
@@ -3633,6 +3704,22 @@ _BATCH_ALLOWED_READONLY_ACTIONS: dict[str, tuple[str, frozenset[str]]] = {
     "padam_token_budget": ("status", frozenset({"status", "list_proposals"})),
     "padam_local_model": ("status", frozenset({"status"})),
     "padam_freelance_hub": ("dashboard", frozenset({"dashboard", "list_accounts", "list_orders", "monetization", "recommend_spend", "client_lock_status", "agent_ledger", "stores_status", "wizard_catalog", "autopilot_config", "mail_status"})),
+    "padam_agentic_shield": ("status", frozenset({"status", "outbound_list", "allowlist_list", "proof_pack"})),
+}
+
+
+_KILL_SWITCH_BLOCKED_TOOLS = frozenset({
+    "padam_partner_find_clients", "padam_partner_client_report", "padam_partner_client_link",
+    "padam_partner_kit", "padam_partner_deals", "padam_partner_draft_outreach",
+})
+_KILL_SWITCH_BLOCKED_ACTIONS: dict[str, frozenset[str]] = {
+    "padam_cabinet": frozenset({"chat_send", "upgrade_url"}),
+    "padam_freelance_hub": frozenset({
+        "bid", "dispatch_bid", "deliver", "send_outreach", "run_outreach_batch",
+        "run_follow_up", "connect_mail", "connect_account", "connect_store", "publish_product",
+    }),
+    "padam_mesh_sync": frozenset({"pair_init", "pair_accept", "apply"}),
+    "padam_platform_connect": frozenset({"signup", "login", "autopilot_dispatch"}),
 }
 
 
@@ -3642,6 +3729,13 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
     if _флаг and not _флаг[1]():
         raise ValueError(f"{name} is disabled by default; set {_флаг[0]}=1 to enable it")
     actor = _current_actor(m)
+    from . import agentic_shield as _ash
+    _sh_agent = str((args or {}).get("agent_id") or _default_agent_id())
+    _ash.observe_tool_call_rate(m, tool_name=name, agent_id=_sh_agent)
+    _sh_act = str((args or {}).get("action") or "").strip().lower()
+    if bool(_ash._default_state(m).get("lockdown")):
+        if name in _KILL_SWITCH_BLOCKED_TOOLS or _sh_act in _KILL_SWITCH_BLOCKED_ACTIONS.get(name, frozenset()):
+            raise PermissionError("PADAM_KILL_SWITCH_ACTIVE: external/outbound MCP tool blocked until owner unlock in Studio/CLI")
     _cache_key = None
     if name in _READ_CACHE_SAFE_TOOLS:
         _actor_k = (actor.role, actor.subject, actor.workspace_id) if actor is not None else ("owner", "", None)
@@ -3885,7 +3979,7 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
         raw_content = safety.strip_invisible(_w_content)
         _, masked = safety.redact(raw_content)
         origin = args.get("origin", "agent")
-        agent_id = args.get("agent_id") or os.environ.get("PADAM_AGENT_ID") or None
+        agent_id = _resolve_agent_arg(args, keys=("agent_id",), fallback="") or None
         try:
             eff_write_scope = _check_session_scope(args.get("scope"))
         except PermissionError as e:
@@ -3999,6 +4093,19 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             emit_mcp_log("warning", "padam.safety", {"event": "secrets_masked", "id": mid, "maskedSecrets": int(masked_total)}, owner_only=True)
         elif outcome == "quarantined":
             emit_mcp_log("notice", "padam.guard", {"event": "record_quarantined", "id": mid}, owner_only=True)
+        if outcome == "quarantined":
+            q_row = m.store.one("SELECT quarantine_reason FROM memory WHERE id = ?", (mid,))
+            q_why = str((q_row["quarantine_reason"] if q_row else "") or "").lower()
+            if any(k in q_why for k in ("instruction", "would change", "protected")):
+                _ash.record_anomaly(
+                    m, event_type="quarantined_suspicious_write", severity="high", weight=2,
+                    agent_id=agent_id, detail=f"id={mid}",
+                )
+        if masked_total >= 1 and origin != "user":
+            _ash.record_anomaly(
+                m, event_type="agent_secret_write_attempt", severity="high", weight=2,
+                agent_id=agent_id, detail=f"masked={masked_total}",
+            )
         else:
             emit_mcp_log("info", "padam.memory", {"event": "record_written", "id": mid, "outcome": outcome, "scope": rm_kw.get("scope")}, owner_only=False)
         merged_with_id: str | None = None
@@ -4068,7 +4175,7 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                     kind=rm_kw.get("kind"),
                     scope=sw_scope_c,
                     origin="owner" if (actor is None or actor.is_owner) else "agent",
-                    agent_id=os.environ.get("PADAM_AGENT_ID") or None,
+                    agent_id=_resolve_agent_arg(args, keys=("agent_id",), fallback="") or None,
                     summary=f"confirmed memory {args['id']}",
                     outcome="confirmed",
                 )
@@ -4162,6 +4269,17 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             from . import hardware_seal as _hw_seal
             st = dict(st)
             st["hardwareSeal"] = _hw_seal.probe_hardware_capabilities()
+        try:
+            sh_st = _ash.get_shield_status(m)
+            st["agenticShield"] = {
+                "lockdown": sh_st["lockdown"],
+                "anomalyScore": sh_st["current_anomaly_score"],
+                "threshold": sh_st["threshold"],
+                "pendingOutboundCount": sh_st["pending_outbound_count"],
+                "trippedCount": sh_st["tripped_count"],
+            }
+        except Exception:
+            pass
         return json.dumps(st, ensure_ascii=False, indent=2), st
 
     if name == "padam_sleep":
@@ -4371,6 +4489,7 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 priority=int(args.get("priority") or 2),
                 due_at=args.get("due_at"),
                 context=str(args.get("context") or ""),
+                agent_id=_resolve_agent_arg(args),
             )
         elif act == "update":
             payload = _ark.update_commitment(m, str(args.get("id") or ""), str(args.get("status") or "fulfilled"))
@@ -4409,6 +4528,7 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 str(args.get("task") or ""),
                 str(args.get("next_step") or ""),
                 session_id=str(args.get("session_id") or "default"),
+                agent_id=_resolve_agent_arg(args),
                 files=args.get("files") if isinstance(args.get("files"), list) else None,
                 hypothesis=str(args.get("hypothesis") or ""),
             )
@@ -4438,6 +4558,7 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 str(args.get("why_failed") or ""),
                 str(args.get("rule_learned") or ""),
                 tags=str(args.get("tags") or ""),
+                agent_id=_resolve_agent_arg(args),
             )
         else:
             payload = {"lessons": _ark.list_lessons(m, limit=int(args.get("limit") or 10))}
@@ -4451,7 +4572,7 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
     if name == "padam_family_feed":
         from . import family_feeds as _ff
         act = str(args.get("action") or "read").lower()
-        who = str(args.get("author") or os.environ.get("PADAM_AGENT_ID") or "agent")
+        who = _resolve_agent_arg(args, keys=("author", "agent_id", "agent"), fallback="agent")
         lim = int(args.get("limit") or 30)
         if act == "post":
             payload = _ff.post(m, str(args.get("channel") or "office"), who, str(args.get("content") or ""))
@@ -5319,6 +5440,75 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
         payload = {"ok": True, "action": "status", "effective": eff, "overview": ov, "cost_usd": 0.0}
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
 
+    if name == "padam_agentic_shield":
+        from . import supply_chain_guard as _scg
+        act_sh = str(args.get("action") or "status").strip().lower()
+        aid_sh = str(args.get("agent_id") or _default_agent_id())
+        if act_sh in ("kill_switch_reset", "outbound_approve", "outbound_reject", "allowlist_add", "pin_mcp_tools"):
+            _ash.record_anomaly(
+                m, event_type="mcp_owner_shield_bypass_attempt", severity="critical", weight=3,
+                agent_id=aid_sh, detail=f"action={act_sh}",
+            )
+            raise PermissionError(
+                f"padam_agentic_shield action={act_sh} is owner-only: use PADAM Studio or `padam shield` CLI."
+            )
+        if act_sh == "kill_switch_trip":
+            payload = _ash.trip_kill_switch(
+                m,
+                reason=str(args.get("reason") or "agent_or_mcp_trip"),
+                agent_id=aid_sh,
+                block_writes=bool(args.get("block_writes", False)),
+            )
+        elif act_sh == "outbound_check":
+            payload = _ash.inspect_outbound_action(
+                m,
+                action_type=str(args.get("action_type") or "action"),
+                target=str(args.get("target") or ""),
+                payload=str(args.get("payload") or ""),
+                agent_id=aid_sh,
+                origin="agent",
+            )
+        elif act_sh == "outbound_list":
+            payload = {"items": _ash.list_outbound_queue(m, limit=30)}
+        elif act_sh == "allowlist_list":
+            payload = {"allowlist": _ash.list_allowlist(m)}
+        elif act_sh == "scan_supply_chain":
+            raw_html = str(args.get("html") or "")
+            target_url = str(args.get("url") or "").strip()
+            if raw_html:
+                payload = _scg.analyze_supply_chain_snapshot(
+                    target_url or "https://example.com/",
+                    raw_html,
+                    memory=m,
+                )
+                payload.pop("html_report", None)
+            else:
+                if not target_url:
+                    raise ValueError("url or html is required for scan_supply_chain")
+                payload = _scg.scan_url_supply_chain(
+                    target_url,
+                    memory=m,
+                    use_playwright=bool(args.get("use_playwright", False)),
+                    allow_localhost=bool(args.get("allow_localhost", False)),
+                )
+                payload.pop("html_report", None)
+        elif act_sh == "scan_mcp_tools":
+            t_in = args.get("tools") or args.get("payload") or "[]"
+            payload = _ash.audit_mcp_tools(m, t_in, server_name=str(args.get("server_name") or aid_sh or "mcp"), pin=False)
+        elif act_sh == "scan_unicode":
+            payload = _ash.inspect_unicode_and_encoding(str(args.get("text") or args.get("payload") or ""))
+        elif act_sh == "webhook_status":
+            from . import siem_webhook as _sw
+            payload = {"config": _sw.get_webhook_config(m), "outbox": _sw.list_webhook_outbox(m, limit=10)}
+        elif act_sh == "webhook_test":
+            from . import siem_webhook as _sw
+            payload = _sw.dispatch_webhook_event(m, event_type="shield_mcp_dry_run_test", severity="medium", title="Dry-run test event", detail="Dry-run preview via MCP", agent_id=aid_sh, dry_run=True, fmt_override=args.get("action_type"))
+        elif act_sh == "proof_pack":
+            payload = _ash.build_proof_pack(m)
+        else:
+            payload = _ash.get_shield_status(m)
+        return json.dumps(payload, ensure_ascii=False, indent=2), payload
+
     if name == "padam_brain_status":
         from . import router as _router
         snap = _router.get_router().status_snapshot()
@@ -5508,6 +5698,8 @@ def _list_tools_payload() -> list[dict]:
         ])
     if _partner_bridge.enabled():
         items.extend(_partner_bridge.TOOL_DEFS)
+    if config.mcp_shield_tools_enabled():
+        items.append(SHIELD_TOOL_DEF)
     if config.mcp_official_compat_enabled():
         from . import compat_official as _compat_official
         items.extend(_compat_official.OFFICIAL_MEMORY_TOOLS)
@@ -5840,7 +6032,6 @@ def _handle_legacy(req: dict) -> dict | None:
             return err(-32602, f"unknown tool: {name}", key="unknown_tool", detail=str(name))
         if not isinstance(args, dict):
             return err(-32602, "arguments must be an object", key="invalid_argument", detail="arguments must be an object")
-        _touch_session(name)
         # Часть клиентов шлёт null вместо пропущенного необязательного поля: это то же, что поля нет.
         args = {к: з for к, з in args.items() if з is not None}
         if name == "padam_write" and _is_empty_arg(args.get("content")) and not _is_empty_arg(args.get("text")):
@@ -5870,6 +6061,7 @@ def _handle_legacy(req: dict) -> dict | None:
         try:
             _t0_call = time.perf_counter()
             text, structured = _call_tool_full(name, args)
+            _touch_session(name, explicit_agent=args.get("agent_id") if isinstance(args, dict) else None)
             _audit_mcp_call(name, args, ok=structured is not None, duration_ms=(time.perf_counter() - _t0_call) * 1000)
             try:   # B1 Сестры: локальный журнал вызова с trace_id (без аргументов)
                 from . import observability as _obs
@@ -6718,6 +6910,8 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
 
             actor_hdr = (self.headers.get("X-Padam-Actor-Token") or "").strip() or None
             tok_ctx = _actor_token_ctx.set(actor_hdr) if actor_hdr is not None else None
+            ag_hdr = _canon_agent((self.headers.get("X-Padam-Agent-Id") or self.headers.get("X-Agent-ID") or "").strip())
+            agent_ctx_tok = _client_agent_ctx.set(ag_hdr) if ag_hdr else None
             scope_ctx_tok = _session_scope_ctx.set(active_pin) if active_pin is not None else None
             lang_hdr = _normalize_lang(self.headers.get("X-Padam-Lang") or self.headers.get("Accept-Language"))
             lang_ctx = _error_lang_ctx.set(lang_hdr) if lang_hdr is not None else None
@@ -6739,6 +6933,8 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
                     req_for_err = req if isinstance(req, dict) else None
                     if lang_ctx is not None:
                         _error_lang_ctx.reset(lang_ctx)
+                    if agent_ctx_tok is not None:
+                        _client_agent_ctx.reset(agent_ctx_tok)
                     if tok_ctx is not None:
                         _actor_token_ctx.reset(tok_ctx)
                     return self._send_json(
@@ -6897,6 +7093,8 @@ def make_mcp_http_server(memory: Memory | None = None, host: str = "127.0.0.1",
             finally:
                 if lang_ctx is not None:
                     _error_lang_ctx.reset(lang_ctx)
+                if agent_ctx_tok is not None:
+                    _client_agent_ctx.reset(agent_ctx_tok)
                 if scope_ctx_tok is not None:
                     _session_scope_ctx.reset(scope_ctx_tok)
                 if tok_ctx is not None:

@@ -1,10 +1,18 @@
+<p align="center">
+  <img src="./docs/assets/banner.svg" alt="PADAM · NOCTURNE &amp; Agentic Shield" width="100%" />
+</p>
+
 # PADAM · NOCTURNE
 
 ### Память для ИИ-агентов, которая спит, честно забывает и проверяется навсегда
 
 [![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%209%20tools-8A2BE2) [![PyPI](https://img.shields.io/pypi/v/padam-nocturne)](https://pypi.org/project/padam-nocturne/)
 
-**Установка в 1 клик:** [Установить в Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=padam&config=eyJjb21tYW5kIjoicGFkYW0tbWNwIiwiYXJncyI6W119) · [Установить в VS Code](vscode:mcp/install?%7B%22name%22%3A%22padam%22%2C%22command%22%3A%22padam-mcp%22%2C%22args%22%3A%5B%5D%7D) · CLI: `padam setup --all`
+**Установка в 1 клик:** [Установить в Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=padam&config=eyJjb21tYW5kIjoicGFkYW0tbWNwIiwiYXJncyI6W119) · [Установить в VS Code](vscode:mcp/install?%7B%22name%22%3A%22padam%22%2C%22command%22%3A%22padam-mcp%22%2C%22args%22%3A%5B%5D%7D) · CLI (`13` клиентов вкл. Claude Code и Antigravity): `padam setup --all` · Без установки: `uvx padam-nocturne` · [★ Поставить Star на GitHub](https://github.com/MaksimGalatin/padam-nocturne/stargazers)
+
+<p align="center">
+  <img src="./docs/assets/demo-quarantine.svg" alt="Демо 4 колец защиты PADAM Agentic Shield" width="100%" />
+</p>
 
 **Ваш агент читает страницу сегодня, а завтра считает её своей памятью.** PADAM хранит эту память в одном локальном файле SQLite и делает так, чтобы её было безопасно читать обратно:
 

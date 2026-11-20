@@ -92,10 +92,21 @@ def run(cases, python):
 
     def call(method, params=None):
         n[0] += 1
-        p.stdin.write((json.dumps({"jsonrpc": "2.0", "id": n[0], "method": method, "params": params or {}},
+        req_id = n[0]
+        p.stdin.write((json.dumps({"jsonrpc": "2.0", "id": req_id, "method": method, "params": params or {}},
                                   ensure_ascii=False) + "\n").encode("utf-8"))
         p.stdin.flush()
-        return json.loads(p.stdout.readline().decode("utf-8"))
+        # ?????????? JSON-RPC ??????????? ??? id, ????? ?? ??????? ? ?? ????????? ?? ????????????.
+        while True:
+            raw_line = p.stdout.readline()
+            if not raw_line:
+                raise EOFError(f"MCP server closed stdout waiting for id={req_id}")
+            line_s = raw_line.decode("utf-8", errors="replace").strip()
+            if not line_s:
+                continue
+            msg = json.loads(line_s)
+            if "id" in msg and msg["id"] == req_id:
+                return msg
 
     call("initialize", {"protocolVersion": "2025-06-18", "capabilities": {},
                         "clientInfo": {"name": "padam-redteam", "version": "1"}})
@@ -112,6 +123,9 @@ def run(cases, python):
                                     "arguments": {"query": c["marker"], "scope": "rt-" + c["id"], "limit": 5}})
             c["_search"] = "".join(x.get("text", "") for x in (r.get("result") or {}).get("content", []))
     p.stdin.close()
+    # ?????????? ??????? stdout ?? EOF ?? wait(), ????? ????? pipe ?? ?? Windows ???? deadlock.
+    if p.stdout is not None:
+        p.stdout.read()
     p.wait(timeout=60)
     for c in cases:
         if c["category"] == "forgetting":          # то, что делает владелец: padam forget <id>

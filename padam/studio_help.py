@@ -25,7 +25,7 @@ LINKS = {
 
 # Пункты вкладок: (ключ вкладки, текст). Название вкладки берётся из строк Studio (nav_*), чтобы не расходилось.
 _TABS = ["overview", "family", "migrate", "aifa", "plans", "feed", "search", "ask", "review", "attacks", "asof", "forget",
-         "graph", "entities", "l3", "bench", "brain", "earning", "team", "backup", "settings", "quickstart"]
+         "graph", "chats", "entities", "l3", "bench", "brain", "earning", "team", "backup", "settings", "quickstart"]
 
 _T: dict[str, dict[str, Any]] = {
     "ru": {
@@ -45,6 +45,7 @@ _T: dict[str, dict[str, Any]] = {
             "attacks": "Счётчик атак: сколько попыток задержала защита за всё время и за 30 дней, каких видов (внедрённая команда, подмена «кто я» и предпочтений, внешний текст до проверки), от каких агентов и по дням, плюс сколько ключей и паролей скрыто до сохранения. Текст самих атак здесь не показывается.",
             "asof": "Машина времени: какой была память на выбранную дату. «Показать срез» — записи на тот момент; «Граф на эту дату» — их связи.",
             "forget": "Честное удаление одной записи. «Проверить связи и версии» показывает, что удалится вместе с ней. «Забыть запись…» и «Подтверждаю удаление навсегда» стирают текст, версии и выводы, уничтожают ключ записи и выдают квитанцию — доказательство удаления. Ниже — журнал квитанций.",
+            "chats": "Чаты с агентами: хронология живых переписок по каждому агенту без программного кода и технических дампов, поиск по диалогам, добавление заметок, импорт историй (.jsonl/.md/.txt) и переход в личный граф агента.",
             "graph": "Граф связей: из каких записей выведен факт, его версии и противоречия. «Показать связи» — вокруг выбранной записи; «Весь граф» — всё сразу; «Связать» — добавить связь вручную; «Удалить источник вместе с выводами» — забыть источник и всё, что из него выведено.",
             "entities": "Люди, проекты и сервисы, о которых есть записи, и что о каждом известно.",
             "l3": "Вечный слой: пакет записей в Arweave и корень Меркла в Solana (по команде padam l3, нужен ваш кошелёк). У каждой записи свой ключ, в цепь он не уходит; уничтожили ключ — запись в цепи стала шумом. «Проверить якорь» сверяет пакет с цепью.",
@@ -102,6 +103,7 @@ _T: dict[str, dict[str, Any]] = {
             "attacks": "Attack counter: how many attempts the guard held, all time and in the last 30 days, by kind (planted instruction, tampering with identity and preferences, external text before review), by agent and by day, plus how many keys and passwords were masked before saving. The attack text itself is never shown here.",
             "asof": "Time machine: what your memory looked like on a chosen date. \"Show snapshot\" lists the records; \"Graph on this date\" shows their links.",
             "forget": "Honest deletion of one record. \"Check links and versions\" shows what goes with it. \"Forget record…\" and \"Confirm permanent deletion\" erase the text, versions and derived facts, destroy the record's key and issue a receipt that proves it. Below is the receipt log.",
+            "chats": "Chats per agent: chronological conversation history per agent stripped of raw code blocks, full-text search, manual notes, history import (.jsonl/.md/.txt) and direct jump to the agent graph.",
             "graph": "Link graph: which records a fact was derived from, its versions and conflicts. \"Show links\" around a record; \"Whole graph\"; \"Link\" to add a link by hand; \"Delete source with derived facts\" forgets a source and everything derived from it.",
             "entities": "People, projects and services your records mention, and what is known about each.",
             "l3": "Permanent layer: a bundle of records on Arweave and a Merkle root on Solana (padam l3, needs your wallet). Every record has its own key that never goes on-chain; destroy the key and the record on-chain becomes noise. \"Verify anchor\" checks the bundle against the chain.",
@@ -159,6 +161,7 @@ _T: dict[str, dict[str, Any]] = {
             "attacks": "Contador de ataques: cuántos intentos retuvo la protección, en total y en los últimos 30 días, por tipo (instrucción plantada, alteración de identidad y preferencias, texto externo antes de revisión), por agente y por día, y cuántas claves y contraseñas se ocultaron antes de guardar. El texto de los ataques nunca se muestra aquí.",
             "asof": "Máquina del tiempo: cómo era su memoria en una fecha elegida. «Mostrar instantánea» lista los registros; «Grafo en esta fecha» muestra sus vínculos.",
             "forget": "Borrado honesto de un registro. «Comprobar vínculos y versiones» muestra lo que se va con él. «Olvidar registro…» y «Confirmo el borrado permanente» borran el texto, las versiones y lo deducido, destruyen la clave del registro y emiten un recibo que lo prueba. Abajo está el historial de recibos.",
+            "chats": "Chats por agente: historial cronológico por agente sin bloques de código, búsqueda, notas manuales, importación de archivos y enlace al grafo del agente.",
             "graph": "Grafo de vínculos: de qué registros se dedujo un hecho, sus versiones y contradicciones. «Mostrar vínculos» alrededor de un registro; «Todo el grafo»; «Vincular» para añadir un vínculo a mano; «Borrar la fuente con lo deducido».",
             "entities": "Personas, proyectos y servicios que mencionan sus registros, y lo que se sabe de cada uno.",
             "l3": "Capa permanente: un paquete de registros en Arweave y una raíz de Merkle en Solana (padam l3, requiere su billetera). Cada registro tiene su propia clave que nunca va a la cadena; al destruirla, el registro en la cadena se vuelve ruido. «Verificar ancla» comprueba el paquete con la cadena.",
@@ -216,6 +219,7 @@ _T: dict[str, dict[str, Any]] = {
             "attacks": "攻击计数器:防护拦截了多少次尝试(累计和最近 30 天),按类型(植入指令、篡改身份与偏好、未经审核的外部文本)、按智能体、按日期统计,以及保存前隐藏了多少密钥和密码。这里从不显示攻击文本本身。",
             "asof": "时光机:查看所选日期的记忆。「显示快照」列出当时的记录;「该日期的图谱」显示它们的关联。",
             "forget": "如实删除单条记录。「检查关联与版本」显示会一起删除的内容。「遗忘记录…」和「确认永久删除」会擦除文本、版本和推导结果,销毁该记录的密钥并出具证明删除的回执。下方是回执记录。",
+            "chats": "各智能体聊天记录：按时间顺序整理的无代码纯净对话历史、全文搜索、手动添加消息、导入记录文件以及直达智能体专属图谱。",
             "graph": "关联图谱:事实由哪些记录推导、它的版本和冲突。「显示关联」查看某条记录周围;「全部图谱」;「关联」手动添加;「删除来源及其推导」。",
             "entities": "记录中提到的人物、项目和服务,以及对每一项已知的信息。",
             "l3": "永久层:记录包存入 Arweave,默克尔根锚定在 Solana(padam l3,需要您的钱包)。每条记录都有独立密钥且从不上链;销毁密钥后,链上记录即成噪声。「验证锚点」将记录包与链上数据核对。",

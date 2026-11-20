@@ -515,3 +515,9 @@ def mcp_compat_mode() -> str:
 def mcp_official_compat_enabled() -> bool:
     """Включает 9 инструментов официальной MCP-памяти (@modelcontextprotocol/server-memory) поверх PADAM."""
     return mcp_compat_mode() == "official-memory"
+
+
+# --- PADAM Agentic Shield (инструмент MCP по флагу PADAM_MCP_SHIELD_TOOLS=1; рантайм-защита активна всегда) ---
+def mcp_shield_tools_enabled() -> bool:
+    """Включает инструмент MCP padam_agentic_shield (PADAM_MCP_SHIELD_TOOLS=1)."""
+    return os.environ.get("PADAM_MCP_SHIELD_TOOLS", "0").strip() == "1"

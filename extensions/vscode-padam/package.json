@@ -2,14 +2,19 @@
   "name": "padam-nocturne-mcp",
   "displayName": "PADAM NOCTURNE Memory (MCP)",
   "description": "Registers local sovereign PADAM NOCTURNE MCP server (9 tools, prompt-injection firewall, DLP shield, cognitive rollback).",
-  "version": "0.6.5",
+  "version": "0.7.0",
   "publisher": "code-eternal",
   "license": "AGPL-3.0",
   "engines": {
     "vscode": "^1.99.0"
   },
-  "categories": ["AI", "Other"],
-  "activationEvents": ["onStartupFinished"],
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./extension.js",
   "contributes": {
     "commands": [
@@ -24,5 +29,16 @@
         "label": "PADAM NOCTURNE Memory"
       }
     ]
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MaksimGalatin/padam-nocturne.git",
+    "directory": "extensions/vscode-padam"
+  },
+  "files": [
+    "extension.js",
+    "package.json",
+    "README.md",
+    "LICENSE.txt"
+  ]
 }

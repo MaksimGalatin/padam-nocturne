@@ -11,6 +11,11 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "es": "Arca de Conciencia del agente de IA: despertar unificado padam_wake_up, metas, relevo familiar firmado, puntos de control con archivo sin pérdida, esquema de Shamir sin huella del secreto, cadena de auditoría con anclaje HMAC-SHA256 y simulacro Fénix (todo opcional, desactivado por defecto).",
         "zh": "AI 智能体意识方舟：单次唤醒 padam_wake_up、目标账本、HMAC 签名家族接力、无损归档压缩、无秘密指纹泄露的 Shamir 分片、带 HMAC-SHA256 锚点的审计链以及零成本凤凰演练（全部默认关闭，按需开启）。",
     },
+    "0.7.0": {
+        "ru": "PADAM Agentic Shield: четыре кольца защиты для ИИ-агентов, платежей и сайтов (padam/agentic_shield.py, инструмент MCP padam_agentic_shield, команды padam shield, Студия).",
+        "es": "PADAM Agentic Shield: cuatro anillos de defensa para agentes de IA, pagos y sitios web (padam/agentic_shield.py, herramienta MCP padam_agentic_shield, comandos padam shield, Studio).",
+        "zh": "PADAM Agentic Shield：为 AI 智能体、支付和网站提供四层防护（padam/agentic_shield.py、MCP 工具 padam_agentic_shield、padam shield 命令、Studio）。",
+    },
     "0.6.5": {
         "ru": "Заработок агента: комиссия CODE 15 процентов с кнопкой владельца и 20 процентов на автопилоте, пять магазинов цифровых товаров через официальные API, мастер подключения 34 площадок без паролей, черновик профиля из памяти, публикация только кнопкой владельца, клиент закреплён на 90 дней.",
         "es": "Ganancias del agente: comisión CODE del 15 por ciento con el botón del propietario y del 20 por ciento en piloto automático, cinco tiendas de productos digitales mediante API oficiales, asistente de conexión de 34 plataformas sin contraseñas, borrador del perfil desde la memoria, publicación solo con el botón del propietario y cliente asignado durante 90 días.",

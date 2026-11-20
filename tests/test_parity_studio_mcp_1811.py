@@ -43,9 +43,9 @@ def test_parity_matrix_zero_gaps_and_4_languages():
     rc = parity_gen.main()
     assert rc == 0
     doc = (parity_gen.ROOT / "docs" / "PARITY_STUDIO_MCP.md").read_text(encoding="utf-8")
-    assert "174 из 174" in doc
-    assert "Есть в Studio (вкладка + кнопка/поле): **174 из 174**" in doc
-    assert "Есть в API (`padam/api.py`): **174 из 174**" in doc
+    assert "190 из 190" in doc
+    assert "Есть в Studio (вкладка + кнопка/поле): **190 из 190**" in doc
+    assert "Есть в API (`padam/api.py`): **190 из 190**" in doc
     assert "НЕТ:" not in doc
 
     ru_keys = set(studio.STRINGS["ru"].keys())
@@ -121,6 +121,21 @@ def test_parity_mcp_and_api_new_actions_and_owner_guards(tmp_path: Path, monkeyp
         for forbidden in ("settle_paid", "accept_delivery", "confirm_sale", "set_autopilot", "sample_accept", "autopilot_start", "autopilot_stop"):
             r_forb = hcall("padam_freelance_hub", {"action": forbidden, "order_id": "x"})
             assert r_forb.get("isError") is True
+
+        # PADAM Agentic Shield (SHIELD-01..04): безопасные проверки работают, а сброс/одобрение/allowlist закрыты для агента
+        monkeypatch.setenv("PADAM_MCP_SHIELD_TOOLS", "1")
+        for s_act, s_extra in (
+            ("status", {}),
+            ("outbound_check", {"action_type": "crypto_transfer", "target": "0x52908400098527886E0F7030069857D2E4169EE7", "payload": "send 100"}),
+            ("outbound_list", {}),
+            ("allowlist_list", {}),
+            ("scan_supply_chain", {"url": "https://example.com/", "html": "<html><script src='https://cdn.optimizely.com/js/1.js'></script></html>"}),
+            ("proof_pack", {}),
+        ):
+            r_sh = hcall("padam_agentic_shield", {"action": s_act, **s_extra})
+            assert r_sh.get("isError") is not True, (s_act, r_sh)
+        for s_forb in ("kill_switch_reset", "outbound_approve", "outbound_reject", "allowlist_add"):
+            assert hcall("padam_agentic_shield", {"action": s_forb}).get("isError") is True, s_forb
     finally:
         mcp_server._memory = prev_m
 
@@ -459,6 +474,24 @@ def test_parity_studio_playwright_all_buttons_1280_and_390(tmp_path: Path, monke
                     if page.locator("#review-list button").count() >= 2:
                         page.locator("#review-list button").nth(1).click()
                         page.wait_for_timeout(150)
+
+                    open_group_tab("grp_guard", "attacks")
+                    page.wait_for_selector("#sh-ks-banner", timeout=15000)
+                    click_and_check_text("#sh-refresh-btn", "#sh-ks-banner")
+                    page.fill("#sh-out-target", "https://new-partner.example/hook")
+                    page.fill("#sh-out-payload", "check outbound")
+                    click_and_check_text("#sh-out-check-btn", "#sh-out-result")
+                    page.fill("#sh-allow-val", "trusted.example")
+                    click_and_check_text("#sh-allow-add-btn", "#sh-allow-list")
+                    page.fill("#sh-sc-url", url.split("#")[0].rstrip("/") + "/studio")
+                    click_and_check_text("#sh-sc-scan-btn", "#sh-sc-out")
+                    click_and_check_text("#sh-proof-gen-btn", "#sh-proof-out")
+                    page.once("dialog", lambda d: d.accept())
+                    page.click("#sh-ks-trip-btn")
+                    page.wait_for_function("() => document.querySelector('#shield-lockdown-banner') && !document.querySelector('#shield-lockdown-banner').hidden", timeout=10000)
+                    page.once("dialog", lambda d: d.accept())
+                    page.click("#sh-ks-reset-btn")
+                    page.wait_for_function("() => document.querySelector('#shield-lockdown-banner') && document.querySelector('#shield-lockdown-banner').hidden", timeout=10000)
 
                     # 18.11: бенчмарк вынесен из «Атак» в отдельную вкладку меню «Бенчмарк»
                     page.click("#tab-bench")

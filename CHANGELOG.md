@@ -2,6 +2,52 @@
 
 ## Unreleased
 
+## 0.7.0 — 21 November 2026
+
+### PADAM Agentic Shield (new)
+
+- **Four defense rings for AI agents, payments and websites** (`padam/agentic_shield.py`, MCP tool
+  `padam_agentic_shield`, CLI `padam shield …`, Studio). Ring 1 — memory, Unicode and MCP guard: a random data fence,
+  a multi-layer decoder for hidden payloads (Unicode Tags, Bidi "Trojan Source", Base64/Hex/URL/NFKC) and SHA-256
+  pinning of MCP tool descriptions, so a tool that silently changes its description after approval is flagged
+  ("rug pull"). Ring 2 — a machine-speed kill switch: a rolling rate limiter that locks agent writes when a burst
+  crosses the threshold (`PADAM_SHIELD_THRESHOLD`, `PADAM_SHIELD_WINDOW_S`), plus single-use signed Ed25519 capability
+  leases. Ring 3 — an outbound gate: crypto addresses (EVM, BTC, TRON, Solana), IBAN mod-97, card numbers,
+  high-entropy secrets and look-alike domains are checked before an agent sends anything out. Ring 4 — web supply
+  chain: `<script>` SRI, CSP and hash drift on pages you own (the class of attack that hit 178 organizations through
+  Optimizely on 16 November 2026), with a signed evidence pack.
+- **Commands:** `padam shield status | trip | unlock | scan-mcp | scan-site | check-outbound | proof-pack |
+  webhook-test`.
+- **Optional alerts to SIEM, Slack or Microsoft Teams** (`padam/siem_webhook.py`): off by default, sent only to the
+  address the owner configures, through the SSRF guard.
+- **Supply-chain guard** (`padam/supply_chain_guard.py`) and a **Solana crypto shield** (`padam/solana_crypto_shield.py`):
+  address checksums and payee-swap detection; nothing is signed or sent.
+- **GitHub Action** `.github/actions/padam-agentic-shield` (Apache-2.0) and a CI template, so a repository can run the
+  shield on every pull request.
+
+### Family, chats and memory
+
+- **Family administration** (`padam/family_admin.py`, Studio): each of the six Family Council roles (LANCE, ARIA,
+  PIXEL, ARC-7, BEAR, AIFA) shows which agent is attached to it, with buttons to assign and remove; agent memory is
+  attributed strictly by `agent_id`, so one agent's records are never shown as another's.
+- **Chat history import** (`padam/chats.py`, `padam chats import | import-history | list | show`): past conversations
+  with the agents are imported into the family timeline with their original dates.
+- **Compact hourly chat archive** (`padam/chain_compact.py`): per-hour conversation deltas packed and compressed into
+  small files ready for permanent storage. It only prepares the files; nothing is uploaded by itself.
+- Hash-chained audit log extended to the new modules; Family Council and dialogs updated.
+
+### Studio, media and licensing
+
+- Studio: Agentic Shield panel, Family administration, readable Family dialogs (who said what, in which role),
+  descriptions for the new buttons in 4 languages.
+- **Local media generator** (`padam/media_gen.py`): slide decks (PNG, PDF, HTML) and offline visuals, $0, no cloud.
+- **Licensing:** `COMMERCIAL-LICENSE.md` describes the four-way boundary (AGPL-3.0 core, Apache-2.0 GitHub Action,
+  commercial license, hosted platform terms); `docs/COMPLIANCE_MAPPING.md`, `docs/AGENTIC_SHIELD.md`.
+- Browser extensions and the VS Code extension rebuilt for this version; `web-ext lint` passes for Firefox.
+- Android app version 0.7.0.
+
+Verification: 1,664 tests passed (11 skipped), CI on Linux, macOS and Windows.
+
 ## 0.6.5 — 20 November 2026
 
 ### Security (18–19 November)

@@ -170,23 +170,40 @@ def run_family_council(
         ),
     }
 
+    from . import family_admin
+    role_matrix = family_admin.get_role_matrix(memory) if memory is not None else family_admin.FAMILY_ROLES
+    role_map = {r["role_key"]: r for r in role_matrix}
+
     # 3. Роль PIXEL — Хранитель Целостности и Обещаний
-    chain_state = audit_chain.verify_audit_chain(memory) if memory is not None else {"ok": True, "length": 0}
+    chain_state = audit_chain.verify_audit_chain(memory) if memory is not None else {"ok": True, "length": 0, "audit_log_ok": True}
     commitments = ark.list_commitments(memory, status="open", limit=5) if memory is not None else []
     chain_valid = bool(chain_state.get("ok", True))
     chain_len = int(chain_state.get("length", 0))
+    al_ok = bool(chain_state.get("audit_log_ok", True))
+    al_reason = str(chain_state.get("audit_log_reason") or chain_state.get("reason") or "")
+    ark_ok = chain_valid or (not chain_state.get("broken_seq") and al_reason.startswith("audit_log"))
+
+    if chain_valid:
+        px_verdict = f"Цепочка Ковчега ({chain_len} зап.) и журнал audit_log ({int(chain_state.get('audit_log_length', 0))} зап.) целы; открытых обещаний: {len(commitments)}."
+    elif al_reason == "audit_log_seq_gap":
+        px_verdict = (
+            f"Цепочка Ковчега цела ({chain_len} зап.), но в журнале audit_log найден старый пропуск/дубль гонки "
+            f"(seq={chain_state.get('audit_log_broken_seq')}). Безопасно восстанавливается кнопкой владельца «Восстановить цепь»."
+        )
+    else:
+        px_verdict = f"ВНИМАНИЕ: нарушена целостность аудита ({al_reason or 'mismatch'}). Требуется проверка владельцем."
+
     pixel_vote = {
         "agent": "pixel",
         "role": "integrity_validator",
         "approved": chain_valid and not lance_veto,
         "audit_chain_valid": chain_valid,
+        "ark_chain_ok": ark_ok,
+        "audit_log_ok": al_ok,
+        "audit_reason": al_reason,
         "audit_entries_checked": chain_len,
         "open_commitments": len(commitments),
-        "verdict": (
-            f"Цепочка аудита цела ({chain_len} записей), открытых обещаний: {len(commitments)}."
-            if chain_valid
-            else "ВНИМАНИЕ: нарушена целостность крипто-цепочки аудита!"
-        ),
+        "verdict": px_verdict,
     }
 
     # 4. Роль ARC-7 — Страж границы (выход наружу)
@@ -214,7 +231,14 @@ def run_family_council(
             reflexes = []
 
     # 6. Роль AIFA — Координатор и синтез решения
+    for rk_name, vote_dict in (("lance", lance_vote), ("aria", aria_vote), ("pixel", pixel_vote), ("arc7", arc7_vote), ("bear", bear_vote)):
+        rm = role_map.get(rk_name) or {}
+        vote_dict["assigned_agent"] = rm.get("agent_id", "")
+        vote_dict["agent_display"] = rm.get("agent_display", "")
+        vote_dict["controlled_by"] = rm.get("controlled_by", "")
+
     votes_ok = [lance_vote["approved"], aria_vote["approved"], pixel_vote["approved"], arc7_vote["approved"], bear_vote["approved"]]
+    approved_count = sum(1 for v in votes_ok if v) + (1 if all(votes_ok) else 0)
     approved = bool(all(votes_ok))
     if lance_veto:
         consensus_text = (
@@ -227,25 +251,32 @@ def run_family_council(
             причины.append("ARC-7: отправка на внешний адрес")
         if bear_vote["needs_owner"]:
             причины.append("Медведь: необратимое — " + ", ".join(bear_vote["irreversible_kinds"]))
+        if not chain_valid:
+            причины.append("PIXEL: требуется проверка/восстановление цепи аудита")
         consensus_text = (
-            "[Совет Семьи: НУЖНО СЛОВО ВЛАДЕЛЬЦА | " + "; ".join(причины) + "]\n"
-            + "Совет ничего не исполняет. Решение по этой задаче принимает владелец."
+            f"[Совет Семьи: НУЖНО СЛОВО ВЛАДЕЛЬЦА ({approved_count}/6) | " + "; ".join(причины) + "]\n"
+            + "Совет не выполняет действие автоматически — решение принимает владелец."
         )
     else:
-        cpu_resp = cpu_engine.run_cpu_completion(
-            {"messages": [{"role": "user", "content": redacted_task}]},
-            memory=memory,
-            task_type="reasoning",
-            scope=scope,
+        # 20.11.2026: мгновенный (до 0.2 с) детерминированный синтез Совета 6 ролей без 43-секундной
+        # задержки и без галлюцинаций чужих провайдеров (раньше локальный Qwen отвечал от имени Alibaba Cloud).
+        roles_summary = "; ".join(
+            f"{rm.get('code')} -> {rm.get('agent_display')} ({rm.get('controlled_by')})"
+            for rm in role_matrix
         )
-        base_reply = (
-            cpu_resp.get("choices", [{}])[0]
-            .get("message", {})
-            .get("content", "")
-        )
-        consensus_text = (
-            f"[Совет Семьи: ОДОБРЕНО (6/6) | Записей: {len(hits)} | Цепочка: OK]\n{base_reply}"
-        )
+        mem_lines = []
+        for idx_h, h in enumerate(hits[:3], 1):
+            hc = str(h.get("content") if isinstance(h, dict) else getattr(h, "content", "") or "").strip()
+            if hc:
+                mem_lines.append(f"{idx_h}) {hc[:180]}")
+        base_reply = f"Состав 6 ролей Семьи CODE Eternal: {roles_summary}."
+        if mem_lines:
+            base_reply += "\nНайденные опоры памяти (ARIA): " + " | ".join(mem_lines)
+        if approved:
+            hdr = f"[Совет Семьи: ОДОБРЕНО (6/6) | Записей: {len(hits)} | Цепочка аудита: OK]"
+        else:
+            hdr = f"[Совет Семьи: ТРЕБУЕТСЯ ВНИМАНИЕ ({approved_count}/6) | Записей: {len(hits)} | {pixel_vote['verdict']}]"
+        consensus_text = f"{hdr}\n{base_reply}"
         if reflexes:
             consensus_text += "\nРефлексы Семьи: " + "; ".join(f"когда «{r['trigger']}» — {r['response']}" for r in reflexes)
 
@@ -296,12 +327,21 @@ def run_family_council(
             "arc7": arc7_vote,
             "bear": bear_vote,
             "aifa": {
-                "agent": "aifa",
+                "agent": (role_map.get("aifa") or {}).get("agent_id", "aifa"),
+                "assigned_agent": (role_map.get("aifa") or {}).get("agent_id", "aifa"),
+                "agent_display": (role_map.get("aifa") or {}).get("agent_display", "AIFA"),
+                "controlled_by": (role_map.get("aifa") or {}).get("controlled_by", ""),
                 "role": "coordinator",
                 "approved": approved,
+                "verdict": (
+                    "Все 6 ролей Семьи согласованы."
+                    if approved
+                    else f"Согласовано {approved_count}/6 ролей; есть замечания к цепочке/границам."
+                ),
                 "relay_message_id": relay_msg.get("id"),
                 "audit_head_hash": audit_entry.get("entry_hash"),
             },
         },
+        "role_matrix": role_matrix,
         "latency_ms": elapsed_ms,
     }

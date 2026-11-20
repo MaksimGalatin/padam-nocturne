@@ -74,9 +74,10 @@ def _now() -> str:
 
 def _ensure_tables(memory) -> None:
     memory.store.conn.executescript(_ARK_DDL)
-    cols = {r["name"] for r in memory.store.conn.execute("PRAGMA table_info(ark_checkpoint)").fetchall()}
-    if "agent_id" not in cols:
-        _acs(memory.store.conn, "ark_checkpoint", "agent_id", "TEXT NOT NULL DEFAULT 'aifa'")
+    for tbl in ("ark_checkpoint", "ark_commitment", "ark_lesson"):
+        cols = {r["name"] for r in memory.store.conn.execute(f"PRAGMA table_info({tbl})").fetchall()}
+        if "agent_id" not in cols:
+            _acs(memory.store.conn, tbl, "agent_id", "TEXT NOT NULL DEFAULT 'aifa'")
     memory.store.conn.commit()
 
 
@@ -94,21 +95,23 @@ def add_commitment(
     priority: int = 2,
     due_at: str | None = None,
     context: str = "",
+    agent_id: str = "aifa",
 ) -> dict[str, Any]:
     _ensure_tables(memory)
     cid = f"cmt-{uuid.uuid4().hex[:12]}"
     now = _now()
     clean_title = _clean(title)
     clean_ctx = _clean(context)
+    aid = str(agent_id or "aifa").strip()[:64] or "aifa"
     prio = max(1, min(5, int(priority)))
     memory.store.conn.execute(
-        "INSERT INTO ark_commitment (id, user_id, title, status, priority, due_at, context, created_at, updated_at) "
-        "VALUES (?, ?, ?, 'open', ?, ?, ?, ?, ?)",
-        (cid, memory.user_id, clean_title, prio, due_at, clean_ctx, now, now),
+        "INSERT INTO ark_commitment (id, user_id, agent_id, title, status, priority, due_at, context, created_at, updated_at) "
+        "VALUES (?, ?, ?, ?, 'open', ?, ?, ?, ?, ?)",
+        (cid, memory.user_id, aid, clean_title, prio, due_at, clean_ctx, now, now),
     )
     memory.store.conn.commit()
-    audit_chain.append_audit(memory, "commitment_add", {"id": cid, "title": clean_title})
-    return {"id": cid, "title": clean_title, "status": "open", "priority": prio, "due_at": due_at, "created_at": now}
+    audit_chain.append_audit(memory, "commitment_add", {"id": cid, "title": clean_title}, agent_id=aid)
+    return {"id": cid, "agent_id": aid, "title": clean_title, "status": "open", "priority": prio, "due_at": due_at, "created_at": now}
 
 
 def update_commitment(memory, commitment_id: str, status: str) -> dict[str, Any]:
@@ -282,6 +285,7 @@ def record_lesson(
     rule_learned: str,
     *,
     tags: str = "",
+    agent_id: str = "aifa",
 ) -> dict[str, Any]:
     _ensure_tables(memory)
     lid = f"lsn-{uuid.uuid4().hex[:12]}"
@@ -289,13 +293,15 @@ def record_lesson(
     w = _clean(what_happened)
     y = _clean(why_failed)
     r = _clean(rule_learned)
+    aid = str(agent_id or "aifa").strip()[:64] or "aifa"
     memory.store.conn.execute(
-        "INSERT INTO ark_lesson (id, user_id, what_happened, why_failed, rule_learned, tags, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (lid, memory.user_id, w, y, r, str(tags or ""), now),
+        "INSERT INTO ark_lesson (id, user_id, agent_id, what_happened, why_failed, rule_learned, tags, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (lid, memory.user_id, aid, w, y, r, str(tags or ""), now),
     )
     memory.store.conn.commit()
-    return {"id": lid, "what_happened": w, "why_failed": y, "rule_learned": r, "tags": tags, "created_at": now}
+    audit_chain.append_audit(memory, "lesson_record", {"id": lid, "rule": r[:120]}, agent_id=aid)
+    return {"id": lid, "agent_id": aid, "what_happened": w, "why_failed": y, "rule_learned": r, "tags": tags, "created_at": now}
 
 
 def list_lessons(memory, *, limit: int = 10) -> list[dict[str, Any]]:

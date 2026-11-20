@@ -1,0 +1,28 @@
+name: padam-nocturne
+type: server
+meta:
+  category: security
+  tags:
+    - memory
+    - security
+    - mcp-poisoning
+    - sqlite
+    - prompt-injection
+about:
+  title: PADAM NOCTURNE Memory & Agentic Shield
+  description: Local-first SQLite memory for AI agents with 4 deterministic security rings, secret masking, prompt-injection quarantine, and cryptographic forget/L3 proofs.
+  icon: https://www.google.com/s2/favicons?domain=aifa.works&sz=64
+source:
+  project: https://github.com/MaksimGalatin/padam-nocturne
+  branch: main
+  dockerfile: Dockerfile
+config:
+  env:
+    - name: PADAM_DB_PATH
+      example: /data/padam.db
+      description: Path to local SQLite memory file
+    - name: PADAM_STRICT
+      example: "1"
+      description: Hold every external/agent memory write for owner review
+volumes:
+  - /data

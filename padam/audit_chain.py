@@ -78,56 +78,65 @@ def _sign_head(key: bytes, user_id: str, head_seq: int, head_hash: str) -> str:
 def append_audit(memory, action: str, details: dict[str, Any] | str, *, agent_id: str = "aifa") -> dict[str, Any]:
     conn = memory.store.conn
     conn.executescript(_AUDIT_DDL)
-    last = conn.execute(
-        "SELECT entry_hash FROM ark_audit_chain WHERE user_id = ? ORDER BY seq DESC LIMIT 1",
-        (memory.user_id,),
-    ).fetchone()
-    prev_hash = str(last["entry_hash"]) if last else ("0" * 64)
-    created_at = datetime.now(timezone.utc).isoformat()
-    det_str = details if isinstance(details, str) else json.dumps(details, ensure_ascii=False, sort_keys=True)
-    entry_hash = _compute_entry_hash(memory.user_id, agent_id, action, det_str, prev_hash, created_at)
-    cur = conn.execute(
-        "INSERT INTO ark_audit_chain (user_id, agent_id, action, details, prev_hash, entry_hash, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (memory.user_id, agent_id, action, det_str, prev_hash, entry_hash, created_at),
-    )
-    seq = int(cur.lastrowid)
-
-    key, _ = integrity.owner_key(memory.store)
-    head_hmac = _sign_head(key, memory.user_id, seq, entry_hash)
-
-    ots_receipt = None
-    ots_date = None
-    if os.environ.get("PADAM_AUDIT_OTS", "0").strip() == "1":
-        today = created_at[:10]
-        prev_anc = conn.execute(
-            "SELECT ots_date, ots_receipt FROM ark_audit_anchor WHERE user_id = ?",
+    started_tx = False
+    if not conn.in_transaction:
+        conn.execute("BEGIN IMMEDIATE")
+        started_tx = True
+    try:
+        last = conn.execute(
+            "SELECT entry_hash FROM ark_audit_chain WHERE user_id = ? ORDER BY seq DESC LIMIT 1",
             (memory.user_id,),
         ).fetchone()
-        if not prev_anc or prev_anc["ots_date"] != today:
-            try:
-                from . import ots
-                stamp_bytes = ots.stamp(bytes.fromhex(entry_hash))
-                ots_receipt = base64.b64encode(stamp_bytes).decode("ascii")
-                ots_date = today
-            except Exception:
-                ots_receipt = prev_anc["ots_receipt"] if prev_anc else None
-                ots_date = prev_anc["ots_date"] if prev_anc else None
-        else:
-            ots_receipt = prev_anc["ots_receipt"]
-            ots_date = prev_anc["ots_date"]
+        prev_hash = str(last["entry_hash"]) if last else ("0" * 64)
+        created_at = datetime.now(timezone.utc).isoformat()
+        det_str = details if isinstance(details, str) else json.dumps(details, ensure_ascii=False, sort_keys=True)
+        entry_hash = _compute_entry_hash(memory.user_id, agent_id, action, det_str, prev_hash, created_at)
+        cur = conn.execute(
+            "INSERT INTO ark_audit_chain (user_id, agent_id, action, details, prev_hash, entry_hash, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (memory.user_id, agent_id, action, det_str, prev_hash, entry_hash, created_at),
+        )
+        seq = int(cur.lastrowid)
 
-    conn.execute(
-        "INSERT INTO ark_audit_anchor (user_id, head_seq, head_hash, head_hmac, ots_receipt, ots_date, updated_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?) "
-        "ON CONFLICT(user_id) DO UPDATE SET "
-        "head_seq=excluded.head_seq, head_hash=excluded.head_hash, head_hmac=excluded.head_hmac, "
-        "ots_receipt=COALESCE(excluded.ots_receipt, ark_audit_anchor.ots_receipt), "
-        "ots_date=COALESCE(excluded.ots_date, ark_audit_anchor.ots_date), "
-        "updated_at=excluded.updated_at",
-        (memory.user_id, seq, entry_hash, head_hmac, ots_receipt, ots_date, created_at),
-    )
-    conn.commit()
+        key, _ = integrity.owner_key(memory.store)
+        head_hmac = _sign_head(key, memory.user_id, seq, entry_hash)
+
+        ots_receipt = None
+        ots_date = None
+        if os.environ.get("PADAM_AUDIT_OTS", "0").strip() == "1":
+            today = created_at[:10]
+            prev_anc = conn.execute(
+                "SELECT ots_date, ots_receipt FROM ark_audit_anchor WHERE user_id = ?",
+                (memory.user_id,),
+            ).fetchone()
+            if not prev_anc or prev_anc["ots_date"] != today:
+                try:
+                    from . import ots
+                    stamp_bytes = ots.stamp(bytes.fromhex(entry_hash))
+                    ots_receipt = base64.b64encode(stamp_bytes).decode("ascii")
+                    ots_date = today
+                except Exception:
+                    ots_receipt = prev_anc["ots_receipt"] if prev_anc else None
+                    ots_date = prev_anc["ots_date"] if prev_anc else None
+            else:
+                ots_receipt = prev_anc["ots_receipt"]
+                ots_date = prev_anc["ots_date"]
+
+        conn.execute(
+            "INSERT INTO ark_audit_anchor (user_id, head_seq, head_hash, head_hmac, ots_receipt, ots_date, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET "
+            "head_seq=excluded.head_seq, head_hash=excluded.head_hash, head_hmac=excluded.head_hmac, "
+            "ots_receipt=COALESCE(excluded.ots_receipt, ark_audit_anchor.ots_receipt), "
+            "ots_date=COALESCE(excluded.ots_date, ark_audit_anchor.ots_date), "
+            "updated_at=excluded.updated_at",
+            (memory.user_id, seq, entry_hash, head_hmac, ots_receipt, ots_date, created_at),
+        )
+        conn.commit()
+    except Exception:
+        if started_tx and conn.in_transaction:
+            conn.rollback()
+        raise
     _save_audit_watermark(memory, seq, entry_hash, key)
     return {
         "seq": seq,

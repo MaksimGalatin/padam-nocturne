@@ -1,6 +1,6 @@
 """Авто-установщик PADAM MCP в IDE и AI-клиенты в одну команду (padam setup).
 
-Поддерживает 12 клиентов: Claude Desktop, Claude Code, Cursor, VS Code,
+Поддерживает 13 клиентов: Claude Desktop, Claude Code, Antigravity, Cursor, VS Code,
 Codex, Gemini CLI, Windsurf, Zed, Cline, Roo Code, Continue.dev, JetBrains AI.
 Перед изменением любого существующего файла создаёт резервную копию `.bak`
 и никогда не затирает другие MCP-серверы пользователя.
@@ -19,6 +19,7 @@ from urllib.parse import quote
 SUPPORTED_CLIENTS = (
     "claude_desktop",
     "claude_code",
+    "antigravity",
     "cursor",
     "vscode",
     "codex",
@@ -49,6 +50,8 @@ def _client_config_path(client: str, *, home: Path, project_dir: Path) -> tuple[
         return project_dir / ".vscode" / "mcp.json", "json_servers"
     if client == "codex":
         return home / ".codex" / "config.toml", "toml_codex"
+    if client == "antigravity":
+        return home / ".gemini" / "antigravity" / "mcp_config.json", "json_mcpServers"
     if client == "gemini_cli":
         return home / ".gemini" / "settings.json", "json_mcpServers"
     if client == "windsurf":
@@ -211,7 +214,7 @@ def setup_clients(
     verified = None
     if verify:
         from . import mcp_server
-        init_r = mcp_server.handle({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "padam-setup", "version": "0.5.2"}}})
+        init_r = mcp_server.handle({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "padam-setup", "version": "0.6.5"}}})
         tools_r = mcp_server.handle({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}})
         tools = (tools_r.get("result") or {}).get("tools") or []
         verified = {

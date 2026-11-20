@@ -150,6 +150,27 @@ def render_hook_context(
 
     body = "\n".join(lines)
     fenced = safety.fence(body) if body else ""
+    hook_specific: dict[str, Any] = {
+        "hookEventName": event,
+        "additionalContext": fenced,
+    }
+    shield_gate = None
+    if event in ("PreToolUse", "BeforeTool") and query.strip():
+        from . import agentic_shield
+        gate_res = agentic_shield.inspect_outbound_action(
+            mem,
+            action_type=f"hook:{tool_name or 'tool'}",
+            target="",
+            payload=query,
+            agent_id=f"hook:{event}",
+        )
+        shield_gate = gate_res
+        if not gate_res["allowed"]:
+            hook_specific["permissionDecision"] = "deny"
+            hook_specific["permissionDecisionReason"] = (
+                f"PADAM Agentic Shield blocked/held {tool_name or 'tool'} "
+                f"(gate_id={gate_res['gate_id']}, risk={gate_res['risk_level']})"
+            )
     return {
         "enabled": True,
         "event": event,
@@ -157,10 +178,8 @@ def render_hook_context(
         "token_budget": int(token_budget),
         "items": selected,
         "additionalContext": fenced,
-        "hookSpecificOutput": {
-            "hookEventName": event,
-            "additionalContext": fenced,
-        },
+        "shield_gate": shield_gate,
+        "hookSpecificOutput": hook_specific,
     }
 
 

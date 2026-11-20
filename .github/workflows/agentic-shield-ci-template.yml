@@ -1,0 +1,41 @@
+# Шаблон GitHub Actions Workflow для проверки SRI, CSP, PCI DSS 4.0.1 и конфигов MCP при каждом Pull Request
+name: PADAM Agentic Shield Security Gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  agentic-shield:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run PADAM Agentic Shield (HTML SRI/CSP & MCP Audit)
+        uses: ./.github/actions/padam-agentic-shield
+        with:
+          # Замените на ваш собранный HTML (например dist/index.html) или публичный --url
+          html-path: docs/site/en/index.html
+          mcp-config: .mcp.json
+          min-grade: C
+
+      - name: Upload SARIF to GitHub Code Scanning
+        if: always() && hashFiles('padam-agentic-shield.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: padam-agentic-shield.sarif
+          category: padam-agentic-shield
+
+      - name: Upload 1-Page HTML Supply-Chain Checkup
+        if: always() && hashFiles('padam-supply-chain-checkup.html') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: padam-supply-chain-checkup
+          path: padam-supply-chain-checkup.html

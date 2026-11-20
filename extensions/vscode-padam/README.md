@@ -1,0 +1,8 @@
+# PADAM NOCTURNE Memory (MCP) — VS Code / Cursor Extension
+
+Automatically registers the local sovereign **PADAM NOCTURNE** MCP server (`127.0.0.1`) inside VS Code (`vscode.lm.registerMcpServerDefinitionProvider`) and provides the `PADAM: Open Studio` command.
+
+- **Local-only:** One SQLite database on your machine, `$0` cloud telemetry.
+- **4 Defense Rings:** Prompt-injection quarantine, autonomous kill-switch, outbound DLP / payee-swap gate, and secret masking.
+- **Install Python core first:** `pip install padam-nocturne` (or `uvx padam-nocturne`).
+- **Source & Docs:** [github.com/MaksimGalatin/padam-nocturne](https://github.com/MaksimGalatin/padam-nocturne)

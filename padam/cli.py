@@ -2201,6 +2201,156 @@ def main(argv=None) -> int:
     sfm.add_argument("amount", type=float, default=100.0)
     sfm.set_defaults(fn=cmd_freelance)
 
+    def cmd_shield(m: Memory, args) -> int:
+        from . import agentic_shield as _ash, supply_chain_guard as _scg
+        act = args.shield_cmd
+        if act == "trip":
+            res = _ash.trip_kill_switch(m, reason=args.reason, agent_id="owner", block_writes=args.block_writes)
+        elif act == "unlock":
+            if not args.confirm:
+                print(t("Отказ: укажите --confirm для снятия Kill Switch.", "Refused: pass --confirm to unlock Kill Switch."), file=sys.stderr)
+                return 2
+            res = _ash.unlock_kill_switch(m)
+        elif act == "check-outbound":
+            res = _ash.inspect_outbound_action(
+                m, action_type=args.action_type, target=args.target, payload=args.payload, agent_id="cli"
+            )
+        elif act == "scan-site":
+            res = _scg.scan_url_supply_chain(
+                args.url, memory=m, use_playwright=args.playwright, allow_localhost=args.allow_localhost
+            )
+            if args.out_html and res.get("html_report"):
+                from pathlib import Path as _P
+                _P(args.out_html).write_text(res["html_report"], encoding="utf-8")
+            if getattr(args, "out_sarif", ""):
+                from pathlib import Path as _P
+                _P(args.out_sarif).write_text(json.dumps(_scg.supply_chain_to_sarif(res), ensure_ascii=False, indent=2), encoding="utf-8")
+            res = {k: v for k, v in res.items() if k != "html_report"}
+        elif act == "scan-mcp":
+            res = _ash.audit_mcp_tools(m, args.path, server_name=args.server, pin=args.pin)
+        elif act == "profile":
+            res = _ash.set_policy_profile(m, args.profile)
+        elif act == "webhook-test":
+            from . import siem_webhook as _sw
+            res = _sw.dispatch_webhook_event(
+                m, event_type="cli_test_alert", severity="high",
+                title="PADAM CLI Webhook Dry-Run", detail="Testing corporate webhook formatting",
+                agent_id="cli", dry_run=not args.send, allow_localhost=args.allow_localhost, fmt_override=args.format,
+            )
+        elif act == "proof-pack":
+            res = _ash.build_proof_pack(m)
+            from pathlib import Path as _P
+            if args.out_json:
+                _P(args.out_json).write_text(json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
+            if args.out_html:
+                _P(args.out_html).write_text(_ash.render_proof_pack_html(res), encoding="utf-8")
+            if args.out_md:
+                _P(args.out_md).write_text(_ash.render_proof_pack_markdown(res), encoding="utf-8")
+        else:
+            res = _ash.get_shield_status(m)
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+        return 0
+
+    ssh = sub.add_parser("shield", help=t("активный Щит: Kill Switch, гейт исходящих, JS Supply-Chain чекап и Proof Pack", "Agentic Shield: Kill Switch, Outbound Gate, JS Supply-Chain audit & Proof Pack"))
+    ssub = ssh.add_subparsers(dest="shield_cmd", required=True)
+    ss_st = ssub.add_parser("status")
+    ss_st.set_defaults(fn=cmd_shield)
+    ss_tr = ssub.add_parser("trip")
+    ss_tr.add_argument("--reason", default="manual_cli_trip")
+    ss_tr.add_argument("--block-writes", action="store_true")
+    ss_tr.set_defaults(fn=cmd_shield)
+    ss_un = ssub.add_parser("unlock")
+    ss_un.add_argument("--confirm", action="store_true")
+    ss_un.set_defaults(fn=cmd_shield)
+    ss_ob = ssub.add_parser("check-outbound")
+    ss_ob.add_argument("--type", dest="action_type", default="action")
+    ss_ob.add_argument("--target", default="")
+    ss_ob.add_argument("--payload", default="")
+    ss_ob.set_defaults(fn=cmd_shield)
+    ss_sc = ssub.add_parser("scan-site")
+    ss_sc.add_argument("url")
+    ss_sc.add_argument("--playwright", action="store_true")
+    ss_sc.add_argument("--allow-localhost", action="store_true")
+    ss_sc.add_argument("--out-html", default="")
+    ss_sc.add_argument("--out-sarif", default="")
+    ss_sc.set_defaults(fn=cmd_shield)
+    ss_sm = ssub.add_parser("scan-mcp")
+    ss_sm.add_argument("path")
+    ss_sm.add_argument("--server", default="mcp")
+    ss_sm.add_argument("--pin", action="store_true")
+    ss_sm.set_defaults(fn=cmd_shield)
+    ss_pr = ssub.add_parser("profile")
+    ss_pr.add_argument("profile", choices=["balanced", "strict_fin", "paranoid_airgap"])
+    ss_pr.set_defaults(fn=cmd_shield)
+    ss_wh = ssub.add_parser("webhook-test")
+    ss_wh.add_argument("--format", default="slack")
+    ss_wh.add_argument("--send", action="store_true")
+    ss_wh.add_argument("--allow-localhost", action="store_true")
+    ss_wh.set_defaults(fn=cmd_shield)
+    ss_pp = ssub.add_parser("proof-pack")
+    ss_pp.add_argument("--out-json", default="")
+    ss_pp.add_argument("--out-html", default="")
+    ss_pp.add_argument("--out-md", default="")
+    ss_pp.set_defaults(fn=cmd_shield)
+
+    def cmd_chats(m: Memory, args) -> int:
+        from pathlib import Path as _P
+        from . import chats as _chats
+        cact = args.chats_cmd
+        if cact == "list":
+            res = _chats.list_threads(m, agent_id=args.agent or None, q=args.query or "", include_workers=args.workers, limit=args.limit)
+        elif cact == "show":
+            res = _chats.get_thread_messages(m, args.thread_id)
+        elif cact == "add":
+            res = _chats.add_message(m, agent_id=args.agent, role=args.role, content=args.content, thread_id=args.thread_id or None, title=args.title, sync_memory_graph=not args.no_graph_sync)
+        elif cact == "import":
+            res = _chats.import_chat(m, agent_id=args.agent, title=args.title, path=args.path, sync_memory_graph=not args.no_graph_sync)
+        elif cact == "import-history":
+            ag_dir = _P(args.antigravity_dir) if args.antigravity_dir else (_P.home() / ".gemini" / "antigravity" / "brain")
+            br_dir = _P(args.brain_sessions_dir) if args.brain_sessions_dir else None
+            sis_dir = _P(args.sisters_dir) if args.sisters_dir else None
+            cc_dir = _P(args.claude_dir) if args.claude_dir else None
+            res = _chats.batch_import_history(m, antigravity_root=ag_dir, brain_sessions_dir=br_dir, sisters_dir=sis_dir, claude_projects_dir=cc_dir, include_workers=args.workers, sync_memory_graph=not args.no_graph_sync, max_per_source=args.limit)
+        else:
+            res = _chats.list_threads(m)
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+        return 0
+
+    sch = sub.add_parser("chats", help=t("чистая история чатов с агентами без кода и синхронизация в хронологический граф", "clean per-agent chat history (no code) and timeline graph sync"))
+    csub = sch.add_subparsers(dest="chats_cmd", required=True)
+    ch_ls = csub.add_parser("list")
+    ch_ls.add_argument("--agent", default="")
+    ch_ls.add_argument("--query", default="")
+    ch_ls.add_argument("--workers", action="store_true")
+    ch_ls.add_argument("--limit", type=int, default=100)
+    ch_ls.set_defaults(fn=cmd_chats)
+    ch_sh = csub.add_parser("show")
+    ch_sh.add_argument("thread_id")
+    ch_sh.set_defaults(fn=cmd_chats)
+    ch_ad = csub.add_parser("add")
+    ch_ad.add_argument("content")
+    ch_ad.add_argument("--agent", default="aifa_antigravity")
+    ch_ad.add_argument("--role", default="user")
+    ch_ad.add_argument("--thread-id", default="")
+    ch_ad.add_argument("--title", default="")
+    ch_ad.add_argument("--no-graph-sync", action="store_true")
+    ch_ad.set_defaults(fn=cmd_chats)
+    ch_im = csub.add_parser("import")
+    ch_im.add_argument("path")
+    ch_im.add_argument("--agent", default="aifa_antigravity")
+    ch_im.add_argument("--title", default="")
+    ch_im.add_argument("--no-graph-sync", action="store_true")
+    ch_im.set_defaults(fn=cmd_chats)
+    ch_ih = csub.add_parser("import-history")
+    ch_ih.add_argument("--antigravity-dir", default="")
+    ch_ih.add_argument("--brain-sessions-dir", default="")
+    ch_ih.add_argument("--sisters-dir", default="")
+    ch_ih.add_argument("--claude-dir", default="")
+    ch_ih.add_argument("--workers", action="store_true")
+    ch_ih.add_argument("--limit", type=int, default=300)
+    ch_ih.add_argument("--no-graph-sync", action="store_true")
+    ch_ih.set_defaults(fn=cmd_chats)
+
     a = p.parse_args(argv)
     if a.fn in (cmd_demo, cmd_seal_status, cmd_seal, cmd_unseal, cmd_setup, cmd_pack_extension, cmd_playground, cmd_badge, cmd_aifa_sec) or (a.fn is cmd_hooks and getattr(a, 'hooks_cmd', '') in ('install', 'status')):
         return a.fn(None, a)

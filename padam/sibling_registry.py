@@ -437,6 +437,8 @@ def touch_session(memory, *, session_id: str, agent_id: str, client_name: str = 
                    started_at, last_seen_at, last_action, calls)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
                ON CONFLICT(session_id) DO UPDATE SET last_seen_at = excluded.last_seen_at,
+                   user_id = excluded.user_id,
+                   agent_id = CASE WHEN excluded.agent_id != '' AND excluded.agent_id != 'agent' THEN excluded.agent_id ELSE ark_sibling_session.agent_id END,
                    last_action = CASE WHEN excluded.last_action != '' THEN excluded.last_action ELSE last_action END,
                    calls = calls + 1""",
             (sid, memory.user_id, aid, str(client_name or "")[:60], str(client_version or "")[:30], int(pid or 0),

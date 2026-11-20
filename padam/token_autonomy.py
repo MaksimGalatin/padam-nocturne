@@ -97,8 +97,18 @@ _MONTH_S = 30.0 * _DAY_S
 
 from contextlib import nullcontext
 
+from functools import wraps
+
 def _lock_of(memory):
     return getattr(getattr(memory, "store", None), "_lock", None) or nullcontext()
+
+def _with_mem_lock(fn):
+    """??????????? ?????????? ?????? ?????? memory.store._lock (RLock), ???????? ????? ????? execute ? commit."""
+    @wraps(fn)
+    def _wrapped(memory, *args, **kwargs):
+        with _lock_of(memory):
+            return fn(memory, *args, **kwargs)
+    return _wrapped
 
 
 PROVIDER_CATALOG: list[dict[str, Any]] = [
@@ -233,6 +243,7 @@ def _roll_windows(conn, row, now: float) -> tuple[int, int, int, float, float, f
     return du, wu, mu, rd, rw, rm
 
 
+@_with_mem_lock
 def upsert_provider_plan(
     memory,
     provider: str,
@@ -282,6 +293,7 @@ def upsert_provider_plan(
     return compute_pacing_plan(memory, prov, now_ts=now)
 
 
+@_with_mem_lock
 def record_token_usage(
     memory,
     provider: str,
@@ -327,6 +339,7 @@ def record_token_usage(
     return compute_pacing_plan(memory, prov, now_ts=now)
 
 
+@_with_mem_lock
 def compute_pacing_plan(
     memory,
     provider: str = "primary",
@@ -419,6 +432,7 @@ def compute_pacing_plan(
     }
 
 
+@_with_mem_lock
 def apply_adaptive_pacing(memory, provider: str = "primary", *, router_instance=None, now_ts: float | None = None) -> dict[str, Any]:
     """Применяет вычисленный режим экономии к экземпляру SovereignRouter без вмешательства в ключи/оплату."""
     plan = compute_pacing_plan(memory, provider, now_ts=now_ts)
@@ -430,6 +444,7 @@ def apply_adaptive_pacing(memory, provider: str = "primary", *, router_instance=
 
 # --- Учёт собственного заработка агентов и согласованная покупка тарифа/токенов ---
 
+@_with_mem_lock
 def record_agent_earning(
     memory,
     agent_id: str,
@@ -464,6 +479,7 @@ def record_agent_earning(
     return {"ok": True, "entry_id": eid, "revenue_usdt": rev, "allocated_compute_usdt": alloc, "treasury": treasury_summary(memory)}
 
 
+@_with_mem_lock
 def treasury_summary(memory) -> dict[str, Any]:
     """Подсчитывает доступный заработанный вычислительный баланс агентов (выручка - потраченное на пополнение)."""
     _ensure(memory)
@@ -489,6 +505,7 @@ def treasury_summary(memory) -> dict[str, Any]:
     }
 
 
+@_with_mem_lock
 def propose_plan_or_topup(
     memory,
     *,
@@ -546,6 +563,7 @@ def propose_plan_or_topup(
     }
 
 
+@_with_mem_lock
 def list_topup_proposals(memory, *, status: str | None = None) -> list[dict[str, Any]]:
     _ensure(memory)
     sql = "SELECT * FROM ark_topup_proposal WHERE user_id = ?"
@@ -557,6 +575,7 @@ def list_topup_proposals(memory, *, status: str | None = None) -> list[dict[str,
     return [dict(r) for r in memory.store.conn.execute(sql, params).fetchall()]
 
 
+@_with_mem_lock
 def decide_topup_proposal(memory, proposal_id: str, *, approve: bool, owner_note: str = "") -> dict[str, Any]:
     """Решение ВЛАДЕЛЬЦА по заявке агента (одобрить или отклонить)."""
     _ensure(memory)
@@ -585,6 +604,7 @@ def decide_topup_proposal(memory, proposal_id: str, *, approve: bool, owner_note
     return {"ok": True, "proposal_id": proposal_id, "status": new_st}
 
 
+@_with_mem_lock
 def execute_approved_topup(
     memory,
     proposal_id: str,
@@ -673,6 +693,7 @@ def execute_approved_topup(
 
 # --- Периодический таймер самопроверки бюджета агента ---
 
+@_with_mem_lock
 def run_budget_timer_tick(
     memory,
     *,

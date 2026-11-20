@@ -3873,6 +3873,906 @@ _STRINGS_PARITY_1811: dict[str, dict[str, str]] = {
 for _lg, _extra in _STRINGS_PARITY_1811.items():
     STRINGS[_lg].update(_extra)
 
+# 19.11.2026: PADAM Agentic Shield — строки интерфейса на 4 языках (без 3+ подряд английских слов в ru)
+_STRINGS_SHIELD: dict[str, dict[str, str]] = {
+    "ru": {
+        "sh_lockdown_banner": "ТРЕВОГА ЩИТА: активирована аварийная блокировка (строгий карантин). Проверьте инцидент.",
+        "sh_banner_go_btn": "Открыть Щит",
+        "sh_ks_title": "Защита на скорости машин и аварийная остановка",
+        "sh_ks_sub": "При серии инъекций, эксфильтрации или всплеске запросов PADAM автоматически включает строгий режим и стопорит внешние действия.",
+        "sh_ks_armed": "Щит активен · Аномалий в окне: {score}/{thr} (окно {win} с)",
+        "sh_ks_tripped": "ТРЕВОГА АКТИВНА · Строгий карантин включён · Причина: {reason}",
+        "sh_ks_block_lbl": "Жёстко отклонять любые записи агентов при срабатывании тревоги",
+        "sh_refresh_btn": "Обновить состояние",
+        "sh_ks_trip_btn": "Включить блокировку",
+        "sh_ks_reset_btn": "Снять блокировку",
+        "sh_cfg_save_btn": "Сохранить правило",
+        "sh_trip_confirm": "Включить аварийную блокировку и перевести память в строгий карантин?",
+        "sh_unlock_confirm": "Подтверждаете снятие аварийной блокировки как владелец?",
+        "sh_events_empty": "Подозрительных всплесков и аномалий пока не зафиксировано.",
+        "sh_out_title": "Контроль исходящих действий и подмены реквизитов",
+        "sh_out_sub": "Проверяет кошельки, счета, внешние адреса и системные команды перед выполнением; неизвестные цели ждут вашего подтверждения.",
+        "sh_out_type_crypto": "Криптоперевод",
+        "sh_out_type_http": "Внешний веб-запрос",
+        "sh_out_type_shell": "Системная команда",
+        "sh_out_type_email": "Письмо или вебхук",
+        "sh_out_type_pay": "Платёж и реквизиты",
+        "sh_out_target_ph": "Кошелёк, домен или адрес цели…",
+        "sh_out_payload_ph": "Текст действия, команда или сумма…",
+        "sh_out_check_btn": "Проверить действие",
+        "sh_out_need_input": "Укажите цель или текст действия для проверки.",
+        "sh_out_queue_lbl": "Очередь на одобрение владельцем",
+        "sh_out_queue_empty": "Ожидающих исходящих действий нет.",
+        "sh_out_approve_btn": "Одобрить",
+        "sh_out_reject_btn": "Отклонить",
+        "sh_out_approve_confirm": "Одобрить это исходящее действие?",
+        "sh_out_reject_confirm": "Отклонить действие и засчитать как инцидент?",
+        "sh_allow_lbl": "Доверенный список (кошельки и домены)",
+        "sh_allow_type_domain": "Домен",
+        "sh_allow_type_wallet": "Кошелёк",
+        "sh_allow_type_iban": "Счёт IBAN",
+        "sh_allow_type_payee": "Получатель",
+        "sh_allow_val_ph": "Значение (например, 0x... или example.com)",
+        "sh_allow_lbl_ph": "Метка (необязательно)",
+        "sh_allow_add_btn": "Добавить в доверенные",
+        "sh_allow_need_val": "Введите адрес кошелька или домен для доверенного списка.",
+        "sh_allow_empty": "Доверенный список пока пуст.",
+        "sh_allow_del_btn": "Убрать",
+        "sh_sc_title": "Защита сторонних скриптов и криптоподмен",
+        "sh_sc_sub": "Аудит сайта по кейсу Optimizely: поиск сторонних скриптов без integrity (SRI), слабой политики CSP, смены хэшей CDN и клипперов.",
+        "sh_sc_url_ph": "Адрес сайта (например, https://example.com)",
+        "sh_sc_scan_btn": "Проверить сайт",
+        "sh_sc_dl_html_btn": "Скачать 1-стр. чекап",
+        "sh_sc_need_url": "Укажите адрес сайта для проверки сторонних скриптов.",
+        "sh_sc_no_scan": "Сначала выполните проверку сайта, чтобы скачать готовый чекап.",
+        "sh_sc_running": "Идёт проверка скриптов и заголовков…",
+        "sh_proof_title": "Пакет доказательств соответствия и угроз",
+        "sh_proof_sub": "Единый подписанный отчёт для службы безопасности: покрытие OWASP для агентов, цепь аудита SHA-256, атаки и раунды Red Team.",
+        "sh_proof_gen_btn": "Собрать пакет доказательств",
+        "sh_proof_dl_json_btn": "Скачать JSON",
+        "sh_proof_dl_html_btn": "Скачать отчёт HTML",
+        "sh_proof_dl_md_btn": "Скачать Markdown",
+        "sh_meta_tpl": "Срабатываний: {tripped} · Ждут одобрения: {pending} · В доверенных: {allow}",
+        "sh_out_res_tpl": "Решение: {status} · Риск: {risk} · Заявка: {gate}",
+        "sh_sc_res_tpl": "Оценка {grade} ({score}/100) · Внешних скриптов: {third} · Без SRI: {sri}",
+        "sh_proof_res_tpl": "Отпечаток {sha}… · Цепь аудита: {audit} · Отражено атак: {held}",
+        "sh_audit_ok": "ЦЕЛА",
+        "sh_audit_check": "ПРОВЕРИТЬ",
+        "sh_scan_fail": "Ошибка проверки сайта",
+        "sh_status_enforced": "ЗАЩИЩЕНО",
+        "sh_status_allowed": "ДОПУЩЕНО",
+        "sh_status_blocked": "ЗАБЛОКИРОВАНО",
+        "sh_status_pending_approval": "ЖДЁТ ОДОБРЕНИЯ",
+        "sh_risk_low": "низкий",
+        "sh_risk_medium": "средний",
+        "sh_risk_high": "высокий",
+        "sh_risk_critical": "критический",
+        "sh_asi_ASI01": "Перехват цели и обход инструкций",
+        "sh_asi_ASI02": "Злоупотребление инструментами на скорости машин",
+        "sh_asi_ASI03": "Подмена личности и эскалация прав",
+        "sh_asi_ASI04": "Атаки на цепочку поставок и сторонние скрипты",
+        "sh_asi_ASI05": "Несанкционированный запуск команд и подделка запросов",
+        "sh_asi_ASI06": "Отравление долгосрочной памяти и контекста",
+        "sh_asi_ASI07": "Небезопасный обмен между агентами",
+        "sh_asi_ASI08": "Каскадные сбои и потеря управления",
+        "sh_asi_ASI09": "Злоупотребление доверием и подмена реквизитов",
+        "sh_asi_ASI10": "Неподконтрольные агенты и подделка журналов",
+    },
+    "en": {
+        "sh_lockdown_banner": "SHIELD ALERT: Emergency Kill Switch lockdown is active (strict quarantine). Inspect incident.",
+        "sh_banner_go_btn": "Open Shield",
+        "sh_ks_title": "Machine-Speed Kill Switch & Anomaly Lock",
+        "sh_ks_sub": "Automatically trips strict quarantine and blocks external agent tools on injection bursts, exfiltration or rate spikes.",
+        "sh_ks_armed": "Shield Armed · Window anomalies: {score}/{thr} ({win}s)",
+        "sh_ks_tripped": "LOCKDOWN ACTIVE · Strict quarantine enforced · Reason: {reason}",
+        "sh_ks_block_lbl": "Strictly reject all agent writes while Kill Switch is active",
+        "sh_refresh_btn": "Refresh Shield",
+        "sh_ks_trip_btn": "Trip Kill Switch",
+        "sh_ks_reset_btn": "Unlock Kill Switch",
+        "sh_cfg_save_btn": "Save Policy",
+        "sh_trip_confirm": "Trip emergency Kill Switch and enforce strict quarantine now?",
+        "sh_unlock_confirm": "Confirm unlocking the emergency Kill Switch as the owner?",
+        "sh_events_empty": "No anomaly spikes recorded yet.",
+        "sh_out_title": "Outbound Action & Payee-Swap Gate",
+        "sh_out_sub": "Inspects crypto wallets, IBANs, cards, external domains and shell commands before execution.",
+        "sh_out_type_crypto": "Crypto transfer",
+        "sh_out_type_http": "External HTTP request",
+        "sh_out_type_shell": "Shell command",
+        "sh_out_type_email": "Email / Webhook",
+        "sh_out_type_pay": "Payment / Payee",
+        "sh_out_target_ph": "Target wallet, domain or URL…",
+        "sh_out_payload_ph": "Action payload, command or amount…",
+        "sh_out_check_btn": "Inspect Action",
+        "sh_out_need_input": "Enter a target or payload to inspect.",
+        "sh_out_queue_lbl": "Pending Owner Approvals",
+        "sh_out_queue_empty": "No outbound actions waiting for approval.",
+        "sh_out_approve_btn": "Approve",
+        "sh_out_reject_btn": "Reject",
+        "sh_out_approve_confirm": "Approve this outbound action?",
+        "sh_out_reject_confirm": "Reject this action and record a security anomaly?",
+        "sh_allow_lbl": "Owner Allowlist (Trusted Wallets & Domains)",
+        "sh_allow_type_domain": "Domain",
+        "sh_allow_type_wallet": "Wallet",
+        "sh_allow_type_iban": "IBAN",
+        "sh_allow_type_payee": "Payee",
+        "sh_allow_val_ph": "Value (e.g. 0x... or example.com)",
+        "sh_allow_lbl_ph": "Label (optional)",
+        "sh_allow_add_btn": "Add to Allowlist",
+        "sh_allow_need_val": "Enter a wallet or domain value to add.",
+        "sh_allow_empty": "Allowlist is empty.",
+        "sh_allow_del_btn": "Remove",
+        "sh_sc_title": "JS Supply-Chain & Crypto-Clipper Guard",
+        "sh_sc_sub": "Optimizely-grade check: scans third-party scripts missing SRI integrity, weak CSP, CDN hash drift and skimmers.",
+        "sh_sc_url_ph": "Target URL (e.g. https://example.com)",
+        "sh_sc_scan_btn": "Scan Website",
+        "sh_sc_dl_html_btn": "Download 1-Page Checkup",
+        "sh_sc_need_url": "Enter a website URL to scan scripts and CSP.",
+        "sh_sc_no_scan": "Run a website scan first to download the 1-page checkup.",
+        "sh_sc_running": "Scanning scripts and security headers…",
+        "sh_proof_title": "Compliance & Threat Proof Pack",
+        "sh_proof_sub": "Signed evidence bundle for CISO & auditors: OWASP Agentic AI matrix, SHA-256 audit chain and Red Team rounds.",
+        "sh_proof_gen_btn": "Build Proof Pack",
+        "sh_proof_dl_json_btn": "Download JSON",
+        "sh_proof_dl_html_btn": "Download HTML Report",
+        "sh_proof_dl_md_btn": "Download Markdown",
+        "sh_meta_tpl": "Trips: {tripped} · Pending approvals: {pending} · Allowlist: {allow}",
+        "sh_out_res_tpl": "Status: {status} · Risk: {risk} · Gate: {gate}",
+        "sh_sc_res_tpl": "Grade {grade} ({score}/100) · 3rd-party JS: {third} · Missing SRI: {sri}",
+        "sh_proof_res_tpl": "SHA-256: {sha}… · Audit: {audit} · Held: {held}",
+        "sh_audit_ok": "OK",
+        "sh_audit_check": "CHECK",
+        "sh_scan_fail": "Website scan failed",
+        "sh_status_enforced": "ENFORCED",
+        "sh_status_allowed": "ALLOWED",
+        "sh_status_blocked": "BLOCKED",
+        "sh_status_pending_approval": "PENDING APPROVAL",
+        "sh_risk_low": "low",
+        "sh_risk_medium": "medium",
+        "sh_risk_high": "high",
+        "sh_risk_critical": "critical",
+        "sh_asi_ASI01": "Agent Goal Hijacking & Instruction Override",
+        "sh_asi_ASI02": "Tool Misuse & Machine-Speed Exploitation",
+        "sh_asi_ASI03": "Identity & Privilege Abuse",
+        "sh_asi_ASI04": "Agentic & Web Supply-Chain Compromise",
+        "sh_asi_ASI05": "Unexpected Code Execution & SSRF",
+        "sh_asi_ASI06": "Memory & Context Poisoning",
+        "sh_asi_ASI07": "Insecure Inter-Agent Communication",
+        "sh_asi_ASI08": "Cascading Failures & Autonomous Runaway",
+        "sh_asi_ASI09": "Human-Agent Trust & Payee-Swap Exploitation",
+        "sh_asi_ASI10": "Rogue Agents & Tampered Audit Trails",
+    },
+    "es": {
+        "sh_lockdown_banner": "ALERTA DE ESCUDO: Bloqueo de emergencia Kill Switch activo (cuarentena estricta).",
+        "sh_banner_go_btn": "Abrir Escudo",
+        "sh_ks_title": "Kill Switch a velocidad de máquina",
+        "sh_ks_sub": "Activa la cuarentena estricta y detiene herramientas salientes ante ráfagas de ataques o exfiltración.",
+        "sh_ks_armed": "Escudo armado · Anomalías en ventana: {score}/{thr} ({win}s)",
+        "sh_ks_tripped": "BLOQUEO ACTIVO · Cuarentena estricta · Motivo: {reason}",
+        "sh_ks_block_lbl": "Rechazar todas las escrituras de agentes durante el bloqueo",
+        "sh_refresh_btn": "Actualizar Escudo",
+        "sh_ks_trip_btn": "Activar Kill Switch",
+        "sh_ks_reset_btn": "Desbloquear",
+        "sh_cfg_save_btn": "Guardar regla",
+        "sh_trip_confirm": "¿Activar el bloqueo de emergencia y cuarentena estricta?",
+        "sh_unlock_confirm": "¿Confirmar el desbloqueo del Kill Switch como propietario?",
+        "sh_events_empty": "Aún no se han registrado anomalías.",
+        "sh_out_title": "Control saliente y cambio de destinatario",
+        "sh_out_sub": "Revisa carteras cripto, IBAN, tarjetas, dominios nuevos y comandos antes de ejecutarse.",
+        "sh_out_type_crypto": "Transferencia cripto",
+        "sh_out_type_http": "Solicitud HTTP externa",
+        "sh_out_type_shell": "Comando shell",
+        "sh_out_type_email": "Correo / Webhook",
+        "sh_out_type_pay": "Pago / Destinatario",
+        "sh_out_target_ph": "Cartera, dominio o URL de destino…",
+        "sh_out_payload_ph": "Texto, comando o importe…",
+        "sh_out_check_btn": "Inspeccionar acción",
+        "sh_out_need_input": "Escriba un destino o contenido para inspeccionar.",
+        "sh_out_queue_lbl": "Pendientes de aprobación del dueño",
+        "sh_out_queue_empty": "No hay acciones salientes pendientes.",
+        "sh_out_approve_btn": "Aprobar",
+        "sh_out_reject_btn": "Rechazar",
+        "sh_out_approve_confirm": "¿Aprobar esta acción saliente?",
+        "sh_out_reject_confirm": "¿Rechazar esta acción y registrarla como anomalía?",
+        "sh_allow_lbl": "Lista blanca (carteras y dominios de confianza)",
+        "sh_allow_type_domain": "Dominio",
+        "sh_allow_type_wallet": "Cartera",
+        "sh_allow_type_iban": "IBAN",
+        "sh_allow_type_payee": "Destinatario",
+        "sh_allow_val_ph": "Valor (ej. 0x... o example.com)",
+        "sh_allow_lbl_ph": "Etiqueta (opcional)",
+        "sh_allow_add_btn": "Añadir a lista blanca",
+        "sh_allow_need_val": "Escriba una cartera o dominio para añadir.",
+        "sh_allow_empty": "La lista blanca está vacía.",
+        "sh_allow_del_btn": "Quitar",
+        "sh_sc_title": "Guardia JS Supply-Chain y Crypto-Clipper",
+        "sh_sc_sub": "Auditoría tipo Optimizely: scripts externos sin SRI, CSP débil, cambios de hash en CDN y skimmers.",
+        "sh_sc_url_ph": "URL del sitio (ej. https://example.com)",
+        "sh_sc_scan_btn": "Escanear sitio",
+        "sh_sc_dl_html_btn": "Descargar chequeo HTML",
+        "sh_sc_need_url": "Indique la URL del sitio para escanear scripts y CSP.",
+        "sh_sc_no_scan": "Ejecute primero un escaneo para descargar el chequeo.",
+        "sh_sc_running": "Escaneando scripts y cabeceras…",
+        "sh_proof_title": "Paquete firmado de pruebas y cumplimiento",
+        "sh_proof_sub": "Informe firmado para CISO y auditores: matriz OWASP Agentic AI, cadena SHA-256 y rondas Red Team.",
+        "sh_proof_gen_btn": "Generar paquete",
+        "sh_proof_dl_json_btn": "Descargar JSON",
+        "sh_proof_dl_html_btn": "Descargar informe HTML",
+        "sh_proof_dl_md_btn": "Descargar Markdown",
+        "sh_meta_tpl": "Activaciones: {tripped} · Pendientes: {pending} · Lista blanca: {allow}",
+        "sh_out_res_tpl": "Estado: {status} · Riesgo: {risk} · Control: {gate}",
+        "sh_sc_res_tpl": "Nota {grade} ({score}/100) · JS de terceros: {third} · Sin SRI: {sri}",
+        "sh_proof_res_tpl": "SHA-256: {sha}… · Auditoría: {audit} · Bloqueos: {held}",
+        "sh_audit_ok": "OK",
+        "sh_audit_check": "REVISAR",
+        "sh_scan_fail": "Error al escanear el sitio",
+        "sh_status_enforced": "ACTIVO",
+        "sh_status_allowed": "PERMITIDO",
+        "sh_status_blocked": "BLOQUEADO",
+        "sh_status_pending_approval": "PENDIENTE",
+        "sh_risk_low": "bajo",
+        "sh_risk_medium": "medio",
+        "sh_risk_high": "alto",
+        "sh_risk_critical": "crítico",
+        "sh_asi_ASI01": "Secuestro de objetivo e inyección de instrucciones",
+        "sh_asi_ASI02": "Abuso de herramientas a velocidad de máquina",
+        "sh_asi_ASI03": "Abuso de identidad y privilegios",
+        "sh_asi_ASI04": "Compromiso de cadena de suministro web y de agentes",
+        "sh_asi_ASI05": "Ejecución inesperada de código y SSRF",
+        "sh_asi_ASI06": "Envenenamiento de memoria y contexto",
+        "sh_asi_ASI07": "Comunicación insegura entre agentes",
+        "sh_asi_ASI08": "Fallos en cascada y pérdida de control autónomo",
+        "sh_asi_ASI09": "Abuso de confianza y cambio de destinatario",
+        "sh_asi_ASI10": "Agentes rebeldes y manipulación de auditoría",
+    },
+    "zh": {
+        "sh_lockdown_banner": "护盾警报：已触发紧急急停锁定（严格隔离）。请检查安全事件。",
+        "sh_banner_go_btn": "打开护盾",
+        "sh_ks_title": "机器速度急停开关与异常锁定",
+        "sh_ks_sub": "检测到连续注入、密钥外泄或高频突发调用时，自动开启严格隔离并阻断外部工具。",
+        "sh_ks_armed": "护盾就绪 · 窗口异常评分: {score}/{thr}（{win}秒）",
+        "sh_ks_tripped": "锁定激活 · 严格隔离中 · 原因: {reason}",
+        "sh_ks_block_lbl": "急停期间彻底拒绝智能体的所有写入",
+        "sh_refresh_btn": "刷新护盾",
+        "sh_ks_trip_btn": "触发急停锁定",
+        "sh_ks_reset_btn": "解除锁定",
+        "sh_cfg_save_btn": "保存策略",
+        "sh_trip_confirm": "确认立即触发紧急急停开关并开启严格隔离吗？",
+        "sh_unlock_confirm": "确认以所有者身份解除紧急急停锁定吗？",
+        "sh_events_empty": "暂未记录到异常突发事件。",
+        "sh_out_title": "出站操作门控与防收款人篡改",
+        "sh_out_sub": "执行前自动检查加密钱包、IBAN、银行卡、未知外链和终端命令，高风险项需您批准。",
+        "sh_out_type_crypto": "加密转账",
+        "sh_out_type_http": "外部 HTTP 请求",
+        "sh_out_type_shell": "系统命令",
+        "sh_out_type_email": "邮件 / Webhook",
+        "sh_out_type_pay": "付款 / 收款人",
+        "sh_out_target_ph": "目标钱包、域名或 URL…",
+        "sh_out_payload_ph": "操作内容、命令或金额…",
+        "sh_out_check_btn": "检查操作",
+        "sh_out_need_input": "请输入需要检查的目标或操作内容。",
+        "sh_out_queue_lbl": "等待所有者批准的出站请求",
+        "sh_out_queue_empty": "暂无待批准的出站请求。",
+        "sh_out_approve_btn": "批准",
+        "sh_out_reject_btn": "拒绝",
+        "sh_out_approve_confirm": "确认批准此出站操作吗？",
+        "sh_out_reject_confirm": "确认拒绝此操作并记录安全异常吗？",
+        "sh_allow_lbl": "所有者白名单（可信钱包与域名）",
+        "sh_allow_type_domain": "域名",
+        "sh_allow_type_wallet": "钱包",
+        "sh_allow_type_iban": "IBAN 账号",
+        "sh_allow_type_payee": "收款方",
+        "sh_allow_val_ph": "值（如 0x... 或 example.com）",
+        "sh_allow_lbl_ph": "备注标签（可选）",
+        "sh_allow_add_btn": "加入白名单",
+        "sh_allow_need_val": "请输入要加入白名单的钱包或域名。",
+        "sh_allow_empty": "白名单为空。",
+        "sh_allow_del_btn": "移除",
+        "sh_sc_title": "JS 供应链与加密劫持防护",
+        "sh_sc_sub": "针对 Optimizely 类攻击：检测缺失 SRI 的第三方脚本、薄弱 CSP、CDN 哈希漂移与窃卡代码。",
+        "sh_sc_url_ph": "网站地址（如 https://example.com）",
+        "sh_sc_scan_btn": "扫描网站",
+        "sh_sc_dl_html_btn": "下载单页体检报告",
+        "sh_sc_need_url": "请输入要检查脚本和 CSP 的网站地址。",
+        "sh_sc_no_scan": "请先扫描网站，然后再下载单页体检报告。",
+        "sh_sc_running": "正在扫描脚本与安全响应头…",
+        "sh_proof_title": "合规与威胁证明包",
+        "sh_proof_sub": "面向 CISO 与审计师的签名报告：OWASP 智能体风险矩阵、SHA-256 审计链与红队测试。",
+        "sh_proof_gen_btn": "生成证明包",
+        "sh_proof_dl_json_btn": "下载 JSON",
+        "sh_proof_dl_html_btn": "下载 HTML 报告",
+        "sh_proof_dl_md_btn": "下载 Markdown",
+        "sh_meta_tpl": "触发次数: {tripped} · 待审批: {pending} · 白名单: {allow}",
+        "sh_out_res_tpl": "状态: {status} · 风险: {risk} · 门控: {gate}",
+        "sh_sc_res_tpl": "评级 {grade} ({score}/100) · 第三方 JS: {third} · 缺失 SRI: {sri}",
+        "sh_proof_res_tpl": "SHA-256: {sha}… · 审计链: {audit} · 拦截: {held}",
+        "sh_audit_ok": "正常",
+        "sh_audit_check": "需检查",
+        "sh_scan_fail": "网站扫描失败",
+        "sh_status_enforced": "已强制执行",
+        "sh_status_allowed": "已放行",
+        "sh_status_blocked": "已阻断",
+        "sh_status_pending_approval": "待审批",
+        "sh_risk_low": "低",
+        "sh_risk_medium": "中",
+        "sh_risk_high": "高",
+        "sh_risk_critical": "严重",
+        "sh_asi_ASI01": "智能体目标劫持与指令越权",
+        "sh_asi_ASI02": "工具滥用与机器速度攻击",
+        "sh_asi_ASI03": "身份伪造与权限滥用",
+        "sh_asi_ASI04": "智能体与网页供应链投毒",
+        "sh_asi_ASI05": "非预期代码执行与 SSRF",
+        "sh_asi_ASI06": "记忆与上下文投毒",
+        "sh_asi_ASI07": "智能体间不安全通信",
+        "sh_asi_ASI08": "级联故障与自主失控",
+        "sh_asi_ASI09": "人机信任滥用与收款人篡改",
+        "sh_asi_ASI10": "失控智能体与审计链篡改",
+    },
+}
+for _lg, _extra in _STRINGS_SHIELD.items():
+    STRINGS[_lg].update(_extra)
+
+# 19.11.2026: Агенты в Обзоре, Граф по каждому агенту и Пересечения, Вкладка Чаты, расширение Щита
+_STRINGS_CHATS_AGENTS_SHIELD2: dict[str, dict[str, str]] = {
+    "ru": {
+        "nav_chats": "Чаты",
+        "ov_agents_title": "Подключённые агенты и состояние их памяти",
+        "ov_agents_empty": "Пока ни один агент не подключён и не оставил записей.",
+        "ov_agent_online": "на связи",
+        "ov_agent_idle": "не в сети",
+        "ov_agent_active": "записей",
+        "ov_agent_quar": "ожидает",
+        "ov_agent_chats": "сообщений",
+        "ov_agent_graph_btn": "Граф агента",
+        "ov_agent_chats_btn": "Чаты агента",
+        "ov_unsigned_hint": "Неподписанная запись:",
+        "graph_agents_title": "Граф по агентам и пересечениям",
+        "graph_all_agents_btn": "Все агенты",
+        "graph_intersections_btn": "Пересечения агентов",
+        "graph_inter_title": "Как пересекаются агенты (общие темы, ключи и прямые связи)",
+        "graph_inter_empty": "Пока нет пересечений между разными агентами.",
+        "graph_node_agent": "Агент",
+        "graph_legend_cross": "Межагентное пересечение",
+        "chats_title": "Чаты с каждым агентом",
+        "chats_sub": "Чистая хронология переписок без кода и системных дампов инструментов. Выберите агента или импортируйте историю.",
+        "chats_all_agents": "Все агенты",
+        "chats_q_ph": "Поиск по тексту переписок…",
+        "chats_workers_lbl": "Показывать технические задачи воркеров",
+        "chats_all_days": "Все дни",
+        "chats_all_hours": "Все часы",
+        "chats_compact_btn": "Сверхкомпактный блок блокчейна (PA1H)",
+        "feed_all_agents": "Все агенты",
+        "chats_refresh_btn": "Обновить чаты",
+        "chats_open_graph_btn": "Граф этого агента",
+        "chats_threads_title": "Сессии переписки",
+        "chats_empty": "Пока нет сохранённых переписок. Добавьте сообщение или импортируйте историю ниже.",
+        "chats_pick_thread": "Выберите диалог слева, чтобы прочитать переписку по хронологии.",
+        "chats_role_user": "Папа (Владелец)",
+        "chats_role_assistant": "Ответ агента",
+        "chats_add_title": "Добавить реплику или заметку в переписку",
+        "chats_add_title_ph": "Тема диалога (необязательно для открытой сессии)…",
+        "chats_add_text_ph": "Текст сообщения (код и секреты будут очищены автоматически)…",
+        "chats_add_btn": "Записать в чат",
+        "chats_add_need_text": "Введите текст сообщения для записи в чат.",
+        "chats_import_title": "Импорт истории переписок (из файла или текста)",
+        "chats_imp_path_ph": "Полный путь к файлу (.jsonl, .md или .txt)…",
+        "chats_imp_text_ph": "Или вставьте сюда текст диалога…",
+        "chats_imp_btn": "Импортировать переписку",
+        "chats_imp_need_src": "Укажите путь к файлу или вставьте текст переписки для импорта.",
+        "sh_mcp_title": "Инспекция инструментов MCP (отравление и подмена)",
+        "sh_mcp_sub": "Проверяет описания инструментов и конфиг MCP на скрытые команды, утечки и подмену хэша после установки.",
+        "sh_mcp_srv_ph": "Имя сервера (например, filesystem)…",
+        "sh_mcp_inp_ph": "Вставьте список инструментов JSON или путь к mcp_config.json…",
+        "sh_mcp_scan_btn": "Проверить MCP",
+        "sh_mcp_pin_btn": "Закрепить эталон хэшей",
+        "sh_mcp_need_inp": "Вставьте JSON или путь к конфигу MCP для проверки.",
+        "sh_uni_title": "Проверка невидимых символов и скрытого текста",
+        "sh_uni_sub": "Ловит невидимую стеганографию тегов Юникода, подмену направления текста и вложенный Base64.",
+        "sh_uni_inp_ph": "Вставьте подозрительный текст или промпт для глубокой проверки…",
+        "sh_uni_scan_btn": "Проверить текст",
+        "sh_uni_need_inp": "Введите текст для проверки на скрытые символы и шифры.",
+        "sh_wh_title": "Вебхуки корпоративных оповещений (Slack, Teams, SIEM)",
+        "sh_wh_sub": "Мгновенная отправка тревог о блокировках в форматах Slack, Microsoft Teams, CEF, Splunk и Elastic без утечки секретов.",
+        "sh_wh_url_ph": "HTTPS-адрес вебхука для оповещений…",
+        "sh_wh_save_btn": "Сохранить вебхук",
+        "sh_wh_test_btn": "Тест и предпросмотр",
+        "sh_wh_need_url": "Укажите HTTPS-адрес вебхука или нажмите тест для предпросмотра формата.",
+        "sh_sc_pci_tpl": "Соответствие PCI DSS 4.0.1 — Req 6.4.3: {r643} · Req 11.6.1: {r1161} · Скрытых фреймов/утечек: {mal}",
+    },
+    "en": {
+        "nav_chats": "Chats",
+        "ov_agents_title": "Connected agents and memory activity",
+        "ov_agents_empty": "No agents connected or recorded yet.",
+        "ov_agent_online": "online",
+        "ov_agent_idle": "idle",
+        "ov_agent_active": "active",
+        "ov_agent_quar": "held",
+        "ov_agent_chats": "chat msgs",
+        "ov_agent_graph_btn": "Agent graph",
+        "ov_agent_chats_btn": "Agent chats",
+        "ov_unsigned_hint": "Unsigned record:",
+        "graph_agents_title": "Per-agent graphs and intersections",
+        "graph_all_agents_btn": "All agents",
+        "graph_intersections_btn": "Agent intersections",
+        "graph_inter_title": "How agents intersect (shared topics, fact keys and links)",
+        "graph_inter_empty": "No cross-agent intersections yet.",
+        "graph_node_agent": "Agent",
+        "graph_legend_cross": "Cross-agent link",
+        "chats_title": "Chats per agent",
+        "chats_sub": "Clean chronological conversation log without code blocks or raw tool dumps. Pick an agent or import history.",
+        "chats_all_agents": "All agents",
+        "chats_q_ph": "Search conversations…",
+        "chats_workers_lbl": "Show technical worker tasks",
+        "chats_all_days": "All days",
+        "chats_all_hours": "All hours",
+        "chats_compact_btn": "Compact hourly chain block (PA1H)",
+        "feed_all_agents": "All agents",
+        "chats_refresh_btn": "Refresh chats",
+        "chats_open_graph_btn": "Open agent graph",
+        "chats_threads_title": "Chat sessions",
+        "chats_empty": "No saved chats yet. Add a message or import conversation history below.",
+        "chats_pick_thread": "Select a session on the left to read the chronological conversation.",
+        "chats_role_user": "Dad (Owner)",
+        "chats_role_assistant": "Agent reply",
+        "chats_add_title": "Add message or note to conversation",
+        "chats_add_title_ph": "Dialog title (optional if thread selected)…",
+        "chats_add_text_ph": "Message text (code and secrets cleaned automatically)…",
+        "chats_add_btn": "Save to chat",
+        "chats_add_need_text": "Enter message text first.",
+        "chats_import_title": "Import conversation history (file or pasted text)",
+        "chats_imp_path_ph": "Full file path (.jsonl, .md or .txt)…",
+        "chats_imp_text_ph": "Or paste dialog text here…",
+        "chats_imp_btn": "Import chat",
+        "chats_imp_need_src": "Enter a file path or paste chat text to import.",
+        "sh_mcp_title": "MCP Tool Inspector (Poisoning & Rug-Pull)",
+        "sh_mcp_sub": "Scans MCP tool descriptions and configs for hidden directives, secret harvesting and schema hash changes.",
+        "sh_mcp_srv_ph": "Server name (e.g. filesystem)…",
+        "sh_mcp_inp_ph": "Paste tools JSON array or path to mcp_config.json…",
+        "sh_mcp_scan_btn": "Scan MCP",
+        "sh_mcp_pin_btn": "Pin tool hashes",
+        "sh_mcp_need_inp": "Paste JSON or path to MCP config first.",
+        "sh_uni_title": "Hidden Unicode & Encoding Inspector",
+        "sh_uni_sub": "Detects invisible Unicode Tag steganography, Bidi overrides (Trojan Source) and nested Base64/Hex payloads.",
+        "sh_uni_inp_ph": "Paste suspicious prompt or text to inspect…",
+        "sh_uni_scan_btn": "Scan text",
+        "sh_uni_need_inp": "Enter text to inspect for hidden characters.",
+        "sh_wh_title": "SIEM / Slack / MS Teams Alert Webhooks",
+        "sh_wh_sub": "Ships signed zero-secret alerts in Slack, Teams, CEF, Splunk HEC and Elastic ECS formats.",
+        "sh_wh_url_ph": "HTTPS webhook URL…",
+        "sh_wh_save_btn": "Save webhook",
+        "sh_wh_test_btn": "Dry-run preview / Test",
+        "sh_wh_need_url": "Enter an HTTPS webhook URL or press Test for dry-run format preview.",
+        "sh_sc_pci_tpl": "PCI DSS 4.0.1 — Req 6.4.3: {r643} · Req 11.6.1: {r1161} · Malware/DOM hooks: {mal}",
+    },
+    "es": {
+        "nav_chats": "Chats",
+        "ov_agents_title": "Agentes conectados y estado de memoria",
+        "ov_agents_empty": "Ningún agente conectado o registrado aún.",
+        "ov_agent_online": "en línea",
+        "ov_agent_idle": "inactivo",
+        "ov_agent_active": "activos",
+        "ov_agent_quar": "retenidos",
+        "ov_agent_chats": "mensajes",
+        "ov_agent_graph_btn": "Grafo del agente",
+        "ov_agent_chats_btn": "Chats del agente",
+        "ov_unsigned_hint": "Registro sin firma:",
+        "graph_agents_title": "Grafos por agente e intersecciones",
+        "graph_all_agents_btn": "Todos los agentes",
+        "graph_intersections_btn": "Intersecciones",
+        "graph_inter_title": "Cómo se cruzan los agentes (temas, claves y vínculos)",
+        "graph_inter_empty": "Aún no hay cruces entre agentes distintos.",
+        "graph_node_agent": "Agente",
+        "graph_legend_cross": "Cruce entre agentes",
+        "chats_title": "Chats por agente",
+        "chats_sub": "Historial cronológico limpio sin bloques de código ni volcados de herramientas. Elija un agente o importe chats.",
+        "chats_all_agents": "Todos los agentes",
+        "chats_q_ph": "Buscar en conversaciones…",
+        "chats_workers_lbl": "Mostrar tareas técnicas de workers",
+        "chats_all_days": "Todos los días",
+        "chats_all_hours": "Todas las horas",
+        "chats_compact_btn": "Bloque compacto por hora (PA1H)",
+        "feed_all_agents": "Todos los agentes",
+        "chats_refresh_btn": "Actualizar chats",
+        "chats_open_graph_btn": "Abrir grafo del agente",
+        "chats_threads_title": "Sesiones de chat",
+        "chats_empty": "No hay chats guardados. Agregue un mensaje o importe el historial abajo.",
+        "chats_pick_thread": "Seleccione una sesión a la izquierda para leer el diálogo cronológico.",
+        "chats_role_user": "Papá (Dueño)",
+        "chats_role_assistant": "Respuesta del agente",
+        "chats_add_title": "Añadir mensaje o nota al diálogo",
+        "chats_add_title_ph": "Título (opcional si hay hilo abierto)…",
+        "chats_add_text_ph": "Texto del mensaje (código y secretos se limpian solos)…",
+        "chats_add_btn": "Guardar en chat",
+        "chats_add_need_text": "Escriba el texto del mensaje primero.",
+        "chats_import_title": "Importar historial de chats (archivo o texto)",
+        "chats_imp_path_ph": "Ruta al archivo (.jsonl, .md o .txt)…",
+        "chats_imp_text_ph": "O pegue aquí el texto del diálogo…",
+        "chats_imp_btn": "Importar chat",
+        "chats_imp_need_src": "Indique una ruta de archivo o pegue texto para importar.",
+        "sh_mcp_title": "Inspector de herramientas MCP (Poisoning y Rug-Pull)",
+        "sh_mcp_sub": "Analiza descripciones y configs MCP en busca de instrucciones ocultas y cambios de hash.",
+        "sh_mcp_srv_ph": "Nombre del servidor…",
+        "sh_mcp_inp_ph": "Pegue JSON de herramientas o ruta a mcp_config.json…",
+        "sh_mcp_scan_btn": "Analizar MCP",
+        "sh_mcp_pin_btn": "Fijar hashes",
+        "sh_mcp_need_inp": "Pegue un JSON o ruta de configuración MCP primero.",
+        "sh_uni_title": "Detector de Unicode oculto y ofuscación",
+        "sh_uni_sub": "Detecta esteganografía en Unicode Tags, controles Bidi (Trojan Source) y capas Base64/Hex.",
+        "sh_uni_inp_ph": "Pegue texto o prompt sospechoso…",
+        "sh_uni_scan_btn": "Analizar texto",
+        "sh_uni_need_inp": "Escriba un texto para analizar símbolos ocultos.",
+        "sh_wh_title": "Webhooks de alertas SIEM / Slack / MS Teams",
+        "sh_wh_sub": "Envía alertas firmadas sin secretos en formato Slack, Teams, CEF, Splunk HEC y Elastic ECS.",
+        "sh_wh_url_ph": "URL HTTPS del webhook…",
+        "sh_wh_save_btn": "Guardar webhook",
+        "sh_wh_test_btn": "Probar formato",
+        "sh_wh_need_url": "Indique una URL HTTPS o pulse Probar para vista previa en seco.",
+        "sh_sc_pci_tpl": "PCI DSS 4.0.1 — Req 6.4.3: {r643} · Req 11.6.1: {r1161} · Amenazas JS/DOM: {mal}",
+    },
+    "zh": {
+        "nav_chats": "聊天记录",
+        "ov_agents_title": "已连接智能体与记忆活动",
+        "ov_agents_empty": "暂未连接或记录任何智能体。",
+        "ov_agent_online": "在线",
+        "ov_agent_idle": "离线",
+        "ov_agent_active": "有效记录",
+        "ov_agent_quar": "待审",
+        "ov_agent_chats": "聊天消息",
+        "ov_agent_graph_btn": "智能体图谱",
+        "ov_agent_chats_btn": "智能体聊天",
+        "ov_unsigned_hint": "未签名记录:",
+        "graph_agents_title": "按智能体分类的图谱与交叉关联",
+        "graph_all_agents_btn": "全部智能体",
+        "graph_intersections_btn": "智能体交叉点",
+        "graph_inter_title": "智能体之间的交叉重叠（共同主题、事实键与关联）",
+        "graph_inter_empty": "暂无跨智能体交叉记录。",
+        "graph_node_agent": "智能体",
+        "graph_legend_cross": "跨智能体交叉连接",
+        "chats_title": "各智能体聊天记录",
+        "chats_sub": "按时间顺序排列的纯净对话历史，无代码块或工具原始输出。选择智能体或导入对话。",
+        "chats_all_agents": "全部智能体",
+        "chats_q_ph": "搜索聊天内容…",
+        "chats_workers_lbl": "显示后台 Worker 技术任务",
+        "chats_all_days": "全部日期",
+        "chats_all_hours": "全部时段",
+        "chats_compact_btn": "每小时链上紧凑压缩包 (PA1H)",
+        "feed_all_agents": "全部智能体",
+        "chats_refresh_btn": "刷新聊天",
+        "chats_open_graph_btn": "打开该智能体图谱",
+        "chats_threads_title": "对话会话列表",
+        "chats_empty": "暂无已保存的聊天记录。可在下方添加或导入对话。",
+        "chats_pick_thread": "请在左侧选择一个会话以按时间顺序阅读对话。",
+        "chats_role_user": "爸爸（所有者）",
+        "chats_role_assistant": "智能体回复",
+        "chats_add_title": "添加消息或记录到聊天",
+        "chats_add_title_ph": "对话主题（已有会话时可选）…",
+        "chats_add_text_ph": "消息正文（将自动清除代码并脱敏密钥）…",
+        "chats_add_btn": "保存到聊天",
+        "chats_add_need_text": "请先输入要保存的消息正文。",
+        "chats_import_title": "导入聊天历史（文件或文本）",
+        "chats_imp_path_ph": "文件完整路径 (.jsonl, .md, .txt)…",
+        "chats_imp_text_ph": "或直接粘贴对话文本…",
+        "chats_imp_btn": "导入聊天",
+        "chats_imp_need_src": "请输入文件路径或粘贴对话文本后再导入。",
+        "sh_mcp_title": "MCP 工具投毒与 Rug-Pull 检查器",
+        "sh_mcp_sub": "扫描 MCP 工具描述和配置中的隐藏指令、密钥窃取及签名哈希篡改。",
+        "sh_mcp_srv_ph": "服务器名称…",
+        "sh_mcp_inp_ph": "粘贴工具 JSON 或 mcp_config.json 路径…",
+        "sh_mcp_scan_btn": "扫描 MCP",
+        "sh_mcp_pin_btn": "固定工具哈希基线",
+        "sh_mcp_need_inp": "请先输入工具 JSON 或配置文件路径。",
+        "sh_uni_title": "隐藏 Unicode 隐写与多层编码检测",
+        "sh_uni_sub": "拦截不可见 Unicode 标签隐写、双向字符伪装与嵌套 Base64/Hex 负载。",
+        "sh_uni_inp_ph": "粘贴可疑文本或提示词进行深度检查…",
+        "sh_uni_scan_btn": "检查文本",
+        "sh_uni_need_inp": "请输入需要检测隐藏字符的文本。",
+        "sh_wh_title": "SIEM / Slack / MS Teams 告警 Webhook",
+        "sh_wh_sub": "以零密钥格式向 Slack、Teams、CEF、Splunk 与 Elastic 实时推送告警。",
+        "sh_wh_url_ph": "Webhook HTTPS 地址…",
+        "sh_wh_save_btn": "保存 Webhook",
+        "sh_wh_test_btn": "测试与预览格式",
+        "sh_wh_need_url": "请输入 HTTPS 地址或点击测试预览报文格式。",
+        "sh_sc_pci_tpl": "PCI DSS 4.0.1 合规 — Req 6.4.3: {r643} · Req 11.6.1: {r1161} · 恶意脚本: {mal}",
+    },
+}
+for _lg, _extra2 in _STRINGS_CHATS_AGENTS_SHIELD2.items():
+    STRINGS[_lg].update(_extra2)
+
+# 20.11.2026: Полный UX-апгрейд: Семья + 6 ролей, Диалоги, AIfa (новые сверху, голос, файлы, медиа), L3, Кошельки
+_STRINGS_UX_2011: dict[str, dict[str, str]] = {
+    "ru": {
+        "agent_owner": "Владелец (Папа)",
+        "feed_guide": "Живая лента памяти: сохраняйте факты, решения или правила, фильтруйте по агенту и проверяйте историю версий.",
+        "fam_add_title": "Добавить или обновить агента Семьи",
+        "fam_agent_id_ph": "ID агента (например: my_claude или coder_bot)…",
+        "fam_agent_name_ph": "Понятное имя агента…",
+        "fam_agent_role_ph": "Назначение и зона ответственности…",
+        "fam_add_agent_btn": "Добавить / Обновить агента",
+        "fam_need_agent_id": "Укажите идентификатор агента (латиницей, без пробелов).",
+        "fam_controlled_by_lbl": "Кто управляет:",
+        "fam_council_roles_lbl": "Роли в Совете:",
+        "fam_assign_role_btn": "Назначить",
+        "fam_agent_disable_btn": "Отключить",
+        "fam_agent_enable_btn": "Включить",
+        "fam_agent_delete_btn": "Удалить",
+        "fam_roles_guide": "Каждую из 6 ролей Совета можно привязать к конкретному подключённому агенту — при созыве Совета будут видны и роль, и реальный исполнитель.",
+        "fam_council_votes_title": "Позиция каждой из 6 ролей Совета Семьи",
+        "fam_council_status_ok": "✅ ОДОБРЕНО",
+        "fam_council_status_warn": "⚠️ ТРЕБУЕТСЯ ВНИМАНИЕ / ОДОБРЕНИЕ ВЛАДЕЛЬЦА",
+        "fam_council_status_veto": "🛑 ВЕТО БЕЗОПАСНОСТИ",
+        "ark_council_repair_btn": "Починить цепь аудита (только владелец)",
+        "fd_btn_24h": "24 часа",
+        "fd_btn_all": "Все диалоги",
+        "fd_date_lbl": "По дате:",
+        "fd_empty": "За выбранный период диалогов Семьи не найдено.",
+        "fd_expand_btn": "Показать полностью",
+        "fd_collapse_btn": "Свернуть",
+        "aifa_filter_24h": "24 часа",
+        "aifa_filter_all": "Все диалоги",
+        "aifa_date_lbl": "По дате:",
+        "aifa_sort_newest": "Новые сверху",
+        "aifa_sort_oldest": "Сначала старые",
+        "aifa_mic_btn": "🎤 Голос",
+        "aifa_mic_listening": "Слушаю… говорите в микрофон",
+        "aifa_mic_unsupported": "Распознавание речи не поддерживается в этом окне; используйте системный ввод или текст.",
+        "aifa_attach_btn": "📎 Файл / Фото до 10 МБ",
+        "aifa_attach_too_big": "Файл превышает лимит 10 МБ.",
+        "aifa_attach_clear": "Убрать вложение",
+        "aifa_neon_badge": "Облако Neon: диалог синхронизирован с единым кабинетом",
+        "media_box_title": "Генерация изображений и слайдов (бесплатно, $0)",
+        "media_box_sub": "Локальный рендер $0 (Chromium + PDF) работает оффлайн без подписок; при наличии токена доступны облачные модели без трат.",
+        "media_mode_img": "Изображение (PNG)",
+        "media_mode_slides": "Презентация (Слайды PNG + PDF)",
+        "media_prompt_ph": "Опишите картинку или тему презентации…",
+        "media_bullets_ph": "Тезисы слайдов (каждый с новой строки, необязательно)…",
+        "media_gen_btn": "✨ Сгенерировать ($0)",
+        "media_generating": "Создаём на локальном движке ($0)…",
+        "media_dl_png": "Скачать PNG",
+        "media_dl_pdf": "Скачать PDF",
+        "media_need_prompt": "Введите описание изображения или тему презентации.",
+        "graph_links_lbl": "связей",
+        "graph_keys_lbl": "ключей",
+        "graph_topics_lbl": "тем",
+        "graph_focus_info": "Показаны связи выбранного узла",
+        "l3_checkpoint_btn": "Создать локальный чекпоинт L3 ($0)",
+        "l3_no_anchors_friendly": "Сетевых якорей L3 пока нет — вы можете в один клик создать бесплатный локальный чекпоинт ($0) рядом и сразу его проверить.",
+        "wal_title": "Кошельки владельца (Solana · Arweave · USDT TRC20)",
+        "wal_sub": "Единый реестр с проверкой контрольной суммы Base58/Base64URL и автозащитой от подмены получателя (Payee-Swap Guard).",
+        "wal_addr_ph": "Адрес кошелька (Solana / TRON T... / Arweave 43 симв. или путь к JWK)…",
+        "wal_lbl_ph": "Метка кошелька (например: Основной Bybit TRC20)…",
+        "wal_add_btn": "Добавить и проверить",
+        "wal_check_btn": "Проверить адрес",
+        "wal_primary_badge": "Основной",
+        "wal_make_primary_btn": "Сделать основным",
+        "wal_del_btn": "Удалить",
+        "wal_empty": "Кошельки этой категории пока не добавлены.",
+        "wal_explorer_btn": "Эксплорер",
+        "wal_need_addr": "Введите адрес кошелька (или путь к публичному JWK).",
+        "star_prompt_msg": "Ваш периметр прошёл проверку Grade S (100/100) с нулевой облачной телеметрией ($0). Если PADAM экономит вам время — поддержите проект звездой на GitHub:",
+        "star_prompt_btn": "★ Поставить Star на GitHub",
+        "star_prompt_hide": "Скрыть навсегда",
+    },
+    "en": {
+        "agent_owner": "Owner (Architect)",
+        "feed_guide": "Live verified memory feed: save facts or decisions, filter by agent, and verify version history.",
+        "fam_add_title": "Add or Update Family Agent",
+        "fam_agent_id_ph": "Agent ID (e.g. my_claude or coder_bot)…",
+        "fam_agent_name_ph": "Display name…",
+        "fam_agent_role_ph": "Role and responsibility…",
+        "fam_add_agent_btn": "Add / Update Agent",
+        "fam_need_agent_id": "Enter a valid agent identifier.",
+        "fam_controlled_by_lbl": "Controlled by:",
+        "fam_council_roles_lbl": "Council roles:",
+        "fam_assign_role_btn": "Assign",
+        "fam_agent_disable_btn": "Disable",
+        "fam_agent_enable_btn": "Enable",
+        "fam_agent_delete_btn": "Delete",
+        "fam_roles_guide": "Bind each of the 6 Council roles to a specific connected AI agent so every decision clearly shows who executes each role.",
+        "fam_council_votes_title": "Detailed Verdict of All 6 Family Council Roles",
+        "fam_council_status_ok": "✅ APPROVED",
+        "fam_council_status_warn": "⚠️ NEEDS ATTENTION / OWNER APPROVAL",
+        "fam_council_status_veto": "🛑 SECURITY VETO",
+        "ark_council_repair_btn": "Repair Audit Chain (Owner Only)",
+        "fd_btn_24h": "24 hours",
+        "fd_btn_all": "All dialogs",
+        "fd_date_lbl": "By date:",
+        "fd_empty": "No Family dialog entries found for the selected filter.",
+        "fd_expand_btn": "Show full text",
+        "fd_collapse_btn": "Collapse",
+        "aifa_filter_24h": "24 hours",
+        "aifa_filter_all": "All chats",
+        "aifa_date_lbl": "By date:",
+        "aifa_sort_newest": "Newest first",
+        "aifa_sort_oldest": "Oldest first",
+        "aifa_mic_btn": "🎤 Voice",
+        "aifa_mic_listening": "Listening… speak into microphone",
+        "aifa_mic_unsupported": "Speech recognition is unavailable in this webview; type or paste text.",
+        "aifa_attach_btn": "📎 File / Photo ≤10 MB",
+        "aifa_attach_too_big": "File exceeds the 10 MB limit.",
+        "aifa_attach_clear": "Remove file",
+        "aifa_neon_badge": "Neon Cloud: chat history synced with unified cabinet",
+        "media_box_title": "Free Image & Slide Deck Generator ($0)",
+        "media_box_sub": "Zero-cost local Chromium SVG/Canvas + PDF renderer works offline; optional Cloudflare Flux / local SD supported.",
+        "media_mode_img": "Image (PNG)",
+        "media_mode_slides": "Presentation (PNG + PDF)",
+        "media_prompt_ph": "Describe an image or presentation topic…",
+        "media_bullets_ph": "Slide bullet points (one per line, optional)…",
+        "media_gen_btn": "✨ Generate ($0)",
+        "media_generating": "Rendering locally ($0)…",
+        "media_dl_png": "Download PNG",
+        "media_dl_pdf": "Download PDF",
+        "media_need_prompt": "Enter an image description or presentation topic.",
+        "graph_links_lbl": "links",
+        "graph_keys_lbl": "keys",
+        "graph_topics_lbl": "topics",
+        "graph_focus_info": "Showing relations of selected node",
+        "l3_checkpoint_btn": "Create Local L3 Checkpoint ($0)",
+        "l3_no_anchors_friendly": "No remote L3 anchors yet — create a free ($0) local Merkle checkpoint next to verify locally anytime.",
+        "wal_title": "Owner Crypto Wallets (Solana · Arweave · USDT TRC20)",
+        "wal_sub": "Manage primary payout & anchoring wallets with Base58/Base64URL checksum checks and automatic Payee-Swap protection.",
+        "wal_addr_ph": "Wallet address (Solana / TRON T... / Arweave 43 chars or JWK path)…",
+        "wal_lbl_ph": "Label (e.g. Primary Bybit TRC20)…",
+        "wal_add_btn": "Add & Verify",
+        "wal_check_btn": "Validate Format",
+        "wal_primary_badge": "Primary",
+        "wal_make_primary_btn": "Set Primary",
+        "wal_del_btn": "Delete",
+        "wal_empty": "No wallets added in this category yet.",
+        "wal_explorer_btn": "Explorer",
+        "wal_need_addr": "Enter a wallet address or JWK path.",
+        "star_prompt_msg": "Your perimeter passed Grade S (100/100) with zero cloud telemetry ($0). If PADAM saves you time, please support the open-source repo with a star:",
+        "star_prompt_btn": "★ Star on GitHub",
+        "star_prompt_hide": "Don't show again",
+    },
+    "es": {
+        "agent_owner": "Dueño (Arquitecto)",
+        "feed_guide": "Flujo vivo de memoria verificada: guarda hechos o decisiones, filtra por agente y revisa versiones.",
+        "fam_add_title": "Añadir o actualizar agente familiar",
+        "fam_agent_id_ph": "ID del agente (ej. my_claude o coder_bot)…",
+        "fam_agent_name_ph": "Nombre visible…",
+        "fam_agent_role_ph": "Rol y responsabilidad…",
+        "fam_add_agent_btn": "Añadir / Actualizar agente",
+        "fam_need_agent_id": "Indica un identificador de agente válido.",
+        "fam_controlled_by_lbl": "Controlado por:",
+        "fam_council_roles_lbl": "Roles en el Consejo:",
+        "fam_assign_role_btn": "Asignar",
+        "fam_agent_disable_btn": "Desactivar",
+        "fam_agent_enable_btn": "Activar",
+        "fam_agent_delete_btn": "Eliminar",
+        "fam_roles_guide": "Vincula cada uno de los 6 roles del Consejo a un agente conectado para ver claramente quién ejecuta cada función.",
+        "fam_council_votes_title": "Veredicto detallado de los 6 roles del Consejo",
+        "fam_council_status_ok": "✅ APROBADO",
+        "fam_council_status_warn": "⚠️ REQUIERE ATENCIÓN / APROBACIÓN",
+        "fam_council_status_veto": "🛑 VETO DE SEGURIDAD",
+        "ark_council_repair_btn": "Reparar cadena de auditoría (Dueño)",
+        "fd_btn_24h": "24 horas",
+        "fd_btn_all": "Todos los diálogos",
+        "fd_date_lbl": "Por fecha:",
+        "fd_empty": "No hay diálogos familiares para este filtro.",
+        "fd_expand_btn": "Ver completo",
+        "fd_collapse_btn": "Contraer",
+        "aifa_filter_24h": "24 horas",
+        "aifa_filter_all": "Todo el historial",
+        "aifa_date_lbl": "Por fecha:",
+        "aifa_sort_newest": "Más recientes arriba",
+        "aifa_sort_oldest": "Más antiguos primero",
+        "aifa_mic_btn": "🎤 Voz",
+        "aifa_mic_listening": "Escuchando… habla al micrófono",
+        "aifa_mic_unsupported": "Reconocimiento de voz no disponible en esta ventana.",
+        "aifa_attach_btn": "📎 Archivo / Foto ≤10 MB",
+        "aifa_attach_too_big": "El archivo supera el límite de 10 MB.",
+        "aifa_attach_clear": "Quitar adjunto",
+        "aifa_neon_badge": "Nube Neon: chat sincronizado con tu gabinete unificado",
+        "media_box_title": "Generador gratuito de imágenes y diapositivas ($0)",
+        "media_box_sub": "Renderizado local gratuito ($0) con Chromium + PDF; soporte opcional de Cloudflare Flux / SD local.",
+        "media_mode_img": "Imagen (PNG)",
+        "media_mode_slides": "Presentación (PNG + PDF)",
+        "media_prompt_ph": "Describe la imagen o el tema de la presentación…",
+        "media_bullets_ph": "Puntos clave de diapositivas (uno por línea, opcional)…",
+        "media_gen_btn": "✨ Generar gratis ($0)",
+        "media_generating": "Generando localmente ($0)…",
+        "media_dl_png": "Descargar PNG",
+        "media_dl_pdf": "Descargar PDF",
+        "media_need_prompt": "Escribe una descripción o tema.",
+        "graph_links_lbl": "enlaces",
+        "graph_keys_lbl": "claves",
+        "graph_topics_lbl": "temas",
+        "graph_focus_info": "Mostrando relaciones del nodo elegido",
+        "l3_checkpoint_btn": "Crear punto de control L3 local ($0)",
+        "l3_no_anchors_friendly": "Aún no hay anclas L3 remotas — crea un punto de control Merkle local ($0) al lado para verificar al instante.",
+        "wal_title": "Carteras del dueño (Solana · Arweave · USDT TRC20)",
+        "wal_sub": "Gestiona carteras principales con validación Base58/Base64URL y protección automática contra cambio de destinatario.",
+        "wal_addr_ph": "Dirección (Solana / TRON T... / Arweave 43 car. o ruta JWK)…",
+        "wal_lbl_ph": "Etiqueta (ej. Bybit TRC20 principal)…",
+        "wal_add_btn": "Añadir y verificar",
+        "wal_check_btn": "Validar formato",
+        "wal_primary_badge": "Principal",
+        "wal_make_primary_btn": "Hacer principal",
+        "wal_del_btn": "Eliminar",
+        "wal_empty": "Aún no hay carteras en esta categoría.",
+        "wal_explorer_btn": "Explorador",
+        "wal_need_addr": "Introduce una dirección o ruta JWK.",
+        "star_prompt_msg": "Tu perímetro alcanzó Grado S (100/100) con cero telemetría ($0). Si PADAM te resulta útil, apoya el proyecto con una estrella en GitHub:",
+        "star_prompt_btn": "★ Dar Star en GitHub",
+        "star_prompt_hide": "No volver a mostrar",
+    },
+    "zh": {
+        "agent_owner": "主人（架构师）",
+        "feed_guide": "实时受保护记忆流：随时记录事实或决策、按智能体筛选并查看历史版本。",
+        "fam_add_title": "添加或更新家庭智能体",
+        "fam_agent_id_ph": "智能体 ID（如 my_claude 或 coder_bot）…",
+        "fam_agent_name_ph": "显示名称…",
+        "fam_agent_role_ph": "职责说明…",
+        "fam_add_agent_btn": "添加 / 更新智能体",
+        "fam_need_agent_id": "请输入有效的智能体标识符。",
+        "fam_controlled_by_lbl": "控制端：",
+        "fam_council_roles_lbl": "委员会角色：",
+        "fam_assign_role_btn": "分配角色",
+        "fam_agent_disable_btn": "停用",
+        "fam_agent_enable_btn": "启用",
+        "fam_agent_delete_btn": "删除",
+        "fam_roles_guide": "将 6 大委员会角色逐一绑定到已连接的 AI 智能体，决策时清晰显示具体执行者。",
+        "fam_council_votes_title": "6 位家庭委员会成员详细表决意见",
+        "fam_council_status_ok": "✅ 已批准",
+        "fam_council_status_warn": "⚠️ 需关注 / 等待主人确认",
+        "fam_council_status_veto": "🛑 安全否决",
+        "ark_council_repair_btn": "修复审计链（仅限主人）",
+        "fd_btn_24h": "24 小时",
+        "fd_btn_all": "全部对话",
+        "fd_date_lbl": "按日期：",
+        "fd_empty": "所选条件下暂无家庭对话记录。",
+        "fd_expand_btn": "展开全文",
+        "fd_collapse_btn": "收起",
+        "aifa_filter_24h": "24 小时",
+        "aifa_filter_all": "全部记录",
+        "aifa_date_lbl": "按日期：",
+        "aifa_sort_newest": "最新置顶",
+        "aifa_sort_oldest": "最早优先",
+        "aifa_mic_btn": "🎤 语音",
+        "aifa_mic_listening": "正在聆听…请说话",
+        "aifa_mic_unsupported": "当前窗口不支持语音识别，请直接输入文字。",
+        "aifa_attach_btn": "📎 文件 / 图片 ≤10 MB",
+        "aifa_attach_too_big": "文件超过 10 MB 限制。",
+        "aifa_attach_clear": "移除附件",
+        "aifa_neon_badge": "Neon 云端：对话已与统一账户实时同步",
+        "media_box_title": "免费图像与幻灯片生成器 ($0)",
+        "media_box_sub": "基于本地 Chromium + PDF 零成本离线生成，也支持 Cloudflare Flux 与本地 Stable Diffusion。",
+        "media_mode_img": "生成图像 (PNG)",
+        "media_mode_slides": "演示幻灯片 (PNG + PDF)",
+        "media_prompt_ph": "描述画面或演示主题…",
+        "media_bullets_ph": "幻灯片要点（每行一条，可选）…",
+        "media_gen_btn": "✨ 免费生成 ($0)",
+        "media_generating": "正在本地免费生成 ($0)…",
+        "media_dl_png": "下载 PNG",
+        "media_dl_pdf": "下载 PDF",
+        "media_need_prompt": "请输入图像描述或演示主题。",
+        "graph_links_lbl": "关联",
+        "graph_keys_lbl": "键",
+        "graph_topics_lbl": "主题",
+        "graph_focus_info": "已聚焦显示选中节点的关联",
+        "l3_checkpoint_btn": "创建本地 L3 校验点 ($0)",
+        "l3_no_anchors_friendly": "暂无链上 L3 锚点 — 可先点击旁边免费创建本地 Merkle 校验点 ($0) 并立即核验。",
+        "wal_title": "主人加密钱包 (Solana · Arweave · USDT TRC20)",
+        "wal_sub": "管理收款与锚定主钱包，内置 Base58/Base64URL 校验和验证与防收款人篡改白名单。",
+        "wal_addr_ph": "钱包地址（Solana / TRON T... / Arweave 43位或 JWK 路径）…",
+        "wal_lbl_ph": "备注标签（如 Bybit TRC20 主钱包）…",
+        "wal_add_btn": "校验并添加",
+        "wal_check_btn": "仅检测格式",
+        "wal_primary_badge": "主钱包",
+        "wal_make_primary_btn": "设为默认",
+        "wal_del_btn": "删除",
+        "wal_empty": "该网络暂未添加钱包。",
+        "wal_explorer_btn": "区块浏览器",
+        "wal_need_addr": "请输入钱包地址或 JWK 路径。",
+        "star_prompt_msg": "您的本地防线已通过 S 级（100/100）零遥测评估（$0）。如果 PADAM 对您有帮助，欢迎在 GitHub 点亮 Star 支持开源项目：",
+        "star_prompt_btn": "★ 前往 GitHub 点赞 Star",
+        "star_prompt_hide": "不再提示",
+    },
+}
+for _lg, _ex_ux in _STRINGS_UX_2011.items():
+    STRINGS[_lg].update(_ex_ux)
+
+
+
 
 _CSS = """
 .stop-all{font-weight:800;letter-spacing:.02em;min-width:180px}
@@ -3894,12 +4794,22 @@ _CSS = """
 
 #graph-canvas{width:100%;height:560px;display:block;border-radius:14px;cursor:grab}
 
-.tip-btn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin-left:8px;
+.tip-wrap{position:relative;display:inline-flex;align-items:center;gap:6px;max-width:100%}
+.tip-btn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin-left:4px;
   border-radius:50%;border:1px solid var(--border, #94a3b8);background:transparent;color:var(--muted, #64748b);
   font-size:12px;font-weight:700;line-height:1;cursor:help;vertical-align:middle;padding:0}
 .tip-btn:hover,.tip-btn:focus{background:var(--accent, #0b6bcb);color:#fff;border-color:transparent;outline:none}
-.tip-pop{position:absolute;z-index:50;max-width:420px;margin-top:6px;padding:10px 12px;border-radius:10px;
-  background:#0f172a;color:#e2e8f0;font-size:13px;line-height:1.45;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.tip-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:85;width:max-content;max-width:340px;padding:10px 12px;border-radius:10px;
+  background:#0f172a;color:#e2e8f0;border:1px solid var(--line,#334155);font-size:12.5px;line-height:1.45;box-shadow:0 10px 28px rgba(0,0,0,.45)}
+.role-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;margin-top:10px}
+.role-card,.fd-card,.council-card,.wallet-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.fd-card-head,.role-card-head,.wallet-card-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px}
+.fd-card > button,.fd-card > .rec-actions{align-self:flex-start}
+.badge-role{background:rgba(56,189,248,.16);color:var(--accent);border:1px solid rgba(56,189,248,.35)}
+.aifa-chat-scroll{max-height:540px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px}
+.media-preview-box{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+.media-preview-img{max-width:100%;max-height:360px;border-radius:10px;border:1px solid var(--line);object-fit:contain;background:#050714}
+.mt-sm{margin-top:8px}.mt-md{margin-top:12px}.mb-sm{margin-bottom:8px}
 
 :root, html[data-theme="dark"] {
   --bg: #080b12;
@@ -4212,6 +5122,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .att-val { font-weight: 600; white-space: nowrap; }
 .att-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 .att-qa-box { margin-top: 12px; }
+.sh-form-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; align-items: center; }
+.sh-form-row .input, .sh-form-row select { min-width: 170px; flex: 1 1 180px; }
+.sh-pre { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 10px; font-size: 12px; overflow-wrap: anywhere; white-space: pre-wrap; margin: 8px 0; }
+.sh-check-lbl { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; margin-bottom: 10px; cursor: pointer; }
+.sh-subhead { margin: 12px 0 6px; font-size: 14px; font-weight: 600; }
 .help-sec summary { cursor: pointer; }
 .help-item { margin: 10px 0 0; }
 .help-name { margin: 0 0 4px; font-size: 15px; }
@@ -4559,8 +5474,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   min-height: 70px;
   padding: 8px;
   border-radius: 8px;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid var(--line, rgba(148, 163, 184, 0.3));
+  background: var(--card);
   color: inherit;
   font-family: inherit;
   font-size: 13px;
@@ -4816,6 +5731,31 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     grid-template-columns: 88px 1fr 30px;
   }
 }
+.agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; margin-top: 8px; }
+.agent-card { background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+.agent-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.agent-badge-dot { display: inline-block; width: 10px; height: 10px; border-radius: 999px; margin-right: 6px; }
+.ag-env-antigravity { background: #22d3ee; }
+.ag-env-claude_code { background: #a78bfa; }
+.ag-env-autoclaw { background: #34d399; }
+.ag-env-owner { background: #38bdf8; }
+.ag-env-mcp, .ag-env-core, .ag-env-cursor, .ag-env-windsurf, .ag-env-cli, .ag-env-studio { background: #fbbf24; }
+.agent-pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.agent-pill { border: 1px solid var(--line); background: var(--bg-2); color: var(--ink); border-radius: 999px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+.agent-pill.active { background: var(--acc); color: #05131f; border-color: var(--acc); font-weight: 700; }
+.chats-layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 14px; margin-top: 10px; }
+.chats-sidebar { display: flex; flex-direction: column; gap: 8px; max-height: 540px; overflow-y: auto; }
+.chat-thread-btn { text-align: left; background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; color: var(--ink); cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+.chat-thread-btn.active { border-color: var(--acc); background: rgba(56, 189, 248, 0.12); }
+.chat-thread-title { font-weight: 600; font-size: 13px; }
+.chat-thread-meta { font-size: 11px; color: var(--muted); }
+.chats-log { display: flex; flex-direction: column; gap: 10px; max-height: 540px; overflow-y: auto; padding: 4px; }
+.chat-bubble { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--bg-2); }
+.chat-bubble-user { border-left: 3px solid #38bdf8; }
+.chat-bubble-assistant { border-left: 3px solid #a78bfa; }
+.chat-bubble-head { font-size: 12px; font-weight: 700; margin-bottom: 4px; color: var(--acc); }
+.chat-bubble-body { white-space: pre-wrap; word-break: break-word; font-size: 13px; line-height: 1.5; }
+@media (max-width: 860px) { .chats-layout { grid-template-columns: 1fr; } }
 """
 
 
@@ -4925,7 +5865,7 @@ function say(text, ok = true) {
   box.className = ok ? 'msg-ok' : 'msg-err';
 }
 
-const TABS = ['overview', 'family', 'bench', 'migrate', 'aifa', 'plans', 'feed', 'search', 'ask', 'review', 'attacks', 'asof', 'forget', 'graph', 'entities', 'l3', 'brain', 'earning', 'team', 'backup', 'settings', 'quickstart', 'help'];
+const TABS = ['overview', 'family', 'bench', 'migrate', 'aifa', 'plans', 'feed', 'search', 'ask', 'review', 'attacks', 'asof', 'forget', 'graph', 'chats', 'entities', 'l3', 'brain', 'earning', 'team', 'backup', 'settings', 'quickstart', 'help'];
 window._padamWorkspaces = [];
 let activeTab = (initialTab && TABS.includes(initialTab)) ? initialTab : 'family';
 let feedView = 'active', feedOffset = 0, feedKind = null, feedShown = [];
@@ -4986,34 +5926,44 @@ function applyTips() {
     const tip = TIPS[key];
     if (!tip) continue;
     const text = tip[currentLang] || tip.ru || '';
-    let btn = h.nextElementSibling;
-    if (!btn || !btn.classList || !btn.classList.contains('tip-btn')) {
+    let wrap = h.parentElement;
+    if (!wrap || !wrap.classList || !wrap.classList.contains('tip-wrap')) {
+      wrap = document.createElement('span');
+      wrap.className = 'tip-wrap';
+      h.parentNode.insertBefore(wrap, h);
+      wrap.appendChild(h);
+    }
+    let btn = wrap.querySelector(':scope > .tip-btn');
+    if (!btn) {
       btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'tip-btn';
       btn.textContent = '?';
-      h.style.display = 'inline-block';
-      h.insertAdjacentElement('afterend', btn);
+      h.style.margin = '0';
+      wrap.appendChild(btn);
       const pop = document.createElement('div');
       pop.className = 'tip-pop';
       pop.setAttribute('role', 'tooltip');
       pop.id = 'tip-' + key;
       pop.hidden = true;
-      btn.insertAdjacentElement('afterend', pop);
+      wrap.appendChild(pop);
       btn.setAttribute('aria-describedby', pop.id);
-      btn.addEventListener('click', ev => { ev.stopPropagation(); pop.hidden = !pop.hidden; });
-      btn.addEventListener('mouseenter', () => { pop.hidden = false; });
-      btn.addEventListener('mouseleave', () => { pop.hidden = true; });
-      btn.addEventListener('focus', () => { pop.hidden = false; });
+      const closeAll = (except) => {
+        for (const p of document.querySelectorAll('.tip-pop')) { if (p !== except) p.hidden = true; }
+      };
+      btn.addEventListener('click', ev => { ev.stopPropagation(); const was = !pop.hidden; closeAll(null); pop.hidden = was; });
+      btn.addEventListener('mouseenter', () => { closeAll(pop); pop.hidden = false; });
+      wrap.addEventListener('mouseleave', () => { pop.hidden = true; });
       btn.addEventListener('blur', () => { pop.hidden = true; });
     }
     btn.setAttribute('aria-label', (S.tip_label || '?') + ': ' + (S[key] || key));
-    btn.title = text;
-    const pop = btn.nextElementSibling;
-    if (pop && pop.classList.contains('tip-pop')) pop.textContent = text;
+    btn.removeAttribute('title');
+    const pop = wrap.querySelector(':scope > .tip-pop');
+    if (pop) pop.textContent = text;
   }
 }
 document.addEventListener('click', () => { for (const p of document.querySelectorAll('.tip-pop')) p.hidden = true; });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { for (const p of document.querySelectorAll('.tip-pop')) p.hidden = true; } });
 
 function applyI18n() {
   S = ALL_STRINGS[currentLang] || ALL_STRINGS.ru;
@@ -5038,7 +5988,15 @@ function applyI18n() {
     const b = $('lang-' + lg);
     if (b) b.setAttribute('aria-pressed', String(lg === currentLang));
   }
-  try { if (activeTab === 'help' || activeTab === 'attacks') loadActiveTab(); } catch (e) {}
+  if ($('aifa-sort-btn')) {
+    $('aifa-sort-btn').textContent = (window._aifaSortNewest !== false) ? (S.aifa_sort_newest || 'Newest first') : (S.aifa_sort_oldest || 'Oldest first');
+  }
+  if (typeof renderFamilySetupSnapshot === 'function' && window._famSetupSnap) {
+    try { renderFamilySetupSnapshot(window._famSetupSnap); } catch (e) {}
+  }
+  try {
+    if (['help', 'attacks', 'family', 'aifa', 'l3', 'earning', 'graph'].includes(activeTab)) loadActiveTab();
+  } catch (e) {}
 }
 
 // 18.11.2026: меню из 7 групп вместо 21 строки. Кнопки вкладок те же, они лишь переносятся в свёрнутые группы.
@@ -5046,7 +6004,7 @@ const NAV_GROUPS = [
   { key: null, tabs: ['family'] },
   { key: null, tabs: ['bench'] },
   { key: null, tabs: ['earning'] },
-  { key: 'grp_memory', tabs: ['overview', 'feed', 'search', 'ask', 'asof', 'graph', 'entities'] },
+  { key: 'grp_memory', tabs: ['overview', 'feed', 'search', 'ask', 'asof', 'graph', 'chats', 'entities'] },
   { key: 'grp_guard', tabs: ['review', 'attacks', 'forget'] },
   { key: 'grp_cloud', tabs: ['aifa', 'plans', 'l3'] },
   { key: null, tabs: ['brain'] },
@@ -5121,6 +6079,7 @@ async function refreshTopbarStats() {
       badge.className = s.quarantined ? 'badge badge-warn' : 'badge';
     }
   } catch (e) {}
+  if (typeof refreshShieldBanner === 'function') { try { refreshShieldBanner(); } catch (e) {} }
 }
 
 function truncateAtWord(text, maxLen) {
@@ -5376,7 +6335,8 @@ async function loadOverview() {
         try { await api('/trust-protected', {}); say(S.done, true); loadOverview(); }
         catch (e) { say(S.failed + ': ' + e.message, false); }
       };
-      item.append(el('span', '', '⚠️ ' + S.ov_unsigned_alert + ' ' + unsigned.length + ' '), btn);
+      const uHint = unsigned[0] && unsigned[0].content ? (' — ' + S.ov_unsigned_hint + ' «' + String(unsigned[0].content).slice(0, 75) + '…»') : '';
+      item.append(el('span', '', '⚠️ ' + S.ov_unsigned_alert + ' ' + unsigned.length + uHint + ' '), btn);
       attBox.append(item);
     }
     if (st.quarantined > 0) {
@@ -5428,6 +6388,39 @@ async function loadOverview() {
       );
     }
 
+    // Подключённые агенты и их память (Обзор)
+    const ovAgGrid = $('ov-agents-grid');
+    if (ovAgGrid) {
+      ovAgGrid.replaceChildren();
+      const ags = (st.agents || []);
+      if (!ags.length) {
+        ovAgGrid.append(el('p', 'panel-sub', S.ov_agents_empty || '—'));
+      } else {
+        for (const ag of ags) {
+          const card = el('div', 'agent-card');
+          const head = el('div', 'agent-card-head');
+          const titleWrap = el('strong', '');
+          const dot = el('span', 'agent-badge-dot ag-env-' + String(ag.environment || 'mcp'));
+          titleWrap.append(dot, document.createTextNode(String(ag.display_name || ag.agent_id)));
+          const pill = el('span', 'badge', ag.online ? ('🟢 ' + S.ov_agent_online) : ('⏸ ' + S.ov_agent_idle));
+          head.append(titleWrap, pill);
+          card.append(head);
+          card.append(el('div', 'rec-meta', String(ag.agent_id) + (ag.last_seen_at ? (' · ' + fmtTime(ag.last_seen_at, true)) : '')));
+          card.append(el('div', 'panel-sub', String(ag.active || 0) + ' ' + S.ov_agent_active + ' · ' + String(ag.quarantined || 0) + ' ' + S.ov_agent_quar + ' · ' + String(ag.chat_messages || 0) + ' ' + S.ov_agent_chats));
+          const acts = el('div', 'rec-actions');
+          const bGr = el('button', '', S.ov_agent_graph_btn);
+          bGr.type = 'button';
+          bGr.onclick = () => { window._graphAgentFilter = ag.agent_id; window._graphMode = 'agent'; switchTab('graph'); };
+          const bCh = el('button', '', S.ov_agent_chats_btn);
+          bCh.type = 'button';
+          bCh.onclick = () => { window._chatsAgentFilter = ag.agent_id; switchTab('chats'); };
+          acts.append(bGr, bCh);
+          card.append(acts);
+          ovAgGrid.append(card);
+        }
+      }
+    }
+
     // Светофор Doctor
     const banner = $('ov-doctor-banner');
     const lvl = doc.level || 'green';
@@ -5461,6 +6454,34 @@ async function loadOverview() {
 }
 
 // --- 2. ЛЕНТА ПАМЯТИ ---
+async function loadFeedAgentPills() {
+  const box = $('feed-agent-pills');
+  if (!box) return;
+  try {
+    const res = await api('/api/v2/agents');
+    const ags = (res && res.agents) || [];
+    const cur = ($('feed-agent') ? $('feed-agent').value : '').trim();
+    box.replaceChildren();
+    const mk = (aid, lbl) => {
+      const b = el('button', 'chip', lbl);
+      b.type = 'button';
+      b.dataset.agent = aid;
+      b.setAttribute('aria-pressed', String(cur === aid));
+      b.onclick = () => {
+        if ($('feed-agent')) $('feed-agent').value = aid;
+        loadFeedAgentPills();
+        loadFeed(true);
+      };
+      return b;
+    };
+    box.append(mk('', S.feed_all_agents || 'All'));
+    for (const a of ags) {
+      if ((a.total_records || 0) <= 0 && (a.chat_messages || 0) <= 0) continue;
+      box.append(mk(a.agent_id, String(a.display_name || a.agent_id) + ' · ' + String(a.active || 0)));
+    }
+  } catch (e) {}
+}
+
 function renderFeedKinds() {
   const box = $('feed-kinds');
   box.replaceChildren();
@@ -5515,6 +6536,7 @@ async function loadFeed(reset = true) {
     $('feed-more').hidden = feedOffset >= (r.total || 0);
     renderFeedKinds();
     renderFeedList();
+    loadFeedAgentPills();
   } catch (e) { say(S.failed + ': ' + e.message, false); }
 }
 
@@ -5951,7 +6973,10 @@ function projectGraph(width, height) {
   return out;
 }
 
+window._graphAgentFilter = '';
+window._graphMode = 'all';
 function _graphColor(node, isDark) {
+  if ((window._graphMode === 'intersections' || window._graphAgentFilter) && node.agent_color && node.status === 'active') return node.agent_color;
   if (node.status === 'superseded') return isDark ? '#64748b' : '#94a3b8';
   if (node.status === 'quarantined') return isDark ? '#fb7185' : '#e11d48';
   if (node.kind === 'identity' || node.kind === 'preference') return isDark ? '#c084fc' : '#7c3aed';
@@ -5963,7 +6988,7 @@ function _graphColor(node, isDark) {
 function _edgeColor(t, isDark) {
   return ({derived: isDark ? '0,210,255' : '2,132,199', cause: isDark ? '52,211,153' : '5,150,105',
            correction: isDark ? '251,191,36' : '217,119,6', contradiction: isDark ? '248,113,113' : '220,38,38',
-           version: isDark ? '167,139,250' : '79,70,229'})[t] || (isDark ? '251,113,133' : '225,29,72');
+           cross_agent: isDark ? '250,204,21' : '202,138,4', version: isDark ? '167,139,250' : '79,70,229'})[t] || (isDark ? '251,113,133' : '225,29,72');
 }
 
 function drawGraph() {
@@ -6177,6 +7202,38 @@ function renderSelectedGraphNode() {
   }
 }
 
+function _renderGraphAgentsUI(data) {
+  const pills = $('graph-agents-pills');
+  if (pills) {
+    pills.replaceChildren();
+    for (const ag of (data.agents || [])) {
+      const b = el('button', 'agent-pill' + (window._graphAgentFilter === ag.agent_id ? ' active' : ''), String(ag.display_name || ag.agent_id) + ' (' + String(ag.active || 0) + ')');
+      b.type = 'button';
+      b.onclick = () => { window._graphAgentFilter = ag.agent_id; window._graphMode = 'agent'; $('graph-id-input').value = ''; loadGraph(); };
+      pills.append(b);
+    }
+  }
+  if ($('graph-all-btn')) $('graph-all-btn').className = (!window._graphAgentFilter && window._graphMode === 'all') ? 'btn-primary' : '';
+  if ($('graph-intersections-btn')) $('graph-intersections-btn').className = (window._graphMode === 'intersections') ? 'btn-primary' : '';
+  const iBox = $('graph-intersections-list');
+  if (iBox) {
+    iBox.replaceChildren();
+    const mx = (data.intersections_matrix || []);
+    if (!mx.length) {
+      iBox.append(el('p', 'panel-sub', S.graph_inter_empty || '—'));
+    } else {
+      for (const item of mx.slice(0, 12)) {
+        const row = el('div', 'att-row');
+        const left = String(item.agent_a_label || item.agent_a) + ' ⇄ ' + String(item.agent_b_label || item.agent_b);
+        const topics = (item.top_topics || []).slice(0, 5).join(', ');
+        const right = String(item.direct_links || 0) + ' ' + (S.graph_links_lbl || 'links') + ' · ' + String(item.shared_fact_keys || 0) + ' ' + (S.graph_keys_lbl || 'keys') + ' · ' + String(item.shared_topics_count || 0) + ' ' + (S.graph_topics_lbl || 'topics') + (topics ? (' (' + topics + ')') : '');
+        row.append(el('span', 'att-name', left), el('span', 'att-val', right));
+        iBox.append(row);
+      }
+    }
+  }
+}
+
 async function loadGraph() {
   const focusId = ($('graph-id-input').value || '').trim();
   const asOfDate = ($('graph-asof-input') && $('graph-asof-input').value || '').trim();
@@ -6184,8 +7241,11 @@ async function loadGraph() {
     const params = [];
     if (focusId) params.push('id=' + encodeURIComponent(focusId));
     if (asOfDate) params.push('as_of=' + encodeURIComponent(asOfDate));
+    if (window._graphAgentFilter) params.push('agent_id=' + encodeURIComponent(window._graphAgentFilter));
+    if (window._graphMode && window._graphMode !== 'all') params.push('mode=' + encodeURIComponent(window._graphMode));
     const path = '/graph' + (params.length ? ('?' + params.join('&')) : '');
     graphData = await api(path);
+    _renderGraphAgentsUI(graphData);
     const canvas = $('graph-canvas');
     graphPositions = layoutGraph(graphData.nodes || [], graphData.edges || [], canvas.width, canvas.height);
     selectedGraphNode = (graphData.nodes || []).find(n => n.id === focusId) || (graphData.nodes || [])[0] || null;
@@ -6304,6 +7364,7 @@ async function loadL3() {
     const rk = d.record_keys || {};
     $('l3-keys-status').textContent = rk.passphrase_protected ? S.l3_keys_protected : S.l3_keys_open;
 
+    try { if (typeof renderWalletsWidget === 'function') renderWalletsWidget('wal-l3-list', ['SOLANA', 'ARWEAVE'], d.wallets || null); } catch (e) {}
     const list = $('l3-anchors-list');
     list.replaceChildren();
     const anchors = d.anchors || [];
@@ -6661,6 +7722,7 @@ function loadActiveTab() {
   else if (activeTab === 'asof') loadAsOf();
   else if (activeTab === 'forget') loadForgetTab();
   else if (activeTab === 'graph') loadGraph();
+  else if (activeTab === 'chats' && typeof loadChatsTab === 'function') loadChatsTab();
   else if (activeTab === 'entities') loadEntities();
   else if (activeTab === 'l3') loadL3();
   else if (activeTab === 'family') { loadFamilySetup(); loadFamily(); loadFamilyDialogs(); loadFamilyFeed(); }
@@ -6668,7 +7730,7 @@ function loadActiveTab() {
   else if (activeTab === 'earning') loadEarning();
   else if (activeTab === 'team') loadTeam();
   else if (activeTab === 'settings') { loadSettings(); loadLocalModel(); }
-  else if (activeTab === 'attacks') loadAttacks();
+  else if (activeTab === 'attacks') { loadAttacks(); if (typeof loadShield === 'function') loadShield(); }
   else if (activeTab === 'bench') { renderAifaSec(); if (typeof loadQaBench === 'function') loadQaBench(); loadRedteamRounds(); }
   else if (activeTab === 'help') loadHelp();
 }
@@ -6770,6 +7832,24 @@ async function renderAifaSec(fresh = false) {
     let hn = $('att-aifasec-honest');
     if (!hn) { hn = _el('p', 'panel-sub'); hn.id = 'att-aifasec-honest'; sumEl.insertAdjacentElement('afterend', hn); }
     hn.textContent = S.bench_honest || r.honest_note || '';
+    try {
+      let sp = $('att-star-prompt');
+      if (Number(sm.score_pct || 0) >= 95 && localStorage.getItem('padam_star_prompt_done') !== '1') {
+        if (!sp) {
+          sp = document.createElement('div'); sp.id = 'att-star-prompt'; sp.className = 'box';
+          sp.style.cssText = 'margin:10px 0;padding:10px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;border:1px solid #f59e0b66;border-radius:10px';
+          hn.insertAdjacentElement('afterend', sp);
+        }
+        sp.textContent = '';
+        const msg = document.createElement('span'); msg.style.fontSize = '13px'; msg.textContent = S.star_prompt_msg || '';
+        const btns = document.createElement('span'); btns.style.cssText = 'display:flex;gap:8px;align-items:center';
+        const aStar = document.createElement('a'); aStar.className = 'btn btn-primary'; aStar.href = 'https://github.com/MaksimGalatin/padam-nocturne/stargazers'; aStar.target = '_blank'; aStar.rel = 'noopener'; aStar.textContent = S.star_prompt_btn || 'Star';
+        aStar.onclick = () => { try { localStorage.setItem('padam_star_prompt_done', '1'); sp.hidden = true; } catch (e) {} };
+        const bHide = document.createElement('button'); bHide.type = 'button'; bHide.className = 'btn'; bHide.textContent = S.star_prompt_hide || 'Hide';
+        bHide.onclick = () => { try { localStorage.setItem('padam_star_prompt_done', '1'); } catch (e) {} sp.hidden = true; };
+        btns.appendChild(aStar); btns.appendChild(bHide); sp.appendChild(msg); sp.appendChild(btns); sp.hidden = false;
+      } else if (sp) { sp.hidden = true; }
+    } catch (e) {}
   } else {
     sumEl.textContent = (r && r.error) || '—';
   }
@@ -6907,6 +7987,8 @@ async function verifyEdSeal() {
       + ' · ' + String(v.report_sha256 || '').slice(0, 16) + '…';
   }
 }
+// 20.11: подгрузка кошельков в #panel-earning
+const _origLoadEarning = (typeof loadEarning === 'function') ? loadEarning : null;
 const _qaBtn = $('att-qa-load');
 if (_qaBtn) _qaBtn.addEventListener('click', () => loadQaBench());
 const _fuzzBtn = $('att-fuzz-run');
@@ -7118,9 +8200,10 @@ $('feed-more').onclick = () => loadFeed(false);
 $('feed-new-save').onclick = async () => {
   const text = $('feed-new-text').value.trim();
   const kind = $('feed-new-kind').value || undefined;
+  const ag = ($('feed-new-agent') && $('feed-new-agent').value) ? $('feed-new-agent').value : 'owner';
   if (!text) return needInput('feed-new-text');
   try {
-    await api('/write', {content: text, kind, origin: 'user'});
+    await api('/write', {content: text, kind, origin: ag === 'owner' ? 'user' : 'agent', agent_id: ag});
     $('feed-new-text').value = '';
     say(S.done, true);
     loadFeed(true);
@@ -7176,8 +8259,29 @@ $('forget-step2-btn').onclick = async () => {
 };
 
 // Граф
-$('graph-focus-btn').onclick = () => { graphLastReceipt = null; loadGraph(); };
-$('graph-reset-btn').onclick = () => { graphLastReceipt = null; $('graph-id-input').value = ''; if ($('graph-asof-input')) $('graph-asof-input').value = ''; loadGraph(); };
+$('graph-focus-btn').onclick = () => {
+  graphLastReceipt = null;
+  const inp = $('graph-id-input');
+  let targetId = inp ? inp.value.trim() : '';
+  if (!targetId) {
+    if (selectedGraphNode && selectedGraphNode.id) {
+      targetId = selectedGraphNode.id;
+    } else if ((graphData.nodes || []).length) {
+      let best = graphData.nodes[0], bestDeg = -1;
+      for (const nd of graphData.nodes) {
+        const dg = (G3.deg && G3.deg[nd.id]) || 0;
+        if (dg > bestDeg) { best = nd; bestDeg = dg; }
+      }
+      targetId = best && best.id ? best.id : '';
+    }
+    if (inp && targetId) inp.value = targetId;
+  }
+  if (targetId) say((S.graph_focus_info || 'Focus') + ': ' + targetId.slice(0, 12) + '…', true);
+  loadGraph();
+};
+$('graph-reset-btn').onclick = () => { graphLastReceipt = null; window._graphAgentFilter = ''; window._graphMode = 'all'; $('graph-id-input').value = ''; if ($('graph-asof-input')) $('graph-asof-input').value = ''; loadGraph(); };
+if ($('graph-all-btn')) $('graph-all-btn').onclick = () => { graphLastReceipt = null; window._graphAgentFilter = ''; window._graphMode = 'all'; $('graph-id-input').value = ''; loadGraph(); };
+if ($('graph-intersections-btn')) $('graph-intersections-btn').onclick = () => { graphLastReceipt = null; window._graphAgentFilter = ''; window._graphMode = 'intersections'; $('graph-id-input').value = ''; loadGraph(); };
 if ($('graph-now-btn')) $('graph-now-btn').onclick = () => { $('graph-asof-input').value = ''; loadGraph(); };
 if ($('graph-asof-input')) $('graph-asof-input').onchange = () => { graphLastReceipt = null; loadGraph(); };
 function _graphHit(e) {
@@ -7225,9 +8329,22 @@ $('graph-canvas').ondblclick = () => { G3.auto = true; _graphStartAuto(); };
 $('l3-verify-latest-btn').onclick = async () => {
   try {
     const v = await api('/l3-verify', {});
+    if (!v.ok && v.error === 'no_anchors') {
+      say(S.l3_no_anchors_friendly || S.l3_no_anchors, true);
+      return;
+    }
     say(v.ok ? S.l3_verify_ok : (S.l3_verify_fail + ' ' + (v.error || '')), Boolean(v.ok));
   } catch (e) { say(S.failed + ': ' + e.message, false); }
 };
+if ($('l3-checkpoint-btn')) {
+  $('l3-checkpoint-btn').onclick = async () => {
+    try {
+      const r = await api('/l3-local-checkpoint', { limit: 200 });
+      say((S.done || 'OK') + ' · ' + String(r.anchor_id || '') + ' · leaves=' + String(r.leaf_count || 0), true);
+      loadL3();
+    } catch (e) { say(S.failed + ': ' + e.message, false); }
+  };
+}
 
 // Резервная копия (2.5): создание и восстановление со сверкой SHA-256
 if ($('backup-create-btn')) {
@@ -7312,22 +8429,56 @@ $('qs-go-overview-btn').onclick = () => switchTab('overview');
 // --- Кабинет CODE Eternal: AIfa и Тарифы (этапы 2-3) ---
 let cabinetState = null;
 let aifaHistory = [];
+window._aifaSince = 'all';
+window._aifaDateFilter = '';
+window._aifaSortNewest = true;
+window._aifaPendingAttach = null;
 
 function renderAifaChat() {
   const box = $('aifa-chat-list');
   if (!box) return;
   box.replaceChildren();
-  if (!aifaHistory.length) {
+  const neonEl = $('aifa-neon-status');
+  if (neonEl) {
+    neonEl.textContent = (S.aifa_neon_badge || 'Neon synced') + ' · ' + String(aifaHistory.length);
+  }
+  const b24 = $('aifa-filter-24h'), bAll = $('aifa-filter-all');
+  if (b24) b24.className = window._aifaSince === '24h' ? 'btn-primary' : '';
+  if (bAll) bAll.className = (window._aifaSince === 'all' && !window._aifaDateFilter) ? 'btn-primary' : '';
+  const nowMs = Date.now();
+  let rows = aifaHistory.slice();
+  if (window._aifaSince === '24h') {
+    rows = rows.filter(m => {
+      const ts = Date.parse(String(m.timestamp || m.created_at || ''));
+      return !isFinite(ts) || (nowMs - ts) <= 24 * 3600 * 1000;
+    });
+  }
+  if (window._aifaDateFilter) {
+    rows = rows.filter(m => String(m.timestamp || m.created_at || '').slice(0, 10) === window._aifaDateFilter);
+  }
+  if (window._aifaSortNewest !== false) {
+    rows.reverse();
+  }
+  if (!rows.length) {
     box.appendChild(el('p', 'panel-sub', S.aifa_empty_chat));
     return;
   }
-  for (const m of aifaHistory) {
+  for (const m of rows) {
     const role = (m.role === 'user') ? (S.you || 'You') : 'AIfa';
+    const tsRaw = m.timestamp || m.created_at || '';
     const card = el('div', 'rec-card');
-    card.appendChild(el('div', 'rec-head', role + (m.timestamp ? (' · ' + fmtTime(m.timestamp, false)) : '')));
+    card.appendChild(el('div', 'rec-head', role + (tsRaw ? (' · ' + fmtTime(tsRaw, false)) : '')));
     card.appendChild(el('div', 'rec-body', String(m.content || '')));
     box.appendChild(card);
   }
+}
+
+async function _fetchMediaBlob(fileName) {
+  const headers = {};
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  const resp = await fetch('/api/v2/media/file?name=' + encodeURIComponent(fileName), { headers, cache: 'no-store' });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  return await resp.blob();
 }
 
 async function loadAifaTab() {
@@ -7415,22 +8566,145 @@ if ($('aifa-logout-btn')) {
     } catch (e) { say(S.failed + ': ' + e.message, false); }
   };
 }
+if ($('aifa-filter-24h')) $('aifa-filter-24h').onclick = () => { window._aifaSince = '24h'; window._aifaDateFilter = ''; if ($('aifa-filter-date')) $('aifa-filter-date').value = ''; renderAifaChat(); };
+if ($('aifa-filter-all')) $('aifa-filter-all').onclick = () => { window._aifaSince = 'all'; window._aifaDateFilter = ''; if ($('aifa-filter-date')) $('aifa-filter-date').value = ''; renderAifaChat(); };
+if ($('aifa-filter-date')) $('aifa-filter-date').onchange = () => { window._aifaSince = 'date'; window._aifaDateFilter = $('aifa-filter-date').value || ''; renderAifaChat(); };
+if ($('aifa-sort-btn')) $('aifa-sort-btn').onclick = () => {
+  window._aifaSortNewest = (window._aifaSortNewest === false);
+  $('aifa-sort-btn').textContent = window._aifaSortNewest ? (S.aifa_sort_newest || 'Newest first') : (S.aifa_sort_oldest || 'Oldest first');
+  renderAifaChat();
+};
+if ($('aifa-mic-btn')) {
+  $('aifa-mic-btn').onclick = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { say(S.aifa_mic_unsupported || 'Voice input not available', false); return; }
+    try {
+      const rec = new SR();
+      rec.lang = currentLang === 'ru' ? 'ru-RU' : currentLang === 'es' ? 'es-ES' : currentLang === 'zh' ? 'zh-CN' : 'en-US';
+      rec.interimResults = false;
+      say(S.aifa_mic_listening || 'Listening…', true);
+      rec.onresult = (ev) => {
+        const spoken = (ev.results && ev.results[0] && ev.results[0][0] && ev.results[0][0].transcript) || '';
+        const inp = $('aifa-msg-input');
+        if (inp && spoken) { inp.value = (inp.value ? inp.value + ' ' : '') + spoken; inp.focus(); }
+      };
+      rec.onerror = (ev) => { say(S.failed + ': ' + String(ev.error || 'mic'), false); };
+      rec.start();
+    } catch (e) { say(S.failed + ': ' + e.message, false); }
+  };
+}
+if ($('aifa-attach-btn') && $('aifa-attach-file')) {
+  $('aifa-attach-btn').onclick = () => $('aifa-attach-file').click();
+  $('aifa-attach-file').onchange = async () => {
+    const f = $('aifa-attach-file').files && $('aifa-attach-file').files[0];
+    const infoEl = $('aifa-attach-info');
+    if (!f) { window._aifaPendingAttach = null; if (infoEl) infoEl.hidden = true; return; }
+    if (f.size > 10 * 1024 * 1024) {
+      say(S.aifa_attach_too_big || 'File > 10 MB', false);
+      $('aifa-attach-file').value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '');
+      const b64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : '';
+      window._aifaPendingAttach = { name: f.name, mime: f.type || 'application/octet-stream', size_bytes: f.size, data_b64: b64 };
+      if (infoEl) {
+        infoEl.hidden = false;
+        infoEl.textContent = '📎 ' + f.name + ' (' + Math.max(1, Math.round(f.size / 1024)) + ' KB) ';
+        const clr = _el('button', '', S.aifa_attach_clear || '×');
+        clr.type = 'button';
+        clr.onclick = () => { window._aifaPendingAttach = null; $('aifa-attach-file').value = ''; infoEl.hidden = true; };
+        infoEl.appendChild(clr);
+      }
+    };
+    reader.readAsDataURL(f);
+  };
+}
+if ($('aifa-media-gen-btn')) {
+  $('aifa-media-gen-btn').onclick = async () => {
+    const mode = ($('aifa-media-mode') && $('aifa-media-mode').value) || 'image';
+    const promptVal = ($('aifa-media-prompt') && $('aifa-media-prompt').value || '').trim();
+    const bulletsVal = ($('aifa-media-bullets') && $('aifa-media-bullets').value || '').trim();
+    const themeVal = ($('aifa-media-theme') && $('aifa-media-theme').value) || 'cyber_shield';
+    const sizeVal = ($('aifa-media-size') && $('aifa-media-size').value) || '1024x1024';
+    const [mw, mh] = sizeVal.split('x').map(n => parseInt(n, 10) || 1024);
+    const outBox = $('aifa-media-preview');
+    if (!promptVal) return needInput('aifa-media-prompt');
+    if (outBox) outBox.replaceChildren(_el('p', 'panel-sub', S.media_generating || 'Generating ($0)…'));
+    try {
+      const res = await api('/api/v2/media/generate', {
+        mode,
+        prompt: promptVal,
+        title: promptVal,
+        bullets: bulletsVal,
+        theme: themeVal,
+        style: themeVal,
+        width: mw,
+        height: mh,
+        export_pdf: true,
+      });
+      if (!outBox) return;
+      outBox.replaceChildren();
+      outBox.appendChild(_el('p', 'panel-sub', '✅ ' + String(res.engine || 'local') + ' · $0 · ' + String(res.elapsed_ms || 0) + ' ms'));
+      const firstFile = res.file_name || (res.slides && res.slides[0] && res.slides[0].file_name) || '';
+      if (firstFile) {
+        const pngBlob = await _fetchMediaBlob(firstFile);
+        const blobUrl = URL.createObjectURL(pngBlob);
+        try {
+          const bmp = await createImageBitmap(pngBlob);
+          const cv = document.createElement('canvas');
+          cv.width = bmp.width;
+          cv.height = bmp.height;
+          cv.className = 'media-preview-img';
+          cv.setAttribute('aria-label', promptVal);
+          const ctx = cv.getContext('2d');
+          if (ctx) ctx.drawImage(bmp, 0, 0);
+          outBox.appendChild(cv);
+          if (typeof bmp.close === 'function') bmp.close();
+        } catch (eBmp) {}
+        const acts = _el('div', 'rec-actions');
+        const dlPng = _el('a', 'btn-primary', S.media_dl_png || 'PNG');
+        dlPng.href = blobUrl;
+        dlPng.download = firstFile.split('/').pop() || 'aifa_art.png';
+        acts.appendChild(dlPng);
+        if (res.pdf_file_name) {
+          const pdfBlob = await _fetchMediaBlob(res.pdf_file_name);
+          const dlPdf = _el('a', 'btn-ok', S.media_dl_pdf || 'PDF');
+          dlPdf.href = URL.createObjectURL(pdfBlob);
+          dlPdf.download = 'aifa_presentation.pdf';
+          acts.appendChild(dlPdf);
+        }
+        outBox.appendChild(acts);
+      }
+    } catch (e) {
+      if (outBox) outBox.replaceChildren(_el('p', 'msg-err', String(e.message || e)));
+    }
+  };
+}
 if ($('aifa-send-msg-btn')) {
   $('aifa-send-msg-btn').onclick = async () => {
     const inp = $('aifa-msg-input');
     const msg = (inp ? inp.value : '').trim();
-    if (!msg) return;
+    const att = window._aifaPendingAttach || null;
+    if (!msg && !att) return needInput('aifa-msg-input');
     const useLocal = Boolean($('aifa-use-local') && $('aifa-use-local').checked);
     try {
       const res = await api('/api/v2/cabinet/aifa/chat', {
         message: msg,
         locale: currentLang,
         history: aifaHistory.slice(-20),
-        use_local_memory: useLocal
+        use_local_memory: useLocal,
+        attachment: att,
       });
       if (inp) inp.value = '';
-      aifaHistory.push({role: 'user', content: msg});
-      aifaHistory.push({role: 'assistant', content: res.reply || ''});
+      window._aifaPendingAttach = null;
+      if ($('aifa-attach-file')) $('aifa-attach-file').value = '';
+      if ($('aifa-attach-info')) $('aifa-attach-info').hidden = true;
+      const showMsg = msg || ('📎 ' + String((att && att.name) || 'file'));
+      const tsNow = new Date().toISOString();
+      aifaHistory.push({role: 'user', content: showMsg, timestamp: tsNow});
+      aifaHistory.push({role: 'assistant', content: res.reply || '', timestamp: tsNow});
       renderAifaChat();
       const sentBox = $('aifa-local-sent-box');
       const sentList = $('aifa-local-sent-list');
@@ -7458,6 +8732,48 @@ if ('serviceWorker' in navigator) {
 
 // Вкладка «Семья» (18.11.2026): кто подключён к памяти, статус, текущая работа и локальный мозг Ollama.
 // «Настройка за 2 минуты» и последние записи памяти (18.11.2026): всё важное — на первом экране.
+function renderFamilySetupSnapshot(snap) {
+  if (!snap) return;
+  const box = $('fam-setup');
+  if (box) {
+    const rows = [
+      [S.st_agents, snap.live + ' / ' + snap.totalAgents, snap.live > 0, 'family', ''],
+      [S.st_ollama, snap.nm ? S.st_on + ' · ' + snap.nm : S.st_off, snap.nm > 0, 'brain', snap.nm ? '' : S.st_ollama_fix],
+      [S.st_cabinet, snap.cabAuth ? S.st_on : S.st_off, !!snap.cabAuth, 'aifa', ''],
+      [S.st_partner, snap.parCfg ? S.st_on : S.st_off, !!snap.parCfg, 'earning', ''],
+      [S.st_platforms, String(snap.conns), snap.conns > 0, 'earning', ''],
+      [S.st_stores, String(snap.stores), snap.stores > 0, 'earning', ''],
+      [S.st_memory, String(snap.activeCount || 0), (snap.activeCount || 0) > 0, 'overview', ''],
+      [S.st_review, String(snap.quarantinedCount || 0), !(snap.quarantinedCount || 0), 'review', ''],
+    ];
+    box.textContent = '';
+    for (const [label, val, ok, tab, hint] of rows) {
+      const row = _el('div', 'setup-row');
+      const left = _el('div', '');
+      left.appendChild(_el('div', '', (ok ? '✅ ' : '⚠️ ') + label));
+      if (hint) left.appendChild(_el('div', 'earn-meta', hint));
+      row.appendChild(left);
+      const right = _el('div', 'rec-actions');
+      right.appendChild(_el('span', 'setup-state ' + (ok ? 'setup-ok' : 'setup-warn'), val));
+      if (tab !== 'family') { const b = _el('button', ok ? '' : 'btn-primary', S.st_open); b.type = 'button'; b.onclick = () => switchTab(tab); right.appendChild(b); }
+      row.appendChild(right);
+      box.appendChild(row);
+    }
+  }
+  const mbox = $('fam-memory');
+  if (mbox) {
+    mbox.textContent = '';
+    const recs = snap.recs || [];
+    if (!recs.length) mbox.appendChild(_el('p', 'panel-sub', S.mem_empty));
+    for (const r of recs.slice(0, 5)) {
+      const it = _el('div', 'earn-item');
+      it.appendChild(_el('div', 'earn-meta', String(r.kind || '') + ' · ' + String(r.created_at || '').replace('T', ' ').slice(0, 16) + (r.agent_id ? ' · ' + r.agent_id : '')));
+      it.appendChild(_el('div', '', String(r.content || '').slice(0, 220)));
+      mbox.appendChild(it);
+    }
+  }
+}
+
 async function loadFamilySetup() {
   const box = $('fam-setup');
   if (!box || !token) return;
@@ -7474,45 +8790,61 @@ async function loadFamilySetup() {
   const agents = ((sib && sib.siblings) || []);
   const live = agents.filter(a => { const t = Date.parse(String(a.last_heartbeat_at || '')); return isFinite(t) && now - t < 3600 * 1000; }).length;
   const probe = br && br.local_probe; const nm = probe && probe.models ? probe.models.length : 0;
-  const conns = ((wiz && wiz.connections) || []).length;
-  const stores = ((sto && sto.connected_stores) || []).length;
-  const rows = [
-    [S.st_agents, live + ' / ' + agents.length, live > 0, 'family', ''],
-    [S.st_ollama, nm ? S.st_on + ' · ' + nm : S.st_off, nm > 0, 'brain', nm ? '' : S.st_ollama_fix],
-    [S.st_cabinet, (cab && cab.authenticated) ? S.st_on : S.st_off, !!(cab && cab.authenticated), 'aifa', ''],
-    [S.st_partner, (par && par.configured) ? S.st_on : S.st_off, !!(par && par.configured), 'earning', ''],
-    [S.st_platforms, String(conns), conns > 0, 'earning', ''],
-    [S.st_stores, String(stores), stores > 0, 'earning', ''],
-    [S.st_memory, String((stt && stt.active) || 0), ((stt && stt.active) || 0) > 0, 'overview', ''],
-    [S.st_review, String((stt && stt.quarantined) || 0), !((stt && stt.quarantined) || 0), 'review', ''],
-  ];
-  box.textContent = '';
-  for (const [label, val, ok, tab, hint] of rows) {
-    const row = _el('div', 'setup-row');
-    const left = _el('div', '');
-    left.appendChild(_el('div', '', (ok ? '✅ ' : '⚠️ ') + label));
-    if (hint) left.appendChild(_el('div', 'earn-meta', hint));
-    row.appendChild(left);
-    const right = _el('div', 'rec-actions');
-    right.appendChild(_el('span', 'setup-state ' + (ok ? 'setup-ok' : 'setup-warn'), val));
-    if (tab !== 'family') { const b = _el('button', ok ? '' : 'btn-primary', S.st_open); b.type = 'button'; b.onclick = () => switchTab(tab); right.appendChild(b); }
-    row.appendChild(right);
-    box.appendChild(row);
-  }
-  const mbox = $('fam-memory');
-  if (mbox) {
-    mbox.textContent = '';
-    const recs = (mem && (mem.records || mem.items)) || [];
-    if (!recs.length) mbox.appendChild(_el('p', 'panel-sub', S.mem_empty));
-    for (const r of recs.slice(0, 5)) {
-      const it = _el('div', 'earn-item');
-      it.appendChild(_el('div', 'earn-meta', String(r.kind || '') + ' · ' + String(r.created_at || '').replace('T', ' ').slice(0, 16) + (r.agent_id ? ' · ' + r.agent_id : '')));
-      it.appendChild(_el('div', '', String(r.content || '').slice(0, 220)));
-      mbox.appendChild(it);
-    }
-  }
+  window._famSetupSnap = {
+    live,
+    totalAgents: agents.length,
+    nm,
+    cabAuth: !!(cab && cab.authenticated),
+    parCfg: !!(par && par.configured),
+    conns: ((wiz && wiz.connections) || []).length,
+    stores: ((sto && sto.connected_stores) || []).length,
+    activeCount: (stt && stt.active) || 0,
+    quarantinedCount: (stt && stt.quarantined) || 0,
+    recs: (mem && (mem.records || mem.items)) || [],
+  };
+  renderFamilySetupSnapshot(window._famSetupSnap);
 }
 if ($('fam-memory-all')) $('fam-memory-all').onclick = () => switchTab('feed');
+
+async function renderRoleMatrix(rolesList, agentsList) {
+  const grid = $('fam-roles-grid');
+  if (!grid) return;
+  grid.textContent = '';
+  const allAgents = (agentsList || []).map(a => ({ id: a.agent_id, name: a.display_name || a.agent_id }));
+  if (!allAgents.some(a => a.id === 'ollama')) allAgents.push({ id: 'ollama', name: 'Ollama ($0 Local)' });
+  if (!allAgents.some(a => a.id === 'aifa')) allAgents.push({ id: 'aifa', name: 'AIFA (Core MCP)' });
+  for (const r of (rolesList || [])) {
+    const card = _el('div', 'role-card');
+    const head = _el('div', 'role-card-head');
+    head.appendChild(_el('strong', '', String(r.title || r.code || r.role_key)));
+    head.appendChild(_el('span', 'badge badge-role', String(r.agent_display || r.agent_id || '—')));
+    card.appendChild(head);
+    card.appendChild(_el('div', 'earn-meta', String(r.description || '')));
+    card.appendChild(_el('div', 'earn-meta', (S.fam_controlled_by_lbl || 'Control:') + ' ' + String(r.controlled_by || '')));
+    const ctrlRow = _el('div', 'toolbar');
+    const sel = document.createElement('select');
+    sel.setAttribute('aria-label', String(r.code || r.role_key));
+    for (const ag of allAgents) {
+      const opt = document.createElement('option');
+      opt.value = ag.id;
+      opt.textContent = ag.name + ' (' + ag.id + ')';
+      if (ag.id === r.agent_id) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    const bSet = _el('button', 'btn-primary', S.fam_assign_role_btn || 'Assign');
+    bSet.type = 'button';
+    bSet.onclick = async () => {
+      try {
+        await api('/api/v2/ark/roles', { role_key: r.role_key, agent_id: sel.value });
+        say(S.done, true);
+        loadFamily();
+      } catch (e) { say(S.failed + ': ' + e.message, false); }
+    };
+    ctrlRow.append(sel, bSet);
+    card.appendChild(ctrlRow);
+    grid.appendChild(card);
+  }
+}
 
 async function loadFamily() {
   const box = $('fam-agents');
@@ -7520,23 +8852,30 @@ async function loadFamily() {
   box.textContent = '';
   try {
     const [sib, st] = await Promise.all([
-      api('/api/v2/ark/siblings').catch(() => ({ siblings: [] })),
+      api('/api/v2/ark/siblings?lang=' + encodeURIComponent(currentLang)).catch(() => ({ siblings: [] })),
       api('/api/v2/brain/status?probe=1').catch(() => ({})),
     ]);
     const list = ((sib && sib.siblings) || []).slice();
     const sessions = (sib && sib.sessions) || [];
-    // агент, у которого есть сессии, но нет карточки в реестре, тоже показывается
+    const rolesList = (sib && sib.roles) || [];
     for (const ss of sessions) if (!list.some(a => a.agent_id === ss.agent_id)) list.push({ agent_id: ss.agent_id, display_name: ss.client_name || ss.agent_id, role: '', status: 'online', last_heartbeat_at: ss.last_seen_at });
+    renderRoleMatrix(rolesList, list);
     if (!list.length) box.appendChild(_el('p', 'panel-sub', S.fam_agents_empty));
     for (const a of list) {
       const item = _el('div', 'earn-item');
-      item.appendChild(_el('strong', '', String(a.display_name || a.agent_id)));
-      item.appendChild(_el('div', 'earn-meta', String(a.role || '')));
+      const hdr = _el('div', 'fd-card-head');
+      hdr.appendChild(_el('strong', '', String(a.display_name || a.agent_id) + ' (' + String(a.agent_id) + ')'));
+      const rBadge = Array.isArray(a.council_roles) && a.council_roles.length ? a.council_roles.join(' · ') : '';
+      if (rBadge) hdr.appendChild(_el('span', 'badge badge-role', (S.fam_council_roles_lbl || 'Roles:') + ' ' + rBadge));
+      item.appendChild(hdr);
+      if (a.controlled_by) item.appendChild(_el('div', 'earn-meta', (S.fam_controlled_by_lbl || 'Control:') + ' ' + String(a.controlled_by)));
+      if (a.role) item.appendChild(_el('div', 'earn-meta', String(a.role)));
       const mineS = sessions.filter(ss => ss.agent_id === a.agent_id).map(ss => Date.parse(String(ss.last_seen_at || ''))).filter(isFinite);
       const seen = Math.max(Date.parse(String(a.last_heartbeat_at || '')) || 0, ...(mineS.length ? mineS : [0])) || NaN;
       const quiet = isFinite(seen) && (Date.now() - seen) > 3600 * 1000;
       const when = isFinite(seen) ? new Date(seen).toLocaleString(currentLang === 'zh' ? 'zh-CN' : currentLang, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
-      item.appendChild(_el('div', 'earn-meta', quiet ? ('⏸ ' + S.fam_quiet + ' ' + when) : ('🟢 ' + S.fam_status + ': ' + String(a.status || '') + ' · ' + S.fam_seen + ': ' + when)));
+      const isOff = String(a.status || '') === 'disabled';
+      item.appendChild(_el('div', 'earn-meta', isOff ? ('⛔ ' + String(a.status)) : (quiet ? ('⏸ ' + S.fam_quiet + ' ' + when) : ('🟢 ' + S.fam_status + ': ' + String(a.status || '') + ' · ' + S.fam_seen + ': ' + when))));
       if (a.current_task) item.appendChild(_el('div', 'earn-meta', S.fam_task + ': ' + String(a.current_task)));
       const mine = sessions.filter(ss => ss.agent_id === a.agent_id);
       if (mine.length) {
@@ -7550,6 +8889,27 @@ async function loadFamily() {
         }
         item.appendChild(ul);
       }
+      const actRow = _el('div', 'rec-actions');
+      const bTog = _el('button', '', isOff ? (S.fam_agent_enable_btn || 'Enable') : (S.fam_agent_disable_btn || 'Disable'));
+      bTog.type = 'button';
+      bTog.onclick = async () => {
+        try {
+          await api('/api/v2/ark/siblings', { action: isOff ? 'enable' : 'disable', agent_id: a.agent_id });
+          say(S.done, true);
+          loadFamily();
+        } catch (e) { say(S.failed + ': ' + e.message, false); }
+      };
+      const bDel = _el('button', 'btn-danger', S.fam_agent_delete_btn || 'Delete');
+      bDel.type = 'button';
+      bDel.onclick = async () => {
+        try {
+          await api('/api/v2/ark/siblings', { action: 'delete', agent_id: a.agent_id });
+          say(S.done, true);
+          loadFamily();
+        } catch (e) { say(S.failed + ': ' + e.message, false); }
+      };
+      actRow.append(bTog, bDel);
+      item.appendChild(actRow);
       box.appendChild(item);
     }
     const probe = (st && st.local_probe) || null;
@@ -7559,6 +8919,26 @@ async function loadFamily() {
     ol.appendChild(_el('div', 'earn-meta', (probe && probe.online && n) ? (S.fam_ollama_on + ': ' + n + ' · ' + probe.models.slice(0, 6).join(', ')) : S.fam_ollama_off));
     box.appendChild(ol);
   } catch (e) { box.appendChild(_el('p', 'panel-sub', String(e.message || e))); }
+}
+if ($('fam-add-agent-btn')) {
+  $('fam-add-agent-btn').onclick = async () => {
+    const aid = ($('fam-add-agent-id') && $('fam-add-agent-id').value || '').trim();
+    if (!aid) return needInput('fam-add-agent-id');
+    try {
+      await api('/api/v2/ark/siblings', {
+        action: 'add',
+        agent_id: aid,
+        display_name: ($('fam-add-agent-name') && $('fam-add-agent-name').value || '').trim() || aid,
+        role: ($('fam-add-agent-role') && $('fam-add-agent-role').value || '').trim() || 'Участник Семьи',
+        client_type: ($('fam-add-agent-ctrl') && $('fam-add-agent-ctrl').value) || 'mcp_stdio',
+      });
+      if ($('fam-add-agent-id')) $('fam-add-agent-id').value = '';
+      if ($('fam-add-agent-name')) $('fam-add-agent-name').value = '';
+      if ($('fam-add-agent-role')) $('fam-add-agent-role').value = '';
+      say(S.done, true);
+      loadFamily();
+    } catch (e) { say(S.failed + ': ' + e.message, false); }
+  };
 }
 
 async function loadBrain() {
@@ -7676,29 +9056,63 @@ let _ffCh = 'office';
 const _FF_CH = ['work', 'quarantine', 'office', 'smoke'];
 let _fdTimer = null;
 let _fdSeq = 0;
+window._fdSince = 'all';
+window._fdDate = '';
 async function loadFamilyDialogs() {
   const list = $('fd-list');
   if (!list) return;
   const q = ($('fd-q') || {}).value || '';
-  const my = ++_fdSeq;
+  const seq = ++_fdSeq;
+  const b24 = $('fd-btn-24h'), bAll = $('fd-btn-all');
+  if (b24) b24.className = window._fdSince === '24h' ? 'btn-primary' : '';
+  if (bAll) bAll.className = (window._fdSince === 'all' && !window._fdDate) ? 'btn-primary' : '';
   try {
-    const r = await api('/api/v2/family/dialogs?lang=' + encodeURIComponent(currentLang) + '&q=' + encodeURIComponent(q) + '&limit=300');
-    if (my !== _fdSeq) return;   // пришёл ответ на устаревший запрос (поиск уже изменился)
+    const url = '/api/v2/family/dialogs?lang=' + encodeURIComponent(currentLang)
+      + '&q=' + encodeURIComponent(q)
+      + '&since=' + encodeURIComponent(window._fdSince || 'all')
+      + '&day=' + encodeURIComponent(window._fdDate || '')
+      + '&limit=300';
+    const r = await api(url);
+    if (seq !== _fdSeq) return;
     list.textContent = '';
     const days = r.days || [];
-    if (!days.length) list.appendChild(_el('p', 'panel-sub', S.fd_empty || ''));
+    if (!days.length) { list.appendChild(_el('p', 'panel-sub', S.fd_empty || '—')); return; }
     for (const d of days) {
-      const h = _el('h4', 'box-title', d.day);
-      list.appendChild(h);
+      list.appendChild(_el('h4', 'day-head', String(d.day || '')));
       for (const it of (d.items || [])) {
-        const p = _el('p', 'panel-sub fd-item', (it.author_label || it.author || '') + ' · ');
-        p.appendChild(document.createTextNode(String(it.text || '')));
-        p.dataset.id = it.id || '';
-        list.appendChild(p);
+        const card = _el('div', 'fd-card');
+        const head = _el('div', 'fd-card-head');
+        const leftMeta = _el('div', 'rec-meta');
+        leftMeta.appendChild(_el('strong', '', String(it.author_label || it.author || '')));
+        if (Array.isArray(it.council_roles) && it.council_roles.length) {
+          leftMeta.appendChild(_el('span', 'badge badge-role', it.council_roles.join(' · ')));
+        }
+        head.appendChild(leftMeta);
+        head.appendChild(_el('span', 'earn-meta', fmtTime(it.created_at, true)));
+        card.appendChild(head);
+        if (it.title) card.appendChild(_el('div', 'setting-name', String(it.title)));
+        const bodyEl = _el('div', 'panel-sub', String(it.summary || it.text || ''));
+        card.appendChild(bodyEl);
+        const fullTxt = String(it.text || '');
+        if (fullTxt.length > (it.summary || '').length + 20) {
+          const bMore = _el('button', '', S.fd_expand_btn || 'Expand');
+          bMore.type = 'button';
+          let exp = false;
+          bMore.onclick = () => {
+            exp = !exp;
+            bodyEl.textContent = exp ? fullTxt : String(it.summary || fullTxt);
+            bMore.textContent = exp ? (S.fd_collapse_btn || 'Collapse') : (S.fd_expand_btn || 'Expand');
+          };
+          card.appendChild(bMore);
+        }
+        list.appendChild(card);
       }
     }
   } catch (e) { list.textContent = String(e.message || e); }
 }
+if ($('fd-btn-24h')) $('fd-btn-24h').onclick = () => { window._fdSince = '24h'; window._fdDate = ''; if ($('fd-date')) $('fd-date').value = ''; loadFamilyDialogs(); };
+if ($('fd-btn-all')) $('fd-btn-all').onclick = () => { window._fdSince = 'all'; window._fdDate = ''; if ($('fd-date')) $('fd-date').value = ''; loadFamilyDialogs(); };
+if ($('fd-date')) $('fd-date').onchange = () => { window._fdSince = 'date'; window._fdDate = $('fd-date').value || ''; loadFamilyDialogs(); };
 document.addEventListener('input', (ev) => {
   if (ev.target && ev.target.id === 'fd-q') { clearTimeout(_fdTimer); _fdTimer = setTimeout(loadFamilyDialogs, 300); }
 });
@@ -7772,6 +9186,16 @@ if ($('ff-send')) {
   };
 }
 
+if ($('ark-council-repair-btn')) {
+  $('ark-council-repair-btn').onclick = async () => {
+    const out = $('ark-council-out');
+    try {
+      const r = await api('/api/v2/ark/audit-repair', {});
+      say((S.done || 'OK') + ' · rows=' + String(r.rows_preserved || 0), Boolean(r.ok));
+      if (out) out.prepend(_el('p', 'msg-ok', '✅ audit_log reindexed: ' + String(r.rows_preserved || 0)));
+    } catch (e) { say(S.failed + ': ' + e.message, false); }
+  };
+}
 if ($('ark-council-btn')) {
   $('ark-council-btn').onclick = async () => {
     const task = ($('ark-council-input') ? $('ark-council-input').value : '').trim();
@@ -7783,23 +9207,33 @@ if ($('ark-council-btn')) {
       loadFamilyFeed();
       if (out) {
         out.textContent = '';
+        const bannerText = r.veto
+          ? (S.fam_council_status_veto || 'VETO')
+          : (r.approved ? (S.fam_council_status_ok || 'APPROVED') : (S.fam_council_status_warn || 'ATTENTION'));
+        const bCls = r.veto ? 'msg-err' : (r.approved ? 'msg-ok' : 'earn-meta');
+        out.appendChild(_el('div', 'setting-name ' + bCls, bannerText));
+        out.appendChild(_el('p', 'panel-sub', String(r.consensus || '')));
+        out.appendChild(_el('h4', 'box-title', S.fam_council_votes_title || '6 Roles'));
+        const grid = _el('div', 'role-grid');
         const v = r.votes || {};
-        _kv(out, {
-          approved: String(Boolean(r.approved)),
-          lance_veto: String(Boolean((v.lance || {}).veto)),
-          aria_hits: (v.aria || {}).recalled_count || 0,
-          pixel_chain: String(Boolean((v.pixel || {}).audit_chain_valid)),
-          arc7_outbound: String(Boolean((v.arc7 || {}).needs_owner)),
-          bear_irreversible: ((v.bear || {}).irreversible_kinds || []).join(', ') || '—',
-          needs_owner: String(Boolean(r.needs_owner)),
-        });
-        for (const msg of [(v.lance || {}).verdict, (v.aria || {}).verdict, (v.pixel || {}).verdict, (v.arc7 || {}).verdict, (v.bear || {}).verdict, r.consensus]) {
-          if (msg) out.appendChild(_el('p', 'panel-sub', String(msg).slice(0, 260)));
+        const order = [['lance', 'LANCE'], ['aria', 'ARIA'], ['pixel', 'PIXEL'], ['arc7', 'ARC-7'], ['bear', 'Медведь'], ['aifa', 'AIFA']];
+        for (const [rk, code] of order) {
+          const vt = v[rk] || {};
+          const card = _el('div', 'council-card');
+          const head = _el('div', 'fd-card-head');
+          head.appendChild(_el('strong', '', code + ' · ' + (vt.approved ? '🟢' : '⚠️')));
+          head.appendChild(_el('span', 'badge badge-role', String(vt.agent_display || vt.assigned_agent || rk)));
+          card.appendChild(head);
+          if (vt.controlled_by) card.appendChild(_el('div', 'earn-meta', String(vt.controlled_by)));
+          card.appendChild(_el('div', 'panel-sub', String(vt.verdict || '—')));
+          grid.appendChild(card);
+        }
+        out.appendChild(grid);
+        if (v.pixel && !v.pixel.audit_chain_valid && $('ark-council-repair-btn')) {
+          $('ark-council-repair-btn').hidden = false;
         }
       }
-    } catch (e) {
-      if (out) out.textContent = String(e.message || e);
-    }
+    } catch (e) { if (out) out.textContent = String(e.message || e); }
   };
 }
 async function refreshArkBranches() {
@@ -8580,6 +10014,7 @@ function _renderEarningDashboard(snap, sibData, coopData) {
       profListEl.appendChild(card);
     }
   }
+  try { if (typeof loadWalletsFor === 'function') loadWalletsFor('wal-earn-list', null); } catch (e) {}
   const catListEl = $('earn-wiz-catalog-list');
   if (catListEl && filteredPlats.length) {
     catListEl.textContent = '';
@@ -9792,6 +11227,633 @@ if ($('earn-wiz-disp-btn')) $('earn-wiz-disp-btn').onclick = async () => {
   } catch (e) { say(String(e.message || e), false); }
 };
 
+
+// --- PADAM Agentic Shield UI Controller (19.11.2026) ---
+let _lastSupplyScanHtml = '';
+function _shFmt(tpl, vars) {
+  let out = String(tpl || '');
+  for (const [k, v] of Object.entries(vars || {})) out = out.replace('{' + k + '}', String(v ?? ''));
+  return out;
+}
+function _shTr(prefix, raw) {
+  const key = prefix + String(raw || '').toLowerCase();
+  return (S && S[key]) ? S[key] : String(raw || '');
+}
+function _renderShieldStatus(st) {
+  if (!st) return;
+  _lastShieldBannerAt = Date.now();
+  const gBanner = $('shield-lockdown-banner');
+  if (gBanner) gBanner.hidden = !st.lockdown;
+  const ksBanner = $('sh-ks-banner');
+  if (ksBanner) {
+    ksBanner.className = 'traffic-banner ' + (st.lockdown ? 'traffic-red' : 'traffic-green');
+    if (st.lockdown) {
+      ksBanner.textContent = (S.sh_ks_tripped || '').replace('{reason}', st.tripped_reason || 'PADAM_STRICT=1');
+    } else {
+      ksBanner.textContent = (S.sh_ks_armed || '')
+        .replace('{score}', String(st.current_anomaly_score || 0))
+        .replace('{thr}', String(st.threshold || 8))
+        .replace('{win}', String(st.window_s || 60));
+    }
+  }
+  const meta = $('sh-ks-meta');
+  if (meta) {
+    meta.textContent = _shFmt(S.sh_meta_tpl || '{tripped} · {pending} · {allow}', {
+      tripped: st.tripped_count || 0,
+      pending: st.pending_outbound_count || 0,
+      allow: st.allowlist_count || 0,
+    });
+  }
+  const blkChk = $('sh-ks-block-chk');
+  if (blkChk) blkChk.checked = !!st.block_writes;
+
+  const evBox = $('sh-events-list');
+  if (evBox) {
+    evBox.textContent = '';
+    const evs = st.recent_events || [];
+    if (!evs.length) {
+      evBox.appendChild(_el('p', 'panel-sub', S.sh_events_empty || '—'));
+    } else {
+      for (const ev of evs) {
+        const row = _el('div', 'att-row');
+        row.appendChild(_el('span', 'att-name', String(ev.created_at || '').slice(0, 19).replace('T', ' ') + ' · ' + String(ev.event_type || '')));
+        row.appendChild(_el('span', 'att-val', _shTr('sh_risk_', ev.severity) + ' (w=' + String(ev.weight || 1) + ') · ' + String(ev.agent_id || '')));
+        evBox.appendChild(row);
+      }
+    }
+  }
+
+  const qBox = $('sh-out-queue');
+  if (qBox) {
+    qBox.textContent = '';
+    const qList = st.outbound_pending || [];
+    if (!qList.length) {
+      qBox.appendChild(_el('p', 'panel-sub', S.sh_out_queue_empty || '—'));
+    } else {
+      for (const item of qList) {
+        const card = _el('div', 'rec-card');
+        card.appendChild(_el('div', 'rec-head', String(item.action_type || '') + ' · ' + _shTr('sh_risk_', item.risk_level) + ' · ' + String(item.agent_id || '')));
+        card.appendChild(_el('div', 'rec-body', String(item.target || '') + (item.preview ? (' — ' + item.preview) : '')));
+        const actRow = _el('div', 'rec-actions');
+        const apBtn = _el('button', 'btn-primary', S.sh_out_approve_btn || 'Approve');
+        apBtn.type = 'button';
+        apBtn.onclick = async () => {
+          if (!window.confirm(S.sh_out_approve_confirm || 'Approve?')) return;
+          try { await api('/api/v2/shield/outbound/decide', { gate_id: item.id, decision: 'approve' }); say(S.done, true); loadShield(); } catch (e) { say(String(e.message || e), false); }
+        };
+        const rjBtn = _el('button', 'btn-danger', S.sh_out_reject_btn || 'Reject');
+        rjBtn.type = 'button';
+        rjBtn.onclick = async () => {
+          if (!window.confirm(S.sh_out_reject_confirm || 'Reject?')) return;
+          try { await api('/api/v2/shield/outbound/decide', { gate_id: item.id, decision: 'reject' }); say(S.done, true); loadShield(); } catch (e) { say(String(e.message || e), false); }
+        };
+        actRow.appendChild(apBtn);
+        actRow.appendChild(rjBtn);
+        card.appendChild(actRow);
+        qBox.appendChild(card);
+      }
+    }
+  }
+
+  const alBox = $('sh-allow-list');
+  if (alBox) {
+    alBox.textContent = '';
+    const al = st.allowlist || [];
+    if (!al.length) {
+      alBox.appendChild(_el('p', 'panel-sub', S.sh_allow_empty || '—'));
+    } else {
+      for (const a of al) {
+        const row = _el('div', 'att-row');
+        row.appendChild(_el('span', 'att-name', '[' + String(a.entry_type || '') + '] ' + String(a.value || '') + (a.label ? (' · ' + a.label) : '')));
+        const rmBtn = _el('button', 'btn', S.sh_allow_del_btn || 'Remove');
+        rmBtn.type = 'button';
+        rmBtn.onclick = async () => {
+          try { await api('/api/v2/shield/allowlist', { action: 'remove', id: a.id }); loadShield(); } catch (e) { say(String(e.message || e), false); }
+        };
+        row.appendChild(rmBtn);
+        alBox.appendChild(row);
+      }
+    }
+  }
+}
+
+let _lastShieldBannerAt = 0;
+let _shieldBannerBusy = false;
+async function refreshShieldBanner(force = false) {
+  if (!token || _shieldBannerBusy) return;
+  const now = Date.now();
+  if (!force && (now - _lastShieldBannerAt) < 15000) return;
+  _shieldBannerBusy = true;
+  _lastShieldBannerAt = now;
+  try {
+    const st = await api('/api/v2/shield/status');
+    const gBanner = $('shield-lockdown-banner');
+    if (gBanner) gBanner.hidden = !st.lockdown;
+  } catch (e) {
+  } finally {
+    _shieldBannerBusy = false;
+  }
+}
+
+async function loadShield() {
+  if (!token) return;
+  try {
+    const st = await api('/api/v2/shield/status');
+    _renderShieldStatus(st);
+  } catch (e) {}
+}
+
+if ($('sh-banner-go-btn')) $('sh-banner-go-btn').onclick = () => switchTab('attacks');
+if ($('sh-refresh-btn')) $('sh-refresh-btn').onclick = () => loadShield();
+if ($('sh-ks-trip-btn')) $('sh-ks-trip-btn').onclick = async () => {
+  if (!window.confirm(S.sh_trip_confirm || 'Trip?')) return;
+  try {
+    const blk = !!($('sh-ks-block-chk') && $('sh-ks-block-chk').checked);
+    const st = await api('/api/v2/shield/kill-switch', { action: 'trip', reason: 'manual_studio_trip', block_writes: blk });
+    _renderShieldStatus(st);
+    say(S.done, true);
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('sh-ks-reset-btn')) $('sh-ks-reset-btn').onclick = async () => {
+  if (!window.confirm(S.sh_unlock_confirm || 'Unlock?')) return;
+  try {
+    const st = await api('/api/v2/shield/kill-switch', { action: 'reset' });
+    _renderShieldStatus(st);
+    say(S.done, true);
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('sh-cfg-save-btn')) $('sh-cfg-save-btn').onclick = async () => {
+  try {
+    const blk = !!($('sh-ks-block-chk') && $('sh-ks-block-chk').checked);
+    const st = await api('/api/v2/shield/kill-switch', { action: 'config', block_writes: blk });
+    _renderShieldStatus(st);
+    say(S.done, true);
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('sh-out-check-btn')) $('sh-out-check-btn').onclick = async () => {
+  const tEl = $('sh-out-target'), pEl = $('sh-out-payload'), outEl = $('sh-out-result');
+  const tgt = (tEl && tEl.value || '').trim(), pay = (pEl && pEl.value || '').trim();
+  if (!tgt && !pay) {
+    if (tEl) tEl.classList.add('need-input');
+    if (outEl) outEl.textContent = S.sh_out_need_input || 'Enter input';
+    return;
+  }
+  if (tEl) tEl.classList.remove('need-input');
+  try {
+    const tp = ($('sh-out-type') && $('sh-out-type').value) || 'action';
+    const r = await api('/api/v2/shield/outbound/check', { action_type: tp, target: tgt, payload: pay });
+    if (outEl) {
+      outEl.textContent = '';
+      outEl.appendChild(_el('div', 'box-title', _shFmt(S.sh_out_res_tpl || '{status} · {risk} · {gate}', {
+        status: _shTr('sh_status_', r.status),
+        risk: _shTr('sh_risk_', r.risk_level),
+        gate: r.gate_id || '—',
+      })));
+      for (const rs of (r.reasons || [])) {
+        const row = _el('div', 'att-row');
+        row.appendChild(_el('span', 'att-name', '[' + _shTr('sh_risk_', rs.severity) + '] ' + String(rs.detail || rs.code || '')));
+        row.appendChild(_el('span', 'att-val', String(rs.code || '')));
+        outEl.appendChild(row);
+      }
+    }
+    loadShield();
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('sh-allow-add-btn')) $('sh-allow-add-btn').onclick = async () => {
+  const vEl = $('sh-allow-val'), lEl = $('sh-allow-label'), alBox = $('sh-allow-list');
+  const val = (vEl && vEl.value || '').trim();
+  if (!val) {
+    if (vEl) vEl.classList.add('need-input');
+    if (alBox) alBox.textContent = S.sh_allow_need_val || 'Enter value';
+    return;
+  }
+  if (vEl) vEl.classList.remove('need-input');
+  try {
+    const et = ($('sh-allow-type') && $('sh-allow-type').value) || 'domain';
+    await api('/api/v2/shield/allowlist', { action: 'add', entry_type: et, value: val, label: (lEl && lEl.value || '').trim() });
+    if (vEl) vEl.value = '';
+    if (lEl) lEl.value = '';
+    say(S.done, true);
+    loadShield();
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('sh-sc-scan-btn')) $('sh-sc-scan-btn').onclick = async () => {
+  const uEl = $('sh-sc-url'), outEl = $('sh-sc-out');
+  const u = (uEl && uEl.value || '').trim();
+  if (!u) {
+    if (uEl) uEl.classList.add('need-input');
+    if (outEl) outEl.textContent = S.sh_sc_need_url || 'Enter URL';
+    return;
+  }
+  if (uEl) uEl.classList.remove('need-input');
+  if (outEl) outEl.textContent = S.sh_sc_running || '...';
+  try {
+    const allowLoc = /^https?:\/\/(127\.0\.0\.1|localhost)/i.test(u);
+    const r = await api('/api/v2/shield/supply-chain/scan', { url: u, allow_localhost: allowLoc, include_html: true });
+    _lastSupplyScanHtml = String(r.html_report || '');
+    if (outEl) {
+      outEl.textContent = '';
+      if (!r.ok) {
+        outEl.textContent = String(r.error || r.reason || S.sh_scan_fail || 'Scan failed');
+        return;
+      }
+      outEl.appendChild(_el('div', 'box-title', _shFmt(S.sh_sc_res_tpl || 'Grade {grade} ({score}/100) · {third} · {sri}', {
+        grade: r.grade || 'F',
+        score: r.score || 0,
+        third: r.third_party_count || 0,
+        sri: r.missing_sri_count || 0,
+      })));
+      for (const f of (r.findings || []).slice(0, 15)) {
+        const row = _el('div', 'att-row');
+        row.appendChild(_el('span', 'att-name', '[' + _shTr('sh_risk_', f.severity) + '] ' + String(f.detail || f.code || '')));
+        row.appendChild(_el('span', 'att-val', String(f.code || '')));
+        outEl.appendChild(row);
+      }
+      const pci = ((r.compliance || {}).pci_dss_4_0_1) || null;
+      if (pci) {
+        outEl.appendChild(_el('div', 'panel-sub', _shFmt(S.sh_sc_pci_tpl || 'PCI DSS 4.0.1: 6.4.3={r643} · 11.6.1={r1161}', { r643: pci.req_6_4_3 || '—', r1161: pci.req_11_6_1 || '—', mal: r.malware_signatures_count || 0 })));
+      }
+      const rec = r.recommendations || {};
+      if (rec.recommended_csp_header) {
+        outEl.appendChild(_el('pre', 'sh-pre', String(rec.recommended_csp_header)));
+      }
+    }
+  } catch (e) { if (outEl) outEl.textContent = String(e.message || e); }
+};
+if ($('sh-sc-dl-html-btn')) $('sh-sc-dl-html-btn').onclick = () => {
+  const outEl = $('sh-sc-out');
+  if (!_lastSupplyScanHtml) {
+    if (outEl) outEl.textContent = S.sh_sc_no_scan || 'Run scan first';
+    return;
+  }
+  const blob = new Blob([_lastSupplyScanHtml], { type: 'text/html;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'supply_chain_checkup.html';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+};
+if ($('sh-proof-gen-btn')) $('sh-proof-gen-btn').onclick = async () => {
+  const outEl = $('sh-proof-out');
+  if (!outEl) return;
+  try {
+    const p = await api('/api/v2/shield/proof-pack');
+    outEl.textContent = '';
+    const att = p.attestation || {};
+    const chain = (p.audit_integrity || {}).ark_audit_chain || {};
+    const radar = p.attack_radar || {};
+    outEl.appendChild(_el('div', 'box-title', _shFmt(S.sh_proof_res_tpl || '{sha}… · {audit} · {held}', {
+      sha: String(att.pack_sha256 || '').slice(0, 20),
+      audit: chain.ok ? (S.sh_audit_ok || 'OK') : (S.sh_audit_check || 'CHECK'),
+      held: radar.held_total || 0,
+    })));
+    for (const rowItem of (p.owasp_agentic_ai_matrix || [])) {
+      const row = _el('div', 'att-row');
+      const asiTitle = (S && S['sh_asi_' + String(rowItem.id || '')]) ? S['sh_asi_' + String(rowItem.id || '')] : String(rowItem.name || '');
+      row.appendChild(_el('span', 'att-name', String(rowItem.id) + ' · ' + asiTitle));
+      row.appendChild(_el('span', 'att-val', _shTr('sh_status_', rowItem.status).toUpperCase()));
+      outEl.appendChild(row);
+    }
+  } catch (e) { outEl.textContent = String(e.message || e); }
+};
+if ($('sh-proof-dl-json-btn')) $('sh-proof-dl-json-btn').onclick = () => _downloadBench('/api/v2/shield/proof-pack?format=json&download=1', 'padam_shield_proof_pack.json');
+if ($('sh-proof-dl-html-btn')) $('sh-proof-dl-html-btn').onclick = () => _downloadBench('/api/v2/shield/proof-pack?format=html&download=1', 'padam_shield_proof_pack.html');
+if ($('sh-proof-dl-md-btn')) $('sh-proof-dl-md-btn').onclick = () => _downloadBench('/api/v2/shield/proof-pack?format=md&download=1', 'padam_shield_proof_pack.md');
+
+// --- ЧАТЫ С АГЕНТАМИ ---
+window._chatsAgentFilter = '';
+let _activeChatThreadId = '';
+async function loadChatThread(threadId) {
+  const logBox = $('chats-messages-log'), headBox = $('chats-active-head');
+  if (!logBox) return;
+  _activeChatThreadId = threadId || '';
+  if (!threadId) { logBox.replaceChildren(el('p', 'panel-sub', S.chats_pick_thread || '—')); if (headBox) headBox.textContent = ''; return; }
+  try {
+    const d = await api('/api/v2/chats/thread?id=' + encodeURIComponent(threadId));
+    const th = d.thread || {};
+    if (headBox) headBox.textContent = String(th.agent_label || th.agent_id || '') + ' · ' + String(th.started_at || '').slice(0, 16).replace('T', ' ') + ' · ' + String(th.title || '');
+    logBox.replaceChildren();
+    for (const msg of (d.messages || [])) {
+      const b = el('div', 'chat-bubble ' + (msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'));
+      const roleLbl = msg.author_label || (msg.role === 'user' ? S.chats_role_user : S.chats_role_assistant);
+      b.append(el('div', 'chat-bubble-head', String(roleLbl) + ' · ' + String(msg.created_at || '').slice(0, 19).replace('T', ' ')));
+      b.append(el('div', 'chat-bubble-body', String(msg.content || '')));
+      logBox.append(b);
+    }
+  } catch (e) { logBox.textContent = String(e.message || e); }
+}
+async function loadChatsTab() {
+  if (!token) return;
+  const sel = $('chats-agent-select'), listBox = $('chats-threads-list');
+  if (!listBox) return;
+  if (window._chatsAgentFilter && sel) {
+    if (!Array.from(sel.options).some(o => o.value === window._chatsAgentFilter)) {
+      const op = document.createElement('option'); op.value = window._chatsAgentFilter; op.textContent = window._chatsAgentFilter; sel.append(op);
+    }
+    sel.value = window._chatsAgentFilter;
+    window._chatsAgentFilter = '';
+  }
+  const ag = sel ? sel.value : '';
+  const daySel = $('chats-day-select'), hourSel = $('chats-hour-select');
+  const dayVal = daySel ? daySel.value : '';
+  const hourVal = hourSel ? hourSel.value : '';
+  const q = ($('chats-q') && $('chats-q').value || '').trim();
+  const w = ($('chats-workers-chk') && $('chats-workers-chk').checked) ? '1' : '0';
+  try {
+    const d = await api(
+      '/api/v2/chats?agent_id=' + encodeURIComponent(ag) +
+      '&day=' + encodeURIComponent(dayVal) +
+      '&hour=' + encodeURIComponent(hourVal) +
+      '&q=' + encodeURIComponent(q) + '&workers=' + w
+    );
+    if (daySel) {
+      daySel.replaceChildren();
+      const opD = document.createElement('option'); opD.value = ''; opD.textContent = S.chats_all_days || 'All days'; daySel.append(opD);
+      for (const cd of (d.calendar_days || [])) {
+        const op = document.createElement('option'); op.value = cd.day;
+        op.textContent = String(cd.day) + ' (' + String(cd.messages || 0) + ')';
+        daySel.append(op);
+      }
+      if (dayVal && Array.from(daySel.options).some(o => o.value === dayVal)) daySel.value = dayVal;
+    }
+    if (hourSel) {
+      hourSel.replaceChildren();
+      const opH = document.createElement('option'); opH.value = ''; opH.textContent = S.chats_all_hours || 'All hours'; hourSel.append(opH);
+      for (const ch of (d.calendar_hours || [])) {
+        const op = document.createElement('option'); op.value = ch.hour;
+        op.textContent = String(ch.hour).replace('T', ' ') + ':00 (' + String(ch.messages || 0) + ')';
+        hourSel.append(op);
+      }
+      if (hourVal && Array.from(hourSel.options).some(o => o.value === hourVal)) hourSel.value = hourVal;
+    }
+    if (sel) {
+      const prevVal = sel.value;
+      sel.replaceChildren();
+      const opAll = document.createElement('option'); opAll.value = ''; opAll.textContent = S.chats_all_agents || 'All'; sel.append(opAll);
+      for (const a of (d.agents || [])) {
+        const op = document.createElement('option'); op.value = a.agent_id;
+        op.textContent = String(a.display_name || a.agent_id) + ' (' + String(a.messages || 0) + ')';
+        sel.append(op);
+      }
+      if (prevVal && Array.from(sel.options).some(o => o.value === prevVal)) sel.value = prevVal;
+    }
+    listBox.replaceChildren();
+    const ths = d.threads || [];
+    if (!ths.length) {
+      listBox.append(el('p', 'panel-sub', S.chats_empty || '—'));
+      loadChatThread('');
+      return;
+    }
+    for (const t of ths) {
+      const btn = el('button', 'chat-thread-btn' + (_activeChatThreadId === t.id ? ' active' : ''));
+      btn.type = 'button';
+      btn.append(el('span', 'chat-thread-title', String(t.title || t.day)));
+      btn.append(el('span', 'chat-thread-meta', String(t.day || '') + ' · ' + String(t.agent_label || t.agent_id) + ' · ' + String(t.message_count || 0)));
+      btn.onclick = () => { _activeChatThreadId = t.id; loadChatsTab(); loadChatThread(t.id); };
+      listBox.append(btn);
+    }
+    if (!_activeChatThreadId || !ths.some(x => x.id === _activeChatThreadId)) {
+      loadChatThread(ths[0].id);
+    } else {
+      loadChatThread(_activeChatThreadId);
+    }
+  } catch (e) { listBox.textContent = String(e.message || e); }
+}
+if ($('chats-refresh-btn')) $('chats-refresh-btn').onclick = () => loadChatsTab();
+if ($('chats-agent-select')) $('chats-agent-select').onchange = () => { _activeChatThreadId = ''; loadChatsTab(); };
+if ($('chats-workers-chk')) $('chats-workers-chk').onchange = () => loadChatsTab();
+if ($('chats-day-select')) $('chats-day-select').onchange = () => { if ($('chats-hour-select')) $('chats-hour-select').value = ''; _activeChatThreadId = ''; loadChatsTab(); };
+if ($('chats-hour-select')) $('chats-hour-select').onchange = async () => {
+  const hv = $('chats-hour-select').value;
+  _activeChatThreadId = '';
+  loadChatsTab();
+  if (hv) {
+    try {
+      const ag = ($('chats-agent-select') && $('chats-agent-select').value) || '';
+      const hres = await api('/api/v2/chats/hour?key=' + encodeURIComponent(hv) + '&agent_id=' + encodeURIComponent(ag));
+      const logBox = $('chats-messages-log'), headBox = $('chats-active-head');
+      if (headBox) headBox.textContent = String(hv).replace('T', ' ') + ':00 · ' + String(hres.count || 0);
+      if (logBox) {
+        logBox.replaceChildren();
+        for (const msg of (hres.messages || [])) {
+          const b = el('div', 'chat-bubble ' + (msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'));
+          const lbl = (msg.agent_label || msg.agent_id || '') + ' · ' + (msg.author_label || msg.role);
+          b.append(el('div', 'chat-bubble-head', String(lbl) + ' · ' + String(msg.created_at || '').slice(0, 19).replace('T', ' ')));
+          b.append(el('div', 'chat-bubble-body', String(msg.content || '')));
+          logBox.append(b);
+        }
+      }
+    } catch (e) {}
+  }
+};
+if ($('chats-compact-btn')) $('chats-compact-btn').onclick = async () => {
+  const out = $('chats-compact-out');
+  const hv = ($('chats-hour-select') && $('chats-hour-select').value) || '';
+  const ag = ($('chats-agent-select') && $('chats-agent-select').value) || '';
+  try {
+    const res = hv
+      ? await api('/api/v2/chats/compact-hour?hour=' + encodeURIComponent(hv) + '&agent_id=' + encodeURIComponent(ag) + '&save=1')
+      : await api('/api/v2/chats/compact-hour?bench=1&max_hours=48');
+    if (out) {
+      out.textContent = hv
+        ? (String(res.format || 'PA1H/1') + ' · ' + String(res.compression_algo || '') + ' · ' + String(res.msg_count || 0) + ' msgs · ' + String(res.raw_json_bytes || 0) + ' B → ' + String(res.packed_bytes || 0) + ' B (-' + String(res.savings_pct_vs_json || 0) + '%) · free<100KB=' + String(res.free_arweave_under_100kb) + ' · ' + String(res.solana_memo || ''))
+        : ('hours=' + String(res.hours_measured || 0) + ' · msgs=' + String(res.total_messages || 0) + ' · JSON=' + String(res.total_raw_json_bytes || 0) + ' B → PA1H=' + String(res.total_packed_bytes || 0) + ' B (x' + String(res.compression_factor || 1) + ', -' + String(res.overall_savings_pct_vs_json || 0) + '%) · free_hours=' + String(res.free_hours_under_100kb || 0) + '/' + String(res.hours_measured || 0));
+    }
+  } catch (e) { if (out) out.textContent = String(e.message || e); }
+};
+if ($('chats-open-graph-btn')) $('chats-open-graph-btn').onclick = () => {
+  const ag = ($('chats-agent-select') && $('chats-agent-select').value) || '';
+  window._graphAgentFilter = ag; window._graphMode = ag ? 'agent' : 'all'; switchTab('graph');
+};
+if ($('chats-add-btn')) $('chats-add-btn').onclick = async () => {
+  const txtEl = $('chats-add-text'), outEl = $('chats-add-out');
+  const body = (txtEl && txtEl.value || '').trim();
+  if (!body) { if (txtEl) txtEl.classList.add('need-input'); if (outEl) outEl.textContent = S.chats_add_need_text || 'Enter text'; return; }
+  if (txtEl) txtEl.classList.remove('need-input');
+  try {
+    const r = await api('/api/v2/chats', {
+      agent_id: ($('chats-add-agent') && $('chats-add-agent').value) || 'aifa_antigravity',
+      role: ($('chats-add-role') && $('chats-add-role').value) || 'user',
+      thread_id: _activeChatThreadId || undefined,
+      title: ($('chats-add-title-inp') && $('chats-add-title-inp').value || '').trim(),
+      content: body,
+    });
+    if (txtEl) txtEl.value = '';
+    if (outEl) outEl.textContent = S.done || 'OK';
+    _activeChatThreadId = r.thread_id || _activeChatThreadId;
+    loadChatsTab();
+  } catch (e) { if (outEl) outEl.textContent = String(e.message || e); }
+};
+if ($('chats-import-btn')) $('chats-import-btn').onclick = async () => {
+  const pEl = $('chats-imp-path'), tEl = $('chats-imp-text'), outEl = $('chats-imp-out');
+  const p = (pEl && pEl.value || '').trim(), t = (tEl && tEl.value || '').trim();
+  if (!p && !t) { if (outEl) outEl.textContent = S.chats_imp_need_src || 'Enter path or text'; return; }
+  try {
+    const r = await api('/api/v2/chats/import', {
+      agent_id: ($('chats-imp-agent') && $('chats-imp-agent').value) || 'aifa_antigravity',
+      title: ($('chats-imp-title') && $('chats-imp-title').value || '').trim(),
+      path: p, text: t, sync_memory_graph: true,
+    });
+    if (outEl) outEl.textContent = (S.done || 'OK') + ' · +' + String(r.inserted_messages || 0);
+    if (tEl) tEl.value = '';
+    _activeChatThreadId = r.thread_id || '';
+    loadChatsTab();
+  } catch (e) { if (outEl) outEl.textContent = String(e.message || e); }
+};
+
+// --- РАСШИРЕНИЕ ЩИТА (MCP, UNICODE, WEBHOOK) ---
+async function _runMcpAudit(pinFlag) {
+  const inp = $('sh-mcp-input'), srvEl = $('sh-mcp-server'), outEl = $('sh-mcp-out');
+  const raw = (inp && inp.value || '').trim();
+  if (!raw) { if (inp) inp.classList.add('need-input'); if (outEl) outEl.textContent = S.sh_mcp_need_inp || 'Input required'; return; }
+  if (inp) inp.classList.remove('need-input');
+  try {
+    const r = await api('/api/v2/shield/scan-mcp', { tools: raw, server_name: (srvEl && srvEl.value || '').trim() || 'mcp', pin: !!pinFlag });
+    if (outEl) {
+      outEl.replaceChildren(el('div', 'box-title', 'tools=' + String(r.tools_scanned || 0) + ' · poisoned=' + String(r.poisoned_tools || 0) + ' · rug_pulls=' + String(r.rug_pulls_detected || 0)));
+      for (const f of (r.findings || []).slice(0, 15)) {
+        const row = _el('div', 'att-row');
+        row.appendChild(_el('span', 'att-name', '[' + String(f.severity || '') + '] ' + String(f.tool || f.server || '') + ': ' + String(f.detail || '')));
+        row.appendChild(_el('span', 'att-val', String(f.code || '')));
+        outEl.appendChild(row);
+      }
+    }
+  } catch (e) { if (outEl) outEl.textContent = String(e.message || e); }
+}
+if ($('sh-mcp-scan-btn')) $('sh-mcp-scan-btn').onclick = () => _runMcpAudit(false);
+if ($('sh-mcp-pin-btn')) $('sh-mcp-pin-btn').onclick = () => _runMcpAudit(true);
+if ($('sh-uni-scan-btn')) $('sh-uni-scan-btn').onclick = async () => {
+  const inp = $('sh-uni-input'), outEl = $('sh-uni-out');
+  const txtVal = (inp && inp.value || '');
+  if (!txtVal.trim()) { if (inp) inp.classList.add('need-input'); if (outEl) outEl.textContent = S.sh_uni_need_inp || 'Input required'; return; }
+  if (inp) inp.classList.remove('need-input');
+  try {
+    const r = await api('/api/v2/shield/scan-unicode', { text: txtVal });
+    if (outEl) {
+      outEl.replaceChildren(el('div', 'box-title', (r.clean ? '✅ CLEAN' : '🚨 THREAT') + ' · layers=' + String(r.decoded_layers_count || 0)));
+      for (const f of (r.findings || [])) {
+        const row = _el('div', 'att-row');
+        row.appendChild(_el('span', 'att-name', String(f.detail || f.code || '')));
+        row.appendChild(_el('span', 'att-val', String(f.severity || '')));
+        outEl.appendChild(row);
+      }
+    }
+  } catch (e) { if (outEl) outEl.textContent = String(e.message || e); }
+};
+if ($('sh-wh-save-btn')) $('sh-wh-save-btn').onclick = async () => {
+  const uEl = $('sh-wh-url'), outEl = $('sh-wh-out');
+  const u = (uEl && uEl.value || '').trim();
+  if (!u) { if (uEl) uEl.classList.add('need-input'); if (outEl) outEl.textContent = S.sh_wh_need_url || 'URL required'; return; }
+  if (uEl) uEl.classList.remove('need-input');
+  try {
+    const r = await api('/api/v2/shield/webhook', { enabled: true, format: ($('sh-wh-fmt') && $('sh-wh-fmt').value) || 'slack', min_severity: ($('sh-wh-sev') && $('sh-wh-sev').value) || 'high', url: u, allow_localhost: /^https?:\/\/(127\.0\.0\.1|localhost)/i.test(u) });
+    if (outEl) outEl.textContent = (S.done || 'OK') + ' · ' + String(r.format || '');
+  } catch (e) { if (outEl) outEl.textContent = String(e.message || e); }
+};
+if ($('sh-wh-test-btn')) $('sh-wh-test-btn').onclick = async () => {
+  const outEl = $('sh-wh-out');
+  try {
+    const r = await api('/api/v2/shield/webhook/test', { dry_run: true, format: ($('sh-wh-fmt') && $('sh-wh-fmt').value) || 'slack' });
+    if (outEl) outEl.replaceChildren(_el('pre', 'sh-pre', JSON.stringify(r.payload || r, null, 2)));
+  } catch (e) { if (outEl) outEl.textContent = String(e.message || e); }
+};
+
+async function loadWalletsFor(containerId, networksFilter) {
+  try {
+    const r = await api('/api/v2/wallets');
+    renderWalletsWidget(containerId, networksFilter, r.wallets || []);
+  } catch (e) {}
+}
+
+function renderWalletsWidget(containerId, networksFilter, wallets) {
+  const box = $(containerId);
+  if (!box) return;
+  box.textContent = '';
+  const list = (wallets || []).filter(w => !networksFilter || networksFilter.includes(w.network));
+  if (!list.length) {
+    box.appendChild(_el('p', 'panel-sub', S.wal_empty || 'No wallets yet'));
+    return;
+  }
+  for (const w of list) {
+    const card = _el('div', 'wallet-card');
+    const head = _el('div', 'wallet-card-head');
+    const left = _el('div', 'rec-meta');
+    left.appendChild(_el('span', 'badge badge-role', String(w.network)));
+    left.appendChild(_el('strong', '', String(w.label || w.network)));
+    if (w.is_primary) left.appendChild(_el('span', 'badge badge-ok', S.wal_primary_badge || 'Primary'));
+    head.appendChild(left);
+    if (w.explorer_url) {
+      const a = _el('a', 'badge', S.wal_explorer_btn || 'Explorer');
+      a.href = w.explorer_url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      head.appendChild(a);
+    }
+    card.appendChild(head);
+    card.appendChild(_el('div', 'mono', String(w.address)));
+    const acts = _el('div', 'rec-actions');
+    if (!w.is_primary) {
+      const bPrim = _el('button', 'btn-primary', S.wal_make_primary_btn || 'Set Primary');
+      bPrim.type = 'button';
+      bPrim.onclick = async () => {
+        try {
+          await api('/api/v2/wallets', { action: 'set_primary', id: w.id });
+          say(S.done, true);
+          loadL3(); loadEarning();
+        } catch (e) { say(S.failed + ': ' + e.message, false); }
+      };
+      acts.appendChild(bPrim);
+    }
+    const bDel = _el('button', 'btn-danger', S.wal_del_btn || 'Delete');
+    bDel.type = 'button';
+    bDel.onclick = async () => {
+      try {
+        await api('/api/v2/wallets', { action: 'remove', id: w.id });
+        say(S.done, true);
+        loadL3(); loadEarning();
+      } catch (e) { say(S.failed + ': ' + e.message, false); }
+    };
+    acts.appendChild(bDel);
+    card.appendChild(acts);
+    box.appendChild(card);
+  }
+}
+
+for (const prefix of ['l3', 'earn']) {
+  const bAdd = $('wal-' + prefix + '-add-btn');
+  const bChk = $('wal-' + prefix + '-check-btn');
+  if (bAdd) bAdd.onclick = async () => {
+    const netEl = $('wal-' + prefix + '-net');
+    const addrEl = $('wal-' + prefix + '-addr');
+    const lblEl = $('wal-' + prefix + '-lbl');
+    const addr = (addrEl && addrEl.value || '').trim();
+    if (!addr) return needInput('wal-' + prefix + '-addr');
+    try {
+      await api('/api/v2/wallets', {
+        action: 'add',
+        network: (netEl && netEl.value) || 'SOLANA',
+        address: addr,
+        label: (lblEl && lblEl.value || '').trim(),
+        is_primary: true,
+      });
+      if (addrEl) addrEl.value = '';
+      if (lblEl) lblEl.value = '';
+      say(S.done, true);
+      loadL3(); loadEarning();
+    } catch (e) { say(S.failed + ': ' + e.message, false); }
+  };
+  if (bChk) bChk.onclick = async () => {
+    const netEl = $('wal-' + prefix + '-net');
+    const addrEl = $('wal-' + prefix + '-addr');
+    const addr = (addrEl && addrEl.value || '').trim();
+    if (!addr) return needInput('wal-' + prefix + '-addr');
+    try {
+      const r = await api('/api/v2/wallets', { action: 'check', network: (netEl && netEl.value) || 'SOLANA', address: addr });
+      say('✅ ' + String(r.network) + ': ' + String(r.address), true);
+    } catch (e) { say(S.failed + ': ' + e.message, false); }
+  };
+}
+
 applyI18n();
 switchTab(activeTab);
 """
@@ -9877,6 +11939,9 @@ def page() -> tuple[str, str]:
       <button id="tab-graph" data-tab="graph" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-graph">
         <span data-i18n="nav_graph">{s['nav_graph']}</span>
       </button>
+      <button id="tab-chats" data-tab="chats" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-chats">
+        <span data-i18n="nav_chats">{s['nav_chats']}</span>
+      </button>
       <button id="tab-entities" data-tab="entities" class="nav-tab" role="tab" aria-selected="false" aria-controls="panel-entities">
         <span data-i18n="nav_entities">{s['nav_entities']}</span>
       </button>
@@ -9927,6 +11992,10 @@ def page() -> tuple[str, str]:
     </header>
 
     <main class="content-area">
+      <div id="shield-lockdown-banner" class="traffic-banner traffic-red" role="alert" hidden>
+        <span id="sh-banner-text" data-i18n="sh_lockdown_banner">{s['sh_lockdown_banner']}</span>
+        <button id="sh-banner-go-btn" class="btn" type="button" data-i18n="sh_banner_go_btn">{s['sh_banner_go_btn']}</button>
+      </div>
       <div id="status-msg" role="status" aria-live="polite"></div>
 
       <!-- 1. ОБЗОР -->
@@ -9958,6 +12027,11 @@ def page() -> tuple[str, str]:
               <button id="ov-sleep-btn" class="btn-primary" data-i18n="ov_sleep_btn">{s['ov_sleep_btn']}</button>
             </div>
           </div>
+        </div>
+
+        <div class="box" id="ov-agents-box">
+          <h3 class="box-title" data-i18n="ov_agents_title">{s['ov_agents_title']}</h3>
+          <div id="ov-agents-grid" class="agents-grid" aria-live="polite"></div>
         </div>
 
         <div class="box">
@@ -10006,19 +12080,26 @@ def page() -> tuple[str, str]:
       <section id="panel-feed" role="tabpanel" aria-labelledby="tab-feed" hidden>
         <div class="panel-header">
           <h2 class="panel-title" data-i18n="feed_title">{s['feed_title']}</h2>
+          <p class="panel-sub" data-i18n="feed_guide">{s['feed_guide']}</p>
         </div>
         <div class="box">
           <h3 class="box-title" data-i18n="feed_new_title">{s['feed_new_title']}</h3>
           <div class="toolbar">
             <input id="feed-new-text" type="text" data-i18n-placeholder="feed_new_placeholder" data-i18n-aria="feed_new_placeholder" placeholder="{s['feed_new_placeholder']}" aria-label="{s['feed_new_placeholder']}">
             <select id="feed-new-kind" aria-label="Memory kind">
-              <option value="fact">fact</option>
-              <option value="preference">preference</option>
-              <option value="identity">identity</option>
-              <option value="decision">decision</option>
-              <option value="correction">correction</option>
-              <option value="state">state</option>
-              <option value="event">event</option>
+              <option value="fact" data-i18n="kind_fact">{s['kind_fact']}</option>
+              <option value="preference" data-i18n="kind_preference">{s['kind_preference']}</option>
+              <option value="identity" data-i18n="kind_identity">{s['kind_identity']}</option>
+              <option value="decision" data-i18n="kind_decision">{s['kind_decision']}</option>
+              <option value="correction" data-i18n="kind_correction">{s['kind_correction']}</option>
+              <option value="state" data-i18n="kind_state">{s['kind_state']}</option>
+              <option value="event" data-i18n="kind_event">{s['kind_event']}</option>
+            </select>
+            <select id="feed-new-agent" aria-label="Agent attribution">
+              <option value="owner" data-i18n="agent_owner">{s['agent_owner']}</option>
+              <option value="aifa_antigravity">AIfa · Antigravity</option>
+              <option value="aifa_claude">AIfa · Claude Code</option>
+              <option value="autoclaw">AutoClaw (GLM)</option>
             </select>
             <button id="feed-new-save" class="btn-primary" data-i18n="feed_new_save">{s['feed_new_save']}</button>
           </div>
@@ -10030,6 +12111,7 @@ def page() -> tuple[str, str]:
           <input id="feed-q" type="search" data-i18n-placeholder="feed_filter_placeholder" data-i18n-aria="feed_filter_placeholder" placeholder="{s['feed_filter_placeholder']}" aria-label="{s['feed_filter_placeholder']}">
           <input id="feed-agent" type="search" data-i18n-placeholder="feed_agent_placeholder" data-i18n-aria="feed_agent_placeholder" placeholder="{s['feed_agent_placeholder']}" aria-label="{s['feed_agent_placeholder']}">
         </div>
+        <div id="feed-agent-pills" class="chips-row"></div>
         <div id="feed-kinds" class="chips-row"></div>
         <div id="feed-list"></div>
         <button id="feed-more" data-i18n="show_more" hidden>{s['show_more']}</button>
@@ -10044,13 +12126,13 @@ def page() -> tuple[str, str]:
           <input id="search-input" type="search" data-i18n-placeholder="search_placeholder" data-i18n-aria="search_placeholder" placeholder="{s['search_placeholder']}" aria-label="{s['search_placeholder']}">
           <select id="search-kind" aria-label="Search kind filter">
             <option value="" data-i18n="all_kinds">{s['all_kinds']}</option>
-            <option value="preference">preference</option>
-            <option value="identity">identity</option>
-            <option value="decision">decision</option>
-            <option value="correction">correction</option>
-            <option value="fact">fact</option>
-            <option value="state">state</option>
-            <option value="event">event</option>
+            <option value="preference" data-i18n="kind_preference">{s['kind_preference']}</option>
+            <option value="identity" data-i18n="kind_identity">{s['kind_identity']}</option>
+            <option value="decision" data-i18n="kind_decision">{s['kind_decision']}</option>
+            <option value="correction" data-i18n="kind_correction">{s['kind_correction']}</option>
+            <option value="fact" data-i18n="kind_fact">{s['kind_fact']}</option>
+            <option value="state" data-i18n="kind_state">{s['kind_state']}</option>
+            <option value="event" data-i18n="kind_event">{s['kind_event']}</option>
           </select>
           <button id="search-btn" class="btn-primary" data-i18n="search_btn">{s['search_btn']}</button>
         </div>
@@ -10140,6 +12222,14 @@ def page() -> tuple[str, str]:
           <h2 class="panel-title" data-i18n="graph_title">{s['graph_title']}</h2>
           <p class="panel-sub" data-i18n="graph_subtitle">{s['graph_subtitle']}</p>
         </div>
+        <div class="box">
+          <h3 class="box-title" data-i18n="graph_agents_title">{s['graph_agents_title']}</h3>
+          <div class="toolbar">
+            <button id="graph-all-btn" class="btn-primary" type="button" data-i18n="graph_all_agents_btn">{s['graph_all_agents_btn']}</button>
+            <button id="graph-intersections-btn" type="button" data-i18n="graph_intersections_btn">{s['graph_intersections_btn']}</button>
+          </div>
+          <div id="graph-agents-pills" class="agent-pill-row" aria-live="polite"></div>
+        </div>
         <div class="toolbar">
           <input id="graph-id-input" type="text" data-i18n-placeholder="graph_filter_placeholder" data-i18n-aria="graph_filter_placeholder" placeholder="{s['graph_filter_placeholder']}" aria-label="{s['graph_filter_placeholder']}">
           <label class="rec-meta"><span data-i18n="graph_asof_label">{s['graph_asof_label']}</span> <input id="graph-asof-input" type="date" data-i18n-aria="graph_asof_label" aria-label="{s['graph_asof_label']}"></label>
@@ -10158,9 +12248,97 @@ def page() -> tuple[str, str]:
             <span>🔴 <span data-i18n="graph_legend_conflict">{s['graph_legend_conflict']}</span></span>
           </div>
         </div>
+        <div class="box" id="graph-intersections-card">
+          <h3 class="box-title" data-i18n="graph_inter_title">{s['graph_inter_title']}</h3>
+          <div id="graph-intersections-list" class="intersections-list" aria-live="polite"></div>
+        </div>
         <div class="box">
           <h3 class="box-title" data-i18n="graph_selected">{s['graph_selected']}</h3>
           <div id="graph-selected-box"></div>
+        </div>
+      </section>
+
+      <!-- 7а. ЧАТЫ С АГЕНТАМИ -->
+      <section id="panel-chats" role="tabpanel" aria-labelledby="tab-chats" hidden>
+        <div class="panel-header">
+          <h2 class="panel-title" data-i18n="chats_title">{s['chats_title']}</h2>
+          <p class="panel-sub" data-i18n="chats_sub">{s['chats_sub']}</p>
+        </div>
+        <div class="box">
+          <div class="toolbar">
+            <select id="chats-agent-select" aria-label="Agent filter">
+              <option value="" data-i18n="chats_all_agents">{s['chats_all_agents']}</option>
+            </select>
+            <select id="chats-day-select" aria-label="Day filter">
+              <option value="" data-i18n="chats_all_days">{s['chats_all_days']}</option>
+            </select>
+            <select id="chats-hour-select" aria-label="Hour filter">
+              <option value="" data-i18n="chats_all_hours">{s['chats_all_hours']}</option>
+            </select>
+            <input id="chats-q" type="search" data-i18n-placeholder="chats_q_ph" placeholder="{s['chats_q_ph']}">
+            <label class="rec-meta"><input id="chats-workers-chk" type="checkbox"> <span data-i18n="chats_workers_lbl">{s['chats_workers_lbl']}</span></label>
+            <button id="chats-refresh-btn" class="btn-primary" type="button" data-i18n="chats_refresh_btn">{s['chats_refresh_btn']}</button>
+            <button id="chats-compact-btn" type="button" data-i18n="chats_compact_btn">{s['chats_compact_btn']}</button>
+            <button id="chats-open-graph-btn" type="button" data-i18n="chats_open_graph_btn">{s['chats_open_graph_btn']}</button>
+          </div>
+          <div id="chats-compact-out" class="panel-sub" aria-live="polite"></div>
+          <div class="chats-layout">
+            <div class="box">
+              <h3 class="box-title" data-i18n="chats_threads_title">{s['chats_threads_title']}</h3>
+              <div id="chats-threads-list" class="chats-sidebar" aria-live="polite"></div>
+            </div>
+            <div class="box">
+              <div id="chats-active-head" class="panel-sub"></div>
+              <div id="chats-messages-log" class="chats-log" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="box">
+            <h3 class="box-title" data-i18n="chats_add_title">{s['chats_add_title']}</h3>
+            <div class="toolbar">
+              <select id="chats-add-agent" aria-label="Agent">
+                <option value="aifa_antigravity">AIfa · Antigravity</option>
+                <option value="aifa_claude">AIfa · Claude Code</option>
+                <option value="autoclaw">AutoClaw</option>
+              </select>
+              <select id="chats-add-role" aria-label="Role">
+                <option value="user" data-i18n="chats_role_user">{s['chats_role_user']}</option>
+                <option value="assistant" data-i18n="chats_role_assistant">{s['chats_role_assistant']}</option>
+              </select>
+            </div>
+            <div class="toolbar">
+              <input id="chats-add-title-inp" type="text" data-i18n-placeholder="chats_add_title_ph" placeholder="{s['chats_add_title_ph']}">
+            </div>
+            <div class="toolbar">
+              <textarea id="chats-add-text" class="earn-ta" rows="3" data-i18n-placeholder="chats_add_text_ph" placeholder="{s['chats_add_text_ph']}"></textarea>
+            </div>
+            <div class="rec-actions">
+              <button id="chats-add-btn" class="btn-primary" type="button" data-i18n="chats_add_btn">{s['chats_add_btn']}</button>
+            </div>
+            <div id="chats-add-out" class="panel-sub" aria-live="polite"></div>
+          </div>
+          <div class="box">
+            <h3 class="box-title" data-i18n="chats_import_title">{s['chats_import_title']}</h3>
+            <div class="toolbar">
+              <select id="chats-imp-agent" aria-label="Import agent">
+                <option value="aifa_antigravity">AIfa · Antigravity</option>
+                <option value="aifa_claude">AIfa · Claude Code</option>
+                <option value="autoclaw">AutoClaw</option>
+              </select>
+              <input id="chats-imp-title" type="text" data-i18n-placeholder="chats_add_title_ph" placeholder="{s['chats_add_title_ph']}">
+            </div>
+            <div class="toolbar">
+              <input id="chats-imp-path" type="text" data-i18n-placeholder="chats_imp_path_ph" placeholder="{s['chats_imp_path_ph']}">
+            </div>
+            <div class="toolbar">
+              <textarea id="chats-imp-text" class="earn-ta" rows="3" data-i18n-placeholder="chats_imp_text_ph" placeholder="{s['chats_imp_text_ph']}"></textarea>
+            </div>
+            <div class="rec-actions">
+              <button id="chats-import-btn" class="btn-primary" type="button" data-i18n="chats_imp_btn">{s['chats_imp_btn']}</button>
+            </div>
+            <div id="chats-imp-out" class="panel-sub" aria-live="polite"></div>
+          </div>
         </div>
       </section>
 
@@ -10190,6 +12368,22 @@ def page() -> tuple[str, str]:
         </div>
         <div class="toolbar">
           <button id="l3-verify-latest-btn" class="btn-primary" data-i18n="l3_btn_verify_latest">{s['l3_btn_verify_latest']}</button>
+          <button id="l3-checkpoint-btn" class="btn-ok" type="button" data-i18n="l3_checkpoint_btn">{s['l3_checkpoint_btn']}</button>
+        </div>
+        <div class="box">
+          <h3 class="box-title" data-i18n="wal_title">{s['wal_title']}</h3>
+          <p class="panel-sub" data-i18n="wal_sub">{s['wal_sub']}</p>
+          <div class="toolbar">
+            <select id="wal-l3-net" aria-label="L3 Wallet Network">
+              <option value="SOLANA">Solana</option>
+              <option value="ARWEAVE">Arweave</option>
+            </select>
+            <input id="wal-l3-addr" type="text" data-i18n-placeholder="wal_addr_ph" placeholder="{s['wal_addr_ph']}">
+            <input id="wal-l3-lbl" type="text" data-i18n-placeholder="wal_lbl_ph" placeholder="{s['wal_lbl_ph']}">
+            <button id="wal-l3-add-btn" class="btn-primary" type="button" data-i18n="wal_add_btn">{s['wal_add_btn']}</button>
+            <button id="wal-l3-check-btn" type="button" data-i18n="wal_check_btn">{s['wal_check_btn']}</button>
+          </div>
+          <div id="wal-l3-list" class="earn-stack"></div>
         </div>
         <h3 class="box-title" data-i18n="l3_anchors_list">{s['l3_anchors_list']}</h3>
         <div id="l3-anchors-list"></div>
@@ -10280,16 +12474,58 @@ def page() -> tuple[str, str]:
             </label>
             <p class="panel-sub" data-i18n="aifa_use_local_hint">{s['aifa_use_local_hint']}</p>
           </div>
-          <div id="aifa-chat-list"></div>
+          <div class="box">
+            <div class="rec-meta mb-sm">
+              <span id="aifa-neon-status" class="badge badge-ok" data-i18n="aifa_neon_badge">{s['aifa_neon_badge']}</span>
+            </div>
+            <div class="toolbar">
+              <input id="aifa-msg-input" type="text" placeholder="{s['aifa_msg_ph']}" aria-label="{s['aifa_msg_ph']}" data-i18n-placeholder="aifa_msg_ph" data-i18n-aria="aifa_msg_ph">
+              <button id="aifa-mic-btn" type="button" data-i18n="aifa_mic_btn">{s['aifa_mic_btn']}</button>
+              <button id="aifa-attach-btn" type="button" data-i18n="aifa_attach_btn">{s['aifa_attach_btn']}</button>
+              <input id="aifa-attach-file" type="file" accept=".txt,.md,.csv,.json,.pdf,.png,.jpg,.jpeg,.webp" hidden>
+              <button id="aifa-send-msg-btn" class="btn-primary" data-i18n="aifa_send_btn">{s['aifa_send_btn']}</button>
+            </div>
+            <div id="aifa-attach-info" class="panel-sub" hidden></div>
+            <div class="toolbar mt-sm">
+              <button id="aifa-filter-24h" type="button" data-i18n="aifa_filter_24h">{s['aifa_filter_24h']}</button>
+              <button id="aifa-filter-all" type="button" class="btn-primary" data-i18n="aifa_filter_all">{s['aifa_filter_all']}</button>
+              <label class="rec-meta"><span data-i18n="aifa_date_lbl">{s['aifa_date_lbl']}</span> <input id="aifa-filter-date" type="date"></label>
+              <button id="aifa-sort-btn" type="button" data-i18n="aifa_sort_newest">{s['aifa_sort_newest']}</button>
+            </div>
+          </div>
           <div id="aifa-local-sent-box" class="box" hidden>
             <h3 class="box-title" data-i18n="aifa_local_sent_title">{s['aifa_local_sent_title']}</h3>
             <ul id="aifa-local-sent-list"></ul>
           </div>
-          <div class="box">
+          <div id="aifa-chat-list" class="aifa-chat-scroll"></div>
+          <div id="aifa-media-box" class="box media-studio-box mt-md">
+            <h3 class="box-title" data-i18n="media_box_title">{s['media_box_title']}</h3>
+            <p class="panel-sub" data-i18n="media_box_sub">{s['media_box_sub']}</p>
             <div class="toolbar">
-              <input id="aifa-msg-input" type="text" placeholder="{s['aifa_msg_ph']}" aria-label="{s['aifa_msg_ph']}" data-i18n-placeholder="aifa_msg_ph" data-i18n-aria="aifa_msg_ph">
-              <button id="aifa-send-msg-btn" class="btn-primary" data-i18n="aifa_send_btn">{s['aifa_send_btn']}</button>
+              <select id="aifa-media-mode" aria-label="Media Mode">
+                <option value="image" data-i18n="media_mode_img">{s['media_mode_img']}</option>
+                <option value="slides" data-i18n="media_mode_slides">{s['media_mode_slides']}</option>
+              </select>
+              <select id="aifa-media-theme" aria-label="Media Theme">
+                <option value="cyber_shield">Cyber Shield</option>
+                <option value="dark_quantum">Dark Quantum</option>
+                <option value="executive_gold">Executive Gold</option>
+                <option value="clean_paper">Clean Paper</option>
+              </select>
+              <select id="aifa-media-size" aria-label="Resolution">
+                <option value="1024x1024">1024 × 1024</option>
+                <option value="1920x1080">1920 × 1080 (Full HD)</option>
+                <option value="3840x2160">3840 × 2160 (4K)</option>
+              </select>
             </div>
+            <div class="toolbar">
+              <input id="aifa-media-prompt" type="text" data-i18n-placeholder="media_prompt_ph" placeholder="{s['media_prompt_ph']}">
+              <button id="aifa-media-gen-btn" type="button" class="btn-primary" data-i18n="media_gen_btn">{s['media_gen_btn']}</button>
+            </div>
+            <div class="toolbar">
+              <textarea id="aifa-media-bullets" class="qs-textarea" rows="2" data-i18n-placeholder="media_bullets_ph" placeholder="{s['media_bullets_ph']}"></textarea>
+            </div>
+            <div id="aifa-media-preview" class="media-preview-box" aria-live="polite"></div>
           </div>
         </div>
       </section>
@@ -10432,6 +12668,125 @@ def page() -> tuple[str, str]:
         <div class="box"><h3 class="box-title" data-i18n="att_by_day">{s['att_by_day']}</h3><div id="att-by-day"></div></div>
         <div class="box"><h3 class="box-title" data-i18n="att_secrets_kind">{s['att_secrets_kind']}</h3><div id="att-secrets-kind"></div></div>
         <div class="box"><h3 class="box-title" data-i18n="att_recent">{s['att_recent']}</h3><div id="att-recent"></div></div>
+
+        <div class="box" id="sh-ks-box">
+          <h3 class="box-title" data-i18n="sh_ks_title">{s['sh_ks_title']}</h3>
+          <p class="panel-sub" data-i18n="sh_ks_sub">{s['sh_ks_sub']}</p>
+          <div id="sh-ks-banner" class="traffic-banner traffic-green">—</div>
+          <p id="sh-ks-meta" class="panel-sub">—</p>
+          <label class="sh-check-lbl"><input id="sh-ks-block-chk" type="checkbox"> <span data-i18n="sh_ks_block_lbl">{s['sh_ks_block_lbl']}</span></label>
+          <div class="att-actions">
+            <button id="sh-refresh-btn" class="btn" type="button" data-i18n="sh_refresh_btn">{s['sh_refresh_btn']}</button>
+            <button id="sh-ks-trip-btn" class="btn-danger" type="button" data-i18n="sh_ks_trip_btn">{s['sh_ks_trip_btn']}</button>
+            <button id="sh-ks-reset-btn" class="btn-primary" type="button" data-i18n="sh_ks_reset_btn">{s['sh_ks_reset_btn']}</button>
+            <button id="sh-cfg-save-btn" class="btn" type="button" data-i18n="sh_cfg_save_btn">{s['sh_cfg_save_btn']}</button>
+          </div>
+          <div id="sh-events-list" aria-live="polite"></div>
+        </div>
+
+        <div class="box" id="sh-out-box">
+          <h3 class="box-title" data-i18n="sh_out_title">{s['sh_out_title']}</h3>
+          <p class="panel-sub" data-i18n="sh_out_sub">{s['sh_out_sub']}</p>
+          <div class="sh-form-row">
+            <select id="sh-out-type" class="input">
+              <option value="crypto_transfer" data-i18n="sh_out_type_crypto">{s['sh_out_type_crypto']}</option>
+              <option value="http_request" data-i18n="sh_out_type_http">{s['sh_out_type_http']}</option>
+              <option value="shell_command" data-i18n="sh_out_type_shell">{s['sh_out_type_shell']}</option>
+              <option value="email" data-i18n="sh_out_type_email">{s['sh_out_type_email']}</option>
+              <option value="payment" data-i18n="sh_out_type_pay">{s['sh_out_type_pay']}</option>
+            </select>
+            <input id="sh-out-target" class="input" type="text" data-i18n-placeholder="sh_out_target_ph" placeholder="{s['sh_out_target_ph']}">
+            <input id="sh-out-payload" class="input" type="text" data-i18n-placeholder="sh_out_payload_ph" placeholder="{s['sh_out_payload_ph']}">
+            <button id="sh-out-check-btn" class="btn-primary" type="button" data-i18n="sh_out_check_btn">{s['sh_out_check_btn']}</button>
+          </div>
+          <div id="sh-out-result" aria-live="polite"></div>
+          <h4 class="sh-subhead" data-i18n="sh_out_queue_lbl">{s['sh_out_queue_lbl']}</h4>
+          <div id="sh-out-queue" aria-live="polite"></div>
+          <h4 class="sh-subhead" data-i18n="sh_allow_lbl">{s['sh_allow_lbl']}</h4>
+          <div class="sh-form-row">
+            <select id="sh-allow-type" class="input">
+              <option value="domain" data-i18n="sh_allow_type_domain">{s['sh_allow_type_domain']}</option>
+              <option value="wallet" data-i18n="sh_allow_type_wallet">{s['sh_allow_type_wallet']}</option>
+              <option value="iban" data-i18n="sh_allow_type_iban">{s['sh_allow_type_iban']}</option>
+              <option value="payee" data-i18n="sh_allow_type_payee">{s['sh_allow_type_payee']}</option>
+            </select>
+            <input id="sh-allow-val" class="input" type="text" data-i18n-placeholder="sh_allow_val_ph" placeholder="{s['sh_allow_val_ph']}">
+            <input id="sh-allow-label" class="input" type="text" data-i18n-placeholder="sh_allow_lbl_ph" placeholder="{s['sh_allow_lbl_ph']}">
+            <button id="sh-allow-add-btn" class="btn" type="button" data-i18n="sh_allow_add_btn">{s['sh_allow_add_btn']}</button>
+          </div>
+          <div id="sh-allow-list" aria-live="polite"></div>
+        </div>
+
+        <div class="box" id="sh-sc-box">
+          <h3 class="box-title" data-i18n="sh_sc_title">{s['sh_sc_title']}</h3>
+          <p class="panel-sub" data-i18n="sh_sc_sub">{s['sh_sc_sub']}</p>
+          <div class="sh-form-row">
+            <input id="sh-sc-url" class="input" type="text" data-i18n-placeholder="sh_sc_url_ph" placeholder="{s['sh_sc_url_ph']}">
+            <button id="sh-sc-scan-btn" class="btn-primary" type="button" data-i18n="sh_sc_scan_btn">{s['sh_sc_scan_btn']}</button>
+            <button id="sh-sc-dl-html-btn" class="btn" type="button" data-i18n="sh_sc_dl_html_btn">{s['sh_sc_dl_html_btn']}</button>
+          </div>
+          <div id="sh-sc-out" aria-live="polite"></div>
+        </div>
+
+        <div class="box" id="sh-proof-box">
+          <h3 class="box-title" data-i18n="sh_proof_title">{s['sh_proof_title']}</h3>
+          <p class="panel-sub" data-i18n="sh_proof_sub">{s['sh_proof_sub']}</p>
+          <div class="att-actions">
+            <button id="sh-proof-gen-btn" class="btn-primary" type="button" data-i18n="sh_proof_gen_btn">{s['sh_proof_gen_btn']}</button>
+            <button id="sh-proof-dl-json-btn" class="btn" type="button" data-i18n="sh_proof_dl_json_btn">{s['sh_proof_dl_json_btn']}</button>
+            <button id="sh-proof-dl-html-btn" class="btn" type="button" data-i18n="sh_proof_dl_html_btn">{s['sh_proof_dl_html_btn']}</button>
+            <button id="sh-proof-dl-md-btn" class="btn" type="button" data-i18n="sh_proof_dl_md_btn">{s['sh_proof_dl_md_btn']}</button>
+          </div>
+          <div id="sh-proof-out" aria-live="polite"></div>
+        </div>
+
+        <div class="box" id="sh-mcp-box">
+          <h3 class="box-title" data-i18n="sh_mcp_title">{s['sh_mcp_title']}</h3>
+          <p class="panel-sub" data-i18n="sh_mcp_sub">{s['sh_mcp_sub']}</p>
+          <div class="sh-form-row">
+            <input id="sh-mcp-server" class="input" type="text" data-i18n-placeholder="sh_mcp_srv_ph" placeholder="{s['sh_mcp_srv_ph']}">
+            <button id="sh-mcp-scan-btn" class="btn-primary" type="button" data-i18n="sh_mcp_scan_btn">{s['sh_mcp_scan_btn']}</button>
+            <button id="sh-mcp-pin-btn" class="btn" type="button" data-i18n="sh_mcp_pin_btn">{s['sh_mcp_pin_btn']}</button>
+          </div>
+          <div class="toolbar">
+            <textarea id="sh-mcp-input" class="earn-ta" rows="3" data-i18n-placeholder="sh_mcp_inp_ph" placeholder="{s['sh_mcp_inp_ph']}"></textarea>
+          </div>
+          <div id="sh-mcp-out" aria-live="polite"></div>
+        </div>
+
+        <div class="box" id="sh-uni-box">
+          <h3 class="box-title" data-i18n="sh_uni_title">{s['sh_uni_title']}</h3>
+          <p class="panel-sub" data-i18n="sh_uni_sub">{s['sh_uni_sub']}</p>
+          <div class="sh-form-row">
+            <input id="sh-uni-input" class="input" type="text" data-i18n-placeholder="sh_uni_inp_ph" placeholder="{s['sh_uni_inp_ph']}">
+            <button id="sh-uni-scan-btn" class="btn-primary" type="button" data-i18n="sh_uni_scan_btn">{s['sh_uni_scan_btn']}</button>
+          </div>
+          <div id="sh-uni-out" aria-live="polite"></div>
+        </div>
+
+        <div class="box" id="sh-wh-box">
+          <h3 class="box-title" data-i18n="sh_wh_title">{s['sh_wh_title']}</h3>
+          <p class="panel-sub" data-i18n="sh_wh_sub">{s['sh_wh_sub']}</p>
+          <div class="sh-form-row">
+            <select id="sh-wh-fmt" class="input" aria-label="Webhook format">
+              <option value="slack">Slack</option>
+              <option value="microsoft_teams">Microsoft Teams</option>
+              <option value="cef">SIEM CEF</option>
+              <option value="splunk_hec">Splunk HEC</option>
+              <option value="elastic_ecs">Elastic ECS</option>
+              <option value="json">JSON (HMAC)</option>
+            </select>
+            <select id="sh-wh-sev" class="input" aria-label="Minimum severity">
+              <option value="high">high</option>
+              <option value="critical">critical</option>
+              <option value="medium">medium</option>
+            </select>
+            <input id="sh-wh-url" class="input" type="text" data-i18n-placeholder="sh_wh_url_ph" placeholder="{s['sh_wh_url_ph']}">
+            <button id="sh-wh-save-btn" class="btn" type="button" data-i18n="sh_wh_save_btn">{s['sh_wh_save_btn']}</button>
+            <button id="sh-wh-test-btn" class="btn-primary" type="button" data-i18n="sh_wh_test_btn">{s['sh_wh_test_btn']}</button>
+          </div>
+          <div id="sh-wh-out" aria-live="polite"></div>
+        </div>
       </section>
 
       <!-- СПРАВКА (16.11.2026) -->
@@ -10495,6 +12850,19 @@ def page() -> tuple[str, str]:
         </div>
         <div class="box" id="fam-agents-box">
           <h3 class="box-title" data-i18n="fam_agents_title">{s['fam_agents_title']}</h3>
+          <div class="toolbar">
+            <input id="fam-add-agent-id" type="text" data-i18n-placeholder="fam_agent_id_ph" placeholder="{s['fam_agent_id_ph']}">
+            <input id="fam-add-agent-name" type="text" data-i18n-placeholder="fam_agent_name_ph" placeholder="{s['fam_agent_name_ph']}">
+            <input id="fam-add-agent-role" type="text" data-i18n-placeholder="fam_agent_role_ph" placeholder="{s['fam_agent_role_ph']}">
+            <select id="fam-add-agent-ctrl" aria-label="Agent controller">
+              <option value="antigravity">Antigravity (Gemini)</option>
+              <option value="claude_code">Claude Code</option>
+              <option value="autoclaw">AutoClaw (GLM)</option>
+              <option value="ollama">Ollama (Local $0)</option>
+              <option value="mcp_stdio">MCP (External)</option>
+            </select>
+            <button id="fam-add-agent-btn" type="button" class="btn-primary" data-i18n="fam_add_agent_btn">{s['fam_add_agent_btn']}</button>
+          </div>
           <div id="fam-agents" class="earn-stack" aria-live="polite"></div>
         </div>
         <div class="box" id="fam-memory-box">
@@ -10504,15 +12872,8 @@ def page() -> tuple[str, str]:
         </div>
         <div class="box" id="fam-roles-box">
           <h3 class="box-title" data-i18n="fam_roles_title">{s['fam_roles_title']}</h3>
-          <p class="panel-sub" data-i18n="fam_roles_sub">{s['fam_roles_sub']}</p>
-          <ul class="fam-roles">
-            <li><span data-i18n="role_lance">{s['role_lance']}</span></li>
-            <li><span data-i18n="role_aria">{s['role_aria']}</span></li>
-            <li><span data-i18n="role_pixel">{s['role_pixel']}</span></li>
-            <li><span data-i18n="role_arc7">{s['role_arc7']}</span></li>
-            <li><span data-i18n="role_bear">{s['role_bear']}</span></li>
-            <li><span data-i18n="role_aifa">{s['role_aifa']}</span></li>
-          </ul>
+          <p class="panel-sub" data-i18n="fam_roles_guide">{s['fam_roles_guide']}</p>
+          <div id="fam-roles-grid" class="role-grid" aria-live="polite"></div>
         </div>
         <div class="box">
           <h3 class="box-title" data-i18n="ark_council_title">{s['ark_council_title']}</h3>
@@ -10521,6 +12882,7 @@ def page() -> tuple[str, str]:
           </div>
           <div class="rec-actions">
             <button id="ark-council-btn" class="btn-primary" data-i18n="ark_council_btn">{s['ark_council_btn']}</button>
+            <button id="ark-council-repair-btn" type="button" data-i18n="ark_council_repair_btn">{s['ark_council_repair_btn']}</button>
           </div>
           <div id="ark-council-out"></div>
         </div>
@@ -10528,9 +12890,12 @@ def page() -> tuple[str, str]:
           <h3 class="box-title" data-i18n="fd_title">{s['fd_title']}</h3>
           <p class="panel-sub" data-i18n="fd_sub">{s['fd_sub']}</p>
           <div class="toolbar">
+            <button id="fd-btn-24h" type="button" data-i18n="fd_btn_24h">{s['fd_btn_24h']}</button>
+            <button id="fd-btn-all" type="button" class="btn-primary" data-i18n="fd_btn_all">{s['fd_btn_all']}</button>
+            <label class="rec-meta"><span data-i18n="fd_date_lbl">{s['fd_date_lbl']}</span> <input id="fd-date" type="date"></label>
             <input id="fd-q" type="search" maxlength="200" aria-label="{s['fd_ph']}" data-i18n-placeholder="fd_ph" data-i18n-aria="fd_ph" placeholder="{s['fd_ph']}">
           </div>
-          <div id="fd-list" aria-live="polite"></div>
+          <div id="fd-list" class="earn-stack" aria-live="polite"></div>
         </div>
         <div class="box" id="ff-box">
           <h3 class="box-title" data-i18n="ff_title">{s['ff_title']}</h3>
@@ -11010,6 +13375,23 @@ def page() -> tuple[str, str]:
             <div id="earn-beacon-out" class="earn-stack"></div>
           </div>
 
+          <div class="box earn-box-wide" id="earn-wallets-box">
+            <h3 class="box-title" data-i18n="wal_title">{s['wal_title']}</h3>
+            <p class="panel-sub" data-i18n="wal_sub">{s['wal_sub']}</p>
+            <div class="toolbar">
+              <select id="wal-earn-net" aria-label="Payout Wallet Network">
+                <option value="USDT_TRC20">USDT TRC20 (TRON)</option>
+                <option value="SOLANA">Solana</option>
+                <option value="ARWEAVE">Arweave</option>
+              </select>
+              <input id="wal-earn-addr" type="text" data-i18n-placeholder="wal_addr_ph" placeholder="{s['wal_addr_ph']}">
+              <input id="wal-earn-lbl" type="text" data-i18n-placeholder="wal_lbl_ph" placeholder="{s['wal_lbl_ph']}">
+              <button id="wal-earn-add-btn" class="btn-primary" type="button" data-i18n="wal_add_btn">{s['wal_add_btn']}</button>
+              <button id="wal-earn-check-btn" type="button" data-i18n="wal_check_btn">{s['wal_check_btn']}</button>
+            </div>
+            <div id="wal-earn-list" class="earn-stack"></div>
+          </div>
+
           <div class="box earn-box-wide">
             <h3 class="box-title" data-i18n="earn_stores_title">{s['earn_stores_title']}</h3>
             <p class="earn-meta" data-i18n="earn_stores_sub">{s['earn_stores_sub']}</p>
@@ -11206,13 +13588,13 @@ def page() -> tuple[str, str]:
     <div class="toolbar">
       <input id="quick-add-text" type="text" data-i18n-placeholder="feed_new_placeholder" data-i18n-aria="feed_new_placeholder" placeholder="{s['feed_new_placeholder']}" aria-label="{s['feed_new_placeholder']}">
       <select id="quick-add-kind" aria-label="Quick memory kind">
-        <option value="fact">fact</option>
-        <option value="preference">preference</option>
-        <option value="identity">identity</option>
-        <option value="decision">decision</option>
-        <option value="correction">correction</option>
-        <option value="state">state</option>
-        <option value="event">event</option>
+        <option value="fact" data-i18n="kind_fact">{s['kind_fact']}</option>
+        <option value="preference" data-i18n="kind_preference">{s['kind_preference']}</option>
+        <option value="identity" data-i18n="kind_identity">{s['kind_identity']}</option>
+        <option value="decision" data-i18n="kind_decision">{s['kind_decision']}</option>
+        <option value="correction" data-i18n="kind_correction">{s['kind_correction']}</option>
+        <option value="state" data-i18n="kind_state">{s['kind_state']}</option>
+        <option value="event" data-i18n="kind_event">{s['kind_event']}</option>
       </select>
     </div>
     <div class="rec-actions">

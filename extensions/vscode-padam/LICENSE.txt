@@ -1,0 +1,6 @@
+GNU AFFERO GENERAL PUBLIC LICENSE (AGPL-3.0-only)
+
+Copyright (c) 2026 Maksim Galatin · CODE Eternal LLC (Albuquerque, NM)
+
+This VS Code / Cursor / Windsurf extension wrapper is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0-only), matching the root LICENSE of PADAM NOCTURNE:
+https://github.com/MaksimGalatin/padam-nocturne/blob/main/LICENSE

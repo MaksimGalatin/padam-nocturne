@@ -4,14 +4,14 @@
 
 ## Сводка по всем инструментам и действиям MCP
 
-- Всего инструментов MCP (с учётом всех 6 флагов, `_ALL_TOOLS_BY_NAME`): **46** (по умолчанию: **9**, `PADAM_MCP_ARK_TOOLS=1`: **34** и **27702/27000** символов в `tools/list`, с `PADAM_MCP_PARTNER_TOOLS=1`: **40**).
-- Всего пар `(инструмент, action)`: **174**.
-- Есть в MCP: **174 из 174**
-- Есть в Studio (вкладка + кнопка/поле): **174 из 174**
-- Есть в API (`padam/api.py`): **174 из 174**
-- Покрыто автотестами: **173 из 174**
-- Проверено реальным нажатием в Playwright (1280×800 и 390×844): **169 из 174**
-- Контролов Studio только для владельца (намеренно закрытых в MCP по аудиту GLM): **13**
+- Всего инструментов MCP (с учётом всех 6 флагов, `_ALL_TOOLS_BY_NAME`): **47** (по умолчанию: **9**, `PADAM_MCP_ARK_TOOLS=1`: **34** и **27702/27000** символов в `tools/list`, с `PADAM_MCP_PARTNER_TOOLS=1`: **40**).
+- Всего пар `(инструмент, action)`: **190**.
+- Есть в MCP: **190 из 190**
+- Есть в Studio (вкладка + кнопка/поле): **190 из 190**
+- Есть в API (`padam/api.py`): **190 из 190**
+- Покрыто автотестами: **186 из 190**
+- Проверено реальным нажатием в Playwright (1280×800 и 390×844): **177 из 190**
+- Контролов Studio только для владельца (намеренно закрытых в MCP по аудиту GLM): **20**
 
 ## 1. Полная таблица MCP → Studio → API
 
@@ -191,6 +191,22 @@
 | `padam_benchmark` | `report` | Да | Да: `panel-bench` → `#att-aifasec-summary, #att-aifasec-dl-json` | Да: `GET /api/v2/aifa-security` | Да | Да |
 | `padam_benchmark` | `run` | Да | Да: `panel-bench` → `#att-aifasec-run` | Да: `POST /api/v2/aifa-security/run` | Да | Да |
 | `padam_benchmark` | `qa` | Да | Да: `panel-bench` → `#att-qa-load, #att-qa-summary` | Да: `GET /api/v2/qa-benchmark` | Да | Да |
+| `padam_agentic_shield` | `status` | Да | Да: `panel-attacks` → `#sh-refresh-btn, #sh-ks-banner` | Да: `GET /api/v2/shield/status` | Да | Да |
+| `padam_agentic_shield` | `kill_switch_trip` | Да | Да: `panel-attacks` → `#sh-ks-trip-btn` | Да: `POST /api/v2/shield/kill-switch` | Да | Да |
+| `padam_agentic_shield` | `kill_switch_reset` | Да | Да: `panel-attacks` → `#sh-ks-reset-btn` | Да: `POST /api/v2/shield/kill-switch` | Да | Да |
+| `padam_agentic_shield` | `outbound_check` | Да | Да: `panel-attacks` → `#sh-out-check-btn, #sh-out-target` | Да: `POST /api/v2/shield/outbound/check` | Да | Да |
+| `padam_agentic_shield` | `outbound_list` | Да | Да: `panel-attacks` → `#sh-out-queue` | Да: `GET /api/v2/shield/status` | Да | Нет |
+| `padam_agentic_shield` | `outbound_approve` | Да | Да: `panel-attacks` → `#sh-out-queue` | Да: `POST /api/v2/shield/outbound/decide` | Да | Нет |
+| `padam_agentic_shield` | `outbound_reject` | Да | Да: `panel-attacks` → `#sh-out-queue` | Да: `POST /api/v2/shield/outbound/decide` | Да | Нет |
+| `padam_agentic_shield` | `allowlist_list` | Да | Да: `panel-attacks` → `#sh-allow-list` | Да: `GET /api/v2/shield/status` | Да | Да |
+| `padam_agentic_shield` | `allowlist_add` | Да | Да: `panel-attacks` → `#sh-allow-add-btn, #sh-allow-val` | Да: `POST /api/v2/shield/allowlist` | Да | Да |
+| `padam_agentic_shield` | `scan_supply_chain` | Да | Да: `panel-attacks` → `#sh-sc-scan-btn, #sh-sc-url` | Да: `POST /api/v2/shield/supply-chain/scan` | Да | Да |
+| `padam_agentic_shield` | `scan_mcp_tools` | Да | Да: `panel-attacks` → `#sh-mcp-scan-btn, #sh-mcp-input` | Да: `POST /api/v2/shield/scan-mcp` | Нет | Нет |
+| `padam_agentic_shield` | `pin_mcp_tools` | Да | Да: `panel-attacks` → `#sh-mcp-pin-btn, #sh-mcp-input` | Да: `POST /api/v2/shield/scan-mcp` | Да | Нет |
+| `padam_agentic_shield` | `scan_unicode` | Да | Да: `panel-attacks` → `#sh-uni-scan-btn, #sh-uni-input` | Да: `POST /api/v2/shield/scan-unicode` | Да | Нет |
+| `padam_agentic_shield` | `webhook_status` | Да | Да: `panel-attacks` → `#sh-wh-box, #sh-wh-fmt` | Да: `GET /api/v2/shield/webhook` | Нет | Нет |
+| `padam_agentic_shield` | `webhook_test` | Да | Да: `panel-attacks` → `#sh-wh-test-btn` | Да: `POST /api/v2/shield/webhook/test` | Нет | Нет |
+| `padam_agentic_shield` | `proof_pack` | Да | Да: `panel-attacks` → `#sh-proof-gen-btn, #sh-proof-dl-json-btn` | Да: `GET /api/v2/shield/proof-pack` | Да | Да |
 
 ## 2. Обратный аудит Studio / Владелец → MCP (намеренные ограничения безопасности)
 
@@ -209,3 +225,10 @@
 | `panel-brain` | `#brain-distill-btn` | `POST /api/v2/brain/distill` | Только владелец в Studio (Zero-Leak LoRA) | Да | Да | Да | Да | Сборка локального датасета личности |
 | `panel-brain` | `#brain-mode-toggle-btn, #brain-warmup-btn` | `POST /api/v2/brain/mode, POST /api/v2/brain/warmup` | padam_brain_status (read) / переключатель в Studio | Да | Да | Нет | Да | Управление маршрутизатором моделей |
 | `panel-family` | `#ff-reflexes (active/rejected)` | `POST /api/v2/family/reflex/decide` | Только владелец в Studio (loopback) | Да | Да | Да | Да | Одобрение/отклонение рефлекса Совета меняет правила защиты |
+| `panel-attacks` | `#sh-ks-reset-btn` | `POST /api/v2/shield/kill-switch` | Только владелец в Studio/CLI (SHIELD-01) | Да | Да | Да | Да | Снятие Kill Switch запрещено агенту через MCP |
+| `panel-attacks` | `#sh-out-queue` | `POST /api/v2/shield/outbound/decide` | Только владелец в Studio (SHIELD-02) | Да | Да | Нет | Нет | Одобрение/отклонение исходящего действия запрещено агенту через MCP |
+| `panel-attacks` | `#sh-allow-add-btn` | `POST /api/v2/shield/allowlist` | Только владелец в Studio (SHIELD-03) | Да | Да | Да | Да | Изменение доверенного списка запрещено агенту через MCP |
+| `panel-attacks` | `#sh-cfg-save-btn, #sh-ks-block-chk` | `POST /api/v2/shield/kill-switch` | Только владелец в Studio (SHIELD-04) | Да | Да | Нет | Нет | Смена политики Kill Switch запрещена агенту через MCP |
+| `panel-attacks` | `#sh-mcp-pin-btn` | `POST /api/v2/shield/scan-mcp` | Только владелец в Studio/CLI (SHIELD-05) | Да | Да | Нет | Нет | Закрепление эталонных хэшей MCP инструментов запрещено агенту через MCP |
+| `panel-attacks` | `#sh-wh-save-btn` | `POST /api/v2/shield/webhook` | Только владелец в Studio/CLI (SHIELD-06) | Да | Да | Нет | Нет | Изменение URL корпоративных оповещений SIEM/Slack запрещено через MCP |
+| `panel-chats` | `#chats-add-btn, #chats-import-btn` | `POST /api/v2/chats, POST /api/v2/chats/import` | Только владелец в Studio/CLI | Да | Да | Да | Нет | Хронология живых переписок по агентам без кода и секретов |

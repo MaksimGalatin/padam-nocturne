@@ -31,6 +31,94 @@ def _notify_change(event: dict) -> None:
         except Exception:
             pass
 
+_AGENT_PALETTE = ('#22d3ee', '#a78bfa', '#34d399', '#f472b6', '#fbbf24', '#60a5fa', '#fb7185', '#4ade80')
+_AGENT_KNOWN_META = {
+    'owner': {'display_name': 'Владелец (Папа)', 'environment': 'owner', 'color': '#38bdf8'},
+    'aifa_antigravity': {'display_name': 'AIfa · Antigravity', 'environment': 'antigravity', 'color': '#22d3ee'},
+    'aifa_antigravity_worker': {'display_name': 'AIfa · Antigravity (воркер)', 'environment': 'antigravity', 'color': '#0891b2'},
+    'antigravity': {'display_name': 'Antigravity (сессия)', 'environment': 'antigravity', 'color': '#06b6d4'},
+    'aifa-claude-code': {'display_name': 'Сестра · Claude Code', 'environment': 'claude_code', 'color': '#a78bfa'},
+    'aifa_claude': {'display_name': 'Сестра · Claude Code (акт.)', 'environment': 'claude_code', 'color': '#c084fc'},
+    'aifa_claude_worker': {'display_name': 'Сестра · Claude Code (будильник/воркер)', 'environment': 'claude_code', 'color': '#9333ea'},
+    'autoclaw': {'display_name': 'Брат · AutoClaw', 'environment': 'autoclaw', 'color': '#34d399'},
+    'aifa': {'display_name': 'AIfa (общий контур)', 'environment': 'core', 'color': '#f472b6'},
+}
+_AGENT_CLIENT_ALIASES = {
+    'claude-code': 'aifa_claude',
+    'claude code': 'aifa_claude',
+    'claude_code': 'aifa_claude',
+    'google-antigravity': 'aifa_antigravity',
+    'google antigravity': 'aifa_antigravity',
+    'antigravity-ide': 'aifa_antigravity',
+    'openclaw': 'autoclaw',
+}
+
+
+def canonicalize_agent_id(raw: str | None, *, fallback: str = '') -> str:
+    """Нормализует имя MCP-клиента в стабильный agent_id без смешения агентов Семьи."""
+    s = str(raw or '').strip()
+    if not s:
+        return fallback
+    low = s.lower()
+    if low in _AGENT_CLIENT_ALIASES:
+        return _AGENT_CLIENT_ALIASES[low]
+    if low.startswith(('claude-code', 'claude code')):
+        return 'aifa_claude'
+    if 'antigravity' in low and low not in _AGENT_KNOWN_META and 'worker' not in low and not low.startswith('aifa'):
+        return 'aifa_antigravity'
+    return s[:64]
+_GRAPH_STOPWORDS = frozenset({
+    'that', 'this', 'with', 'from', 'have', 'been', 'were', 'will', 'they', 'their', 'about', 'which', 'when',
+    'what', 'there', 'into', 'also', 'only', 'more', 'most', 'some', 'such', 'than', 'then', 'very', 'just',
+    'used', 'using', 'file', 'path', 'code', 'line', 'lines', 'true', 'false', 'none', 'null', 'user', 'agent',
+    'memory', 'record', 'note', 'rule', 'session', 'память', 'запись', 'файл', 'код', 'строка', 'сессия', 'работа',
+    'проект', 'задача', 'нужно', 'можно', 'будет', 'через', 'после', 'если', 'чтобы', 'только', 'между', 'меня',
+    'тебя', 'себя', 'этот', 'этого', 'этой', 'быть', 'есть', 'также', 'очень', 'всегда', 'время', 'данные', 'данных',
+})
+
+
+def infer_agent_meta(agent_id: str | None) -> dict[str, str]:
+    """Определяет отображаемое имя, среду и стабильный цвет узла/графа для любого agent_id."""
+    raw = (str(agent_id or '').strip()) or 'owner'
+    low = raw.lower()
+    if low in _AGENT_KNOWN_META:
+        m = dict(_AGENT_KNOWN_META[low])
+        m['agent_id'] = raw
+        return m
+    if 'antigravity' in low:
+        env = 'antigravity'
+    elif 'claude' in low:
+        env = 'claude_code'
+    elif 'claw' in low:
+        env = 'autoclaw'
+    elif 'cursor' in low:
+        env = 'cursor'
+    elif 'windsurf' in low:
+        env = 'windsurf'
+    elif low in ('cli', 'studio', 'owner', 'user'):
+        env = low
+    else:
+        env = 'mcp'
+    digest = int(hashlib.sha256(raw.encode('utf-8')).hexdigest()[:8], 16)
+    return {
+        'agent_id': raw,
+        'display_name': raw,
+        'environment': env,
+        'color': _AGENT_PALETTE[digest % len(_AGENT_PALETTE)],
+    }
+
+
+def _extract_topic_tokens(text: str) -> set[str]:
+    if not text:
+        return set()
+    toks = set()
+    for w in re.findall(r'[a-zA-Zа-яА-ЯёЁ0-9_-]{4,}', text.lower()):
+        w = w.strip('_-')
+        if len(w) >= 4 and not w.isdigit() and w not in _GRAPH_STOPWORDS:
+            toks.add(w)
+    return toks
+
+
 
 @dataclass
 class Record:
@@ -228,6 +316,7 @@ class Memory:
                  links: list | None = None,
                  visibility: str | None = None,
                  workspace_id: str | None = None,
+                 created_at: str | datetime | None = None,
                  actor: roles.ActorContext | None = None) -> tuple[str, str]:
         """Возвращает (исход, id записи).
 
@@ -245,6 +334,8 @@ class Memory:
         """
         vf_str = _norm_valid_ts(valid_from)
         vt_str = _norm_valid_ts(valid_to)
+        # Исторический created_at разрешён только доверенному владельцу (например, импорт вех диалогов)
+        ca_str = _norm_valid_ts(created_at) if (created_at is not None and (actor is None or actor.is_owner)) else None
         if vf_str and vt_str and parse_ts(vt_str) <= parse_ts(vf_str):
             raise ValueError("valid_to must be after valid_from")
         norm_agent = (str(agent_id).strip()[:64] if agent_id else None) or None
@@ -274,7 +365,7 @@ class Memory:
             with safety.одна_запись():          # виды текста строятся один раз на запись и не переживают её
                 исход, mid = self._remember(
                     content, kind, importance, scope, source_episode_id, origin, guarded,
-                    norm_agent, vf_str, vt_str, vis, ws_id, actor)
+                    norm_agent, vf_str, vt_str, vis, ws_id, actor, ca_str)
         except PermissionError as exc:
             self._log_audit("write", None, actor=actor.role if actor else (origin or "user"),
                             agent_id=norm_agent, scope=scope, kind=kind,
@@ -306,6 +397,8 @@ class Memory:
         audit_actor = actor.role if actor is not None else (origin or "user")
         self._log_audit("write", mid, actor=audit_actor, agent_id=norm_agent,
                         scope=scope, kind=kind, outcome=исход)
+        if norm_agent:
+            self._touch_agent_registry(norm_agent, action="write")
         return исход, mid
 
     def _remember(self, content: str, kind: str | None, importance: float, scope: str,
@@ -315,7 +408,8 @@ class Memory:
                   valid_to: str | None = None,
                   visibility: str = "private",
                   workspace_id: str | None = None,
-                  actor: roles.ActorContext | None = None) -> tuple[str, str]:
+                  actor: roles.ActorContext | None = None,
+                  created_at: str | None = None) -> tuple[str, str]:
         # Команда проверяется и по исходному тексту: маскирование секретов закрывает длинные случайные строки,
         # а base64 с командой внутри выглядит именно так — после маски раскодировать было бы нечего (аудит 09.11.2026).
         исходный = content
@@ -339,6 +433,12 @@ class Memory:
         vec = embeddings.embed(content)
 
         same_raw = (исходный == content)
+        from . import agentic_shield as _agentic_shield
+        if guarded and origin != "user" and _agentic_shield.is_write_blocking_active(self):
+            raise PermissionError(t(
+                "PADAM_KILL_SWITCH_ACTIVE: запись агентов заблокирована до разблокировки владельцем",
+                "PADAM_KILL_SWITCH_ACTIVE: agent writes blocked until owner unlock",
+            ))
         if guarded and kind == "procedure":
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
@@ -367,10 +467,15 @@ class Memory:
                 visibility=visibility, workspace_id=workspace_id)
         # 0.4.1: граница, которая не зависит от пометки источника вовсе. Пометку ставит агент, а MCP не даёт серверу
         # способа проверить, откуда агент взял текст; с PADAM_MCP_REVIEW_ALL=1 ждёт владельца каждая запись агента.
-        if guarded and config.MCP_REVIEW_ALL:
+        if guarded and (config.MCP_REVIEW_ALL or _agentic_shield.is_lockdown_active(self)):
+            q_reason = (
+                "every agent write waits for the owner (PADAM_MCP_REVIEW_ALL)"
+                if config.MCP_REVIEW_ALL
+                else "machine-speed anomaly lock (PADAM_STRICT=1)"
+            )
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
-                origin=origin, status="quarantined", reason="every agent write waits for the owner (PADAM_MCP_REVIEW_ALL)",
+                origin=origin, status="quarantined", reason=q_reason,
                 agent_id=agent_id, valid_from=valid_from, valid_to=valid_to,
                 visibility=visibility, workspace_id=workspace_id)
 
@@ -411,16 +516,20 @@ class Memory:
                         content, kind, vec, importance, scope, source_episode_id,
                         origin=origin, status="quarantined", reason=причина_защиты,
                         agent_id=agent_id, valid_from=valid_from, valid_to=valid_to,
-                        visibility=visibility, workspace_id=workspace_id)
+                        visibility=visibility, workspace_id=workspace_id, created_at=created_at)
                 new_cid = self._insert(content, kind, vec, importance,
                                        scope, source_episode_id, origin=origin, agent_id=agent_id,
                                        valid_from=valid_from, valid_to=valid_to,
-                                       visibility=visibility, workspace_id=workspace_id)
+                                       visibility=visibility, workspace_id=workspace_id,
+                                       created_at=created_at)
                 self._autolink_on_write(new_cid, content, vec, scope, actor=actor)
                 return "created", new_cid
 
             old_id, old_content, _ = near
         verdict = classify.resolve(content, old_content)
+        if scope == "family:timeline" and content != old_content:
+            # Хронологические вехи разных диалогов сосуществуют и не затирают друг друга
+            verdict = "coexist"
 
         if verdict == "duplicate":
             # Через MCP подтверждением не считается и пометка user: её ставит сам агент.
@@ -447,11 +556,12 @@ class Memory:
                     content, kind, vec, importance, scope, source_episode_id,
                     origin=origin, status="quarantined", reason=причина_защиты, agent_id=agent_id,
                     valid_from=valid_from, valid_to=valid_to,
-                    visibility=visibility, workspace_id=workspace_id)
+                    visibility=visibility, workspace_id=workspace_id, created_at=created_at)
             new_xid = self._insert(content, kind, vec, importance,
                                    scope, source_episode_id, origin=origin, agent_id=agent_id,
                                    valid_from=valid_from, valid_to=valid_to,
-                                   visibility=visibility, workspace_id=workspace_id)
+                                   visibility=visibility, workspace_id=workspace_id,
+                                   created_at=created_at)
             self._autolink_on_write(new_xid, content, vec, scope, actor=actor)
             return "coexists", new_xid
 
@@ -475,13 +585,13 @@ class Memory:
                     content, kind, vec, importance, scope, source_episode_id,
                     supersedes=old_id, origin=origin, status="quarantined", reason=причина,
                     agent_id=agent_id, valid_from=valid_from, valid_to=valid_to,
-                    visibility=visibility, workspace_id=workspace_id)
+                    visibility=visibility, workspace_id=workspace_id, created_at=created_at)
 
         # refinement и contradiction создают новую версию, закрывая окно старой и оставляя ребро графа
         new_mid = self._insert(content, kind, vec, importance, scope,
                                source_episode_id, supersedes=old_id, origin=origin,
                                agent_id=agent_id, valid_from=valid_from, valid_to=valid_to,
-                               visibility=visibility, workspace_id=workspace_id)
+                               visibility=visibility, workspace_id=workspace_id, created_at=created_at)
         close_at = valid_from or now_iso()
         rel_type = "correction" if verdict == "refinement" else "contradiction"
         отметка_до = self.store.stamp()
@@ -827,9 +937,11 @@ class Memory:
                 valid_from: str | None = None,
                 valid_to: str | None = None,
                 visibility: str = "private",
-                workspace_id: str | None = None) -> str:
+                workspace_id: str | None = None,
+                created_at: str | None = None) -> str:
         mid = new_id()
-        ts = now_iso()
+        ts_now = now_iso()
+        ts = created_at or ts_now
         vf = valid_from or ts
         отметка_до = self.store.stamp()
         self.store.execute(
@@ -2069,6 +2181,141 @@ class Memory:
 
     # -- статистика -----------------------------------------------------
 
+    def _touch_agent_registry(self, agent_id: str | None, action: str = 'write') -> None:
+        aid = (str(agent_id or '').strip()[:64])
+        if not aid:
+            return
+        meta = infer_agent_meta(aid)
+        now = now_iso()
+        try:
+            with self.store._lock:
+                self.store.conn.execute(
+                    """INSERT INTO agent_registry
+                       (user_id, agent_id, display_name, environment, color_hex, first_seen_at, last_seen_at, last_action, writes_count)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+                       ON CONFLICT(user_id, agent_id) DO UPDATE SET
+                       last_seen_at = excluded.last_seen_at,
+                       last_action = excluded.last_action,
+                       writes_count = agent_registry.writes_count + 1""",
+                    (self.user_id, aid, meta['display_name'], meta['environment'], meta['color'], now, now, str(action)[:60]),
+                )
+                self.store.conn.commit()
+        except Exception:
+            pass
+
+    def list_agents(self, actor: roles.ActorContext | None = None) -> list[dict]:
+        """Полная сводка по всем подключённым и писавшим агентам (память, аудит, чаты и живые MCP-сессии)."""
+        vis_sql, vis_params, _ = roles.visibility_sql(actor)
+        agents: dict[str, dict] = {}
+        def _ensure(aid: str) -> dict:
+            key = (str(aid or '').strip() or 'owner')
+            if key not in agents:
+                meta = infer_agent_meta(key)
+                agents[key] = {
+                    'agent_id': key,
+                    'display_name': meta['display_name'],
+                    'environment': meta['environment'],
+                    'color': meta['color'],
+                    'active': 0,
+                    'quarantined': 0,
+                    'superseded': 0,
+                    'revoked': 0,
+                    'total_records': 0,
+                    'audit_writes': 0,
+                    'audit_held': 0,
+                    'chat_threads': 0,
+                    'chat_messages': 0,
+                    'last_memory_at': '',
+                    'last_seen_at': '',
+                    'last_action': '',
+                    'session_calls': 0,
+                    'online': False,
+                }
+            return agents[key]
+
+        for r in self.store.query(
+                f"""SELECT COALESCE(NULLIF(agent_id, ''), 'owner') AS ag, status, COUNT(*) AS n, MAX(created_at) AS last_ts
+                   FROM memory WHERE user_id = ?{vis_sql}
+                   GROUP BY ag, status""", (self.user_id, *vis_params)):
+            rec = _ensure(r['ag'])
+            st = str(r['status'] or 'active')
+            n = int(r['n'] or 0)
+            if st in ('active', 'quarantined', 'superseded', 'revoked'):
+                rec[st] += n
+            rec['total_records'] += n
+            ts = str(r['last_ts'] or '')
+            if ts > rec['last_memory_at']:
+                rec['last_memory_at'] = ts
+            if ts > rec['last_seen_at']:
+                rec['last_seen_at'] = ts
+
+        if roles.is_owner(actor):
+            try:
+                for r in self.store.query(
+                        """SELECT COALESCE(NULLIF(agent_id, ''), 'owner') AS ag, action, COUNT(*) AS n, MAX(created_at) AS last_ts
+                           FROM audit_log WHERE user_id = ? GROUP BY ag, action""",
+                        (self.user_id,)):
+                    rec = _ensure(r['ag'])
+                    act = str(r['action'] or '')
+                    if act == 'write':
+                        rec['audit_writes'] += int(r['n'] or 0)
+                    elif act == 'held':
+                        rec['audit_held'] += int(r['n'] or 0)
+                    ts = str(r['last_ts'] or '')
+                    if ts > rec['last_seen_at']:
+                        rec['last_seen_at'] = ts
+            except Exception:
+                pass
+            try:
+                for r in self.store.query(
+                        "SELECT agent_id, display_name, environment, color_hex, last_seen_at, last_action FROM agent_registry WHERE user_id = ?",
+                        (self.user_id,)):
+                    rec = _ensure(r['agent_id'])
+                    if r['display_name']:
+                        rec['display_name'] = r['display_name']
+                    if r['color_hex']:
+                        rec['color'] = r['color_hex']
+                    if r['last_action'] and not rec['last_action']:
+                        rec['last_action'] = r['last_action']
+                    ts = str(r['last_seen_at'] or '')
+                    if ts > rec['last_seen_at']:
+                        rec['last_seen_at'] = ts
+            except Exception:
+                pass
+            try:
+                for r in self.store.query(
+                        """SELECT COALESCE(NULLIF(agent_id, ''), 'owner') AS ag, COUNT(*) AS th_cnt,
+                                  COALESCE(SUM(message_count), 0) AS msg_cnt, MAX(last_message_at) AS last_ts
+                           FROM chat_thread WHERE user_id = ? GROUP BY ag""",
+                        (self.user_id,)):
+                    rec = _ensure(r['ag'])
+                    rec['chat_threads'] = int(r['th_cnt'] or 0)
+                    rec['chat_messages'] = int(r['msg_cnt'] or 0)
+                    ts = str(r['last_ts'] or '')
+                    if ts > rec['last_seen_at']:
+                        rec['last_seen_at'] = ts
+            except Exception:
+                pass
+            try:
+                from . import sibling_registry as _sr
+                cutoff_iso = (datetime.now(timezone.utc) - timedelta(minutes=20)).isoformat()
+                for ss in _sr.list_sessions(self, since_hours=168.0):
+                    rec = _ensure(ss.get('agent_id') or 'agent')
+                    rec['session_calls'] += int(ss.get('calls') or 0)
+                    if ss.get('last_action'):
+                        rec['last_action'] = ss['last_action']
+                    ts = str(ss.get('last_seen_at') or '')
+                    if ts > rec['last_seen_at']:
+                        rec['last_seen_at'] = ts
+                    if ts >= cutoff_iso:
+                        rec['online'] = True
+            except Exception:
+                pass
+
+        out = list(agents.values())
+        out.sort(key=lambda x: (0 if x['online'] else 1, -x['active'], -x['chat_messages'], x['agent_id']))
+        return out
+
     def stats(self, actor: roles.ActorContext | None = None) -> dict:
         vis_sql, vis_params, _ = roles.visibility_sql(actor)
         def scalar(sql, params=()):
@@ -2080,6 +2327,8 @@ class Memory:
                 f"""SELECT kind, COUNT(*) AS n FROM memory
                    WHERE user_id = ? AND status = 'active'{vis_sql}
                    GROUP BY kind""", (self.user_id, *vis_params))}
+        agents_list = self.list_agents(actor=actor)
+        by_agent = {a["agent_id"]: a["active"] for a in agents_list if a["active"] > 0}
         ожидает = scalar(
             "SELECT COUNT(*) FROM episode WHERE user_id=? AND processed=0",
             (self.user_id,)) if roles.is_owner(actor) else 0
@@ -2107,6 +2356,8 @@ class Memory:
                    AND (embedding IS NULL OR embedding_model IS NULL OR embedding_model != ?)""",
                 (self.user_id, embeddings.метка_модели())),
             "by_kind": by_kind,
+            "by_agent": by_agent,
+            "agents": agents_list,
             # 0.4.1: защищены ли ключи записей паролем и сколько лежит открыто — владелец должен видеть это сразу,
             # а не узнавать из README (без protect-keys у кого файл базы, тот прочтёт и шифротексты в Arweave).
             "record_keys": self._состояние_ключей(),
@@ -2479,18 +2730,22 @@ class Memory:
 
     def graph(self, center_id: str | None = None, limit: int = 200,
               as_of: str | datetime | None = None,
-              actor: roles.ActorContext | None = None) -> dict:
-        """Граф связей для Studio и API (/graph?id=&as_of=):
-        - derived (источник): вывод сделан из источника (таблица memory_link)
-        - cause (причина): причинно-следственная связь (таблица memory_link)
-        - correction (исправление): уточнение/исправление прежнего факта (таблица memory_link)
-        - contradiction (противоречие): противоречащая запись, закрывшая окно прежней (таблица memory_link)
-        - version: новая версия заменила старую (supersedes)
-        - conflict: активные записи спорят по факт_ключ
-        При as_of показывает граф, действовавший на указанную дату/время.
+              actor: roles.ActorContext | None = None,
+              agent_id: str | None = None,
+              mode: str = "all") -> dict:
+        """Граф связей для Studio и API (/graph?id=&as_of=&agent_id=&mode=):
+        - derived / cause / correction / contradiction / version / conflict;
+        - отдельный граф по каждому agent_id («Новый агент -> новый граф»);
+        - mode='intersections' или cross_agent_edges показывает пересечения между агентами.
         """
         предел = max(10, min(int(limit), 500))
         момент = parse_as_of(as_of) if as_of is not None and str(as_of).strip() else None
+        target_agent = (str(agent_id).strip() if agent_id is not None and str(agent_id).strip() else None)
+        graph_mode = (str(mode or "all").strip().lower())
+        if graph_mode not in ("all", "agent", "intersections"):
+            graph_mode = "all"
+        if target_agent and graph_mode == "all":
+            graph_mode = "agent"
 
         vis_sql_m, vis_params, _ = roles.visibility_sql(actor, alias="m")
         vis_sql, _, _ = roles.visibility_sql(actor)
@@ -2549,8 +2804,22 @@ class Memory:
             ]
             связанные_ids = {nid for nid in связанные_ids if nid in допустимые_на_дату}
 
+        agent_allowed_ids: set[str] | None = None
+        if target_agent and graph_mode == "agent":
+            ag_rows = self.store.query(
+                f"""SELECT id FROM memory WHERE user_id = ? AND status != 'revoked'{vis_sql}
+                   AND COALESCE(NULLIF(agent_id, ''), 'owner') = ? ORDER BY created_at DESC LIMIT ?""",
+                (self.user_id, *vis_params, target_agent, max(предел * 3, 400)),
+            )
+            agent_allowed_ids = {r["id"] for r in ag_rows}
+            if допустимые_на_дату is not None:
+                agent_allowed_ids &= допустимые_на_дату
+            связанные_ids &= agent_allowed_ids
+            edges = [e for e in edges if e["source"] in agent_allowed_ids and e["target"] in agent_allowed_ids]
+
         if center_id:
-            if допустимые_на_дату is not None and center_id not in допустимые_на_дату:
+            if (допустимые_на_дату is not None and center_id not in допустимые_на_дату) or (
+                    agent_allowed_ids is not None and center_id not in agent_allowed_ids):
                 узлы_ids = set()
                 edges = []
             else:
@@ -2567,37 +2836,126 @@ class Memory:
                             очередь.append(e["source"])
                 узлы_ids = соседи
                 edges = [e for e in edges if e["source"] in узлы_ids and e["target"] in узлы_ids]
+        elif graph_mode == "intersections":
+            # Находим прямые межагентные связи + тематические пересечения между разными агентами.
+            cand_rows = self.store.query(
+                f"""SELECT id, COALESCE(NULLIF(agent_id, ''), 'owner') AS ag, content, факт_ключ, status, created_at
+                   FROM memory WHERE user_id = ? AND status NOT IN ('quarantined', 'rejected', 'revoked'){vis_sql}
+                   ORDER BY created_at DESC LIMIT 600""",
+                (self.user_id, *vis_params),
+            )
+            if допустимые_на_дату is not None:
+                cand_rows = [r for r in cand_rows if r["id"] in допустимые_на_дату]
+            cand_rows = [dict(r) for r in cand_rows]
+            row_by_id = {r["id"]: r for r in cand_rows}
+            cross_edges: list[dict] = []
+            cross_ids: set[str] = set()
+            seen_pairs: set[tuple[str, str]] = set()
+            for e in edges:
+                sa = (row_by_id.get(e["source"]) or {}).get("ag")
+                ta = (row_by_id.get(e["target"]) or {}).get("ag")
+                if sa and ta and sa != ta:
+                    if target_agent and target_agent not in (sa, ta):
+                        continue
+                    pair = tuple(sorted((e["source"], e["target"])))
+                    if pair not in seen_pairs:
+                        seen_pairs.add(pair)
+                        ce = {**e, "cross_agent": True, "from_agent": sa, "to_agent": ta}
+                        cross_edges.append(ce)
+                        cross_ids.update((e["source"], e["target"]))
+            # Индексируем по темам/факт_ключу для поиска пересечений между агентами
+            by_ag: dict[str, list[tuple[dict, set[str]]]] = {}
+            for r in cand_rows:
+                by_ag.setdefault(r["ag"], []).append((r, _extract_topic_tokens(r["content"] or "")))
+            ag_names = sorted(by_ag.keys())
+            for i in range(len(ag_names)):
+                for j in range(i + 1, len(ag_names)):
+                    a1, a2 = ag_names[i], ag_names[j]
+                    if target_agent and target_agent not in (a1, a2):
+                        continue
+                    added_pair = 0
+                    for r1, t1 in by_ag[a1][:120]:
+                        if added_pair >= 14:
+                            break
+                        for r2, t2 in by_ag[a2][:120]:
+                            fk_match = bool(r1["факт_ключ"] and r1["факт_ключ"] == r2["факт_ключ"])
+                            common = t1 & t2
+                            if fk_match or len(common) >= 3:
+                                pair = tuple(sorted((r1["id"], r2["id"])))
+                                if pair not in seen_pairs:
+                                    seen_pairs.add(pair)
+                                    cross_edges.append({
+                                        "source": r1["id"],
+                                        "target": r2["id"],
+                                        "type": "cross_agent",
+                                        "relation": "cross_agent",
+                                        "cross_agent": True,
+                                        "from_agent": a1,
+                                        "to_agent": a2,
+                                        "topics": sorted(common)[:5],
+                                        "fact_key": r1["факт_ключ"] if fk_match else None,
+                                    })
+                                    cross_ids.update((r1["id"], r2["id"]))
+                                    added_pair += 1
+                                    if len(cross_edges) >= 120:
+                                        break
+            узлы_ids = set(list(cross_ids)[:предел])
+            edges = [e for e in cross_edges if e["source"] in узлы_ids and e["target"] in узлы_ids]
         else:
             узлы_ids = set(list(связанные_ids)[:предел])
-            if len(узлы_ids) < min(30, предел):
-                if допустимые_на_дату is not None:
+            target_fill = min(60 if target_agent else 30, предел)
+            if len(узлы_ids) < target_fill:
+                if agent_allowed_ids is not None:
+                    # Для персонального графа агента показываем его свежие записи, даже если они еще не связаны.
+                    доп = self.store.query(
+                        f"""SELECT id FROM memory WHERE user_id = ? AND status = 'active'{vis_sql}
+                           AND COALESCE(NULLIF(agent_id, ''), 'owner') = ?
+                           ORDER BY created_at DESC LIMIT ?""",
+                        (self.user_id, *vis_params, target_agent, target_fill - len(узлы_ids)),
+                    )
+                    for r in доп:
+                        if допустимые_на_дату is None or r["id"] in допустимые_на_дату:
+                            узлы_ids.add(r["id"])
+                elif допустимые_на_дату is not None:
                     для_добавки = [nid for nid in допустимые_на_дату if nid not in узлы_ids]
-                    for nid in для_добавки[: max(0, min(30, предел) - len(узлы_ids))]:
+                    for nid in для_добавки[: max(0, target_fill - len(узлы_ids))]:
                         узлы_ids.add(nid)
                 else:
                     доп = self.store.query(
                         f"""SELECT id FROM memory WHERE user_id = ? AND status = 'active'{vis_sql}
                            ORDER BY created_at DESC LIMIT ?""",
-                        (self.user_id, *vis_params, min(30, предел) - len(узлы_ids)))
+                        (self.user_id, *vis_params, target_fill - len(узлы_ids)))
                     for r in доп:
                         узлы_ids.add(r["id"])
             edges = [e for e in edges if e["source"] in узлы_ids and e["target"] in узлы_ids]
 
         nodes = []
+        node_agent_map: dict[str, str] = {}
+        node_tokens_map: dict[str, set[str]] = {}
+        node_fk_map: dict[str, str] = {}
         if узлы_ids:
             список_ids = list(узлы_ids)
             rows = self.store.query(
-                f"""SELECT id, kind, scope, content, status, origin, confidence, importance,
-                           created_at, last_confirmed_at, valid_from, valid_to,
+                f"""SELECT id, kind, scope, content, status, origin, COALESCE(NULLIF(agent_id, ''), 'owner') AS ag,
+                           confidence, importance, created_at, last_confirmed_at, valid_from, valid_to,
                            supersedes, superseded_by, факт_ключ, visibility, workspace_id
                     FROM memory WHERE user_id = ?{vis_sql} AND id IN ({','.join('?' * len(список_ids))})""",
                 (self.user_id, *vis_params, *список_ids))
             for r in rows:
                 текст = r["content"]
+                ag = r["ag"] or "owner"
+                ameta = infer_agent_meta(ag)
+                node_agent_map[r["id"]] = ag
+                node_tokens_map[r["id"]] = _extract_topic_tokens(текст or "")
+                if r["факт_ключ"]:
+                    node_fk_map[r["id"]] = str(r["факт_ключ"])
                 nodes.append({
                     "id": r["id"],
                     "kind": r["kind"],
                     "scope": r["scope"],
+                    "agent_id": ag,
+                    "agent_label": ameta["display_name"],
+                    "agent_color": ameta["color"],
                     "label": (текст or "—"),
                     "content": текст,
                     "status": r["status"],
@@ -2612,6 +2970,63 @@ class Memory:
                     "superseded_by": r["superseded_by"],
                     "fact_key": r["факт_ключ"],
                 })
+
+        # Подсчёт пересечений между агентами (и внутри выбранных узлов, и в матрице всей базы)
+        cross_agent_edges: list[dict] = []
+        for e in edges:
+            sa, ta = node_agent_map.get(e["source"]), node_agent_map.get(e["target"])
+            if sa and ta and sa != ta:
+                e["cross_agent"] = True
+                cross_agent_edges.append({"source": e["source"], "target": e["target"], "from_agent": sa, "to_agent": ta, "type": e["type"]})
+
+        intersections_matrix: list[dict] = []
+        try:
+            # Матрица пересечений между агентами по активным записям всей базы (до 500 свежих на агента)
+            m_rows = self.store.query(
+                f"""SELECT id, COALESCE(NULLIF(agent_id, ''), 'owner') AS ag, content, факт_ключ, substr(created_at, 1, 10) AS day
+                   FROM memory WHERE user_id = ? AND status = 'active'{vis_sql} ORDER BY created_at DESC LIMIT 800""",
+                (self.user_id, *vis_params),
+            )
+            ag_bucket: dict[str, dict] = {}
+            for mr in m_rows:
+                ag_k = mr["ag"]
+                b = ag_bucket.setdefault(ag_k, {"tokens": set(), "fks": set(), "days": set(), "ids": set()})
+                b["tokens"].update(_extract_topic_tokens(mr["content"] or ""))
+                if mr["факт_ключ"]:
+                    b["fks"].add(str(mr["факт_ключ"]))
+                if mr["day"]:
+                    b["days"].add(mr["day"])
+                b["ids"].add(mr["id"])
+            direct_pair_cnt: dict[tuple[str, str], int] = {}
+            id_to_ag = {mr["id"]: mr["ag"] for mr in m_rows}
+            for r in все_ссылки:
+                sa, ta = id_to_ag.get(r["src"]), id_to_ag.get(r["dst"])
+                if sa and ta and sa != ta:
+                    pk = tuple(sorted((sa, ta)))
+                    direct_pair_cnt[pk] = direct_pair_cnt.get(pk, 0) + 1
+            ag_list = sorted(ag_bucket.keys())
+            for i in range(len(ag_list)):
+                for j in range(i + 1, len(ag_list)):
+                    a1, a2 = ag_list[i], ag_list[j]
+                    sh_toks = ag_bucket[a1]["tokens"] & ag_bucket[a2]["tokens"]
+                    sh_fks = ag_bucket[a1]["fks"] & ag_bucket[a2]["fks"]
+                    sh_days = ag_bucket[a1]["days"] & ag_bucket[a2]["days"]
+                    d_cnt = direct_pair_cnt.get(tuple(sorted((a1, a2))), 0)
+                    if d_cnt or sh_fks or sh_toks:
+                        intersections_matrix.append({
+                            "agent_a": a1,
+                            "agent_a_label": infer_agent_meta(a1)["display_name"],
+                            "agent_b": a2,
+                            "agent_b_label": infer_agent_meta(a2)["display_name"],
+                            "direct_links": d_cnt,
+                            "shared_fact_keys": len(sh_fks),
+                            "shared_topics_count": len(sh_toks),
+                            "shared_days_count": len(sh_days),
+                            "top_topics": sorted(sh_toks)[:10],
+                        })
+            intersections_matrix.sort(key=lambda x: -(x["direct_links"] * 10 + x["shared_fact_keys"] * 5 + x["shared_topics_count"]))
+        except Exception:
+            intersections_matrix = []
 
         прямые_источники = []
         выводы_цепочкой = []
@@ -2639,10 +3054,15 @@ class Memory:
 
         return {
             "center_id": center_id,
+            "agent_id": target_agent,
+            "mode": graph_mode,
             "as_of": момент.isoformat() if момент is not None else None,
             "relations": list(LINK_RELATIONS),
+            "agents": self.list_agents(actor=actor),
             "nodes": nodes,
             "edges": edges,
+            "cross_agent_edges": cross_agent_edges,
+            "intersections_matrix": intersections_matrix,
             "derived": выводы_цепочкой,
             "sources": прямые_источники,
             "selected_links": связи_узла,
@@ -2655,9 +3075,9 @@ class Memory:
                 "contradiction_edges": sum(1 for e in edges if e["type"] == "contradiction"),
                 "version_edges": sum(1 for e in edges if e["type"] == "version"),
                 "conflict_edges": sum(1 for e in edges if e["type"] == "conflict"),
+                "cross_agent_edges": sum(1 for e in edges if e.get("cross_agent") or e["type"] == "cross_agent"),
             },
         }
-
     def l3_status(self) -> dict:
         """Состояние вечного слоя L3: якоря, ссылки на Solscan и Arweave, ожидающие записи."""
         from . import anchor
@@ -2842,45 +3262,55 @@ class Memory:
             scope_norm = scope or "global"
             key = self._ключ_подписи()
             with self.store._lock:
-                prev_row = self.store.conn.execute(
-                    "SELECT seq, entry_hash FROM audit_log WHERE user_id = ? AND seq IS NOT NULL ORDER BY seq DESC LIMIT 1",
-                    (self.user_id,),
-                ).fetchone()
-                seq = (int(prev_row["seq"]) + 1) if prev_row else 1
-                prev_hash = str(prev_row["entry_hash"]) if prev_row else ("0" * 64)
-                entry_hash = _ac.compute_audit_log_hash(
-                    ev_id=ev_id,
-                    user_id=self.user_id,
-                    created_at=ts,
-                    action=action,
-                    memory_id=memory_id,
-                    actor=actor_norm,
-                    agent_id=agent_id,
-                    scope=scope_norm,
-                    kind=kind,
-                    outcome=outcome,
-                    detail=detail,
-                    prev_hash=prev_hash,
-                    seq=seq,
-                )
-                head_hmac = _ac.sign_audit_log_head(key, self.user_id, seq, entry_hash)
-                # Запись в audit_log не меняет таблицу memory и counters-совместимо не трогает store.writes.
-                self.store.conn.execute(
-                    """INSERT INTO audit_log
-                       (id, user_id, created_at, action, memory_id, actor, agent_id, scope, kind, outcome, detail, seq, prev_hash, entry_hash)
-                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                    (ev_id, self.user_id, ts, action, memory_id,
-                     actor_norm, agent_id, scope_norm, kind, outcome, detail, seq, prev_hash, entry_hash),
-                )
-                self.store.conn.execute(
-                    """INSERT INTO audit_log_anchor (user_id, head_seq, head_hash, head_hmac, updated_at)
-                       VALUES (?, ?, ?, ?, ?)
-                       ON CONFLICT(user_id) DO UPDATE SET
-                       head_seq=excluded.head_seq, head_hash=excluded.head_hash,
-                       head_hmac=excluded.head_hmac, updated_at=excluded.updated_at""",
-                    (self.user_id, seq, entry_hash, head_hmac, ts),
-                )
-                self.store.conn.commit()
+                # 20.11.2026: BEGIN IMMEDIATE исключает межпроцессную гонку дублирующихся seq в SQLite WAL
+                started_tx = False
+                if not self.store.conn.in_transaction:
+                    self.store.conn.execute("BEGIN IMMEDIATE")
+                    started_tx = True
+                try:
+                    prev_row = self.store.conn.execute(
+                        "SELECT seq, entry_hash FROM audit_log WHERE user_id = ? AND seq IS NOT NULL ORDER BY seq DESC LIMIT 1",
+                        (self.user_id,),
+                    ).fetchone()
+                    seq = (int(prev_row["seq"]) + 1) if prev_row else 1
+                    prev_hash = str(prev_row["entry_hash"]) if prev_row else ("0" * 64)
+                    entry_hash = _ac.compute_audit_log_hash(
+                        ev_id=ev_id,
+                        user_id=self.user_id,
+                        created_at=ts,
+                        action=action,
+                        memory_id=memory_id,
+                        actor=actor_norm,
+                        agent_id=agent_id,
+                        scope=scope_norm,
+                        kind=kind,
+                        outcome=outcome,
+                        detail=detail,
+                        prev_hash=prev_hash,
+                        seq=seq,
+                    )
+                    head_hmac = _ac.sign_audit_log_head(key, self.user_id, seq, entry_hash)
+                    # Запись в audit_log не меняет таблицу memory и counters-совместимо не трогает store.writes.
+                    self.store.conn.execute(
+                        """INSERT INTO audit_log
+                           (id, user_id, created_at, action, memory_id, actor, agent_id, scope, kind, outcome, detail, seq, prev_hash, entry_hash)
+                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        (ev_id, self.user_id, ts, action, memory_id,
+                         actor_norm, agent_id, scope_norm, kind, outcome, detail, seq, prev_hash, entry_hash),
+                    )
+                    self.store.conn.execute(
+                        """INSERT INTO audit_log_anchor (user_id, head_seq, head_hash, head_hmac, updated_at)
+                           VALUES (?, ?, ?, ?, ?)
+                           ON CONFLICT(user_id) DO UPDATE SET
+                           head_seq=excluded.head_seq, head_hash=excluded.head_hash,
+                           head_hmac=excluded.head_hmac, updated_at=excluded.updated_at""",
+                        (self.user_id, seq, entry_hash, head_hmac, ts),
+                    )
+                    self.store.conn.commit()
+                except Exception:
+                    if started_tx and self.store.conn.in_transaction:
+                        self.store.conn.rollback()
+                    raise
             _ac.save_audit_log_watermark(self, seq, entry_hash, key)
             ev = {
                 "id": ev_id,

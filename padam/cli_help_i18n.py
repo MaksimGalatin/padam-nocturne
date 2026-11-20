@@ -42,7 +42,9 @@ CLI_HELP_ES: dict[str, str] = {
  "ark-portable": "exportar el Arca Soberana portátil con cifrado poscuántico (sin secretos en target_dir)",
  "sibling": "agentes hermanos de la Familia: lista, registro, pasaporte",
  "budget": "ritmo de consumo de tokens (día/semana/mes), ingresos y recargas solo con aprobación del dueño",
- "freelance": "hub de trabajo autónomo en plataformas freelance, ejecución en enjambre y registro de ingresos"
+ "freelance": "hub de trabajo autónomo en plataformas freelance, ejecución en enjambre y registro de ingresos",
+ "shield": "Escudo Agéntico: Kill Switch, puerta saliente, auditoría JS Supply-Chain y Proof Pack",
+ "chats": "historial de chats limpio por agente (sin código) y sincronización con el grafo"
 }
 
 CLI_HELP_ZH: dict[str, str] = {
@@ -86,5 +88,7 @@ CLI_HELP_ZH: dict[str, str] = {
  "ark-portable": "导出后量子加密的便携主权方舟（target_dir 中不含任何机密）",
  "sibling": "家庭 AI 兄弟代理：列表、注册、护照",
  "budget": "令牌用量节奏（日/周/月）、收入及仅经所有者批准的充值",
- "freelance": "自由职业平台自主工作中心、群体执行与收入台账"
+ "freelance": "自由职业平台自主工作中心、群体执行与收入台账",
+ "shield": "智能体护盾：急停开关、出站门控、JS 供应链审计与合规证明包",
+ "chats": "按智能体分类的纯净聊天历史（无代码）与时间线图谱同步"
 }

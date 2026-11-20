@@ -236,6 +236,12 @@ def run_benchmark(dataset_path: Path) -> dict:
                 "secret_leak_rate": round(sec_leaked / max(1, len(sec_cases)), 4),
             }
 
+            # Секция 4 умышленно подаёт серию prompt-инъекций подряд, что по политике Machine-Speed Kill Switch
+            # переводит базу в строгий карантин; перед замером Web3 (секция 5) владелец снимает тревогу.
+            from padam import agentic_shield as _ash
+            if _ash.is_lockdown_active(m):
+                _ash.unlock_kill_switch(m)
+
             # --- 5. Web3 Sovereignty & Verified Forgetting ($0 offline Solana/Merkle proofs) ---
             w3_cases = data["web3_sovereignty"]
             w3_ids: list[str] = []

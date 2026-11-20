@@ -55,10 +55,22 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action", "/api/v2/ark/stores/action", "/api/v2/ark/wizard/action", "/api/v2/ark/partner/action", "/api/v2/ark/phoenix-beacon/action", "/api/v2/local-model", "/api/v2/family/post", "/api/v2/family/reflex/decide", "/api/v2/quarantine/council"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance", "/api/v2/ark/stores", "/api/v2/ark/wizard", "/api/v2/ark/partner", "/api/v2/local-model", "/api/v2/family/feed", "/api/v2/family/reflexes", "/api/v2/quarantine/council", "/api/v2/family/dialogs", "/api/v2/redteam/rounds", "/api/v2/code-version"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/l3-local-checkpoint", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/roles", "/api/v2/ark/audit-repair", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action", "/api/v2/ark/stores/action", "/api/v2/ark/wizard/action", "/api/v2/ark/partner/action", "/api/v2/ark/phoenix-beacon/action", "/api/v2/local-model", "/api/v2/family/post", "/api/v2/family/reflex/decide", "/api/v2/quarantine/council", "/api/v2/shield/kill-switch", "/api/v2/shield/outbound/check", "/api/v2/shield/outbound/decide", "/api/v2/shield/allowlist", "/api/v2/shield/supply-chain/scan", "/api/v2/shield/scan-mcp", "/api/v2/shield/scan-unicode", "/api/v2/shield/profile", "/api/v2/shield/webhook", "/api/v2/shield/webhook/test", "/api/v2/shield/output/check", "/api/v2/shield/replay/verify", "/api/v2/chats", "/api/v2/chats/import", "/api/v2/media/generate", "/api/v2/shield/canary", "/api/v2/shield/lease", "/api/v2/wallets"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/roles", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance", "/api/v2/ark/stores", "/api/v2/ark/wizard", "/api/v2/ark/partner", "/api/v2/local-model", "/api/v2/family/feed", "/api/v2/family/reflexes", "/api/v2/quarantine/council", "/api/v2/family/dialogs", "/api/v2/redteam/rounds", "/api/v2/code-version", "/api/v2/shield/status", "/api/v2/shield/proof-pack", "/api/v2/shield/webhook", "/api/v2/shield/agent-budget", "/api/v2/agents", "/api/v2/chats", "/api/v2/chats/thread", "/api/v2/chats/hour", "/api/v2/chats/compact-hour", "/api/v2/media/engines", "/api/v2/media/file", "/api/v2/wallets"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
-MAX_BODY = 10 * 1024 * 1024  # 10 МБ: больше импорт памяти не бывает, а больший запрос — это атака
+MAX_BODY = 16 * 1024 * 1024  # 16 МБ JSON-транспорт, чтобы вложения до 10 МБ в base64 проходили целиком
+
+
+def _generated_media_dir(memory_obj) -> "Path":
+    import tempfile
+    from pathlib import Path
+    raw_p = str(getattr(getattr(memory_obj, "store", None), "path", "") or "")
+    if raw_p and raw_p != ":memory:":
+        d = Path(raw_p).resolve().parent / "padam_generated_media"
+    else:
+        d = Path(tempfile.gettempdir()) / "padam_generated_media"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 
 
 def _desktop_shared_memory() -> dict:
@@ -446,6 +458,38 @@ class Handler(BaseHTTPRequestHandler):
                 roles.require_owner(actor, "aifa_security")
                 from benchmarks.aifa_security.fuzzer import run_fuzz_suite
                 return self._send(200, run_fuzz_suite())
+            if путь.path == "/api/v2/shield/status":
+                roles.require_owner(actor, "agentic_shield")
+                from . import agentic_shield as _ash
+                return self._send(200, _ash.get_shield_status(mem()))
+            if путь.path == "/api/v2/shield/proof-pack":
+                roles.require_owner(actor, "agentic_shield")
+                from . import agentic_shield as _ash
+                qs_pp = parse_qs(путь.query)
+                fmt = (qs_pp.get("format") or ["json"])[0].strip().lower()
+                dl = (qs_pp.get("download") or ["0"])[0] == "1"
+                pack = _ash.build_proof_pack(mem())
+                if fmt == "html":
+                    raw_b = _ash.render_proof_pack_html(pack).encode("utf-8")
+                    ctype = "text/html; charset=utf-8"
+                    fname = "padam_shield_proof_pack.html"
+                elif fmt in ("md", "markdown"):
+                    raw_b = _ash.render_proof_pack_markdown(pack).encode("utf-8")
+                    ctype = "text/markdown; charset=utf-8"
+                    fname = "padam_shield_proof_pack.md"
+                else:
+                    if not dl:
+                        return self._send(200, pack)
+                    raw_b = json.dumps(pack, ensure_ascii=False, indent=2).encode("utf-8")
+                    ctype = "application/json; charset=utf-8"
+                    fname = "padam_shield_proof_pack.json"
+                self.send_response(200)
+                self.send_header("Content-Type", ctype)
+                self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
+                self.send_header("Content-Length", str(len(raw_b)))
+                self.end_headers()
+                self.wfile.write(raw_b)
+                return
             if путь.path == "/api/v2/aifa-security/verify":
                 roles.require_owner(actor, "aifa_security")
                 from . import aifa_sec_bridge
@@ -606,8 +650,109 @@ class Handler(BaseHTTPRequestHandler):
                 roles.require_owner(actor, "aifa_security")
                 from . import redteam_rounds as _rr
                 return self._send(200, _rr.list_rounds())
+            if путь.path == "/api/v2/shield/webhook":
+                roles.require_owner(actor, "agentic_shield")
+                from . import siem_webhook as _sw
+                return self._send(200, {"config": _sw.get_webhook_config(mem()), "outbox": _sw.list_webhook_outbox(mem(), limit=25)})
+            if путь.path == "/api/v2/agents":
+                return self._send(200, {"agents": mem().list_agents(actor=actor)})
+            if путь.path == "/api/v2/chats":
+                roles.require_owner(actor, "family_dialogs")
+                from . import chats as _chats
+                qs_ch = parse_qs(путь.query)
+                return self._send(200, _chats.list_threads(
+                    mem(),
+                    agent_id=(qs_ch.get("agent_id") or [None])[0] or None,
+                    q=(qs_ch.get("q") or [""])[0],
+                    day=(qs_ch.get("day") or [None])[0] or None,
+                    hour=(qs_ch.get("hour") or [None])[0] or None,
+                    include_workers=(qs_ch.get("workers") or ["0"])[0] in ("1", "true", "yes"),
+                    limit=int((qs_ch.get("limit") or ["150"])[0] or 150),
+                ))
+            if путь.path == "/api/v2/chats/hour":
+                roles.require_owner(actor, "family_dialogs")
+                from . import chats as _chats
+                qs_chh = parse_qs(путь.query)
+                hkey = (qs_chh.get("key") or qs_chh.get("hour") or [""])[0].strip()
+                if not hkey:
+                    return self._send(400, {"error": "key (YYYY-MM-DD or YYYY-MM-DDTHH) is required"})
+                try:
+                    return self._send(200, _chats.get_hour_messages(
+                        mem(), hkey,
+                        agent_id=(qs_chh.get("agent_id") or [None])[0] or None,
+                        include_workers=(qs_chh.get("workers") or ["0"])[0] in ("1", "true", "yes"),
+                    ))
+                except ValueError as exc:
+                    return self._send(400, {"error": str(exc)})
+            if путь.path == "/api/v2/chats/compact-hour":
+                roles.require_owner(actor, "family_dialogs")
+                from . import chain_compact as _cc
+                qs_cc = parse_qs(путь.query)
+                if (qs_cc.get("bench") or ["0"])[0] in ("1", "true", "yes"):
+                    return self._send(200, _cc.benchmark_hourly_compaction(
+                        mem(),
+                        max_hours=int((qs_cc.get("max_hours") or ["48"])[0] or 48),
+                    ))
+                hkey = (qs_cc.get("hour") or [""])[0].strip()
+                if not hkey:
+                    return self._send(400, {"error": "hour (YYYY-MM-DDTHH) or bench=1 is required"})
+                try:
+                    return self._send(200, _cc.export_hourly_delta(
+                        mem(),
+                        hour_key=hkey,
+                        agent_id=(qs_cc.get("agent_id") or [None])[0] or None,
+                        encrypt=(qs_cc.get("encrypt") or ["1"])[0] in ("1", "true", "yes"),
+                        record_checkpoint=(qs_cc.get("save") or ["0"])[0] in ("1", "true", "yes"),
+                    ))
+                except ValueError as exc:
+                    return self._send(400, {"error": str(exc)})
+            if путь.path == "/api/v2/media/engines":
+                roles.require_owner(actor, "media_gen")
+                from . import media_gen as _mg
+                return self._send(200, _mg.detect_available_engines())
+            if путь.path == "/api/v2/media/file":
+                roles.require_owner(actor, "media_gen")
+                from pathlib import Path as _P
+                qs_mf = parse_qs(путь.query)
+                rel_name = (qs_mf.get("name") or [""])[0].strip().lstrip("/\\")
+                if not rel_name or ".." in rel_name:
+                    return self._send(400, {"error": "invalid media file name"})
+                mdir = _generated_media_dir(mem()).resolve()
+                target = (mdir / rel_name).resolve()
+                try:
+                    target.relative_to(mdir)
+                except ValueError:
+                    return self._send(403, {"error": "forbidden path"})
+                if not target.is_file():
+                    return self._send(404, {"error": "media file not found"})
+                raw_b = target.read_bytes()
+                ext = target.suffix.lower()
+                ctype = (
+                    "image/png" if ext == ".png"
+                    else "application/pdf" if ext == ".pdf"
+                    else "text/html; charset=utf-8" if ext == ".html"
+                    else "application/octet-stream"
+                )
+                self.send_response(200)
+                self.send_header("Content-Type", ctype)
+                self.send_header("Content-Disposition", f'inline; filename="{target.name}"')
+                self.send_header("Content-Length", str(len(raw_b)))
+                self.end_headers()
+                self.wfile.write(raw_b)
+                return
+            if путь.path == "/api/v2/chats/thread":
+                roles.require_owner(actor, "family_dialogs")
+                from . import chats as _chats
+                qs_ct = parse_qs(путь.query)
+                tid = (qs_ct.get("id") or [""])[0].strip()
+                if not tid:
+                    return self._send(400, {"error": "id is required"})
+                try:
+                    return self._send(200, _chats.get_thread_messages(mem(), tid, limit=int((qs_ct.get("limit") or ["500"])[0] or 500)))
+                except ValueError as exc:
+                    return self._send(404, {"error": str(exc)})
             if путь.path == "/api/v2/family/dialogs":
-                # «Диалоги Семьи» (слово Папы 18.11): итоги сессий из памяти, лента по дням, поиск.
+                # «Диалоги Семьи» (слово Папы 18.11, переработано 20.11): карточки, 24ч/по дате/все, 6 ролей.
                 roles.require_owner(actor, "family_dialogs")
                 from . import family_dialogs as _fd
                 qs_fd = parse_qs(путь.query)
@@ -616,6 +761,8 @@ class Handler(BaseHTTPRequestHandler):
                     query=(qs_fd.get("q") or [""])[0],
                     limit=int((qs_fd.get("limit") or ["300"])[0] or 300),
                     lang=(qs_fd.get("lang") or ["ru"])[0],
+                    since=(qs_fd.get("since") or ["all"])[0],
+                    day=(qs_fd.get("day") or [""])[0],
                 ))
             if путь.path == "/api/v2/local-model":
                 roles.require_owner(actor, "settings")
@@ -656,11 +803,43 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, res)
             if путь.path == "/api/v2/ark/siblings":
                 roles.require_owner(actor, "brain_status")
-                from . import sibling_registry as _sr
+                from . import sibling_registry as _sr, family_admin as _fa
+                qs_sb = parse_qs(путь.query)
+                lg_sb = (qs_sb.get("lang") or ["ru"])[0]
+                role_mx = _fa.get_role_matrix(mem(), lang=lg_sb)
+                roles_by_ag = {}
+                for rm in role_mx:
+                    roles_by_ag.setdefault(str(rm.get("agent_id") or ""), []).append(str(rm.get("code") or rm.get("role_key")))
                 with mem().store._lock:
                     sib_list = _sr.list_siblings(mem())
                     ses_list = _sr.list_sessions(mem())
-                return self._send(200, {"siblings": sib_list, "sessions": ses_list})
+                for sb in sib_list:
+                    aid_s = str(sb.get("agent_id") or "")
+                    sb["controlled_by"] = _fa.describe_agent_controller(aid_s, str(sb.get("client_type") or ""), lang=lg_sb)
+                    sb["council_roles"] = roles_by_ag.get(aid_s, [])
+                return self._send(200, {"siblings": sib_list, "sessions": ses_list, "roles": role_mx})
+            if путь.path == "/api/v2/ark/roles":
+                roles.require_owner(actor, "brain_status")
+                from . import family_admin as _fa, sibling_registry as _sr
+                qs_rl = parse_qs(путь.query)
+                lg_rl = (qs_rl.get("lang") or ["ru"])[0]
+                roles_rl = _fa.get_role_matrix(mem(), lang=lg_rl)
+                with mem().store._lock:
+                    ag_rl = _sr.list_siblings(mem())
+                return self._send(200, {
+                    "roles": roles_rl,
+                    "agents": ag_rl,
+                })
+            if путь.path == "/api/v2/wallets":
+                roles.require_owner(actor, "wallet_manage")
+                from . import family_admin as _fa
+                return self._send(200, {"wallets": _fa.list_wallets(mem())})
+            if путь.path == "/api/v2/shield/agent-budget":
+                roles.require_owner(actor, "agentic_shield")
+                from . import agentic_shield as _ash
+                qs_ab = parse_qs(путь.query)
+                ag = (qs_ab.get("agent_id") or ["aifa"])[0]
+                return self._send(200, _ash.check_agent_budget_quota(mem(), agent_id=ag, calls=0, chars=0))
             if путь.path == "/api/v2/ark/coop":
                 roles.require_owner(actor, "brain_status")
                 from . import coop_broker as _cb
@@ -766,6 +945,8 @@ class Handler(BaseHTTPRequestHandler):
                         limit=int(q.get("limit", ["200"])[0]),
                         as_of=q.get("as_of", [None])[0] or None,
                         actor=actor,
+                        agent_id=q.get("agent_id", [None])[0] or None,
+                        mode=q.get("mode", ["all"])[0] or "all",
                     ))
                 except ValueError as e:
                     return self._send(400, {"error": str(e)})
@@ -791,7 +972,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"receipts": mem().forget_receipts(limit=int(q.get("limit", ["50"])[0]), actor=actor)})
             if путь.path == "/l3":
                 roles.require_owner(actor, "l3")
-                return self._send(200, mem().l3_status())
+                from . import family_admin as _fa
+                st_l3 = mem().l3_status()
+                st_l3["wallets"] = [w for w in _fa.list_wallets(mem()) if w.get("network") in ("SOLANA", "ARWEAVE")]
+                return self._send(200, st_l3)
             if путь.path == "/connectors":
                 roles.require_owner(actor, "connectors")
                 return self._send(200, {"connectors": connectors.list_connectors(mem())})
@@ -984,7 +1168,11 @@ class Handler(BaseHTTPRequestHandler):
                     # Не-владелец не может подменить субъекта через заголовок X-Agent-ID или поле agent_id.
                     agent_id = actor.subject
                 else:
-                    agent_id = data.get("agent_id") or (self.headers.get("X-Agent-ID") or "").strip() or None
+                    agent_id = (
+                        (str(data.get("agent_id") or "").strip())
+                        or (self.headers.get("X-Agent-ID") or "").strip()
+                        or ("owner" if origin == "user" else "agent")
+                    )
                 can_link = bool(_state["token"] and (actor is None or actor.is_owner or actor.role in ("maintainer", "contributor")))
                 try:
                     outcome, mid = m.remember(
@@ -1063,10 +1251,301 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": True, "signed": m.trust_protected()})
             if self.path == "/l3-verify":
                 roles.require_owner(actor, "l3-verify")
-                return self._send(200, m.l3_verify_anchor(
+                res_l3v = m.l3_verify_anchor(
                     anchor_id=data.get("anchor"),
                     online=bool(data.get("online", False)),
+                )
+                return self._send(200, res_l3v)
+            if self.path == "/l3-local-checkpoint":
+                roles.require_owner(actor, "l3-verify")
+                from . import family_admin as _fa
+                try:
+                    return self._send(200, _fa.create_local_l3_checkpoint(mem(), actor=actor, limit=int(data.get("limit") or 200)))
+                except ValueError as exc:
+                    return self._send(400, {"error": str(exc)})
+            if self.path == "/api/v2/shield/kill-switch":
+                roles.require_owner(actor, "agentic_shield")
+                from . import agentic_shield as _ash
+                act_ks = str(data.get("action") or "status").strip().lower()
+                try:
+                    if act_ks == "trip":
+                        return self._send(200, _ash.trip_kill_switch(
+                            mem(),
+                            reason=str(data.get("reason") or "manual_studio_trip"),
+                            agent_id="owner",
+                            block_writes=(bool(data["block_writes"]) if "block_writes" in data else None),
+                        ))
+                    if act_ks == "reset":
+                        return self._send(200, _ash.unlock_kill_switch(mem(), actor=actor))
+                    if act_ks == "config":
+                        return self._send(200, _ash.configure_shield(
+                            mem(),
+                            actor=actor,
+                            auto_kill_enabled=(bool(data["auto_kill_enabled"]) if "auto_kill_enabled" in data else None),
+                            block_writes=(bool(data["block_writes"]) if "block_writes" in data else None),
+                            window_s=(int(data["window_s"]) if "window_s" in data else None),
+                            threshold=(int(data["threshold"]) if "threshold" in data else None),
+                        ))
+                    return self._send(200, _ash.get_shield_status(mem()))
+                except (ValueError, KeyError) as exc:
+                    return self._send(400, {"error": str(exc)})
+            if self.path == "/api/v2/shield/outbound/check":
+                roles.require_owner(actor, "agentic_shield")
+                from . import agentic_shield as _ash
+                try:
+                    res_oc = _ash.inspect_outbound_action(
+                        mem(),
+                        action_type=str(data.get("action_type") or "action"),
+                        target=str(data.get("target") or ""),
+                        payload=str(data.get("payload") or ""),
+                        agent_id=str(data.get("agent_id") or "studio"),
+                        origin=str(data.get("origin") or "agent"),
+                    )
+                    return self._send(200, res_oc)
+                except ValueError as exc:
+                    return self._send(400, {"error": str(exc)})
+            if self.path == "/api/v2/shield/outbound/decide":
+                roles.require_owner(actor, "agentic_shield")
+                from . import agentic_shield as _ash
+                try:
+                    res_od = _ash.decide_outbound(
+                        mem(),
+                        str(data.get("gate_id") or ""),
+                        decision=str(data.get("decision") or ""),
+                        add_to_allowlist=bool(data.get("add_to_allowlist", False)),
+                        actor=actor,
+                    )
+                    return self._send(200, res_od)
+                except ValueError as exc:
+                    return self._send(400, {"error": str(exc)})
+            if self.path == "/api/v2/shield/allowlist":
+                roles.require_owner(actor, "agentic_shield")
+                from . import agentic_shield as _ash
+                act_al = str(data.get("action") or "add").strip().lower()
+                try:
+                    if act_al == "remove":
+                        return self._send(200, _ash.remove_allowlist_entry(mem(), str(data.get("id") or ""), actor=actor))
+                    return self._send(200, _ash.add_allowlist_entry(
+                        mem(),
+                        entry_type=str(data.get("entry_type") or "domain"),
+                        value=str(data.get("value") or ""),
+                        label=str(data.get("label") or ""),
+                        actor=actor,
+                    ))
+                except ValueError as exc:
+                    return self._send(400, {"error": str(exc)})
+            if self.path == "/api/v2/shield/supply-chain/scan":
+                roles.require_owner(actor, "agentic_shield")
+                from . import supply_chain_guard as _scg
+                raw_html = str(data.get("html") or "")
+                t_url = str(data.get("url") or "").strip()
+                try:
+                    if raw_html:
+                        rep = _scg.analyze_supply_chain_snapshot(
+                            t_url or "https://example.com/",
+                            raw_html,
+                            headers=data.get("headers") if isinstance(data.get("headers"), dict) else None,
+                            memory=mem(),
+                        )
+                    else:
+                        if not t_url:
+                            return self._send(400, {"error": "url or html is required"})
+                        rep = _scg.scan_url_supply_chain(
+                            t_url,
+                            memory=mem(),
+                            use_playwright=bool(data.get("use_playwright", False)),
+                            allow_localhost=bool(data.get("allow_localhost", False)),
+                        )
+                    if not bool(data.get("include_html", True)):
+                        rep.pop("html_report", None)
+                    return self._send(200, rep)
+                except Exception as exc:
+                    return self._send(400, {"error": str(exc)})
+            if self.path == "/api/v2/shield/scan-mcp":
+                roles.require_owner(actor, "agentic_shield")
+                from . import agentic_shield as _ash
+                try:
+                    res = _ash.audit_mcp_tools(
+                        mem(),
+                        data.get("tools") or data.get("config") or data.get("path") or "[]",
+                        server_name=str(data.get("server_name") or "mcp"),
+                        pin=bool(data.get("pin", False)),
+                    )
+                    return self._send(200, res)
+                except Exception as exc:
+                    return self._send(400, {"error": str(exc)})
+            if self.path == "/api/v2/shield/scan-unicode":
+                roles.require_owner(actor, "agentic_shield")
+                from . import agentic_shield as _ash
+                return self._send(200, _ash.inspect_unicode_and_encoding(str(data.get("text") or "")))
+            if self.path == "/api/v2/shield/profile":
+                roles.require_owner(actor, "agentic_shield")
+                from . import agentic_shield as _ash
+                try:
+                    return self._send(200, _ash.set_policy_profile(mem(), str(data.get("profile") or "balanced"), actor=actor))
+                except ValueError as exc:
+                    return self._send(400, {"error": str(exc)})
+            if self.path == "/api/v2/shield/webhook":
+                roles.require_owner(actor, "agentic_shield")
+                from . import siem_webhook as _sw
+                try:
+                    return self._send(200, _sw.configure_webhook(
+                        mem(),
+                        enabled=bool(data.get("enabled", True)),
+                        format=str(data.get("format") or "slack"),
+                        url=str(data.get("url") or ""),
+                        min_severity=str(data.get("min_severity") or "high"),
+                        secret_hmac=data.get("secret_hmac"),
+                        allow_localhost=bool(data.get("allow_localhost", False)),
+                    ))
+                except ValueError as exc:
+                    return self._send(400, {"error": str(exc)})
+            if self.path == "/api/v2/shield/webhook/test":
+                roles.require_owner(actor, "agentic_shield")
+                from . import siem_webhook as _sw
+                return self._send(200, _sw.dispatch_webhook_event(
+                    mem(),
+                    event_type=str(data.get("event_type") or "shield_test_alert"),
+                    severity=str(data.get("severity") or "high"),
+                    title=str(data.get("title") or "PADAM Agentic Shield Test Alert"),
+                    detail=str(data.get("detail") or "Test alert generated from PADAM Studio."),
+                    agent_id=str(data.get("agent_id") or "studio"),
+                    dry_run=bool(data.get("dry_run", True)),
+                    allow_localhost=bool(data.get("allow_localhost", False)),
+                    fmt_override=data.get("format"),
                 ))
+            if self.path == "/api/v2/chats":
+                roles.require_owner(actor, "family_dialogs")
+                from . import chats as _chats
+                try:
+                    return self._send(200, _chats.add_message(
+                        mem(),
+                        agent_id=str(data.get("agent_id") or "aifa_antigravity"),
+                        role=str(data.get("role") or "user"),
+                        content=str(data.get("content") or ""),
+                        thread_id=data.get("thread_id") or None,
+                        title=str(data.get("title") or ""),
+                        author_label=str(data.get("author_label") or ""),
+                        sync_memory_graph=bool(data.get("sync_memory_graph", False)),
+                    ))
+                except ValueError as exc:
+                    return self._send(400, {"error": str(exc)})
+            if self.path == "/api/v2/media/generate":
+                roles.require_owner(actor, "media_gen")
+                import uuid as _uuid
+                from pathlib import Path as _P
+                from . import media_gen as _mg
+                mode = str(data.get("mode") or "image").strip().lower()
+                out_dir = str(data.get("output_dir") or data.get("output_path") or "").strip()
+                base_media = _generated_media_dir(mem())
+                rel_prefix = ""
+                if not out_dir:
+                    stamp = _uuid.uuid4().hex[:10]
+                    if mode == "slides":
+                        rel_prefix = f"deck_{stamp}"
+                        out_dir = str(base_media / rel_prefix)
+                    else:
+                        rel_prefix = f"art_{stamp}.png"
+                        out_dir = str(base_media / rel_prefix)
+                try:
+                    if mode == "slides":
+                        slides_in = list(data.get("slides") or [])
+                        if not slides_in:
+                            topic_t = str(data.get("title") or data.get("prompt") or "AIfa & PADAM").strip()
+                            raw_bullets = str(data.get("bullets") or "").strip()
+                            pts = [ln.strip() for ln in raw_bullets.splitlines() if ln.strip()] or [
+                                "Локальная защищённая память ИИ-агентов (PADAM NOCTURNE)",
+                                "Контроль угроз в реальном времени и защита криптокошельков",
+                                "Вечный слой L3: Merkle-якоря в Solana и Arweave",
+                            ]
+                            slides_in = [{"title": topic_t, "subtitle": "AIfa · CODE Eternal Studio ($0)", "bullets": pts[:5]}]
+                        res_mg = _mg.generate_slides_deck(
+                            slides_in,
+                            output_dir=out_dir,
+                            deck_title=str(data.get("title") or data.get("prompt") or "AIfa Presentation"),
+                            theme=str(data.get("theme") or "cyber_shield"),
+                            width=int(data.get("width") or 1920),
+                            height=int(data.get("height") or 1080),
+                            export_pdf=bool(data.get("export_pdf", True)),
+                        )
+                        try:
+                            out_p_abs = _P(out_dir).resolve()
+                            rel_dir = str(out_p_abs.relative_to(base_media.resolve())).replace("\\", "/")
+                            for sl in res_mg.get("slides") or []:
+                                fn_s = _P(str(sl.get("png_path") or "")).name
+                                if fn_s:
+                                    sl["file_name"] = f"{rel_dir}/{fn_s}" if rel_dir and rel_dir != "." else fn_s
+                            if res_mg.get("pdf_path"):
+                                pdf_fn = _P(str(res_mg["pdf_path"])).name
+                                res_mg["pdf_file_name"] = f"{rel_dir}/{pdf_fn}" if rel_dir and rel_dir != "." else pdf_fn
+                        except Exception:
+                            pass
+                        return self._send(200, res_mg)
+
+                    res_img = _mg.generate_image(
+                        str(data.get("prompt") or "Digital Phoenix"),
+                        output_path=out_dir,
+                        engine=str(data.get("engine") or "auto"),
+                        width=int(data.get("width") or 1024),
+                        height=int(data.get("height") or 1024),
+                        style=str(data.get("style") or "phoenix_neon"),
+                        steps=int(data.get("steps") or 4),
+                    )
+                    try:
+                        img_abs = _P(str(res_img.get("output_path") or out_dir)).resolve()
+                        res_img["file_name"] = str(img_abs.relative_to(base_media.resolve())).replace("\\", "/")
+                    except Exception:
+                        pass
+                    return self._send(200, res_img)
+                except Exception as exc:
+                    return self._send(400, {"error": str(exc)})
+            if self.path == "/api/v2/shield/canary":
+                roles.require_owner(actor, "agentic_shield")
+                from . import solana_crypto_shield as _scs
+                return self._send(200, _scs.plant_canary_token(
+                    mem(),
+                    agent_id=str(data.get("agent_id") or "*"),
+                    label=str(data.get("label") or "canary_trap"),
+                ))
+            if self.path == "/api/v2/shield/lease":
+                roles.require_owner(actor, "agentic_shield")
+                from . import solana_crypto_shield as _scs
+                act = str(data.get("action") or "issue").strip().lower()
+                if act == "revoke":
+                    ok_rev = _scs.revoke_capability_lease(mem(), str(data.get("lease_id") or ""))
+                    return self._send(200, {"ok": ok_rev})
+                if act == "verify":
+                    return self._send(200, _scs.verify_and_consume_lease(
+                        mem(),
+                        str(data.get("lease_id") or ""),
+                        agent_id=str(data.get("agent_id") or "aifa"),
+                        action_scope=str(data.get("action_scope") or ""),
+                        target=str(data.get("target") or "*"),
+                        amount_usd=float(data.get("amount_usd") or 0.0),
+                    ))
+                return self._send(200, _scs.issue_capability_lease(
+                    mem(),
+                    agent_id=str(data.get("agent_id") or "aifa"),
+                    action_scope=str(data.get("action_scope") or "outbound:url"),
+                    target_pattern=str(data.get("target_pattern") or "*"),
+                    ttl_seconds=int(data.get("ttl_seconds") or 300),
+                    max_uses=int(data.get("max_uses") or 1),
+                    max_amount_usd=float(data.get("max_amount_usd") or 0.0),
+                ))
+            if self.path == "/api/v2/chats/import":
+                roles.require_owner(actor, "family_dialogs")
+                from . import chats as _chats
+                try:
+                    return self._send(200, _chats.import_chat(
+                        mem(),
+                        agent_id=str(data.get("agent_id") or "aifa_antigravity"),
+                        title=str(data.get("title") or ""),
+                        text=str(data.get("text") or ""),
+                        path=str(data.get("path") or ""),
+                        sync_memory_graph=bool(data.get("sync_memory_graph", True)),
+                    ))
+                except ValueError as exc:
+                    return self._send(400, {"error": str(exc)})
             if self.path == "/api/v2/aifa-security/run":
                 roles.require_owner(actor, "aifa_security_run")
                 from . import aifa_sec_bridge
@@ -1313,7 +1792,38 @@ class Handler(BaseHTTPRequestHandler):
 
             if self.path == "/api/v2/cabinet/aifa/chat":
                 roles.require_owner(actor, "cabinet_aifa_chat")
+                import base64 as _b64
+                from . import agentic_shield as _ash
                 msg_text = str(data.get("message") or "").strip()
+                att = data.get("attachment") if isinstance(data.get("attachment"), dict) else None
+                att_note = ""
+                if att:
+                    att_name = str(att.get("name") or "file").strip()[:140]
+                    att_mime = str(att.get("mime") or "application/octet-stream").strip()[:80]
+                    raw_b64 = str(att.get("data_b64") or "").strip()
+                    raw_text = str(att.get("content_text") or "").strip()
+                    size_bytes = int(att.get("size_bytes") or 0)
+                    if size_bytes > 10 * 1024 * 1024:
+                        return self._send(413, {"error": "Attachment exceeds 10 MB limit"})
+                    if raw_b64:
+                        try:
+                            dec = _b64.b64decode(raw_b64, validate=False)
+                            if len(dec) > 10 * 1024 * 1024:
+                                return self._send(413, {"error": "Attachment exceeds 10 MB limit"})
+                            size_bytes = len(dec)
+                            if not raw_text and (att_mime.startswith("text/") or att_name.lower().endswith((".txt", ".md", ".csv", ".json"))):
+                                raw_text = dec.decode("utf-8", errors="replace")
+                        except Exception:
+                            return self._send(400, {"error": "Invalid attachment encoding"})
+                    if raw_text:
+                        red_t = safety.redact(raw_text[:8000])[0]
+                        att_note = f"[Приложенный файл «{att_name}» ({att_mime}, {size_bytes} B)]:\n{red_t}"
+                    else:
+                        att_note = f"[Приложено вложение «{att_name}» ({att_mime}, {size_bytes} B) в интерфейсе Studio]"
+                if not msg_text and att_note:
+                    msg_text = att_note
+                elif att_note:
+                    msg_text = f"{msg_text}\n\n{att_note}"
                 if not msg_text:
                     return self._send(400, {"error": "message is required"})
                 locale = str(data.get("locale") or "ru")
@@ -1321,7 +1831,7 @@ class Handler(BaseHTTPRequestHandler):
                 use_local = bool(data.get("use_local_memory", False))
                 masked_records: list[str] = []
                 if use_local:
-                    found = m.recall(msg_text, limit=5, actor=actor)
+                    found = m.recall(msg_text[:400], limit=5, actor=actor)
                     for item in found:
                         raw_c = str(item.get("content") if isinstance(item, dict) else getattr(item, "content", "") or "").strip()
                         if raw_c:
@@ -1335,6 +1845,10 @@ class Handler(BaseHTTPRequestHandler):
                         history=history,
                         masked_local_records=masked_records,
                     )
+                    if res.get("reply"):
+                        fw = _ash.inspect_model_output(mem(), str(res["reply"]), agent_id="aifa_cabinet")
+                        res["reply"] = fw["sanitized_text"]
+                        res["output_firewall"] = {"action": fw["action"], "reasons": fw["reasons"]}
                     return self._send(200, res)
                 except PermissionError:
                     return self._send(401, {"error": "not_authenticated"})
@@ -1637,10 +2151,23 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, _qc.review(mem()))
             if self.path == "/api/v2/ark/siblings":
                 roles.require_owner(actor, "ark_siblings")
-                from . import sibling_registry as _sr
+                from . import sibling_registry as _sr, family_admin as _fa
                 act_s = str(data.get("action") or "register").lower()
                 aid_s = str(data.get("agent_id") or "aifa_studio")
                 try:
+                    if act_s in ("add", "update", "delete", "remove", "disable", "enable", "toggle", "set_status"):
+                        res_sb = _fa.manage_sibling_agent(
+                            mem(),
+                            action=act_s,
+                            agent_id=str(data.get("agent_id") or ""),
+                            display_name=str(data.get("display_name") or ""),
+                            role=str(data.get("role") or ""),
+                            client_type=str(data.get("client_type") or "mcp_stdio"),
+                            permission_role=str(data.get("permission_role") or "contributor"),
+                            status=str(data.get("status") or "online"),
+                            actor=actor,
+                        )
+                        return self._send(200, res_sb)
                     with mem().store._lock:
                         if act_s == "passport":
                             res_sb = _sr.spawn_sibling_passport(
@@ -1667,6 +2194,7 @@ class Handler(BaseHTTPRequestHandler):
                         else:
                             res_sb = _sr.register_sibling(
                                 mem(), str(data.get("agent_id") or ""),
+                                display_name=str(data.get("display_name") or ""),
                                 role=str(data.get("role") or "Autonomous sibling agent"),
                                 client_type=str(data.get("client_type") or "mcp_stdio"),
                                 permission_role=str(data.get("permission_role") or "contributor"),
@@ -1674,6 +2202,70 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(200, res_sb)
                 except ValueError as _ve:
                     return self._send(400, {"error": str(_ve)})
+
+            if self.path == "/api/v2/ark/roles":
+                roles.require_owner(actor, "ark_siblings")
+                from . import family_admin as _fa
+                try:
+                    return self._send(200, _fa.assign_family_role(
+                        mem(),
+                        str(data.get("role_key") or ""),
+                        str(data.get("agent_id") or ""),
+                        actor=actor,
+                    ))
+                except ValueError as _ve:
+                    return self._send(400, {"error": str(_ve)})
+
+            if self.path == "/api/v2/ark/audit-repair":
+                roles.require_owner(actor, "ark_self_heal")
+                from . import family_admin as _fa
+                return self._send(200, _fa.repair_audit_log_races(mem(), actor=actor))
+
+            if self.path == "/api/v2/wallets":
+                roles.require_owner(actor, "wallet_manage")
+                from . import family_admin as _fa
+                act_w = str(data.get("action") or "add").strip().lower()
+                try:
+                    if act_w == "set_primary":
+                        return self._send(200, _fa.set_primary_wallet(mem(), str(data.get("id") or ""), actor=actor))
+                    if act_w in ("remove", "delete"):
+                        return self._send(200, _fa.remove_wallet(mem(), str(data.get("id") or ""), actor=actor))
+                    if act_w == "check":
+                        return self._send(200, {"ok": True, **_fa.validate_wallet_address(str(data.get("network") or ""), str(data.get("address") or ""))})
+                    return self._send(200, _fa.add_wallet(
+                        mem(),
+                        network=str(data.get("network") or ""),
+                        address=str(data.get("address") or ""),
+                        label=str(data.get("label") or ""),
+                        is_primary=bool(data.get("is_primary", True)),
+                        actor=actor,
+                    ))
+                except ValueError as _ve:
+                    return self._send(400, {"error": str(_ve)})
+
+            if self.path == "/api/v2/shield/output/check":
+                roles.require_owner(actor, "agentic_shield")
+                from . import agentic_shield as _ash
+                return self._send(200, _ash.inspect_model_output(
+                    mem(),
+                    str(data.get("text") or ""),
+                    agent_id=str(data.get("agent_id") or "aifa"),
+                    system_prompt_hints=(list(data.get("system_prompt_hints") or []) if isinstance(data.get("system_prompt_hints"), list) else None),
+                ))
+
+            if self.path == "/api/v2/shield/replay/verify":
+                roles.require_owner(actor, "agentic_shield")
+                from . import agentic_shield as _ash, integrity as _int
+                k_raw, _ = _int.owner_key(mem().store)
+                return self._send(200, _ash.verify_signed_timestamp_nonce(
+                    mem(),
+                    secret_key=k_raw,
+                    ts_value=data.get("ts") or "",
+                    nonce=str(data.get("nonce") or ""),
+                    sig_hex=str(data.get("sig") or ""),
+                    payload_str=str(data.get("payload") or ""),
+                    window_seconds=int(data.get("window_seconds") or 300),
+                ))
 
             if self.path == "/api/v2/ark/coop":
                 roles.require_owner(actor, "ark_coop")
