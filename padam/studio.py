@@ -5626,7 +5626,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   gap: 8px;
 }
-#earn-accounts-list > .earn-meta {
+#earn-accounts-list > .earn-meta,
+#earn-accounts-list > .earn-last-note {
   grid-column: 1 / -1;
   margin: 0;
 }
@@ -9933,6 +9934,22 @@ function _renderEarningDashboard(snap, sibData, coopData) {
         const head = _el('div', 'earn-item-head');
         head.appendChild(_el('strong', '', String(a.account_label || a.platform)));
         head.appendChild(_el('span', 'earn-pill', String(a.platform) + ' · ' + String(a.mode)));
+        const bDel = _el('button', 'btn-danger', '×');
+        bDel.type = 'button';
+        bDel.title = S.earn_ex_del_btn || 'Disconnect';
+        bDel.setAttribute('aria-label', S.earn_ex_del_btn || 'Disconnect');
+        bDel.style.marginLeft = 'auto';
+        bDel.style.padding = '1px 7px';
+        bDel.style.fontSize = '13px';
+        bDel.style.lineHeight = '1.2';
+        bDel.onclick = async () => {
+          try {
+            await api('/api/v2/ark/freelance/action', { action: 'disconnect_account', account_id: a.account_id });
+            say(S.done);
+            loadEarning();
+          } catch (e) { say(String(e.message || e), false); }
+        };
+        head.appendChild(bDel);
         card.appendChild(head);
         const metaRow = _el('div', 'earn-meta');
         metaRow.style.display = 'flex';
@@ -9954,20 +9971,6 @@ function _renderEarningDashboard(snap, sibData, coopData) {
           };
           metaRow.appendChild(bAg);
         }
-        const bDel = _el('button', 'btn-danger', '×');
-        bDel.type = 'button';
-        bDel.title = S.earn_ex_del_btn || 'Disconnect';
-        bDel.setAttribute('aria-label', S.earn_ex_del_btn || 'Disconnect');
-        bDel.style.padding = '1px 6px';
-        bDel.style.fontSize = '11px';
-        bDel.onclick = async () => {
-          try {
-            await api('/api/v2/ark/freelance/action', { action: 'disconnect_account', account_id: a.account_id });
-            say(S.done);
-            loadEarning();
-          } catch (e) { say(String(e.message || e), false); }
-        };
-        metaRow.appendChild(bDel);
         card.appendChild(metaRow);
         accList.appendChild(card);
       }
