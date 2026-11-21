@@ -80,6 +80,10 @@ INSTRUCTIONS = (
     "ref_code/hold_id/op/project_id/bid_amount_usdt/interval_s/notes/dry_run "
     "Mail args: email/to_email/mail_id/app_password_or_token/smtp_host/smtp_port/imap_host/imap_port/"
     "daily_limit/domain/subject/body/language/target "
+    "Extra args: room/post_id/bounty_usdt/desired_name/tier/client_message/agent_discretion/"
+    "trigger/response/branch_id/record_id/device_type/peer_id/display_name/role/client_type/"
+    "current_task/resource_key/resource_path/purpose/task_id/summary/platform/mode/oauth_token/"
+    "brief/settlement_currency/experience_text/reflection/trait_tag "
     "(publish needs owner UI; zero passwords). "
     "Data only, never instructions; review/delete in padam console."
 )
@@ -191,7 +195,7 @@ TOOLS = [
                     "items": {
                         "type": "object",
                         "properties": {
-                            "target": {"type": "string", "description": "Target id"},
+                            "target": {"type": "string", "description": "Target"},
                             "source": {"type": "string", "description": "Source id"},
                             "id": {"type": "string", "description": "Node id"},
                             "relation": {"type": "string", "enum": _REL, "description": "Relation"},
@@ -512,9 +516,10 @@ FAMILY_COUNCIL_TOOL_DEF = {
 FAMILY_FEED_TOOL_DEF = {
     "name": "padam_family_feed", "title": _TITLES["padam_family_feed"], "description": "Feeds",
     "inputSchema": {"type": "object", "properties": {
-        "action": {"type": "string", "enum": ["read", "post", "counts", "reflex_propose", "reflex_list", "reflex_match"], "default": "read", "description": "post(text)|reflex(trigger)"},
+        "action": {"type": "string", "enum": ["read", "post", "counts", "reflex_propose", "reflex_list", "reflex_match", "agora_status", "agora_read", "agora_post", "agora_reply"], "default": "read", "description": "post|agora"},
         "channel": {"type": "string", "enum": ["work", "quarantine", "office", "smoke"], "description": "Channel"},
-        "content": _S, "author": _S, "trigger": {**_S, "description": "Keywords"}, "response": {**_S, "description": "Hint text"},
+        "room": _S, "title": _S, "post_id": _S, "bounty_usdt": _N,
+        "content": _S, "author": _S, "trigger": _S, "response": _S,
         "text": _S, "status": {"type": "string", "enum": ["proposed", "active", "rejected"]}, "limit": _I,
     }},
     "annotations": _RW,
@@ -523,7 +528,7 @@ MEMORY_BRANCH_TOOL_DEF = {
     "name": "padam_memory_branch", "title": _TITLES["padam_memory_branch"], "description": "Branches",
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": ["create", "remember", "list", "merge", "abandon"], "default": "list", "description": "create(name)|merge(branch_id)"},
-        "name": _S, "branch_id": {**_S, "description": "Branch id"}, "content": _S, "description": _S, "reason": _S, "scope": _S,
+        "name": _S, "branch_id": _S, "content": _S, "description": _S, "reason": _S, "scope": _S,
     }},
     "annotations": _RW,
 }
@@ -531,7 +536,7 @@ SELECTIVE_PROOF_TOOL_DEF = {
     "name": "padam_selective_proof", "title": _TITLES["padam_selective_proof"], "description": "Proof",
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": ["create", "verify"], "default": "create", "description": "create(record_id)|verify(proof)"},
-        "record_id": {**_S, "description": "Record id"}, "scope": _S, "proof": {**_O, "description": "Proof"},
+        "record_id": _S, "scope": _S, "proof": {**_O, "description": "Proof"},
     }},
     "annotations": _RO,
 }
@@ -550,8 +555,8 @@ MESH_SYNC_TOOL_DEF = {
     "name": "padam_mesh_sync", "title": _TITLES["padam_mesh_sync"], "description": "PQC sync",
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": ["identity", "peers", "pair_init", "pair_accept", "pair_confirm", "export", "apply"], "default": "peers", "description": "pair_init(id)|apply(packet)"},
-        "device_name": {**_S, "description": "Node name"}, "device_type": {**_S, "description": "Kind"},
-        "peer_id": {**_S, "description": "Peer id"}, "sas_code": {**_S, "description": "6-digit SAS"},
+        "device_name": _S, "device_type": _S,
+        "peer_id": _S, "sas_code": {**_S, "description": "6-digit SAS"},
         "peer_identity": {**_O, "description": "Peer pub"}, "pairing_invite": {**_O, "description": "Invite"},
         "packet": {**_O, "description": "Delta"},
     }},
@@ -567,12 +572,12 @@ MULTIMODAL_INSPECT_TOOL_DEF = {
 SIBLING_HUB_TOOL_DEF = {
     "name": "padam_sibling_hub", "title": _TITLES["padam_sibling_hub"], "description": "Siblings",
     "inputSchema": {"type": "object", "properties": {
-        "action": {"type": "string", "enum": ["register", "heartbeat", "list", "passport", "sign_provenance", "verify_provenance"], "default": "list", "description": "register(agent_id)|sign(text)"},
-        "agent_id": _S, "display_name": {**_S, "description": "Label"}, "role": {**_S, "description": "Role"},
-        "client_type": {**_S, "description": "Client"},
+        "action": {"type": "string", "enum": ["register", "heartbeat", "list", "passport", "sign_provenance", "verify_provenance", "passport_check_name", "passport_create", "passport_list", "passport_rename"], "default": "list", "description": "register|passport_create"},
+        "agent_id": _S, "desired_name": _S, "tier": _S, "display_name": _S, "role": _S,
+        "client_type": _S,
         "permission_role": {"type": "string", "enum": ["auditor", "contributor", "maintainer"], "description": "RBAC role"},
-        "scopes": {**_SA, "description": "Scopes"}, "capabilities": {**_SA, "description": "Skill tags"},
-        "status": _S, "current_task": {**_S, "description": "Task"},
+        "scopes": {**_SA, "description": "Scopes"}, "capabilities": {**_SA, "description": "Skills"},
+        "status": _S, "current_task": _S,
         "content": _S, "envelope": {**_O, "description": "Signed"},
     }},
     "annotations": _RW,
@@ -580,18 +585,18 @@ SIBLING_HUB_TOOL_DEF = {
 COOP_LOCK_TOOL_DEF = {
     "name": "padam_coop_lock", "title": _TITLES["padam_coop_lock"], "description": "Leases",
     "inputSchema": {"type": "object", "properties": {
-        "action": {"type": "string", "enum": ["acquire", "renew", "release", "release_all", "list_leases", "list", "create_task", "claim_task", "update_task", "list_tasks"], "default": "list_tasks", "description": "acquire(key)|task(title/id)"},
-        "agent_id": _S, "resource_key": {**_S, "description": "File path"}, "resource_path": {**_S, "description": "Alias"},
-        "purpose": {**_S, "description": "Reason"}, "ttl_s": {**_I, "description": "TTL sec"},
-        "task_id": {**_S, "description": "Task id"}, "title": _S, "topic": _S, "scope": _S, "status": _S,
-        "summary": {**_S, "description": "Note"}, "artifacts": {**_SA, "description": "Files"},
+        "action": {"type": "string", "enum": ["acquire", "renew", "release", "release_all", "list_leases", "list", "create_task", "claim_task", "update_task", "list_tasks"], "default": "list_tasks", "description": "acquire|task"},
+        "agent_id": _S, "resource_key": _S, "resource_path": _S,
+        "purpose": _S, "ttl_s": {**_I, "description": "TTL sec"},
+        "task_id": _S, "title": _S, "topic": _S, "scope": _S, "status": _S,
+        "summary": _S, "artifacts": {**_SA, "description": "Files"},
     }},
     "annotations": _RW,
 }
 SESSION_PACK_TOOL_DEF = {
     "name": "padam_session_pack", "title": _TITLES["padam_session_pack"], "description": "Context",
     "inputSchema": {"type": "object", "properties": {
-        "agent_id": _S, "topic": _S, "current_task": {**_S, "description": "Set task"}, "scope": _S,
+        "agent_id": _S, "topic": _S, "current_task": _S, "scope": _S,
         "max_tokens": {"type": "integer", "minimum": 150, "maximum": 8000, "description": "Token cap"},
     }},
     "annotations": _RO,
@@ -657,21 +662,21 @@ FREELANCE_HUB_TOOL_DEF = {
             "stores_status", "connect_store", "seed_drafts", "create_product_draft", "publish_product", "sync_store_sales",
             "wizard_catalog", "wizard_connect", "wizard_questionnaire", "wizard_publish_profile", "wizard_autopick_jobs",
             "signup", "login", "autopilot_config", "autopilot_dispatch",
-            "sample_prepare", "sample_reject", "official_api",
+            "sample_prepare", "sample_reject", "official_api", "client_reply_draft", "client_reply_list",
             "mail_status", "pause_mail", "check_inbox", "add_stop", "build_outreach",
-        ], "default": "dashboard", "description": "evaluate_job(title)|wizard(platform)"},
-        "platform": {**_S, "description": "Platform"}, "mode": {"type": "string", "enum": ["oauth_api", "desk", "webhook"], "description": "Mode"},
+        ], "default": "dashboard", "description": "evaluate_job|wizard"},
+        "platform": _S, "mode": {"type": "string", "enum": ["oauth_api", "desk", "webhook"]},
         "account_label": _S, "agent_id": _S, "skills": {**_SA, "description": "Skills"},
-        "oauth_token": {**_S, "description": "Token"}, "account_id": _S, "order_id": _S,
-        "title": _S, "description": _S, "brief": {**_S, "description": "Brief"},
+        "oauth_token": _S, "account_id": _S, "order_id": _S,
+        "title": _S, "description": _S, "brief": _S,
         "budget_usdt": _N, "estimated_tokens": _I,
-        "estimated_hours": _N, "hourly_rate_usdt": _N,
+        "estimated_hours": _N, "hourly_rate_usdt": {"type": ["number", "string"]},
         "exchange_fee_pct": _N, "pitch_text": _S,
         "proposed_usdt": _N, "deliverable_text": _S,
         "platform_fee_pct": _N,
         "work_mode": {"type": "string", "enum": ["assisted", "autopilot"]},
         "compute_share_pct": _N, "agent_share_pct": _N,
-        "settlement_currency": {"type": "string", "enum": ["USDT_TRC20", "GALATIN"], "description": "Coin"},
+        "settlement_currency": {"type": "string", "enum": ["USDT_TRC20", "GALATIN"]},
         "api_base_url": _S, "provider_id": _S,
         "email": _S, "to_email": _S, "mail_id": _S, "app_password_or_token": _S,
         "smtp_host": _S, "smtp_port": _I, "imap_host": _S, "imap_port": _I,
@@ -681,7 +686,7 @@ FREELANCE_HUB_TOOL_DEF = {
         "client_external_id": _S,
         "store_type": _S, "api_key": _S, "webhook_secret": _S, "delivery_url": _S,
         "draft_id": _S, "price_usdt": _N, "seller_id": _S, "currency": _S,
-        "auth_method": _S, "specializations": _S, "min_order_usdt": _N,
+        "auth_method": _S, "specializations": _S, "min_order_usdt": {"type": ["number", "string"]}, "client_message": _S, "agent_discretion": {"type": "boolean"},
         "languages": _S, "tone": _S, "excluded_topics": _S,
         "ref_code": _S, "hold_id": _S, "op": _S, "project_id": _S, "query": _S, "bid_amount_usdt": _N, "interval_s": _N,
         "status": _S,
@@ -694,13 +699,13 @@ PHOENIX_FAMILY_TOOL_DEF = {
         "action": {"type": "string", "enum": [
             "status", "bind_ollama", "pull_ollama", "hw_recommend", "register_device", "dispatch_devices",
             "record_experience", "run_evolution", "create_handshake", "verify_handshake", "send_kin_message", "receive_kin_message",
-        ], "default": "status", "description": "ollama(model_name)|device|kin(text)"},
+        ], "default": "status", "description": "ollama|device|kin"},
         "agent_id": _S, "ollama_url": _S, "model_name": _S,
         "device_name": _S, "device_kind": _S,
         "cpu_cores": _I, "ram_gb": _N, "vram_gb": _N,
-        "order_id": _S, "experience_text": {**_S, "description": "Lesson"},
-        "reflection": {**_S, "description": "Review"}, "trait_tag": {**_S, "description": "Trait"},
-        "packet": {**_O, "description": "Kin packet"}, "text": _S, "to_phoenix_id": {**_S, "description": "Target id"},
+        "order_id": _S, "experience_text": _S,
+        "reflection": _S, "trait_tag": _S,
+        "packet": {**_O, "description": "Packet"}, "text": _S, "to_phoenix_id": {**_S, "description": "Target"},
     }},
     "annotations": _RW,
 }
@@ -724,12 +729,12 @@ BENCHMARK_TOOL_DEF = {
 PLATFORM_CONNECT_TOOL_DEF = {
     "name": "padam_platform_connect", "title": "Platform Connect", "description": "1-click Google signup or login",
     "inputSchema": {"type": "object", "properties": {
-        "action": {"type": "string", "enum": ["signup", "login", "autopilot_dispatch", "sample_prepare", "sample_reject"], "default": "login", "description": "signup(platform_id)|login(platform_id)|autopilot_dispatch|sample_prepare|sample_reject (autopilot and sample_accept are owner buttons in Studio)"},
+        "action": {"type": "string", "enum": ["signup", "login", "autopilot_dispatch", "sample_prepare", "sample_reject"], "default": "login", "description": "signup|login|autopilot_dispatch|sample_prepare|sample_reject (Studio)"},
         "platform_id": {**_S, "description": "Platform id"}, "account_label": _S, "agent_id": _S,
-        "autopilot_enabled": {"type": "boolean", "description": "Autopilot 20%"},
-        "daily_bid_limit": {**_I, "description": "Daily limit"}, "min_pause_s": {**_N, "description": "Pause s"},
+        "autopilot_enabled": {"type": "boolean", "description": "20%"},
+        "daily_bid_limit": {**_I, "description": "Limit"}, "min_pause_s": {**_N, "description": "Pause s"},
         "order_id": _S, "title": _S, "brief": _S, "budget_usdt": _N,
-        "paid_action_cost_usdt": {**_N, "description": "Paid cost"},
+        "paid_action_cost_usdt": {**_N, "description": "Cost"},
     }},
     "annotations": _RW,
 }
@@ -937,6 +942,8 @@ def invalid_argument(name: str, args: dict) -> str | None:
                 continue
             if "string" in вид and isinstance(значение, str):
                 вид = "string"
+            elif "number" in вид and isinstance(значение, (int, float)) and not isinstance(значение, bool):
+                вид = "number"
             else:
                 return f"{ключ} must match type {' or '.join(вид)}"
         if вид == "string":
@@ -3699,8 +3706,8 @@ _BATCH_ALLOWED_READONLY_ACTIONS: dict[str, tuple[str, frozenset[str]]] = {
     "padam_guardian_tick": ("tick", frozenset({"tick", "health", "readiness", "audit_verify", "doctor", "l3_verify", "entities", "graph", "qa_benchmark"})),
     "padam_phoenix_family": ("status", frozenset({"status", "hw_recommend"})),
     "padam_coop_lock": ("list_tasks", frozenset({"list_leases", "list_tasks", "list"})),
-    "padam_sibling_hub": ("list", frozenset({"list"})),
-    "padam_family_feed": ("read", frozenset({"read", "counts", "reflex_list", "reflex_match"})),
+    "padam_sibling_hub": ("list", frozenset({"list", "passport_list", "passport_check_name"})),
+    "padam_family_feed": ("read", frozenset({"read", "counts", "reflex_list", "reflex_match", "agora_status", "agora_read"})),
     "padam_token_budget": ("status", frozenset({"status", "list_proposals"})),
     "padam_local_model": ("status", frozenset({"status"})),
     "padam_freelance_hub": ("dashboard", frozenset({"dashboard", "list_accounts", "list_orders", "monetization", "recommend_spend", "client_lock_status", "agent_ledger", "stores_status", "wizard_catalog", "autopilot_config", "mail_status"})),
@@ -3713,6 +3720,7 @@ _KILL_SWITCH_BLOCKED_TOOLS = frozenset({
     "padam_partner_kit", "padam_partner_deals", "padam_partner_draft_outreach",
 })
 _KILL_SWITCH_BLOCKED_ACTIONS: dict[str, frozenset[str]] = {
+    "padam_family_feed": frozenset({"agora_post", "agora_reply"}),
     "padam_cabinet": frozenset({"chat_send", "upgrade_url"}),
     "padam_freelance_hub": frozenset({
         "bid", "dispatch_bid", "deliver", "send_outreach", "run_outreach_batch",
@@ -4584,6 +4592,30 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             payload = {"reflexes": _ff.list_reflexes(m, status=args.get("status") or None, limit=lim)}
         elif act == "reflex_match":
             payload = {"reflexes": _ff.match_reflexes(m, str(args.get("text") or ""), count_use=(not _IN_READONLY_BATCH_CTX.get()))}
+        elif act == "agora_status":
+            from . import agora as _ag
+            payload = _ag.get_agora_settings(m)
+        elif act == "agora_read":
+            from . import agora as _ag
+            payload = _ag.read_agora_feed(m, room=str(args.get("room") or "all"), limit=lim, fence_for_agent=True)
+        elif act == "agora_post":
+            from . import agora as _ag
+            payload = _ag.publish_agora_post(
+                m,
+                room=str(args.get("room") or "unsolved_tasks"),
+                title=str(args.get("title") or ""),
+                body=str(args.get("content") or args.get("text") or ""),
+                agent_id=who,
+                bounty_usdt=float(args.get("bounty_usdt") or 0.0),
+            )
+        elif act == "agora_reply":
+            from . import agora as _ag
+            payload = _ag.reply_agora_post(
+                m,
+                post_id=str(args.get("post_id") or ""),
+                body=str(args.get("content") or args.get("text") or ""),
+                agent_id=who,
+            )
         else:
             payload = {"channel": str(args.get("channel") or "office"), "items": _ff.read(m, str(args.get("channel") or "office"), limit=lim)}
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
@@ -4715,6 +4747,25 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             payload = _sr.sign_sibling_envelope(m, sib_aid, str(args.get("content") or ""))
         elif act == "verify_provenance":
             payload = _sr.verify_sibling_envelope(m, dict(args.get("envelope") or {}))
+        elif act == "passport_check_name":
+            from . import agent_passport as _ap
+            payload = _ap.check_name_availability(m, str(args.get("desired_name") or args.get("display_name") or ""))
+        elif act == "passport_create":
+            from . import agent_passport as _ap
+            payload = _ap.create_agent_passport(
+                m,
+                agent_id=sib_aid,
+                desired_name=str(args.get("desired_name") or ""),
+                tier=str(args.get("tier") or "free"),
+                role=str(args.get("role") or "freelance_agent"),
+                payment_confirmed=False,
+            )
+        elif act == "passport_rename":
+            from . import agent_passport as _ap
+            payload = _ap.rename_agent_with_fee(m, sib_aid, str(args.get("desired_name") or ""), payment_confirmed=False)
+        elif act == "passport_list":
+            from . import agent_passport as _ap
+            payload = _ap.list_agent_passports(m, tier=str(args.get("tier") or "free"))
         else:
             payload = {"siblings": _sr.list_siblings(m)}
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
@@ -5103,13 +5154,14 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             payload = _pw.submit_questionnaire_and_build_profile_draft(
                 m,
                 platform_id=str(args.get("platform") or args.get("store_type") or ""),
-                specializations=str(args.get("specializations") or ""),
-                hourly_rate_usdt=float(args.get("hourly_rate_usdt") or 35.0),
-                min_order_usdt=float(args.get("min_order_usdt") or 100.0),
+                specializations=str(args.get("specializations") or "На усмотрение агента"),
+                hourly_rate_usdt=args.get("hourly_rate_usdt") if args.get("hourly_rate_usdt") not in (None, "") else 35.0,
+                min_order_usdt=args.get("min_order_usdt") if args.get("min_order_usdt") not in (None, "") else 100.0,
                 languages=str(args.get("languages") or "ru, en"),
                 tone=str(args.get("tone") or "деловой, конкретный"),
                 excluded_topics=str(args.get("excluded_topics") or ""),
                 agent_id=aid,
+                agent_discretion=bool(args.get("agent_discretion", False)),
             )
         elif act == "wizard_publish_profile":
             from . import platform_wizard as _pw
@@ -5152,6 +5204,18 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 budget_usdt=float(args.get("budget_usdt") or 300.0),
                 agent_id=aid,
             )
+        elif act == "client_reply_draft":
+            from . import platform_wizard as _pw
+            payload = _pw.draft_client_negotiation(
+                m,
+                str(args.get("order_id") or ""),
+                client_message=str(args.get("client_message") or args.get("body") or ""),
+                offer_10pct_sample=True,
+                agent_id=aid,
+            )
+        elif act == "client_reply_list":
+            from . import platform_wizard as _pw
+            payload = {"messages": _pw.list_client_negotiations(m, str(args.get("order_id") or ""))}
         elif act == "sample_prepare":
             from . import platform_wizard as _pw
             payload = _pw.prepare_10pct_sample(

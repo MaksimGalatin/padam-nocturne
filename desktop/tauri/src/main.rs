@@ -226,7 +226,18 @@ fn spawn_padam_server(
 ) -> std::io::Result<Child> {
     let python_bin = resolve_python_bin(app);
     let log_path = app_data_dir().join("server.log");
-    let stdout_file = OpenOptions::new().create(true).write(true).truncate(true).open(&log_path);
+    let stdout_file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(&log_path)
+        .or_else(|_| {
+            OpenOptions::new()
+                .create(true)
+                .write(true)
+                .truncate(true)
+                .open(app_data_dir().join(format!("server-{port}.log")))
+        });
     let stderr_file = OpenOptions::new().create(true).append(true).open(&log_path);
 
     let mut cmd = Command::new(&python_bin);
@@ -359,23 +370,197 @@ fn save_webview_geometry(win: &WebviewWindow) {
 
 fn apply_saved_geometry(win: &WebviewWindow) {
     if let Some(g) = load_window_geometry() {
-        let _ = win.set_size(PhysicalSize::new(g.width, g.height));
-        let _ = win.set_position(PhysicalPosition::new(g.x, g.y));
+        let w = g.width.clamp(390, 3840);
+        let h = g.height.clamp(640, 2160);
+        let _ = win.set_size(PhysicalSize::new(w, h));
+        if g.x >= -100 && g.y >= -100 && g.x < 3200 && g.y < 1800 {
+            let _ = win.set_position(PhysicalPosition::new(g.x, g.y));
+        }
         if g.maximized {
             let _ = win.maximize();
         }
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct DesktopIpcInfo {
+    port: u16,
+    token: String,
+    pid: u32,
+    version: String,
+}
+
+fn desktop_ipc_path() -> PathBuf {
+    app_data_dir().join("desktop_ipc.json")
+}
+
+fn write_desktop_ipc(info: &DesktopIpcInfo) {
+    if let Ok(txt) = serde_json::to_string(info) {
+        let _ = fs::write(desktop_ipc_path(), txt);
+    }
+}
+
+fn remove_desktop_ipc_if_mine() {
+    let p = desktop_ipc_path();
+    if let Ok(raw) = fs::read_to_string(&p) {
+        if let Ok(info) = serde_json::from_str::<DesktopIpcInfo>(&raw) {
+            if info.pid == std::process::id() {
+                let _ = fs::remove_file(&p);
+            }
+        }
+    }
+}
+
+fn send_desktop_ipc_command(info: &DesktopIpcInfo, cmd: &str) -> bool {
+    let addr = format!("127.0.0.1:{}", info.port);
+    let sock = match addr.parse() {
+        Ok(a) => a,
+        Err(_) => return false,
+    };
+    let mut stream = match TcpStream::connect_timeout(&sock, Duration::from_millis(700)) {
+        Ok(s) => s,
+        Err(_) => return false,
+    };
+    let _ = stream.set_read_timeout(Some(Duration::from_millis(1200)));
+    let _ = stream.set_write_timeout(Some(Duration::from_millis(700)));
+    let line = format!("{} {}\n", info.token, cmd);
+    if stream.write_all(line.as_bytes()).is_err() {
+        return false;
+    }
+    let mut buf = [0u8; 64];
+    match stream.read(&mut buf) {
+        Ok(n) if n > 0 => String::from_utf8_lossy(&buf[..n]).contains("OK"),
+        _ => false,
+    }
+}
+
+fn try_handoff_to_running_instance(tab: Option<&str>, start_minimized: bool) -> bool {
+    let raw = match fs::read_to_string(desktop_ipc_path()) {
+        Ok(s) => s,
+        Err(_) => return false,
+    };
+    let info: DesktopIpcInfo = match serde_json::from_str(&raw) {
+        Ok(i) => i,
+        Err(_) => return false,
+    };
+    if info.port == 0 || info.token.is_empty() {
+        return false;
+    }
+    if info.version == PADAM_VERSION {
+        let cmd = if start_minimized {
+            "PING".to_string()
+        } else if let Some(t) = tab {
+            format!("WAKE {t}")
+        } else {
+            "WAKE".to_string()
+        };
+        if send_desktop_ipc_command(&info, &cmd) {
+            log_line(&format!("single_instance_handoff pid={} cmd={}", info.pid, cmd));
+            return true;
+        }
+        return false;
+    }
+    if send_desktop_ipc_command(&info, "QUIT") {
+        log_line(&format!("stopping_old_desktop old_ver={} new_ver={}", info.version, PADAM_VERSION));
+        let deadline = Instant::now() + Duration::from_millis(2500);
+        while Instant::now() < deadline {
+            if !send_desktop_ipc_command(&info, "PING") {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(80));
+        }
+    }
+    false
+}
+
+fn spawn_desktop_ipc_listener(app: AppHandle, guard: Arc<ServerGuard>, token: String) {
+    let listener = match TcpListener::bind(("127.0.0.1", 0)) {
+        Ok(l) => l,
+        Err(e) => {
+            log_line(&format!("ipc_bind_error={e}"));
+            return;
+        }
+    };
+    let port = match listener.local_addr() {
+        Ok(a) => a.port(),
+        Err(_) => return,
+    };
+    write_desktop_ipc(&DesktopIpcInfo {
+        port,
+        token: token.clone(),
+        pid: std::process::id(),
+        version: PADAM_VERSION.to_string(),
+    });
+    std::thread::spawn(move || {
+        for stream_res in listener.incoming() {
+            if guard.stopping.load(Ordering::SeqCst) {
+                break;
+            }
+            let mut stream = match stream_res {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+            let _ = stream.set_read_timeout(Some(Duration::from_millis(800)));
+            let mut buf = [0u8; 512];
+            let n = match stream.read(&mut buf) {
+                Ok(n) if n > 0 => n,
+                _ => continue,
+            };
+            let line = String::from_utf8_lossy(&buf[..n]);
+            let parts: Vec<&str> = line.trim().split_whitespace().collect();
+            if parts.is_empty() || parts[0] != token {
+                let _ = stream.write_all(b"ERR\n");
+                continue;
+            }
+            let cmd = parts.get(1).copied().unwrap_or("");
+            match cmd {
+                "PING" => {
+                    let _ = stream.write_all(b"OK\n");
+                }
+                "WAKE" => {
+                    let tab = parts.get(2).copied().map(|s| s.to_string());
+                    let app_ui = app.clone();
+                    let _ = app.run_on_main_thread(move || {
+                        show_studio_window(&app_ui, tab.as_deref());
+                    });
+                    let _ = stream.write_all(b"OK\n");
+                }
+                "QUIT" => {
+                    let _ = stream.write_all(b"OK\n");
+                    remove_desktop_ipc_if_mine();
+                    guard.shutdown();
+                    app.exit(0);
+                    break;
+                }
+                _ => {
+                    let _ = stream.write_all(b"ERR\n");
+                }
+            }
+        }
+    });
+}
+
 fn show_studio_window(app: &AppHandle, tab: Option<&str>) {
     if let Some(win) = app.get_webview_window("main") {
+        let v0 = win.is_visible().ok();
+        let _ = win.set_skip_taskbar(false);
         let _ = win.unminimize();
         let _ = win.show();
+        let _ = win.set_always_on_top(true);
         let _ = win.set_focus();
+        let _ = win.set_always_on_top(false);
         save_webview_geometry(&win);
+        let v1 = win.is_visible().ok();
+        log_line(&format!("wake_window before={v0:?} after={v1:?}"));
         if let Some(t) = tab {
-            let js = format!("location.hash = '#tab={t}';");
-            let _ = win.eval(&js);
+            let clean_tab: String = t
+                .chars()
+                .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+                .collect();
+            if !clean_tab.is_empty() {
+                let js = format!("location.hash = '#tab={clean_tab}';");
+                let _ = win.eval(&js);
+            }
         }
     }
 }
@@ -441,6 +626,9 @@ fn parse_cli_args() -> CliArgs {
 }
 
 fn main() {
+    std::panic::set_hook(Box::new(|info| {
+        log_line(&format!("desktop_panic={info}"));
+    }));
     let t0 = Instant::now();
     let cli = parse_cli_args();
     let start_minimized = cli.minimized;
@@ -449,6 +637,9 @@ fn main() {
     let tab_override = cli.tab.filter(|s| {
         !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
     });
+    if try_handoff_to_running_instance(tab_override.as_deref(), start_minimized) {
+        return;
+    }
     let theme_override = cli.theme.filter(|s| s == "light" || s == "dark");
     let ru = is_russian_ui(cli.lang.as_deref());
     let port = pick_free_port();
@@ -470,6 +661,7 @@ fn main() {
                 stopping: AtomicBool::new(false),
             });
             app.manage(guard.clone());
+            spawn_desktop_ipc_listener(app.handle().clone(), guard.clone(), token.clone());
 
             let review_label = if ru { "На проверке: 0" } else { "Pending review: 0" };
             let open_label = if ru { "Открыть PADAM Studio" } else { "Open PADAM Studio" };
@@ -688,6 +880,7 @@ fn main() {
         .expect("error building PADAM Studio desktop app")
         .run(|app_handle, event| {
             if let tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit = event {
+                remove_desktop_ipc_if_mine();
                 if let Some(guard) = app_handle.try_state::<Arc<ServerGuard>>() {
                     guard.shutdown();
                 }

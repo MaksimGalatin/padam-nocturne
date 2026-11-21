@@ -4,13 +4,13 @@
 
 ## Сводка по всем инструментам и действиям MCP
 
-- Всего инструментов MCP (с учётом всех 6 флагов, `_ALL_TOOLS_BY_NAME`): **47** (по умолчанию: **9**, `PADAM_MCP_ARK_TOOLS=1`: **34** и **27702/27000** символов в `tools/list`, с `PADAM_MCP_PARTNER_TOOLS=1`: **40**).
-- Всего пар `(инструмент, action)`: **190**.
-- Есть в MCP: **190 из 190**
-- Есть в Studio (вкладка + кнопка/поле): **190 из 190**
-- Есть в API (`padam/api.py`): **190 из 190**
-- Покрыто автотестами: **186 из 190**
-- Проверено реальным нажатием в Playwright (1280×800 и 390×844): **177 из 190**
+- Всего инструментов MCP (с учётом всех 6 флагов, `_ALL_TOOLS_BY_NAME`): **47** (по умолчанию: **9**, `PADAM_MCP_ARK_TOOLS=1`: **34** и **27456/27000** символов в `tools/list`, с `PADAM_MCP_PARTNER_TOOLS=1`: **40**).
+- Всего пар `(инструмент, action)`: **200**.
+- Есть в MCP: **200 из 200**
+- Есть в Studio (вкладка + кнопка/поле): **200 из 200**
+- Есть в API (`padam/api.py`): **200 из 200**
+- Покрыто автотестами: **196 из 200**
+- Проверено реальным нажатием в Playwright (1280×800 и 390×844): **181 из 200**
 - Контролов Studio только для владельца (намеренно закрытых в MCP по аудиту GLM): **20**
 
 ## 1. Полная таблица MCP → Studio → API
@@ -60,6 +60,10 @@
 | `padam_family_feed` | `reflex_propose` | Да | Да: `panel-family` → `#ff-ref-propose-btn, #ff-ref-trig-inp` | Да: `POST /api/v2/family/reflex/propose` | Да | Да |
 | `padam_family_feed` | `reflex_list` | Да | Да: `panel-family` → `#ff-reflexes, /api/v2/family/reflexes` | Да: `GET /api/v2/family/reflexes` | Да | Да |
 | `padam_family_feed` | `reflex_match` | Да | Да: `panel-family` → `#ff-ref-match-btn` | Да: `POST /api/v2/family/reflex/match` | Да | Да |
+| `padam_family_feed` | `agora_status` | Да | Да: `panel-family` → `#fam-agora-box, #ag-status-out` | Да: `GET /api/v2/ark/agora` | Да | Нет |
+| `padam_family_feed` | `agora_read` | Да | Да: `panel-family` → `#ag-feed-list, GET /api/v2/ark/agora` | Да: `GET /api/v2/ark/agora` | Да | Да |
+| `padam_family_feed` | `agora_post` | Да | Да: `panel-family` → `#ag-post-btn, #ag-title, #ag-body` | Да: `POST /api/v2/ark/agora/action` | Да | Нет |
+| `padam_family_feed` | `agora_reply` | Да | Да: `panel-family` → `#ag-feed-list (reply), #ag-post-btn` | Да: `POST /api/v2/ark/agora/action` | Да | Нет |
 | `padam_memory_branch` | `create` | Да | Да: `panel-brain` → `#ark-branch-create-btn, #ark-branch-input` | Да: `POST /api/v2/ark/branches` | Да | Да |
 | `padam_memory_branch` | `remember` | Да | Да: `panel-brain` → `#ark-branch-rem-btn, #ark-branch-text-inp` | Да: `POST /api/v2/ark/branches` | Да | Да |
 | `padam_memory_branch` | `list` | Да | Да: `panel-brain` → `#ark-branch-list-btn` | Да: `GET /api/v2/ark/branches` | Да | Да |
@@ -100,6 +104,10 @@
 | `padam_sibling_hub` | `passport` | Да | Да: `panel-family` → `#ark-sib-pass-btn` | Да: `POST /api/v2/ark/siblings` | Да | Да |
 | `padam_sibling_hub` | `sign_provenance` | Да | Да: `panel-family` → `#ark-sib-sign-btn` | Да: `POST /api/v2/ark/siblings` | Да | Да |
 | `padam_sibling_hub` | `verify_provenance` | Да | Да: `panel-family` → `#ark-sib-ver-btn` | Да: `POST /api/v2/ark/siblings` | Да | Да |
+| `padam_sibling_hub` | `passport_check_name` | Да | Да: `panel-family` → `#pp-check-btn, #pp-desired-name` | Да: `POST /api/v2/ark/passports/action` | Да | Нет |
+| `padam_sibling_hub` | `passport_create` | Да | Да: `panel-family` → `#pp-create-btn, #pp-agent-id` | Да: `POST /api/v2/ark/passports/action` | Да | Нет |
+| `padam_sibling_hub` | `passport_list` | Да | Да: `panel-family` → `#pp-list, GET /api/v2/ark/passports` | Да: `GET /api/v2/ark/passports` | Да | Да |
+| `padam_sibling_hub` | `passport_rename` | Да | Да: `panel-family` → `#pp-list, #pp-desired-name` | Да: `POST /api/v2/ark/passports/action` | Да | Нет |
 | `padam_coop_lock` | `acquire` | Да | Да: `panel-family` → `#ark-coop-acq-btn, #ark-coop-key-inp` | Да: `POST /api/v2/ark/coop` | Да | Да |
 | `padam_coop_lock` | `renew` | Да | Да: `panel-family` → `#ark-coop-ren-btn` | Да: `POST /api/v2/ark/coop` | Да | Да |
 | `padam_coop_lock` | `release` | Да | Да: `panel-family` → `#ark-coop-rel-btn` | Да: `POST /api/v2/ark/coop` | Да | Да |
@@ -163,6 +171,8 @@
 | `padam_freelance_hub` | `sample_prepare` | Да | Да: `panel-earning` → `[data-order-action='sample_prepare']` | Да: `POST /api/v2/ark/wizard/action` | Да | Да |
 | `padam_freelance_hub` | `sample_reject` | Да | Да: `panel-earning` → `[data-order-action='sample_reject']` | Да: `POST /api/v2/ark/wizard/action` | Да | Да |
 | `padam_freelance_hub` | `official_api` | Да | Да: `panel-earning` → `#earn-wiz-off-btn, #earn-wiz-off-op` | Да: `POST /api/v2/ark/wizard/action` | Да | Да |
+| `padam_freelance_hub` | `client_reply_draft` | Да | Да: `panel-earning` → `[data-order-action='client_reply_draft'], #earn-orders-list` | Да: `POST /api/v2/ark/wizard/action` | Да | Да |
+| `padam_freelance_hub` | `client_reply_list` | Да | Да: `panel-earning` → `#earn-orders-list, /api/v2/ark/wizard/action` | Да: `POST /api/v2/ark/wizard/action` | Да | Да |
 | `padam_freelance_hub` | `mail_status` | Да | Да: `panel-earning` → `#earn-mail-box, #earn-mail-status` | Да: `GET /api/v2/ark/mail` | Да | Нет |
 | `padam_freelance_hub` | `pause_mail` | Да | Да: `panel-earning` → `#earn-mail-accounts` | Да: `POST /api/v2/ark/mail/action` | Да | Нет |
 | `padam_freelance_hub` | `check_inbox` | Да | Да: `panel-earning` → `#earn-mail-inbox-btn` | Да: `POST /api/v2/ark/mail/action` | Да | Нет |

@@ -79,6 +79,10 @@ PARITY_MAP: dict[tuple[str, str], tuple[str, str, str, str]] = {
     ("padam_family_feed", "reflex_propose"): ("panel-family", "#ff-ref-propose-btn | #ff-ref-trig-inp", "POST /api/v2/family/reflex/propose", "padam.family_feeds"),
     ("padam_family_feed", "reflex_list"): ("panel-family", "#ff-reflexes | /api/v2/family/reflexes", "GET /api/v2/family/reflexes", "padam.family_feeds"),
     ("padam_family_feed", "reflex_match"): ("panel-family", "#ff-ref-match-btn", "POST /api/v2/family/reflex/match", "padam.family_feeds"),
+    ("padam_family_feed", "agora_status"): ("panel-family", "#fam-agora-box | #ag-status-out", "GET /api/v2/ark/agora", "padam.agora"),
+    ("padam_family_feed", "agora_read"): ("panel-family", "#ag-feed-list | GET /api/v2/ark/agora", "GET /api/v2/ark/agora", "padam.agora"),
+    ("padam_family_feed", "agora_post"): ("panel-family", "#ag-post-btn | #ag-title | #ag-body", "POST /api/v2/ark/agora/action", "padam.agora"),
+    ("padam_family_feed", "agora_reply"): ("panel-family", "#ag-feed-list (reply) | #ag-post-btn", "POST /api/v2/ark/agora/action", "padam.agora"),
 
     # padam_memory_branch
     ("padam_memory_branch", "create"): ("panel-brain", "#ark-branch-create-btn | #ark-branch-input", "POST /api/v2/ark/branches", "padam.ark_advanced"),
@@ -131,6 +135,10 @@ PARITY_MAP: dict[tuple[str, str], tuple[str, str, str, str]] = {
     ("padam_sibling_hub", "passport"): ("panel-family", "#ark-sib-pass-btn", "POST /api/v2/ark/siblings", "padam.sibling_registry"),
     ("padam_sibling_hub", "sign_provenance"): ("panel-family", "#ark-sib-sign-btn", "POST /api/v2/ark/siblings", "padam.sibling_registry"),
     ("padam_sibling_hub", "verify_provenance"): ("panel-family", "#ark-sib-ver-btn", "POST /api/v2/ark/siblings", "padam.sibling_registry"),
+    ("padam_sibling_hub", "passport_check_name"): ("panel-family", "#pp-check-btn | #pp-desired-name", "POST /api/v2/ark/passports/action", "padam.agent_passport"),
+    ("padam_sibling_hub", "passport_create"): ("panel-family", "#pp-create-btn | #pp-agent-id", "POST /api/v2/ark/passports/action", "padam.agent_passport"),
+    ("padam_sibling_hub", "passport_list"): ("panel-family", "#pp-list | GET /api/v2/ark/passports", "GET /api/v2/ark/passports", "padam.agent_passport"),
+    ("padam_sibling_hub", "passport_rename"): ("panel-family", "#pp-list | #pp-desired-name", "POST /api/v2/ark/passports/action", "padam.agent_passport"),
 
     # padam_coop_lock
     ("padam_coop_lock", "acquire"): ("panel-family", "#ark-coop-acq-btn | #ark-coop-key-inp", "POST /api/v2/ark/coop", "padam.coop_broker"),
@@ -206,6 +214,8 @@ PARITY_MAP: dict[tuple[str, str], tuple[str, str, str, str]] = {
     ("padam_freelance_hub", "sample_prepare"): ("panel-earning", "[data-order-action='sample_prepare']", "POST /api/v2/ark/wizard/action", "padam.platform_wizard"),
     ("padam_freelance_hub", "sample_reject"): ("panel-earning", "[data-order-action='sample_reject']", "POST /api/v2/ark/wizard/action", "padam.platform_wizard"),
     ("padam_freelance_hub", "official_api"): ("panel-earning", "#earn-wiz-off-btn | #earn-wiz-off-op", "POST /api/v2/ark/wizard/action", "padam.platform_wizard"),
+    ("padam_freelance_hub", "client_reply_draft"): ("panel-earning", "[data-order-action='client_reply_draft'] | #earn-orders-list", "POST /api/v2/ark/wizard/action", "padam.platform_wizard"),
+    ("padam_freelance_hub", "client_reply_list"): ("panel-earning", "#earn-orders-list | /api/v2/ark/wizard/action", "POST /api/v2/ark/wizard/action", "padam.platform_wizard"),
     ("padam_freelance_hub", "mail_status"): ("panel-earning", "#earn-mail-box | #earn-mail-status", "GET /api/v2/ark/mail", "padam.email_autonomy"),
     ("padam_freelance_hub", "connect_mail"): ("panel-earning", "#earn-mail-connect-btn | #earn-mail-email", "POST /api/v2/ark/mail/action", "padam.email_autonomy"),
     ("padam_freelance_hub", "pause_mail"): ("panel-earning", "#earn-mail-accounts", "POST /api/v2/ark/mail/action", "padam.email_autonomy"),

@@ -22,7 +22,7 @@
 - API keys and passwords are masked before they reach the disk;
 - what comes back is fenced as data, and a forgotten record is wiped from the file; if it was sent to Arweave, destroying its own key leaves only unreadable ciphertext there.
 
-Measured, not claimed: seven red-team rounds with their results published (the sets of rounds 1–3 in full; rounds 4–7 were hashed before each run, their sets will follow after a read for real names), LongMemEval-S retrieval 97.0 % in the top 5 and 99.2 % in the top 10, against 96.0 % and 97.7 % for plain BM25, 968 tests and public CI. Listed in the [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) catalog and the official MCP registry.
+Measured, not claimed: seven red-team rounds with their results published (the sets of rounds 1–3 in full; rounds 4–7 were hashed before each run, their sets will follow after a read for real names), LongMemEval-S retrieval 97.0 % in the top 5 and 99.2 % in the top 10, against 96.0 % and 97.7 % for plain BM25, 1,680+ automated tests (`100/100 Grade S` on AIFaSecurity-100) and public CI. Listed in the [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) catalog and the official MCP registry (`0.7.1`).
 
 **Security reviewers:** start at [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md) — what we claim, every Red Team round and its results, what still gets through, and a ten-minute check.
 
@@ -214,7 +214,9 @@ For questions that aggregate across many conversations ("how many…", "how much
 - **Review Queue** — held agent and external writes with human-readable reasons and **Approve** / **Reject** buttons;
 - **Time Machine (`as_of`)** — inspect what your memory knew on any past date, including records replaced later;
 - **Forget & Proof of Deletion** — preview versions and derived conclusions (`--with-derived`), double confirmation, and downloadable cryptographic **Forget Receipts** (JSON and printable HTML);
-- **Lineage Graph** — zero-dependency interactive `<canvas>` graph of `derived_from` conclusions, `supersedes` versions, and conflicting facts;
+- **Lineage Graph & 3D Agent Spheres (`0.7.1`)** — zero-dependency interactive 3D `<canvas>` graph with separate color-coded spheres per AI agent, inner record-type nodes, NOCTURNE consolidation strength sizing, gold L3 anchor rings, cross-agent bridges, and a chronological **Single-Task Focus Lens** (`started → continued → verified`);
+- **Agent Passports (cNFT Solana) & CODE Agora (`0.7.1`)** — billion-scale agent passports (`CODE-PASS-000000000001` / `CE-XXXXXXXX`) with Merkle sharding (`5tmheR...`), frozen-name reservation, per-agent reputation, and an owner-gated protected inter-agent network (`CODE Agora`) screened by Agentic Shield & Zero-Leak;
+- **34-Platform Freelance Wizard (`0.7.1`)** — 6-question onboarding with ranges and *"Agent's discretion"* mode, configurable `$500` autopilot bid ceiling, 10% sample milestone pipeline, and payout wallet verification (`Solana`, `USDT TRC20`, `Arweave`) with Payee-Swap protection;
 - **Eternal Layer L3** — key protection status, anchored snapshots with Solscan and Arweave links, and one-click `l3-verify`;
 - **Settings & Quick Start** — one-switch `PADAM_STRICT`, consolidation profiles, and 1-command onboarding for Claude Code, Cursor, and VS Code (unsafe flags are read-only in the browser).
 
@@ -469,7 +471,7 @@ PADAM extends local-first memory with four runtime and supply-chain defense ring
 
 ```bash
 pip install -e ".[test,l3]"
-python -m pytest tests/ -q        # 1127 passed, 11 skipped (Python 3.14.4, 15 Nov 2026, Windows, 0.5.2). Earlier: 968 passed, 10 skipped with [embed] and [l3] (Python 3.14.4, PADAM_LANG=en and ru); 963 passed, 11 skipped with [l3] only (3.10.9); 13 Nov 2026, Windows
+python -m pytest tests/ -q        # 1680 passed, 11 skipped (Python 3.14.4, 21 Nov 2026, Windows, 0.7.1). Earlier: 1127 passed, 11 skipped (15 Nov 2026, 0.5.2); 968 passed, 10 skipped with [embed] and [l3] (13 Nov 2026)
 ```
 
 CI runs the suite on Ubuntu, Windows and macOS with Python 3.10–3.13 at every push. L3 tests never touch the network: Arweave and Solana are replaced by fakes. The suite never calls a local Ollama either, even when one is running: every test uses the built-in embedding, as on CI. `PADAM_TEST_LIVE_OLLAMA=1` turns on the one live check. The Merkle scheme was additionally cross-checked against the TypeScript anchor of CODE Eternal — identical leaves and root.

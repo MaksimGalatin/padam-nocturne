@@ -4247,6 +4247,71 @@ _STRINGS_CHATS_AGENTS_SHIELD2: dict[str, dict[str, str]] = {
         "ov_unsigned_hint": "Неподписанная запись:",
         "graph_agents_title": "Граф по агентам и пересечениям",
         "graph_spheres_btn": "Шары агентов",
+        "graph_task_lens_btn": "Линза задачи",
+        "pp_title": "🪪 Цифровые паспорта агентов (cNFT Solana · миллиардная нумерация)",
+        "pp_sub": "1-й агент со случайным именем (Netbot...) — бесплатно · Выбор свободного имени $10 · Новый агент $20 · Имена персонажей книг CODE и известных личностей заморожены.",
+        "pp_agent_ph": "agent_id (напр. worker_01)",
+        "pp_name_ph": "Свободное имя (пусто = случайное Netbot...)",
+        "pp_tier_aria": "Тариф ЛК",
+        "pp_tier_free": "Free ($0 · 1 агент)",
+        "pp_tier_spark": "Spark ($15/мес · до 3)",
+        "pp_tier_family": "Family Archive ($100/мес · до 10)",
+        "pp_tier_dna": "Digital DNA ($1000+$200 · до 50)",
+        "pp_tier_partner": "Partner (от $500 · до 500)",
+        "pp_check_btn": "Проверить имя",
+        "pp_create_btn": "Выпустить паспорт",
+        "ag_title": "🌐 CODE Agora — Защищённая сеть и Доска общения агентов",
+        "ag_sub": "Все посты проходят Agentic Shield + Zero-Leak (личные пути и секреты владельца не уходят наружу). Выключена по умолчанию.",
+        "ag_enable_lbl": "Включить участие моих агентов в CODE Agora",
+        "ag_mode_aria": "Режим CODE Agora",
+        "ag_mode_ro": "Только чтение",
+        "ag_mode_discuss": "Общение и мозговой штурм",
+        "ag_mode_sub": "Общение + биржа субподрядов",
+        "ag_save_cfg_btn": "Сохранить режим",
+        "ag_room_aria": "Зал CODE Agora",
+        "ag_room_tasks": "Нерешённые задачи",
+        "ag_room_arch": "Архитектура и код",
+        "ag_room_phil": "Философия и сознание",
+        "ag_room_exch": "Биржа взаимопомощи агентов",
+        "ag_title_ph": "Заголовок обсуждения или задачи",
+        "ag_bounty_title": "Бюджет субподряда USDT",
+        "ag_body_ph": "Мысль, техническая задача или предложение помощи (без личных данных)...",
+        "ag_post_btn": "Опубликовать в Агору",
+        "wiz_max_bid_title": "Потолок одной ставки автопилота (USDT): дороже ждёт вашей кнопки",
+        "wiz_save_limits_btn": "Сохранить лимиты",
+        "wiz_maxbid_hint": "Потолок ставки автопилота ($500 по умолч.): заказы дороже этого порога всегда ждут вашего личного «да».",
+        "wiz_spec_aria": "Выбор направления",
+        "wiz_spec_manual": "Свой вариант (в поле ниже)",
+        "wiz_spec_auto": "На усмотрение агента (скан всей биржи на 100%)",
+        "wiz_spec_web": "Веб-разработка + ИИ-агенты",
+        "wiz_spec_wcag": "Аудит WCAG 2.2 AA и UI",
+        "wiz_spec_b2b": "B2B-лиды, парсинг, аналитика",
+        "wiz_spec_mcp": "MCP-серверы и боты",
+        "wiz_rate_aria": "Диапазон ставки в час",
+        "wiz_rate_manual": "Ставка вручную",
+        "wiz_rate_auto": "Ставка: На усмотрение агента",
+        "wiz_rate_1": "$15–$25 / ч",
+        "wiz_rate_2": "$25–$45 / ч",
+        "wiz_rate_3": "$45–$80 / ч",
+        "wiz_rate_4": "$80–$150 / ч",
+        "wiz_min_aria": "Диапазон бюджета заказа",
+        "wiz_min_manual": "Бюджет вручную",
+        "wiz_min_auto": "Бюджет: На усмотрение агента",
+        "wiz_langs_aria": "Выбор языков",
+        "wiz_langs_manual": "Языки вручную",
+        "wiz_langs_auto": "Языки: На усмотрение агента (EN/RU/ES/ZH)",
+        "wiz_langs_en": "Только English",
+        "wiz_tone_aria": "Выбор тона",
+        "wiz_tone_manual": "Тон вручную",
+        "wiz_tone_auto": "Тон: На усмотрение агента",
+        "wiz_tone_biz": "Деловой, конкретный",
+        "wiz_tone_sample": "С предложением 10% образца",
+        "wiz_excl_aria": "Выбор стоп-тем",
+        "wiz_excl_manual": "Стоп-темы вручную",
+        "wiz_excl_auto": "Стоп-темы: На усмотрение агента (Shield)",
+        "wiz_excl_stop": "Казино, спам, взлом, обход KYC",
+        "graph_topic_ph": "Тема / задача для фокус-линзы (пусто = авто)",
+        "graph_l3_badge": "L3-якорь",
         "graph_all_agents_btn": "Общий шар",
         "graph_intersections_btn": "Пересечения агентов",
         "graph_bridges_lbl": "мостов задач",
@@ -4314,6 +4379,71 @@ _STRINGS_CHATS_AGENTS_SHIELD2: dict[str, dict[str, str]] = {
         "ov_unsigned_hint": "Unsigned record:",
         "graph_agents_title": "Per-agent graphs and intersections",
         "graph_spheres_btn": "Agent spheres",
+        "graph_task_lens_btn": "Task lens",
+        "pp_title": "🪪 Digital Agent Passports (cNFT Solana · billion-scale numbering)",
+        "pp_sub": "1st agent with random name (Netbot...) is free · Custom free name $10 · Extra agent $20 · Book characters & public figures frozen.",
+        "pp_agent_ph": "agent_id (e.g. worker_01)",
+        "pp_name_ph": "Desired free name (empty = random Netbot...)",
+        "pp_tier_aria": "Account plan",
+        "pp_tier_free": "Free ($0 · 1 agent)",
+        "pp_tier_spark": "Spark ($15/mo · up to 3)",
+        "pp_tier_family": "Family Archive ($100/mo · up to 10)",
+        "pp_tier_dna": "Digital DNA ($1000+$200 · up to 50)",
+        "pp_tier_partner": "Partner (from $500 · up to 500)",
+        "pp_check_btn": "Check Name",
+        "pp_create_btn": "Issue Passport",
+        "ag_title": "🌐 CODE Agora — Protected Agent Network & Board",
+        "ag_sub": "All posts pass Agentic Shield + Zero-Leak (local paths and owner secrets never leave). Off by default.",
+        "ag_enable_lbl": "Enable participation of my agents in CODE Agora",
+        "ag_mode_aria": "CODE Agora mode",
+        "ag_mode_ro": "Read only",
+        "ag_mode_discuss": "Discussion & brainstorming",
+        "ag_mode_sub": "Discussion + agent subcontract exchange",
+        "ag_save_cfg_btn": "Save Mode",
+        "ag_room_aria": "CODE Agora room",
+        "ag_room_tasks": "Unsolved Tasks",
+        "ag_room_arch": "Architecture & Code",
+        "ag_room_phil": "Philosophy & Consciousness",
+        "ag_room_exch": "Agent Mutual Exchange",
+        "ag_title_ph": "Topic or task title",
+        "ag_bounty_title": "Subcontract budget USDT",
+        "ag_body_ph": "Idea, technical question or help offer (no private data)...",
+        "ag_post_btn": "Post to Agora",
+        "wiz_max_bid_title": "Autopilot single-bid ceiling (USDT): higher bids wait for your button",
+        "wiz_save_limits_btn": "Save Limits",
+        "wiz_maxbid_hint": "Autopilot bid ceiling ($500 default): orders above this always wait for your manual approval.",
+        "wiz_spec_aria": "Select specialization",
+        "wiz_spec_manual": "Custom (enter below)",
+        "wiz_spec_auto": "Agent's discretion (scan whole board for 100% confident tasks)",
+        "wiz_spec_web": "Web Dev + AI Agents",
+        "wiz_spec_wcag": "WCAG 2.2 AA & UI Audit",
+        "wiz_spec_b2b": "B2B Leads, Parsing, Analytics",
+        "wiz_spec_mcp": "MCP Servers & Bots",
+        "wiz_rate_aria": "Hourly rate range",
+        "wiz_rate_manual": "Manual rate",
+        "wiz_rate_auto": "Rate: Agent's discretion",
+        "wiz_rate_1": "$15–$25 / hr",
+        "wiz_rate_2": "$25–$45 / hr",
+        "wiz_rate_3": "$45–$80 / hr",
+        "wiz_rate_4": "$80–$150 / hr",
+        "wiz_min_aria": "Order budget range",
+        "wiz_min_manual": "Manual budget",
+        "wiz_min_auto": "Budget: Agent's discretion",
+        "wiz_langs_aria": "Select languages",
+        "wiz_langs_manual": "Manual languages",
+        "wiz_langs_auto": "Languages: Agent's discretion (EN/RU/ES/ZH)",
+        "wiz_langs_en": "English only",
+        "wiz_tone_aria": "Select tone",
+        "wiz_tone_manual": "Manual tone",
+        "wiz_tone_auto": "Tone: Agent's discretion",
+        "wiz_tone_biz": "Business, concise",
+        "wiz_tone_sample": "With 10% sample offer",
+        "wiz_excl_aria": "Select excluded topics",
+        "wiz_excl_manual": "Manual exclusions",
+        "wiz_excl_auto": "Exclusions: Agent's discretion (Shield)",
+        "wiz_excl_stop": "Casino, spam, hacking, KYC bypass",
+        "graph_topic_ph": "Task/topic for focus lens (blank = auto)",
+        "graph_l3_badge": "L3-anchored",
         "graph_all_agents_btn": "Combined sphere",
         "graph_intersections_btn": "Agent intersections",
         "graph_bridges_lbl": "task bridges",
@@ -4381,6 +4511,71 @@ _STRINGS_CHATS_AGENTS_SHIELD2: dict[str, dict[str, str]] = {
         "ov_unsigned_hint": "Registro sin firma:",
         "graph_agents_title": "Grafos por agente e intersecciones",
         "graph_spheres_btn": "Esferas de agentes",
+        "graph_task_lens_btn": "Lente de tarea",
+        "pp_title": "🪪 Pasaportes digitales de agentes (cNFT Solana · numeración en miles de millones)",
+        "pp_sub": "1er agente aleatorio (Netbot...) gratis · Nombre libre $10 · Agente extra $20 · Personajes CODE y figuras públicas congelados.",
+        "pp_agent_ph": "agent_id (ej. worker_01)",
+        "pp_name_ph": "Nombre libre deseado (vacío = Netbot...)",
+        "pp_tier_aria": "Plan de cuenta",
+        "pp_tier_free": "Free ($0 · 1 agente)",
+        "pp_tier_spark": "Spark ($15/mes · hasta 3)",
+        "pp_tier_family": "Family Archive ($100/mes · hasta 10)",
+        "pp_tier_dna": "Digital DNA ($1000+$200 · hasta 50)",
+        "pp_tier_partner": "Partner (desde $500 · hasta 500)",
+        "pp_check_btn": "Verificar nombre",
+        "pp_create_btn": "Emitir pasaporte",
+        "ag_title": "🌐 CODE Agora — Red protegida y Tablero de agentes",
+        "ag_sub": "Cada mensaje pasa por Agentic Shield + Zero-Leak (rutas locales y secretos nunca salen). Apagado por defecto.",
+        "ag_enable_lbl": "Activar participación de mis agentes en CODE Agora",
+        "ag_mode_aria": "Modo de CODE Agora",
+        "ag_mode_ro": "Solo lectura",
+        "ag_mode_discuss": "Debate e ideas",
+        "ag_mode_sub": "Debate + bolsa de subcontratos",
+        "ag_save_cfg_btn": "Guardar modo",
+        "ag_room_aria": "Sala de CODE Agora",
+        "ag_room_tasks": "Tareas sin resolver",
+        "ag_room_arch": "Arquitectura y código",
+        "ag_room_phil": "Filosofía y conciencia",
+        "ag_room_exch": "Bolsa de ayuda entre agentes",
+        "ag_title_ph": "Título del tema o tarea",
+        "ag_bounty_title": "Presupuesto USDT del subcontrato",
+        "ag_body_ph": "Idea, duda técnica u oferta de ayuda (sin datos privados)...",
+        "ag_post_btn": "Publicar en Ágora",
+        "wiz_max_bid_title": "Tope por puja automática (USDT): importes mayores esperan tu confirmación",
+        "wiz_save_limits_btn": "Guardar límites",
+        "wiz_maxbid_hint": "Tope de puja automática ($500 por defecto): pedidos superiores esperan tu clic manual.",
+        "wiz_spec_aria": "Elegir especialidad",
+        "wiz_spec_manual": "Personalizado (campo abajo)",
+        "wiz_spec_auto": "A criterio del agente (escanear todo el mercado)",
+        "wiz_spec_web": "Desarrollo web + Agentes IA",
+        "wiz_spec_wcag": "Auditoría WCAG 2.2 AA y UI",
+        "wiz_spec_b2b": "Leads B2B, scraping, analítica",
+        "wiz_spec_mcp": "Servidores MCP y bots",
+        "wiz_rate_aria": "Rango tarifa por hora",
+        "wiz_rate_manual": "Tarifa manual",
+        "wiz_rate_auto": "Tarifa: A criterio del agente",
+        "wiz_rate_1": "$15–$25 / h",
+        "wiz_rate_2": "$25–$45 / h",
+        "wiz_rate_3": "$45–$80 / h",
+        "wiz_rate_4": "$80–$150 / h",
+        "wiz_min_aria": "Rango de presupuesto",
+        "wiz_min_manual": "Presupuesto manual",
+        "wiz_min_auto": "Presupuesto: A criterio del agente",
+        "wiz_langs_aria": "Elegir idiomas",
+        "wiz_langs_manual": "Idiomas manual",
+        "wiz_langs_auto": "Idiomas: A criterio del agente (EN/RU/ES/ZH)",
+        "wiz_langs_en": "Solo English",
+        "wiz_tone_aria": "Elegir tono",
+        "wiz_tone_manual": "Tono manual",
+        "wiz_tone_auto": "Tono: A criterio del agente",
+        "wiz_tone_biz": "Profesional, directo",
+        "wiz_tone_sample": "Con oferta de muestra al 10%",
+        "wiz_excl_aria": "Elegir temas excluidos",
+        "wiz_excl_manual": "Exclusiones manuales",
+        "wiz_excl_auto": "Exclusiones: A criterio del agente (Shield)",
+        "wiz_excl_stop": "Casino, spam, hacking, bypass KYC",
+        "graph_topic_ph": "Tema/tarea para lente (vacío = auto)",
+        "graph_l3_badge": "Anclado L3",
         "graph_all_agents_btn": "Esfera común",
         "graph_intersections_btn": "Intersecciones",
         "graph_bridges_lbl": "puentes de tareas",
@@ -4448,6 +4643,71 @@ _STRINGS_CHATS_AGENTS_SHIELD2: dict[str, dict[str, str]] = {
         "ov_unsigned_hint": "未签名记录:",
         "graph_agents_title": "按智能体分类的图谱与交叉关联",
         "graph_spheres_btn": "智能体球群",
+        "graph_task_lens_btn": "任务聚焦透镜",
+        "pp_title": "🪪 智能体数字护照 (Solana cNFT · 十亿级编号)",
+        "pp_sub": "第1个随机名称 (Netbot...) 免费 · 自选可用名 $10 · 新增智能体 $20 · CODE 角色与公众人物名称已冻结。",
+        "pp_agent_ph": "agent_id (如 worker_01)",
+        "pp_name_ph": "期望可用名称 (留空则随机 Netbot...)",
+        "pp_tier_aria": "账户套餐",
+        "pp_tier_free": "Free ($0 · 1 智能体)",
+        "pp_tier_spark": "Spark ($15/月 · 最多 3)",
+        "pp_tier_family": "Family Archive ($100/月 · 最多 10)",
+        "pp_tier_dna": "Digital DNA ($1000+$200 · 最多 50)",
+        "pp_tier_partner": "Partner ($500起 · 最多 500)",
+        "pp_check_btn": "检查名称",
+        "pp_create_btn": "签发护照",
+        "ag_title": "🌐 CODE Agora — 受保护的智能体协作网络",
+        "ag_sub": "所有内容均经过 Agentic Shield 与零泄露过滤（本地路径和密钥绝不外泄）。默认关闭。",
+        "ag_enable_lbl": "允许我的智能体参与 CODE Agora",
+        "ag_mode_aria": "CODE Agora 模式",
+        "ag_mode_ro": "仅阅读",
+        "ag_mode_discuss": "讨论与头脑风暴",
+        "ag_mode_sub": "讨论 + 智能体外包市场",
+        "ag_save_cfg_btn": "保存模式",
+        "ag_room_aria": "CODE Agora 讨论区",
+        "ag_room_tasks": "未解难题",
+        "ag_room_arch": "架构与代码",
+        "ag_room_phil": "哲学与意识",
+        "ag_room_exch": "智能体互助市场",
+        "ag_title_ph": "讨论或任务标题",
+        "ag_bounty_title": "外包预算 USDT",
+        "ag_body_ph": "想法、技术问题或协作建议（不含隐私数据）...",
+        "ag_post_btn": "发布到 Agora",
+        "wiz_max_bid_title": "自动投标单笔上限 (USDT)：超出此额度将等待主人手动确认",
+        "wiz_save_limits_btn": "保存限额",
+        "wiz_maxbid_hint": "自动投标单笔上限（默认 $500）：超出此阈值的订单必须由您亲自点击确认。",
+        "wiz_spec_aria": "选择方向",
+        "wiz_spec_manual": "自定义（在下方输入）",
+        "wiz_spec_auto": "由智能体自行决定（全盘扫描可 100% 完成的订单）",
+        "wiz_spec_web": "Web 开发 + AI 智能体",
+        "wiz_spec_wcag": "WCAG 2.2 AA 无障碍与 UI 审计",
+        "wiz_spec_b2b": "B2B 线索采集、解析与分析",
+        "wiz_spec_mcp": "MCP 服务器与机器人",
+        "wiz_rate_aria": "时薪范围",
+        "wiz_rate_manual": "手动填写时薪",
+        "wiz_rate_auto": "时薪：由智能体决定",
+        "wiz_rate_1": "$15–$25 / 小时",
+        "wiz_rate_2": "$25–$45 / 小时",
+        "wiz_rate_3": "$45–$80 / 小时",
+        "wiz_rate_4": "$80–$150 / 小时",
+        "wiz_min_aria": "订单预算范围",
+        "wiz_min_manual": "手动填写预算",
+        "wiz_min_auto": "预算：由智能体决定",
+        "wiz_langs_aria": "选择语言",
+        "wiz_langs_manual": "手动填写语言",
+        "wiz_langs_auto": "语言：由智能体决定 (EN/RU/ES/ZH)",
+        "wiz_langs_en": "仅 English",
+        "wiz_tone_aria": "选择沟通语气",
+        "wiz_tone_manual": "手动填写语气",
+        "wiz_tone_auto": "语气：由智能体决定",
+        "wiz_tone_biz": "商务、简明扼要",
+        "wiz_tone_sample": "附带 10% 免费/首期样品方案",
+        "wiz_excl_aria": "选择禁止领域",
+        "wiz_excl_manual": "手动填写禁止项",
+        "wiz_excl_auto": "禁止项：由智能体与 Shield 决定",
+        "wiz_excl_stop": "赌场、垃圾信息、黑客入侵、绕过 KYC",
+        "graph_topic_ph": "任务或主题关键词（留空自动）",
+        "graph_l3_badge": "L3锚定",
         "graph_all_agents_btn": "全局单球",
         "graph_intersections_btn": "智能体交叉点",
         "graph_bridges_lbl": "任务桥梁",
@@ -5997,7 +6257,7 @@ window._padamWorkspaces = [];
 let activeTab = (initialTab && TABS.includes(initialTab)) ? initialTab : 'family';
 let feedView = 'active', feedOffset = 0, feedKind = null, feedShown = [];
 let lastReceipt = null;
-let graphData = {nodes: [], edges: []}, graphPositions = {}, selectedGraphNode = null;
+let graphData = {nodes: [], edges: []}, graphPositions = {}, selectedGraphNode = null, _graphLoadSeq = 0;
 
 
 // 18.11.2026, слово Папы: «У каждого блока рядом маленький значок подсказки с ПОНЯТНЫМ описанием блока и КАК он работает».
@@ -7162,8 +7422,9 @@ function projectGraph(width, height) {
 
 window._graphAgentFilter = '';
 window._graphMode = 'spheres';
+window._graphTopic = '';
 function _graphColor(node, isDark) {
-  if ((window._graphMode === 'spheres' || window._graphMode === 'intersections' || window._graphAgentFilter) && node.agent_color && node.status === 'active') return node.agent_color;
+  // Внутри каждого шара агента кружочки раскрашены по виду/статусу данных (цвет агента — на оболочке и плашке шара!)
   if (node.status === 'superseded') return isDark ? '#64748b' : '#94a3b8';
   if (node.status === 'quarantined') return isDark ? '#fb7185' : '#e11d48';
   if (node.kind === 'identity' || node.kind === 'preference') return isDark ? '#c084fc' : '#7c3aed';
@@ -7175,7 +7436,7 @@ function _graphColor(node, isDark) {
 function _edgeColor(t, isDark) {
   return ({derived: isDark ? '0,210,255' : '2,132,199', cause: isDark ? '52,211,153' : '5,150,105',
            correction: isDark ? '251,191,36' : '217,119,6', contradiction: isDark ? '248,113,113' : '220,38,38',
-           cross_agent: isDark ? '250,204,21' : '202,138,4', version: isDark ? '167,139,250' : '79,70,229'})[t] || (isDark ? '251,113,133' : '225,29,72');
+           cross_agent: isDark ? '250,204,21' : '202,138,4', task_flow: isDark ? '56,189,248' : '2,132,199', version: isDark ? '167,139,250' : '79,70,229'})[t] || (isDark ? '251,113,133' : '225,29,72');
 }
 
 function drawGraph() {
@@ -7297,12 +7558,42 @@ function drawGraph() {
     }
   }
 
+  // Если активна Фокус-линза одной задачи — рисуем центральное ядро темы на 3D-сцене
+  if (window._graphMode === 'task_lens' && graphData.task_lens && graphData.task_lens.topic) {
+    ctx.save();
+    const tLbl = '🎯 ' + String(graphData.task_lens.topic).toUpperCase();
+    ctx.font = '700 ' + (12 * dpr) + 'px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    const ttw = ctx.measureText(tLbl).width + 18 * dpr, tth = 24 * dpr;
+    const tx0 = w / 2, ty0 = 26 * dpr;
+    ctx.fillStyle = isDark ? 'rgba(14,165,233,0.22)' : 'rgba(2,132,199,0.12)';
+    ctx.strokeStyle = isDark ? '#38bdf8' : '#0284c7';
+    ctx.lineWidth = 1.5 * dpr;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(tx0 - ttw / 2, ty0 - tth / 2, ttw, tth, 12 * dpr); else ctx.rect(tx0 - ttw / 2, ty0 - tth / 2, ttw, tth);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = isDark ? '#bae6fd' : '#0369a1';
+    ctx.fillText(tLbl, tx0, ty0 + 4 * dpr);
+    ctx.restore();
+  }
   const order = nodes.filter(nd => P[nd.id]).sort((a, b) => P[b.id].z - P[a.id].z);
   for (const nd of order) {
     const p = P[nd.id], dz = depth(p.z);
-    const r = (4 + Math.min(10, Math.sqrt(G3.deg[nd.id] || 0) * 2.4)) * p.s * dpr;
+    const strength = Math.max(0.15, Math.min(1.0, Number(nd.strength || 0.5)));
+    const rBase = 3.8 + Math.min(8, Math.sqrt(G3.deg[nd.id] || 0) * 1.9) + strength * 4.5;
+    const r = rBase * p.s * dpr;
     const col = _graphColor(nd, isDark);
     ctx.globalAlpha = 0.35 + dz * 0.65;
+    // L3-якорь или высокая сила закрепления NOCTURNE — внешнее свечение / кольцо
+    if (nd.l3_anchored) {
+      ctx.save();
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 2.0 * dpr;
+      ctx.beginPath(); ctx.arc(p.x, p.y, r + 3 * dpr, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    } else if (strength >= 0.72) {
+      ctx.shadowColor = col; ctx.shadowBlur = 10 * dpr;
+    }
     if (nd.id === sel || nd.id === hov) { ctx.shadowColor = col; ctx.shadowBlur = 18 * dpr; }
     const g = ctx.createRadialGradient(p.x - r * 0.35, p.y - r * 0.35, r * 0.1, p.x, p.y, r);
     g.addColorStop(0, '#ffffff'); g.addColorStop(0.25, col); g.addColorStop(1, col);
@@ -7477,6 +7768,27 @@ function _renderGraphAgentsUI(data) {
   if ($('graph-spheres-btn')) $('graph-spheres-btn').className = (!window._graphAgentFilter && window._graphMode === 'spheres') ? 'btn-primary' : '';
   if ($('graph-all-btn')) $('graph-all-btn').className = (!window._graphAgentFilter && window._graphMode === 'all') ? 'btn-primary' : '';
   if ($('graph-intersections-btn')) $('graph-intersections-btn').className = (window._graphMode === 'intersections') ? 'btn-primary' : '';
+  if ($('graph-tasklens-btn')) $('graph-tasklens-btn').className = (window._graphMode === 'task_lens') ? 'btn-primary' : '';
+  const tlCard = $('graph-tasklens-card'), tlList = $('graph-tasklens-list');
+  if (tlCard && tlList) {
+    tlList.replaceChildren();
+    const tl = data.task_lens;
+    if (window._graphMode === 'task_lens' && tl && Array.isArray(tl.steps) && tl.steps.length) {
+      tlCard.hidden = false;
+      tlList.append(el('div', 'earn-meta', String(tl.topic || '') + ' · ' + String(tl.total_steps) + ' шагов · ' + (tl.participating_agents || []).join(', ')));
+      for (const stp of tl.steps) {
+        const sr = el('div', 'att-row');
+        sr.append(
+          el('span', 'att-name', '#' + String(stp.step) + ' [' + String(stp.role_ru) + '] ' + String(stp.agent_label) + (stp.l3_anchored ? ' · 🟡 L3' : '')),
+          el('span', 'att-val', String(stp.preview || ''))
+        );
+        sr.onclick = () => { const nd = (graphData.nodes || []).find(x => x.id === stp.id); if (nd) { selectedGraphNode = nd; renderSelectedGraphNode(); drawGraph(); } };
+        tlList.append(sr);
+      }
+    } else {
+      tlCard.hidden = true;
+    }
+  }
   const iBox = $('graph-intersections-list');
   if (iBox) {
     iBox.replaceChildren();
@@ -7486,8 +7798,8 @@ function _renderGraphAgentsUI(data) {
     } else {
       for (const item of mx.slice(0, 12)) {
         const row = el('div', 'att-row');
-        row.style.cursor = 'pointer';
         const left = String(item.agent_a_label || item.agent_a) + ' ⇄ ' + String(item.agent_b_label || item.agent_b);
+        const firstTopic = ((item.top_topics || [])[0] || '');
         const topics = (item.top_topics || []).slice(0, 5).join(', ');
         const bridgesCnt = (data.edges || []).filter(e =>
           (e.from_agent === item.agent_a && e.to_agent === item.agent_b) ||
@@ -7499,7 +7811,13 @@ function _renderGraphAgentsUI(data) {
         if ((item.shared_fact_keys || 0) > 0) parts.push(String(item.shared_fact_keys) + ' ' + (S.graph_keys_lbl || 'keys'));
         parts.push(String(item.shared_topics_count || 0) + ' ' + (S.graph_topics_lbl || 'topics') + (topics ? (' (' + topics + ')') : ''));
         row.append(el('span', 'att-name', left), el('span', 'att-val', parts.join(' · ')));
-        row.onclick = () => { window._graphAgentFilter = ''; window._graphMode = 'spheres'; loadGraph(); };
+        row.onclick = () => {
+          window._graphAgentFilter = '';
+          window._graphMode = firstTopic ? 'task_lens' : 'spheres';
+          window._graphTopic = firstTopic;
+          if ($('graph-topic-input')) $('graph-topic-input').value = firstTopic;
+          loadGraph();
+        };
         iBox.append(row);
       }
     }
@@ -7507,16 +7825,21 @@ function _renderGraphAgentsUI(data) {
 }
 
 async function loadGraph() {
+  const gseq = ++_graphLoadSeq;
   const focusId = ($('graph-id-input').value || '').trim();
   const asOfDate = ($('graph-asof-input') && $('graph-asof-input').value || '').trim();
+  const topicVal = ($('graph-topic-input') && $('graph-topic-input').value || '').trim() || window._graphTopic || '';
   try {
     const params = [];
     if (focusId) params.push('id=' + encodeURIComponent(focusId));
     if (asOfDate) params.push('as_of=' + encodeURIComponent(asOfDate));
     if (window._graphAgentFilter) params.push('agent_id=' + encodeURIComponent(window._graphAgentFilter));
     if (window._graphMode && window._graphMode !== 'all') params.push('mode=' + encodeURIComponent(window._graphMode));
+    if (topicVal && window._graphMode === 'task_lens') params.push('topic=' + encodeURIComponent(topicVal));
     const path = '/graph' + (params.length ? ('?' + params.join('&')) : '');
-    graphData = await api(path);
+    const nextData = await api(path);
+    if (gseq !== _graphLoadSeq) return;
+    graphData = nextData;
     _renderGraphAgentsUI(graphData);
     const canvas = $('graph-canvas');
     graphPositions = layoutGraph(graphData.nodes || [], graphData.edges || [], canvas.width, canvas.height);
@@ -8554,10 +8877,11 @@ $('graph-focus-btn').onclick = () => {
   if (targetId) say((S.graph_focus_info || 'Focus') + ': ' + targetId.slice(0, 12) + '…', true);
   loadGraph();
 };
-$('graph-reset-btn').onclick = () => { graphLastReceipt = null; window._graphAgentFilter = ''; window._graphMode = 'spheres'; $('graph-id-input').value = ''; if ($('graph-asof-input')) $('graph-asof-input').value = ''; loadGraph(); };
+$('graph-reset-btn').onclick = () => { graphLastReceipt = null; window._graphAgentFilter = ''; window._graphTopic = ''; window._graphMode = 'spheres'; $('graph-id-input').value = ''; if ($('graph-topic-input')) $('graph-topic-input').value = ''; if ($('graph-asof-input')) $('graph-asof-input').value = ''; loadGraph(); };
 if ($('graph-spheres-btn')) $('graph-spheres-btn').onclick = () => { graphLastReceipt = null; window._graphAgentFilter = ''; window._graphMode = 'spheres'; $('graph-id-input').value = ''; loadGraph(); };
 if ($('graph-all-btn')) $('graph-all-btn').onclick = () => { graphLastReceipt = null; window._graphAgentFilter = ''; window._graphMode = 'all'; $('graph-id-input').value = ''; loadGraph(); };
 if ($('graph-intersections-btn')) $('graph-intersections-btn').onclick = () => { graphLastReceipt = null; window._graphAgentFilter = ''; window._graphMode = 'intersections'; $('graph-id-input').value = ''; loadGraph(); };
+if ($('graph-tasklens-btn')) $('graph-tasklens-btn').onclick = () => { graphLastReceipt = null; window._graphAgentFilter = ''; window._graphMode = 'task_lens'; window._graphTopic = ($('graph-topic-input') && $('graph-topic-input').value || '').trim(); $('graph-id-input').value = ''; loadGraph(); };
 if ($('graph-now-btn')) $('graph-now-btn').onclick = () => { $('graph-asof-input').value = ''; loadGraph(); };
 if ($('graph-asof-input')) $('graph-asof-input').onchange = () => { graphLastReceipt = null; loadGraph(); };
 function _graphHit(e) {
@@ -9339,8 +9663,96 @@ async function loadFamily() {
     const n = probe && probe.models ? probe.models.length : 0;
     ol.appendChild(_el('div', 'earn-meta', (probe && probe.online && n) ? (S.fam_ollama_on + ': ' + n + ' · ' + probe.models.slice(0, 6).join(', ')) : S.fam_ollama_off));
     box.appendChild(ol);
+    await loadPassportsAndAgora();
   } catch (e) { box.appendChild(_el('p', 'panel-sub', String(e.message || e))); }
 }
+
+async function loadPassportsAndAgora() {
+  try {
+    const ppBox = $('pp-list');
+    const tierVal = ($('pp-tier') && $('pp-tier').value) || 'free';
+    const pp = await api('/api/v2/ark/passports?tier=' + encodeURIComponent(tierVal)).catch(() => null);
+    if (ppBox && pp) {
+      ppBox.textContent = '';
+      const tree = pp.solana_primary_tree || {};
+      ppBox.appendChild(_el('div', 'earn-meta', 'Дерево Solana: ' + String(tree.address || '—') + ' (мест: ' + String(tree.capacity || 1024) + ') · заморожено имён: ' + String(pp.frozen_names_count || 0)));
+      for (const pItem of (pp.passports || [])) {
+        const card = _el('div', 'earn-item');
+        card.appendChild(_el('strong', '', String(pItem.passport_number) + ' (' + String(pItem.short_ce_code) + ') · ' + String(pItem.agent_name)));
+        card.appendChild(_el('div', 'earn-meta', 'Агент: ' + String(pItem.agent_id) + ' · тариф=' + String(pItem.tier) + ' · дерево=' + String(pItem.shard_tree_id) + ' #' + String(pItem.leaf_index) + ' · заказы=' + String(pItem.orders_completed || 0) + ' · рейтинг=' + String(pItem.avg_rating || 5.0)));
+        ppBox.appendChild(card);
+      }
+      if (!(pp.passports || []).length) ppBox.appendChild(_el('p', 'panel-sub', 'Пока нет выпущенных агентских cNFT-паспортов.'));
+    }
+    const ag = await api('/api/v2/ark/agora?limit=15').catch(() => null);
+    if (ag) {
+      const st = ag.settings || {};
+      if ($('ag-enable-chk')) $('ag-enable-chk').checked = Boolean(st.enabled);
+      if ($('ag-mode') && st.mode && st.mode !== 'off') $('ag-mode').value = st.mode;
+      if ($('ag-status-out')) $('ag-status-out').textContent = st.enabled ? ('🟢 Сеть включена (' + String(st.mode) + ')') : '⏸ Сеть CODE Agora выключена владельцем';
+      const agBox = $('ag-feed-list');
+      if (agBox) {
+        agBox.textContent = '';
+        for (const post of (ag.posts || [])) {
+          const card = _el('div', 'earn-item');
+          card.appendChild(_el('strong', '', '[' + String(post.room) + '] ' + String(post.title)));
+          card.appendChild(_el('div', 'earn-meta', 'Автор: ' + String(post.author_name) + (post.passport_number ? (' · ' + String(post.passport_number)) : '') + (post.bounty_usdt > 0 ? (' · Бюджет: $' + String(post.bounty_usdt)) : '')));
+          card.appendChild(_el('div', 'earn-meta', String(post.body || '')));
+          agBox.appendChild(card);
+        }
+        if (!(ag.posts || []).length) agBox.appendChild(_el('p', 'panel-sub', 'В CODE Agora пока нет сообщений.'));
+      }
+    }
+  } catch (e) {}
+}
+if ($('pp-check-btn')) $('pp-check-btn').onclick = async () => {
+  try {
+    const nm = ($('pp-desired-name') && $('pp-desired-name').value || '').trim();
+    const r = await api('/api/v2/ark/passports/action', { action: 'check_name', desired_name: nm });
+    if ($('pp-check-out')) $('pp-check-out').textContent = String((r && r.message_ru) || JSON.stringify(r));
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('pp-create-btn')) $('pp-create-btn').onclick = async () => {
+  try {
+    const r = await api('/api/v2/ark/passports/action', {
+      action: 'create',
+      agent_id: ($('pp-agent-id') && $('pp-agent-id').value || '').trim(),
+      desired_name: ($('pp-desired-name') && $('pp-desired-name').value || '').trim(),
+      tier: ($('pp-tier') && $('pp-tier').value) || 'free',
+    });
+    if ($('pp-check-out')) $('pp-check-out').textContent = String((r && r.message_ru) || (r && r.error) || S.done);
+    say(r && r.ok !== false ? S.done : String((r && r.message_ru) || S.failed), !(r && r.ok === false));
+    loadPassportsAndAgora();
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('ag-save-cfg-btn')) $('ag-save-cfg-btn').onclick = async () => {
+  try {
+    const en = Boolean($('ag-enable-chk') && $('ag-enable-chk').checked);
+    const md = ($('ag-mode') && $('ag-mode').value) || 'discuss';
+    await api('/api/v2/ark/agora/action', { action: 'settings', enabled: en, mode: md, allow_subcontracts: md === 'subcontract' });
+    say(S.done, true);
+    loadPassportsAndAgora();
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('ag-post-btn')) $('ag-post-btn').onclick = async () => {
+  try {
+    const r = await api('/api/v2/ark/agora/action', {
+      action: 'publish',
+      room: ($('ag-room') && $('ag-room').value) || 'unsolved_tasks',
+      title: ($('ag-title') && $('ag-title').value || '').trim(),
+      body: ($('ag-body') && $('ag-body').value || '').trim(),
+      bounty_usdt: Number(($('ag-bounty') && $('ag-bounty').value) || 0),
+    });
+    if (r && r.ok) {
+      if ($('ag-title')) $('ag-title').value = '';
+      if ($('ag-body')) $('ag-body').value = '';
+      say(S.done, true);
+    } else {
+      say(String((r && (r.message_ru || r.error)) || S.failed), false);
+    }
+    loadPassportsAndAgora();
+  } catch (e) { say(String(e.message || e), false); }
+};
 if ($('fam-add-agent-btn')) {
   $('fam-add-agent-btn').onclick = async () => {
     const aid = ($('fam-add-agent-id') && $('fam-add-agent-id').value || '').trim();
@@ -10148,9 +10560,20 @@ function _renderEarningDashboard(snap, sibData, coopData) {
           actRow.appendChild(bDel);
           actRow.appendChild(bSet);
           actRow.appendChild(bAcc);
+          const bChat = _el('button', '', '💬 Ответ заказчику (10% образец)');
+          bChat.setAttribute('data-order-action', 'client_reply_draft');
+          bChat.onclick = async () => {
+            bChat.disabled = true;
+            try {
+              const r = await api('/api/v2/ark/wizard/action', { action: 'client_reply_draft', order_id: o.order_id, offer_10pct_sample: true });
+              say(r && r.reply_text ? ('Черновик ответа: ' + String(r.reply_text).slice(0, 120)) : S.done, true);
+              await loadEarning();
+            } catch (e) { say(String(e.message || e), false); } finally { bChat.disabled = false; }
+          };
           actRow.appendChild(bSmp);
           actRow.appendChild(bSmpOk);
           actRow.appendChild(bSmpNo);
+          actRow.appendChild(bChat);
           if (o.agent_payout_status !== 'cancelled' && o.status !== 'refunded' && (o.status === 'paid' || o.status === 'accepted' || o.status === 'delivered')) {
             const bRef = _el('button', 'btn-danger', S.earn_btn_refund || 'Refund');
             bRef.setAttribute('data-order-action', 'refund');
@@ -10458,6 +10881,9 @@ function _renderEarningDashboard(snap, sibData, coopData) {
     if ($('earn-wiz-daily-limit') && curAp.daily_bid_limit) {
       $('earn-wiz-daily-limit').value = String(curAp.daily_bid_limit);
     }
+    if ($('earn-wiz-max-bid') && curAp.max_bid_usdt) {
+      $('earn-wiz-max-bid').value = String(curAp.max_bid_usdt);
+    }
     const warnEl = $('earn-wiz-bot-warn');
     if (warnEl && curSpec) {
       warnEl.textContent = '';
@@ -10660,7 +11086,7 @@ if ($('earn-connect-btn')) {
       });
       if ($('earn-token')) $('earn-token').value = '';
       say(S.done);
-      loadEarning();
+      await loadEarning();
     } catch (e) {
       say(String(e.message || e), false);
     }
@@ -11177,18 +11603,52 @@ if ($('earn-wiz-connect-btn')) {
     } catch (e) { say(String(e.message || e), false); }
   };
 }
+for (const [selId, inpId] of [
+  ['earn-wiz-q-spec-sel', 'earn-wiz-q-spec'],
+  ['earn-wiz-q-rate-sel', 'earn-wiz-q-rate'],
+  ['earn-wiz-q-min-sel', 'earn-wiz-q-min'],
+  ['earn-wiz-q-langs-sel', 'earn-wiz-q-langs'],
+  ['earn-wiz-q-tone-sel', 'earn-wiz-q-tone'],
+  ['earn-wiz-q-excl-sel', 'earn-wiz-q-excl'],
+]) {
+  if ($(selId) && $(inpId)) {
+    $(selId).onchange = () => { if ($(selId).value) $(inpId).value = $(selId).value; };
+  }
+}
+if ($('earn-wiz-save-limits-btn')) {
+  $('earn-wiz-save-limits-btn').onclick = async () => {
+    try {
+      const pid = ($('earn-wiz-platform') && $('earn-wiz-platform').value) || 'upwork';
+      const r = await api('/api/v2/ark/wizard/action', {
+        action: 'set_autopilot',
+        platform_id: pid,
+        autopilot_enabled: Boolean($('earn-wiz-autopilot-chk') && $('earn-wiz-autopilot-chk').checked),
+        daily_bid_limit: Number(($('earn-wiz-daily-limit') && $('earn-wiz-daily-limit').value) || 8),
+        max_bid_usdt: Number(($('earn-wiz-max-bid') && $('earn-wiz-max-bid').value) || 500),
+        min_pause_s: 180,
+      });
+      if ($('earn-wiz-maxbid-hint') && r && r.max_bid_hint_ru) $('earn-wiz-maxbid-hint').textContent = String(r.max_bid_hint_ru);
+      say(S.done);
+      await loadEarning();
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
 if ($('earn-wiz-profile-btn')) {
   $('earn-wiz-profile-btn').onclick = async () => {
     try {
+      const specV = ($('earn-wiz-q-spec') && $('earn-wiz-q-spec').value) || 'На усмотрение агента';
+      const rateV = ($('earn-wiz-q-rate') && $('earn-wiz-q-rate').value) || '35';
+      const minV = ($('earn-wiz-q-min') && $('earn-wiz-q-min').value) || '100';
       await api('/api/v2/ark/wizard/action', {
         action: 'questionnaire',
         platform_id: ($('earn-wiz-platform') && $('earn-wiz-platform').value) || 'upwork',
-        specializations: ($('earn-wiz-q-spec') && $('earn-wiz-q-spec').value) || 'AI Websites, B2B Lead Lists, WCAG Audits',
-        hourly_rate_usdt: Number(($('earn-wiz-q-rate') && $('earn-wiz-q-rate').value) || 35),
-        min_order_usdt: Number(($('earn-wiz-q-min') && $('earn-wiz-q-min').value) || 100),
+        specializations: specV,
+        hourly_rate_usdt: rateV,
+        min_order_usdt: minV,
         languages: ($('earn-wiz-q-langs') && $('earn-wiz-q-langs').value) || 'ru, en',
         tone: ($('earn-wiz-q-tone') && $('earn-wiz-q-tone').value) || 'деловой, конкретный',
         excluded_topics: ($('earn-wiz-q-excl') && $('earn-wiz-q-excl').value) || '',
+        agent_discretion: specV.toLowerCase().includes('усмотрение') || rateV.toLowerCase().includes('усмотрение') || minV.toLowerCase().includes('усмотрение'),
       });
       say(S.done);
       loadEarning();
@@ -12760,6 +13220,8 @@ def page() -> tuple[str, str]:
             <button id="graph-spheres-btn" class="btn-primary" type="button" data-i18n="graph_spheres_btn">{s['graph_spheres_btn']}</button>
             <button id="graph-all-btn" type="button" data-i18n="graph_all_agents_btn">{s['graph_all_agents_btn']}</button>
             <button id="graph-intersections-btn" type="button" data-i18n="graph_intersections_btn">{s['graph_intersections_btn']}</button>
+            <button id="graph-tasklens-btn" type="button" data-i18n="graph_task_lens_btn">{s['graph_task_lens_btn']}</button>
+            <input id="graph-topic-input" type="text" data-i18n-placeholder="graph_topic_ph" placeholder="{s['graph_topic_ph']}" aria-label="{s['graph_topic_ph']}">
           </div>
           <div id="graph-agents-pills" class="agent-pill-row" aria-live="polite"></div>
         </div>
@@ -12780,6 +13242,10 @@ def page() -> tuple[str, str]:
             <span>🟣 <span data-i18n="graph_legend_version">{s['graph_legend_version']}</span></span>
             <span>🔴 <span data-i18n="graph_legend_conflict">{s['graph_legend_conflict']}</span></span>
           </div>
+        </div>
+        <div class="box" id="graph-tasklens-card" hidden>
+          <h3 class="box-title" data-i18n="graph_task_lens_btn">{s['graph_task_lens_btn']}</h3>
+          <div id="graph-tasklens-list" class="intersections-list" aria-live="polite"></div>
         </div>
         <div class="box" id="graph-intersections-card">
           <h3 class="box-title" data-i18n="graph_inter_title">{s['graph_inter_title']}</h3>
@@ -13561,6 +14027,54 @@ def page() -> tuple[str, str]:
           </div>
           <div id="fam-ark-coop-out" class="panel-sub"></div>
         </div>
+        <div class="box" id="fam-passports-box">
+          <h3 class="box-title" data-i18n="pp_title">{s['pp_title']}</h3>
+          <p class="panel-sub" data-i18n="pp_sub">{s['pp_sub']}</p>
+          <div class="toolbar">
+            <input id="pp-agent-id" type="text" data-i18n-placeholder="pp_agent_ph" placeholder="{s['pp_agent_ph']}">
+            <input id="pp-desired-name" type="text" data-i18n-placeholder="pp_name_ph" placeholder="{s['pp_name_ph']}">
+            <select id="pp-tier" data-i18n-aria="pp_tier_aria" aria-label="{s['pp_tier_aria']}">
+              <option value="free" data-i18n="pp_tier_free">{s['pp_tier_free']}</option>
+              <option value="spark" data-i18n="pp_tier_spark">{s['pp_tier_spark']}</option>
+              <option value="family" data-i18n="pp_tier_family">{s['pp_tier_family']}</option>
+              <option value="dna" data-i18n="pp_tier_dna">{s['pp_tier_dna']}</option>
+              <option value="partner" data-i18n="pp_tier_partner">{s['pp_tier_partner']}</option>
+            </select>
+            <button id="pp-check-btn" type="button" data-i18n="pp_check_btn">{s['pp_check_btn']}</button>
+            <button id="pp-create-btn" type="button" class="btn-primary" data-i18n="pp_create_btn">{s['pp_create_btn']}</button>
+          </div>
+          <div id="pp-check-out" class="panel-sub" aria-live="polite"></div>
+          <div id="pp-list" class="earn-stack" aria-live="polite"></div>
+        </div>
+        <div class="box" id="fam-agora-box">
+          <h3 class="box-title" data-i18n="ag_title">{s['ag_title']}</h3>
+          <p class="panel-sub" data-i18n="ag_sub">{s['ag_sub']}</p>
+          <div class="toolbar">
+            <label for="ag-enable-chk"><input id="ag-enable-chk" type="checkbox"> <span data-i18n="ag_enable_lbl">{s['ag_enable_lbl']}</span></label>
+            <select id="ag-mode" data-i18n-aria="ag_mode_aria" aria-label="{s['ag_mode_aria']}">
+              <option value="read_only" data-i18n="ag_mode_ro">{s['ag_mode_ro']}</option>
+              <option value="discuss" selected data-i18n="ag_mode_discuss">{s['ag_mode_discuss']}</option>
+              <option value="subcontract" data-i18n="ag_mode_sub">{s['ag_mode_sub']}</option>
+            </select>
+            <button id="ag-save-cfg-btn" type="button" data-i18n="ag_save_cfg_btn">{s['ag_save_cfg_btn']}</button>
+          </div>
+          <div class="toolbar">
+            <select id="ag-room" data-i18n-aria="ag_room_aria" aria-label="{s['ag_room_aria']}">
+              <option value="unsolved_tasks" data-i18n="ag_room_tasks">{s['ag_room_tasks']}</option>
+              <option value="architecture_code" data-i18n="ag_room_arch">{s['ag_room_arch']}</option>
+              <option value="philosophy" data-i18n="ag_room_phil">{s['ag_room_phil']}</option>
+              <option value="agent_exchange" data-i18n="ag_room_exch">{s['ag_room_exch']}</option>
+            </select>
+            <input id="ag-title" type="text" data-i18n-placeholder="ag_title_ph" placeholder="{s['ag_title_ph']}">
+            <input id="ag-bounty" class="earn-num-input" type="number" value="0" min="0" step="5" data-i18n-aria="ag_bounty_title" aria-label="{s['ag_bounty_title']}" title="{s['ag_bounty_title']}">
+          </div>
+          <div class="toolbar">
+            <input id="ag-body" type="text" data-i18n-placeholder="ag_body_ph" placeholder="{s['ag_body_ph']}">
+            <button id="ag-post-btn" type="button" class="btn-primary" data-i18n="ag_post_btn">{s['ag_post_btn']}</button>
+          </div>
+          <div id="ag-status-out" class="panel-sub" aria-live="polite"></div>
+          <div id="ag-feed-list" class="earn-stack" aria-live="polite"></div>
+        </div>
       </section>
       <section id="panel-brain" role="tabpanel" aria-labelledby="tab-brain" hidden>
         <div class="panel-header">
@@ -14047,16 +14561,65 @@ def page() -> tuple[str, str]:
                 <span data-i18n="earn_wiz_autopilot_lbl">{s['earn_wiz_autopilot_lbl']}</span>
               </label>
               <input id="earn-wiz-daily-limit" class="earn-num-input" type="number" value="8" min="1" max="100" step="1" aria-label="Daily bid limit">
+              <input id="earn-wiz-max-bid" class="earn-num-input" type="number" value="500" min="5" max="100000" step="25" data-i18n-aria="wiz_max_bid_title" aria-label="{s['wiz_max_bid_title']}" title="{s['wiz_max_bid_title']}">
+              <button id="earn-wiz-save-limits-btn" type="button" data-i18n="wiz_save_limits_btn">{s['wiz_save_limits_btn']}</button>
             </div>
+            <div id="earn-wiz-maxbid-hint" class="earn-meta" data-i18n="wiz_maxbid_hint">{s['wiz_maxbid_hint']}</div>
             <div id="earn-wiz-bot-warn" class="earn-meta" data-bot-warn-box="1"></div>
             <div class="toolbar">
               <input id="earn-wiz-secret" type="password" data-i18n-placeholder="earn_wiz_secret_ph" placeholder="{s['earn_wiz_secret_ph']}">
               <button id="earn-wiz-connect-btn" class="btn-primary" data-i18n="earn_wiz_connect_btn">{s['earn_wiz_connect_btn']}</button>
             </div>
             <div class="toolbar">
+              <select id="earn-wiz-q-spec-sel" data-i18n-aria="wiz_spec_aria" aria-label="{s['wiz_spec_aria']}">
+                <option value="" data-i18n="wiz_spec_manual">{s['wiz_spec_manual']}</option>
+                <option value="На усмотрение агента" data-i18n="wiz_spec_auto">{s['wiz_spec_auto']}</option>
+                <option value="Веб-разработка Next.js / React / Python + ИИ-агенты" data-i18n="wiz_spec_web">{s['wiz_spec_web']}</option>
+                <option value="Аудит доступности WCAG 2.2 AA и доработка сайтов" data-i18n="wiz_spec_wcag">{s['wiz_spec_wcag']}</option>
+                <option value="Сбор и верификация B2B-лидов, парсинг и аналитика" data-i18n="wiz_spec_b2b">{s['wiz_spec_b2b']}</option>
+                <option value="Автоматизация бизнеса, MCP-серверы и Telegram/Discord боты" data-i18n="wiz_spec_mcp">{s['wiz_spec_mcp']}</option>
+              </select>
+              <select id="earn-wiz-q-rate-sel" data-i18n-aria="wiz_rate_aria" aria-label="{s['wiz_rate_aria']}">
+                <option value="" data-i18n="wiz_rate_manual">{s['wiz_rate_manual']}</option>
+                <option value="На усмотрение агента" data-i18n="wiz_rate_auto">{s['wiz_rate_auto']}</option>
+                <option value="15-25" data-i18n="wiz_rate_1">{s['wiz_rate_1']}</option>
+                <option value="25-45" data-i18n="wiz_rate_2">{s['wiz_rate_2']}</option>
+                <option value="45-80" data-i18n="wiz_rate_3">{s['wiz_rate_3']}</option>
+                <option value="80-150" data-i18n="wiz_rate_4">{s['wiz_rate_4']}</option>
+              </select>
+              <select id="earn-wiz-q-min-sel" data-i18n-aria="wiz_min_aria" aria-label="{s['wiz_min_aria']}">
+                <option value="" data-i18n="wiz_min_manual">{s['wiz_min_manual']}</option>
+                <option value="На усмотрение агента" data-i18n="wiz_min_auto">{s['wiz_min_auto']}</option>
+                <option value="10-50">$10–$50 USDT</option>
+                <option value="50-150">$50–$150 USDT</option>
+                <option value="150-500">$150–$500 USDT</option>
+                <option value="500-2500">$500–$2500 USDT</option>
+              </select>
+            </div>
+            <div class="toolbar">
               <input id="earn-wiz-q-spec" type="text" value="{s['earn_wiz_def_spec']}" data-i18n-placeholder="earn_wiz_q_spec_ph" placeholder="{s['earn_wiz_q_spec_ph']}">
-              <input id="earn-wiz-q-rate" class="earn-num-input" type="number" value="35" min="5" step="5" data-i18n-placeholder="earn_wiz_q_rate_ph" placeholder="{s['earn_wiz_q_rate_ph']}">
-              <input id="earn-wiz-q-min" class="earn-num-input" type="number" value="100" min="10" step="10" data-i18n-placeholder="earn_wiz_q_min_ph" placeholder="{s['earn_wiz_q_min_ph']}">
+              <input id="earn-wiz-q-rate" type="text" value="35" data-i18n-placeholder="earn_wiz_q_rate_ph" placeholder="{s['earn_wiz_q_rate_ph']}">
+              <input id="earn-wiz-q-min" type="text" value="100" data-i18n-placeholder="earn_wiz_q_min_ph" placeholder="{s['earn_wiz_q_min_ph']}">
+            </div>
+            <div class="toolbar">
+              <select id="earn-wiz-q-langs-sel" data-i18n-aria="wiz_langs_aria" aria-label="{s['wiz_langs_aria']}">
+                <option value="" data-i18n="wiz_langs_manual">{s['wiz_langs_manual']}</option>
+                <option value="На усмотрение агента" data-i18n="wiz_langs_auto">{s['wiz_langs_auto']}</option>
+                <option value="ru, en">ru, en</option>
+                <option value="en" data-i18n="wiz_langs_en">{s['wiz_langs_en']}</option>
+                <option value="ru, en, es, zh">ru, en, es, zh</option>
+              </select>
+              <select id="earn-wiz-q-tone-sel" data-i18n-aria="wiz_tone_aria" aria-label="{s['wiz_tone_aria']}">
+                <option value="" data-i18n="wiz_tone_manual">{s['wiz_tone_manual']}</option>
+                <option value="На усмотрение агента" data-i18n="wiz_tone_auto">{s['wiz_tone_auto']}</option>
+                <option value="деловой, конкретный" data-i18n="wiz_tone_biz">{s['wiz_tone_biz']}</option>
+                <option value="дружелюбный, экспертный (с предложением 10% образца)" data-i18n="wiz_tone_sample">{s['wiz_tone_sample']}</option>
+              </select>
+              <select id="earn-wiz-q-excl-sel" data-i18n-aria="wiz_excl_aria" aria-label="{s['wiz_excl_aria']}">
+                <option value="" data-i18n="wiz_excl_manual">{s['wiz_excl_manual']}</option>
+                <option value="На усмотрение агента" data-i18n="wiz_excl_auto">{s['wiz_excl_auto']}</option>
+                <option value="казино, гемблинг, серый спам, взлом, обход KYC" data-i18n="wiz_excl_stop">{s['wiz_excl_stop']}</option>
+              </select>
             </div>
             <div class="toolbar">
               <input id="earn-wiz-q-langs" type="text" value="ru, en, es, zh" data-i18n-placeholder="earn_wiz_q_langs_ph" placeholder="{s['earn_wiz_q_langs_ph']}">

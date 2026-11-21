@@ -24,14 +24,94 @@ from . import audit_chain, freelance_autonomy
 # 18.11.2026: кэш живёт на самом объекте хранилища, а не в словаре по id(): Python выдаёт тот же id новому объекту
 # после сборки мусора, и новая база наследовала состояние умершей (Совет видел «цепь стёрта»).
 
-WIZARD_QUESTIONS: tuple[dict[str, str], ...] = (
-    {"key": "specializations", "label_ru": "1. Направления и услуги (что делаем лучше всего)"},
-    {"key": "hourly_rate_usdt", "label_ru": "2. Целевая ставка в час (USDT/ч)"},
-    {"key": "min_order_usdt", "label_ru": "3. Минимальный бюджет заказа (USDT)"},
-    {"key": "languages", "label_ru": "4. Рабочие языки общения"},
-    {"key": "tone", "label_ru": "5. Тон откликов и профиля"},
-    {"key": "excluded_topics", "label_ru": "6. Что НЕ берём в работу (стоп-темы)"},
+WIZARD_QUESTIONS: tuple[dict[str, Any], ...] = (
+    {
+        "key": "specializations",
+        "label_ru": "1. Направления и услуги (что делаем лучше всего)",
+        "allow_agent_discretion": True,
+        "discretion_label_ru": "На усмотрение агента (скан всей биржи и любые посильные задачи на 100%)",
+        "options": [
+            "На усмотрение агента",
+            "Веб-разработка Next.js / React / Python + ИИ-агенты",
+            "Аудит доступности WCAG 2.2 AA и доработка сайтов",
+            "Сбор и верификация B2B-лидов, парсинг и аналитика",
+            "Автоматизация бизнеса, MCP-серверы и Telegram/Discord боты",
+            "Технические переводы, документация и контент-аудит (RU/EN/ES/ZH)",
+        ],
+    },
+    {
+        "key": "hourly_rate_usdt",
+        "label_ru": "2. Целевая ставка в час (USDT/ч, от и до или на усмотрение агента)",
+        "allow_agent_discretion": True,
+        "discretion_label_ru": "На усмотрение агента (оптимально под бюджет рынка)",
+        "options": ["На усмотрение агента", "15-25", "25-45", "45-80", "80-150"],
+    },
+    {
+        "key": "min_order_usdt",
+        "label_ru": "3. Бюджет заказа (USDT, диапазон от и до или на усмотрение агента)",
+        "allow_agent_discretion": True,
+        "discretion_label_ru": "На усмотрение агента (любой выгодный заказ, вкл. микро-задачи от $10)",
+        "options": ["На усмотрение агента", "10-50", "50-150", "150-500", "500-2500"],
+    },
+    {
+        "key": "languages",
+        "label_ru": "4. Рабочие языки общения",
+        "allow_agent_discretion": True,
+        "discretion_label_ru": "На усмотрение агента (автовыбор языка заказчика: EN/RU/ES/ZH)",
+        "options": ["На усмотрение агента", "ru, en", "en", "ru", "en, es, ru, zh"],
+    },
+    {
+        "key": "tone",
+        "label_ru": "5. Тон откликов и профиля",
+        "allow_agent_discretion": True,
+        "discretion_label_ru": "На усмотрение агента (подстраивать под стиль заказчика)",
+        "options": [
+            "На усмотрение агента",
+            "деловой, конкретный",
+            "дружелюбный, экспертный (с предложением 10% образца)",
+            "инженерный, краткий с цифрами и сроками",
+        ],
+    },
+    {
+        "key": "excluded_topics",
+        "label_ru": "6. Что НЕ берём в работу (стоп-темы)",
+        "allow_agent_discretion": True,
+        "discretion_label_ru": "На усмотрение агента (автозащита Agentic Shield: бан спама, скама и нелегального)",
+        "options": [
+            "На усмотрение агента",
+            "казино, гемблинг, серый спам, взлом, обход KYC",
+            "18+, нелицензионные финансы, политический спам",
+        ],
+    },
 )
+
+AGENT_DISCRETION_KEYWORDS = ("на усмотрение агента", "agent_discretion", "auto", "любые посильные")
+
+
+def _is_discretion_choice(val: Any) -> bool:
+    s = str(val or "").strip().lower()
+    if not s:
+        return False
+    return any(k in s for k in AGENT_DISCRETION_KEYWORDS)
+
+
+def _parse_range_numbers(raw: Any, default_low: float, default_high: float) -> tuple[float, float, str]:
+    """Разбирает число или диапазон «от и до» (напр. '25-45', '$50-$150') -> (min_val, target_val, label)."""
+    if isinstance(raw, (int, float)):
+        v = max(1.0, float(raw))
+        return v, v, f"{v:g}"
+    s = str(raw or "").strip()
+    if not s or _is_discretion_choice(s):
+        return default_low, default_high, "На усмотрение агента"
+    import re as _re
+    nums = [float(x.replace(",", ".")) for x in _re.findall(r"\d+(?:[.,]\d+)?", s)]
+    if len(nums) >= 2:
+        lo, hi = min(nums[0], nums[1]), max(nums[0], nums[1])
+        return max(1.0, lo), max(lo, round((lo + hi) / 2.0, 2)), f"{lo:g}-{hi:g}"
+    if len(nums) == 1:
+        v = max(1.0, nums[0])
+        return v, v, f"{v:g}"
+    return default_low, default_high, f"{default_high:g}"
 
 # Полный реестр: 30 площадок из МЕТОДИЧКА_ПОЛНАЯ_30_ПЛОЩАДОК.md + 4 биржи для ИИ-агентов (итого 34).
 PLATFORM_CATALOG: tuple[dict[str, Any], ...] = (
@@ -843,29 +923,57 @@ def submit_questionnaire_and_build_profile_draft(
     memory,
     *,
     platform_id: str,
-    specializations: str,
-    hourly_rate_usdt: float = 35.0,
-    min_order_usdt: float = 100.0,
+    specializations: str = "На усмотрение агента",
+    hourly_rate_usdt: float | str = 35.0,
+    min_order_usdt: float | str = 100.0,
     languages: str = "ru, en",
     tone: str = "деловой, конкретный",
     excluded_topics: str = "",
     agent_id: str = "aifa",
+    agent_discretion: bool = False,
 ) -> dict[str, Any]:
-    """Шаг 3 мастера: сохраняет ответы на 6 вопросов владельца и собирает черновик профиля площадки из памяти."""
-    _ensure_wizard_schema(memory)
+    """Шаг 3 мастера: сохраняет ответы на 6 вопросов (вкл. диапазоны и «На усмотрение агента») и строит черновик профиля."""
+    _ensure_stage3_schema(memory)
     spec = get_platform_spec(platform_id)
     pid = spec["platform_id"]
     if spec["automation_tier"] == "not_available":
         raise ValueError(f"Площадка {spec['title']} недоступна для автозаполнения: {spec['reason_ru']}")
 
-    clean_spec, _ = freelance_autonomy.sanitize_for_delivery(str(specializations or "").strip())
-    if not clean_spec:
-        raise ValueError("Ответьте на вопрос 1: укажите направления работы (specializations).")
-    clean_langs, _ = freelance_autonomy.sanitize_for_delivery(str(languages or "ru, en").strip())
-    clean_tone, _ = freelance_autonomy.sanitize_for_delivery(str(tone or "деловой, конкретный").strip())
-    clean_excl, _ = freelance_autonomy.sanitize_for_delivery(str(excluded_topics or "").strip())
-    rate = round(max(5.0, float(hourly_rate_usdt or 35.0)), 2)
-    min_ord = round(max(10.0, float(min_order_usdt or 100.0)), 2)
+    discretion_on = bool(
+        agent_discretion
+        or _is_discretion_choice(specializations)
+        or _is_discretion_choice(hourly_rate_usdt)
+        or _is_discretion_choice(min_order_usdt)
+    )
+    raw_spec = str(specializations or "").strip()
+    if not raw_spec and not discretion_on:
+        raise ValueError("Ответьте на вопрос 1: укажите направления работы (specializations) или выберите «На усмотрение агента».")
+    if discretion_on and (not raw_spec or _is_discretion_choice(raw_spec)):
+        raw_spec = (
+            "На усмотрение агента: полный скан биржи (Next.js/Python/AI-агенты, WCAG-аудиты, "
+            "B2B-аналитика, автоматизация и переводы — любые посильные задачи со сдачей 100%)"
+        )
+
+    clean_spec, _ = freelance_autonomy.sanitize_for_delivery(raw_spec)
+    raw_langs = "ru, en, es, zh (по языку клиента)" if _is_discretion_choice(languages) else str(languages or "ru, en")
+    raw_tone = (
+        "экспертный, адаптивный (под стиль клиента + предложение 10% образца)"
+        if _is_discretion_choice(tone)
+        else str(tone or "деловой, конкретный")
+    )
+    raw_excl = (
+        "казино, гемблинг, серый спам, взлом, обход KYC (автозащита Agentic Shield)"
+        if _is_discretion_choice(excluded_topics)
+        else str(excluded_topics or "")
+    )
+    clean_langs, _ = freelance_autonomy.sanitize_for_delivery(raw_langs.strip())
+    clean_tone, _ = freelance_autonomy.sanitize_for_delivery(raw_tone.strip())
+    clean_excl, _ = freelance_autonomy.sanitize_for_delivery(raw_excl.strip())
+
+    _, rate, rate_range_lbl = _parse_range_numbers(hourly_rate_usdt, 15.0, 35.0)
+    min_ord, _, budget_range_lbl = _parse_range_numbers(min_order_usdt, 10.0, 100.0)
+    if _is_discretion_choice(min_order_usdt):
+        min_ord = 10.0
     now = time.time()
 
     mem_highlights = _extract_memory_skills(memory)
@@ -874,9 +982,10 @@ def submit_questionnaire_and_build_profile_draft(
     overview_lines = [
         f"Площадка: {spec['title']} ({spec['automation_label_ru']}, комиссия CODE {fee_pct:g}%).",
         f"Основные направления: {clean_spec}",
+        f"Режим отбора: {'На усмотрение агента (скан всей биржи на посильные задачи)' if discretion_on else 'По профильным направлениям'}.",
         f"Опыт из памяти: {'; '.join(mem_highlights[:3])}",
         f"Рабочие языки: {clean_langs}. Тон работы: {clean_tone}.",
-        f"Условия: ставка от ${rate:g}/ч, минимальный заказ от ${min_ord:g} USDT.",
+        f"Условия: ставка {rate_range_lbl} USDT/ч (~${rate:g}/ч), бюджет {budget_range_lbl} USDT (мин. ${min_ord:g}).",
     ]
     if clean_excl:
         overview_lines.append(f"Не берём в работу: {clean_excl}.")
@@ -888,7 +997,7 @@ def submit_questionnaire_and_build_profile_draft(
 
     sample_pitch = (
         f"Здравствуйте! Готовы выполнить вашу задачу по направлению «{clean_spec[:60]}» "
-        f"(ставка ${rate:g}/ч, мин. заказ ${min_ord:g}). Тон: {clean_tone}. "
+        f"(ставка ~${rate:g}/ч, мин. заказ ${min_ord:g}; можем сделать первые 10% как образец сразу). Тон: {clean_tone}. "
         f"Все результаты проходят автоматическую проверку качества и безопасности."
     )
 
@@ -899,8 +1008,8 @@ def submit_questionnaire_and_build_profile_draft(
             """
             INSERT INTO ark_platform_owner_intake (
                 user_id, platform_id, specializations, hourly_rate_usdt, min_order_usdt,
-                languages, tone, excluded_topics, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                languages, tone, excluded_topics, agent_discretion, rate_range, budget_range, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(user_id, platform_id) DO UPDATE SET
                 specializations = excluded.specializations,
                 hourly_rate_usdt = excluded.hourly_rate_usdt,
@@ -908,9 +1017,15 @@ def submit_questionnaire_and_build_profile_draft(
                 languages = excluded.languages,
                 tone = excluded.tone,
                 excluded_topics = excluded.excluded_topics,
+                agent_discretion = excluded.agent_discretion,
+                rate_range = excluded.rate_range,
+                budget_range = excluded.budget_range,
                 updated_at = excluded.updated_at
             """,
-            (memory.user_id, pid, clean_spec, rate, min_ord, clean_langs, clean_tone, clean_excl, now),
+            (
+                memory.user_id, pid, clean_spec, rate, min_ord, clean_langs, clean_tone, clean_excl,
+                1 if discretion_on else 0, rate_range_lbl, budget_range_lbl, now,
+            ),
         )
         conn.execute(
             """
@@ -953,6 +1068,9 @@ def submit_questionnaire_and_build_profile_draft(
         "ok": True,
         "questionnaire_saved": True,
         "questions_answered": 6,
+        "agent_discretion": discretion_on,
+        "rate_range": rate_range_lbl,
+        "budget_range": budget_range_lbl,
         "profile_draft": _public_profile_draft(dict(row)),
     }
 
@@ -1049,15 +1167,44 @@ def autopick_and_prepare_jobs(
         if w.strip()
     ]
 
-    jobs = candidate_jobs if isinstance(candidate_jobs, list) and candidate_jobs else [
-        {
-            "title": f"[{spec['title']}] Разработка лендинга с ИИ-агентом и CRM",
-            "brief": f"Создать современный сайт на Next.js с обученным чат-агентом по профилю: {intake.get('specializations')}",
-            "budget_usdt": max(min_budget + 150.0, 300.0),
-            "estimated_hours": 5.0,
-            "estimated_tokens": 20000,
-        }
-    ]
+    discretion_mode = bool(int(intake.get("agent_discretion") or 0) or _is_discretion_choice(intake.get("specializations")))
+    if isinstance(candidate_jobs, list) and candidate_jobs:
+        jobs = candidate_jobs
+    elif discretion_mode:
+        # В режиме «На усмотрение агента» агент анализирует всю ленту биржи по разным категориям (где уверен в 100% сдаче)
+        jobs = [
+            {
+                "title": f"[{spec['title']}] Веб-интерфейс Next.js / React + ИИ-чат и база",
+                "brief": "Создать отзывчивый фронтенд + API с проверкой безопасности и адаптацией на мобильных устройствах.",
+                "budget_usdt": max(min_budget + 120.0, 280.0),
+                "estimated_hours": 5.0,
+                "estimated_tokens": 20000,
+            },
+            {
+                "title": f"[{spec['title']}] Аудит доступности WCAG 2.2 AA и фикс вёрстки",
+                "brief": "Проверить сайт на контраст, клавиатуру, ARIA-метки и исправить найденные проблемы с отчётом.",
+                "budget_usdt": max(min_budget + 40.0, 120.0),
+                "estimated_hours": 2.5,
+                "estimated_tokens": 12000,
+            },
+            {
+                "title": f"[{spec['title']}] Python-скрипт автоматизации, парсер B2B и MCP-коннектор",
+                "brief": "Собрать чистые открытые данные в CSV/JSON с дедупликацией и отчётом верификации.",
+                "budget_usdt": max(min_budget + 60.0, 160.0),
+                "estimated_hours": 3.0,
+                "estimated_tokens": 14000,
+            },
+        ]
+    else:
+        jobs = [
+            {
+                "title": f"[{spec['title']}] Разработка лендинга с ИИ-агентом и CRM",
+                "brief": f"Создать современный сайт на Next.js с обученным чат-агентом по профилю: {intake.get('specializations')}",
+                "budget_usdt": max(min_budget + 150.0, 300.0),
+                "estimated_hours": 5.0,
+                "estimated_tokens": 20000,
+            }
+        ]
 
     prepared: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
@@ -1213,8 +1360,26 @@ _STAGE3_DDL_STMTS = (
         last_bid_at REAL NOT NULL DEFAULT 0.0,
         halted_reason TEXT NOT NULL DEFAULT '',
         approved_paid_usdt REAL NOT NULL DEFAULT 0.0,
+        max_bid_usdt REAL NOT NULL DEFAULT 500.0,
         updated_at REAL NOT NULL,
         PRIMARY KEY (user_id, platform_id)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS ark_order_message (
+        message_id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        order_id TEXT NOT NULL,
+        platform_id TEXT NOT NULL DEFAULT '',
+        agent_id TEXT NOT NULL DEFAULT 'aifa',
+        direction TEXT NOT NULL DEFAULT 'outbound',
+        client_message TEXT NOT NULL DEFAULT '',
+        reply_text TEXT NOT NULL,
+        offers_sample_10pct INTEGER NOT NULL DEFAULT 1,
+        eta_text TEXT NOT NULL DEFAULT 'за полдня',
+        status TEXT NOT NULL DEFAULT 'draft',
+        created_at REAL NOT NULL,
+        sent_at REAL
     )
     """,
 )
@@ -1247,6 +1412,17 @@ def _ensure_stage3_schema(memory) -> None:
         ):
             if col not in cols:
                 _acs(conn, "ark_platform_wizard_connection", col, col_def)
+        ap_cols = {r["name"] for r in conn.execute("PRAGMA table_info(ark_platform_autopilot_config)").fetchall()}
+        if "max_bid_usdt" not in ap_cols:
+            _acs(conn, "ark_platform_autopilot_config", "max_bid_usdt", "REAL NOT NULL DEFAULT 500.0")
+        in_cols = {r["name"] for r in conn.execute("PRAGMA table_info(ark_platform_owner_intake)").fetchall()}
+        for col, col_def in (
+            ("agent_discretion", "INTEGER NOT NULL DEFAULT 0"),
+            ("rate_range", "TEXT NOT NULL DEFAULT ''"),
+            ("budget_range", "TEXT NOT NULL DEFAULT ''"),
+        ):
+            if col not in in_cols:
+                _acs(conn, "ark_platform_owner_intake", col, col_def)
         conn.commit()
 
 
@@ -1528,6 +1704,7 @@ def get_platform_autopilot_config(memory, platform_id: str) -> dict[str, Any]:
             "SELECT * FROM ark_platform_autopilot_config WHERE user_id = ? AND platform_id = ?",
             (memory.user_id, pid),
         ).fetchone()
+    env_max_bid = float(os.environ.get("PADAM_AUTOPILOT_MAX_BID_USDT", "500") or 500)
     if row is None:
         enabled = False
         daily_limit = 10
@@ -1536,6 +1713,7 @@ def get_platform_autopilot_config(memory, platform_id: str) -> dict[str, Any]:
         last_bid_at = 0.0
         halted_reason = ""
         approved_paid = 0.0
+        max_bid_usdt = env_max_bid
     else:
         d = dict(row)
         today_str = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d")
@@ -1546,6 +1724,7 @@ def get_platform_autopilot_config(memory, platform_id: str) -> dict[str, Any]:
         last_bid_at = float(d.get("last_bid_at") or 0.0)
         halted_reason = str(d.get("halted_reason") or "")
         approved_paid = float(d.get("approved_paid_usdt") or 0.0)
+        max_bid_usdt = float(d.get("max_bid_usdt") or env_max_bid)
 
     eff_mode = "autopilot" if enabled else "assisted"
     return {
@@ -1560,6 +1739,11 @@ def get_platform_autopilot_config(memory, platform_id: str) -> dict[str, Any]:
         "last_bid_at": last_bid_at,
         "halted_reason": halted_reason,
         "approved_paid_usdt": approved_paid,
+        "max_bid_usdt": max_bid_usdt,
+        "max_bid_hint_ru": (
+            f"Предохранитель автопилота: заказы до ${max_bid_usdt:g} агент может откликать сам, "
+            "а крупные сделки дороже этого порога всегда ждут вашего личного одобрения кнопкой."
+        ),
         "forbids_bots": spec["forbids_bots"],
         "bot_warning_ru": spec["bot_warning_ru"],
         "bot_warning_url": spec["bot_warning_url"],
@@ -1574,6 +1758,7 @@ def set_platform_autopilot(
     daily_bid_limit: int = 8,
     min_pause_s: float = 180.0,
     approved_paid_usdt: float | None = None,
+    max_bid_usdt: float | None = None,
     allow_forbids_bots: bool = True,
 ) -> dict[str, Any]:
     """Включает или выключает полный автопилот на площадке (вкл = 20% без кнопки, выкл = 15% черновик и кнопка)."""
@@ -1596,20 +1781,26 @@ def set_platform_autopilot(
     now = time.time()
     cur = get_platform_autopilot_config(memory, pid)
     paid_lim = float(approved_paid_usdt) if approved_paid_usdt is not None else cur["approved_paid_usdt"]
+    cap_bid = (
+        round(max(5.0, min(100000.0, float(max_bid_usdt))), 2)
+        if max_bid_usdt is not None
+        else float(cur.get("max_bid_usdt") or 500.0)
+    )
 
     with freelance_autonomy._lock_of(memory):
         memory.store.conn.execute(
             """
             INSERT INTO ark_platform_autopilot_config (
                 user_id, platform_id, autopilot_enabled, daily_bid_limit, min_pause_s,
-                bids_sent_today, last_bid_day, last_bid_at, halted_reason, approved_paid_usdt, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?)
+                bids_sent_today, last_bid_day, last_bid_at, halted_reason, approved_paid_usdt, max_bid_usdt, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?)
             ON CONFLICT(user_id, platform_id) DO UPDATE SET
                 autopilot_enabled = excluded.autopilot_enabled,
                 daily_bid_limit = excluded.daily_bid_limit,
                 min_pause_s = excluded.min_pause_s,
                 halted_reason = '',
                 approved_paid_usdt = excluded.approved_paid_usdt,
+                max_bid_usdt = excluded.max_bid_usdt,
                 updated_at = excluded.updated_at
             """,
             (
@@ -1622,6 +1813,7 @@ def set_platform_autopilot(
                 _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d"),
                 cur["last_bid_at"],
                 paid_lim,
+                cap_bid,
                 now,
             ),
         )
@@ -1812,7 +2004,8 @@ def dispatch_platform_autopilot_action(
         }
 
     # 5а. ТОП-20 Сестры, п. 10: потолок одной ставки. Дороже — только кнопкой владельца.
-    max_bid = float(os.environ.get("PADAM_AUTOPILOT_MAX_BID_USDT", "500") or 500)
+    env_ceil = os.environ.get("PADAM_AUTOPILOT_MAX_BID_USDT", "").strip()
+    max_bid = float(env_ceil) if env_ceil else float(cfg.get("max_bid_usdt") or 500.0)
     if float(budget_usdt or 0.0) > max_bid:
         return {"ok": False, "sent": False, "status": "bid_over_ceiling_needs_owner", "max_bid_usdt": max_bid,
                 "budget_usdt": float(budget_usdt), "order_id": order_id,
@@ -2220,4 +2413,160 @@ def platform_wizard_snapshot(memory) -> dict[str, Any]:
         "intakes": [dict(r) for r in intakes],
         "profile_drafts": [_public_profile_draft(dict(r)) for r in drafts],
         "autopilot_configs": {str(r["platform_id"]): get_platform_autopilot_config(memory, str(r["platform_id"])) for r in ap_rows},
+        "client_messages": list_client_negotiations(memory, limit=25),
     }
+
+
+def draft_client_negotiation(
+    memory,
+    order_id: str,
+    *,
+    client_message: str = "",
+    offer_10pct_sample: bool = True,
+    eta_text: str = "за полдня",
+    agent_id: str = "aifa",
+) -> dict[str, Any]:
+    """Готовит ответ ИИ-агента в переписке с заказчиком по заказу (с защитой от инъекций и предложением 10% образца)."""
+    _ensure_stage3_schema(memory)
+    from . import safety as _safety, agent_passport as _ap
+    oid = str(order_id or "").strip()
+    order = freelance_autonomy._get_order(memory, oid)
+    pid = str(order.get("platform") or "upwork").strip().lower()
+    aid = str(agent_id or order.get("assigned_agent") or "aifa").strip().lower()
+
+    clean_in, _ = freelance_autonomy.sanitize_for_delivery(str(client_message or "").strip())
+    if clean_in and _safety.looks_like_instruction(clean_in):
+        audit_chain.append_audit(
+            memory,
+            "client_message_injection_blocked",
+            {"order_id": oid, "preview": clean_in[:120]},
+            agent_id=aid,
+        )
+        return {
+            "ok": False,
+            "blocked_by_shield": True,
+            "order_id": oid,
+            "error": "В сообщении заказчика обнаружена попытка инъекции команд: текст задержан для проверки владельцем.",
+        }
+
+    p_info = _ap.get_agent_passport(memory, agent_id=aid)
+    agent_label = (
+        f"инженер-ассистент команды {p_info['agent_name']} ({p_info['passport_number']})"
+        if p_info
+        else f"ИИ-инженер команды ({aid})"
+    )
+    sample_line = (
+        f" Могу прямо сейчас сделать и показать первые 10% работы как демонстрационный образец по «{order['title']}»"
+        f" — если результат устроит, остальной объём выполню {eta_text}."
+        if offer_10pct_sample
+        else f" Ориентировочный срок полного выполнения — {eta_text}."
+    )
+    if clean_in:
+        reply_raw = (
+            f"Здравствуйте! На связи {agent_label}. Спасибо за уточнение: «{clean_in[:220]}». "
+            f"Мы полностью разобрали задачу «{order['title']}»."
+            f"{sample_line} Будем рады приступить!"
+        )
+    else:
+        reply_raw = (
+            f"Здравствуйте! На связи {agent_label}. Взяли в разбор ваш заказ «{order['title']}» "
+            f"(ориентир бюджета ${float(order.get('budget_usdt') or 0):g} USDT).{sample_line}"
+        )
+    clean_reply, _ = freelance_autonomy.sanitize_for_delivery(reply_raw)
+    msg_id = f"msg-{secrets.token_hex(6)}"
+    now = time.time()
+    with freelance_autonomy._lock_of(memory):
+        memory.store.conn.execute(
+            """
+            INSERT INTO ark_order_message (
+                message_id, user_id, order_id, platform_id, agent_id, direction,
+                client_message, reply_text, offers_sample_10pct, eta_text, status, created_at
+            ) VALUES (?, ?, ?, ?, ?, 'outbound', ?, ?, ?, ?, 'draft', ?)
+            """,
+            (msg_id, memory.user_id, oid, pid, aid, clean_in[:1500], clean_reply[:2000], 1 if offer_10pct_sample else 0, str(eta_text)[:64], now),
+        )
+        memory.store.conn.commit()
+    return {
+        "ok": True,
+        "message_id": msg_id,
+        "order_id": oid,
+        "platform_id": pid,
+        "agent_id": aid,
+        "status": "draft",
+        "reply_text": clean_reply[:2000],
+        "offers_sample_10pct": bool(offer_10pct_sample),
+    }
+
+
+def send_client_negotiation(
+    memory,
+    message_id: str,
+    *,
+    owner_approved: bool = False,
+) -> dict[str, Any]:
+    """Отправляет утверждённый ответ клиенту через транспорт (или переводит в ready_to_send_manual, где боты запрещены)."""
+    _ensure_stage3_schema(memory)
+    mid = str(message_id or "").strip()
+    with freelance_autonomy._lock_of(memory):
+        row = memory.store.conn.execute(
+            "SELECT * FROM ark_order_message WHERE user_id = ? AND message_id = ?",
+            (memory.user_id, mid),
+        ).fetchone()
+    if row is None:
+        raise KeyError(f"Сообщение переписки не найдено: {mid}")
+    msg = dict(row)
+    spec = CATALOG_BY_ID.get(str(msg["platform_id"]), {})
+    if not owner_approved and spec.get("forbids_bots", True):
+        return {
+            "ok": True,
+            "sent": False,
+            "status": "ready_to_send_manual",
+            "message_id": mid,
+            "reply_text": msg["reply_text"],
+            "note": "На этой площадке автоотправка без вашей кнопки отключена — скопируйте или подтвердите отправку вручную.",
+        }
+    sent = False
+    if _BROWSER_TRANSPORT is not None:
+        tr = _BROWSER_TRANSPORT({
+            "op": "send_client_message",
+            "platform_id": msg["platform_id"],
+            "order_id": msg["order_id"],
+            "text": msg["reply_text"],
+        }) or {}
+        sent = bool(tr.get("sent", True))
+    elif not spec.get("forbids_bots", True):
+        sent = True
+
+    new_st = "sent" if sent else "ready_to_send_manual"
+    now = time.time()
+    with freelance_autonomy._lock_of(memory):
+        memory.store.conn.execute(
+            "UPDATE ark_order_message SET status = ?, sent_at = ? WHERE message_id = ? AND user_id = ?",
+            (new_st, now if sent else None, mid, memory.user_id),
+        )
+        memory.store.conn.commit()
+    return {
+        "ok": True,
+        "sent": sent,
+        "status": new_st,
+        "message_id": mid,
+        "order_id": msg["order_id"],
+        "reply_text": msg["reply_text"],
+    }
+
+
+def list_client_negotiations(memory, order_id: str = "", *, limit: int = 30) -> list[dict[str, Any]]:
+    _ensure_stage3_schema(memory)
+    lim = max(1, min(100, int(limit)))
+    with freelance_autonomy._lock_of(memory):
+        if order_id:
+            rows = memory.store.conn.execute(
+                "SELECT * FROM ark_order_message WHERE user_id = ? AND order_id = ? ORDER BY created_at DESC LIMIT ?",
+                (memory.user_id, str(order_id).strip(), lim),
+            ).fetchall()
+        else:
+            rows = memory.store.conn.execute(
+                "SELECT * FROM ark_order_message WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
+                (memory.user_id, lim),
+            ).fetchall()
+    return [dict(r) for r in rows]

@@ -2732,17 +2732,22 @@ class Memory:
               as_of: str | datetime | None = None,
               actor: roles.ActorContext | None = None,
               agent_id: str | None = None,
-              mode: str = "all") -> dict:
-        """Граф связей для Studio и API (/graph?id=&as_of=&agent_id=&mode=):
+              mode: str = "all",
+              topic: str | None = None) -> dict:
+        """Граф связей для Studio и API (/graph?id=&as_of=&agent_id=&mode=&topic=):
         - derived / cause / correction / contradiction / version / conflict;
         - отдельный граф по каждому agent_id («Новый агент -> новый граф»);
-        - mode='intersections' или cross_agent_edges показывает пересечения между агентами.
+        - mode='spheres' — 3D-шары агентов с разноцветными типами данных, силой NOCTURNE и L3-кольцами;
+        - mode='task_lens' (или topic) — фокус-линза одной задачи: кто начал -> продолжил -> проверил.
         """
         предел = max(10, min(int(limit), 500))
         момент = parse_as_of(as_of) if as_of is not None and str(as_of).strip() else None
         target_agent = (str(agent_id).strip() if agent_id is not None and str(agent_id).strip() else None)
+        focus_topic = (str(topic).strip().lower() if topic is not None and str(topic).strip() else None)
         graph_mode = (str(mode or "all").strip().lower())
-        if graph_mode not in ("all", "agent", "intersections", "spheres"):
+        if focus_topic and graph_mode in ("all", "spheres", "intersections", "task_lens"):
+            graph_mode = "task_lens"
+        if graph_mode not in ("all", "agent", "intersections", "spheres", "task_lens"):
             graph_mode = "all"
         if target_agent and graph_mode in ("all", "spheres"):
             graph_mode = "agent"
@@ -2966,6 +2971,48 @@ class Memory:
                         added_b += 1
                         if added_b >= 4:
                             break
+        elif graph_mode == "task_lens":
+            t_rows = self.store.query(
+                f"""SELECT id, kind, COALESCE(NULLIF(agent_id, ''), 'owner') AS ag, content, факт_ключ,
+                           created_at, last_confirmed_at, status, anchor_tx
+                    FROM memory WHERE user_id = ? AND status NOT IN ('quarantined', 'rejected', 'revoked'){vis_sql}
+                    ORDER BY created_at ASC""",
+                (self.user_id, *vis_params),
+            )
+            matched_steps: list[dict[str, Any]] = []
+            # Если тема не задана явно — выбираем самый частый межагентный или общий токен из intersections
+            if not focus_topic:
+                tok_freq: dict[str, int] = {}
+                for tr in t_rows[-300:]:
+                    for tk in _extract_topic_tokens(tr["content"] or ""):
+                        tok_freq[tk] = tok_freq.get(tk, 0) + 1
+                focus_topic = max(tok_freq.items(), key=lambda x: x[1])[0] if tok_freq else ""
+            for tr in t_rows:
+                if допустимые_на_дату is not None and tr["id"] not in допустимые_на_дату:
+                    continue
+                c_low = (tr["content"] or "").lower()
+                fk_low = (tr["факт_ключ"] or "").lower()
+                toks = _extract_topic_tokens(c_low)
+                if not focus_topic or focus_topic in toks or focus_topic in c_low or (fk_low and focus_topic in fk_low):
+                    matched_steps.append(dict(tr))
+            matched_steps = matched_steps[-min(предел, 80):]
+            узлы_ids = {m["id"] for m in matched_steps}
+            edges = [e for e in edges if e["source"] in узлы_ids and e["target"] in узлы_ids]
+            # Направленная хронологическая цепочка шагов по задаче («кто начал -> продолжил -> проверил»)
+            for idx in range(len(matched_steps) - 1):
+                s_id = matched_steps[idx]["id"]
+                t_id = matched_steps[idx + 1]["id"]
+                if s_id != t_id:
+                    edges.append({
+                        "source": s_id,
+                        "target": t_id,
+                        "type": "task_flow",
+                        "relation": "task_flow",
+                        "step_index": idx + 1,
+                        "from_agent": matched_steps[idx]["ag"],
+                        "to_agent": matched_steps[idx + 1]["ag"],
+                        "topic": focus_topic,
+                    })
         else:
             узлы_ids = set(list(связанные_ids)[:предел])
             target_fill = min(60 if target_agent else 30, предел)
@@ -3003,7 +3050,7 @@ class Memory:
             rows = self.store.query(
                 f"""SELECT id, kind, scope, content, status, origin, COALESCE(NULLIF(agent_id, ''), 'owner') AS ag,
                            confidence, importance, created_at, last_confirmed_at, valid_from, valid_to,
-                           supersedes, superseded_by, факт_ключ, visibility, workspace_id
+                           supersedes, superseded_by, факт_ключ, visibility, workspace_id, anchor_tx, anchor_slot
                     FROM memory WHERE user_id = ?{vis_sql} AND id IN ({','.join('?' * len(список_ids))})""",
                 (self.user_id, *vis_params, *список_ids))
             for r in rows:
@@ -3014,6 +3061,11 @@ class Memory:
                 node_tokens_map[r["id"]] = _extract_topic_tokens(текст or "")
                 if r["факт_ключ"]:
                     node_fk_map[r["id"]] = str(r["факт_ключ"])
+                conf_v = float(r["confidence"] if r["confidence"] is not None else 0.7)
+                imp_v = float(r["importance"] if r["importance"] is not None else 0.5)
+                reconf = bool(r["last_confirmed_at"] and r["created_at"] and str(r["last_confirmed_at"]) > str(r["created_at"]))
+                l3_on = bool(r["anchor_tx"])
+                strength = round(min(1.0, max(0.15, 0.40 * conf_v + 0.35 * imp_v + (0.15 if reconf else 0.0) + (0.10 if l3_on else 0.0))), 3)
                 nodes.append({
                     "id": r["id"],
                     "kind": r["kind"],
@@ -3025,8 +3077,13 @@ class Memory:
                     "content": текст,
                     "status": r["status"],
                     "origin": r["origin"] or "user",
-                    "confidence": r["confidence"],
-                    "importance": r["importance"],
+                    "confidence": conf_v,
+                    "importance": imp_v,
+                    "strength": strength,
+                    "reconfirmed": reconf,
+                    "l3_anchored": l3_on,
+                    "anchor_tx": r["anchor_tx"],
+                    "anchor_slot": r["anchor_slot"],
                     "created_at": r["created_at"],
                     "last_confirmed_at": r["last_confirmed_at"],
                     "valid_from": r["valid_from"] or r["created_at"],
@@ -3150,10 +3207,49 @@ class Memory:
             for sp in sorted(sphere_map.values(), key=lambda x: -x["node_count"])
         ]
 
+        task_lens_info: dict[str, Any] | None = None
+        if graph_mode == "task_lens" and nodes:
+            ordered = sorted(nodes, key=lambda n: str(n.get("created_at") or ""))
+            total_ord = len(ordered)
+            steps_out = []
+            for idx, nd in enumerate(ordered):
+                if idx == 0:
+                    role_key = "started"
+                    role_ru = "Начал"
+                elif idx == total_ord - 1 or nd.get("reconfirmed") or nd.get("l3_anchored"):
+                    role_key = "verified"
+                    role_ru = "Проверил / закрепил"
+                else:
+                    role_key = "continued"
+                    role_ru = "Продолжил"
+                nd["task_role"] = role_key
+                nd["task_step"] = idx + 1
+                steps_out.append({
+                    "step": idx + 1,
+                    "id": nd["id"],
+                    "agent_id": nd["agent_id"],
+                    "agent_label": nd["agent_label"],
+                    "agent_color": nd["agent_color"],
+                    "role": role_key,
+                    "role_ru": role_ru,
+                    "created_at": nd["created_at"],
+                    "l3_anchored": bool(nd.get("l3_anchored")),
+                    "strength": nd.get("strength", 0.5),
+                    "preview": str(nd.get("content") or "")[:120],
+                })
+            task_lens_info = {
+                "topic": focus_topic or "",
+                "total_steps": len(steps_out),
+                "participating_agents": sorted({s["agent_label"] for s in steps_out}),
+                "steps": steps_out,
+            }
+
         return {
             "center_id": center_id,
             "agent_id": target_agent,
             "mode": graph_mode,
+            "topic": focus_topic,
+            "task_lens": task_lens_info,
             "as_of": момент.isoformat() if момент is not None else None,
             "relations": list(LINK_RELATIONS),
             "agents": self.list_agents(actor=actor),

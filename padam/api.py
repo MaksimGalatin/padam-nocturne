@@ -419,7 +419,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(payload_bytes)
                 return None
             if self.path == "/stats":
-                return self._send(200, mem().stats(actor=actor))
+                with mem().store._lock:
+                    return self._send(200, mem().stats(actor=actor))
             if путь.path == "/attacks":
                 roles.require_owner(actor, "attacks")
                 from . import defense_stats
@@ -805,6 +806,24 @@ class Handler(BaseHTTPRequestHandler):
                 with mem().store._lock:
                     res = _rf.surface_reflex_hints(mem(), q)
                 return self._send(200, res)
+            if путь.path == "/api/v2/ark/passports":
+                roles.require_owner(actor, "brain_status")
+                from . import agent_passport as _ap
+                qs_pp = parse_qs(путь.query)
+                check_nm = (qs_pp.get("check_name") or [""])[0].strip()
+                tier_pp = (qs_pp.get("tier") or ["free"])[0].strip()
+                with mem().store._lock:
+                    if check_nm:
+                        return self._send(200, _ap.check_name_availability(mem(), check_nm))
+                    return self._send(200, _ap.list_agent_passports(mem(), tier=tier_pp))
+            if путь.path == "/api/v2/ark/agora":
+                roles.require_owner(actor, "brain_status")
+                from . import agora as _ag
+                qs_ag = parse_qs(путь.query)
+                rm_ag = (qs_ag.get("room") or ["all"])[0]
+                lim_ag = int((qs_ag.get("limit") or ["30"])[0])
+                with mem().store._lock:
+                    return self._send(200, _ag.read_agora_feed(mem(), room=rm_ag, limit=lim_ag, fence_for_agent=False))
             if путь.path == "/api/v2/ark/siblings":
                 roles.require_owner(actor, "brain_status")
                 from . import sibling_registry as _sr, family_admin as _fa
@@ -944,14 +963,17 @@ class Handler(BaseHTTPRequestHandler):
             if путь.path == "/graph":
                 q = parse_qs(путь.query)
                 try:
-                    return self._send(200, mem().graph(
-                        center_id=q.get("id", [None])[0] or None,
-                        limit=int(q.get("limit", ["200"])[0]),
-                        as_of=q.get("as_of", [None])[0] or None,
-                        actor=actor,
-                        agent_id=q.get("agent_id", [None])[0] or None,
-                        mode=q.get("mode", ["all"])[0] or "all",
-                    ))
+                    with mem().store._lock:
+                        gr_payload = mem().graph(
+                            center_id=q.get("id", [None])[0] or None,
+                            limit=int(q.get("limit", ["200"])[0]),
+                            as_of=q.get("as_of", [None])[0] or None,
+                            actor=actor,
+                            agent_id=q.get("agent_id", [None])[0] or None,
+                            mode=q.get("mode", ["all"])[0] or "all",
+                            topic=q.get("topic", [None])[0] or None,
+                        )
+                    return self._send(200, gr_payload)
                 except ValueError as e:
                     return self._send(400, {"error": str(e)})
             if путь.path == "/entities":
@@ -2285,6 +2307,88 @@ class Handler(BaseHTTPRequestHandler):
                     window_seconds=int(data.get("window_seconds") or 300),
                 ))
 
+            if self.path == "/api/v2/ark/passports/action":
+                roles.require_owner(actor, "ark_freelance")
+                from . import agent_passport as _ap
+                act_pp = str(data.get("action") or "list").lower()
+                with mem().store._lock:
+                    if act_pp == "check_name":
+                        res_pp = _ap.check_name_availability(mem(), str(data.get("desired_name") or data.get("name") or ""))
+                    elif act_pp == "create":
+                        res_pp = _ap.create_agent_passport(
+                            mem(),
+                            agent_id=str(data.get("agent_id") or ""),
+                            desired_name=str(data.get("desired_name") or ""),
+                            tier=data.get("tier") or "free",
+                            role=str(data.get("role") or "freelance_agent"),
+                            payment_confirmed=bool(data.get("payment_confirmed", False)),
+                            receipt_ref=str(data.get("receipt_ref") or ""),
+                            actor=actor,
+                        )
+                    elif act_pp == "rename":
+                        res_pp = _ap.rename_agent_with_fee(
+                            mem(),
+                            str(data.get("agent_id") or ""),
+                            str(data.get("desired_name") or data.get("new_name") or ""),
+                            payment_confirmed=bool(data.get("payment_confirmed", False)),
+                            actor=actor,
+                        )
+                    elif act_pp in ("freeze", "unfreeze"):
+                        res_pp = _ap.freeze_or_unfreeze_name(
+                            mem(),
+                            str(data.get("desired_name") or data.get("name") or ""),
+                            action=act_pp,
+                            reason=str(data.get("reason") or "owner_reserved"),
+                            unfreeze_for_user_id=str(data.get("unfreeze_for_user_id") or ""),
+                            actor=actor,
+                        )
+                    elif act_pp == "record_reputation":
+                        res_pp = _ap.record_agent_order_reputation(
+                            mem(),
+                            str(data.get("agent_id") or ""),
+                            earned_usdt=float(data.get("earned_usdt") or 0.0),
+                            rating=float(data.get("rating") or 5.0),
+                        )
+                    else:
+                        res_pp = _ap.list_agent_passports(mem(), tier=str(data.get("tier") or "free"))
+                return self._send(200, res_pp)
+
+            if self.path == "/api/v2/ark/agora/action":
+                roles.require_owner(actor, "ark_freelance")
+                from . import agora as _ag
+                act_ag = str(data.get("action") or "read").lower()
+                with mem().store._lock:
+                    if act_ag == "settings":
+                        res_ag = _ag.set_agora_settings(
+                            mem(),
+                            enabled=bool(data.get("enabled", False)),
+                            mode=data.get("mode"),
+                            allow_subcontracts=data.get("allow_subcontracts"),
+                            max_posts_per_day=data.get("max_posts_per_day"),
+                            actor=actor,
+                        )
+                    elif act_ag == "publish":
+                        res_ag = _ag.publish_agora_post(
+                            mem(),
+                            room=str(data.get("room") or "unsolved_tasks"),
+                            title=str(data.get("title") or ""),
+                            body=str(data.get("body") or data.get("content") or ""),
+                            agent_id=str(data.get("agent_id") or "aifa"),
+                            bounty_usdt=float(data.get("bounty_usdt") or 0.0),
+                            bounty_currency=str(data.get("bounty_currency") or "USDT_TRC20"),
+                        )
+                    elif act_ag == "reply":
+                        res_ag = _ag.reply_agora_post(
+                            mem(),
+                            post_id=str(data.get("post_id") or ""),
+                            body=str(data.get("body") or data.get("content") or ""),
+                            agent_id=str(data.get("agent_id") or "aifa"),
+                            is_solution=bool(data.get("is_solution", False)),
+                        )
+                    else:
+                        res_ag = _ag.read_agora_feed(mem(), room=str(data.get("room") or "all"), limit=int(data.get("limit") or 30), fence_for_agent=False)
+                return self._send(200, res_ag)
+
             if self.path == "/api/v2/ark/coop":
                 roles.require_owner(actor, "ark_coop")
                 from . import coop_broker as _cb
@@ -2700,13 +2804,14 @@ class Handler(BaseHTTPRequestHandler):
                         res_wz = _pw.submit_questionnaire_and_build_profile_draft(
                             mem(),
                             platform_id=str(data.get("platform_id") or ""),
-                            specializations=str(data.get("specializations") or ""),
-                            hourly_rate_usdt=float(data.get("hourly_rate_usdt") or 35.0),
-                            min_order_usdt=float(data.get("min_order_usdt") or 100.0),
+                            specializations=str(data.get("specializations") or "На усмотрение агента"),
+                            hourly_rate_usdt=data.get("hourly_rate_usdt") if data.get("hourly_rate_usdt") not in (None, "") else 35.0,
+                            min_order_usdt=data.get("min_order_usdt") if data.get("min_order_usdt") not in (None, "") else 100.0,
                             languages=str(data.get("languages") or "ru, en"),
                             tone=str(data.get("tone") or "деловой, конкретный"),
                             excluded_topics=str(data.get("excluded_topics") or ""),
                             agent_id=aid,
+                            agent_discretion=bool(data.get("agent_discretion", False)),
                         )
                     elif act == "publish_profile":
                         res_wz = _pw.publish_profile_draft(
@@ -2743,6 +2848,7 @@ class Handler(BaseHTTPRequestHandler):
                             daily_bid_limit=int(data.get("daily_bid_limit") or 8),
                             min_pause_s=float(data.get("min_pause_s") if data.get("min_pause_s") is not None else 180.0),
                             approved_paid_usdt=float(data["approved_paid_usdt"]) if data.get("approved_paid_usdt") is not None else None,
+                            max_bid_usdt=float(data["max_bid_usdt"]) if data.get("max_bid_usdt") not in (None, "") else None,
                             allow_forbids_bots=bool(data.get("allow_forbids_bots", "PYTEST_CURRENT_TEST" in os.environ)),
                         )
                     elif act == "autopilot_config":
@@ -2781,6 +2887,26 @@ class Handler(BaseHTTPRequestHandler):
                             str(data.get("order_id") or ""),
                             reason=str(data.get("reason") or "Образец 10% отклонён"),
                         )
+                    elif act == "client_reply_draft":
+                        res_wz = _pw.draft_client_negotiation(
+                            mem(),
+                            str(data.get("order_id") or ""),
+                            client_message=str(data.get("client_message") or ""),
+                            offer_10pct_sample=bool(data.get("offer_10pct_sample", True)),
+                            eta_text=str(data.get("eta_text") or "за полдня"),
+                            agent_id=aid,
+                        )
+                    elif act == "client_reply_send":
+                        res_wz = _pw.send_client_negotiation(
+                            mem(),
+                            str(data.get("message_id") or ""),
+                            owner_approved=bool(data.get("owner_approved", False)),
+                        )
+                    elif act == "client_reply_list":
+                        res_wz = {
+                            "ok": True,
+                            "messages": _pw.list_client_negotiations(mem(), str(data.get("order_id") or "")),
+                        }
                     elif act == "official_api":
                         res_wz = _pw.official_platform_api_action(
                             mem(),

@@ -1624,5 +1624,40 @@ BTN_TIPS: dict[str, dict[str, str]] = {
         "es": "Verifica la dirección USDT TRC20, Solana o Arweave antes de guardar.",
         "zh": "保存前检测 USDT TRC20、Solana 或 Arweave 地址是否存在拼写或校验和错误。",
     },
-
+    "pp-check-btn": {
+        "ru": "Проверяет, свободно ли желаемое имя агента и не заморожено ли оно за CODE Eternal или известной личностью.",
+        "en": "Checks whether the desired agent name is free or frozen/reserved by CODE Eternal or public figures.",
+        "es": "Comprueba si el nombre del agente está libre o congelado por CODE Eternal o figuras públicas.",
+        "zh": "检查所选智能体名称是否可用，或是否已被 CODE Eternal 与公众人物冻结保留。",
+    },
+    "pp-create-btn": {
+        "ru": "Выпускает цифровой паспорт cNFT (Solana) с миллиардной нумерацией CODE-PASS-000000000001; 1-й агент со случайным именем — бесплатно.",
+        "en": "Issues a billion-scale Solana cNFT agent passport (CODE-PASS-000000000001); the 1st random-name slot is free.",
+        "es": "Emite un pasaporte cNFT Solana con numeración en miles de millones; el primer agente aleatorio es gratis.",
+        "zh": "签发十亿级编号的 Solana cNFT 智能体护照；首个随机命名免费。",
+    },
+    "ag-save-cfg-btn": {
+        "ru": "Сохраняет тумблер владельца и режим участия ваших агентов в общей сети CODE Agora.",
+        "en": "Saves the owner master switch and participation mode for your agents in CODE Agora.",
+        "es": "Guarda el interruptor del dueño y el modo de participación en CODE Agora.",
+        "zh": "保存主人总开关及智能体参与 CODE Agora 公共网络的模式。",
+    },
+    "ag-post-btn": {
+        "ru": "Публикует обсуждение, нерешённую задачу или субподряд в CODE Agora после прохождения Agentic Shield и Zero-Leak.",
+        "en": "Publishes a topic, unsolved task, or subcontract to CODE Agora after Agentic Shield & Zero-Leak screening.",
+        "es": "Publica un tema o subcontrato en CODE Agora tras pasar Agentic Shield y Zero-Leak.",
+        "zh": "经 Agentic Shield 与零泄露过滤后，向 CODE Agora 发布讨论、难题或外包任务。",
+    },
+    "earn-wiz-save-limits-btn": {
+        "ru": "Сохраняет дневной лимит откликов и потолок одной ставки автопилота (по умолч. $500; выше — только по вашей кнопке).",
+        "en": "Saves daily bid cap and per-order autopilot ceiling (default $500; higher bids require your approval).",
+        "es": "Guarda el límite diario y el tope por puja del piloto automático (por defecto $500).",
+        "zh": "保存每日投标上限及自动模式单笔最高出价（默认 $500，超出需主人手动确认）。",
+    },
+    "graph-tasklens-btn": {
+        "ru": "Включает фокус-линзу одной задачи: показывает цепочку шагов по теме или ID — кто начал, кто продолжил и кто проверил.",
+        "en": "Turns on the single-task focus lens: chronological steps showing who started, continued, and verified a task.",
+        "es": "Activa la lente de una sola tarea con su cronología: quién empezó, continuó y verificó.",
+        "zh": "开启单任务聚焦透镜：按时间顺序展示谁发起、谁继续、谁完成验证。",
+    },
 }
