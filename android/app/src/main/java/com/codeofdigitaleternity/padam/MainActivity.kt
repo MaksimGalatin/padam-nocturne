@@ -65,7 +65,7 @@ class MainActivity : AppCompatActivity() {
         // Android 15 (targetSdk 35+) рисует окно от края до края: без отступов Студия заходила под системные
         // часы и значки сети (отчёт Сестры по APK 0.7.0, 20.11.2026). Отступаем на высоту системных панелей и выреза.
         ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout() or WindowInsetsCompat.Type.ime())
             v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
             insets
         }

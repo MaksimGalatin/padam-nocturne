@@ -3303,7 +3303,12 @@ _STRINGS_CABINET: dict[str, dict[str, str]] = {
         "aifa_signed_in_as": "Учётная запись:",
         "aifa_use_local_label": "AIfa видит мою локальную память",
         "aifa_use_local_hint": "По умолчанию выключено. Если включить, в запрос уйдёт до 5 найденных локальных записей, уже прошедших маскировку секретов.",
-        "aifa_msg_ph": "Напишите сообщение AIfa…",
+        "aifa_msg_ph": "Спросите AIfa о чём-нибудь…",
+        "aifa_online": "в сети · единая память",
+        "aifa_typing": "AIfa думает…",
+        "aifa_tts_label": "Озвучивать ответы",
+        "aifa_disclaimer": "AIfa — искусственный интеллект, а не человек. Ответы могут быть неточными и не заменяют врача, психолога или юриста.",
+        "aifa_media_toggle": "✨ Генератор картинок и слайдов ($0)",
         "aifa_send_btn": "Отправить",
         "aifa_local_sent_title": "Локальные записи, переданные в этом запросе (после маскировки):",
         "aifa_empty_chat": "Сообщений пока нет. Напишите AIfa ниже.",
@@ -3340,7 +3345,12 @@ _STRINGS_CABINET: dict[str, dict[str, str]] = {
         "aifa_signed_in_as": "Signed in as:",
         "aifa_use_local_label": "Let AIfa see my local memory",
         "aifa_use_local_hint": "Off by default. When enabled, up to 5 matching local records (already secret-masked) are included and shown below.",
-        "aifa_msg_ph": "Write a message to AIfa…",
+        "aifa_msg_ph": "Ask AIfa anything…",
+        "aifa_online": "online · unified memory",
+        "aifa_typing": "AIfa is thinking…",
+        "aifa_tts_label": "Speak replies aloud",
+        "aifa_disclaimer": "AIfa is an artificial intelligence, not a human. Replies may be inaccurate and do not replace a doctor, therapist, or lawyer.",
+        "aifa_media_toggle": "✨ Image & slide generator ($0)",
         "aifa_send_btn": "Send",
         "aifa_local_sent_title": "Masked local records sent with this request:",
         "aifa_empty_chat": "No messages yet. Write to AIfa below.",
@@ -3377,7 +3387,12 @@ _STRINGS_CABINET: dict[str, dict[str, str]] = {
         "aifa_signed_in_as": "Cuenta:",
         "aifa_use_local_label": "AIfa ve mi memoria local",
         "aifa_use_local_hint": "Desactivado por defecto. Al activarlo, se envían hasta 5 recuerdos locales ya enmascarados.",
-        "aifa_msg_ph": "Escribe un mensaje para AIfa…",
+        "aifa_msg_ph": "Pregúntale cualquier cosa a AIfa…",
+        "aifa_online": "en línea · memoria unificada",
+        "aifa_typing": "AIfa está pensando…",
+        "aifa_tts_label": "Leer respuestas en voz alta",
+        "aifa_disclaimer": "AIfa es una inteligencia artificial, no una persona. Sus respuestas pueden tener errores y no sustituyen a un médico, psicólogo o abogado.",
+        "aifa_media_toggle": "✨ Generador de imágenes y diapositivas ($0)",
         "aifa_send_btn": "Enviar",
         "aifa_local_sent_title": "Registros locales enmascarados enviados:",
         "aifa_empty_chat": "Aún no hay mensajes. Escribe a AIfa abajo.",
@@ -3414,7 +3429,12 @@ _STRINGS_CABINET: dict[str, dict[str, str]] = {
         "aifa_signed_in_as": "当前账号：",
         "aifa_use_local_label": "允许 AIfa 查看我的本地记忆",
         "aifa_use_local_hint": "默认关闭。开启后最多附带 5 条已完成密钥掩码的本地记忆，并在下方明示。",
-        "aifa_msg_ph": "给 AIfa 发消息…",
+        "aifa_msg_ph": "给 AIfa 发消息，任何问题都可以…",
+        "aifa_online": "在线 · 统一记忆",
+        "aifa_typing": "AIfa 正在思考…",
+        "aifa_tts_label": "朗读回复",
+        "aifa_disclaimer": "AIfa 是人工智能，并非人类。回复可能存在误差，不能替代医生、心理咨询师或律师。",
+        "aifa_media_toggle": "✨ 免费图像与幻灯片生成器 ($0)",
         "aifa_send_btn": "发送",
         "aifa_local_sent_title": "本次请求发送的已掩码本地记忆：",
         "aifa_empty_chat": "暂无消息，请在下方与 AIfa 对话。",
@@ -4813,7 +4833,78 @@ _CSS = """
 .fd-card-head,.role-card-head,.wallet-card-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px}
 .fd-card > button,.fd-card > .rec-actions{align-self:flex-start}
 .badge-role{background:rgba(56,189,248,.16);color:var(--accent);border:1px solid rgba(56,189,248,.35)}
-.aifa-chat-scroll{max-height:540px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px}
+.aifa-account-bar{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 14px;margin-bottom:12px;display:flex;flex-direction:column;gap:8px}
+.aifa-account-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.aifa-account-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
+.aifa-account-meta strong{overflow-wrap:anywhere}
+.aifa-local-toggle{display:inline-flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin:0}
+.aifa-stage{display:grid;grid-template-columns:230px minmax(0,1fr);gap:14px;align-items:stretch}
+.aifa-avatar-pane{border-radius:16px;border:1px solid rgba(34,211,238,.26);background:radial-gradient(120% 80% at 50% 10%,rgba(34,211,238,.14),rgba(7,11,20,.96) 62%),#050814;color:#e2e8f0;padding:16px 14px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:12px;text-align:center;min-height:420px;box-shadow:var(--glow)}
+.aifa-avatar-core{width:112px;height:140px;display:flex;align-items:center;justify-content:center;border-radius:16px;background:radial-gradient(circle at 50% 40%,rgba(34,211,238,.24),rgba(139,92,246,.12) 60%,transparent 80%);border:1px solid rgba(34,211,238,.22);position:relative}
+.aifa-avatar-pulse{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#34d399;font-weight:600}
+.aifa-dot-live{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 8px #34d399}
+.aifa-avatar-title{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.14em;font-size:13px;font-weight:700;color:#67e8f9}
+.aifa-avatar-cap{font-size:12px;color:#94a3b8;line-height:1.4}
+.aifa-terminal-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;min-width:0;box-shadow:0 8px 30px rgba(0,0,0,.18)}
+html[data-theme="dark"] .aifa-terminal-card{background:#080d1a;border-color:rgba(34,211,238,.22)}
+.aifa-term-header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);background:rgba(148,163,184,.05)}
+.aifa-filter-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.aifa-pill-btn{padding:5px 10px;border-radius:999px;font-size:12.5px;min-height:32px;line-height:1.2}
+.aifa-date-pill{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
+.aifa-date-pill input[type="date"]{padding:3px 8px;border-radius:999px;font-size:12px;min-height:32px;max-width:140px}
+.aifa-chat-scroll{height:clamp(300px,50vh,520px);overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:14px 16px;scroll-behavior:smooth}
+.aifa-msg-row{display:flex;align-items:flex-end;gap:9px;max-width:100%}
+.aifa-msg-row.user{flex-direction:row-reverse}
+.aifa-msg-avatar{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px}
+.aifa-msg-row.assistant .aifa-msg-avatar{background:linear-gradient(135deg,rgba(6,182,212,.22),rgba(139,92,246,.22));border:1px solid rgba(34,211,238,.36);color:var(--accent)}
+.aifa-msg-row.user .aifa-msg-avatar{background:rgba(139,92,246,.22);border:1px solid rgba(167,139,250,.45);color:#c4b5fd}
+html[data-theme="light"] .aifa-msg-row.user .aifa-msg-avatar{color:#5b21b6;background:rgba(139,92,246,.14)}
+.aifa-bubble{max-width:min(82%,680px);min-width:0;padding:10px 14px;border-radius:16px;border:1px solid var(--line);background:var(--card);color:var(--fg);font-size:14.5px;line-height:1.55}
+.aifa-msg-row.assistant .aifa-bubble{border-bottom-left-radius:4px}
+html[data-theme="dark"] .aifa-msg-row.assistant .aifa-bubble{background:rgba(255,255,255,.035);border-color:rgba(255,255,255,.11)}
+.aifa-msg-row.user .aifa-bubble{border-bottom-right-radius:4px;background:rgba(6,182,212,.12);border-color:rgba(34,211,238,.34)}
+html[data-theme="light"] .aifa-msg-row.user .aifa-bubble{background:#ecfeff;border-color:#67e8f9}
+.aifa-msg-text{white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;margin:0}
+.aifa-msg-time{font-size:11.5px;color:var(--muted);margin-top:6px}
+.aifa-typing-dots{display:inline-flex;align-items:center;gap:5px;height:18px}
+.aifa-typing-dots span{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:aifaPulse 1.2s infinite ease-in-out}
+.aifa-typing-dots span:nth-child(2){animation-delay:.2s}
+.aifa-typing-dots span:nth-child(3){animation-delay:.4s}
+@keyframes aifaPulse{0%,80%,100%{opacity:.25;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+.aifa-composer{border-top:1px solid var(--line);padding:10px 12px;background:rgba(0,0,0,.18);display:flex;flex-direction:column;gap:8px}
+html[data-theme="light"] .aifa-composer{background:#f8fafc}
+.aifa-composer-row{display:flex;align-items:flex-end;gap:8px;flex-wrap:nowrap}
+.aifa-icon-btn{width:42px;height:42px;min-width:42px;min-height:42px;padding:0;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--card);border:1px solid var(--line);color:var(--fg)}
+.aifa-icon-btn[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:rgba(56,189,248,.12)}
+.aifa-icon-btn.recording{border-color:#ef4444;background:rgba(239,68,68,.16);color:#ef4444}
+#aifa-msg-input{flex:1 1 auto;min-width:0;resize:none;min-height:42px;max-height:140px;overflow-y:auto;border-radius:12px;padding:9px 13px;line-height:1.45;font-size:14.5px;background:var(--card);border:1px solid var(--line);color:var(--fg)}
+#aifa-msg-input:focus{border-color:var(--accent)}
+.aifa-send-btn{min-width:44px;height:42px;min-height:42px;padding:0 14px;border-radius:12px;border:0;display:inline-flex;align-items:center;justify-content:center;gap:6px;flex-shrink:0;background:linear-gradient(135deg,#06b6d4,#10b981);color:#041019;font-weight:700}
+.aifa-send-btn:disabled{opacity:.45;cursor:not-allowed}
+.aifa-disclaimer{font-size:12px;line-height:1.4;color:var(--muted);margin:0}
+.aifa-attach-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.35);font-size:12.5px;align-self:flex-start}
+.aifa-attach-chip button{padding:0 5px;min-height:22px;border:0;background:transparent;font-weight:700}
+.aifa-media-summary{cursor:pointer;font-weight:600;list-style:none;display:flex;align-items:center;justify-content:space-between}
+.aifa-local-sent{margin:8px 12px 0;padding:8px 12px}
+.aifa-local-title{font-size:13px;margin:0 0 4px}
+.aifa-local-list{margin:0;padding-left:18px;font-size:12.5px}
+.aifa-media-body{margin-top:10px}
+@media (max-width:900px){
+  .aifa-stage{grid-template-columns:minmax(0,1fr);gap:10px}
+  .aifa-avatar-pane{flex-direction:row;min-height:auto;padding:10px 14px;text-align:left;justify-content:flex-start}
+  .aifa-avatar-core{width:46px;height:46px;border-radius:12px;flex-shrink:0}
+  .aifa-avatar-core svg{width:26px;height:26px}
+  .aifa-avatar-cap{display:none}
+}
+@media (max-width:640px){
+  .aifa-chat-scroll{height:clamp(250px,46dvh,420px);padding:10px 10px}
+  .aifa-bubble{max-width:88%;font-size:15px}
+  .aifa-composer-row{flex-wrap:wrap;gap:6px}
+  #aifa-msg-input{order:-1;flex:1 0 100%;width:100%;font-size:16px}
+  .aifa-send-btn{margin-left:auto}
+  .aifa-filter-bar{width:100%}
+  .aifa-date-pill input[type="date"]{font-size:14px}
+}
 .media-preview-box{margin-top:10px;display:flex;flex-direction:column;gap:8px}
 .media-preview-img{max-width:100%;max-height:360px;border-radius:10px;border:1px solid var(--line);object-fit:contain;background:#050714}
 .mt-sm{margin-top:8px}.mt-md{margin-top:12px}.mb-sm{margin-bottom:8px}
@@ -5918,7 +6009,8 @@ function applyTips() {
     // 19.11, слово Папы: «такое описание на всех языках к КАЖДОЙ кнопке» — подпись видна сразу под кнопкой, не только
     // при наведении. Кроме меню, переключателей языка/темы и значков «?» — там подпись мешала бы навигации.
     const _skip = b.getAttribute('role') === 'tab' || b.closest('header, nav, .topbar, .lang-switch, [role=tablist]')
-      || b.classList.contains('tip-btn') || b.id === 'btn-refresh' || b.id === 'btn-theme';
+      || b.classList.contains('tip-btn') || b.id === 'btn-refresh' || b.id === 'btn-theme'
+      || b.classList.contains('aifa-compact-btn') || b.closest('.aifa-composer, .aifa-filter-bar, .aifa-account-bar');
     if (!_skip) {
       let cell = b.parentElement;
       if (!cell.classList.contains('bench-cell')) { cell = document.createElement('div'); cell.className = b.closest('.bench-actions') ? 'bench-cell' : 'bench-cell btn-cell'; b.insertAdjacentElement('beforebegin', cell); cell.appendChild(b); }
@@ -5996,7 +6088,7 @@ function applyI18n() {
     if (b) b.setAttribute('aria-pressed', String(lg === currentLang));
   }
   if ($('aifa-sort-btn')) {
-    $('aifa-sort-btn').textContent = (window._aifaSortNewest !== false) ? (S.aifa_sort_newest || 'Newest first') : (S.aifa_sort_oldest || 'Oldest first');
+    $('aifa-sort-btn').textContent = (window._aifaSortNewest === true) ? (S.aifa_sort_newest || 'Newest first') : (S.aifa_sort_oldest || 'Oldest first');
   }
   if (typeof renderFamilySetupSnapshot === 'function' && window._famSetupSnap) {
     try { renderFamilySetupSnapshot(window._famSetupSnap); } catch (e) {}
@@ -8441,8 +8533,73 @@ let cabinetState = null;
 let aifaHistory = [];
 window._aifaSince = 'all';
 window._aifaDateFilter = '';
-window._aifaSortNewest = true;
+window._aifaSortNewest = false;
 window._aifaPendingAttach = null;
+window._aifaSending = false;
+window._aifaPendingMsg = '';
+window._aifaTtsOn = false;
+
+function _aifaSvgIcon(kind) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('width', '15');
+  svg.setAttribute('height', '15');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', '2');
+  svg.setAttribute('stroke-linecap', 'round');
+  svg.setAttribute('stroke-linejoin', 'round');
+  svg.setAttribute('aria-hidden', 'true');
+  const add = (tag, attrs) => {
+    const n = document.createElementNS(ns, tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    svg.appendChild(n);
+  };
+  if (kind === 'user') {
+    add('path', {d: 'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2'});
+    add('circle', {cx: '12', cy: '7', r: '4'});
+  } else {
+    add('rect', {width: '18', height: '12', x: '3', y: '8', rx: '3'});
+    add('path', {d: 'M12 8V4H8'});
+    add('path', {d: 'M9 14v1'});
+    add('path', {d: 'M15 14v1'});
+  }
+  return svg;
+}
+
+function _appendAifaFormatted(parent, text) {
+  const s = String(text || '');
+  const parts = s.split(/(\*\*[^*\n]+?\*\*)/g);
+  for (const part of parts) {
+    if (part.length > 4 && part.startsWith('**') && part.endsWith('**')) {
+      const st = document.createElement('strong');
+      st.textContent = part.slice(2, -2);
+      parent.appendChild(st);
+    } else if (part) {
+      parent.appendChild(document.createTextNode(part));
+    }
+  }
+}
+
+function _aifaSpeakReply(text) {
+  if (!window._aifaTtsOn || !window.speechSynthesis || !text) return;
+  try {
+    window.speechSynthesis.cancel();
+    const clean = String(text).replace(/\*\*/g, '').replace(/[\u{1F300}-\u{1FAFF}]/gu, ' ').trim();
+    if (!clean) return;
+    const u = new SpeechSynthesisUtterance(clean);
+    u.lang = currentLang === 'ru' ? 'ru-RU' : currentLang === 'es' ? 'es-ES' : currentLang === 'zh' ? 'zh-CN' : 'en-US';
+    window.speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+function _aifaAutoResize() {
+  const inp = $('aifa-msg-input');
+  if (!inp) return;
+  inp.style.height = 'auto';
+  inp.style.height = Math.min(inp.scrollHeight || 42, 140) + 'px';
+}
 
 function renderAifaChat() {
   const box = $('aifa-chat-list');
@@ -8453,8 +8610,10 @@ function renderAifaChat() {
     neonEl.textContent = (S.aifa_neon_badge || 'Neon synced') + ' · ' + String(aifaHistory.length);
   }
   const b24 = $('aifa-filter-24h'), bAll = $('aifa-filter-all');
-  if (b24) b24.className = window._aifaSince === '24h' ? 'btn-primary' : '';
-  if (bAll) bAll.className = (window._aifaSince === 'all' && !window._aifaDateFilter) ? 'btn-primary' : '';
+  if (b24) b24.className = 'aifa-pill-btn aifa-compact-btn' + (window._aifaSince === '24h' ? ' btn-primary' : '');
+  if (bAll) bAll.className = 'aifa-pill-btn aifa-compact-btn' + ((window._aifaSince === 'all' && !window._aifaDateFilter) ? ' btn-primary' : '');
+  const sortEl = $('aifa-sort-btn');
+  if (sortEl) sortEl.textContent = (window._aifaSortNewest === true) ? (S.aifa_sort_newest || 'Newest first') : (S.aifa_sort_oldest || 'Oldest first');
   const nowMs = Date.now();
   let rows = aifaHistory.slice();
   if (window._aifaSince === '24h') {
@@ -8466,21 +8625,53 @@ function renderAifaChat() {
   if (window._aifaDateFilter) {
     rows = rows.filter(m => String(m.timestamp || m.created_at || '').slice(0, 10) === window._aifaDateFilter);
   }
-  if (window._aifaSortNewest !== false) {
+  if (window._aifaSortNewest === true) {
     rows.reverse();
   }
-  if (!rows.length) {
+  const appendMsgRow = (roleName, contentText, tsRaw) => {
+    const isUser = roleName === 'user';
+    const row = el('div', 'aifa-msg-row ' + (isUser ? 'user' : 'assistant'));
+    const av = el('div', 'aifa-msg-avatar');
+    av.appendChild(_aifaSvgIcon(isUser ? 'user' : 'assistant'));
+    const bubble = el('div', 'aifa-bubble');
+    const body = el('p', 'aifa-msg-text');
+    _appendAifaFormatted(body, contentText);
+    bubble.appendChild(body);
+    if (tsRaw) {
+      bubble.appendChild(el('div', 'aifa-msg-time', fmtTime(tsRaw, false)));
+    }
+    row.appendChild(av);
+    row.appendChild(bubble);
+    box.appendChild(row);
+  };
+  if (!rows.length && !window._aifaSending) {
     box.appendChild(el('p', 'panel-sub', S.aifa_empty_chat));
-    return;
+  } else {
+    for (const m of rows) {
+      appendMsgRow(m.role === 'user' ? 'user' : 'assistant', m.content, m.timestamp || m.created_at || '');
+    }
   }
-  for (const m of rows) {
-    const role = (m.role === 'user') ? (S.you || 'You') : 'AIfa';
-    const tsRaw = m.timestamp || m.created_at || '';
-    const card = el('div', 'rec-card');
-    card.appendChild(el('div', 'rec-head', role + (tsRaw ? (' · ' + fmtTime(tsRaw, false)) : '')));
-    card.appendChild(el('div', 'rec-body', String(m.content || '')));
-    box.appendChild(card);
+  if (window._aifaSending) {
+    if (window._aifaPendingMsg) {
+      appendMsgRow('user', window._aifaPendingMsg, new Date().toISOString());
+    }
+    const trow = el('div', 'aifa-msg-row assistant');
+    const tav = el('div', 'aifa-msg-avatar');
+    tav.appendChild(_aifaSvgIcon('assistant'));
+    const tb = el('div', 'aifa-bubble');
+    const dots = el('div', 'aifa-typing-dots');
+    dots.setAttribute('aria-label', S.aifa_typing || 'AIfa is thinking…');
+    dots.appendChild(document.createElement('span'));
+    dots.appendChild(document.createElement('span'));
+    dots.appendChild(document.createElement('span'));
+    tb.appendChild(dots);
+    trow.appendChild(tav);
+    trow.appendChild(tb);
+    box.appendChild(trow);
   }
+  requestAnimationFrame(() => {
+    box.scrollTop = (window._aifaSortNewest === true) ? 0 : box.scrollHeight;
+  });
 }
 
 async function _fetchMediaBlob(fileName) {
@@ -8580,10 +8771,29 @@ if ($('aifa-filter-24h')) $('aifa-filter-24h').onclick = () => { window._aifaSin
 if ($('aifa-filter-all')) $('aifa-filter-all').onclick = () => { window._aifaSince = 'all'; window._aifaDateFilter = ''; if ($('aifa-filter-date')) $('aifa-filter-date').value = ''; renderAifaChat(); };
 if ($('aifa-filter-date')) $('aifa-filter-date').onchange = () => { window._aifaSince = 'date'; window._aifaDateFilter = $('aifa-filter-date').value || ''; renderAifaChat(); };
 if ($('aifa-sort-btn')) $('aifa-sort-btn').onclick = () => {
-  window._aifaSortNewest = (window._aifaSortNewest === false);
-  $('aifa-sort-btn').textContent = window._aifaSortNewest ? (S.aifa_sort_newest || 'Newest first') : (S.aifa_sort_oldest || 'Oldest first');
+  window._aifaSortNewest = !(window._aifaSortNewest === true);
+  $('aifa-sort-btn').textContent = (window._aifaSortNewest === true) ? (S.aifa_sort_newest || 'Newest first') : (S.aifa_sort_oldest || 'Oldest first');
   renderAifaChat();
 };
+if ($('aifa-tts-btn')) {
+  $('aifa-tts-btn').onclick = () => {
+    window._aifaTtsOn = !window._aifaTtsOn;
+    $('aifa-tts-btn').setAttribute('aria-pressed', window._aifaTtsOn ? 'true' : 'false');
+    if (!window._aifaTtsOn && window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+  };
+}
+if ($('aifa-msg-input')) {
+  $('aifa-msg-input').addEventListener('input', _aifaAutoResize);
+  $('aifa-msg-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if ($('aifa-send-msg-btn')) $('aifa-send-msg-btn').click();
+    }
+  });
+  $('aifa-msg-input').addEventListener('focus', (e) => {
+    setTimeout(() => { try { e.target.scrollIntoView({block: 'nearest', behavior: 'smooth'}); } catch (err) {} }, 120);
+  });
+}
 if ($('aifa-mic-btn')) {
   $('aifa-mic-btn').onclick = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -8694,11 +8904,18 @@ if ($('aifa-media-gen-btn')) {
 }
 if ($('aifa-send-msg-btn')) {
   $('aifa-send-msg-btn').onclick = async () => {
+    if (window._aifaSending) return;
     const inp = $('aifa-msg-input');
     const msg = (inp ? inp.value : '').trim();
     const att = window._aifaPendingAttach || null;
     if (!msg && !att) return needInput('aifa-msg-input');
     const useLocal = Boolean($('aifa-use-local') && $('aifa-use-local').checked);
+    const showMsg = msg || ('📎 ' + String((att && att.name) || 'file'));
+    window._aifaSending = true;
+    window._aifaPendingMsg = showMsg;
+    $('aifa-send-msg-btn').disabled = true;
+    if (inp) { inp.value = ''; _aifaAutoResize(); }
+    renderAifaChat();
     try {
       const res = await api('/api/v2/cabinet/aifa/chat', {
         message: msg,
@@ -8707,15 +8924,16 @@ if ($('aifa-send-msg-btn')) {
         use_local_memory: useLocal,
         attachment: att,
       });
-      if (inp) inp.value = '';
       window._aifaPendingAttach = null;
       if ($('aifa-attach-file')) $('aifa-attach-file').value = '';
       if ($('aifa-attach-info')) $('aifa-attach-info').hidden = true;
-      const showMsg = msg || ('📎 ' + String((att && att.name) || 'file'));
       const tsNow = new Date().toISOString();
       aifaHistory.push({role: 'user', content: showMsg, timestamp: tsNow});
       aifaHistory.push({role: 'assistant', content: res.reply || '', timestamp: tsNow});
+      window._aifaSending = false;
+      window._aifaPendingMsg = '';
       renderAifaChat();
+      _aifaSpeakReply(res.reply || '');
       const sentBox = $('aifa-local-sent-box');
       const sentList = $('aifa-local-sent-list');
       if (sentBox && sentList) {
@@ -8724,7 +8942,15 @@ if ($('aifa-send-msg-btn')) {
         sentBox.hidden = items.length === 0;
         for (const it of items) sentList.appendChild(el('li', '', String(it)));
       }
-    } catch (e) { say(S.failed + ': ' + e.message, false); }
+    } catch (e) {
+      window._aifaSending = false;
+      window._aifaPendingMsg = '';
+      if (inp && msg && !inp.value) { inp.value = msg; _aifaAutoResize(); }
+      renderAifaChat();
+      say(S.failed + ': ' + e.message, false);
+    } finally {
+      if ($('aifa-send-msg-btn')) $('aifa-send-msg-btn').disabled = false;
+    }
   };
 }
 if ($('plans-upgrade-btn')) {
@@ -12473,70 +12699,109 @@ def page() -> tuple[str, str]:
           </div>
         </div>
         <div id="aifa-chat-box" hidden>
-          <div class="box">
-            <div class="toolbar">
-              <strong id="aifa-user-label"></strong>
-              <button id="aifa-logout-btn" data-i18n="aifa_logout_btn">{s['aifa_logout_btn']}</button>
+          <div class="aifa-account-bar">
+            <div class="aifa-account-top">
+              <div class="aifa-account-meta">
+                <strong id="aifa-user-label"></strong>
+                <span id="aifa-neon-status" class="badge badge-ok" data-i18n="aifa_neon_badge">{s['aifa_neon_badge']}</span>
+              </div>
+              <button id="aifa-logout-btn" class="aifa-pill-btn aifa-compact-btn" data-i18n="aifa_logout_btn">{s['aifa_logout_btn']}</button>
             </div>
-            <label class="toolbar">
+            <label class="aifa-local-toggle" title="{s['aifa_use_local_hint']}">
               <input id="aifa-use-local" type="checkbox">
               <span data-i18n="aifa_use_local_label">{s['aifa_use_local_label']}</span>
             </label>
-            <p class="panel-sub" data-i18n="aifa_use_local_hint">{s['aifa_use_local_hint']}</p>
           </div>
-          <div class="box">
-            <div class="rec-meta mb-sm">
-              <span id="aifa-neon-status" class="badge badge-ok" data-i18n="aifa_neon_badge">{s['aifa_neon_badge']}</span>
-            </div>
-            <div class="toolbar">
-              <input id="aifa-msg-input" type="text" placeholder="{s['aifa_msg_ph']}" aria-label="{s['aifa_msg_ph']}" data-i18n-placeholder="aifa_msg_ph" data-i18n-aria="aifa_msg_ph">
-              <button id="aifa-mic-btn" type="button" data-i18n="aifa_mic_btn">{s['aifa_mic_btn']}</button>
-              <button id="aifa-attach-btn" type="button" data-i18n="aifa_attach_btn">{s['aifa_attach_btn']}</button>
-              <input id="aifa-attach-file" type="file" accept=".txt,.md,.csv,.json,.pdf,.png,.jpg,.jpeg,.webp" hidden>
-              <button id="aifa-send-msg-btn" class="btn-primary" data-i18n="aifa_send_btn">{s['aifa_send_btn']}</button>
-            </div>
-            <div id="aifa-attach-info" class="panel-sub" hidden></div>
-            <div class="toolbar mt-sm">
-              <button id="aifa-filter-24h" type="button" data-i18n="aifa_filter_24h">{s['aifa_filter_24h']}</button>
-              <button id="aifa-filter-all" type="button" class="btn-primary" data-i18n="aifa_filter_all">{s['aifa_filter_all']}</button>
-              <label class="rec-meta"><span data-i18n="aifa_date_lbl">{s['aifa_date_lbl']}</span> <input id="aifa-filter-date" type="date"></label>
-              <button id="aifa-sort-btn" type="button" data-i18n="aifa_sort_newest">{s['aifa_sort_newest']}</button>
+
+          <div class="aifa-stage">
+            <aside class="aifa-avatar-pane" aria-label="AIfa Digital Soul">
+              <div class="aifa-avatar-core">
+                <svg width="64" height="64" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+                  <circle cx="32" cy="32" r="26" stroke="#22d3ee" stroke-opacity="0.35" stroke-width="1.5"/>
+                  <circle cx="32" cy="22" r="9" stroke="#67e8f9" stroke-width="1.8" fill="#083344"/>
+                  <path d="M16 50c2-10 9-15 16-15s14 5 16 15" stroke="#22d3ee" stroke-width="1.8" stroke-linecap="round"/>
+                  <circle cx="29" cy="21" r="1.5" fill="#67e8f9"/>
+                  <circle cx="35" cy="21" r="1.5" fill="#67e8f9"/>
+                </svg>
+              </div>
+              <div>
+                <div class="aifa-avatar-title">AIFA · CODE ETERNAL</div>
+                <div class="aifa-avatar-pulse"><span class="aifa-dot-live"></span><span data-i18n="aifa_online">{s['aifa_online']}</span></div>
+                <p class="aifa-avatar-cap" data-i18n="aifa_use_local_hint">{s['aifa_use_local_hint']}</p>
+              </div>
+            </aside>
+
+            <div class="aifa-terminal-card">
+              <div class="aifa-term-header">
+                <div class="aifa-filter-bar">
+                  <button id="aifa-filter-24h" type="button" class="aifa-pill-btn aifa-compact-btn" data-i18n="aifa_filter_24h">{s['aifa_filter_24h']}</button>
+                  <button id="aifa-filter-all" type="button" class="aifa-pill-btn aifa-compact-btn btn-primary" data-i18n="aifa_filter_all">{s['aifa_filter_all']}</button>
+                  <label class="aifa-date-pill"><span data-i18n="aifa_date_lbl">{s['aifa_date_lbl']}</span><input id="aifa-filter-date" type="date" aria-label="Filter by date"></label>
+                  <button id="aifa-sort-btn" type="button" class="aifa-pill-btn aifa-compact-btn" data-i18n="aifa_sort_oldest">{s['aifa_sort_oldest']}</button>
+                </div>
+              </div>
+
+              <div id="aifa-local-sent-box" class="box aifa-local-sent" hidden>
+                <h3 class="box-title aifa-local-title" data-i18n="aifa_local_sent_title">{s['aifa_local_sent_title']}</h3>
+                <ul id="aifa-local-sent-list" class="aifa-local-list"></ul>
+              </div>
+
+              <div id="aifa-chat-list" class="aifa-chat-scroll" role="log" aria-live="polite" tabindex="0"></div>
+
+              <div class="aifa-composer">
+                <div id="aifa-attach-info" class="aifa-attach-chip" hidden></div>
+                <div class="aifa-composer-row">
+                  <button id="aifa-attach-btn" type="button" class="aifa-icon-btn aifa-compact-btn" title="{s['aifa_attach_btn']}" aria-label="{s['aifa_attach_btn']}" data-i18n-aria="aifa_attach_btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                  </button>
+                  <input id="aifa-attach-file" type="file" accept=".txt,.md,.csv,.json,.pdf,.png,.jpg,.jpeg,.webp" hidden>
+                  <button id="aifa-mic-btn" type="button" class="aifa-icon-btn aifa-compact-btn" title="{s['aifa_mic_btn']}" aria-label="{s['aifa_mic_btn']}" data-i18n-aria="aifa_mic_btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                  </button>
+                  <button id="aifa-tts-btn" type="button" class="aifa-icon-btn aifa-compact-btn" aria-pressed="false" title="{s['aifa_tts_label']}" aria-label="{s['aifa_tts_label']}" data-i18n-aria="aifa_tts_label">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                  </button>
+                  <textarea id="aifa-msg-input" rows="1" placeholder="{s['aifa_msg_ph']}" aria-label="{s['aifa_msg_ph']}" data-i18n-placeholder="aifa_msg_ph" data-i18n-aria="aifa_msg_ph"></textarea>
+                  <button id="aifa-send-msg-btn" type="button" class="aifa-send-btn aifa-compact-btn" title="{s['aifa_send_btn']}" aria-label="{s['aifa_send_btn']}" data-i18n-aria="aifa_send_btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                  </button>
+                </div>
+                <p class="aifa-disclaimer" data-i18n="aifa_disclaimer">{s['aifa_disclaimer']}</p>
+              </div>
             </div>
           </div>
-          <div id="aifa-local-sent-box" class="box" hidden>
-            <h3 class="box-title" data-i18n="aifa_local_sent_title">{s['aifa_local_sent_title']}</h3>
-            <ul id="aifa-local-sent-list"></ul>
-          </div>
-          <div id="aifa-chat-list" class="aifa-chat-scroll"></div>
-          <div id="aifa-media-box" class="box media-studio-box mt-md">
-            <h3 class="box-title" data-i18n="media_box_title">{s['media_box_title']}</h3>
-            <p class="panel-sub" data-i18n="media_box_sub">{s['media_box_sub']}</p>
-            <div class="toolbar">
-              <select id="aifa-media-mode" aria-label="Media Mode">
-                <option value="image" data-i18n="media_mode_img">{s['media_mode_img']}</option>
-                <option value="slides" data-i18n="media_mode_slides">{s['media_mode_slides']}</option>
-              </select>
-              <select id="aifa-media-theme" aria-label="Media Theme">
-                <option value="cyber_shield">Cyber Shield</option>
-                <option value="dark_quantum">Dark Quantum</option>
-                <option value="executive_gold">Executive Gold</option>
-                <option value="clean_paper">Clean Paper</option>
-              </select>
-              <select id="aifa-media-size" aria-label="Resolution">
-                <option value="1024x1024">1024 × 1024</option>
-                <option value="1920x1080">1920 × 1080 (Full HD)</option>
-                <option value="3840x2160">3840 × 2160 (4K)</option>
-              </select>
+
+          <details id="aifa-media-box" class="box media-studio-box mt-md">
+            <summary class="aifa-media-summary" data-i18n="aifa_media_toggle">{s['aifa_media_toggle']}</summary>
+            <div class="aifa-media-body">
+              <p class="panel-sub" data-i18n="media_box_sub">{s['media_box_sub']}</p>
+              <div class="toolbar">
+                <select id="aifa-media-mode" aria-label="Media Mode">
+                  <option value="image" data-i18n="media_mode_img">{s['media_mode_img']}</option>
+                  <option value="slides" data-i18n="media_mode_slides">{s['media_mode_slides']}</option>
+                </select>
+                <select id="aifa-media-theme" aria-label="Media Theme">
+                  <option value="cyber_shield">Cyber Shield</option>
+                  <option value="dark_quantum">Dark Quantum</option>
+                  <option value="executive_gold">Executive Gold</option>
+                  <option value="clean_paper">Clean Paper</option>
+                </select>
+                <select id="aifa-media-size" aria-label="Resolution">
+                  <option value="1024x1024">1024 × 1024</option>
+                  <option value="1920x1080">1920 × 1080 (Full HD)</option>
+                  <option value="3840x2160">3840 × 2160 (4K)</option>
+                </select>
+              </div>
+              <div class="toolbar">
+                <input id="aifa-media-prompt" type="text" data-i18n-placeholder="media_prompt_ph" placeholder="{s['media_prompt_ph']}">
+                <button id="aifa-media-gen-btn" type="button" class="btn-primary" data-i18n="media_gen_btn">{s['media_gen_btn']}</button>
+              </div>
+              <div class="toolbar">
+                <textarea id="aifa-media-bullets" class="qs-textarea" rows="2" data-i18n-placeholder="media_bullets_ph" placeholder="{s['media_bullets_ph']}"></textarea>
+              </div>
+              <div id="aifa-media-preview" class="media-preview-box" aria-live="polite"></div>
             </div>
-            <div class="toolbar">
-              <input id="aifa-media-prompt" type="text" data-i18n-placeholder="media_prompt_ph" placeholder="{s['media_prompt_ph']}">
-              <button id="aifa-media-gen-btn" type="button" class="btn-primary" data-i18n="media_gen_btn">{s['media_gen_btn']}</button>
-            </div>
-            <div class="toolbar">
-              <textarea id="aifa-media-bullets" class="qs-textarea" rows="2" data-i18n-placeholder="media_bullets_ph" placeholder="{s['media_bullets_ph']}"></textarea>
-            </div>
-            <div id="aifa-media-preview" class="media-preview-box" aria-live="polite"></div>
-          </div>
+          </details>
         </div>
       </section>
 

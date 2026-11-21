@@ -1555,6 +1555,12 @@ BTN_TIPS: dict[str, dict[str, str]] = {
         "es": "Alterna el orden del chat de AIfa entre más recientes primero o cronológico.",
         "zh": "切换 AIfa 聊天顺序：最新消息置顶或按历史从早到晚排列。",
     },
+    "aifa-tts-btn": {
+        "ru": "Включает или выключает автоматическое озвучивание ответов AIfa голосом.",
+        "en": "Toggles automatic voice readout for AIfa replies.",
+        "es": "Activa o desactiva la lectura en voz alta de las respuestas de AIfa.",
+        "zh": "开启或关闭 AIfa 回复的自动语音朗读。",
+    },
     "aifa-mic-btn": {
         "ru": "Включает голосовой ввод речи через микрофон прямо в строку сообщения AIfa.",
         "en": "Starts microphone voice dictation directly into the AIfa message box.",
