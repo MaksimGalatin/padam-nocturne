@@ -11,6 +11,11 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "es": "Arca de Conciencia del agente de IA: despertar unificado padam_wake_up, metas, relevo familiar firmado, puntos de control con archivo sin pérdida, esquema de Shamir sin huella del secreto, cadena de auditoría con anclaje HMAC-SHA256 y simulacro Fénix (todo opcional, desactivado por defecto).",
         "zh": "AI 智能体意识方舟：单次唤醒 padam_wake_up、目标账本、HMAC 签名家族接力、无损归档压缩、无秘密指纹泄露的 Shamir 分片、带 HMAC-SHA256 锚点的审计链以及零成本凤凰演练（全部默认关闭，按需开启）。",
     },
+    "0.7.1": {
+        "ru": "Студия: вкладка чата AIfa переделана как чат на наших сайтах — пузыри сообщений, широкая строка ввода с вложением, голосовым вводом, озвучкой и отправкой, фильтры за 24 часа и за всё время, порядок новых сверху или по хронологии; подсказки ко всем новым кнопкам на 4 языках.",
+        "es": "Studio: la pestaña de chat de AIfa rediseñada como el chat de nuestros sitios — burbujas de mensajes, un campo de escritura amplio con adjuntar, dictado por voz, lectura en voz alta y enviar, filtros de las últimas 24 horas y de todo el historial, orden de más recientes primero o cronológico; descripciones para cada botón nuevo en 4 idiomas.",
+        "zh": "Studio：AIfa 聊天标签页按照我们网站上的聊天重新设计——左右两侧的消息气泡、带附件、语音输入、语音朗读和发送按钮的宽输入框、最近 24 小时与全部历史筛选、最新在前或按时间顺序排列；所有新按钮均有 4 种语言的提示。",
+    },
     "0.7.0": {
         "ru": "PADAM Agentic Shield: четыре кольца защиты для ИИ-агентов, платежей и сайтов (padam/agentic_shield.py, инструмент MCP padam_agentic_shield, команды padam shield, Студия).",
         "es": "PADAM Agentic Shield: cuatro anillos de defensa para agentes de IA, pagos y sitios web (padam/agentic_shield.py, herramienta MCP padam_agentic_shield, comandos padam shield, Studio).",

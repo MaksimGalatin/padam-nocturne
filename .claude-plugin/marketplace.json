@@ -10,7 +10,7 @@
       "name": "padam-nocturne",
       "source": "./",
       "description": "PADAM · NOCTURNE verifiable local memory with MCP server, memory workflow skill (recall before work, record decisions & corrections after), and slash commands.",
-      "version": "0.7.0"
+      "version": "0.7.1"
     }
   ]
 }

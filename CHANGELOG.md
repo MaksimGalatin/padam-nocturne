@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.7.1 — 21 November 2026
+
+- **Studio: the AIfa chat tab redesigned like the chat on our sites** — message bubbles on the left and right, a wide
+  composer with attach, voice input, voice readout and send buttons, filters for the last 24 hours and the full
+  history, and newest-first or chronological order; tooltips for every new button in 4 languages.
+- **Android: the message box no longer hides under the on-screen keyboard** (`adjustResize` and keyboard insets),
+  on top of the 0.7.0 status-bar fix.
+
+Verification: CI 19 of 19 on Linux, macOS and Windows; Studio checks — 39 of 39, all buttons 223 of 223,
+translations: 0 lines in a wrong language.
+
 ## 0.7.0 — 21 November 2026
 
 ### PADAM Agentic Shield (new)

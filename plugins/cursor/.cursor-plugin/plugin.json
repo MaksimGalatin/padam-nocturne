@@ -1,6 +1,6 @@
 {
   "name": "padam-nocturne",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "PADAM · NOCTURNE local verifiable memory plugin for Cursor (MCP + memory discipline rules + skills).",
   "mcp": "../.mcp.json",
   "rules": [".cursor/rules/padam-memory.mdc"],
