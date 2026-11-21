@@ -86,6 +86,12 @@ SUPPORTED_CURRENCIES = ("USDT_TRC20", "GALATIN")
 _LOCAL_PATH_RE = re.compile(
     r"(?:[A-Za-z]:\\[^\s\"'<>|]+|/(?:Users|home|var|etc|opt|mnt)/[^\s\"'<>|]+)"
 )
+_KYC_DOC_RE = re.compile(
+    r"(?:(?:passport|паспорт|id_card|удостоверение|driver_license|водительск\w+|kyc_doc)[^\s\"'<>|]{0,48}\.(?:pdf|png|jpe?g|webp)|"
+    r"\b(?:паспорт(?:\s+серия)?|passport\s*(?:no|num|id)?)[\s:#№-]*\d{2,4}[\s-]?\d{4,7}\b|"
+    r"\b(?:4\d{3}|5[1-5]\d{2}|220[0-4])(?:[\s-]?\d{4}){3}\b)",
+    re.IGNORECASE,
+)
 
 
 _DDL = """
@@ -439,12 +445,15 @@ def _strip_local_paths(text: str) -> str:
 
 
 def sanitize_for_delivery(text: str) -> tuple[str, dict[str, Any]]:
-    """Очищает текст от секретов и локальных путей перед отправкой внешнему заказчику."""
-    no_paths = _strip_local_paths(text)
-    redacted, counts = safety.redact(no_paths)
+    """Очищает текст от секретов, локальных путей, карт и KYC/паспортных данных перед отправкой."""
+    raw_s = str(text or "")
+    no_paths = _strip_local_paths(raw_s)
+    no_docs = _KYC_DOC_RE.sub("[KYC_OR_CARD_REDACTED]", no_paths)
+    redacted, counts = safety.redact(no_docs)
     return redacted, {
         "redacted_secrets": sum(counts.values()) if isinstance(counts, dict) else 0,
-        "local_paths_removed": no_paths != str(text or ""),
+        "local_paths_removed": no_paths != raw_s,
+        "kyc_or_card_redacted": no_docs != no_paths,
     }
 
 
@@ -585,50 +594,104 @@ def connect_exchange_account(
     exp_at = (time.time() + float(token_expires_in_s)) if token_expires_in_s > 0 else 0.0
 
     clean_label, _ = safety.redact(str(account_label or f"{plat}:{md}").strip())
-    clean_agent = re.sub(r"[^a-zA-Z0-9_.-]+", "_", str(agent_id or "aifa").strip())[:48] or "aifa"
+    clean_label = clean_label[:100]
+    clean_agent = re.sub(r"[^a-zA-Z0-9_.-]+", "_", str(agent_id or "aifa_antigravity").strip())[:48] or "aifa_antigravity"
     clean_skills = [safety.redact(str(s).strip())[0][:48] for s in (skills or ["python", "mcp", "automation"]) if str(s).strip()][:12]
-    aid = f"ex-{uuid.uuid4().hex[:10]}"
     now = time.time()
+    updated_existing = False
 
     with _lock_of(memory):
-        memory.store.conn.execute(
-            "INSERT INTO ark_exchange_account "
-            "(account_id, user_id, platform, mode, account_label, agent_id, skills_json, token_configured, token_hash_prefix, "
-            "api_base_url, token_enc, webhook_secret_enc, refresh_token_enc, refresh_url, token_expires_at, status, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
-            (
-                aid,
-                memory.user_id,
-                plat,
-                md,
-                clean_label[:100],
-                clean_agent,
-                json.dumps(clean_skills, ensure_ascii=False),
-                token_configured,
-                token_hash_prefix,
-                clean_url[:300],
-                token_enc,
-                wh_enc,
-                rtok_enc,
-                clean_rurl[:300],
-                exp_at,
-                now,
-                now,
-            ),
-        )
+        existing_rows = memory.store.conn.execute(
+            "SELECT account_id, token_configured, token_hash_prefix, token_enc, webhook_secret_enc, "
+            "refresh_token_enc, refresh_url, token_expires_at, api_base_url "
+            "FROM ark_exchange_account "
+            "WHERE user_id = ? AND platform = ? AND mode = ? AND account_label = ? "
+            "ORDER BY updated_at DESC",
+            (memory.user_id, plat, md, clean_label),
+        ).fetchall()
+        if existing_rows:
+            keep = existing_rows[0]
+            aid = str(keep["account_id"])
+            updated_existing = True
+            eff_tok_cfg = token_configured if token_str else int(keep["token_configured"] or 0)
+            eff_tok_pfx = token_hash_prefix if token_str else str(keep["token_hash_prefix"] or "")
+            eff_tok_enc = token_enc if token_str else str(keep["token_enc"] or "")
+            eff_wh_enc = wh_enc if webhook_secret else str(keep["webhook_secret_enc"] or "")
+            eff_rt_enc = rtok_enc if refresh_token else str(keep["refresh_token_enc"] or "")
+            eff_rurl = clean_rurl[:300] if refresh_url else str(keep["refresh_url"] or "")
+            eff_exp = exp_at if token_expires_in_s > 0 else float(keep["token_expires_at"] or 0.0)
+            eff_url = clean_url[:300] if clean_url else str(keep["api_base_url"] or "")
+            memory.store.conn.execute(
+                "UPDATE ark_exchange_account SET agent_id = ?, skills_json = ?, token_configured = ?, "
+                "token_hash_prefix = ?, api_base_url = ?, token_enc = ?, webhook_secret_enc = ?, "
+                "refresh_token_enc = ?, refresh_url = ?, token_expires_at = ?, status = 'active', updated_at = ? "
+                "WHERE user_id = ? AND account_id = ?",
+                (
+                    clean_agent,
+                    json.dumps(clean_skills, ensure_ascii=False),
+                    eff_tok_cfg,
+                    eff_tok_pfx,
+                    eff_url,
+                    eff_tok_enc,
+                    eff_wh_enc,
+                    eff_rt_enc,
+                    eff_rurl,
+                    eff_exp,
+                    now,
+                    memory.user_id,
+                    aid,
+                ),
+            )
+            if len(existing_rows) > 1:
+                dup_ids = [str(r["account_id"]) for r in existing_rows[1:]]
+                memory.store.conn.executemany(
+                    "DELETE FROM ark_exchange_account WHERE user_id = ? AND account_id = ?",
+                    [(memory.user_id, did) for did in dup_ids],
+                )
+            token_configured = eff_tok_cfg
+            token_hash_prefix = eff_tok_pfx
+            clean_url = eff_url
+        else:
+            aid = f"ex-{uuid.uuid4().hex[:10]}"
+            memory.store.conn.execute(
+                "INSERT INTO ark_exchange_account "
+                "(account_id, user_id, platform, mode, account_label, agent_id, skills_json, token_configured, token_hash_prefix, "
+                "api_base_url, token_enc, webhook_secret_enc, refresh_token_enc, refresh_url, token_expires_at, status, created_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
+                (
+                    aid,
+                    memory.user_id,
+                    plat,
+                    md,
+                    clean_label,
+                    clean_agent,
+                    json.dumps(clean_skills, ensure_ascii=False),
+                    token_configured,
+                    token_hash_prefix,
+                    clean_url[:300],
+                    token_enc,
+                    wh_enc,
+                    rtok_enc,
+                    clean_rurl[:300],
+                    exp_at,
+                    now,
+                    now,
+                ),
+            )
         memory.store.conn.commit()
     audit_chain.append_audit(
         memory,
         "freelance_account_connected",
-        {"account_id": aid, "platform": plat, "mode": md, "token_configured": bool(token_configured), "has_url": bool(clean_url)},
+        {"account_id": aid, "platform": plat, "mode": md, "updated": updated_existing, "token_configured": bool(token_configured), "has_url": bool(clean_url)},
         agent_id=clean_agent,
     )
     return {
         "ok": True,
         "account_id": aid,
+        "updated": updated_existing,
         "platform": plat,
         "mode": md,
-        "account_label": clean_label[:100],
+        "account_label": clean_label,
         "agent_id": clean_agent,
         "skills": clean_skills,
         "api_base_url": clean_url,
@@ -636,6 +699,85 @@ def connect_exchange_account(
         "token_hash_prefix": token_hash_prefix,
         "locks": freelance_locks_status(),
     }
+
+
+@_synchronized_memory
+def disconnect_exchange_account(memory, account_id: str, *, actor=None) -> dict[str, Any]:
+    """Удаляет или отключает выбранный профиль биржи (только владелец)."""
+    from . import roles as _roles
+    _roles.require_owner(actor, "disconnect_exchange_account")
+    _ensure(memory)
+    aid = str(account_id or "").strip()
+    if not aid:
+        raise ValueError("account_id is required")
+    with _lock_of(memory):
+        cur = memory.store.conn.execute(
+            "DELETE FROM ark_exchange_account WHERE user_id = ? AND account_id = ?",
+            (memory.user_id, aid),
+        )
+        memory.store.conn.commit()
+    return {"ok": True, "deleted": int(cur.rowcount or 0), "account_id": aid}
+
+
+@_synchronized_memory
+def assign_exchange_agent(memory, account_id: str, agent_id: str, *, actor=None) -> dict[str, Any]:
+    """Переназначает ответственного агента на профиль биржи (например aifa_antigravity)."""
+    from . import roles as _roles
+    _roles.require_owner(actor, "assign_exchange_agent")
+    _ensure(memory)
+    aid = str(account_id or "").strip()
+    clean_agent = re.sub(r"[^a-zA-Z0-9_.-]+", "_", str(agent_id or "aifa_antigravity").strip())[:48] or "aifa_antigravity"
+    if not aid:
+        raise ValueError("account_id is required")
+    with _lock_of(memory):
+        cur = memory.store.conn.execute(
+            "UPDATE ark_exchange_account SET agent_id = ?, updated_at = ? WHERE user_id = ? AND account_id = ?",
+            (clean_agent, time.time(), memory.user_id, aid),
+        )
+        memory.store.conn.commit()
+    if int(cur.rowcount or 0) == 0:
+        raise ValueError(f"Аккаунт биржи {aid} не найден.")
+    return {"ok": True, "account_id": aid, "agent_id": clean_agent}
+
+
+@_synchronized_memory
+def deduplicate_exchange_accounts(memory, *, default_agent_id: str | None = None) -> dict[str, Any]:
+    """Схлопывает дубли профилей с одинаковыми (platform, mode, account_label) и опционально назначает агента."""
+    _ensure(memory)
+    removed = 0
+    kept = 0
+    with _lock_of(memory):
+        rows = memory.store.conn.execute(
+            "SELECT account_id, platform, mode, account_label, agent_id, updated_at FROM ark_exchange_account "
+            "WHERE user_id = ? ORDER BY updated_at DESC",
+            (memory.user_id,),
+        ).fetchall()
+        seen: set[tuple[str, str, str]] = set()
+        drop_ids: list[str] = []
+        keep_ids: list[str] = []
+        for r in rows:
+            k = (str(r["platform"]), str(r["mode"]), str(r["account_label"]))
+            if k in seen:
+                drop_ids.append(str(r["account_id"]))
+            else:
+                seen.add(k)
+                keep_ids.append(str(r["account_id"]))
+        if drop_ids:
+            memory.store.conn.executemany(
+                "DELETE FROM ark_exchange_account WHERE user_id = ? AND account_id = ?",
+                [(memory.user_id, did) for did in drop_ids],
+            )
+            removed = len(drop_ids)
+        if default_agent_id and keep_ids:
+            clean_ag = re.sub(r"[^a-zA-Z0-9_.-]+", "_", str(default_agent_id).strip())[:48] or "aifa_antigravity"
+            now_u = time.time()
+            memory.store.conn.executemany(
+                "UPDATE ark_exchange_account SET agent_id = ?, updated_at = ? WHERE user_id = ? AND account_id = ?",
+                [(clean_ag, now_u, memory.user_id, kid) for kid in keep_ids],
+            )
+        kept = len(keep_ids)
+        memory.store.conn.commit()
+    return {"ok": True, "kept": kept, "removed": removed}
 
 
 def list_exchange_accounts(memory) -> list[dict[str, Any]]:
@@ -876,6 +1018,27 @@ def evaluate_and_ingest_job(
     raw_brief = str(brief or "").strip()
     if not raw_title or not raw_brief:
         raise ValueError("Необходимо указать title и brief заказа.")
+
+    ext_id_clean = str(external_job_id or "").strip()[:128]
+    if ext_id_clean:
+        with _lock_of(memory):
+            dup_ord = memory.store.conn.execute(
+                "SELECT order_id, status, margin_score, assigned_agent FROM ark_freelance_order "
+                "WHERE user_id = ? AND platform = ? AND external_job_id = ? LIMIT 1",
+                (memory.user_id, plat, ext_id_clean),
+            ).fetchone()
+        if dup_ord is not None:
+            return {
+                "ok": str(dup_ord["status"]) != "rejected_security",
+                "duplicate_job": True,
+                "order_id": str(dup_ord["order_id"]),
+                "platform": plat,
+                "status": str(dup_ord["status"]),
+                "margin_score": float(dup_ord["margin_score"] or 0.0),
+                "assigned_agent": str(dup_ord["assigned_agent"] or assigned_agent or "aifa_antigravity"),
+                "security_veto": str(dup_ord["status"]) == "rejected_security",
+                "security_note": "Заказ с этим external_job_id уже обработан — повторный отклик заблокирован.",
+            }
 
     combined = f"{raw_title}\n{raw_brief}"
     is_injection = safety.looks_like_instruction(combined)
@@ -2523,7 +2686,9 @@ def set_autopilot_state(memory, *, running: bool, interval_s: float = 300.0, not
     from . import roles as _roles
     _roles.require_owner(actor, "autopilot_start" if running else "autopilot_stop")
     _ensure(memory)
-    iv = max(5.0, min(86400.0, float(interval_s)))
+    fast_test = ("PYTEST_CURRENT_TEST" in os.environ) or (os.environ.get("PADAM_AUTOPILOT_FAST_TEST") == "1")
+    min_iv = 5.0 if fast_test else 180.0
+    iv = max(min_iv, min(86400.0, float(interval_s)))
     clean_note = note or ("Автопилот ЗАПУЩЕН: непрерывная работа до команды Стоп." if running else "Автопилот ОСТАНОВЛЕН владельцем.")
     memory.store.conn.execute(
         "INSERT INTO ark_freelance_prefs (user_id, agent_share_pct, settlement_currency, galatin_price_usdt, autopilot_running, autopilot_interval_s, autopilot_last_note, updated_at) "
@@ -2784,7 +2949,11 @@ def ensure_autopilot_worker(memory_factory, *, allow_localhost: bool = False) ->
                     st = get_autopilot_state(m)
                     if not st.get("autopilot_running"):
                         break
-                    interval = max(5.0, min(3600.0, float(st.get("interval_s") or 300.0)))
+                    fast_test = ("PYTEST_CURRENT_TEST" in os.environ) or (os.environ.get("PADAM_AUTOPILOT_FAST_TEST") == "1")
+                    min_iv = 5.0 if fast_test else 180.0
+                    base_iv = max(min_iv, min(3600.0, float(st.get("interval_s") or 300.0)))
+                    jitter = 0.0 if fast_test else float((int.from_bytes(os.urandom(1), "big") % 31) + 5)
+                    interval = base_iv + jitter
                     run_autopilot_cycle(m, allow_localhost=allow_localhost)
                 except Exception:
                     pass

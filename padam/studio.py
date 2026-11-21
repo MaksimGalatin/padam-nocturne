@@ -4246,8 +4246,10 @@ _STRINGS_CHATS_AGENTS_SHIELD2: dict[str, dict[str, str]] = {
         "ov_agent_chats_btn": "Чаты агента",
         "ov_unsigned_hint": "Неподписанная запись:",
         "graph_agents_title": "Граф по агентам и пересечениям",
-        "graph_all_agents_btn": "Все агенты",
+        "graph_spheres_btn": "Шары агентов",
+        "graph_all_agents_btn": "Общий шар",
         "graph_intersections_btn": "Пересечения агентов",
+        "graph_bridges_lbl": "мостов задач",
         "graph_inter_title": "Как пересекаются агенты (общие темы, ключи и прямые связи)",
         "graph_inter_empty": "Пока нет пересечений между разными агентами.",
         "graph_node_agent": "Агент",
@@ -4311,8 +4313,10 @@ _STRINGS_CHATS_AGENTS_SHIELD2: dict[str, dict[str, str]] = {
         "ov_agent_chats_btn": "Agent chats",
         "ov_unsigned_hint": "Unsigned record:",
         "graph_agents_title": "Per-agent graphs and intersections",
-        "graph_all_agents_btn": "All agents",
+        "graph_spheres_btn": "Agent spheres",
+        "graph_all_agents_btn": "Combined sphere",
         "graph_intersections_btn": "Agent intersections",
+        "graph_bridges_lbl": "task bridges",
         "graph_inter_title": "How agents intersect (shared topics, fact keys and links)",
         "graph_inter_empty": "No cross-agent intersections yet.",
         "graph_node_agent": "Agent",
@@ -4376,8 +4380,10 @@ _STRINGS_CHATS_AGENTS_SHIELD2: dict[str, dict[str, str]] = {
         "ov_agent_chats_btn": "Chats del agente",
         "ov_unsigned_hint": "Registro sin firma:",
         "graph_agents_title": "Grafos por agente e intersecciones",
-        "graph_all_agents_btn": "Todos los agentes",
+        "graph_spheres_btn": "Esferas de agentes",
+        "graph_all_agents_btn": "Esfera común",
         "graph_intersections_btn": "Intersecciones",
+        "graph_bridges_lbl": "puentes de tareas",
         "graph_inter_title": "Cómo se cruzan los agentes (temas, claves y vínculos)",
         "graph_inter_empty": "Aún no hay cruces entre agentes distintos.",
         "graph_node_agent": "Agente",
@@ -4441,8 +4447,10 @@ _STRINGS_CHATS_AGENTS_SHIELD2: dict[str, dict[str, str]] = {
         "ov_agent_chats_btn": "智能体聊天",
         "ov_unsigned_hint": "未签名记录:",
         "graph_agents_title": "按智能体分类的图谱与交叉关联",
-        "graph_all_agents_btn": "全部智能体",
+        "graph_spheres_btn": "智能体球群",
+        "graph_all_agents_btn": "全局单球",
         "graph_intersections_btn": "智能体交叉点",
+        "graph_bridges_lbl": "任务桥梁",
         "graph_inter_title": "智能体之间的交叉重叠（共同主题、事实键与关联）",
         "graph_inter_empty": "暂无跨智能体交叉记录。",
         "graph_node_agent": "智能体",
@@ -4522,6 +4530,11 @@ _STRINGS_UX_2011: dict[str, dict[str, str]] = {
         "ark_council_repair_btn": "Починить цепь аудита (только владелец)",
         "fd_btn_24h": "24 часа",
         "fd_btn_all": "Все диалоги",
+        "fd_sync_btn": "Подгрузить чаты с ПК",
+        "chats_sync_btn": "Синхронизировать с ПК",
+        "earn_ex_del_btn": "Отключить",
+        "earn_ex_assign_me_btn": "Назначить aifa_antigravity",
+        "earn_ex_dedup_btn": "Убрать дубли",
         "fd_date_lbl": "По дате:",
         "fd_empty": "За выбранный период диалогов Семьи не найдено.",
         "fd_expand_btn": "Показать полностью",
@@ -4594,6 +4607,11 @@ _STRINGS_UX_2011: dict[str, dict[str, str]] = {
         "ark_council_repair_btn": "Repair Audit Chain (Owner Only)",
         "fd_btn_24h": "24 hours",
         "fd_btn_all": "All dialogs",
+        "fd_sync_btn": "Sync PC chats now",
+        "chats_sync_btn": "Sync from PC",
+        "earn_ex_del_btn": "Disconnect",
+        "earn_ex_assign_me_btn": "Assign aifa_antigravity",
+        "earn_ex_dedup_btn": "Remove duplicates",
         "fd_date_lbl": "By date:",
         "fd_empty": "No Family dialog entries found for the selected filter.",
         "fd_expand_btn": "Show full text",
@@ -4666,6 +4684,11 @@ _STRINGS_UX_2011: dict[str, dict[str, str]] = {
         "ark_council_repair_btn": "Reparar cadena de auditoría (Dueño)",
         "fd_btn_24h": "24 horas",
         "fd_btn_all": "Todos los diálogos",
+        "fd_sync_btn": "Sincronizar chats del PC",
+        "chats_sync_btn": "Sincronizar desde PC",
+        "earn_ex_del_btn": "Desconectar",
+        "earn_ex_assign_me_btn": "Asignar aifa_antigravity",
+        "earn_ex_dedup_btn": "Eliminar duplicados",
         "fd_date_lbl": "Por fecha:",
         "fd_empty": "No hay diálogos familiares para este filtro.",
         "fd_expand_btn": "Ver completo",
@@ -4738,6 +4761,11 @@ _STRINGS_UX_2011: dict[str, dict[str, str]] = {
         "ark_council_repair_btn": "修复审计链（仅限主人）",
         "fd_btn_24h": "24 小时",
         "fd_btn_all": "全部对话",
+        "fd_sync_btn": "立即同步电脑对话",
+        "chats_sync_btn": "从电脑同步",
+        "earn_ex_del_btn": "断开",
+        "earn_ex_assign_me_btn": "指派 aifa_antigravity",
+        "earn_ex_dedup_btn": "清理重复",
         "fd_date_lbl": "按日期：",
         "fd_empty": "所选条件下暂无家庭对话记录。",
         "fd_expand_btn": "展开全文",
@@ -7002,57 +7030,116 @@ async function loadForgetTab() {
 // Приёмы 3d-force-graph / d3-force-3d, но без внешних библиотек (Studio работает офлайн, 0 запросов наружу):
 // раскладка силами в 3D (отталкивание, пружины связей, притяжение к центру), перспектива с глубиной (дальние узлы
 // мельче и бледнее), вращение мышью, колесо — приближение, автоповорот; подписи только у наведённого и выбранного.
-const G3 = {pos: {}, rotX: -0.35, rotY: 0.6, zoom: 1, drag: null, moved: false, hover: null, auto: true, raf: 0, deg: {}};
+const G3 = {pos: {}, rotX: -0.35, rotY: 0.6, zoom: 1, drag: null, moved: false, hover: null, auto: true, raf: 0, deg: {}, spheres: [], sphereHits: []};
 
 function layoutGraph(nodes, edges, width, height) {
   const n = nodes.length;
   const pos = {};
-  // начальное размещение — сфера Фибоначчи: равномерно и детерминированно (одинаково при каждом открытии)
-  nodes.forEach((nd, i) => {
-    const y = n > 1 ? 1 - (i / (n - 1)) * 2 : 0;
-    const r = Math.sqrt(Math.max(0, 1 - y * y));
-    const th = i * 2.399963229728653;
-    pos[nd.id] = {x: Math.cos(th) * r * 160, y: y * 160, z: Math.sin(th) * r * 160, vx: 0, vy: 0, vz: 0};
-  });
   const deg = {};
-  const E = (edges || []).filter(e => pos[e.source] && pos[e.target]);
-  E.forEach(e => { deg[e.source] = (deg[e.source] || 0) + 1; deg[e.target] = (deg[e.target] || 0) + 1; });
-  const ids = nodes.map(nd => nd.id);
-  const iters = n > 400 ? 120 : 260;
-  for (let it = 0; it < iters; it++) {
-    const alpha = 1 - it / iters;
-    for (let i = 0; i < ids.length; i++) {                       // отталкивание узлов
-      const a = pos[ids[i]];
-      for (let j = i + 1; j < ids.length; j++) {
-        const b = pos[ids[j]];
-        const dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
-        const d2 = dx * dx + dy * dy + dz * dz + 0.01;
-        if (d2 > 250000) continue;
-        const f = (900 / d2) * alpha;
+  const E = (edges || []).filter(e => e && e.source && e.target);
+  const nodeSet = new Set(nodes.map(nd => nd.id));
+  const validE = E.filter(e => nodeSet.has(e.source) && nodeSet.has(e.target));
+  validE.forEach(e => { deg[e.source] = (deg[e.source] || 0) + 1; deg[e.target] = (deg[e.target] || 0) + 1; });
+
+  // Группировка по агентам для отдельных 3D-шаров
+  const byAg = {};
+  for (const nd of nodes) {
+    const ak = String(nd.agent_id || 'owner');
+    (byAg[ak] = byAg[ak] || []).push(nd);
+  }
+  const agKeys = Object.keys(byAg).sort((a, b) => byAg[b].length - byAg[a].length);
+  const useSpheres = (window._graphMode === 'spheres' && !window._graphAgentFilter && agKeys.length >= 2);
+  const spheres = [];
+
+  if (useSpheres) {
+    const m = agKeys.length;
+    const baseSide = Math.min(width, height);
+    const orbitR = Math.max(125, Math.min(230, baseSide * 0.30));
+    agKeys.forEach((ak, idx) => {
+      const agNodes = byAg[ak];
+      const ang = (idx / m) * Math.PI * 2 + 0.4;
+      const elev = (m > 2 ? Math.sin(idx * 2.1) * 42 : 0);
+      const cx = Math.cos(ang) * orbitR;
+      const cy = elev;
+      const cz = Math.sin(ang) * orbitR;
+      const locR = Math.max(46, Math.min(105, 36 + Math.sqrt(agNodes.length) * 12));
+      const first = agNodes[0] || {};
+      spheres.push({
+        agent_id: ak,
+        label: String(first.agent_label || ak),
+        color: String(first.agent_color || '#38bdf8'),
+        cx, cy, cz, r: locR,
+        count: agNodes.length,
+      });
+      const kLen = agNodes.length;
+      agNodes.forEach((nd, i) => {
+        const y = kLen > 1 ? 1 - (i / (kLen - 1)) * 2 : 0;
+        const rr = Math.sqrt(Math.max(0, 1 - y * y));
+        const th = i * 2.399963229728653;
+        const shell = 0.65 + 0.35 * ((i % 3) / 2);
+        pos[nd.id] = {
+          x: cx + Math.cos(th) * rr * locR * shell,
+          y: cy + y * locR * shell,
+          z: cz + Math.sin(th) * rr * locR * shell,
+          vx: 0, vy: 0, vz: 0,
+        };
+      });
+    });
+  } else {
+    if (agKeys.length === 1 && nodes.length > 0) {
+      const f = nodes[0];
+      spheres.push({
+        agent_id: String(f.agent_id || 'owner'),
+        label: String(f.agent_label || f.agent_id || 'owner'),
+        color: String(f.agent_color || '#38bdf8'),
+        cx: 0, cy: 0, cz: 0,
+        r: Math.min(width, height) * 0.43,
+        count: nodes.length,
+      });
+    }
+    nodes.forEach((nd, i) => {
+      const y = n > 1 ? 1 - (i / (n - 1)) * 2 : 0;
+      const r = Math.sqrt(Math.max(0, 1 - y * y));
+      const th = i * 2.399963229728653;
+      pos[nd.id] = {x: Math.cos(th) * r * 160, y: y * 160, z: Math.sin(th) * r * 160, vx: 0, vy: 0, vz: 0};
+    });
+    const ids = nodes.map(nd => nd.id);
+    const iters = n > 400 ? 120 : 260;
+    for (let it = 0; it < iters; it++) {
+      const alpha = 1 - it / iters;
+      for (let i = 0; i < ids.length; i++) {
+        const a = pos[ids[i]];
+        for (let j = i + 1; j < ids.length; j++) {
+          const b = pos[ids[j]];
+          const dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
+          const d2 = dx * dx + dy * dy + dz * dz + 0.01;
+          if (d2 > 250000) continue;
+          const f = (900 / d2) * alpha;
+          a.vx += dx * f; a.vy += dy * f; a.vz += dz * f;
+          b.vx -= dx * f; b.vy -= dy * f; b.vz -= dz * f;
+        }
+      }
+      for (const e of validE) {
+        const a = pos[e.source], b = pos[e.target];
+        const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+        const d = Math.sqrt(dx * dx + dy * dy + dz * dz) + 0.01;
+        const f = ((d - 55) / d) * 0.06 * alpha;
         a.vx += dx * f; a.vy += dy * f; a.vz += dz * f;
         b.vx -= dx * f; b.vy -= dy * f; b.vz -= dz * f;
       }
+      for (const id of ids) {
+        const p = pos[id];
+        p.vx -= p.x * 0.004; p.vy -= p.y * 0.004; p.vz -= p.z * 0.004;
+        p.x += p.vx; p.y += p.vy; p.z += p.vz;
+        p.vx *= 0.6; p.vy *= 0.6; p.vz *= 0.6;
+      }
     }
-    for (const e of E) {                                           // пружины связей
-      const a = pos[e.source], b = pos[e.target];
-      const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
-      const d = Math.sqrt(dx * dx + dy * dy + dz * dz) + 0.01;
-      const f = ((d - 55) / d) * 0.06 * alpha;
-      a.vx += dx * f; a.vy += dy * f; a.vz += dz * f;
-      b.vx -= dx * f; b.vy -= dy * f; b.vz -= dz * f;
-    }
-    for (const id of ids) {                                        // притяжение к центру и затухание
-      const p = pos[id];
-      p.vx -= p.x * 0.004; p.vy -= p.y * 0.004; p.vz -= p.z * 0.004;
-      p.x += p.vx; p.y += p.vy; p.z += p.vz;
-      p.vx *= 0.6; p.vy *= 0.6; p.vz *= 0.6;
-    }
+    let maxR = 1;
+    for (const id of ids) { const p = pos[id]; maxR = Math.max(maxR, Math.sqrt(p.x * p.x + p.y * p.y + p.z * p.z)); }
+    const k = (Math.min(width, height) * 0.45) / maxR;
+    for (const id of ids) { const p = pos[id]; p.x *= k; p.y *= k; p.z *= k; }
   }
-  let maxR = 1;
-  for (const id of ids) { const p = pos[id]; maxR = Math.max(maxR, Math.sqrt(p.x * p.x + p.y * p.y + p.z * p.z)); }
-  const k = (Math.min(width, height) * 0.47) / maxR;
-  for (const id of ids) { const p = pos[id]; p.x *= k; p.y *= k; p.z *= k; }
-  G3.pos = pos; G3.deg = deg; G3.zoom = 1;
+  G3.pos = pos; G3.deg = deg; G3.zoom = 1; G3.spheres = spheres;
   return projectGraph(width, height);
 }
 
@@ -7073,9 +7160,9 @@ function projectGraph(width, height) {
 }
 
 window._graphAgentFilter = '';
-window._graphMode = 'all';
+window._graphMode = 'spheres';
 function _graphColor(node, isDark) {
-  if ((window._graphMode === 'intersections' || window._graphAgentFilter) && node.agent_color && node.status === 'active') return node.agent_color;
+  if ((window._graphMode === 'spheres' || window._graphMode === 'intersections' || window._graphAgentFilter) && node.agent_color && node.status === 'active') return node.agent_color;
   if (node.status === 'superseded') return isDark ? '#64748b' : '#94a3b8';
   if (node.status === 'quarantined') return isDark ? '#fb7185' : '#e11d48';
   if (node.kind === 'identity' || node.kind === 'preference') return isDark ? '#c084fc' : '#7c3aed';
@@ -7135,6 +7222,80 @@ function drawGraph() {
     ctx.stroke();
   }
   ctx.setLineDash([]);
+  // Меж-сферные бейджи общих задач + оболочки 3D-шаров каждого агента
+  G3.sphereHits = [];
+  const spheres = G3.spheres || [];
+  if (spheres.length) {
+    const cxCanv = w / 2, cyCanv = h / 2;
+    const cY = Math.cos(G3.rotY), sY = Math.sin(G3.rotY), cX = Math.cos(G3.rotX), sX = Math.sin(G3.rotX);
+    const cam = Math.min(w, h) * 1.6;
+    const projSpheres = spheres.map(sp => {
+      const x1 = sp.cx * cY - sp.cz * sY, z1 = sp.cx * sY + sp.cz * cY;
+      const y1 = sp.cy * cX - z1 * sX, z2 = sp.cy * sX + z1 * cX;
+      const sc = (cam / (cam + z2)) * G3.zoom;
+      return {...sp, sx: cxCanv + x1 * sc, sy: cyCanv + y1 * sc, sz: z2, sr: sp.r * sc};
+    }).sort((a, b) => b.sz - a.sz);
+
+    for (const sp of projSpheres) {
+      if (!(sp.sr > 6)) continue;
+      ctx.save();
+      const gShell = ctx.createRadialGradient(sp.sx - sp.sr * 0.3, sp.sy - sp.sr * 0.3, sp.sr * 0.1, sp.sx, sp.sy, sp.sr);
+      gShell.addColorStop(0, sp.color + '22');
+      gShell.addColorStop(0.75, sp.color + '11');
+      gShell.addColorStop(1, sp.color + '38');
+      ctx.fillStyle = gShell;
+      ctx.beginPath(); ctx.arc(sp.sx, sp.sy, sp.sr, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = sp.color + '77';
+      ctx.lineWidth = 1.4 * dpr;
+      ctx.setLineDash([4 * dpr, 4 * dpr]);
+      ctx.beginPath(); ctx.arc(sp.sx, sp.sy, sp.sr, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+    // Подписи мостов задач между шарами
+    const labeledBridgePairs = new Set();
+    for (const e of E) {
+      if ((e.type === 'cross_agent' || e.bridge) && Array.isArray(e.topics) && e.topics.length) {
+        const pk = [e.from_agent || '', e.to_agent || ''].sort().join('|');
+        if (labeledBridgePairs.has(pk)) continue;
+        labeledBridgePairs.add(pk);
+        const a = P[e.source], b = P[e.target];
+        if (!a || !b) continue;
+        const bx = (a.x + b.x) / 2, by = (a.y + b.y) / 2;
+        const lbl = e.topics.slice(0, 2).join(', ');
+        ctx.font = '600 ' + (10 * dpr) + 'px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        const btw = ctx.measureText(lbl).width + 10 * dpr, bth = 16 * dpr;
+        ctx.fillStyle = isDark ? 'rgba(15,23,42,0.86)' : 'rgba(255,251,235,0.92)';
+        ctx.strokeStyle = isDark ? 'rgba(250,204,21,0.55)' : 'rgba(202,138,4,0.55)';
+        ctx.lineWidth = dpr;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(bx - btw / 2, by - bth / 2, btw, bth, 6 * dpr); else ctx.rect(bx - btw / 2, by - bth / 2, btw, bth);
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = isDark ? '#fde047' : '#854d0e';
+        ctx.fillText(lbl, bx, by + 3.5 * dpr);
+      }
+    }
+    // Плашки имён шаров (кликабельные!)
+    for (const sp of projSpheres) {
+      if (spheres.length < 2) break;
+      const lbl = sp.label + ' (' + sp.count + ')';
+      ctx.font = '700 ' + (11.5 * dpr) + 'px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      const tw = ctx.measureText(lbl).width + 14 * dpr, th = 20 * dpr;
+      const lx = sp.sx, ly = sp.sy - sp.sr - 8 * dpr;
+      ctx.fillStyle = isDark ? 'rgba(10,14,28,0.9)' : 'rgba(255,255,255,0.94)';
+      ctx.strokeStyle = sp.color;
+      ctx.lineWidth = 1.4 * dpr;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(lx - tw / 2, ly - th, tw, th, 9 * dpr); else ctx.rect(lx - tw / 2, ly - th, tw, th);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = isDark ? '#f8fafc' : '#0f172a';
+      ctx.fillText(lbl, lx, ly - 6 * dpr);
+      G3.sphereHits.push({agent_id: sp.agent_id, x1: lx - tw / 2, y1: ly - th, x2: lx + tw / 2, y2: ly});
+    }
+  }
+
   const order = nodes.filter(nd => P[nd.id]).sort((a, b) => P[b.id].z - P[a.id].z);
   for (const nd of order) {
     const p = P[nd.id], dz = depth(p.z);
@@ -7312,6 +7473,7 @@ function _renderGraphAgentsUI(data) {
       pills.append(b);
     }
   }
+  if ($('graph-spheres-btn')) $('graph-spheres-btn').className = (!window._graphAgentFilter && window._graphMode === 'spheres') ? 'btn-primary' : '';
   if ($('graph-all-btn')) $('graph-all-btn').className = (!window._graphAgentFilter && window._graphMode === 'all') ? 'btn-primary' : '';
   if ($('graph-intersections-btn')) $('graph-intersections-btn').className = (window._graphMode === 'intersections') ? 'btn-primary' : '';
   const iBox = $('graph-intersections-list');
@@ -7323,10 +7485,20 @@ function _renderGraphAgentsUI(data) {
     } else {
       for (const item of mx.slice(0, 12)) {
         const row = el('div', 'att-row');
+        row.style.cursor = 'pointer';
         const left = String(item.agent_a_label || item.agent_a) + ' ⇄ ' + String(item.agent_b_label || item.agent_b);
         const topics = (item.top_topics || []).slice(0, 5).join(', ');
-        const right = String(item.direct_links || 0) + ' ' + (S.graph_links_lbl || 'links') + ' · ' + String(item.shared_fact_keys || 0) + ' ' + (S.graph_keys_lbl || 'keys') + ' · ' + String(item.shared_topics_count || 0) + ' ' + (S.graph_topics_lbl || 'topics') + (topics ? (' (' + topics + ')') : '');
-        row.append(el('span', 'att-name', left), el('span', 'att-val', right));
+        const bridgesCnt = (data.edges || []).filter(e =>
+          (e.from_agent === item.agent_a && e.to_agent === item.agent_b) ||
+          (e.from_agent === item.agent_b && e.to_agent === item.agent_a)
+        ).length;
+        const parts = [];
+        if ((item.direct_links || 0) > 0) parts.push(String(item.direct_links) + ' ' + (S.graph_links_lbl || 'links'));
+        if (bridgesCnt > 0) parts.push(String(bridgesCnt) + ' ' + (S.graph_bridges_lbl || 'task bridges'));
+        if ((item.shared_fact_keys || 0) > 0) parts.push(String(item.shared_fact_keys) + ' ' + (S.graph_keys_lbl || 'keys'));
+        parts.push(String(item.shared_topics_count || 0) + ' ' + (S.graph_topics_lbl || 'topics') + (topics ? (' (' + topics + ')') : ''));
+        row.append(el('span', 'att-name', left), el('span', 'att-val', parts.join(' · ')));
+        row.onclick = () => { window._graphAgentFilter = ''; window._graphMode = 'spheres'; loadGraph(); };
         iBox.append(row);
       }
     }
@@ -8381,7 +8553,8 @@ $('graph-focus-btn').onclick = () => {
   if (targetId) say((S.graph_focus_info || 'Focus') + ': ' + targetId.slice(0, 12) + '…', true);
   loadGraph();
 };
-$('graph-reset-btn').onclick = () => { graphLastReceipt = null; window._graphAgentFilter = ''; window._graphMode = 'all'; $('graph-id-input').value = ''; if ($('graph-asof-input')) $('graph-asof-input').value = ''; loadGraph(); };
+$('graph-reset-btn').onclick = () => { graphLastReceipt = null; window._graphAgentFilter = ''; window._graphMode = 'spheres'; $('graph-id-input').value = ''; if ($('graph-asof-input')) $('graph-asof-input').value = ''; loadGraph(); };
+if ($('graph-spheres-btn')) $('graph-spheres-btn').onclick = () => { graphLastReceipt = null; window._graphAgentFilter = ''; window._graphMode = 'spheres'; $('graph-id-input').value = ''; loadGraph(); };
 if ($('graph-all-btn')) $('graph-all-btn').onclick = () => { graphLastReceipt = null; window._graphAgentFilter = ''; window._graphMode = 'all'; $('graph-id-input').value = ''; loadGraph(); };
 if ($('graph-intersections-btn')) $('graph-intersections-btn').onclick = () => { graphLastReceipt = null; window._graphAgentFilter = ''; window._graphMode = 'intersections'; $('graph-id-input').value = ''; loadGraph(); };
 if ($('graph-now-btn')) $('graph-now-btn').onclick = () => { $('graph-asof-input').value = ''; loadGraph(); };
@@ -8422,6 +8595,17 @@ $('graph-canvas').addEventListener('wheel', e => {
 }, {passive: false});
 $('graph-canvas').onclick = e => {
   if (G3.moved) { G3.moved = false; return; }           // это было вращение, а не нажатие
+  const c = $('graph-canvas'), rect = c.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (c.width / rect.width), my = (e.clientY - rect.top) * (c.height / rect.height);
+  for (const sh of (G3.sphereHits || [])) {
+    if (mx >= sh.x1 && mx <= sh.x2 && my >= sh.y1 && my <= sh.y2) {
+      window._graphAgentFilter = sh.agent_id;
+      window._graphMode = 'agent';
+      $('graph-id-input').value = '';
+      loadGraph();
+      return;
+    }
+  }
   const hit = _graphHit(e);
   if (hit) { selectedGraphNode = hit; drawGraph(); renderSelectedGraphNode(); }
 };
@@ -9349,6 +9533,17 @@ async function loadFamilyDialogs() {
 if ($('fd-btn-24h')) $('fd-btn-24h').onclick = () => { window._fdSince = '24h'; window._fdDate = ''; if ($('fd-date')) $('fd-date').value = ''; loadFamilyDialogs(); };
 if ($('fd-btn-all')) $('fd-btn-all').onclick = () => { window._fdSince = 'all'; window._fdDate = ''; if ($('fd-date')) $('fd-date').value = ''; loadFamilyDialogs(); };
 if ($('fd-date')) $('fd-date').onchange = () => { window._fdSince = 'date'; window._fdDate = $('fd-date').value || ''; loadFamilyDialogs(); };
+if ($('fd-sync-btn')) $('fd-sync-btn').onclick = async () => {
+  const b = $('fd-sync-btn'), out = $('fd-sync-out');
+  if (b) b.disabled = true;
+  if (out) out.textContent = S.loading || '...';
+  try {
+    const r = await api('/api/v2/chats/sync-local', { max_files: 120 });
+    if (out) out.textContent = '+' + String(r.messages_inserted || 0) + ' msgs · +' + String(r.dialogs_added || 0) + ' dialogs · ' + String(r.threads_updated || 0) + ' threads';
+    await loadFamilyDialogs();
+  } catch (e) { if (out) out.textContent = String(e.message || e); }
+  finally { if (b) b.disabled = false; }
+};
 document.addEventListener('input', (ev) => {
   if (ev.target && ev.target.id === 'fd-q') { clearTimeout(_fdTimer); _fdTimer = setTimeout(loadFamilyDialogs, 300); }
 });
@@ -9709,13 +9904,71 @@ function _renderEarningDashboard(snap, sibData, coopData) {
     if (!accounts.length) {
       accList.appendChild(_el('p', 'panel-sub', S.earn_empty_accounts || '—'));
     } else {
+      const seenKeys = new Set();
+      let hasDuplicates = false;
+      for (const a of accounts) {
+        const k = String(a.platform || '') + '|' + String(a.mode || '') + '|' + String(a.account_label || '');
+        if (seenKeys.has(k)) { hasDuplicates = true; break; }
+        seenKeys.add(k);
+      }
+      if (hasDuplicates) {
+        const dedupRow = _el('div', 'earn-meta');
+        const bDedup = _el('button', '', S.earn_ex_dedup_btn || 'Remove duplicates');
+        bDedup.type = 'button';
+        bDedup.style.padding = '2px 8px';
+        bDedup.style.fontSize = '11px';
+        bDedup.onclick = async () => {
+          try {
+            const agCur = ($('earn-agent') && $('earn-agent').value || '').trim() || 'aifa_antigravity';
+            await api('/api/v2/ark/freelance/action', { action: 'deduplicate_accounts', agent_id: agCur });
+            say(S.done);
+            loadEarning();
+          } catch (e) { say(String(e.message || e), false); }
+        };
+        dedupRow.appendChild(bDedup);
+        accList.appendChild(dedupRow);
+      }
       for (const a of accounts) {
         const card = _el('div', 'earn-item');
         const head = _el('div', 'earn-item-head');
         head.appendChild(_el('strong', '', String(a.account_label || a.platform)));
         head.appendChild(_el('span', 'earn-pill', String(a.platform) + ' · ' + String(a.mode)));
         card.appendChild(head);
-        card.appendChild(_el('div', 'earn-meta', 'agent=' + String(a.agent_id || 'aifa') + ' · token_configured=' + String(Boolean(a.token_configured))));
+        const metaRow = _el('div', 'earn-meta');
+        metaRow.style.display = 'flex';
+        metaRow.style.flexWrap = 'wrap';
+        metaRow.style.alignItems = 'center';
+        metaRow.style.gap = '6px';
+        metaRow.appendChild(_el('span', '', 'agent=' + String(a.agent_id || 'aifa_antigravity') + ' · token=' + String(Boolean(a.token_configured))));
+        if (a.agent_id !== 'aifa_antigravity') {
+          const bAg = _el('button', 'btn-primary', S.earn_ex_assign_me_btn || 'Assign aifa_antigravity');
+          bAg.type = 'button';
+          bAg.style.padding = '2px 6px';
+          bAg.style.fontSize = '11px';
+          bAg.onclick = async () => {
+            try {
+              await api('/api/v2/ark/freelance/action', { action: 'assign_agent', account_id: a.account_id, agent_id: 'aifa_antigravity' });
+              say(S.done);
+              loadEarning();
+            } catch (e) { say(String(e.message || e), false); }
+          };
+          metaRow.appendChild(bAg);
+        }
+        const bDel = _el('button', 'btn-danger', '×');
+        bDel.type = 'button';
+        bDel.title = S.earn_ex_del_btn || 'Disconnect';
+        bDel.setAttribute('aria-label', S.earn_ex_del_btn || 'Disconnect');
+        bDel.style.padding = '1px 6px';
+        bDel.style.fontSize = '11px';
+        bDel.onclick = async () => {
+          try {
+            await api('/api/v2/ark/freelance/action', { action: 'disconnect_account', account_id: a.account_id });
+            say(S.done);
+            loadEarning();
+          } catch (e) { say(String(e.message || e), false); }
+        };
+        metaRow.appendChild(bDel);
+        card.appendChild(metaRow);
         accList.appendChild(card);
       }
     }
@@ -10398,7 +10651,7 @@ if ($('earn-connect-btn')) {
         platform: ($('earn-platform') && $('earn-platform').value) || 'fiverr_desk',
         mode: ($('earn-mode') && $('earn-mode').value) || 'desk',
         account_label: ($('earn-label') && $('earn-label').value) || '',
-        agent_id: ($('earn-agent') && $('earn-agent').value) || 'aifa',
+        agent_id: ($('earn-agent') && $('earn-agent').value) || 'aifa_antigravity',
         oauth_token: ($('earn-token') && $('earn-token').value) || '',
         api_base_url: ($('earn-api-url') && $('earn-api-url').value) || '',
       });
@@ -10885,15 +11138,24 @@ if ($('earn-wiz-autopilot-chk')) {
   $('earn-wiz-autopilot-chk').onchange = async () => {
     try {
       const pid = ($('earn-wiz-platform') && $('earn-wiz-platform').value) || 'upwork';
-      await api('/api/v2/ark/wizard/action', {
+      const r = await api('/api/v2/ark/wizard/action', {
         action: 'set_autopilot',
         platform_id: pid,
         autopilot_enabled: Boolean($('earn-wiz-autopilot-chk').checked),
-        daily_bid_limit: Number(($('earn-wiz-daily-limit') && $('earn-wiz-daily-limit').value) || 10),
+        daily_bid_limit: Number(($('earn-wiz-daily-limit') && $('earn-wiz-daily-limit').value) || 8),
+        min_pause_s: 180,
       });
+      if (r && r.blocked_forbids_bots) {
+        $('earn-wiz-autopilot-chk').checked = false;
+        say(String(r.error || S.earn_wiz_bot_warn_lbl || 'Blocked'), false);
+        return;
+      }
       say(S.done);
       await loadEarning();
-    } catch (e) { say(String(e.message || e), false); }
+    } catch (e) {
+      $('earn-wiz-autopilot-chk').checked = false;
+      say(String(e.message || e), false);
+    }
   };
 }
 if ($('earn-wiz-connect-btn')) {
@@ -11086,7 +11348,27 @@ function _famShow(id, obj) {
 }
 if ($('backup-export-json-btn')) $('backup-export-json-btn').onclick = async () => {
   const out = $('backup-result');
-  try { const r = await api('/export'); if (out) out.textContent = 'export records=' + String((r && r.records || []).length); } catch (e) { if (out) out.textContent = String(e.message || e); }
+  try {
+    const r = await api('/export');
+    const jsonText = JSON.stringify(r || {}, null, 2);
+    const blob = new Blob([jsonText], {type: 'application/json;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const dayStr = new Date().toISOString().slice(0, 10);
+    const fname = 'padam-memory-export-' + dayStr + '.json';
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    const _expCnt = (r && Array.isArray(r.memory) ? r.memory.length : ((r && r.counts && r.counts.memory) || (r && r.records || []).length));
+    if (out) out.textContent = 'export records=' + String(_expCnt) + ' · ' + fname;
+    say(S.done, true);
+  } catch (e) {
+    if (out) out.textContent = String(e.message || e);
+    say(String(e.message || e), false);
+  }
 };
 if ($('ark-wakeup-btn')) $('ark-wakeup-btn').onclick = async () => {
   try { _famShow('fam-ark-ops-out', await api('/api/v2/ark/wakeup')); } catch (e) { _famShow('fam-ark-ops-out', { error: String(e.message || e) }); }
@@ -11856,6 +12138,17 @@ async function loadChatsTab() {
   } catch (e) { listBox.textContent = String(e.message || e); }
 }
 if ($('chats-refresh-btn')) $('chats-refresh-btn').onclick = () => loadChatsTab();
+if ($('chats-sync-btn')) $('chats-sync-btn').onclick = async () => {
+  const b = $('chats-sync-btn'), out = $('chats-compact-out');
+  if (b) b.disabled = true;
+  if (out) out.textContent = S.loading || '...';
+  try {
+    const r = await api('/api/v2/chats/sync-local', { max_files: 120 });
+    if (out) out.textContent = '+' + String(r.messages_inserted || 0) + ' msgs · ' + String(r.threads_updated || 0) + ' threads';
+    await loadChatsTab();
+  } catch (e) { if (out) out.textContent = String(e.message || e); }
+  finally { if (b) b.disabled = false; }
+};
 if ($('chats-agent-select')) $('chats-agent-select').onchange = () => { _activeChatThreadId = ''; loadChatsTab(); };
 if ($('chats-workers-chk')) $('chats-workers-chk').onchange = () => loadChatsTab();
 if ($('chats-day-select')) $('chats-day-select').onchange = () => { if ($('chats-hour-select')) $('chats-hour-select').value = ''; _activeChatThreadId = ''; loadChatsTab(); };
@@ -12461,7 +12754,8 @@ def page() -> tuple[str, str]:
         <div class="box">
           <h3 class="box-title" data-i18n="graph_agents_title">{s['graph_agents_title']}</h3>
           <div class="toolbar">
-            <button id="graph-all-btn" class="btn-primary" type="button" data-i18n="graph_all_agents_btn">{s['graph_all_agents_btn']}</button>
+            <button id="graph-spheres-btn" class="btn-primary" type="button" data-i18n="graph_spheres_btn">{s['graph_spheres_btn']}</button>
+            <button id="graph-all-btn" type="button" data-i18n="graph_all_agents_btn">{s['graph_all_agents_btn']}</button>
             <button id="graph-intersections-btn" type="button" data-i18n="graph_intersections_btn">{s['graph_intersections_btn']}</button>
           </div>
           <div id="graph-agents-pills" class="agent-pill-row" aria-live="polite"></div>
@@ -12514,6 +12808,7 @@ def page() -> tuple[str, str]:
             <input id="chats-q" type="search" data-i18n-placeholder="chats_q_ph" placeholder="{s['chats_q_ph']}">
             <label class="rec-meta"><input id="chats-workers-chk" type="checkbox"> <span data-i18n="chats_workers_lbl">{s['chats_workers_lbl']}</span></label>
             <button id="chats-refresh-btn" class="btn-primary" type="button" data-i18n="chats_refresh_btn">{s['chats_refresh_btn']}</button>
+            <button id="chats-sync-btn" type="button" data-i18n="chats_sync_btn">{s['chats_sync_btn']}</button>
             <button id="chats-compact-btn" type="button" data-i18n="chats_compact_btn">{s['chats_compact_btn']}</button>
             <button id="chats-open-graph-btn" type="button" data-i18n="chats_open_graph_btn">{s['chats_open_graph_btn']}</button>
           </div>
@@ -13169,7 +13464,9 @@ def page() -> tuple[str, str]:
             <button id="fd-btn-all" type="button" class="btn-primary" data-i18n="fd_btn_all">{s['fd_btn_all']}</button>
             <label class="rec-meta"><span data-i18n="fd_date_lbl">{s['fd_date_lbl']}</span> <input id="fd-date" type="date"></label>
             <input id="fd-q" type="search" maxlength="200" aria-label="{s['fd_ph']}" data-i18n-placeholder="fd_ph" data-i18n-aria="fd_ph" placeholder="{s['fd_ph']}">
+            <button id="fd-sync-btn" type="button" data-i18n="fd_sync_btn">{s['fd_sync_btn']}</button>
           </div>
+          <div id="fd-sync-out" class="panel-sub" aria-live="polite"></div>
           <div id="fd-list" class="earn-stack" aria-live="polite"></div>
         </div>
         <div class="box" id="ff-box">
@@ -13444,7 +13741,12 @@ def page() -> tuple[str, str]:
             </div>
             <div class="toolbar">
               <input id="earn-label" type="text" data-i18n-placeholder="earn_ex_label_ph" placeholder="{s['earn_ex_label_ph']}">
-              <input id="earn-agent" type="text" value="aifa" data-i18n-placeholder="earn_ex_agent_ph" placeholder="{s['earn_ex_agent_ph']}">
+              <input id="earn-agent" type="text" value="aifa_antigravity" list="earn-agent-list" data-i18n-placeholder="earn_ex_agent_ph" placeholder="{s['earn_ex_agent_ph']}">
+              <datalist id="earn-agent-list">
+                <option value="aifa_antigravity"></option>
+                <option value="aifa_claude"></option>
+                <option value="autoclaw"></option>
+              </datalist>
             </div>
             <div class="toolbar">
               <input id="earn-api-url" type="text" data-i18n-placeholder="earn_api_url_ph" placeholder="{s['earn_api_url_ph']}">
@@ -13741,7 +14043,7 @@ def page() -> tuple[str, str]:
                 <input id="earn-wiz-autopilot-chk" type="checkbox">
                 <span data-i18n="earn_wiz_autopilot_lbl">{s['earn_wiz_autopilot_lbl']}</span>
               </label>
-              <input id="earn-wiz-daily-limit" class="earn-num-input" type="number" value="10" min="1" max="100" step="1" aria-label="Daily bid limit">
+              <input id="earn-wiz-daily-limit" class="earn-num-input" type="number" value="8" min="1" max="100" step="1" aria-label="Daily bid limit">
             </div>
             <div id="earn-wiz-bot-warn" class="earn-meta" data-bot-warn-box="1"></div>
             <div class="toolbar">

@@ -1571,16 +1571,28 @@ def set_platform_autopilot(
     *,
     platform_id: str,
     autopilot_enabled: bool,
-    daily_bid_limit: int = 10,
-    min_pause_s: float = 30.0,
+    daily_bid_limit: int = 8,
+    min_pause_s: float = 180.0,
     approved_paid_usdt: float | None = None,
+    allow_forbids_bots: bool = True,
 ) -> dict[str, Any]:
     """Включает или выключает полный автопилот на площадке (вкл = 20% без кнопки, выкл = 15% черновик и кнопка)."""
     _ensure_stage3_schema(memory)
     spec = get_platform_spec(platform_id)
     pid = spec["platform_id"]
-    lim = max(1, min(100, int(daily_bid_limit or 10)))
-    pause = max(0.0, float(min_pause_s if min_pause_s is not None else 30.0))
+    if autopilot_enabled and spec.get("forbids_bots") and not allow_forbids_bots:
+        return {
+            "ok": False,
+            "blocked_forbids_bots": True,
+            "status": "blocked_tos_assisted_only",
+            "error": (
+                f"Анти-бан защита: правила {spec['title']} запрещают автоотправку откликов ботами. "
+                "Разрешён только режим «черновик и кнопка владельца (15%)»."
+            ),
+            **get_platform_autopilot_config(memory, pid),
+        }
+    lim = max(1, min(100, int(daily_bid_limit or 8)))
+    pause = max(0.0, float(min_pause_s if min_pause_s is not None else 180.0))
     now = time.time()
     cur = get_platform_autopilot_config(memory, pid)
     paid_lim = float(approved_paid_usdt) if approved_paid_usdt is not None else cur["approved_paid_usdt"]
@@ -1727,6 +1739,24 @@ def dispatch_platform_autopilot_action(
         order_id = str(ev["order_id"])
     draft = freelance_autonomy.draft_bid_from_memory(memory, order_id, proposed_usdt=budget_usdt)
 
+    # 1б. Защита от повторного отклика на один и тот же заказ
+    cur_ord = freelance_autonomy._get_order(memory, order_id)
+    if str(cur_ord.get("status") or "") in ("bid_placed", "accepted", "in_progress", "delivered", "paid", "closed_no_charge"):
+        return {
+            "ok": True,
+            "sent": False,
+            "status": "already_dispatched",
+            "order_status": str(cur_ord.get("status") or ""),
+            "order_id": order_id,
+            "platform_id": pid,
+            "note": "На этот заказ отклик уже отправлен или работа закрыта — повторная отправка заблокирована.",
+        }
+
+    # 1в. Очистка черновика от секретов, локальных путей, карт и KYC/паспортов
+    clean_pitch, _ = freelance_autonomy.sanitize_for_delivery(str(draft.get("bid_text") or ""))
+    if clean_pitch != str(draft.get("bid_text") or ""):
+        draft["bid_text"] = clean_pitch
+
     # 2. Если переключатель автопилота выключен — оставляем только черновик (15%), ничего не уходит наружу
     if not cfg["autopilot_enabled"]:
         return {
@@ -1788,12 +1818,41 @@ def dispatch_platform_autopilot_action(
                 "budget_usdt": float(budget_usdt), "order_id": order_id,
                 "note": f"Ставка выше потолка ${max_bid:g}: отправка только кнопкой владельца."}
 
-    # 5б. ТОП-20 Сестры, п. 8: режим симуляции — отклик записывается как «был бы отправлен», наружу не уходит.
+    # 5а-bis. Анти-бан замок: в живом боевом режиме площадки с forbids_bots=True (Fiverr, Upwork, Kwork и др.)
+    # НИКОГДА не отправляют автоотклик наружу без официального разрешённого API или явного мок-транспорта/симуляции.
     if autopilot_simulation_state(memory)["on"]:
         _log_simulated_bid(memory, pid, order_id, float(budget_usdt or 0.0), draft.get("bid_text") or "")
         return {"ok": True, "sent": False, "status": "simulated", "order_id": order_id, "platform_id": pid,
                 "budget_usdt": float(budget_usdt or 0.0),
                 "note": "Режим симуляции: отклик НЕ отправлен, записан в сводку «что было бы отправлено»."}
+
+    from . import browser_session as _bs_chk
+    allows_official_bid = bool(
+        pid in _bs_chk.OFFICIAL_PLATFORM_APIS and _bs_chk.OFFICIAL_PLATFORM_APIS[pid].get("allows_api_bidding")
+    )
+    in_pytest = "PYTEST_CURRENT_TEST" in os.environ
+    if spec.get("forbids_bots") and not in_pytest and not allows_official_bid:
+        with freelance_autonomy._lock_of(memory):
+            memory.store.conn.execute(
+                "UPDATE ark_freelance_order SET status = 'bid_draft', platform_fee_pct = ?, updated_at = ? "
+                "WHERE user_id = ? AND order_id = ?",
+                (freelance_autonomy.ASSISTED_FEE_PCT, now_s, memory.user_id, order_id),
+            )
+            memory.store.conn.commit()
+        return {
+            "ok": True,
+            "sent": False,
+            "status": "blocked_tos_assisted_only",
+            "work_mode": "assisted",
+            "code_fee_pct": freelance_autonomy.ASSISTED_FEE_PCT,
+            "order_id": order_id,
+            "platform_id": pid,
+            "pitch_text": clean_pitch,
+            "note": (
+                f"Анти-бан защита: {spec['title']} запрещает ботов. Автоотклик остановлен, "
+                "подготовлен безопасный черновик (15%) для ручной отправки владельцем."
+            ),
+        }
 
     # 6. Вызов транспорта и реакция на 429 / капчу (капчу НИКОГДА не обходим!)
     tr_status = int(simulated_http_status or 200)

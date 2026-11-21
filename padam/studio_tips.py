@@ -429,6 +429,21 @@ BTN_TIPS: dict[str, dict[str, str]] = {
         "en": "Cancels deletion; the record stays.",
         "es": "Cancela el borrado; el registro queda.",
         "zh": "取消删除，记录保留。"},
+    "graph-spheres-btn": {
+        "ru": "Показывает каждому агенту свой отдельный 3D-шар памяти и соединяет их яркими дугами общих задач.",
+        "en": "Gives each agent its own 3D memory sphere and connects shared tasks between them.",
+        "es": "Muestra una esfera 3D propia para cada agente y une sus tareas compartidas.",
+        "zh": "为每个智能体显示独立的 3D 记忆球，并用桥梁连接共同任务。"},
+    "fd-sync-btn": {
+        "ru": "Подгружает с этого компьютера все свежие переписки агентов и передачи контекста в память PADAM.",
+        "en": "Loads recent agent conversations and handover notes from this PC into PADAM memory.",
+        "es": "Carga desde este equipo los chats recientes de agentes y entregas de contexto.",
+        "zh": "立即从本机同步最新的智能体对话和交接摘要到 PADAM 记忆库。"},
+    "chats-sync-btn": {
+        "ru": "Быстро дотягивает из локальных папок Antigravity и Claude Code новые реплики без повторов.",
+        "en": "Incrementally pulls new conversation messages from Antigravity and Claude Code folders without duplicates.",
+        "es": "Sincroniza mensajes nuevos desde las carpetas locales de Antigravity y Claude Code sin duplicados.",
+        "zh": "从 Antigravity 与 Claude Code 本地目录增量同步最新对话消息且不重复。"},
     "graph-now-btn": {
         "ru": "Показывает граф на текущий момент (снимает выбранную дату).",
         "en": "Shows the graph as of now (clears the chosen date).",

@@ -2742,9 +2742,9 @@ class Memory:
         момент = parse_as_of(as_of) if as_of is not None and str(as_of).strip() else None
         target_agent = (str(agent_id).strip() if agent_id is not None and str(agent_id).strip() else None)
         graph_mode = (str(mode or "all").strip().lower())
-        if graph_mode not in ("all", "agent", "intersections"):
+        if graph_mode not in ("all", "agent", "intersections", "spheres"):
             graph_mode = "all"
-        if target_agent and graph_mode == "all":
+        if target_agent and graph_mode in ("all", "spheres"):
             graph_mode = "agent"
 
         vis_sql_m, vis_params, _ = roles.visibility_sql(actor, alias="m")
@@ -2901,6 +2901,71 @@ class Memory:
                                         break
             узлы_ids = set(list(cross_ids)[:предел])
             edges = [e for e in cross_edges if e["source"] in узлы_ids and e["target"] in узлы_ids]
+        elif graph_mode == "spheres":
+            # Режим отдельных 3D-шаров на агента + меж-сферные мосты совместных задач
+            all_ags = self.list_agents(actor=actor)
+            main_ags = [a for a in all_ags if int(a.get("active") or 0) > 0 and not a.get("is_worker")]
+            if not main_ags:
+                main_ags = [a for a in all_ags if int(a.get("active") or 0) > 0]
+            top_ags = main_ags[:8]
+            per_ag = max(12, min(42, предел // max(1, len(top_ags))))
+            узлы_ids = set()
+            sphere_rows: dict[str, list[tuple[str, set[str], str | None]]] = {}
+            for ag_info in top_ags:
+                aid_k = str(ag_info["agent_id"])
+                ag_recs = self.store.query(
+                    f"""SELECT id, content, факт_ключ FROM memory
+                       WHERE user_id = ? AND status = 'active'{vis_sql}
+                       AND COALESCE(NULLIF(agent_id, ''), 'owner') = ?
+                       ORDER BY importance DESC, created_at DESC LIMIT ?""",
+                    (self.user_id, *vis_params, aid_k, per_ag * 2),
+                )
+                picked: list[tuple[str, set[str], str | None]] = []
+                for rr in ag_recs:
+                    if допустимые_на_дату is not None and rr["id"] not in допустимые_на_дату:
+                        continue
+                    узлы_ids.add(rr["id"])
+                    picked.append((rr["id"], _extract_topic_tokens(rr["content"] or ""), rr["факт_ключ"]))
+                    if len(picked) >= per_ag:
+                        break
+                if picked:
+                    sphere_rows[aid_k] = picked
+            edges = [e for e in edges if e["source"] in узлы_ids and e["target"] in узлы_ids]
+            seen_sp_pairs = {tuple(sorted((e["source"], e["target"]))) for e in edges}
+            sp_ags = sorted(sphere_rows.keys())
+            for i in range(len(sp_ags)):
+                for j in range(i + 1, len(sp_ags)):
+                    a1, a2 = sp_ags[i], sp_ags[j]
+                    scored_bridges: list[tuple[int, str, str, list[str], str | None]] = []
+                    for id1, t1, fk1 in sphere_rows[a1]:
+                        for id2, t2, fk2 in sphere_rows[a2]:
+                            fk_eq = bool(fk1 and fk1 == fk2)
+                            common = t1 & t2
+                            score = (100 if fk_eq else 0) + len(common)
+                            if fk_eq or len(common) >= 2:
+                                scored_bridges.append((score, id1, id2, sorted(common)[:5], fk1 if fk_eq else None))
+                    scored_bridges.sort(key=lambda x: -x[0])
+                    added_b = 0
+                    for _sc, id1, id2, top_t, fk_val in scored_bridges:
+                        pr = tuple(sorted((id1, id2)))
+                        if pr in seen_sp_pairs:
+                            continue
+                        seen_sp_pairs.add(pr)
+                        edges.append({
+                            "source": id1,
+                            "target": id2,
+                            "type": "cross_agent",
+                            "relation": "cross_agent",
+                            "bridge": True,
+                            "cross_agent": True,
+                            "from_agent": a1,
+                            "to_agent": a2,
+                            "topics": top_t,
+                            "fact_key": fk_val,
+                        })
+                        added_b += 1
+                        if added_b >= 4:
+                            break
         else:
             узлы_ids = set(list(связанные_ids)[:предел])
             target_fill = min(60 if target_agent else 30, предел)
@@ -2998,9 +3063,18 @@ class Memory:
                     b["days"].add(mr["day"])
                 b["ids"].add(mr["id"])
             direct_pair_cnt: dict[tuple[str, str], int] = {}
-            id_to_ag = {mr["id"]: mr["ag"] for mr in m_rows}
-            for r in все_ссылки:
-                sa, ta = id_to_ag.get(r["src"]), id_to_ag.get(r["dst"])
+            all_cross_links = self.store.query(
+                f"""SELECT COALESCE(NULLIF(s.agent_id, ''), 'owner') AS sa,
+                          COALESCE(NULLIF(m.agent_id, ''), 'owner') AS ta
+                   FROM memory_link l
+                   JOIN memory m ON m.id = l.dst
+                   JOIN memory s ON s.id = l.src
+                   WHERE m.user_id = ? AND m.status != 'revoked' AND s.status != 'revoked'
+                     {vis_sql_m}{roles.visibility_sql(actor, alias="s")[0]}""",
+                (self.user_id, *vis_params, *vis_params),
+            )
+            for clr in all_cross_links:
+                sa, ta = clr["sa"], clr["ta"]
                 if sa and ta and sa != ta:
                     pk = tuple(sorted((sa, ta)))
                     direct_pair_cnt[pk] = direct_pair_cnt.get(pk, 0) + 1
@@ -3052,6 +3126,30 @@ class Memory:
                     "outgoing": [x for x in связи_узла["outgoing"] if x["id"] in допустимые_на_дату],
                 }
 
+        sphere_map: dict[str, dict[str, Any]] = {}
+        for nd in nodes:
+            ak = str(nd.get("agent_id") or "owner")
+            sp = sphere_map.setdefault(ak, {
+                "agent_id": ak,
+                "display_name": nd.get("agent_label") or ak,
+                "color": nd.get("agent_color") or "#38bdf8",
+                "node_count": 0,
+                "toks": {},
+            })
+            sp["node_count"] += 1
+            for tk in node_tokens_map.get(nd["id"], ()):
+                sp["toks"][tk] = sp["toks"].get(tk, 0) + 1
+        agent_spheres = [
+            {
+                "agent_id": sp["agent_id"],
+                "display_name": sp["display_name"],
+                "color": sp["color"],
+                "node_count": sp["node_count"],
+                "top_topics": [k for k, _ in sorted(sp["toks"].items(), key=lambda x: (-x[1], x[0]))[:6]],
+            }
+            for sp in sorted(sphere_map.values(), key=lambda x: -x["node_count"])
+        ]
+
         return {
             "center_id": center_id,
             "agent_id": target_agent,
@@ -3059,6 +3157,7 @@ class Memory:
             "as_of": момент.isoformat() if момент is not None else None,
             "relations": list(LINK_RELATIONS),
             "agents": self.list_agents(actor=actor),
+            "agent_spheres": agent_spheres,
             "nodes": nodes,
             "edges": edges,
             "cross_agent_edges": cross_agent_edges,

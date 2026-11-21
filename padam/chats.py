@@ -419,11 +419,13 @@ def _sync_milestone_to_memory(
     started_at: str,
     summary_text: str,
     prev_milestone_id: str | None = None,
+    event_at: str = "",
 ) -> str | None:
-    """Создаёт лаконичную хронологическую веху в памяти агента и связывает её с предыдущей вехой."""
+    """Создаёт или обновляет хронологическую веху в памяти агента и связывает её с предыдущей."""
     if memory is None:
         return None
-    date_part = (started_at or "")[:10] or _utc_now()[:10]
+    eff_at = str(event_at or started_at or "").strip() or _utc_now()
+    date_part = eff_at[:10] or (started_at or "")[:10] or _utc_now()[:10]
     meta = infer_agent_meta(agent_id)
     body = clean_chat_text(
         f"[{date_part} · {meta['display_name']}] Разговор «{title}». {summary_text}",
@@ -431,14 +433,21 @@ def _sync_milestone_to_memory(
     )
     if not body:
         return None
-    # Идемпотентность: проверяем, нет ли уже такой же вехи за эту дату для этого агента
+    title_marker = f"Разговор «{clean_chat_text(title, max_len=160) or title}»."
+    escaped_marker = title_marker.replace("!", "!!").replace("%", "!%").replace("_", "!_")
     existing = memory.store.one(
         """SELECT id FROM memory WHERE user_id = ? AND kind = 'event' AND scope = 'family:timeline'
-           AND COALESCE(NULLIF(agent_id, ''), 'owner') = ? AND content = ? AND status = 'active' LIMIT 1""",
-        (memory.user_id, agent_id, body),
+           AND COALESCE(NULLIF(agent_id, ''), 'owner') = ? AND status = 'active'
+           AND (content = ? OR (content LIKE ? ESCAPE '!' AND substr(created_at, 1, 10) = ?))
+           ORDER BY created_at DESC LIMIT 1""",
+        (memory.user_id, agent_id, body, "%" + escaped_marker + "%", date_part),
     )
     if existing:
         mid = existing["id"]
+        memory.store.execute(
+            "UPDATE memory SET content = ?, created_at = ?, last_confirmed_at = ? WHERE id = ?",
+            (body, eff_at, eff_at, mid),
+        )
     else:
         _, mid = memory.remember(
             body,
@@ -448,8 +457,8 @@ def _sync_milestone_to_memory(
             origin="agent",
             guarded=False,
             agent_id=agent_id,
-            valid_from=started_at or None,
-            created_at=started_at or None,
+            valid_from=eff_at or None,
+            created_at=eff_at or None,
         )
     if prev_milestone_id and prev_milestone_id != mid:
         try:
@@ -552,6 +561,7 @@ def save_parsed_thread(
             started_at=started_at,
             summary_text=summary,
             prev_milestone_id=prev_milestone_id,
+            event_at=last_at,
         )
 
     return {
@@ -740,6 +750,172 @@ def batch_import_history(
         "ok": True,
         "threads_processed": threads_saved,
         "messages_inserted": messages_added,
+        "timeline_milestones": milestones,
+        "agents": sorted({x["agent_id"] for x in parsed_items}),
+    }
+
+
+def _ensure_sync_state_table(memory: Any) -> None:
+    memory.store.execute(
+        """CREATE TABLE IF NOT EXISTS chat_sync_state (
+            source_ref TEXT PRIMARY KEY,
+            mtime_ns INTEGER NOT NULL,
+            size INTEGER NOT NULL,
+            updated_at TEXT NOT NULL
+        )"""
+    )
+
+
+def discover_local_chat_sources() -> dict[str, Path | None]:
+    """Определяет стандартные локальные директории переписок агентов и передач контекста на этом ПК."""
+    import os as _os
+
+    home = Path.home()
+    ag_env = _os.environ.get("PADAM_ANTIGRAVITY_BRAIN_DIR", "").strip()
+    cc_env = _os.environ.get("PADAM_CLAUDE_PROJECTS_DIR", "").strip()
+    br_env = _os.environ.get("PADAM_BRAIN_DIR", "").strip()
+
+    ag_dir = Path(ag_env) if ag_env else (home / ".gemini" / "antigravity" / "brain")
+    cc_dir = Path(cc_env) if cc_env else (home / ".claude" / "projects")
+    br_dir: Path | None = Path(br_env) if br_env else None
+    if br_dir is None:
+        for drv in ("E:/BRAIN", "D:/BRAIN", "F:/BRAIN", str(home / "BRAIN")):
+            cand = Path(drv)
+            if cand.exists() and cand.is_dir():
+                br_dir = cand
+                break
+    return {
+        "antigravity_root": ag_dir if ag_dir.exists() else None,
+        "claude_projects_dir": cc_dir if cc_dir.exists() else None,
+        "brain_dir": br_dir if (br_dir and br_dir.exists()) else None,
+    }
+
+
+def sync_family_chats_from_disk(
+    memory: Any,
+    *,
+    antigravity_root: Path | None = None,
+    claude_projects_dir: Path | None = None,
+    brain_dir: Path | None = None,
+    use_default_paths: bool = False,
+    include_workers: bool = False,
+    max_files: int = 40,
+    force: bool = False,
+) -> dict[str, Any]:
+    """Быстро и идемпотентно дотягивает изменившиеся переписки агентов и ПЕРЕДАЧА_КОНТЕКСТА_*.md в PADAM."""
+    from . import family_dialogs as _fd
+
+    _ensure_sync_state_table(memory)
+    if use_default_paths:
+        defs = discover_local_chat_sources()
+        antigravity_root = antigravity_root or defs["antigravity_root"]
+        claude_projects_dir = claude_projects_dir or defs["claude_projects_dir"]
+        brain_dir = brain_dir or defs["brain_dir"]
+
+    candidates: list[tuple[float, int, int, str, Path]] = []
+    if antigravity_root and Path(antigravity_root).exists():
+        for tp in Path(antigravity_root).glob("*/.system_generated/logs/transcript.jsonl"):
+            try:
+                st = tp.stat()
+                candidates.append((st.st_mtime, st.st_mtime_ns, st.st_size, "antigravity", tp))
+            except OSError:
+                continue
+    if claude_projects_dir and Path(claude_projects_dir).exists():
+        for jf in Path(claude_projects_dir).rglob("*.jsonl"):
+            try:
+                st = jf.stat()
+                candidates.append((st.st_mtime, st.st_mtime_ns, st.st_size, "claude", jf))
+            except OSError:
+                continue
+    if brain_dir and Path(brain_dir).exists():
+        for hp in Path(brain_dir).glob("ПЕРЕДАЧА_КОНТЕКСТА_*.md"):
+            try:
+                st = hp.stat()
+                candidates.append((st.st_mtime, st.st_mtime_ns, st.st_size, "handover", hp))
+            except OSError:
+                continue
+
+    state_rows = {
+        str(r["source_ref"]): (int(r["mtime_ns"]), int(r["size"]))
+        for r in memory.store.query("SELECT source_ref, mtime_ns, size FROM chat_sync_state")
+    }
+    changed: list[tuple[float, int, int, str, Path]] = []
+    for item in candidates:
+        _, mns, sz, _kind, path = item
+        prev = state_rows.get(str(path))
+        if not force and prev == (mns, sz):
+            continue
+        changed.append(item)
+
+    changed.sort(key=lambda x: x[0], reverse=True)
+    lim = max(1, min(int(max_files or 40), 500))
+    batch = changed[:lim]
+
+    parsed_items: list[dict[str, Any]] = []
+    handover_paths: list[Path] = []
+    processed_meta: list[tuple[str, int, int]] = []
+    for _, mns, sz, kind, path in batch:
+        try:
+            if kind == "antigravity":
+                it = parse_antigravity_transcript(path)
+                if it and (include_workers or not it.get("is_worker")):
+                    parsed_items.append(it)
+            elif kind == "claude":
+                it = parse_claude_code_jsonl(path)
+                if it and (include_workers or not it.get("is_worker")):
+                    parsed_items.append(it)
+            elif kind == "handover":
+                handover_paths.append(path)
+            processed_meta.append((str(path), mns, sz))
+        except Exception:
+            continue
+
+    parsed_items.sort(key=lambda x: str(x.get("started_at") or ""))
+    prev_by_agent: dict[str, str | None] = {}
+    threads_updated = 0
+    messages_inserted = 0
+    milestones = 0
+    for it in parsed_items:
+        aid = it["agent_id"]
+        res = save_parsed_thread(
+            memory,
+            it,
+            sync_memory_graph=True,
+            prev_milestone_id=prev_by_agent.get(aid),
+        )
+        threads_updated += 1
+        messages_inserted += int(res.get("inserted_messages") or 0)
+        if res.get("milestone_id"):
+            prev_by_agent[aid] = res["milestone_id"]
+            milestones += 1
+
+    dialogs_added = 0
+    if handover_paths:
+        try:
+            dlg_res = _fd.import_files(memory, handover_paths, author="aifa-claude-code")
+            dialogs_added = int(dlg_res.get("added") or 0)
+        except Exception:
+            dialogs_added = 0
+
+    now_s = _utc_now()
+    if processed_meta:
+        with memory.store._lock:
+            memory.store.conn.executemany(
+                """INSERT INTO chat_sync_state (source_ref, mtime_ns, size, updated_at)
+                   VALUES (?, ?, ?, ?)
+                   ON CONFLICT(source_ref) DO UPDATE SET mtime_ns=excluded.mtime_ns, size=excluded.size, updated_at=excluded.updated_at""",
+                [(ref, mns, sz, now_s) for ref, mns, sz in processed_meta],
+            )
+            memory.store.conn.commit()
+
+    return {
+        "ok": True,
+        "checked_files": len(candidates),
+        "changed_files": len(changed),
+        "processed_files": len(processed_meta),
+        "threads_updated": threads_updated,
+        "messages_inserted": messages_inserted,
+        "dialogs_added": dialogs_added,
         "timeline_milestones": milestones,
         "agents": sorted({x["agent_id"] for x in parsed_items}),
     }

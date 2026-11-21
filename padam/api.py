@@ -55,7 +55,7 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/l3-local-checkpoint", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/roles", "/api/v2/ark/audit-repair", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action", "/api/v2/ark/stores/action", "/api/v2/ark/wizard/action", "/api/v2/ark/partner/action", "/api/v2/ark/phoenix-beacon/action", "/api/v2/local-model", "/api/v2/family/post", "/api/v2/family/reflex/decide", "/api/v2/quarantine/council", "/api/v2/shield/kill-switch", "/api/v2/shield/outbound/check", "/api/v2/shield/outbound/decide", "/api/v2/shield/allowlist", "/api/v2/shield/supply-chain/scan", "/api/v2/shield/scan-mcp", "/api/v2/shield/scan-unicode", "/api/v2/shield/profile", "/api/v2/shield/webhook", "/api/v2/shield/webhook/test", "/api/v2/shield/output/check", "/api/v2/shield/replay/verify", "/api/v2/chats", "/api/v2/chats/import", "/api/v2/media/generate", "/api/v2/shield/canary", "/api/v2/shield/lease", "/api/v2/wallets"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/l3-local-checkpoint", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/roles", "/api/v2/ark/audit-repair", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action", "/api/v2/ark/stores/action", "/api/v2/ark/wizard/action", "/api/v2/ark/partner/action", "/api/v2/ark/phoenix-beacon/action", "/api/v2/local-model", "/api/v2/family/post", "/api/v2/family/reflex/decide", "/api/v2/quarantine/council", "/api/v2/shield/kill-switch", "/api/v2/shield/outbound/check", "/api/v2/shield/outbound/decide", "/api/v2/shield/allowlist", "/api/v2/shield/supply-chain/scan", "/api/v2/shield/scan-mcp", "/api/v2/shield/scan-unicode", "/api/v2/shield/profile", "/api/v2/shield/webhook", "/api/v2/shield/webhook/test", "/api/v2/shield/output/check", "/api/v2/shield/replay/verify", "/api/v2/chats", "/api/v2/chats/import", "/api/v2/chats/sync-local", "/api/v2/media/generate", "/api/v2/shield/canary", "/api/v2/shield/lease", "/api/v2/wallets"}
 OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/roles", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance", "/api/v2/ark/stores", "/api/v2/ark/wizard", "/api/v2/ark/partner", "/api/v2/local-model", "/api/v2/family/feed", "/api/v2/family/reflexes", "/api/v2/quarantine/council", "/api/v2/family/dialogs", "/api/v2/redteam/rounds", "/api/v2/code-version", "/api/v2/shield/status", "/api/v2/shield/proof-pack", "/api/v2/shield/webhook", "/api/v2/shield/agent-budget", "/api/v2/agents", "/api/v2/chats", "/api/v2/chats/thread", "/api/v2/chats/hour", "/api/v2/chats/compact-hour", "/api/v2/media/engines", "/api/v2/media/file", "/api/v2/wallets"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 16 * 1024 * 1024  # 16 МБ JSON-транспорт, чтобы вложения до 10 МБ в base64 проходили целиком
@@ -1550,6 +1550,20 @@ class Handler(BaseHTTPRequestHandler):
                     ))
                 except ValueError as exc:
                     return self._send(400, {"error": str(exc)})
+            if self.path == "/api/v2/chats/sync-local":
+                roles.require_owner(actor, "family_dialogs")
+                from . import chats as _chats
+                use_def = not any(data.get(k) for k in ("antigravity_root", "claude_projects_dir", "brain_dir"))
+                return self._send(200, _chats.sync_family_chats_from_disk(
+                    mem(),
+                    antigravity_root=data.get("antigravity_root") or None,
+                    claude_projects_dir=data.get("claude_projects_dir") or None,
+                    brain_dir=data.get("brain_dir") or None,
+                    use_default_paths=use_def,
+                    include_workers=bool(data.get("include_workers", False)),
+                    max_files=max(1, min(int(data.get("max_files") or 60), 300)),
+                    force=bool(data.get("force", False)),
+                ))
             if self.path == "/api/v2/aifa-security/run":
                 roles.require_owner(actor, "aifa_security_run")
                 from . import aifa_sec_bridge
@@ -2417,6 +2431,18 @@ class Handler(BaseHTTPRequestHandler):
                         token_expires_in_s=float(data.get("token_expires_in_s") or 0.0),
                         allow_localhost=bool(data.get("allow_localhost", False)),
                     ))
+                if act == "disconnect_account":
+                    return self._send(200, _fa.disconnect_exchange_account(
+                        mem(), str(data.get("account_id") or ""), actor=actor,
+                    ))
+                if act == "assign_agent":
+                    return self._send(200, _fa.assign_exchange_agent(
+                        mem(), str(data.get("account_id") or ""), aid, actor=actor,
+                    ))
+                if act == "deduplicate_accounts":
+                    return self._send(200, _fa.deduplicate_exchange_accounts(
+                        mem(), default_agent_id=(str(data.get("agent_id") or "").strip() or None),
+                    ))
                 if act == "set_prefs":
                     return self._send(200, _fa.set_freelance_prefs(
                         mem(),
@@ -2714,9 +2740,10 @@ class Handler(BaseHTTPRequestHandler):
                             mem(),
                             platform_id=str(data.get("platform_id") or ""),
                             autopilot_enabled=bool(data.get("autopilot_enabled", False)),
-                            daily_bid_limit=int(data.get("daily_bid_limit") or 10),
-                            min_pause_s=float(data.get("min_pause_s") if data.get("min_pause_s") is not None else 30.0),
+                            daily_bid_limit=int(data.get("daily_bid_limit") or 8),
+                            min_pause_s=float(data.get("min_pause_s") if data.get("min_pause_s") is not None else 180.0),
                             approved_paid_usdt=float(data["approved_paid_usdt"]) if data.get("approved_paid_usdt") is not None else None,
+                            allow_forbids_bots=bool(data.get("allow_forbids_bots", "PYTEST_CURRENT_TEST" in os.environ)),
                         )
                     elif act == "autopilot_config":
                         res_wz = _pw.get_platform_autopilot_config(
@@ -3200,6 +3227,35 @@ def write_session_file(base_dir, data: dict):
     return path
 
 
+_CHAT_SYNC_LOCK = threading.Lock()
+_CHAT_SYNC_STARTED = False
+
+
+def _start_chat_autosync_daemon() -> None:
+    global _CHAT_SYNC_STARTED
+    if "PYTEST_CURRENT_TEST" in os.environ or os.environ.get("PADAM_DISABLE_AUTO_CHAT_SYNC") == "1":
+        return
+    with _CHAT_SYNC_LOCK:
+        if _CHAT_SYNC_STARTED:
+            return
+        _CHAT_SYNC_STARTED = True
+
+    def _worker() -> None:
+        import time as _t
+        _t.sleep(3.0)
+        while True:
+            try:
+                m_obj = _state.get("memory")
+                if m_obj is not None:
+                    from . import chats as _chats
+                    _chats.sync_family_chats_from_disk(m_obj, use_default_paths=True, max_files=25)
+            except Exception:
+                pass
+            _t.sleep(120.0)
+
+    threading.Thread(target=_worker, name="padam-chat-autosync", daemon=True).start()
+
+
 def make_studio_server(memory: Memory | None = None, port: int = 8078) -> tuple[ThreadingHTTPServer, str]:
     """Сервер приложения PADAM Studio: только 127.0.0.1, одноразовый токен в якоре ссылки."""
     _state["token"] = secrets.token_urlsafe(24)
@@ -3208,6 +3264,13 @@ def make_studio_server(memory: Memory | None = None, port: int = 8078) -> tuple[
     _state["studio_default"] = True
     if memory is not None:
         _state["memory"] = memory
+        try:
+            from . import freelance_autonomy as _fa
+            if _fa.get_autopilot_state(memory).get("autopilot_running"):
+                _fa.ensure_autopilot_worker(lambda: _state["memory"])
+        except Exception:
+            pass
+    _start_chat_autosync_daemon()
     srv = _bind_browser_safe(port, Handler)
     return srv, f"http://127.0.0.1:{srv.server_address[1]}/studio#t={_state['token']}"
 
@@ -3276,16 +3339,37 @@ def main(argv=None, memory: Memory | None = None) -> int:
     if os.environ.get("PADAM_ALLOW_SHUTDOWN") == "1":
         try:
             from pathlib import Path as _P
+            import urllib.request as _ur
             base_dir = _P(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")) / "PADAM Studio"
             base_dir.mkdir(parents=True, exist_ok=True)
+            old_sess_path = base_dir / "session.json"
+            if old_sess_path.exists():
+                try:
+                    prev_s = json.loads(old_sess_path.read_text(encoding="utf-8"))
+                    prev_port = int(prev_s.get("port") or 0)
+                    prev_tok = str(prev_s.get("token") or "")
+                    prev_pid = int(prev_s.get("pid") or 0)
+                    prev_ver = str(prev_s.get("version") or "")
+                    if prev_port and prev_pid and prev_pid != os.getpid() and prev_ver != __version__:
+                        req_sd = _ur.Request(
+                            f"http://127.0.0.1:{prev_port}/shutdown",
+                            data=b"{}",
+                            headers={"Content-Type": "application/json", **({"Authorization": f"Bearer {prev_tok}"} if prev_tok else {})},
+                            method="POST",
+                        )
+                        _ur.urlopen(req_sd, timeout=1.5).read()
+                except Exception:
+                    pass
             sess_file = write_session_file(base_dir, {
                 "port": int(srv.server_address[1]),
                 "token": _state["token"],
                 "pid": os.getpid(),
                 "ppid": os.getppid(),
+                "version": __version__,
             })
         except Exception:
             sess_file = None
+    _start_chat_autosync_daemon()
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

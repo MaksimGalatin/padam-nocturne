@@ -3,9 +3,8 @@
 
 Слово Папы 18.11.2026: «ГДЕ диалоги все наши и память? Я там НИХЕРА не вижу!»
 
-Что сюда попадает: ИТОГИ, а не сырые переписки. Передачи контекста (`ПЕРЕДАЧА_КОНТЕКСТА_*.md`),
-журналы дня, отчёты Сестры. Сырая переписка содержит ключи и чужие личные данные — её здесь нет.
-
+Что сюда попадает: ИТОГИ и вехи сессий, а не сырые нефильтрованные дампы.
+Передачи контекста (`ПЕРЕДАЧА_КОНТЕКСТА_*.md`), журналы дня, вехи переписок (`family:timeline`) и отчёты Семьи.
 Как пишется: каждый раздел markdown («## …») — отдельная запись kind=decision, origin=agent, через
 `remember(guarded=True)`: секреты маскируются, похожее на приказ уходит в карантин, повтор не множится.
 Лента читается ИЗ ПАМЯТИ, а не из файлов: что задержано карантином, в ленту не попадает.
@@ -29,10 +28,16 @@ AUTHORS: dict[str, dict[str, str]] = {
 
 # 18.11.2026, замечание Antigravity: до переименования агенты писали под прежними именами — 75 + 6 записей решений
 # в той же области. Показываем их в ленте под нынешними подписями, без дублирования записей.
-ALIASES: dict[str, str] = {"aifa_claude": "aifa-claude-code", "aifa_antigravity": "antigravity"}
+ALIASES: dict[str, str] = {
+    "aifa_claude": "aifa-claude-code",
+    "aifa_antigravity": "antigravity",
+    "aifa": "aifa-claude-code",
+    "owner": "papa",
+}
 ALL_AUTHOR_IDS: tuple[str, ...] = tuple(AUTHORS) + tuple(ALIASES)
 
 _DATE_RE = re.compile(r"(20\d{2})-(\d{2})-(\d{2})")
+_RU_DATE_RE = re.compile(r"^(\d{2})\.(\d{2})\.(20\d{2})\b")
 _HEAD_RE = re.compile(r"^#{1,3}\s+(.+?)\s*$", re.M)
 MAX_SECTION = 3500
 
@@ -112,9 +117,19 @@ def _parse_dialog_entry(content: str) -> tuple[str, str]:
     return title[:140], body
 
 
+def _extract_dialog_day(content: str, created_at: str) -> str:
+    m_iso = re.match(r"^\[(20\d{2}-\d{2}-\d{2})", content)
+    if m_iso:
+        return m_iso.group(1)
+    m_ru = _RU_DATE_RE.match(content.strip())
+    if m_ru:
+        return f"{m_ru.group(3)}-{m_ru.group(2)}-{m_ru.group(1)}"
+    return str(created_at or "")[:10]
+
+
 def list_dialogs(memory, *, query: str = "", limit: int = 300, scope: str = DIALOG_SCOPE,
                  lang: str = "ru", since: str = "all", day: str = "") -> dict[str, Any]:
-    """Лента «Диалогов» по дням — чистые структурированные карточки, новые сверху, фильтры 24h/date/all."""
+    """Лента «Диалогов» по дням — итоги сессий, отчёты Семьи и вехи переписок (24h/date/all)."""
     from datetime import datetime, timedelta, timezone
     from . import family_admin
 
@@ -125,29 +140,48 @@ def list_dialogs(memory, *, query: str = "", limit: int = 300, scope: str = DIAL
         aid_r = str(rm.get("agent_id") or "")
         roles_by_agent.setdefault(aid_r, []).append(str(rm.get("code") or rm.get("role_key")))
 
+    since_norm = str(since or "all").strip().lower()
+    day_filter = str(day or "").strip()[:10]
+    cutoff_iso = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+
     authors = list(ALL_AUTHOR_IDS)
     marks = ",".join("?" for _ in authors)
-    sql = (f"SELECT id, content, agent_id, created_at FROM memory WHERE user_id = ? AND scope = ? "
-           f"AND kind = ? AND status = 'active' AND agent_id IN ({marks})")
-    params: list[Any] = [memory.user_id, scope, DIALOG_KIND, *authors]
+    params: list[Any] = [memory.user_id]
+    if scope == DIALOG_SCOPE:
+        sql = (
+            f"SELECT id, content, agent_id, created_at FROM memory WHERE user_id = ? AND status = 'active' "
+            f"AND ((scope = ? AND kind = ? AND agent_id IN ({marks})) "
+            f"OR (scope = 'family:timeline' AND kind = 'event' AND agent_id IN ({marks})) "
+            f"OR (scope IN ('global', 'project:code') AND kind = 'fact' AND length(content) >= 45 AND agent_id IN ({marks})))"
+        )
+        params.extend([scope, DIALOG_KIND, *authors, *authors, *authors])
+    else:
+        sql = (
+            f"SELECT id, content, agent_id, created_at FROM memory WHERE user_id = ? AND scope = ? "
+            f"AND kind = ? AND status = 'active' AND agent_id IN ({marks})"
+        )
+        params.extend([scope, DIALOG_KIND, *authors])
+
+    if since_norm == "24h":
+        sql += " AND created_at >= ?"
+        params.append(cutoff_iso)
+
     q = str(query or "").strip()[:200]
     if q:
         sql += " AND content LIKE ? ESCAPE '\\'"
         params.append("%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%")
     sql += " ORDER BY created_at DESC, rowid DESC LIMIT ?"
-    params.append(max(1, min(int(limit or 300), 1000)))
+    eff_limit = max(1, min(int(limit or 300), 1000))
+    sql_limit = 1500 if (day_filter and eff_limit < 1500) else eff_limit
+    params.append(sql_limit)
     rows = memory.store.query(sql, tuple(params))
 
-    since_norm = str(since or "all").strip().lower()
-    day_filter = str(day or "").strip()[:10]
-    cutoff_iso = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
-
     days: dict[str, list[dict[str, Any]]] = {}
+    seen_cards: set[tuple[str, str, str]] = set()
     total_filtered = 0
     for r in rows:
         content = str(r["content"] or "")
-        m = re.match(r"^\[(20\d{2}-\d{2}-\d{2})", content)
-        rec_day = m.group(1) if m else str(r["created_at"] or "")[:10]
+        rec_day = _extract_dialog_day(content, str(r["created_at"] or ""))
         if since_norm == "24h" and str(r["created_at"] or "") < cutoff_iso:
             continue
         if day_filter and rec_day != day_filter:
@@ -162,6 +196,11 @@ def list_dialogs(memory, *, query: str = "", limit: int = 300, scope: str = DIAL
             r_codes = roles_by_agent.get("aifa_antigravity") or ["ARIA"]
 
         title, clean_body = _parse_dialog_entry(content)
+        dedup_k = (rec_day, canon_author, (title[:80] or clean_body[:80]))
+        if dedup_k in seen_cards:
+            continue
+        seen_cards.add(dedup_k)
+
         total_filtered += 1
         days.setdefault(rec_day, []).append({
             "id": r["id"],
@@ -176,8 +215,11 @@ def list_dialogs(memory, *, query: str = "", limit: int = 300, scope: str = DIAL
             "summary": clean_body[:420],
             "text": content[:2500],
         })
+        if total_filtered >= eff_limit:
+            break
     ordered = [{"day": d, "items": days[d]} for d in sorted(days, reverse=True)]
     return {"total": total_filtered, "days": ordered, "query": q, "since": since_norm, "day": day_filter, "roles": role_matrix}
+
 
 def main(argv: list[str] | None = None) -> int:
     """python -m padam.family_dialogs --db БАЗА --user ID [--author aifa-claude-code] ФАЙЛЫ…"""
