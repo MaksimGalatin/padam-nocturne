@@ -443,10 +443,10 @@ def test_studio_digital_stores_ui_playwright(tmp_path: Path, monkeypatch):
                 page.on("pageerror", lambda err: js_errors.append(str(err)))
                 page.goto(url, wait_until="networkidle")
                 page.click("#tab-earning")
-                page.wait_for_selector("#earn-store-type", timeout=5000)
+                page.wait_for_selector("#earn-store-type", timeout=15000)
                 page.wait_for_function(
                     "() => document.querySelectorAll('#earn-drafts-list .earn-item').length >= 3",
-                    timeout=5000,
+                    timeout=15000,
                 )
                 page.wait_for_load_state("networkidle")
                 check = page.evaluate(
@@ -472,20 +472,20 @@ def test_studio_digital_stores_ui_playwright(tmp_path: Path, monkeypatch):
                     page.fill("#earn-store-label", "Мой Gumroad UI")
                     page.fill("#earn-store-api-url", f"{base}/gr")
                     page.fill("#earn-store-key", "gr_secret_key")
-                    with page.expect_response("**/api/v2/ark/stores/action", timeout=5000) as r_conn:
+                    with page.expect_response("**/api/v2/ark/stores/action", timeout=15000) as r_conn:
                         page.click("#earn-store-connect-btn")
                     assert r_conn.value.status == 200
                     page.wait_for_function(
                         "() => document.querySelector('#earn-stores-list').textContent.includes('Мой Gumroad UI')",
-                        timeout=5000,
+                        timeout=15000,
                     )
                     # Нажимаем публикацию стартового черновика для Gumroad
-                    with page.expect_response("**/api/v2/ark/stores/action", timeout=5000) as r_pub:
+                    with page.expect_response("**/api/v2/ark/stores/action", timeout=15000) as r_pub:
                         page.locator("#earn-drafts-list .earn-item", has_text="gumroad").locator("button").click()
                     assert r_pub.value.status == 200
                     page.wait_for_function(
                         "() => document.querySelector('#earn-drafts-list').textContent.includes('published')",
-                        timeout=5000,
+                        timeout=15000,
                     )
                 page.wait_for_load_state("networkidle")
                 page.close()

@@ -9,6 +9,7 @@ from padam.store import Store
 
 def test_счётчики_отложены_но_видны(tmp_path, monkeypatch):
     monkeypatch.setenv("PADAM_EMBEDDER", "builtin")
+    monkeypatch.setattr("padam.store.time.monotonic", lambda: 1000.0)
     m = Memory(user_id="u", store=Store(tmp_path / "c.db"))
     m.remember("PADAM хранит память в одном файле SQLite", kind="fact")
     for _ in range(5):
@@ -20,6 +21,7 @@ def test_счётчики_отложены_но_видны(tmp_path, monkeypatch
 
 def test_счётчики_не_теряются_при_закрытии(tmp_path, monkeypatch):
     monkeypatch.setenv("PADAM_EMBEDDER", "builtin")
+    monkeypatch.setattr("padam.store.time.monotonic", lambda: 1000.0)
     путь = tmp_path / "d.db"
     m = Memory(user_id="u", store=Store(путь))
     m.remember("Совет Семьи — шесть ролей", kind="fact")
@@ -33,6 +35,7 @@ def test_счётчики_не_теряются_при_закрытии(tmp_path
 
 def test_настоящая_запись_уносит_счётчики_тем_же_коммитом(tmp_path, monkeypatch):
     monkeypatch.setenv("PADAM_EMBEDDER", "builtin")
+    monkeypatch.setattr("padam.store.time.monotonic", lambda: 1000.0)
     путь = tmp_path / "e.db"
     m = Memory(user_id="u", store=Store(путь))
     m.remember("первая запись", kind="fact")
