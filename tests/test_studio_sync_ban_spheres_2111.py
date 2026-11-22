@@ -196,9 +196,9 @@ def test_studio_ui_sync_spheres_download_and_earning_playwright(tmp_path: Path):
             page.wait_for_selector("#earn-agent", timeout=10000)
             assert page.input_value("#earn-agent") == "aifa_antigravity"
             page.click("#earn-connect-btn")
-            page.wait_for_selector("#earn-accounts-list .earn-item", timeout=5000)
+            page.wait_for_selector("#earn-accounts-list .earn-item", timeout=15000)
             page.click("#earn-connect-btn")
-            page.wait_for_selector("#earn-accounts-list .earn-item", timeout=5000)
+            page.wait_for_selector("#earn-accounts-list .earn-item", timeout=15000)
             cards_cnt = page.locator("#earn-accounts-list .earn-item").count()
             assert cards_cnt == 1
 

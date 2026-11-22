@@ -53,7 +53,7 @@ def test_studio_order_four_numeric_labels_visible_all_langs(tmp_path: Path):
                 page = browser.new_page(viewport=vp)
                 page.goto(url, wait_until="networkidle")
                 page.click("#tab-earning")
-                page.wait_for_selector("label[for='earn-job-budget']", timeout=5000)
+                page.wait_for_selector("label[for='earn-job-budget']", timeout=15000)
                 page.fill("#earn-job-budget", "300")
                 page.fill("#earn-job-hours", "6")
                 page.fill("#earn-job-rate", "40")

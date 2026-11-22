@@ -1,6 +1,6 @@
 {
   "name": "padam-nocturne",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "PADAM · NOCTURNE verifiable local memory extension for Gemini CLI",
   "contextFileName": "GEMINI.md",
   "mcpServers": {

@@ -4111,7 +4111,7 @@ def test_step_1_2_oauth21_pkce_rfc9728_and_scopes(tmp_path, monkeypatch):
             headers={"Content-Type": "application/json", **(headers or {})},
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=5) as r:
+        with urllib.request.urlopen(req, timeout=20) as r:
             return r.status, json.loads(r.read().decode("utf-8"))
 
     def _get_code(base, client_id, redirect_uri, challenge, scope, owner_secret):

@@ -13,6 +13,7 @@ import re
 import sys
 import threading
 import time
+import unicodedata
 
 import numpy as np
 
@@ -26,6 +27,54 @@ _ollama_checked_at: float = 0.0
 # дёргать сеть на каждой записи, и достаточно часто, чтобы падение Ollama не
 # успело незаметно испортить много записей.
 _ПЕРЕПРОВЕРКА_СЕК = 60.0
+
+
+def fold_diacritics(text: str) -> str:
+    """Складывает латинские диакритики (cédula -> cedula, ñ -> n, ü -> u) и русскую ё -> е.
+
+    Русскую «й» намеренно не трогает (в NFKD «й» раскладывается на «и» + бреве, что склеивало бы
+    «мой» и «мои»), а для латиницы убирает все комбинирующие знаки категории Mn.
+    """
+    if not text:
+        return ""
+    out: list[str] = []
+    for ch in text:
+        if ch == "ё":
+            out.append("е")
+            continue
+        if ch == "Ё":
+            out.append("Е")
+            continue
+        if ord(ch) < 128:
+            out.append(ch)
+            continue
+        decomp = unicodedata.normalize("NFKD", ch)
+        base = decomp[0] if decomp else ch
+        if ("a" <= base <= "z") or ("A" <= base <= "Z"):
+            out.append("".join(c for c in decomp if unicodedata.category(c) != "Mn"))
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def _ollama_has_model(models: object, want: str) -> bool:
+    """Проверяет, установлена ли требуемая модель эмбеддингов в списке /api/tags."""
+    if not isinstance(models, list):
+        return False
+    w = (want or "").strip().lower()
+    if not w:
+        return False
+    has_tag = ":" in w
+    w_base = w.split(":", 1)[0]
+    for item in models:
+        name = str((item or {}).get("name") or (item or {}).get("model") or "").strip().lower()
+        if not name:
+            continue
+        if name == w:
+            return True
+        if not has_tag and name.split(":", 1)[0] == w_base:
+            return True
+    return False
 
 
 def _check_ollama() -> bool:
@@ -54,7 +103,15 @@ def _check_ollama() -> bool:
         try:
             import requests
             r = requests.get(f"{config.OLLAMA_URL}/api/tags", timeout=3)
-            _ollama_available = r.status_code == 200
+            if r.status_code != 200:
+                _ollama_available = False
+            else:
+                # 0.7.2: недостаточно ответа 200 от /api/tags — если нужная embed-модель (например nomic-embed-text)
+                # не установлена в Ollama (установлена только llama3.2), раньше каждый вызов embed() получал 404 и
+                # молча падал в builtin, в то время как метка_модели() врала «ollama:nomic-embed-text».
+                data = r.json()
+                models = data.get("models") if isinstance(data, dict) else None
+                _ollama_available = _ollama_has_model(models, config.EMBED_MODEL)
         except Exception:
             _ollama_available = False
         _ollama_checked_at = сейчас
@@ -66,6 +123,9 @@ def _check_ollama() -> bool:
                 % ("ollama" if прежнее else "builtin",
                    "ollama" if _ollama_available else "builtin"))
         return _ollama_available
+
+
+_orig_check_ollama = _check_ollama
 
 
 # ---------------------------------------------------------------------
@@ -186,7 +246,7 @@ _MIN_TOKEN_LEN = 2
 
 
 def _tokens(text: str) -> list[str]:
-    return [t for t in _TOKEN_RE.findall(text.lower())
+    return [t for t in _TOKEN_RE.findall(fold_diacritics(text).lower())
             if len(t) >= _MIN_TOKEN_LEN and t not in _STOP]
 
 
@@ -249,24 +309,26 @@ def _ollama_embed(text: str) -> np.ndarray:
     return v / norm if norm > 0 else v
 
 
-def embed(text: str) -> np.ndarray:
-    """Возвращает нормированный вектор. Никогда не падает."""
-    # Пустой текст не о чем спрашивать модель: у него нет признаков.
-    # Встроенный метод отдаёт нули нужной размерности — это и есть
-    # честный ответ «признаков нет», в отличие от вектора нулевой длины.
+def embed_with_model(text: str) -> tuple[np.ndarray, str]:
+    """Возвращает (нормированный вектор, честная метка модели, реально построившей этот вектор).
+
+    0.7.2: при любом откате на встроенный хеш-вектор возвращает метку `builtin:<dim>`, чтобы
+    в базу и в поиск никогда не утекала ложная метка `ollama:...` для хеш-вектора.
+    """
+    builtin_tag = "builtin:%d" % config.EMBED_DIM
     if not text or not text.strip():
-        return _builtin_embed(text)
+        return _builtin_embed(text), builtin_tag
     b = backend()
     if b in ("model2vec", "fastembed"):
         try:
             v = np.asarray(_local[2](text[: config.MAX_CONTENT_CHARS]), dtype=np.float32)
             n = float(np.linalg.norm(v))
             if v.size and n > 0:
-                return v / n
+                return v / n, "%s:%s" % (_local[0], _local[1])
         except Exception:
             if not config.ALLOW_FALLBACK:
                 raise
-        return _builtin_embed(text)
+        return _builtin_embed(text), builtin_tag
     if b == "ollama":
         try:
             v = _ollama_embed(text)
@@ -274,7 +336,7 @@ def embed(text: str) -> np.ndarray:
             # так защита переживает любую замену транспорта — другую
             # модель, другой сервер, подменённую функцию в тестах.
             if v.size == config.EMBED_DIM:
-                return v
+                return v, "ollama:%s" % config.EMBED_MODEL
             if not config.ALLOW_FALLBACK:
                 raise ValueError(
                     "модель вернула вектор длины %d вместо %d"
@@ -282,7 +344,12 @@ def embed(text: str) -> np.ndarray:
         except Exception:
             if not config.ALLOW_FALLBACK:
                 raise
-    return _builtin_embed(text)
+    return _builtin_embed(text), builtin_tag
+
+
+def embed(text: str) -> np.ndarray:
+    """Возвращает нормированный вектор. Никогда не падает."""
+    return embed_with_model(text)[0]
 
 
 def cosine(a: np.ndarray, b: np.ndarray) -> float:

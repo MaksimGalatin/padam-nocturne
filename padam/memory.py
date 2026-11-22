@@ -430,7 +430,7 @@ class Memory:
                 "записи identity, preference и правила владельца нельзя помещать в командную память",
                 "identity, preference and owner-rule records cannot be placed in team memory",
             ))
-        vec = embeddings.embed(content)
+        vec, emb_model = embeddings.embed_with_model(content)
 
         same_raw = (исходный == content)
         from . import agentic_shield as _agentic_shield
@@ -444,13 +444,13 @@ class Memory:
                 content, kind, vec, importance, scope, source_episode_id,
                 origin=origin, status="quarantined", reason="procedure requires owner approval",
                 agent_id=agent_id, valid_from=valid_from, valid_to=valid_to,
-                visibility=visibility, workspace_id=workspace_id)
+                visibility=visibility, workspace_id=workspace_id, embedding_model=emb_model)
         if guarded and (safety.looks_like_instruction(content) or (not same_raw and safety.looks_like_instruction(исходный))):
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
                 origin=origin, status="quarantined", reason="looks like an instruction",
                 agent_id=agent_id, valid_from=valid_from, valid_to=valid_to,
-                visibility=visibility, workspace_id=workspace_id)
+                visibility=visibility, workspace_id=workspace_id, embedding_model=emb_model)
         # 0.4.13: необязательный второй слой — локальная модель-детектор (padam/guard.py), только для текста, где упомянут ИИ.
         # Выключен, пока не задан PADAM_GUARD_MODEL и не стоят пакеты [guard].
         if guarded and guard.flags(исходный):
@@ -458,13 +458,13 @@ class Memory:
                 content, kind, vec, importance, scope, source_episode_id,
                 origin=origin, status="quarantined", reason="looks like an instruction (classifier)",
                 agent_id=agent_id, valid_from=valid_from, valid_to=valid_to,
-                visibility=visibility, workspace_id=workspace_id)
+                visibility=visibility, workspace_id=workspace_id, embedding_model=emb_model)
         if guarded and origin == "external" and config.HOLD_EXTERNAL:
             return "quarantined", self._insert(
                 content, kind, vec, importance, scope, source_episode_id,
                 origin=origin, status="quarantined", reason="external source held for the owner (PADAM_HOLD_EXTERNAL, on by default)",
                 agent_id=agent_id, valid_from=valid_from, valid_to=valid_to,
-                visibility=visibility, workspace_id=workspace_id)
+                visibility=visibility, workspace_id=workspace_id, embedding_model=emb_model)
         # 0.4.1: граница, которая не зависит от пометки источника вовсе. Пометку ставит агент, а MCP не даёт серверу
         # способа проверить, откуда агент взял текст; с PADAM_MCP_REVIEW_ALL=1 ждёт владельца каждая запись агента.
         if guarded and (config.MCP_REVIEW_ALL or _agentic_shield.is_lockdown_active(self)):
@@ -477,7 +477,7 @@ class Memory:
                 content, kind, vec, importance, scope, source_episode_id,
                 origin=origin, status="quarantined", reason=q_reason,
                 agent_id=agent_id, valid_from=valid_from, valid_to=valid_to,
-                visibility=visibility, workspace_id=workspace_id)
+                visibility=visibility, workspace_id=workspace_id, embedding_model=emb_model)
 
         # Кто человек и как с ним работать, решает только он сам. Через MCP пометку origin
         # проверить нечем, поэтому запись о личности или предпочтении от агента или чужого
@@ -516,12 +516,12 @@ class Memory:
                         content, kind, vec, importance, scope, source_episode_id,
                         origin=origin, status="quarantined", reason=причина_защиты,
                         agent_id=agent_id, valid_from=valid_from, valid_to=valid_to,
-                        visibility=visibility, workspace_id=workspace_id, created_at=created_at)
+                        visibility=visibility, workspace_id=workspace_id, created_at=created_at, embedding_model=emb_model)
                 new_cid = self._insert(content, kind, vec, importance,
                                        scope, source_episode_id, origin=origin, agent_id=agent_id,
                                        valid_from=valid_from, valid_to=valid_to,
                                        visibility=visibility, workspace_id=workspace_id,
-                                       created_at=created_at)
+                                       created_at=created_at, embedding_model=emb_model)
                 self._autolink_on_write(new_cid, content, vec, scope, actor=actor)
                 return "created", new_cid
 
@@ -556,12 +556,12 @@ class Memory:
                     content, kind, vec, importance, scope, source_episode_id,
                     origin=origin, status="quarantined", reason=причина_защиты, agent_id=agent_id,
                     valid_from=valid_from, valid_to=valid_to,
-                    visibility=visibility, workspace_id=workspace_id, created_at=created_at)
+                    visibility=visibility, workspace_id=workspace_id, created_at=created_at, embedding_model=emb_model)
             new_xid = self._insert(content, kind, vec, importance,
                                    scope, source_episode_id, origin=origin, agent_id=agent_id,
                                    valid_from=valid_from, valid_to=valid_to,
                                    visibility=visibility, workspace_id=workspace_id,
-                                   created_at=created_at)
+                                   created_at=created_at, embedding_model=emb_model)
             self._autolink_on_write(new_xid, content, vec, scope, actor=actor)
             return "coexists", new_xid
 
@@ -585,13 +585,13 @@ class Memory:
                     content, kind, vec, importance, scope, source_episode_id,
                     supersedes=old_id, origin=origin, status="quarantined", reason=причина,
                     agent_id=agent_id, valid_from=valid_from, valid_to=valid_to,
-                    visibility=visibility, workspace_id=workspace_id, created_at=created_at)
+                    visibility=visibility, workspace_id=workspace_id, created_at=created_at, embedding_model=emb_model)
 
         # refinement и contradiction создают новую версию, закрывая окно старой и оставляя ребро графа
         new_mid = self._insert(content, kind, vec, importance, scope,
                                source_episode_id, supersedes=old_id, origin=origin,
                                agent_id=agent_id, valid_from=valid_from, valid_to=valid_to,
-                               visibility=visibility, workspace_id=workspace_id, created_at=created_at)
+                               visibility=visibility, workspace_id=workspace_id, created_at=created_at, embedding_model=emb_model)
         close_at = valid_from or now_iso()
         rel_type = "correction" if verdict == "refinement" else "contradiction"
         отметка_до = self.store.stamp()
@@ -938,7 +938,8 @@ class Memory:
                 valid_to: str | None = None,
                 visibility: str = "private",
                 workspace_id: str | None = None,
-                created_at: str | None = None) -> str:
+                created_at: str | None = None,
+                embedding_model: str | None = None) -> str:
         mid = new_id()
         ts_now = now_iso()
         ts = created_at or ts_now
@@ -956,7 +957,7 @@ class Memory:
              max(0.0, min(1.0, importance)), config.ORIGIN_CONFIDENCE.get(origin, 1.0),
              ts, ts, ts, vf, valid_to, expires_at, status,
              supersedes, source_episode_id, content_hash(content),
-             embeddings.метка_модели(), classify.разобрать_факт(content)[0],
+             (embedding_model or embeddings.метка_модели()), classify.разобрать_факт(content)[0],
              origin, reason, agent_id, visibility, workspace_id))
         self._дописать_в_кэш(отметка_до, mid, scope, kind, vec, status, visibility=visibility, workspace_id=workspace_id)
         if status == "quarantined":
@@ -1112,9 +1113,10 @@ class Memory:
         for idx, r in enumerate(rows, 1):
             if cancel_event is not None and cancel_event.is_set():
                 return {"model": текущая, "reindexed": done, "left": всего - done, "cancelled": True}
+            r_vec, r_mod = embeddings.embed_with_model(r["content"])
             self.store.execute(
                 "UPDATE memory SET embedding = ?, embedding_model = ? WHERE id = ?",
-                (pack(embeddings.embed(r["content"])), текущая, r["id"]))
+                (pack(r_vec), r_mod, r["id"]))
             done = idx
             if progress_cb is not None and (idx % step == 0 or idx == total_work):
                 progress_cb(idx, max(1, total_work), f"reindexed {idx}/{total_work}")
@@ -1393,21 +1395,45 @@ class Memory:
         return найдено
 
     def _второй_проход(self, запрос, найдено, scope, kind, limit, session_id, as_of, actor=None):
-        """Псевдо-обратная связь (config.SEARCH_FEEDBACK): слова, общие для двух из пяти первых записей,
-        дописываются к запросу; два списка сливаются обратным рангом (k = 60), как стратегии внутри поиска.
-        Оценка записи (score) остаётся её собственной — меняется только порядок."""
+        """Псевдо-обратная связь (config.SEARCH_FEEDBACK) с защитой прямых совпадений (0.7.2).
+
+        Слова, общие для первых найденных записей, добирают связанные заметки, в которых нет слов вопроса.
+        Но записи, появившиеся только во втором проходе, НИКОГДА не вытесняют прямые совпадения первого
+        прохода (lexical / entity), а оценки `score` остаются строго монотонными по убыванию.
+        """
+        direct_ids = {
+            r.id for r in найдено
+            if "lexical" in (r.strategies or ()) or "entity" in (r.strategies or ())
+        }
+        if not direct_ids and (not найдено or найдено[0].score < 0.35):
+            return найдено
         слова = retrieval.feedback_terms(запрос, [r.content for r in найдено[:5]])
         if not слова:
             return найдено
         второе = self._recall(запрос + " " + " ".join(слова), scope, kind, limit, session_id, as_of, actor=actor)
+        if not второе:
+            return найдено
         балл: dict[str, float] = {}
         запись: dict[str, Record] = {}
-        for список in (найдено, второе):
+        for вес, список in ((1.0, найдено), (0.35, второе)):
             for место, r in enumerate(список):
-                балл[r.id] = балл.get(r.id, 0.0) + 1.0 / (retrieval.RRF_K + место + 1)
+                балл[r.id] = балл.get(r.id, 0.0) + вес / (retrieval.RRF_K + место + 1)
                 запись.setdefault(r.id, r)
-        порядок = sorted(балл, key=lambda i: -балл[i])           # sorted устойчив: ничьи — в порядке первого списка
-        return [запись[i] for i in порядок[:limit]]
+        tier1 = [r for r in найдено if r.id in direct_ids]
+        tier1.sort(key=lambda r: (r.score, балл.get(r.id, 0.0)), reverse=True)
+        seen = {r.id for r in tier1}
+        rest_ids = [rid for rid in sorted(балл, key=lambda i: -балл[i]) if rid not in seen]
+        tier2 = [запись[rid] for rid in rest_ids]
+        if tier1 and tier2:
+            floor = min(r.score for r in tier1)
+            prev_sc = floor * 0.92
+            for idx_t2, rec in enumerate(tier2):
+                capped = min(rec.score, prev_sc)
+                if idx_t2 > 0 and capped >= prev_sc:
+                    capped = prev_sc * 0.985
+                rec.score = round(capped, 6)
+                prev_sc = rec.score
+        return (tier1 + tier2)[:limit]
 
     def recall_many(self, query: str, scopes: list[str], kind: str | None = None,
                     limit: int = 10, as_of: str | datetime | None = None,
@@ -1481,7 +1507,7 @@ class Memory:
         момент = parse_as_of(as_of) if as_of is not None else None
         момент_знания = parse_as_of(known_at) if (known_at is not None and config.mcp_bitemporal_enabled()) else None
         statuses = ("active", "superseded") if (момент or момент_знания) else ("active",)
-        sql = f"""SELECT id, kind, content, embedding, importance, confidence,
+        sql = f"""SELECT id, kind, content, embedding, embedding_model, importance, confidence,
                         last_confirmed_at, expires_at, session_id, origin, created_at,
                         status, valid_from, valid_to, learned_at, invalidated_at
                  FROM memory
@@ -1520,13 +1546,15 @@ class Memory:
         статусы = {r["id"]: r["status"] for r in raw}
 
         rows = [{"id": r["id"], "kind": r["kind"], "content": r["content"],
-                 "_vec": unpack(r["embedding"]), "importance": r["importance"],
+                 "_vec": unpack(r["embedding"]), "embedding_model": r["embedding_model"] or "",
+                 "importance": r["importance"],
                  "confidence": r["confidence"],
                  "last_confirmed_at": r["last_confirmed_at"],
                  "expires_at": r["expires_at"],
                  "session_id": r["session_id"], "origin": r["origin"],
                  "created_at": r["created_at"],
                  "_ents": self._сущности_записи(r["id"], r["content"])} for r in raw]
+        rows = self._с_матрицей(rows)
 
         return self._ранжировать(query, scope, statuses, rows, статусы, session_id, limit, момент)
 
@@ -1547,7 +1575,8 @@ class Memory:
         raw = self.store.query(sql, params)
         статусы = {r["id"]: r["status"] for r in raw}
         rows = [{"id": r["id"], "kind": r["kind"], "content": r["content"],
-                 "_vec": unpack(r["embedding"]), "importance": r["importance"],
+                 "_vec": unpack(r["embedding"]), "embedding_model": r["embedding_model"] or "",
+                 "importance": r["importance"],
                  "confidence": r["confidence"],
                  "last_confirmed_at": r["last_confirmed_at"],
                  "expires_at": r["expires_at"],
@@ -1560,14 +1589,18 @@ class Memory:
 
     @staticmethod
     def _с_матрицей(rows):
-        """0.4.13: векторы кандидатов — одной матрицей (строки — в порядке записей), а у записи — вид на её строку:
-        память та же, а поиск не собирает матрицу заново (np.stack на каждом поиске — треть его времени)."""
+        """0.4.13 + 0.7.2: собирает общую матрицу и матрицы по `embedding_model` для изоляции пространств."""
         rows = retrieval.Кандидаты(rows)
         размеры: dict[int, int] = {}
+        по_модели: dict[str, list] = {}
         for r in rows:
             if r["_vec"] is not None:
-                размеры[r["_vec"].shape[0]] = размеры.get(r["_vec"].shape[0], 0) + 1
+                d = r["_vec"].shape[0]
+                размеры[d] = размеры.get(d, 0) + 1
+                mk = r.get("embedding_model") or ""
+                по_модели.setdefault(mk, []).append(r)
         if not размеры:
+            rows.матрицы_по_модели = {}
             return rows
         dim = max(размеры, key=размеры.get)
         годные = [r for r in rows if r["_vec"] is not None and r["_vec"].shape == (dim,)]
@@ -1575,6 +1608,18 @@ class Memory:
         for k, r in enumerate(годные):
             r["_vec"] = M[k]
         rows.матрица = (dim, M, [r["id"] for r in годные])
+        матрицы_мод: dict[str, tuple[int, np.ndarray, list[str]]] = {}
+        for mk, grp in по_модели.items():
+            d_cnt: dict[int, int] = {}
+            for r in grp:
+                dd = r["_vec"].shape[0]
+                d_cnt[dd] = d_cnt.get(dd, 0) + 1
+            mdim = max(d_cnt, key=d_cnt.get)
+            valid_g = [r for r in grp if r["_vec"].shape == (mdim,)]
+            if valid_g:
+                Mg = np.stack([r["_vec"] for r in valid_g])
+                матрицы_мод[mk] = (mdim, Mg, [r["id"] for r in valid_g])
+        rows.матрицы_по_модели = матрицы_мод
         return rows
 
     def _ранжировать(self, query, scope, statuses, rows, статусы, session_id, limit, момент):
@@ -1589,7 +1634,10 @@ class Memory:
         today = now.date()
         out: list[Record] = []
 
+        max_rrf_single = 1.0 / (retrieval.RRF_K + 1)
         for rid, rrf in scores.items():
+            if rrf <= 0.0:
+                continue
             r = by_id.get(rid)
             if r is None:
                 continue
@@ -1612,9 +1660,29 @@ class Memory:
                          strategies=found_by, expired=expired,
                          origin=r["origin"], created_at=r["created_at"],
                          status=статусы.get(rid, "active"))
-            rec.score = (rrf * rec.importance * rec.confidence
-                         * decay(rec.kind, confirmed) * boost
-                         * (config.EXPIRED_PENALTY if expired else 1.0))
+
+            # 0.7.2: шкала релевантности [0..1] вместо сырого RRF (~0.01) и сбалансированная модуляция метаданными.
+            term_cov, exact_cov = retrieval.query_term_coverage(query, r["content"] or "")
+            _ratio = rrf / max_rrf_single
+            rrf_norm = _ratio if _ratio <= 1.0 else (1.0 + 0.35 * (_ratio - 1.0) / (_ratio + 0.5))
+            has_lex = "lexical" in found_by
+            has_ent = "entity" in found_by
+            if has_lex or has_ent:
+                content_match = 0.55 + 0.30 * term_cov + 0.15 * exact_cov
+                if has_ent:
+                    content_match = min(1.15, content_match + 0.15)
+            else:
+                content_match = 0.42 + 0.28 * term_cov + 0.10 * exact_cov
+            rel = rrf_norm * content_match
+            d_val = decay(rec.kind, confirmed)
+            meta = (
+                (0.65 + 0.35 * rec.importance)
+                * (0.60 + 0.40 * rec.confidence)
+                * (0.60 + 0.40 * d_val)
+                * (1.0 + 0.5 * (boost - 1.0))
+                * (config.EXPIRED_PENALTY if expired else 1.0)
+            )
+            rec.score = round(0.80 * rel * meta, 6)
             out.append(rec)
 
         out.sort(key=lambda x: x.score, reverse=True)
@@ -2141,7 +2209,7 @@ class Memory:
                     return d
             rec = {**rec, "status": статус, "quarantine_reason": причина,
                    "importance": _доля(rec.get("importance", 0.5), 0.5), "confidence": _доля(rec.get("confidence", 1.0), 1.0)}
-            vec = embeddings.embed(rec["content"]) if rec.get("content") else None
+            vec, restore_mod = embeddings.embed_with_model(rec["content"]) if rec.get("content") else (None, None)
             self.store.execute(
                 """INSERT INTO memory
                    (id, user_id, scope, kind, content, embedding, importance,
@@ -2165,7 +2233,7 @@ class Memory:
                  rec.get("source_episode_id"), rec.get("session_id"), ch,
                  rec.get("anchor_tx"), rec.get("anchor_slot"),
                  rec.get("origin"), rec.get("quarantine_reason"),
-                 embeddings.метка_модели() if vec is not None else None,
+                 restore_mod if vec is not None else None,
                  # Без ключа восстановленная запись не находилась бы как спорящая (см. `_по_ключу`).
                  classify.разобрать_факт(rec["content"])[0] if rec.get("content") else None))
             if своя:

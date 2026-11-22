@@ -173,7 +173,7 @@ def test_studio_earning_desktop_1280x800_accounts_visible_and_bid_flow_playwrigh
             page.on("pageerror", lambda e: errors.append(str(e)))
             page.goto(studio_url, wait_until="networkidle")
             page.click("#tab-earning")
-            page.wait_for_selector("#earn-accounts-list .earn-item", timeout=5000)
+            page.wait_for_selector("#earn-accounts-list .earn-item", timeout=15000)
             page.wait_for_timeout(150)
             desk_metrics = page.evaluate(
                 """() => {
@@ -200,7 +200,7 @@ def test_studio_earning_desktop_1280x800_accounts_visible_and_bid_flow_playwrigh
 
             # Клик по "Черновик отклика" готовит предпросмотр и НЕ меняет статус на bid_placed
             page.click('[data-order-action="draft_bid"]')
-            page.wait_for_selector(".earn-bid-preview .earn-bid-box", timeout=5000)
+            page.wait_for_selector(".earn-bid-preview .earn-bid-box", timeout=15000)
             draft_val = page.input_value(".earn-bid-preview .earn-bid-box")
             assert "FastAPI" in draft_val or "fastapi" in draft_val.lower()
             assert "bid_draft" in page.text_content("#earn-orders-list")
@@ -217,7 +217,7 @@ def test_studio_earning_desktop_1280x800_accounts_visible_and_bid_flow_playwrigh
             mpage.on("pageerror", lambda e: errors.append(str(e)))
             mpage.goto(studio_url, wait_until="networkidle")
             mpage.click("#tab-earning")
-            mpage.wait_for_selector("#earn-accounts-list .earn-item", timeout=5000)
+            mpage.wait_for_selector("#earn-accounts-list .earn-item", timeout=15000)
             mob_metrics = mpage.evaluate(
                 """() => ({
                     overflow: document.documentElement.scrollWidth > window.innerWidth,

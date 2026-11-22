@@ -11,6 +11,11 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "es": "Arca de Conciencia del agente de IA: despertar unificado padam_wake_up, metas, relevo familiar firmado, puntos de control con archivo sin pérdida, esquema de Shamir sin huella del secreto, cadena de auditoría con anclaje HMAC-SHA256 y simulacro Fénix (todo opcional, desactivado por defecto).",
         "zh": "AI 智能体意识方舟：单次唤醒 padam_wake_up、目标账本、HMAC 签名家族接力、无损归档压缩、无秘密指纹泄露的 Shamir 分片、带 HMAC-SHA256 锚点的审计链以及零成本凤凰演练（全部默认关闭，按需开启）。",
     },
+    "0.7.2": {
+        "ru": "Поиск и ранжирование памяти: проверка реального наличия embed-модели в Ollama, изоляция несовместимых векторных пространств, нормализация диакритики (cédula и cedula), защита прямых совпадений во втором проходе и понятная шкала оценок вместо 0,01; также добавлены офлайн-кошельки 5 сетей, шлюз Clickwrap EULA, коммерческий пакет безопасности и автоматизация бирж (паритет 213 из 213).",
+        "es": "Búsqueda y clasificación de memoria: verificación real del modelo de embeddings en Ollama, aislamiento de espacios vectoriales incompatibles, normalización de diacríticos (cédula y cedula), protección de coincidencias directas en el segundo paso y escala clara de puntuaciones en lugar de 0,01; además incluye billeteras sin conexión de 5 redes, EULA Clickwrap, paquete comercial de seguridad y automatización de mercados (paridad 213 de 213).",
+        "zh": "记忆搜索与排序升级：校验 Ollama 中是否真实安装了嵌入模型、严格隔离不兼容的向量空间、拉丁语变音符号归一化（cédula 与 cedula）、二轮检索保护直接命中以及清晰的评分尺度（取代 0.01）；同时集成 5 链离线钱包生成、Clickwrap 协议门控、商业安全套件与接单自动化（Studio/MCP 对等 213/213）。",
+    },
     "0.7.1": {
         "ru": "Студия: вкладка чата AIfa переделана как чат на наших сайтах — пузыри сообщений, широкая строка ввода с вложением, голосовым вводом, озвучкой и отправкой, фильтры за 24 часа и за всё время, порядок новых сверху или по хронологии; подсказки ко всем новым кнопкам на 4 языках.",
         "es": "Studio: la pestaña de chat de AIfa rediseñada como el chat de nuestros sitios — burbujas de mensajes, un campo de escritura amplio con adjuntar, dictado por voz, lectura en voz alta y enviar, filtros de las últimas 24 horas y de todo el historial, orden de más recientes primero o cronológico; descripciones para cada botón nuevo en 4 idiomas.",

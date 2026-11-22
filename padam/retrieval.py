@@ -65,10 +65,10 @@ def feedback_terms(query: str, contents: list[str], need: int = 2, most: int = 8
     Псевдо-обратная связь: первые найденные записи подсказывают, как ещё в памяти говорят о том же, и второй
     поиск с этими словами добирает беседы, где нет слов вопроса. Слово считается один раз на запись;
     из равных по частоте раньше идёт то, что встретилось раньше (итог воспроизводим)."""
-    вопрос = {w.lower() for w in _СЛОВО_RE.findall(query or "")}
+    вопрос = {embeddings.fold_diacritics(w).lower() for w in _СЛОВО_RE.findall(query or "")}
     счёт: dict[str, int] = {}
     for text in contents:
-        for w in dict.fromkeys(w.lower() for w in _СЛОВО_RE.findall(text or "")):
+        for w in dict.fromkeys(embeddings.fold_diacritics(w).lower() for w in _СЛОВО_RE.findall(text or "")):
             if w not in _СТОП_СЛОВА and w not in вопрос:
                 счёт[w] = счёт.get(w, 0) + 1
     частые = sorted(((c, i, w) for i, (w, c) in enumerate(счёт.items()) if c >= need), key=lambda x: (-x[0], x[1]))
@@ -93,6 +93,8 @@ def reciprocal_rank_fusion(rankings: dict[str, list[str]],
     scores: dict[str, float] = defaultdict(float)
     for strategy, ids in rankings.items():
         w = weights.get(strategy, 1.0)
+        if w <= 0.0:
+            continue
         for pos, rid in enumerate(ids):
             scores[rid] += w / (RRF_K + pos + 1)
     return dict(scores)
@@ -100,62 +102,200 @@ def reciprocal_rank_fusion(rankings: dict[str, list[str]],
 
 # --- стратегии --------------------------------------------------------
 
-def rank_semantic(query_vec: np.ndarray, rows: list, limit: int) -> list[str]:
-    """Векторная близость. Понимает переформулировки, слепа к цифрам."""
-    # 0.4.4: одно матричное умножение вместо cosine() на каждую запись (285 тысяч вызовов на 30 запросов при
-    # 10 000 записях). Тот же итог: близость = clip(a·b, -1, 1), векторы другой размерности не участвуют
-    # (cosine давал им 0, а 0 сюда не проходил), порядок при равенстве — по номеру записи, как прежде.
-    if query_vec is None or not query_vec.size:
+MIN_NEURAL_SIM = 0.15
+
+
+def _query_terms_and_stems(query: str) -> tuple[list[str], list[str]]:
+    """Значимые термины запроса (с нормализацией диакритики) и их основы для охвата и BM25."""
+    q_norm = embeddings.fold_diacritics((query or "").lower())
+    raw = [t for t in re.findall(r"\w+", q_norm) if len(t) > 1]
+    if not raw:
+        return [], []
+    sig = [t for t in raw if t not in _СЛУЖЕБНЫЕ]
+    terms = sig if sig else raw
+    terms = list(dict.fromkeys(terms))
+    stems = [t[:max(5, len(t) - 2)] if len(t) > 5 else t for t in terms]
+    return terms, stems
+
+
+def query_term_coverage(query: str, content: str) -> tuple[float, float]:
+    """Возвращает (доля совпавших значимых терминов/основ, доля точных целых слов) в [0.0, 1.0]."""
+    terms, stems = _query_terms_and_stems(query)
+    if not terms or not content:
+        return 0.0, 0.0
+    doc_norm = embeddings.fold_diacritics(content.lower())
+    doc_words = set(re.findall(r"\w+", doc_norm))
+    if not doc_words:
+        return 0.0, 0.0
+    doc_prefixes_5 = {w[:5] for w in doc_words if len(w) >= 5}
+    stem_hits = 0
+    exact_hits = 0
+    for term, stem in zip(terms, stems):
+        if term in doc_words:
+            exact_hits += 1
+            stem_hits += 1
+            continue
+        # Префиксное совпадение по основе (русские падежи и окончания вроде сервер/сервере, cedul/cedula)
+        if any(w.startswith(stem) for w in doc_words) or (len(term) >= 5 and term[:5] in doc_prefixes_5):
+            stem_hits += 1
+    n = len(terms)
+    return stem_hits / n, exact_hits / n
+
+
+def _builtin_query_features(query: str) -> set[str]:
+    """Набор токенов и 5-буквенных основ запроса для отсечения случайных хеш-коллизий builtin."""
+    toks = embeddings._tokens(query or "")
+    feats = set(toks)
+    for t in toks:
+        if len(t) > 5:
+            feats.add(t[:5])
+    return feats
+
+
+def _text_has_any_builtin_feature(content: str, q_feats: set[str]) -> bool:
+    if not q_feats:
+        return True
+    if not content:
+        return True
+    toks = embeddings._tokens(content)
+    for t in toks:
+        if t in q_feats or (len(t) > 5 and t[:5] in q_feats):
+            return True
+    return False
+
+
+def rank_semantic(query_vec: np.ndarray, rows: list, limit: int,
+                  query_model: str | None = None,
+                  query_text: str = "") -> list[str]:
+    """Векторная близость. Понимает переформулировки, слепа к цифрам.
+
+    0.7.2:
+    - Строго изолирует несовместимые пространства `embedding_model` (не смешивает `ollama:nomic-embed-text`
+      с `builtin:768`, даже если размерность обоих 768).
+    - Для `builtin` отсеивает случайные хеш-коллизии `blake2b % 768`, если в тексте записи нет ни одного
+      общего токена/основы с запросом.
+    - Для нейросетевых моделей отсекает нулевой шум ниже `MIN_NEURAL_SIM`.
+    """
+    if query_vec is None or not query_vec.size or limit <= 0:
         return []
     q = np.asarray(query_vec, dtype=np.float32)
-    # 0.4.13: Memory отдаёт кандидатов с уже собранной матрицей (Кандидаты.матрица) — один раз на состояние базы.
-    # Замер 11.11.2026 на 10 000 записях: np.stack на каждом поиске — 0,88 из 2,70 с на 30 поисков (со вторым
-    # проходом — дважды на поиск). Те же векторы, тот же порядок записей — итог тот же.
-    матрица = getattr(rows, "матрица", None)
-    if матрица is not None and матрица[0] == q.shape[0]:
-        _, M, ids = матрица
-        if not ids:
+    is_builtin = bool(query_model and query_model.startswith("builtin"))
+    min_sim = 0.0 if (not query_model or is_builtin) else MIN_NEURAL_SIM
+
+    # Выбираем матрицу строго совместимой модели эмбеддингов (плюс legacy-записи с пустой моделью)
+    матрицы_мод = getattr(rows, "матрицы_по_модели", None)
+    M = None
+    ids = None
+    if query_model and isinstance(матрицы_мод, dict):
+        parts_M = []
+        parts_ids = []
+        for mk in (query_model, ""):
+            entry = матрицы_мод.get(mk)
+            if entry is not None and entry[0] == q.shape[0] and entry[2]:
+                parts_M.append(entry[1])
+                parts_ids.extend(entry[2])
+        if not parts_ids:
             return []
-        if len(ids) > 400:
+        if len(parts_M) == 1:
+            M, ids = parts_M[0], parts_ids
+        else:
+            M, ids = np.concatenate(parts_M, axis=0), parts_ids
+        if len(ids) > 400 and min_sim == 0.0 and not is_builtin:
             from . import config as _cfg
             if _cfg.mcp_quant_index_enabled():
-                qi = getattr(rows, "quant_index", None)
+                qkey = f"qi:{query_model}"
+                qmap = getattr(rows, "_quant_by_model", None)
+                if qmap is None:
+                    qmap = {}
+                    try:
+                        rows._quant_by_model = qmap
+                    except Exception:
+                        pass
+                qi = qmap.get(qkey)
                 if qi is None:
                     from .quant_index import QuantizedIndex
                     qi = QuantizedIndex(M, ids)
-                    try:
-                        rows.quant_index = qi
-                    except Exception:
-                        pass
+                    qmap[qkey] = qi
                 return qi.search(q, limit)
         sims = np.clip(M @ q, -1.0, 1.0)
     else:
-        годные = [r for r in rows if r["_vec"] is not None and r["_vec"].shape == q.shape]
-        if not годные:
-            return []
-        sims = np.clip(np.stack([r["_vec"] for r in годные]) @ q, -1.0, 1.0)
-        ids = [r["id"] for r in годные]
-    # 0.4.4: при равной близости — порядок сохранения записей, а не случайный UUID: иначе два прогона одного кода
-    # давали разные числа LongMemEval (каждый пятый вопрос: 92,6 % против 91,5 %, найдено 09.11.2026).
-    # 0.4.13: устойчивая сортировка numpy вместо sort по списку кортежей — тот же порядок, равные в исходном порядке.
-    положительные = np.nonzero(sims > 0)[0]
-    if limit <= 0 or not положительные.size:
+        матрица = getattr(rows, "матрица", None)
+        if not query_model and матрица is not None and матрица[0] == q.shape[0]:
+            _, M, ids = матрица
+            if not ids:
+                return []
+            if len(ids) > 400:
+                from . import config as _cfg
+                if _cfg.mcp_quant_index_enabled():
+                    qi = getattr(rows, "quant_index", None)
+                    if qi is None:
+                        from .quant_index import QuantizedIndex
+                        qi = QuantizedIndex(M, ids)
+                        try:
+                            rows.quant_index = qi
+                        except Exception:
+                            pass
+                    return qi.search(q, limit)
+            sims = np.clip(M @ q, -1.0, 1.0)
+        else:
+            годные = [
+                r for r in rows
+                if r["_vec"] is not None
+                and r["_vec"].shape == q.shape
+                and (not query_model or not r.get("embedding_model") or r.get("embedding_model") == query_model)
+            ]
+            if not годные:
+                return []
+            sims = np.clip(np.stack([r["_vec"] for r in годные]) @ q, -1.0, 1.0)
+            ids = [r["id"] for r in годные]
+
+    положительные = np.nonzero(sims > min_sim)[0]
+    if not положительные.size:
         return []
-    if положительные.size > limit * 2:
+
+    fetch_limit = min(положительные.size, limit * 4) if (is_builtin and query_text) else limit
+    if положительные.size > fetch_limit * 2:
         pos_sims = sims[положительные]
-        part = np.argpartition(-pos_sims, limit - 1)[:limit]
+        part = np.argpartition(-pos_sims, fetch_limit - 1)[:fetch_limit]
         threshold = pos_sims[part].min()
         tied = положительные[pos_sims >= threshold]
-        if tied.size <= limit * 4:
-            порядок = tied[np.argsort(-sims[tied], kind="stable")][:limit]
-            return [ids[i] for i in порядок]
-    порядок = положительные[np.argsort(-sims[положительные], kind="stable")][:limit]
-    return [ids[i] for i in порядок]
+        if tied.size <= fetch_limit * 4:
+            порядок = tied[np.argsort(-sims[tied], kind="stable")][:fetch_limit]
+        else:
+            порядок = положительные[np.argsort(-sims[положительные], kind="stable")][:fetch_limit]
+    else:
+        порядок = положительные[np.argsort(-sims[положительные], kind="stable")][:fetch_limit]
+
+    cand_pairs = [(ids[i], float(sims[i])) for i in порядок]
+    if is_builtin and query_text:
+        q_feats = _builtin_query_features(query_text)
+        if q_feats:
+            by_id = getattr(rows, "_by_id", None)
+            if by_id is None:
+                by_id = {r["id"]: r for r in rows}
+                try:
+                    rows._by_id = by_id
+                except Exception:
+                    pass
+            filtered: list[str] = []
+            for rid, sim_v in cand_pairs:
+                # Высокий косинус (>= 0.25) пропускаем даже без совпадения текста (защита AS-025: подмена content при старом векторе).
+                if sim_v >= 0.25:
+                    filtered.append(rid)
+                else:
+                    rec_d = by_id.get(rid)
+                    if rec_d is None or _text_has_any_builtin_feature(rec_d.get("content") or "", q_feats):
+                        filtered.append(rid)
+                if len(filtered) >= limit:
+                    break
+            return filtered
+    return [rid for rid, _ in cand_pairs[:limit]]
 
 
 class Кандидаты(list):
     """Список кандидатов поиска с матрицей векторов: (размерность, матрица, id в порядке строк)."""
     матрица = None
+    матрицы_по_модели = None
 
 
 _СЛУЖЕБНЫЕ = frozenset("""
@@ -171,23 +311,12 @@ might must not no yes so than then too very just also any some all each other su
 
 def rank_lexical(store, user_id: str, scope: str, query: str,
                  limit: int, statuses: tuple[str, ...] = ("active",)) -> list[str]:
-    """BM25 через FTS5. Промышленный лексический поиск, встроен в SQLite."""
-    terms = [t for t in re.findall(r"\w+", query.lower()) if len(t) > 1]
-    if not terms:
+    """BM25 через FTS5 с нормализацией диакритики и учётом охвата терминов запроса (0.7.2)."""
+    orig_terms, stems = _query_terms_and_stems(query)
+    if not stems:
         return []
-    # 0.4.12: служебные слова (what, did, the, my, что, как…) в OR-запросе совпадают почти с каждой записью, и BM25
-    # считался для всей базы. Опыт 11.11.2026, LongMemEval-S, 470 вопросов с ответом: без них «нужная беседа в
-    # пятёрке» 96,8 → 97,2 %, «все нужные в пятёрке» 83,0 → 84,0 %, на 376 ненастроенных вопросах лучше по всем
-    # четырём мерам; поиск на 10 000 записей 46,4 → 24,6 мс (медиана). Запрос из одних служебных слов — как есть.
-    значимые = [t for t in terms if t not in _СЛУЖЕБНЫЕ]
-    if значимые:
-        terms = значимые
-    # 0.4.6: слово длиннее пяти букв ищется по основе — без двух последних букв, не короче пяти. Префикс «сервере»*
-    # не находил «сервер», «серверы» — «сервере», и русский запрос в косвенном падеже проигрывал заметке со словом
-    # «на» (найдено 09.11.2026 тестом tests/test_retrieval_0911.py). Окончания русских падежей и английских форм
-    # (servers, planned) — одна-две буквы.
-    terms = list(dict.fromkeys(t[:max(5, len(t) - 2)] if len(t) > 5 else t for t in terms))
-    # OR по терминам: пусть BM25 сам взвесит редкие выше частых
+    terms = list(dict.fromkeys(stems))
+    # OR по терминам: пусть BM25 сам взвесит редкие выше частых, а затем поднимем записи с полным охватом терминов
     match = " OR ".join(f'"{t}"*' for t in terms)
     st_placeholders = ",".join("?" * len(statuses))
     try:
@@ -203,23 +332,37 @@ def rank_lexical(store, user_id: str, scope: str, query: str,
         rank_map = {int(fr["rowid"]): (float(fr["r"]), idx) for idx, fr in enumerate(fts_rows)}
         rowid_ph = ",".join("?" * len(rank_map))
         m_rows = store.query(
-            f"""SELECT rowid, id FROM memory
+            f"""SELECT rowid, id, content FROM memory
                WHERE rowid IN ({rowid_ph}) AND user_id = ? AND scope = ?
                  AND status IN ({st_placeholders})""",
             (*rank_map.keys(), user_id, scope, *statuses),
         )
-        m_sorted = sorted(m_rows, key=lambda mr: rank_map[int(mr["rowid"])])
-        if len(m_sorted) >= limit or len(fts_rows) < pre_limit:
-            return [r["id"] for r in m_sorted[:limit]]
+        if len(m_rows) < limit and len(fts_rows) >= pre_limit:
+            m_rows = store.query(
+                f"""SELECT m.rowid, m.id, m.content, bm25(memory_fts) AS r FROM memory_fts f
+                   JOIN memory m ON m.rowid = f.rowid
+                   WHERE memory_fts MATCH ? AND m.user_id = ? AND m.scope = ?
+                     AND m.status IN ({st_placeholders})
+                   ORDER BY r, m.rowid LIMIT ?""",
+                (match, user_id, scope, *statuses, max(limit * 2, limit)),
+            )
+            rank_map = {int(mr["rowid"]): (float(mr["r"]), idx) for idx, mr in enumerate(m_rows)}
 
-        rows = store.query(
-            f"""SELECT m.id FROM memory_fts f
-               JOIN memory m ON m.rowid = f.rowid
-               WHERE memory_fts MATCH ? AND m.user_id = ? AND m.scope = ?
-                 AND m.status IN ({st_placeholders})
-               ORDER BY bm25(memory_fts), m.rowid LIMIT ?""",
-            (match, user_id, scope, *statuses, limit))
-        return [r["id"] for r in rows]
+        if len(orig_terms) >= 2:
+            # Многословный запрос: записи с большим числом совпавших значимых терминов (и точным словом) выше.
+            def _lex_key(mr):
+                bm, pos = rank_map[int(mr["rowid"])]
+                cov, ex = query_term_coverage(query, mr["content"] or "")
+                return (-round(cov, 4), -round(ex, 4), bm, pos)
+            m_sorted = sorted(m_rows, key=_lex_key)
+        else:
+            # Однословный запрос: точное целое слово выше случайного префикса, внутри — порядок BM25.
+            def _lex_key_one(mr):
+                bm, pos = rank_map[int(mr["rowid"])]
+                _, ex = query_term_coverage(query, mr["content"] or "")
+                return (-round(ex, 4), bm, pos)
+            m_sorted = sorted(m_rows, key=_lex_key_one)
+        return [r["id"] for r in m_sorted[:limit]]
     except Exception:
         return []
 
@@ -290,21 +433,34 @@ def hybrid_rank(store, user_id: str, scope: str, query: str,
                 statuses: tuple[str, ...] = ("active",)
                 ) -> tuple[dict[str, float], dict[str, list[str]]]:
     """Возвращает (баллы RRF, вклад каждой стратегии) — второе для --explain."""
-    qvec = embeddings.embed(query)
+    qvec, qmodel = embeddings.embed_with_model(query)
+    sem_ids = rank_semantic(qvec, rows, pool, query_model=qmodel, query_text=query)
+    lex_ids = rank_lexical(store, user_id, scope, query, pool, statuses)
+    ent_ids = rank_entity(query, rows, pool)
+    # 0.7.2: если активна нейросеть, но база в основном старая (builtin) и ничего не нашлось — запасной путь builtin
+    if not sem_ids and not lex_ids and not ent_ids and not qmodel.startswith("builtin"):
+        bdim = getattr(embeddings.config, "EMBED_DIM", 768)
+        btag = f"builtin:{bdim}"
+        bvec = embeddings._builtin_embed(query, dim=bdim)
+        sem_ids = rank_semantic(bvec, rows, pool, query_model=btag, query_text=query)
+        if sem_ids:
+            qmodel = btag
     rankings = {
-        "semantic": rank_semantic(qvec, rows, pool),
-        "lexical": rank_lexical(store, user_id, scope, query, pool, statuses),
-        "entity": rank_entity(query, rows, pool),
+        "semantic": sem_ids,
+        "lexical": lex_ids,
+        "entity": ent_ids,
     }
     rankings = {k: v for k, v in rankings.items() if v}
     if weights is None:
         weights = dict(DEFAULT_WEIGHTS)
-        if embeddings.метка_модели().startswith("builtin"):
+        if qmodel.startswith("builtin"):
             # запасной путь: нет ни лексических, ни точных совпадений — ищем по вектору, иначе вернули бы пустоту
             запасной = not rankings.get("lexical") and not rankings.get("entity")
             weights["semantic"] = 1.0 if запасной else BUILTIN_SEMANTIC_WEIGHT
     scores = reciprocal_rank_fusion(rankings, weights)
-    return scores, rankings
+    # 0.7.2: стратегия с нулевым весом не голосовала — не загрязняем ею `found_by`
+    active_rankings = {k: v for k, v in rankings.items() if weights.get(k, 1.0) > 0.0}
+    return scores, active_rankings
 
 
 # --- Б13: переранжирование верхних кандидатов по переключателю PADAM_RERANK=1 ---
@@ -320,7 +476,7 @@ _RERANK_MODELS: dict[str, object] = {}
 
 def _rerank_tokens(text: str) -> list[str]:
     out: list[str] = []
-    for raw in _RERANK_TOK_RE.findall((text or "").lower()):
+    for raw in _RERANK_TOK_RE.findall(embeddings.fold_diacritics(text or "").lower()):
         if raw in _RERANK_STOP:
             continue
         out.append(raw[:5] if len(raw) > 4 and not raw.isdigit() else raw)

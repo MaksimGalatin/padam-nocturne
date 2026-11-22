@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.7.2 — 22 November 2026
+
+- **Search & ranking overhaul (fixes mixed-embedder poisoning, diacritics and ~0.01 scores):**
+  - `padam/embeddings.py`: `_check_ollama()` now verifies that `config.EMBED_MODEL` is actually installed in Ollama `/api/tags` instead of trusting HTTP 200 alone; `embed_with_model()` always records the real model tag (`builtin:<dim>` on fallback) so `embedding_model` is never poisoned; `fold_diacritics()` normalizes Latin diacritics (`cédula` == `cedula`) and `ё -> е` while preserving Russian `й`.
+  - `padam/retrieval.py` & `padam/memory.py`: `rank_semantic()` strictly isolates incompatible `embedding_model` spaces even at identical dimensions (768 vs 768), filters `builtin` hash-collision noise when no query stem matches, boosts full term coverage and exact word matches in `rank_lexical()`, and moves `Record.score` to a clear monotonic relevance scale (`~0.50–1.00` for direct hits instead of `~0.01`) where metadata (`importance`, `confidence`, `decay`, `boost`) refines ties without letting noise outrank direct hits.
+  - Second-pass `SEARCH_FEEDBACK` never displaces direct `lexical`/`entity` hits from the first pass and preserves strict score monotonicity.
+- **Sovereign wallets, legal Clickwrap & commercial automation suite:**
+  - Offline 5-network wallet generator (`SOLANA`, `USDT_TRC20`, `EVM`, `BITCOIN`, `ARWEAVE`, `$0`), mandatory 3-checkbox Clickwrap EULA (`CODE_TERMS_v1.0_2026-11-22`) with HMAC-SHA256 SQLite proof, automated `15%/20%` CODE fee split/invoicing and autopilot arrears guard (`padam/wallet_keygen.py`, `padam/terms_gate.py`, `padam/freelance_autonomy.py`).
+  - 20 commercial Agentic Shield & exchange automation tools (`padam/security_sales.py`, `padam/exchange_automation.py`), hardened cNFT agent passports (`padam/agent_passport.py`), CODE Agora (`padam/agora.py`), Ark Morning Pulse (`padam/morning_pulse.py`), pure-Python ML-KEM-768 Android fallback (`padam/pqc_sync.py`), Studio/MCP parity `213/213` and 4-language i18n stability (`0` wrong-language strings).
+
 ## 0.7.1 — 21 November 2026
 
 - **Studio: the AIfa chat tab redesigned like the chat on our sites** — message bubbles on the left and right, a wide

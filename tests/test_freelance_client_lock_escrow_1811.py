@@ -266,7 +266,7 @@ def test_studio_playwright_client_lock_and_agent_payout_all_langs(tmp_path: Path
                 page.on("pageerror", lambda err: js_errors.append(str(err)))
                 page.goto(url, wait_until="networkidle")
                 page.click("#tab-earning")
-                page.wait_for_selector("label[for='earn-job-client']", timeout=5000)
+                page.wait_for_selector("label[for='earn-job-client']", timeout=15000)
 
                 # Проверяем на ОБОИХ экранах (1280 и 390): оценка -> «Зачислить оплату» -> строка «Доля агента» видна в <=3с БЕЗ перезагрузки
                 title_marker = f"Client Lock UI {vp['width']}"

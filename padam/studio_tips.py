@@ -1811,7 +1811,7 @@ BTN_TIPS: dict[str, dict[str, str]] = {
         "zh": "生成经签名且校验主人绑定钱包的托管账单，防止收款地址篡改。",
     },
     "earn-auto-deliver-btn": {
-        "ru": "Прогоняет сдачу заказа через DLP-гейт, выписывает квитанцию Zero-Leak Receipt и формирует подписочный апселл.",
+        "ru": "Прогоняет сдачу заказа через DLP-гейт, выписывает квитанцию «Ноль утечек» и формирует подписочный апселл.",
         "en": "Screens order delivery through the Zero-Leak DLP gate, attaches a signed receipt, and adds a retainer upsell.",
         "es": "Filtra la entrega con DLP Zero-Leak, adjunta recibo firmado y propone un servicio mensual.",
         "zh": "通过 Zero-Leak DLP 网关校验交付内容，附带签名回执并生成续费方案。",
