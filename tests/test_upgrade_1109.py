@@ -195,7 +195,7 @@ def test_viewer_page_has_no_data_and_strict_csp(viewer):
     код, заголовки, html = запрос(порт, "GET", "/ui")
     assert код == 200 and "text/html" in заголовки["Content-Type"]
     assert "default-src 'none'" in заголовки["Content-Security-Policy"]
-    assert "img-src 'none'" in заголовки["Content-Security-Policy"]
+    assert "img-src 'self'" in заголовки["Content-Security-Policy"] and "worker-src 'self'" in заголовки["Content-Security-Policy"]
     assert "красныйкот" not in html and токен not in html
     assert "textContent" in html and "innerHTML" not in html
 

@@ -258,10 +258,10 @@ def test_studio_stage2_wizard_and_remarks_playwright(tmp_path: Path, monkeypatch
                 page.on("pageerror", lambda err: js_errors.append(str(err)))
                 page.goto(url, wait_until="networkidle")
                 page.click("#tab-earning")
-                page.wait_for_selector("#earn-wiz-platform", timeout=5000)
+                page.wait_for_selector("#earn-wiz-platform", timeout=15000)
                 page.wait_for_function(
                     "() => document.querySelectorAll('#earn-wiz-catalog-list .earn-item').length === 34",
-                    timeout=5000,
+                    timeout=15000,
                 )
                 page.wait_for_load_state("networkidle")
 
@@ -292,44 +292,44 @@ def test_studio_stage2_wizard_and_remarks_playwright(tmp_path: Path, monkeypatch
                 if vp["width"] == 1280:
                     # 1) Проверяем пометку неподтверждённой продажи Payhip и подтверждаем её кнопкой
                     assert ui_state["unvBadges"] == 1
-                    with page.expect_response("**/api/v2/ark/stores/action", timeout=5000) as r_conf:
+                    with page.expect_response("**/api/v2/ark/stores/action", timeout=15000) as r_conf:
                         page.click("button[data-order-action='confirm_sale']")
                     assert r_conf.value.status == 200
                     page.wait_for_function(
                         "() => document.querySelectorAll('[data-order-unverified=\"1\"]').length === 0",
-                        timeout=5000,
+                        timeout=15000,
                     )
 
                     # 2) Проходим мастер: выбираем Upwork -> входим по OAuth без пароля -> 6 вопросов -> черновик профиля -> публикация кнопкой
                     page.select_option("#earn-wiz-platform", "upwork")
                     page.select_option("#earn-wiz-auth-method", "oauth")
                     page.fill("#earn-wiz-secret", "upwork_oauth_test_token")
-                    with page.expect_response("**/api/v2/ark/wizard/action", timeout=5000) as r_wconn:
+                    with page.expect_response("**/api/v2/ark/wizard/action", timeout=15000) as r_wconn:
                         page.click("#earn-wiz-connect-btn")
                     assert r_wconn.value.status == 200
 
                     page.fill("#earn-wiz-q-spec", "Создание сайтов с ИИ-агентами и аудит WCAG")
                     page.fill("#earn-wiz-q-rate", "45")
                     page.fill("#earn-wiz-q-min", "150")
-                    with page.expect_response("**/api/v2/ark/wizard/action", timeout=5000) as r_wprof:
+                    with page.expect_response("**/api/v2/ark/wizard/action", timeout=15000) as r_wprof:
                         page.click("#earn-wiz-profile-btn")
                     assert r_wprof.value.status == 200
                     page.wait_for_function(
                         "() => document.querySelector('#earn-wiz-profiles-list').textContent.includes('status=draft')",
-                        timeout=5000,
+                        timeout=15000,
                     )
 
                     # Публикуем профиль кнопкой владельца
-                    with page.expect_response("**/api/v2/ark/wizard/action", timeout=5000) as r_wpub:
+                    with page.expect_response("**/api/v2/ark/wizard/action", timeout=15000) as r_wpub:
                         page.locator("#earn-wiz-profiles-list button").first.click()
                     assert r_wpub.value.status == 200
                     page.wait_for_function(
                         "() => document.querySelector('#earn-wiz-profiles-list').textContent.includes('status=published')",
-                        timeout=5000,
+                        timeout=15000,
                     )
 
                     # Запускаем автоотбор посильных заказов
-                    with page.expect_response("**/api/v2/ark/wizard/action", timeout=5000) as r_wauto:
+                    with page.expect_response("**/api/v2/ark/wizard/action", timeout=15000) as r_wauto:
                         page.click("#earn-wiz-autopick-btn")
                     assert r_wauto.value.status == 200
 

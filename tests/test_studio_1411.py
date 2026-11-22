@@ -228,7 +228,7 @@ def test_studio_server_endpoints_and_forget_receipt(tmp_path):
             csp = resp.headers.get("Content-Security-Policy", "")
             assert resp.status == 200
             assert "default-src 'none'" in csp
-            assert "img-src 'none'" in csp
+            assert "img-src 'self'" in csp and "worker-src 'self'" in csp
             assert token not in html
             # 17.11.2026: не голые цифры «5432» — они случайно встречаются в UUID записей (тест мигал в CI)
             assert "порту 5432" not in html and "порта 5432" not in html
@@ -1417,6 +1417,12 @@ def test_14_1_code_logo_everywhere_and_favicons():
                 assert "image/x-icon" in r.headers.get("Content-Type", "")
                 ico_bytes = r.read()
                 assert ico_bytes[:4] == b"\x00\x00\x01\x00"
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/sw.js", timeout=3) as r:
+                assert r.status == 200
+                assert "script-src 'self'" in r.headers.get("Content-Security-Policy", "")
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/manifest.webmanifest", timeout=3) as r:
+                assert r.status == 200
+                assert "PADAM" in r.read().decode("utf-8")
         finally:
             srv.shutdown()
             srv.server_close()

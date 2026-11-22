@@ -82,6 +82,8 @@ DIGITAL_STORE_PLATFORMS = (
 
 SUPPORTED_MODES = ("oauth_api", "desk", "webhook")
 SUPPORTED_CURRENCIES = ("USDT_TRC20", "GALATIN")
+CODE_TREASURY_WALLET_SOLANA = "BHwXca9ALDFe38vWzqRGcXom6dEop2u6kWCMwZfQEmee"
+AUTO_SPLIT_PLATFORMS = frozenset({"aifafocus_mcp", "partner_bridge", "code_direct", "lemonsqueezy"})
 
 _LOCAL_PATH_RE = re.compile(
     r"(?:[A-Za-z]:\\[^\s\"'<>|]+|/(?:Users|home|var|etc|opt|mnt)/[^\s\"'<>|]+)"
@@ -255,6 +257,25 @@ CREATE TABLE IF NOT EXISTS ark_agent_ledger (
     updated_at        REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_ark_agent_ledger_user ON ark_agent_ledger (user_id, agent_id, status);
+
+CREATE TABLE IF NOT EXISTS ark_code_fee_invoice (
+    invoice_id       TEXT PRIMARY KEY,
+    user_id          TEXT NOT NULL,
+    order_id         TEXT NOT NULL UNIQUE,
+    platform         TEXT NOT NULL,
+    gross_usdt       REAL NOT NULL DEFAULT 0.0,
+    fee_pct          REAL NOT NULL DEFAULT 15.0,
+    fee_usdt         REAL NOT NULL DEFAULT 0.0,
+    treasury_wallet  TEXT NOT NULL,
+    settlement_rail  TEXT NOT NULL DEFAULT 'manual_exchange_remit',
+    status           TEXT NOT NULL DEFAULT 'invoice_due',
+    auto_split_tx    TEXT NOT NULL DEFAULT '',
+    due_ts           REAL NOT NULL,
+    paid_at          REAL,
+    hmac_sig         TEXT NOT NULL DEFAULT '',
+    created_at       REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ark_fee_inv_user ON ark_code_fee_invoice (user_id, status, due_ts);
 """
 
 
@@ -304,6 +325,9 @@ def _ensure(memory) -> None:
             ("autopilot_interval_s", "REAL NOT NULL DEFAULT 300.0"),
             ("autopilot_last_tick_at", "REAL NOT NULL DEFAULT 0.0"),
             ("autopilot_last_note", "TEXT NOT NULL DEFAULT ''"),
+            ("payout_wallet_address", "TEXT NOT NULL DEFAULT ''"),
+            ("payout_wallet_network", "TEXT NOT NULL DEFAULT ''"),
+            ("payout_wallet_id", "TEXT NOT NULL DEFAULT ''"),
         ):
             if col not in prefs_cols:
                 _acs(conn, "ark_freelance_prefs", col, col_def)
@@ -493,6 +517,96 @@ def _clean_currency(raw: str) -> str:
     return val
 
 
+def set_payout_wallet_binding(memory, *, network: str, address: str, wallet_id: str = "") -> dict[str, Any]:
+    """Фиксирует основной кошелёк выплат владельца для привязки к биржам и расчётам."""
+    _ensure(memory)
+    now = time.time()
+    with _lock_of(memory):
+        conn = memory.store.conn
+        conn.execute(
+            "INSERT INTO ark_freelance_prefs (user_id, agent_share_pct, settlement_currency, galatin_price_usdt, updated_at) "
+            "VALUES (?, 15.0, 'USDT_TRC20', 0.01, ?) ON CONFLICT(user_id) DO NOTHING",
+            (memory.user_id, now),
+        )
+        conn.execute(
+            "UPDATE ark_freelance_prefs SET payout_wallet_address = ?, payout_wallet_network = ?, payout_wallet_id = ?, updated_at = ? "
+            "WHERE user_id = ?",
+            (str(address), str(network), str(wallet_id), now, memory.user_id),
+        )
+        conn.commit()
+    return {"ok": True, "network": str(network), "address": str(address), "wallet_id": str(wallet_id)}
+
+
+def _sign_fee_invoice(memory, inv_id: str, order_id: str, fee_usdt: float, treasury_wallet: str) -> str:
+    k_raw, _ = integrity.owner_key(memory.store)
+    blob = f"feeinv|{memory.user_id}|{inv_id}|{order_id}|{fee_usdt:.4f}|{treasury_wallet}".encode("utf-8")
+    return hmac.new(k_raw, blob, hashlib.sha256).hexdigest()
+
+
+def list_code_fee_invoices(memory, *, limit: int = 50) -> list[dict[str, Any]]:
+    _ensure(memory)
+    with _lock_of(memory):
+        rows = memory.store.conn.execute(
+            "SELECT * FROM ark_code_fee_invoice WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
+            (memory.user_id, int(limit)),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def mark_code_fee_paid(memory, invoice_id: str, *, tx_ref: str = "", actor=None) -> dict[str, Any]:
+    from . import roles as _roles
+    _roles.require_owner(actor, "settle_paid")
+    _ensure(memory)
+    now_s = time.time()
+    with _lock_of(memory):
+        row = memory.store.conn.execute(
+            "SELECT * FROM ark_code_fee_invoice WHERE invoice_id = ? AND user_id = ?",
+            (invoice_id, memory.user_id),
+        ).fetchone()
+        if not row:
+            raise KeyError(f"Invoice {invoice_id!r} not found")
+        memory.store.conn.execute(
+            "UPDATE ark_code_fee_invoice SET status = 'verified_paid', auto_split_tx = COALESCE(NULLIF(?, ''), auto_split_tx), paid_at = ? "
+            "WHERE invoice_id = ? AND user_id = ?",
+            (str(tx_ref or "")[:120], now_s, invoice_id, memory.user_id),
+        )
+        memory.store.conn.commit()
+    audit_chain.append_audit(memory, "code_fee_invoice_paid", {"invoice_id": invoice_id, "fee_usdt": float(row["fee_usdt"])}, agent_id="owner")
+    return {"ok": True, "invoice_id": invoice_id, "status": "verified_paid", "paid_at": now_s}
+
+
+def fee_arrears_guard(memory, *, now_ts: float | None = None) -> dict[str, Any]:
+    """Проверяет просроченную неуплаченную комиссию CODE сверх срока ESCROW_HOLD_DAYS или подмену счёта."""
+    _ensure(memory)
+    now_s = float(now_ts if now_ts is not None else time.time())
+    with _lock_of(memory):
+        rows = memory.store.conn.execute(
+            "SELECT * FROM ark_code_fee_invoice WHERE user_id = ?",
+            (memory.user_id,),
+        ).fetchall()
+    overdue: list[dict[str, Any]] = []
+    tampered: list[str] = []
+    due_total = 0.0
+    for r in rows:
+        exp_sig = _sign_fee_invoice(memory, str(r["invoice_id"]), str(r["order_id"]), float(r["fee_usdt"]), str(r["treasury_wallet"]))
+        if not hmac.compare_digest(exp_sig, str(r["hmac_sig"] or "")) or str(r["treasury_wallet"]) != CODE_TREASURY_WALLET_SOLANA:
+            tampered.append(str(r["invoice_id"]))
+        if str(r["status"]) == "invoice_due":
+            due_total += float(r["fee_usdt"] or 0.0)
+            if now_s > float(r["due_ts"] or 0.0):
+                overdue.append({"invoice_id": r["invoice_id"], "order_id": r["order_id"], "fee_usdt": float(r["fee_usdt"])})
+    blocked = bool(overdue or tampered)
+    return {
+        "blocked": blocked,
+        "code": "code_fee_settlement_required" if blocked else "ok",
+        "due_total_usdt": round(due_total, 4),
+        "overdue_count": len(overdue),
+        "overdue": overdue,
+        "tampered_invoices": tampered,
+        "treasury_wallet": CODE_TREASURY_WALLET_SOLANA,
+    }
+
+
 def get_freelance_prefs(memory) -> dict[str, Any]:
     """Возвращает текущие настройки ставки агента (1%..100%) и валютной фазы."""
     _ensure(memory)
@@ -507,13 +621,20 @@ def get_freelance_prefs(memory) -> dict[str, Any]:
             "platform_fee_pct": FIXED_PLATFORM_FEE_PCT,
             "settlement_currency": "USDT_TRC20",
             "galatin_price_usdt": 0.01,
+            "payout_wallet_address": "",
+            "payout_wallet_network": "",
+            "payout_wallet_id": "",
         }
+    r_d = dict(row)
     return {
-        "user_id": row["user_id"],
-        "agent_share_pct": float(row["agent_share_pct"]),
+        "user_id": r_d["user_id"],
+        "agent_share_pct": float(r_d["agent_share_pct"]),
         "platform_fee_pct": FIXED_PLATFORM_FEE_PCT,
-        "settlement_currency": str(row["settlement_currency"]),
-        "galatin_price_usdt": float(row["galatin_price_usdt"]),
+        "settlement_currency": str(r_d["settlement_currency"]),
+        "galatin_price_usdt": float(r_d["galatin_price_usdt"]),
+        "payout_wallet_address": str(r_d.get("payout_wallet_address") or ""),
+        "payout_wallet_network": str(r_d.get("payout_wallet_network") or ""),
+        "payout_wallet_id": str(r_d.get("payout_wallet_id") or ""),
     }
 
 
@@ -1883,6 +2004,34 @@ def settle_paid_order(
             "VALUES (?, ?, ?, ?, ?, ?, 'held_14d', ?, ?)",
             (hid, memory.user_id, order_id, gross, split["owner_net_usdt"], split["settlement_currency"], now_s, release_at),
         )
+        inv_id = f"cinv-{uuid.uuid4().hex[:10]}"
+        plat_l = str(order.get("platform") or "").strip().lower()
+        rail = "auto_split" if plat_l in AUTO_SPLIT_PLATFORMS else "manual_exchange_remit"
+        inv_status = "auto_split_settled" if rail == "auto_split" else "invoice_due"
+        inv_paid_at = now_s if rail == "auto_split" else None
+        inv_sig = _sign_fee_invoice(memory, inv_id, order_id, float(split["platform_fee_usdt"]), CODE_TREASURY_WALLET_SOLANA)
+        conn.execute(
+            "INSERT OR IGNORE INTO ark_code_fee_invoice "
+            "(invoice_id, user_id, order_id, platform, gross_usdt, fee_pct, fee_usdt, treasury_wallet, settlement_rail, status, auto_split_tx, due_ts, paid_at, hmac_sig, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                inv_id,
+                memory.user_id,
+                order_id,
+                plat_l,
+                gross,
+                float(split["platform_fee_pct"]),
+                float(split["platform_fee_usdt"]),
+                CODE_TREASURY_WALLET_SOLANA,
+                rail,
+                inv_status,
+                (f"auto-split:{inv_id}" if rail == "auto_split" else ""),
+                release_at,
+                inv_paid_at,
+                inv_sig,
+                now_s,
+            ),
+        )
         conn.execute(
             "INSERT INTO ark_agent_ledger "
             "(ledger_entry_id, user_id, order_id, hold_id, agent_id, client_key, gross_usdt, agent_share_pct, "
@@ -1969,6 +2118,13 @@ def settle_paid_order(
         "agent_payout": {"status": "pending", "agent_id": credited_agent, "amount_usdt": split["agent_compute_usdt"], "hold_id": hid, "available_at": available_at},
         "payout_hold": {"hold_id": hid, "status": "held_14d", "hold_days": ESCROW_HOLD_DAYS, "owner_net_usdt": split["owner_net_usdt"], "release_at": release_at},
         "referral_ecosystem_split": ref_eco,
+        "code_fee_invoice": {
+            "invoice_id": inv_id,
+            "fee_usdt": float(split["platform_fee_usdt"]),
+            "treasury_wallet": CODE_TREASURY_WALLET_SOLANA,
+            "settlement_rail": rail,
+            "status": inv_status,
+        },
     }
 
 
@@ -2718,6 +2874,16 @@ def run_autopilot_cycle(memory, *, allow_localhost: bool = False) -> dict[str, A
     st = get_autopilot_state(memory)
     if not st["autopilot_running"]:
         return {"ok": True, "skipped": True, "reason": "autopilot_stopped_by_owner", "state": st}
+    # Блокировка автопилота при просрочке или подмене счетов комиссии CODE
+    arrears = fee_arrears_guard(memory)
+    if arrears.get("blocked"):
+        return {
+            "ok": False,
+            "skipped": True,
+            "reason": "code_fee_settlement_required",
+            "arrears": arrears,
+            "state": st,
+        }
 
     accounts = list_exchange_accounts(memory)
     checked = 0

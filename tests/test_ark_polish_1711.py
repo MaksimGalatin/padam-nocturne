@@ -159,7 +159,7 @@ def test_shamir_all_combinations_and_cli(tmp_path):
     repo_root = Path(__file__).resolve().parents[1]
     res_split = subprocess.run(
         [sys.executable, "-m", "padam", "--db", str(db_file), "ark-shamir", "split", "my-top-secret", "--k", "3", "--n", "5"],
-        cwd=str(repo_root), capture_output=True, text=True, check=False,
+        cwd=str(repo_root), capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
     )
     assert res_split.returncode == 0, res_split.stderr
     data = json.loads(res_split.stdout)
@@ -168,7 +168,7 @@ def test_shamir_all_combinations_and_cli(tmp_path):
 
     res_comb = subprocess.run(
         [sys.executable, "-m", "padam", "--db", str(db_file), "ark-shamir", "combine", *data["shares"][1:4]],
-        cwd=str(repo_root), capture_output=True, text=True, check=False,
+        cwd=str(repo_root), capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
     )
     assert res_comb.returncode == 0, res_comb.stderr
     assert json.loads(res_comb.stdout)["recovered_utf8"] == "my-top-secret"

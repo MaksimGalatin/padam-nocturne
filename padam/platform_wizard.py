@@ -1168,7 +1168,8 @@ def autopick_and_prepare_jobs(
     ]
 
     discretion_mode = bool(int(intake.get("agent_discretion") or 0) or _is_discretion_choice(intake.get("specializations")))
-    if isinstance(candidate_jobs, list) and candidate_jobs:
+    used_template = not (isinstance(candidate_jobs, list) and len(candidate_jobs) > 0)
+    if not used_template:
         jobs = candidate_jobs
     elif discretion_mode:
         # В режиме «На усмотрение агента» агент анализирует всю ленту биржи по разным категориям (где уверен в 100% сдаче)
@@ -1198,8 +1199,8 @@ def autopick_and_prepare_jobs(
     else:
         jobs = [
             {
-                "title": f"[{spec['title']}] Разработка лендинга с ИИ-агентом и CRM",
-                "brief": f"Создать современный сайт на Next.js с обученным чат-агентом по профилю: {intake.get('specializations')}",
+                "title": f"[{spec['title']}] Демо-шаблон по анкете: лендинг с ИИ-агентом и CRM",
+                "brief": f"Черновой шаблон по профилю владельца ({intake.get('specializations')}): подключите ленту реальных заказов для боевого отклика.",
                 "budget_usdt": max(min_budget + 150.0, 300.0),
                 "estimated_hours": 5.0,
                 "estimated_tokens": 20000,
@@ -1252,6 +1253,7 @@ def autopick_and_prepare_jobs(
             "effective_hourly_usdt": eval_res["effective_hourly_usdt"],
             "bid_status": (bid_draft or {}).get("status", eval_res["status"]),
             "bid_pitch_preview": (bid_draft or {}).get("bid_text") or (bid_draft or {}).get("pitch_text") or "",
+            "is_sample_template": used_template,
         })
 
     return {
@@ -1259,6 +1261,7 @@ def autopick_and_prepare_jobs(
         "platform_id": pid,
         "automation_tier": spec["automation_tier"],
         "work_mode": spec["work_mode"],
+        "source_mode": "template_preview" if used_template else "live_candidates",
         "prepared_count": len(prepared),
         "skipped_count": len(skipped),
         "prepared_jobs": prepared,

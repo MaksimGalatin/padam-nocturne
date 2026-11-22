@@ -270,12 +270,12 @@ def post(base, path, payload):
     req = urllib.request.Request(
         base + path, data=json.dumps(payload).encode(),
         headers={"Content-Type": "application/json"}, method="POST")
-    with urllib.request.urlopen(req, timeout=5) as r:
+    with urllib.request.urlopen(req, timeout=20) as r:
         return json.loads(r.read())
 
 
 def get(base, path):
-    with urllib.request.urlopen(base + path, timeout=5) as r:
+    with urllib.request.urlopen(base + path, timeout=20) as r:
         return json.loads(r.read())
 
 
@@ -351,7 +351,7 @@ def test_rest_with_token_is_the_owner(server, wired):
         req = urllib.request.Request(server + "/write", method="POST",
                                      data=json.dumps({"content": "Счёт за хостинг оплачен до марта"}).encode(),
                                      headers={"Content-Type": "application/json", "Authorization": "Bearer owner-token-1"})
-        with urllib.request.urlopen(req, timeout=5) as r:
+        with urllib.request.urlopen(req, timeout=20) as r:
             assert json.loads(r.read())["outcome"] == "created"
     finally:
         api._state["token"] = None

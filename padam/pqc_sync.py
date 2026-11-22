@@ -30,19 +30,27 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat, PublicFormat
 
 try:
-    from cryptography.hazmat.primitives.asymmetric import mldsa, mlkem
+    from cryptography.hazmat.primitives.asymmetric import mlkem
+except ImportError:
+    mlkem = None  # type: ignore[assignment]
 
-    HAS_PQC = True
+try:
+    from cryptography.hazmat.primitives.asymmetric import mldsa
 except ImportError:
     mldsa = None  # type: ignore[assignment]
-    mlkem = None  # type: ignore[assignment]
-    HAS_PQC = False
 
-from . import integrity, keyvault
+from . import integrity, keyvault, pqc_mlkem
 from .i18n import t
 from .store import now_iso
 
+HAS_NATIVE_MLKEM = mlkem is not None and hasattr(mlkem, "MLKEM768PrivateKey")
+HAS_MLDSA = mldsa is not None and hasattr(mldsa, "MLDSA65PrivateKey")
+# X-Wing (ML-KEM-768 + X25519) работает везде: нативно при cryptography>=48 или через PureMLKEM768 (Android).
+HAS_PQC = True
+
 SCHEME = "xwing-mlkem768-x25519+mldsa65-ed25519+aes256gcm"
+SCHEME_ED25519_ONLY = "xwing-mlkem768-x25519+ed25519+aes256gcm"
+SUPPORTED_SCHEMES = (SCHEME, SCHEME_ED25519_ONLY)
 XWING_LABEL = b"\x5c\x2e\x2f\x2f\x5e\x5c"  # \.//^\ по draft-connolly-cfrg-xwing-kem
 PROTOCOL_VERSION = 1
 
@@ -67,12 +75,41 @@ class PacketDecryptionError(PqcSyncError):
     """Не удалось расшифровать пакет синхронизации этим ключом устройства."""
 
 
+def _has_mldsa() -> bool:
+    return bool(HAS_MLDSA and mldsa is not None and hasattr(mldsa, "MLDSA65PrivateKey"))
+
+
 def _require_pqc() -> None:
-    if not HAS_PQC or mlkem is None or mldsa is None:
-        raise PqcUnavailableError(t(
-            "постквантовая криптография недоступна: установите cryptography>=50.0.0",
-            "post-quantum primitives unavailable: install cryptography>=50.0.0",
-        ))
+    # X-Wing (ML-KEM-768 + X25519) обеспечен через pqc_mlkem (включая Android Chaquopy).
+    return None
+
+
+def _generate_mlkem_priv():
+    if HAS_NATIVE_MLKEM and mlkem is not None:
+        return mlkem.MLKEM768PrivateKey.generate()
+    return pqc_mlkem.PureMLKEM768PrivateKey.generate()
+
+
+def _load_mlkem_priv(seed_bytes: bytes):
+    if HAS_NATIVE_MLKEM and mlkem is not None and len(seed_bytes) == 64:
+        return mlkem.MLKEM768PrivateKey.from_seed_bytes(seed_bytes)
+    return pqc_mlkem.PureMLKEM768PrivateKey.from_private_bytes(seed_bytes)
+
+
+def _load_mlkem_pub(pub_bytes: bytes):
+    if HAS_NATIVE_MLKEM and mlkem is not None:
+        return mlkem.MLKEM768PublicKey.from_public_bytes(pub_bytes)
+    return pqc_mlkem.PureMLKEM768PublicKey.from_public_bytes(pub_bytes)
+
+
+def _mlkem_raw_pub(pub_obj) -> bytes:
+    if hasattr(pub_obj, "public_bytes_raw"):
+        return pub_obj.public_bytes_raw()
+    return pub_obj.public_bytes(Encoding.Raw, PublicFormat.Raw)
+
+
+def _mlkem_raw_priv(priv_obj) -> bytes:
+    return priv_obj.private_bytes_raw()
 
 
 def _b64e(data: bytes) -> str:
@@ -145,7 +182,7 @@ def compute_sas_code(bundle_a: dict[str, Any], bundle_b: dict[str, Any]) -> str:
 
 @dataclass
 class DeviceIdentity:
-    """Локальный гибридный набор ключей устройства (KEM: X-Wing, подпись: ML-DSA-65 + Ed25519)."""
+    """Локальный гибридный набор ключей устройства (KEM: X-Wing, подпись: ML-DSA-65 + Ed25519 или Ed25519 на Android)."""
 
     device_id: str
     kem_mlkem: Any
@@ -153,38 +190,45 @@ class DeviceIdentity:
     sig_mldsa: Any
     sig_ed25519: ed25519.Ed25519PrivateKey
 
+    @property
+    def active_scheme(self) -> str:
+        return SCHEME if self.sig_mldsa is not None else SCHEME_ED25519_ONLY
+
     @classmethod
     def generate(cls) -> "DeviceIdentity":
         _require_pqc()
-        km = mlkem.MLKEM768PrivateKey.generate()
+        km = _generate_mlkem_priv()
         kx = x25519.X25519PrivateKey.generate()
-        dm = mldsa.MLDSA65PrivateKey.generate()
+        dm = mldsa.MLDSA65PrivateKey.generate() if _has_mldsa() else None
         de = ed25519.Ed25519PrivateKey.generate()
+        pk_mldsa = dm.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw) if dm is not None else b""
         dev_id = _bundle_fingerprint(
-            km.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw),
+            _mlkem_raw_pub(km.public_key()),
             kx.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw),
-            dm.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw),
+            pk_mldsa,
             de.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw),
         )
         return cls(device_id=dev_id, kem_mlkem=km, kem_x25519=kx, sig_mldsa=dm, sig_ed25519=de)
 
     def public_bundle(self) -> dict[str, Any]:
+        pk_mldsa = self.sig_mldsa.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw) if self.sig_mldsa is not None else b""
         return {
             "version": PROTOCOL_VERSION,
-            "scheme": SCHEME,
+            "scheme": self.active_scheme,
             "device_id": self.device_id,
-            "pk_mlkem": _b64e(self.kem_mlkem.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)),
+            "pk_mlkem": _b64e(_mlkem_raw_pub(self.kem_mlkem.public_key())),
             "pk_x25519": _b64e(self.kem_x25519.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)),
-            "pk_mldsa": _b64e(self.sig_mldsa.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)),
+            "pk_mldsa": _b64e(pk_mldsa),
             "pk_ed25519": _b64e(self.sig_ed25519.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)),
         }
 
     def export_seeds(self) -> bytes:
         payload = {
             "device_id": self.device_id,
-            "sk_mlkem": _b64e(self.kem_mlkem.private_bytes_raw()),
+            "scheme": self.active_scheme,
+            "sk_mlkem": _b64e(_mlkem_raw_priv(self.kem_mlkem)),
             "sk_x25519": _b64e(self.kem_x25519.private_bytes(Encoding.Raw, PrivateFormat.Raw, NoEncryption())),
-            "sk_mldsa": _b64e(self.sig_mldsa.private_bytes_raw()),
+            "sk_mldsa": _b64e(self.sig_mldsa.private_bytes_raw()) if self.sig_mldsa is not None else "",
             "sk_ed25519": _b64e(self.sig_ed25519.private_bytes(Encoding.Raw, PrivateFormat.Raw, NoEncryption())),
         }
         return json.dumps(payload).encode("utf-8")
@@ -193,14 +237,21 @@ class DeviceIdentity:
     def from_seeds(cls, raw_bytes: bytes) -> "DeviceIdentity":
         _require_pqc()
         data = json.loads(raw_bytes.decode("utf-8"))
-        km = mlkem.MLKEM768PrivateKey.from_seed_bytes(_b64d(data["sk_mlkem"]))
+        km = _load_mlkem_priv(_b64d(data["sk_mlkem"]))
         kx = x25519.X25519PrivateKey.from_private_bytes(_b64d(data["sk_x25519"]))
-        dm = mldsa.MLDSA65PrivateKey.from_seed_bytes(_b64d(data["sk_mldsa"]))
+        sk_mldsa_b64 = str(data.get("sk_mldsa") or "")
+        if sk_mldsa_b64:
+            if not _has_mldsa():
+                raise PqcUnavailableError("ML-DSA-65 seed requires cryptography>=48")
+            dm = mldsa.MLDSA65PrivateKey.from_seed_bytes(_b64d(sk_mldsa_b64))
+        else:
+            dm = None
         de = ed25519.Ed25519PrivateKey.from_private_bytes(_b64d(data["sk_ed25519"]))
+        pk_mldsa = dm.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw) if dm is not None else b""
         dev_id = _bundle_fingerprint(
-            km.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw),
+            _mlkem_raw_pub(km.public_key()),
             kx.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw),
-            dm.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw),
+            pk_mldsa,
             de.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw),
         )
         return cls(device_id=dev_id, kem_mlkem=km, kem_x25519=kx, sig_mldsa=dm, sig_ed25519=de)
@@ -223,9 +274,9 @@ def ensure_local_identity(memory) -> DeviceIdentity:
     memory.store.execute(
         """INSERT INTO sync_identity (user_id, device_id, scheme, pk_bundle_json, sk_enc, created_at)
            VALUES (?,?,?,?,?,?)""",
-        (memory.user_id, ident.device_id, SCHEME, json.dumps(ident.public_bundle()), sk_enc, ts),
+        (memory.user_id, ident.device_id, ident.active_scheme, json.dumps(ident.public_bundle()), sk_enc, ts),
     )
-    memory._log_audit("pqc_identity_init", ident.device_id, actor="owner", outcome="ok", detail=SCHEME)
+    memory._log_audit("pqc_identity_init", ident.device_id, actor="owner", outcome="ok", detail=ident.active_scheme)
     return ident
 
 
@@ -240,14 +291,19 @@ def register_peer(
     _require_pqc()
     pk_mlkem = _b64d(peer_bundle["pk_mlkem"])
     pk_x25519 = _b64d(peer_bundle["pk_x25519"])
-    pk_mldsa = _b64d(peer_bundle["pk_mldsa"])
+    pk_mldsa_raw = str(peer_bundle.get("pk_mldsa") or "")
+    pk_mldsa = _b64d(pk_mldsa_raw) if pk_mldsa_raw else b""
     pk_ed25519 = _b64d(peer_bundle["pk_ed25519"])
     # Валидация форматов ключей при регистрации
-    mlkem.MLKEM768PublicKey.from_public_bytes(pk_mlkem)
+    _load_mlkem_pub(pk_mlkem)
     x25519.X25519PublicKey.from_public_bytes(pk_x25519)
-    mldsa.MLDSA65PublicKey.from_public_bytes(pk_mldsa)
+    if pk_mldsa:
+        if not _has_mldsa():
+            raise PqcUnavailableError("peer uses ML-DSA-65 which requires cryptography>=48")
+        mldsa.MLDSA65PublicKey.from_public_bytes(pk_mldsa)
     ed25519.Ed25519PublicKey.from_public_bytes(pk_ed25519)
 
+    peer_scheme = SCHEME if pk_mldsa else SCHEME_ED25519_ONLY
     dev_id = _bundle_fingerprint(pk_mlkem, pk_x25519, pk_mldsa, pk_ed25519)
     if peer_bundle.get("device_id") and peer_bundle["device_id"] != dev_id:
         raise PacketVerificationError("peer bundle device_id mismatch")
@@ -265,7 +321,7 @@ def register_peer(
 
     canonical = {
         "version": PROTOCOL_VERSION,
-        "scheme": SCHEME,
+        "scheme": peer_scheme,
         "device_id": dev_id,
         "pk_mlkem": _b64e(pk_mlkem),
         "pk_x25519": _b64e(pk_x25519),
@@ -395,7 +451,7 @@ def seal_sync_packet(memory, peer_device_id: str) -> dict[str, Any]:
     pk_mlkem_bytes = _b64d(peer_bundle["pk_mlkem"])
     pk_x25519_bytes = _b64d(peer_bundle["pk_x25519"])
 
-    peer_mlkem_pk = mlkem.MLKEM768PublicKey.from_public_bytes(pk_mlkem_bytes)
+    peer_mlkem_pk = _load_mlkem_pub(pk_mlkem_bytes)
     peer_x25519_pk = x25519.X25519PublicKey.from_public_bytes(pk_x25519_bytes)
 
     ss_m, ct_mlkem = peer_mlkem_pk.encapsulate()
@@ -404,10 +460,11 @@ def seal_sync_packet(memory, peer_device_id: str) -> dict[str, Any]:
     ss_x = eph_x.exchange(peer_x25519_pk)
     ss_xwing = _xwing_combine(ss_m, ss_x, ct_x25519, pk_x25519_bytes)
 
+    use_scheme = local_ident.active_scheme
     session_nonce = secrets.token_bytes(16)
     transcript = json.dumps({
         "v": PROTOCOL_VERSION,
-        "scheme": SCHEME,
+        "scheme": use_scheme,
         "sender": local_ident.device_id,
         "receiver": peer_bundle["device_id"],
         "nonce": _b64e(session_nonce),
@@ -420,12 +477,12 @@ def seal_sync_packet(memory, peer_device_id: str) -> dict[str, Any]:
 
     signed_blob = transcript + b"|" + ct_mlkem + b"|" + ct_x25519 + b"|" + gcm_nonce + b"|" + ciphertext
     sig_ed = local_ident.sig_ed25519.sign(signed_blob)
-    sig_mldsa = local_ident.sig_mldsa.sign(signed_blob)
+    sig_mldsa = local_ident.sig_mldsa.sign(signed_blob) if local_ident.sig_mldsa is not None else b""
 
-    memory._log_audit("pqc_seal", peer_device_id, actor="owner", outcome="ok", detail=SCHEME)
+    memory._log_audit("pqc_seal", peer_device_id, actor="owner", outcome="ok", detail=use_scheme)
     return {
         "version": PROTOCOL_VERSION,
-        "scheme": SCHEME,
+        "scheme": use_scheme,
         "sender_id": local_ident.device_id,
         "receiver_id": peer_bundle["device_id"],
         "session_nonce": _b64e(session_nonce),
@@ -442,7 +499,8 @@ def open_sync_packet(memory, packet: dict[str, Any]) -> dict[str, Any]:
     """Проверяет обе подписи (Ed25519 + ML-DSA-65) доверенного пира и расшифровывает пакет."""
     _require_pqc()
     local_ident = ensure_local_identity(memory)
-    if packet.get("version") != PROTOCOL_VERSION or packet.get("scheme") != SCHEME:
+    pkt_scheme = str(packet.get("scheme") or "")
+    if packet.get("version") != PROTOCOL_VERSION or pkt_scheme not in SUPPORTED_SCHEMES:
         raise PacketVerificationError("unsupported protocol version or PQC scheme")
     if packet.get("receiver_id") != local_ident.device_id:
         raise PacketDecryptionError("packet is addressed to a different device_id")
@@ -456,19 +514,29 @@ def open_sync_packet(memory, packet: dict[str, Any]) -> dict[str, Any]:
         raise PeerNotTrustedError(f"sender {sender_id} is not SAS-trusted")
 
     peer_bundle = json.loads(peer_row["pk_bundle_json"])
+    peer_has_mldsa = bool(peer_bundle.get("pk_mldsa"))
+    if peer_has_mldsa and pkt_scheme != SCHEME:
+        raise PacketVerificationError("downgrade rejected: peer requires ML-DSA-65 signature")
+    if (not peer_has_mldsa) and pkt_scheme != SCHEME_ED25519_ONLY:
+        raise PacketVerificationError("scheme mismatch for peer without ML-DSA-65 key")
+
     sender_ed_pk = ed25519.Ed25519PublicKey.from_public_bytes(_b64d(peer_bundle["pk_ed25519"]))
-    sender_mldsa_pk = mldsa.MLDSA65PublicKey.from_public_bytes(_b64d(peer_bundle["pk_mldsa"]))
+    sender_mldsa_pk = None
+    if peer_has_mldsa:
+        if not _has_mldsa():
+            raise PqcUnavailableError("cannot verify ML-DSA-65 packet without cryptography>=48")
+        sender_mldsa_pk = mldsa.MLDSA65PublicKey.from_public_bytes(_b64d(peer_bundle["pk_mldsa"]))
 
     ct_mlkem = _b64d(packet["ct_mlkem"])
     ct_x25519 = _b64d(packet["ct_x25519"])
     gcm_nonce = _b64d(packet["gcm_nonce"])
     ciphertext = _b64d(packet["ciphertext"])
     sig_ed = _b64d(packet["sig_ed25519"])
-    sig_mldsa = _b64d(packet["sig_mldsa65"])
+    sig_mldsa = _b64d(packet.get("sig_mldsa65") or "") if peer_has_mldsa else b""
 
     transcript = json.dumps({
         "v": PROTOCOL_VERSION,
-        "scheme": SCHEME,
+        "scheme": pkt_scheme,
         "sender": sender_id,
         "receiver": local_ident.device_id,
         "nonce": packet["session_nonce"],
@@ -477,7 +545,8 @@ def open_sync_packet(memory, packet: dict[str, Any]) -> dict[str, Any]:
 
     try:
         sender_ed_pk.verify(sig_ed, signed_blob)
-        sender_mldsa_pk.verify(sig_mldsa, signed_blob)
+        if sender_mldsa_pk is not None:
+            sender_mldsa_pk.verify(sig_mldsa, signed_blob)
     except InvalidSignature as exc:
         raise PacketVerificationError("hybrid packet signature verification failed") from exc
 

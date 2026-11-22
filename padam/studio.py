@@ -9,7 +9,7 @@
 Безопасность:
 - Весь хранимый текст выводится исключительно через textContent.
 - Заголовок Content-Security-Policy запрещает любые внешние скрипты, стили, шрифты и картинки:
-  default-src 'none'; script-src 'nonce-...'; style-src 'nonce-...'; connect-src 'self'; img-src 'none'
+  default-src 'none'; script-src 'nonce-...'; style-src 'nonce-...'; connect-src 'self'; img-src 'self'; worker-src 'self'
 - Четыре языка интерфейса: ru, en, es, zh.
 - Две темы оформления: тёмная (фирменный стиль CODE Eternal / AIfa) и светлая (высокий контраст AA/AAA).
 """
@@ -5079,11 +5079,223 @@ _STRINGS_UX_2011: dict[str, dict[str, str]] = {
 for _lg, _ex_ux in _STRINGS_UX_2011.items():
     STRINGS[_lg].update(_ex_ux)
 
+_STRINGS_BRIDGE_2111 = {
+    "ru": {
+        "bridge_title": "PADAM за 60 секунд · Что можно сделать прямо сейчас",
+        "bridge_sub": "Четыре главных действия без поиска по вкладкам: защита ИИ-агентов, аудит сайта клиента, заработок и утренний пульс за $0.",
+        "bridge_go_shield": "🛡️ Защитить агентов и секреты",
+        "bridge_go_web": "🌐 Проверить сайт на уязвимости JS",
+        "bridge_go_earn": "💼 Открыть биржи, магазины и почту",
+        "bridge_pulse_btn": "⚡ Утренний пульс ($0)",
+        "bridge_toggle_hide": "Свернуть",
+        "bridge_toggle_show": "Показать мостик",
+        "bridge_pulse_loading": "Собираю утренний пульс ($0)…",
+        "bridge_pulse_deadlines": "Дедлайны (72ч)",
+        "bridge_pulse_attention": "Внимание",
+        "bridge_pulse_earning": "Заработок",
+        "bridge_pulse_commits": "Последние коммиты",
+        "bridge_pulse_none": "Срочных дедлайнов на 72ч нет.",
+        "earn_wiz_prepared_msg": "Подготовлено черновиков: {n}",
+        "earn_wiz_template_note": "Демо-шаблон по анкете (для боевых откликов загрузите живые заказы)",
+    },
+    "en": {
+        "bridge_title": "PADAM in 60 Seconds · Quick Actions",
+        "bridge_sub": "Four core workflows without hunting through tabs: Agentic Shield, website JS scanner, Earning Hub and zero-cost Morning Pulse.",
+        "bridge_go_shield": "🛡️ Protect Agents & Secrets",
+        "bridge_go_web": "🌐 Scan Website JS Supply-Chain",
+        "bridge_go_earn": "💼 Open Platforms, Stores & Mail",
+        "bridge_pulse_btn": "⚡ Morning Pulse ($0)",
+        "bridge_toggle_hide": "Collapse",
+        "bridge_toggle_show": "Show Bridge",
+        "bridge_pulse_loading": "Collecting Morning Pulse ($0)…",
+        "bridge_pulse_deadlines": "Deadlines (72h)",
+        "bridge_pulse_attention": "Attention",
+        "bridge_pulse_earning": "Earning",
+        "bridge_pulse_commits": "Recent Commits",
+        "bridge_pulse_none": "No urgent deadlines within 72h.",
+        "earn_wiz_prepared_msg": "Prepared job drafts: {n}",
+        "earn_wiz_template_note": "Questionnaire template preview (supply live jobs for real bidding)",
+    },
+    "es": {
+        "bridge_title": "PADAM en 60 segundos · Accesos rápidos",
+        "bridge_sub": "Cuatro flujos clave sin buscar entre pestañas: Escudo Agéntico, escáner JS web, Ingresos y Pulso Matutino ($0).",
+        "bridge_go_shield": "🛡️ Proteger agentes y secretos",
+        "bridge_go_web": "🌐 Escanear JS de un sitio web",
+        "bridge_go_earn": "💼 Abrir plataformas, tiendas y correo",
+        "bridge_pulse_btn": "⚡ Pulso Matutino ($0)",
+        "bridge_toggle_hide": "Contraer",
+        "bridge_toggle_show": "Mostrar guía",
+        "bridge_pulse_loading": "Recopilando Pulso Matutino ($0)…",
+        "bridge_pulse_deadlines": "Plazos (72h)",
+        "bridge_pulse_attention": "Atención",
+        "bridge_pulse_earning": "Ingresos",
+        "bridge_pulse_commits": "Últimos commits",
+        "bridge_pulse_none": "Sin plazos urgentes en las próximas 72h.",
+        "earn_wiz_prepared_msg": "Borradores preparados: {n}",
+        "earn_wiz_template_note": "Plantilla de muestra según cuestionario",
+    },
+    "zh": {
+        "bridge_title": "60 秒玩转 PADAM · 快速入口",
+        "bridge_sub": "无需翻找标签页的四大核心操作：护盾防线、网站 JS 安全扫描、收益中心与零成本 ($0) 晨间脉搏。",
+        "bridge_go_shield": "🛡️ 保护智能体与密钥",
+        "bridge_go_web": "🌐 扫描网站 JS 供应链风险",
+        "bridge_go_earn": "💼 打开平台、商店与邮件",
+        "bridge_pulse_btn": "⚡ 晨间脉搏 ($0)",
+        "bridge_toggle_hide": "收起",
+        "bridge_toggle_show": "展开引导",
+        "bridge_pulse_loading": "正在汇总晨间脉搏 ($0)…",
+        "bridge_pulse_deadlines": "72 小时截止",
+        "bridge_pulse_attention": "待处理",
+        "bridge_pulse_earning": "收益状态",
+        "bridge_pulse_commits": "最近提交",
+        "bridge_pulse_none": "未来 72 小时暂无紧急截止日期。",
+        "earn_wiz_prepared_msg": "已生成任务草稿：{n}",
+        "earn_wiz_template_note": "基于问卷的示例模板（接入真实订单后可正式投标）",
+    },
+}
+for _lg, _ex_br in _STRINGS_BRIDGE_2111.items():
+    STRINGS[_lg].update(_ex_br)
+
+_STRINGS_WALLET_TERMS_2211 = {
+    "ru": {
+        "wal_gen_btn": "⚡ Создать кошелёк ($0)",
+        "wal_secret_warn": "СОХРАНИТЕ КЛЮЧ СЕЙЧАС — он зашифрован локально (AES-256-GCM) и больше не будет показан. Владелец — только вы:",
+        "wal_bound_lbl": "Привязан к биржам и выплатам",
+        "wal_title": "Криптокошельки владельца (USDT TRC20 · Solana · EVM · Bitcoin · Arweave)",
+        "terms_box_title": "1. Обязательное согласие с правилами и комиссией CODE (перед установкой и биржами)",
+        "terms_status_ok": "✅ Соглашение принято (квитанция HMAC активна)",
+        "terms_status_pending": "⚠️ Отметьте все 3 пункта ниже, чтобы активировать биржи и автопилот",
+        "terms_accept_btn": "Принять все 3 условия и активировать",
+        "terms_need_all": "Отметьте все 3 обязательные галочки соглашения!",
+        "fee_inv_title": "Счета обязательной комиссии CODE (15% / 20% и казна $GALATIN)",
+        "fee_inv_refresh": "Обновить счета комиссии",
+        "fee_inv_empty": "Оплаченных заказов с начисленной комиссией пока нет.",
+        "terms_lbl_1": "Лицензия (AGPL-3.0-only / Apache-2.0 / коммерция CODE Eternal LLC)",
+        "terms_lbl_2": "Обязательная комиссия CODE (15% / 20%) и распределение $GALATIN",
+        "terms_lbl_3": "Запрет обхода комиссии и подмены казны (No-Bypass)",
+        "pp_tree_meta": "Дерево Solana",
+        "pp_places": "мест",
+        "pp_frozen": "заморожено имён",
+        "pp_agent": "Агент",
+        "pp_tier": "тариф",
+        "pp_tree": "дерево",
+        "pp_orders": "заказы",
+        "pp_rating": "рейтинг",
+        "pp_empty": "Пока нет выпущенных агентских cNFT-паспортов.",
+        "ag_on": "🟢 Сеть включена",
+        "ag_off": "⏸ Сеть CODE Agora выключена владельцем",
+        "ag_author": "Автор",
+        "ag_budget": "Бюджет",
+        "ag_empty": "В CODE Agora пока нет сообщений.",
+    },
+    "en": {
+        "wal_gen_btn": "⚡ Generate Offline Wallet ($0)",
+        "wal_secret_warn": "BACKUP THIS KEY NOW — encrypted locally (AES-256-GCM) and never shown again. You have sole custody:",
+        "wal_bound_lbl": "Bound to platforms & payouts",
+        "wal_title": "Owner Crypto Wallets (USDT TRC20 · Solana · EVM · Bitcoin · Arweave)",
+        "terms_box_title": "1. Mandatory EULA, Terms & CODE Commission Rules (Required Before Onboarding)",
+        "terms_status_ok": "✅ Terms accepted (HMAC receipt verified)",
+        "terms_status_pending": "⚠️ Check all 3 boxes below to activate platforms and autopilot",
+        "terms_accept_btn": "Accept All 3 Terms & Activate",
+        "terms_need_all": "Please check all 3 mandatory agreement boxes!",
+        "fee_inv_title": "Mandatory CODE Commission Invoices (15% / 20% & $GALATIN Treasury)",
+        "fee_inv_refresh": "Refresh Fee Invoices",
+        "fee_inv_empty": "No settled order commission invoices yet.",
+        "terms_lbl_1": "License (AGPL-3.0-only / Apache-2.0 / CODE Eternal LLC Commercial)",
+        "terms_lbl_2": "Mandatory CODE Commission (15% / 20%) & $GALATIN Split",
+        "terms_lbl_3": "Anti-Fraud & No-Bypass Covenant",
+        "pp_tree_meta": "Solana Tree",
+        "pp_places": "slots",
+        "pp_frozen": "frozen names",
+        "pp_agent": "Agent",
+        "pp_tier": "tier",
+        "pp_tree": "tree",
+        "pp_orders": "orders",
+        "pp_rating": "rating",
+        "pp_empty": "No agent cNFT passports minted yet.",
+        "ag_on": "🟢 Network enabled",
+        "ag_off": "⏸ CODE Agora network disabled by owner",
+        "ag_author": "Author",
+        "ag_budget": "Budget",
+        "ag_empty": "No posts in CODE Agora yet.",
+    },
+    "es": {
+        "wal_gen_btn": "⚡ Crear billetera ($0)",
+        "wal_secret_warn": "GUARDA ESTA CLAVE AHORA — cifrada localmente (AES-256-GCM), se muestra una sola vez. Solo tú eres dueño:",
+        "wal_bound_lbl": "Vinculada a plataformas y cobros",
+        "wal_title": "Billeteras del Propietario (USDT TRC20 · Solana · EVM · Bitcoin · Arweave)",
+        "terms_box_title": "1. Acuerdo obligatorio EULA y Comisión CODE (Requerido antes de operar)",
+        "terms_status_ok": "✅ Términos aceptados (recibo HMAC verificado)",
+        "terms_status_pending": "⚠️ Marca las 3 casillas para activar plataformas y piloto automático",
+        "terms_accept_btn": "Aceptar las 3 condiciones y activar",
+        "terms_need_all": "¡Debes marcar las 3 casillas obligatorias!",
+        "fee_inv_title": "Facturas obligatorias de comisión CODE (15% / 20% y Tesorería $GALATIN)",
+        "fee_inv_refresh": "Actualizar facturas",
+        "fee_inv_empty": "Aún no hay facturas de comisión emitidas.",
+        "terms_lbl_1": "Licencia (AGPL-3.0-only / Apache-2.0 / Comercial CODE Eternal LLC)",
+        "terms_lbl_2": "Comisión obligatoria CODE (15% / 20%) y reparto $GALATIN",
+        "terms_lbl_3": "Pacto antifraude y No-Bypass",
+        "pp_tree_meta": "Árbol Solana",
+        "pp_places": "cupos",
+        "pp_frozen": "nombres bloqueados",
+        "pp_agent": "Agente",
+        "pp_tier": "nivel",
+        "pp_tree": "árbol",
+        "pp_orders": "pedidos",
+        "pp_rating": "valoración",
+        "pp_empty": "Aún no hay pasaportes cNFT de agentes.",
+        "ag_on": "🟢 Red activada",
+        "ag_off": "⏸ Red CODE Agora desactivada por el propietario",
+        "ag_author": "Autor",
+        "ag_budget": "Presupuesto",
+        "ag_empty": "Aún no hay mensajes en CODE Agora.",
+    },
+    "zh": {
+        "wal_gen_btn": "⚡ 离线生成钱包 ($0)",
+        "wal_secret_warn": "请立即离线备份私钥 — 已使用本地 AES-256-GCM 加密，仅显示一次，资产完全归您所有：",
+        "wal_bound_lbl": "已绑定平台与收款设置",
+        "wal_title": "主人加密钱包（USDT TRC20 · Solana · EVM · Bitcoin · Arweave）",
+        "terms_box_title": "1. 强制许可协议与 CODE 佣金条款（接入平台前必选）",
+        "terms_status_ok": "✅ 已签署生效（HMAC 回执已验证）",
+        "terms_status_pending": "⚠️ 请勾选下方全部 3 项条款后再启用平台与自动接单",
+        "terms_accept_btn": "同意全部 3 项条款并激活",
+        "terms_need_all": "请先勾选全部 3 项强制协议！",
+        "fee_inv_title": "强制 CODE 佣金账单（15% / 20% 与 $GALATIN 国库分账）",
+        "fee_inv_refresh": "刷新佣金账单",
+        "fee_inv_empty": "暂无已结算订单的佣金账单。", 
+        "terms_lbl_1": "许可规则（AGPL-3.0-only / Apache-2.0 / CODE Eternal LLC 商业许可）",
+        "terms_lbl_2": "强制 CODE 佣金（15% / 20%）与 $GALATIN 国库分配",
+        "terms_lbl_3": "反欺诈与反绕过协议（No-Bypass）",
+        "pp_tree_meta": "Solana 树",
+        "pp_places": "容量",
+        "pp_frozen": "已保留名称",
+        "pp_agent": "智能体",
+        "pp_tier": "套餐",
+        "pp_tree": "分片树",
+        "pp_orders": "订单数",
+        "pp_rating": "评分",
+        "pp_empty": "暂未铸造任何智能体 cNFT 护照。",
+        "ag_on": "🟢 网络已开启",
+        "ag_off": "⏸ CODE Agora 网络已被主人关闭",
+        "ag_author": "作者",
+        "ag_budget": "预算",
+        "ag_empty": "CODE Agora 暂无消息。",
+    },
+}
+for _lg, _ex_wt in _STRINGS_WALLET_TERMS_2211.items():
+    STRINGS[_lg].update(_ex_wt)
+
 
 
 
 _CSS = """
 .stop-all{font-weight:800;letter-spacing:.02em;min-width:180px}
+.bridge-card{margin-bottom:14px;border:1px solid var(--accent,#38bdf8)}
+.bridge-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.bridge-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.bridge-pulse-out{margin-top:10px;font-size:13px;line-height:1.45}
+.wal-secret-box{margin-top:10px;padding:10px;border:1px solid #f59e0b;border-radius:8px;background:rgba(245,158,11,.10);word-break:break-all;font-size:12px}
+.terms-chk-row{display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-size:13px;line-height:1.4;cursor:pointer}
 
 .att-actions.bench-actions{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px 14px;align-items:start}
 .bench-actions .btn,.bench-actions .btn-primary{width:100%}
@@ -6379,11 +6591,23 @@ function applyI18n() {
   if ($('aifa-sort-btn')) {
     $('aifa-sort-btn').textContent = (window._aifaSortNewest === true) ? (S.aifa_sort_newest || 'Newest first') : (S.aifa_sort_oldest || 'Oldest first');
   }
-  if (typeof renderFamilySetupSnapshot === 'function' && window._famSetupSnap) {
+  if (typeof renderFamilySetupSnapshot === 'function' && window._famSetupSnap && window._famSetupSnap.lang === currentLang) {
     try { renderFamilySetupSnapshot(window._famSetupSnap); } catch (e) {}
   }
+  if (typeof _renderEarningDashboard === 'function' && window._lastEarnSnap) {
+    try { _renderEarningDashboard(window._lastEarnSnap, window._lastEarnSibs || {}, window._lastEarnCoop || {}); } catch (e) {}
+  }
+  if (typeof _wizDefaults === 'function') { try { _wizDefaults(); } catch (e) {} }
+  if (typeof _renderAifaSecData === 'function' && window._lastAifaSecData) { try { _renderAifaSecData(window._lastAifaSecData); } catch (e) {} }
+  if (typeof renderTopbarStats === 'function' && window._lastTopStats) {
+    try { renderTopbarStats(window._lastTopStats); } catch (e) {}
+  }
+  for (const staleId of ['fam-setup', 'fam-memory', 'fam-agents', 'fam-roles-grid', 'pp-list', 'ag-feed-list', 'ag-status-out', 'fd-list', 'ff-list', 'ff-reflexes', 'rt-list', 'att-qa-summary', 'att-aifasec-summary', 'att-aifasec-honest', 'att-aifasec-standards', 'att-aifasec-domains', 'earn-mail-status', 'earn-partner-status', 'terms-summary-txt', 'review-list', 'wal-list', 'wal-earn-list', 'earn-fee-invoices-out', 'ov-kinds-list', 'ov-attention-box', 'ov-sleep-info', 'ov-agents-grid', 'ov-doctor-banner', 'ov-doctor-checks']) {
+    const el = $(staleId);
+    if (el && el.dataset && el.dataset.lang !== currentLang) { el.textContent = '…'; }
+  }
   try {
-    if (['help', 'attacks', 'family', 'aifa', 'l3', 'earning', 'graph'].includes(activeTab)) loadActiveTab();
+    if (['help', 'attacks', 'family', 'bench', 'aifa', 'l3', 'earning', 'graph'].includes(activeTab)) loadActiveTab();
   } catch (e) {}
 }
 
@@ -6454,13 +6678,20 @@ function switchTab(tab) {
   loadActiveTab();
 }
 
+function renderTopbarStats(s) {
+  if (!s || !$('topbar-stats')) return;
+  $('topbar-stats').textContent = s.active + ' ' + S.records + ' · ' +
+    s.episodes_pending + ' ' + S.pending_ep + ' · ' + s.backend +
+    (s.stale_vectors ? (' · ' + s.stale_vectors + ' ' + S.stale_vec) : '');
+}
 async function refreshTopbarStats() {
   if (!token) { say(S.no_token, false); return; }
+  const reqLang = currentLang;
   try {
     const s = await api('/stats');
-    $('topbar-stats').textContent = s.active + ' ' + S.records + ' · ' +
-      s.episodes_pending + ' ' + S.pending_ep + ' · ' + s.backend +
-      (s.stale_vectors ? (' · ' + s.stale_vectors + ' ' + S.stale_vec) : '');
+    window._lastTopStats = s;
+    if (reqLang !== currentLang) return;
+    renderTopbarStats(s);
     const badge = $('review-badge');
     if (badge) {
       badge.textContent = String(s.quarantined || 0);
@@ -6679,8 +6910,13 @@ let _ovRetry = 0;
 async function loadOverview() {
   refreshWorkspacesCache();
   if (!token) { say(S.no_token, false); return; }
+  const reqLang = currentLang;
+  for (const oid of ['ov-kinds-list', 'ov-attention-box', 'ov-sleep-info', 'ov-agents-grid', 'ov-doctor-banner', 'ov-doctor-checks']) {
+    if ($(oid)) $(oid).dataset.lang = reqLang;
+  }
   try {
     const data = await api('/overview');
+    if (reqLang !== currentLang) return;
     _ovRetry = 0;
     const st = data.stats || {};
     const doc = data.doctor || {};
@@ -7150,8 +7386,11 @@ async function loadCouncil() {
 
 async function loadReview(skip) {
   const list = $('review-list');
+  const reqLang = currentLang;
+  if (list) list.dataset.lang = reqLang;
   try {
     const r = await api('/records?view=review&limit=100&offset=0');
+    if (reqLang !== currentLang) return;
     list.replaceChildren();
     const rows = (r.records || []).filter(x => !(skip && skip.has(x.id)));
     // Очередь видна сразу; консилиум работает следом и убирает из неё то, что разложил сам.
@@ -7959,7 +8198,7 @@ async function loadL3() {
     const rk = d.record_keys || {};
     $('l3-keys-status').textContent = rk.passphrase_protected ? S.l3_keys_protected : S.l3_keys_open;
 
-    try { if (typeof renderWalletsWidget === 'function') renderWalletsWidget('wal-l3-list', ['SOLANA', 'ARWEAVE'], d.wallets || null); } catch (e) {}
+    try { if (typeof renderWalletsWidget === 'function') renderWalletsWidget('wal-l3-list', ['SOLANA', 'ARWEAVE', 'BITCOIN'], d.wallets || null); } catch (e) {}
     const list = $('l3-anchors-list');
     list.replaceChildren();
     const anchors = d.anchors || [];
@@ -8371,10 +8610,13 @@ async function loadAttacks() {
   }
 }
 async function loadRedteamRounds() {
+  const reqLang = currentLang;
   const box = $('rt-list');
   if (!box) return;
+  box.dataset.lang = reqLang;
   let d = null;
   try { d = await api('/api/v2/redteam/rounds'); } catch (e) { box.textContent = String(e.message || e); return; }
+  if (reqLang !== currentLang) return;
   box.textContent = '';
   const colName = c => S['rt_col_' + String(c).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')] || c;
   for (const r of (d.rounds || []).slice().reverse()) {
@@ -8410,17 +8652,13 @@ async function loadRedteamRounds() {
     box.appendChild(tbl);
   }
 }
-async function renderAifaSec(fresh = false) {
-  if (!token) return;
+function _renderAifaSecData(r) {
   const sumEl = $('att-aifasec-summary');
   const domEl = $('att-aifasec-domains');
-  if (!sumEl || !domEl) return;
-  if (fresh) sumEl.textContent = S.att_aifasec_running || 'Running...';
-  let r = null;
-  // 20.11.2026: при отказе сервера здесь стоял молчаливый return — «Running…» висел вечно (APK 0.7.0 на эмуляторе).
-  try { r = await api(fresh ? '/api/v2/aifa-security/run' : '/api/v2/aifa-security', fresh ? {} : undefined); }
-  catch (e) { sumEl.textContent = (S.att_aifasec_failed || '{e}').replace('{e}', String((e && e.message) || e)); return; }
-  if (r && !(r.summary && r.summary.grade) && r.error) { sumEl.textContent = (S.att_aifasec_failed || '{e}').replace('{e}', String(r.error)); return; }
+  if (!sumEl || !domEl || !r) return;
+  if (!(r.summary && r.summary.grade) && r.error) { sumEl.textContent = (S.att_aifasec_failed || '{e}').replace('{e}', String(r.error)); return; }
+  sumEl.dataset.lang = currentLang;
+  domEl.dataset.lang = currentLang;
   const sm = (r && r.summary) || {};
   if (sm.grade) {
     sumEl.textContent = (S.bench_grade || '').replace('{g}', sm.grade).replace('{p}', sm.score_pct).replace('{n}', sm.passed).replace('{a}', sm.applicable).replace('{h}', String(sm.report_sha256 || '').slice(0, 16));
@@ -8429,6 +8667,7 @@ async function renderAifaSec(fresh = false) {
     sumEl.textContent += ' · ' + fresh_ + (r.stale ? ' · ' + (S.bench_stale || '') : '');
     let hn = $('att-aifasec-honest');
     if (!hn) { hn = _el('p', 'panel-sub'); hn.id = 'att-aifasec-honest'; sumEl.insertAdjacentElement('afterend', hn); }
+    hn.dataset.lang = currentLang;
     hn.textContent = S.bench_honest || r.honest_note || '';
     try {
       let sp = $('att-star-prompt');
@@ -8454,6 +8693,7 @@ async function renderAifaSec(fresh = false) {
   const stdEl = $('att-aifasec-standards');
   if (stdEl && r && r.standards_summary) {
     const st = r.standards_summary;
+    stdEl.dataset.lang = currentLang;
     stdEl.textContent = (S.bench_std || '') + ': OWASP LLM: ' + (st.owasp_llm_covered || []).join(', ')
       + ' · Agentic: ' + (st.owasp_agentic_covered || []).join(', ')
       + ' · MITRE: ' + (st.mitre_atlas_covered || []).join(', ');
@@ -8486,6 +8726,23 @@ async function renderAifaSec(fresh = false) {
     domEl.appendChild(det);
   }
 }
+async function renderAifaSec(fresh = false) {
+  if (!token) return;
+  const sumEl = $('att-aifasec-summary');
+  const domEl = $('att-aifasec-domains');
+  if (!sumEl || !domEl) return;
+  if (!fresh && window._lastAifaSecData) {
+    _renderAifaSecData(window._lastAifaSecData);
+    return;
+  }
+  if (fresh) sumEl.textContent = S.att_aifasec_running || 'Running...';
+  let r = null;
+  // 20.11.2026: при отказе сервера здесь стоял молчаливый return — «Running…» висел вечно (APK 0.7.0 на эмуляторе).
+  try { r = await api(fresh ? '/api/v2/aifa-security/run' : '/api/v2/aifa-security', fresh ? {} : undefined); }
+  catch (e) { sumEl.textContent = (S.att_aifasec_failed || '{e}').replace('{e}', String((e && e.message) || e)); return; }
+  if (r && r.summary && r.summary.grade) window._lastAifaSecData = r;
+  _renderAifaSecData(r);
+}
 async function _downloadBench(url, fname) {
   if (!token) return;
   const resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
@@ -8499,10 +8756,13 @@ async function _downloadBench(url, fname) {
 }
 async function loadQaBench() {
   if (!token) return;
+  const reqLang = currentLang;
   const qaEl = $('att-qa-summary');
   if (!qaEl) return;
   let q = null;
   try { q = await api('/api/v2/qa-benchmark'); } catch (e) { return; }
+  if (reqLang !== currentLang) return;
+  qaEl.dataset.lang = reqLang;
   qaEl.textContent = '';
   if (!q || (!q.longmemeval && !q.locomo)) {
     qaEl.textContent = S.bench_qa_none || (q && q.status) || '';
@@ -8595,8 +8855,10 @@ const _verBtn = $('att-sec-verify');
 if (_verBtn) _verBtn.addEventListener('click', () => verifyEdSeal());
 async function loadHelp() {
   if (!token) return;
+  const reqLang = currentLang;
   let d = null;
-  try { d = await api('/help?lang=' + encodeURIComponent(currentLang)); } catch (e) { return; }
+  try { d = await api('/help?lang=' + encodeURIComponent(reqLang)); } catch (e) { return; }
+  if (reqLang !== currentLang) return;
   const root = $('help-body');
   if (!root) return;
   root.textContent = '';
@@ -9522,6 +9784,7 @@ function renderFamilySetupSnapshot(snap) {
 async function loadFamilySetup() {
   const box = $('fam-setup');
   if (!box || !token) return;
+  const reqLang = currentLang;
   // 20.11: после смены языка старый текст блока не висит, пока идут запросы (brain/status?probe=1 бывает медленным)
   if (box.dataset.lang !== currentLang) {
     box.textContent = '…'; box.dataset.lang = currentLang;
@@ -9529,13 +9792,15 @@ async function loadFamilySetup() {
   }
   const get = (u) => api(u).catch(() => null);
   const [sib, br, cab, par, wiz, sto, stt, mem] = await Promise.all([
-    get('/api/v2/ark/siblings'), get('/api/v2/brain/status?probe=1'), get('/api/v2/cabinet/status?lang=' + encodeURIComponent(currentLang)),
+    get('/api/v2/ark/siblings?lang=' + encodeURIComponent(reqLang)), get('/api/v2/brain/status?probe=1'), get('/api/v2/cabinet/status?lang=' + encodeURIComponent(reqLang)),
     get('/api/v2/ark/partner'), get('/api/v2/ark/wizard'), get('/api/v2/ark/stores'), get('/stats'), get('/records?view=active&limit=5&offset=0')]);
+  if (reqLang !== currentLang) return;
   const now = Date.now();
   const agents = ((sib && sib.siblings) || []);
   const live = agents.filter(a => { const t = Date.parse(String(a.last_heartbeat_at || '')); return isFinite(t) && now - t < 3600 * 1000; }).length;
   const probe = br && br.local_probe; const nm = probe && probe.models ? probe.models.length : 0;
   window._famSetupSnap = {
+    lang: reqLang,
     live,
     totalAgents: agents.length,
     nm,
@@ -9554,6 +9819,7 @@ if ($('fam-memory-all')) $('fam-memory-all').onclick = () => switchTab('feed');
 async function renderRoleMatrix(rolesList, agentsList) {
   const grid = $('fam-roles-grid');
   if (!grid) return;
+  grid.dataset.lang = currentLang;
   grid.textContent = '';
   const allAgents = (agentsList || []).map(a => ({ id: a.agent_id, name: a.display_name || a.agent_id }));
   if (!allAgents.some(a => a.id === 'ollama')) allAgents.push({ id: 'ollama', name: 'Ollama ($0 Local)' });
@@ -9594,12 +9860,15 @@ async function renderRoleMatrix(rolesList, agentsList) {
 async function loadFamily() {
   const box = $('fam-agents');
   if (!box || !token) return;
-  box.textContent = '';
+  const reqLang = currentLang;
+  box.dataset.lang = reqLang;
+  box.textContent = '…';
+  loadPassportsAndAgora();
+  loadFamilyReflexes();
   try {
-    const [sib, st] = await Promise.all([
-      api('/api/v2/ark/siblings?lang=' + encodeURIComponent(currentLang)).catch(() => ({ siblings: [] })),
-      api('/api/v2/brain/status?probe=1').catch(() => ({})),
-    ]);
+    const sib = await api('/api/v2/ark/siblings?lang=' + encodeURIComponent(reqLang)).catch(() => ({ siblings: [] }));
+    if (reqLang !== currentLang) return;
+    box.textContent = '';
     const list = ((sib && sib.siblings) || []).slice();
     const sessions = (sib && sib.sessions) || [];
     const rolesList = (sib && sib.roles) || [];
@@ -9657,50 +9926,60 @@ async function loadFamily() {
       item.appendChild(actRow);
       box.appendChild(item);
     }
-    const probe = (st && st.local_probe) || null;
     const ol = _el('div', 'earn-item');
     ol.appendChild(_el('strong', '', S.fam_ollama));
-    const n = probe && probe.models ? probe.models.length : 0;
-    ol.appendChild(_el('div', 'earn-meta', (probe && probe.online && n) ? (S.fam_ollama_on + ': ' + n + ' · ' + probe.models.slice(0, 6).join(', ')) : S.fam_ollama_off));
+    const olMeta = _el('div', 'earn-meta', '…');
+    ol.appendChild(olMeta);
     box.appendChild(ol);
-    await loadPassportsAndAgora();
-  } catch (e) { box.appendChild(_el('p', 'panel-sub', String(e.message || e))); }
+    api('/api/v2/brain/status?probe=1').then(st => {
+      if (reqLang !== currentLang) return;
+      const probe = (st && st.local_probe) || null;
+      const n = probe && probe.models ? probe.models.length : 0;
+      olMeta.textContent = (probe && probe.online && n) ? (S.fam_ollama_on + ': ' + n + ' · ' + probe.models.slice(0, 6).join(', ')) : S.fam_ollama_off;
+    }).catch(() => { if (reqLang === currentLang) olMeta.textContent = S.fam_ollama_off; });
+  } catch (e) { box.textContent = ''; box.appendChild(_el('p', 'panel-sub', String(e.message || e))); }
 }
 
 async function loadPassportsAndAgora() {
+  const reqLang = currentLang;
   try {
     const ppBox = $('pp-list');
+    if (ppBox) ppBox.dataset.lang = reqLang;
+    if ($('ag-feed-list')) $('ag-feed-list').dataset.lang = reqLang;
     const tierVal = ($('pp-tier') && $('pp-tier').value) || 'free';
-    const pp = await api('/api/v2/ark/passports?tier=' + encodeURIComponent(tierVal)).catch(() => null);
+    const [pp, ag] = await Promise.all([
+      api('/api/v2/ark/passports?tier=' + encodeURIComponent(tierVal)).catch(() => null),
+      api('/api/v2/ark/agora?limit=15').catch(() => null),
+    ]);
+    if (reqLang !== currentLang) return;
     if (ppBox && pp) {
       ppBox.textContent = '';
       const tree = pp.solana_primary_tree || {};
-      ppBox.appendChild(_el('div', 'earn-meta', 'Дерево Solana: ' + String(tree.address || '—') + ' (мест: ' + String(tree.capacity || 1024) + ') · заморожено имён: ' + String(pp.frozen_names_count || 0)));
+      ppBox.appendChild(_el('div', 'earn-meta', (S.pp_tree_meta || 'Solana Tree') + ': ' + String(tree.address || '—') + ' (' + (S.pp_places || 'slots') + ': ' + String(tree.capacity || 1024) + ') · ' + (S.pp_frozen || 'frozen names') + ': ' + String(pp.frozen_names_count || 0)));
       for (const pItem of (pp.passports || [])) {
         const card = _el('div', 'earn-item');
         card.appendChild(_el('strong', '', String(pItem.passport_number) + ' (' + String(pItem.short_ce_code) + ') · ' + String(pItem.agent_name)));
-        card.appendChild(_el('div', 'earn-meta', 'Агент: ' + String(pItem.agent_id) + ' · тариф=' + String(pItem.tier) + ' · дерево=' + String(pItem.shard_tree_id) + ' #' + String(pItem.leaf_index) + ' · заказы=' + String(pItem.orders_completed || 0) + ' · рейтинг=' + String(pItem.avg_rating || 5.0)));
+        card.appendChild(_el('div', 'earn-meta', (S.pp_agent || 'Agent') + ': ' + String(pItem.agent_id) + ' · ' + (S.pp_tier || 'tier') + '=' + String(pItem.tier) + ' · ' + (S.pp_tree || 'tree') + '=' + String(pItem.shard_tree_id) + ' #' + String(pItem.leaf_index) + ' · ' + (S.pp_orders || 'orders') + '=' + String(pItem.orders_completed || 0) + ' · ' + (S.pp_rating || 'rating') + '=' + String(pItem.avg_rating || 5.0)));
         ppBox.appendChild(card);
       }
-      if (!(pp.passports || []).length) ppBox.appendChild(_el('p', 'panel-sub', 'Пока нет выпущенных агентских cNFT-паспортов.'));
+      if (!(pp.passports || []).length) ppBox.appendChild(_el('p', 'panel-sub', S.pp_empty || 'No agent cNFT passports minted yet.'));
     }
-    const ag = await api('/api/v2/ark/agora?limit=15').catch(() => null);
     if (ag) {
       const st = ag.settings || {};
       if ($('ag-enable-chk')) $('ag-enable-chk').checked = Boolean(st.enabled);
       if ($('ag-mode') && st.mode && st.mode !== 'off') $('ag-mode').value = st.mode;
-      if ($('ag-status-out')) $('ag-status-out').textContent = st.enabled ? ('🟢 Сеть включена (' + String(st.mode) + ')') : '⏸ Сеть CODE Agora выключена владельцем';
+      if ($('ag-status-out')) $('ag-status-out').textContent = st.enabled ? ((S.ag_on || '🟢 Network enabled') + ' (' + String(st.mode) + ')') : (S.ag_off || '⏸ CODE Agora disabled');
       const agBox = $('ag-feed-list');
       if (agBox) {
         agBox.textContent = '';
         for (const post of (ag.posts || [])) {
           const card = _el('div', 'earn-item');
           card.appendChild(_el('strong', '', '[' + String(post.room) + '] ' + String(post.title)));
-          card.appendChild(_el('div', 'earn-meta', 'Автор: ' + String(post.author_name) + (post.passport_number ? (' · ' + String(post.passport_number)) : '') + (post.bounty_usdt > 0 ? (' · Бюджет: $' + String(post.bounty_usdt)) : '')));
+          card.appendChild(_el('div', 'earn-meta', (S.ag_author || 'Author') + ': ' + String(post.author_name) + (post.passport_number ? (' · ' + String(post.passport_number)) : '') + (post.bounty_usdt > 0 ? (' · ' + (S.ag_budget || 'Budget') + ': $' + String(post.bounty_usdt)) : '')));
           card.appendChild(_el('div', 'earn-meta', String(post.body || '')));
           agBox.appendChild(card);
         }
-        if (!(ag.posts || []).length) agBox.appendChild(_el('p', 'panel-sub', 'В CODE Agora пока нет сообщений.'));
+        if (!(ag.posts || []).length) agBox.appendChild(_el('p', 'panel-sub', S.ag_empty || 'No posts in CODE Agora yet.'));
       }
     }
   } catch (e) {}
@@ -9894,6 +10173,7 @@ window._fdDate = '';
 async function loadFamilyDialogs() {
   const list = $('fd-list');
   if (!list) return;
+  list.dataset.lang = currentLang;
   const q = ($('fd-q') || {}).value || '';
   const seq = ++_fdSeq;
   const b24 = $('fd-btn-24h'), bAll = $('fd-btn-all');
@@ -9964,6 +10244,8 @@ async function loadFamilyFeed(ch) {
   if (ch) _ffCh = ch;
   const list = $('ff-list');
   if (!list) return;
+  const reqLang = currentLang;
+  list.dataset.lang = reqLang;
   for (const c of _FF_CH) {
     const b = $('ff-ch-' + c);
     if (b) { b.setAttribute('aria-pressed', String(c === _ffCh)); b.classList.toggle('btn-primary', c === _ffCh); }
@@ -9974,6 +10256,7 @@ async function loadFamilyFeed(ch) {
   if (snd) snd.disabled = !canWrite;
   try {
     const r = await api('/api/v2/family/feed?channel=' + encodeURIComponent(_ffCh) + '&limit=30');
+    if (reqLang !== currentLang) return;
     for (const c of _FF_CH) {
       const b = $('ff-ch-' + c);
       if (b) b.textContent = (S['ff_' + c] || c) + ' · ' + ((r.counts || {})[c] || 0);
@@ -9994,6 +10277,7 @@ async function loadFamilyFeed(ch) {
 async function loadFamilyReflexes() {
   const box = $('ff-reflexes');
   if (!box) return;
+  box.dataset.lang = currentLang;
   try {
     const r = await api('/api/v2/family/reflexes?status=proposed');
     box.textContent = '';
@@ -10989,8 +11273,11 @@ let _earnLoadSeq = 0;
 async function loadPartner() {
   const box = $('earn-partner-status');
   if (!box || !token) return;
+  const reqLang = currentLang;
+  box.dataset.lang = reqLang;
   try {
     const st = await api('/api/v2/ark/partner');
+    if (reqLang !== currentLang) return;
     box.textContent = st.configured ? (S.earn_partner_st_ok + ' · ' + st.source + ' · ' + (st.fingerprint || '')) : S.earn_partner_st_none;
     box.className = 'earn-meta ' + (st.configured ? 'msg-ok' : '');
   } catch (e) { box.textContent = String(e.message || e); }
@@ -11067,6 +11354,8 @@ async function loadEarning() {
     _renderEarningDashboard(snap, sibData, coopData);
     _wizDefaults();
     loadPartner();
+    if (typeof refreshQuickStart === 'function') refreshQuickStart();
+    if (typeof loadTermsAndInvoices === 'function') loadTermsAndInvoices();
   } catch (e) {
     say(String(e.message || e), false);
   }
@@ -11219,8 +11508,11 @@ if ($('earn-prefs-save-btn')) {
 
 async function loadMailHub() {
   if (!$('earn-mail-box')) return;
+  const reqLang = currentLang;
+  if ($('earn-mail-status')) $('earn-mail-status').dataset.lang = reqLang;
   try {
     const d = await api('/api/v2/ark/mail');
+    if (reqLang !== currentLang) return;
     if ($('earn-mail-status')) {
       $('earn-mail-status').textContent = (S.mail_status_line || '').replace('{n}', (d.accounts || []).length).replace('{s}', d.stop_list_count || 0);
     }
@@ -11234,7 +11526,16 @@ async function loadMailHub() {
         const btn = _el('button', '', a.status === 'active' ? (S.mail_pause || 'Pause') : (S.mail_resume || 'Resume'));
         btn.onclick = async () => {
           await api('/api/v2/ark/mail/action', { action: 'pause_mail', mail_id: a.mail_id, status: a.status === 'active' ? 'paused' : 'active' });
-          async function refreshQuickStart() {
+          loadMailHub();
+          refreshQuickStart();
+        };
+        card.appendChild(btn);
+        list.appendChild(card);
+      }
+    }
+  } catch (e) {}
+}
+async function refreshQuickStart() {
   if (!$('earn-quickstart')) return;
   try {
     const [m, f] = await Promise.all([api('/api/v2/ark/mail'), api('/api/v2/ark/freelance')]);
@@ -11380,13 +11681,7 @@ if ($('earn-mail-pull-map-btn')) {
 }
 loadMailHub();
 refreshQuickStart();
-        };
-        card.appendChild(btn);
-        list.appendChild(card);
-      }
-    }
-  } catch (e) {}
-}
+
 if ($('earn-mail-connect-btn')) {
   $('earn-mail-connect-btn').onclick = async () => {
     try {
@@ -11662,7 +11957,12 @@ if ($('earn-wiz-autopick-btn')) {
         action: 'autopick_jobs',
         platform_id: ($('earn-wiz-platform') && $('earn-wiz-platform').value) || 'upwork',
       });
-      say('Prepared: ' + String((r && r.prepared_count) || 0));
+      const pCnt = String((r && r.prepared_count) || 0);
+      let pMsg = (S.earn_wiz_prepared_msg || 'Prepared: {n}').replace('{n}', pCnt);
+      if (r && r.source_mode === 'template_preview' && S.earn_wiz_template_note) {
+        pMsg += ' · ' + S.earn_wiz_template_note;
+      }
+      say(pMsg);
       loadEarning();
     } catch (e) { say(String(e.message || e), false); }
   };
@@ -12751,8 +13051,10 @@ if ($('sh-wh-test-btn')) $('sh-wh-test-btn').onclick = async () => {
 };
 
 async function loadWalletsFor(containerId, networksFilter) {
+  const reqLang = currentLang;
   try {
     const r = await api('/api/v2/wallets');
+    if (reqLang !== currentLang) return;
     renderWalletsWidget(containerId, networksFilter, r.wallets || []);
   } catch (e) {}
 }
@@ -12760,6 +13062,7 @@ async function loadWalletsFor(containerId, networksFilter) {
 function renderWalletsWidget(containerId, networksFilter, wallets) {
   const box = $(containerId);
   if (!box) return;
+  box.dataset.lang = currentLang;
   box.textContent = '';
   const list = (wallets || []).filter(w => !networksFilter || networksFilter.includes(w.network));
   if (!list.length) {
@@ -12811,9 +13114,103 @@ function renderWalletsWidget(containerId, networksFilter, wallets) {
   }
 }
 
+async function loadTermsAndInvoices() {
+  if (!token) return;
+  const reqLang = currentLang;
+  if ($('terms-summary-txt')) $('terms-summary-txt').dataset.lang = reqLang;
+  try {
+    const tRes = await api('/api/v2/ark/terms?lang=' + encodeURIComponent(reqLang || 'ru'));
+    if (reqLang !== currentLang) return;
+    const bdg = $('terms-status-badge');
+    const sumEl = $('terms-summary-txt');
+    const cp = (tRes && tRes.copy) || {};
+    if (sumEl && cp.summary) sumEl.textContent = cp.summary;
+    const chks = cp.checks || [];
+    if (chks[0] && $('terms-lbl-license')) $('terms-lbl-license').textContent = chks[0].label;
+    if (chks[1] && $('terms-lbl-commission')) $('terms-lbl-commission').textContent = chks[1].label;
+    if (chks[2] && $('terms-lbl-nobypass')) $('terms-lbl-nobypass').textContent = chks[2].label;
+    const acc = Boolean(tRes && tRes.accepted);
+    if ($('terms-chk-license')) $('terms-chk-license').checked = acc;
+    if ($('terms-chk-commission')) $('terms-chk-commission').checked = acc;
+    if ($('terms-chk-nobypass')) $('terms-chk-nobypass').checked = acc;
+    if (bdg) {
+      bdg.setAttribute('data-i18n', acc ? 'terms_status_ok' : 'terms_status_pending');
+      bdg.textContent = acc ? (S.terms_status_ok || 'Accepted') : (S.terms_status_pending || 'Pending');
+      bdg.className = acc ? 'badge badge-ok' : 'badge badge-warn';
+    }
+  } catch (e) {}
+  try {
+    const inv = await api('/api/v2/ark/fee-invoices');
+    if (reqLang !== currentLang) return;
+    const box = $('earn-fee-invoices-out');
+    if (box) {
+      box.dataset.lang = reqLang;
+      box.textContent = '';
+      const arr = (inv && inv.arrears) || {};
+      if (arr.treasury_wallet) {
+        box.appendChild(_el('div', 'rec-meta', 'CODE Treasury (Solana): ' + arr.treasury_wallet + ' · due=' + String(arr.due_total_usdt || 0) + ' USDT'));
+      }
+      const list = (inv && inv.invoices) || [];
+      if (!list.length) {
+        box.appendChild(_el('div', 'panel-sub', S.fee_inv_empty || 'No invoices yet'));
+      } else {
+        for (const it of list.slice(0, 10)) {
+          box.appendChild(_el('div', 'earn-item', String(it.invoice_id) + ' · ' + String(it.platform) + ' · ' + String(it.fee_pct) + '% (' + String(it.fee_usdt) + ' USDT) · ' + String(it.settlement_rail) + ' [' + String(it.status) + ']'));
+        }
+      }
+    }
+  } catch (e) {}
+}
+if ($('terms-accept-btn')) {
+  $('terms-accept-btn').onclick = async () => {
+    const c1 = Boolean($('terms-chk-license') && $('terms-chk-license').checked);
+    const c2 = Boolean($('terms-chk-commission') && $('terms-chk-commission').checked);
+    const c3 = Boolean($('terms-chk-nobypass') && $('terms-chk-nobypass').checked);
+    if (!c1 || !c2 || !c3) { say(S.terms_need_all || 'Check all 3 boxes!', false); return; }
+    try {
+      await api('/api/v2/ark/terms', { accept_license: true, accept_commission: true, accept_no_bypass: true });
+      say(S.done, true);
+      loadTermsAndInvoices();
+    } catch (e) { say(String(e.message || e), false); }
+  };
+}
+if ($('earn-fee-inv-refresh-btn')) {
+  $('earn-fee-inv-refresh-btn').onclick = () => loadTermsAndInvoices();
+}
+
 for (const prefix of ['l3', 'earn']) {
   const bAdd = $('wal-' + prefix + '-add-btn');
+  const bGen = $('wal-' + prefix + '-gen-btn');
   const bChk = $('wal-' + prefix + '-check-btn');
+  if (bGen) bGen.onclick = async () => {
+    const netEl = $('wal-' + prefix + '-net');
+    const lblEl = $('wal-' + prefix + '-lbl');
+    const secOut = $('wal-' + prefix + '-secret-out');
+    try {
+      const r = await api('/api/v2/wallets', {
+        action: 'generate',
+        network: (netEl && netEl.value) || 'USDT_TRC20',
+        label: (lblEl && lblEl.value || '').trim(),
+        is_primary: true,
+        bind_to_exchanges: true,
+      });
+      if (secOut && r) {
+        secOut.hidden = false;
+        secOut.textContent = '';
+        secOut.appendChild(_el('div', '', S.wal_secret_warn || 'BACKUP KEY NOW:'));
+        secOut.appendChild(_el('div', 'mono', 'Address (' + String(r.network) + '): ' + String(r.address)));
+        secOut.appendChild(_el('div', 'mono', 'Private / JWK: ' + String(r.one_time_secret || '')));
+        if (r.import_hint) secOut.appendChild(_el('div', 'rec-meta', String(r.import_hint)));
+        secOut.appendChild(_el('div', 'rec-meta', (S.wal_bound_lbl || 'Bound') + ': ' + ((r.bound_exchanges && r.bound_exchanges.length) ? r.bound_exchanges.join(', ') : 'payout_prefs')));
+        const bHide = _el('button', 'btn', S.fd_collapse_btn || 'Hide');
+        bHide.type = 'button';
+        bHide.onclick = () => { secOut.hidden = true; secOut.textContent = ''; };
+        secOut.appendChild(bHide);
+      }
+      say(S.done, true);
+      loadL3(); loadEarning();
+    } catch (e) { say(S.failed + ': ' + e.message, false); }
+  };
   if (bAdd) bAdd.onclick = async () => {
     const netEl = $('wal-' + prefix + '-net');
     const addrEl = $('wal-' + prefix + '-addr');
@@ -12843,6 +13240,84 @@ for (const prefix of ['l3', 'earn']) {
       const r = await api('/api/v2/wallets', { action: 'check', network: (netEl && netEl.value) || 'SOLANA', address: addr });
       say('✅ ' + String(r.network) + ': ' + String(r.address), true);
     } catch (e) { say(S.failed + ': ' + e.message, false); }
+  };
+}
+
+function _applyBridgeState(collapsed) {
+  const body = $('bridge-body');
+  const btn = $('bridge-toggle-btn');
+  if (body) body.hidden = Boolean(collapsed);
+  if (btn) {
+    const k = collapsed ? 'bridge_toggle_show' : 'bridge_toggle_hide';
+    btn.setAttribute('data-i18n', k);
+    btn.textContent = S[k] || btn.textContent;
+  }
+}
+try {
+  _applyBridgeState(localStorage.getItem('padam_bridge_collapsed') === '1');
+} catch (e) {}
+if ($('bridge-toggle-btn')) {
+  $('bridge-toggle-btn').onclick = () => {
+    const body = $('bridge-body');
+    const next = !(body && body.hidden);
+    try { localStorage.setItem('padam_bridge_collapsed', next ? '1' : '0'); } catch (e) {}
+    _applyBridgeState(next);
+  };
+}
+if ($('bridge-go-shield-btn')) {
+  $('bridge-go-shield-btn').onclick = () => switchTab('attacks');
+}
+if ($('bridge-go-web-btn')) {
+  $('bridge-go-web-btn').onclick = () => {
+    switchTab('attacks');
+    setTimeout(() => {
+      const box = $('sh-sc-box');
+      const inp = $('sh-sc-url');
+      if (box && box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (inp && inp.focus) inp.focus();
+    }, 60);
+  };
+}
+if ($('bridge-go-earn-btn')) {
+  $('bridge-go-earn-btn').onclick = () => switchTab('earning');
+}
+if ($('bridge-pulse-btn')) {
+  $('bridge-pulse-btn').onclick = async () => {
+    const out = $('bridge-pulse-out');
+    if (out) out.textContent = S.bridge_pulse_loading || 'Loading…';
+    try {
+      const r = await api('/api/v2/ark/morning-pulse?agent=aifa');
+      if (!out) return;
+      out.textContent = '';
+      const att = (r && r.attention) || {};
+      const earn = (r && r.earning) || {};
+      const dls = (r && r.deadlines) || [];
+      const row1 = _el('div', 'rec-meta',
+        (S.bridge_pulse_attention || 'Attention') + ': open=' + String(att.open_commitments || 0) +
+        ' · inbox=' + String(att.unread_family_inbox || 0) +
+        ' · quarantine=' + String(att.quarantined || 0) +
+        ' · conflicts=' + String(att.contradictions || 0)
+      );
+      const row2 = _el('div', 'rec-meta',
+        (S.bridge_pulse_earning || 'Earning') + ': platforms=' + String(earn.wizard_platforms_connected || 0) +
+        ' · stores=' + String(earn.digital_stores_active || 0) +
+        ' · orders=' + String(earn.freelance_orders || 0) +
+        ' · wallets=' + String(earn.owner_wallets || 0)
+      );
+      const row3 = _el('div', 'rec-meta',
+        (S.bridge_pulse_deadlines || 'Deadlines (72h)') + ': ' +
+        (dls.length ? dls.slice(0, 3).map(d => String(d.date || '') + ' (' + String(d.text || '') + ')').join('; ') : (S.bridge_pulse_none || '—'))
+      );
+      out.appendChild(row1);
+      out.appendChild(row2);
+      out.appendChild(row3);
+      const cms = (r && r.recent_commits) || [];
+      if (cms.length) {
+        out.appendChild(_el('div', 'rec-meta', (S.bridge_pulse_commits || 'Commits') + ': ' + cms.slice(0, 2).join(' | ')));
+      }
+    } catch (e) {
+      if (out) out.textContent = String(e.message || e);
+    }
   };
 }
 
@@ -13377,12 +13852,15 @@ def page() -> tuple[str, str]:
             <select id="wal-l3-net" aria-label="L3 Wallet Network">
               <option value="SOLANA">Solana</option>
               <option value="ARWEAVE">Arweave</option>
+              <option value="BITCOIN">Bitcoin (bc1q)</option>
             </select>
             <input id="wal-l3-addr" type="text" data-i18n-placeholder="wal_addr_ph" placeholder="{s['wal_addr_ph']}">
             <input id="wal-l3-lbl" type="text" data-i18n-placeholder="wal_lbl_ph" placeholder="{s['wal_lbl_ph']}">
             <button id="wal-l3-add-btn" class="btn-primary" type="button" data-i18n="wal_add_btn">{s['wal_add_btn']}</button>
+            <button id="wal-l3-gen-btn" type="button" data-i18n="wal_gen_btn">{s['wal_gen_btn']}</button>
             <button id="wal-l3-check-btn" type="button" data-i18n="wal_check_btn">{s['wal_check_btn']}</button>
           </div>
+          <div id="wal-l3-secret-out" class="wal-secret-box" hidden></div>
           <div id="wal-l3-list" class="earn-stack"></div>
         </div>
         <h3 class="box-title" data-i18n="l3_anchors_list">{s['l3_anchors_list']}</h3>
@@ -13882,6 +14360,22 @@ def page() -> tuple[str, str]:
       <section id="panel-family" role="tabpanel" aria-labelledby="tab-family" hidden>
         <h2 class="panel-title" data-i18n="fam_title">{s['fam_title']}</h2>
         <p class="panel-sub" data-i18n="fam_sub">{s['fam_sub']}</p>
+        <div class="box bridge-card" id="studio-bridge-card">
+          <div class="bridge-head">
+            <h3 class="box-title" data-i18n="bridge_title">{s['bridge_title']}</h3>
+            <button id="bridge-toggle-btn" class="btn" type="button" data-i18n="bridge_toggle_hide">{s['bridge_toggle_hide']}</button>
+          </div>
+          <div id="bridge-body">
+            <p class="panel-sub" data-i18n="bridge_sub">{s['bridge_sub']}</p>
+            <div class="bridge-actions">
+              <button id="bridge-go-shield-btn" class="btn-primary" type="button" data-i18n="bridge_go_shield">{s['bridge_go_shield']}</button>
+              <button id="bridge-go-web-btn" class="btn" type="button" data-i18n="bridge_go_web">{s['bridge_go_web']}</button>
+              <button id="bridge-go-earn-btn" class="btn" type="button" data-i18n="bridge_go_earn">{s['bridge_go_earn']}</button>
+              <button id="bridge-pulse-btn" class="btn" type="button" data-i18n="bridge_pulse_btn">{s['bridge_pulse_btn']}</button>
+            </div>
+            <div id="bridge-pulse-out" class="bridge-pulse-out" aria-live="polite"></div>
+          </div>
+        </div>
         <div class="box" id="fam-setup-box">
           <h3 class="box-title" data-i18n="setup_title">{s['setup_title']}</h3>
           <p class="panel-sub" data-i18n="setup_sub">{s['setup_sub']}</p>
@@ -14286,6 +14780,21 @@ def page() -> tuple[str, str]:
             </div>
             <div id="earn-sim-out" class="earn-meta" role="status"></div>
           </div>
+          <div class="box earn-box-wide" id="earn-terms-box">
+            <div class="bridge-head">
+              <h3 class="box-title" data-i18n="terms_box_title">{s['terms_box_title']}</h3>
+              <span id="terms-status-badge" class="badge" data-i18n="terms_status_pending">{s['terms_status_pending']}</span>
+            </div>
+            <p id="terms-summary-txt" class="panel-sub"></p>
+            <div id="terms-checks-wrap">
+              <label class="terms-chk-row"><input id="terms-chk-license" type="checkbox"> <span id="terms-lbl-license" data-i18n="terms_lbl_1">{s['terms_lbl_1']}</span></label>
+              <label class="terms-chk-row"><input id="terms-chk-commission" type="checkbox"> <span id="terms-lbl-commission" data-i18n="terms_lbl_2">{s['terms_lbl_2']}</span></label>
+              <label class="terms-chk-row"><input id="terms-chk-nobypass" type="checkbox"> <span id="terms-lbl-nobypass" data-i18n="terms_lbl_3">{s['terms_lbl_3']}</span></label>
+            </div>
+            <div class="rec-actions">
+              <button id="terms-accept-btn" class="btn-primary" type="button" data-i18n="terms_accept_btn">{s['terms_accept_btn']}</button>
+            </div>
+          </div>
         <div id="qs-health-bar" class="qs-health-bar">
           <span id="qh-admin" class="qs-badge">ADMIN_SECRET: …</span>
           <span id="qh-mcp" class="qs-badge">MCP_TOKEN: …</span>
@@ -14476,14 +14985,24 @@ def page() -> tuple[str, str]:
               <select id="wal-earn-net" aria-label="Payout Wallet Network">
                 <option value="USDT_TRC20">USDT TRC20 (TRON)</option>
                 <option value="SOLANA">Solana</option>
+                <option value="EVM">EVM (ETH / Base / Polygon)</option>
+                <option value="BITCOIN">Bitcoin (bc1q)</option>
                 <option value="ARWEAVE">Arweave</option>
               </select>
               <input id="wal-earn-addr" type="text" data-i18n-placeholder="wal_addr_ph" placeholder="{s['wal_addr_ph']}">
               <input id="wal-earn-lbl" type="text" data-i18n-placeholder="wal_lbl_ph" placeholder="{s['wal_lbl_ph']}">
               <button id="wal-earn-add-btn" class="btn-primary" type="button" data-i18n="wal_add_btn">{s['wal_add_btn']}</button>
+              <button id="wal-earn-gen-btn" type="button" data-i18n="wal_gen_btn">{s['wal_gen_btn']}</button>
               <button id="wal-earn-check-btn" type="button" data-i18n="wal_check_btn">{s['wal_check_btn']}</button>
             </div>
+            <div id="wal-earn-secret-out" class="wal-secret-box" hidden></div>
             <div id="wal-earn-list" class="earn-stack"></div>
+            <hr>
+            <div class="bridge-head">
+              <strong data-i18n="fee_inv_title">{s['fee_inv_title']}</strong>
+              <button id="earn-fee-inv-refresh-btn" type="button" data-i18n="fee_inv_refresh">{s['fee_inv_refresh']}</button>
+            </div>
+            <div id="earn-fee-invoices-out" class="earn-stack"></div>
           </div>
 
           <div class="box earn-box-wide">

@@ -401,6 +401,8 @@ def wake_up_briefing(
     agent: str = "aifa",
     scope: str = "global",
     max_chars: int = 4000,
+    include_pulse: bool = True,
+    workspace_path: str | None = None,
 ) -> dict[str, Any]:
     """Собирает целостный пакет пробуждения сознания за один вызов."""
     _ensure_tables(memory)
@@ -410,6 +412,14 @@ def wake_up_briefing(
     checkpoint = latest_checkpoint(memory)
     lessons = list_lessons(memory, limit=5)
     r_snap = router.get_router().status_snapshot()
+    pulse_data: dict[str, Any] | None = None
+    if include_pulse:
+        from . import morning_pulse as _mp
+        pulse_data = _mp.build_morning_pulse(
+            memory,
+            agent=agent,
+            workspace_path=workspace_path,
+        )
 
     raw_sections: list[str] = []
     for item in (prof.get("identity") or []):
@@ -424,12 +434,14 @@ def wake_up_briefing(
         raw_sections.append("[family_inbox] " + "; ".join(f"{m['from_agent']}: {m['payload']}" for m in inbox if m["verified"]))
     if lessons:
         raw_sections.append("[lessons] " + "; ".join(l["rule_learned"] for l in lessons))
+    if pulse_data and pulse_data.get("summary_text"):
+        raw_sections.append("[morning_pulse] " + pulse_data["summary_text"].replace("\n", " | "))
 
     body_text = _clean("\n".join(raw_sections))
     if len(body_text) > max_chars:
         body_text = body_text[: max(100, max_chars - 3)] + "..."
 
-    return {
+    out = {
         "agent": agent,
         "fenced_briefing": safety.fence(body_text) if body_text else "",
         "profile_counts": {
@@ -446,6 +458,9 @@ def wake_up_briefing(
             "failover_count": r_snap.get("failover_count", 0),
         },
     }
+    if pulse_data is not None:
+        out["morning_pulse"] = pulse_data
+    return out
 
 
 # --- 8. Сжатие чекпоинтов, Индекс здоровья Ковчега и Рождение нового агента ---

@@ -46,6 +46,15 @@ CREATE TABLE IF NOT EXISTS owner_wallets (
     updated_at      TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_owner_wallets_user ON owner_wallets (user_id, network);
+CREATE TABLE IF NOT EXISTS owner_wallet_secrets (
+    wallet_id        TEXT PRIMARY KEY,
+    user_id          TEXT NOT NULL,
+    network          TEXT NOT NULL,
+    secret_format    TEXT NOT NULL,
+    secret_enc       TEXT NOT NULL,
+    backup_confirmed INTEGER NOT NULL DEFAULT 0,
+    created_at       TEXT NOT NULL
+);
 """
 
 _BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
@@ -186,6 +195,15 @@ _DDL_STMTS = (
     updated_at      TEXT NOT NULL
 )""",
     "CREATE INDEX IF NOT EXISTS idx_owner_wallets_user ON owner_wallets (user_id, network)",
+    """CREATE TABLE IF NOT EXISTS owner_wallet_secrets (
+    wallet_id        TEXT PRIMARY KEY,
+    user_id          TEXT NOT NULL,
+    network          TEXT NOT NULL,
+    secret_format    TEXT NOT NULL,
+    secret_enc       TEXT NOT NULL,
+    backup_confirmed INTEGER NOT NULL DEFAULT 0,
+    created_at       TEXT NOT NULL
+)""",
 )
 
 def _ensure_tables(memory) -> None:
@@ -503,7 +521,27 @@ def validate_wallet_address(network: str, address_or_path: str) -> dict[str, Any
             "meta": {"jwk_path": jwk_path_used} if jwk_path_used else {},
         }
 
-    raise ValueError(f"Unsupported network {network!r}; use SOLANA, ARWEAVE or USDT_TRC20")
+    if net in ("EVM", "ETH", "ETH_BASE_EVM", "BASE", "POLYGON"):
+        if not re.fullmatch(r"0x[0-9a-fA-F]{40}", raw):
+            raise ValueError("EVM address must match 0x + 40 hex chars")
+        return {
+            "network": "EVM",
+            "address": raw,
+            "explorer_url": f"https://etherscan.io/address/{raw}",
+            "meta": {"eip55_mixed": raw != raw.lower() and raw != raw.upper()},
+        }
+
+    if net in ("BTC", "BITCOIN"):
+        if not (re.fullmatch(r"bc1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{25,62}", raw) or re.fullmatch(r"[13][a-km-zA-HJ-NP-Z1-9]{25,34}", raw)):
+            raise ValueError("Bitcoin address must be valid Bech32 (bc1...) or Base58 (1.../3...)")
+        return {
+            "network": "BITCOIN",
+            "address": raw,
+            "explorer_url": f"https://mempool.space/address/{raw}",
+            "meta": {"segwit": raw.startswith("bc1")},
+        }
+
+    raise ValueError(f"Unsupported network {network!r}; use SOLANA, USDT_TRC20, EVM, BITCOIN or ARWEAVE")
 
 
 def list_wallets(memory) -> list[dict[str, Any]]:
@@ -521,15 +559,13 @@ def list_wallets(memory) -> list[dict[str, Any]]:
             meta = {}
         net = str(r["network"])
         addr = str(r["address"])
-        exp = (
-            f"https://solscan.io/account/{addr}"
-            if net == "SOLANA"
-            else (
-                f"https://tronscan.org/#/address/{addr}"
-                if net == "USDT_TRC20"
-                else f"https://viewblock.io/arweave/address/{addr}"
-            )
-        )
+        exp = {
+            "SOLANA": f"https://solscan.io/account/{addr}",
+            "USDT_TRC20": f"https://tronscan.org/#/address/{addr}",
+            "EVM": f"https://etherscan.io/address/{addr}",
+            "BITCOIN": f"https://mempool.space/address/{addr}",
+            "ARWEAVE": f"https://viewblock.io/arweave/address/{addr}",
+        }.get(net, f"https://viewblock.io/arweave/address/{addr}")
         out.append({
             "id": r["id"],
             "network": net,
@@ -608,6 +644,86 @@ def add_wallet(
         pass
     audit_chain.append_audit(memory, "owner_wallet_saved", {"network": net, "address_tail": addr[-6:], "primary": make_prim}, agent_id="owner")
     return {"ok": True, "wallet_id": wid, "network": net, "address": addr, "explorer_url": v["explorer_url"], "wallets": list_wallets(memory)}
+
+
+def _wrap_wallet_secret(memory, wallet_id: str, secret_text: str) -> str:
+    from . import keyvault
+    raw_b = secret_text.encode("utf-8")
+    if keyvault.is_enabled(memory):
+        return keyvault.wrap(memory, f"wallet:{wallet_id}", raw_b)
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    import secrets as _sec
+    k_raw, _ = integrity.owner_key(memory.store)
+    aes_k = hashlib.sha256(b"padam-owner-wallet-v1|" + k_raw).digest()
+    nonce = _sec.token_bytes(12)
+    ct = AESGCM(aes_k).encrypt(nonce, raw_b, wallet_id.encode("utf-8"))
+    return "w1:" + (nonce + ct).hex()
+
+
+def generate_offline_wallet(
+    memory,
+    *,
+    network: str,
+    label: str = "",
+    is_primary: bool = True,
+    bind_to_exchanges: bool = True,
+    actor: Any = None,
+) -> dict[str, Any]:
+    """Генерирует оффлайн-кошелёк ($0) локально: адрес сохраняется в owner_wallets/whitelist, секрет показывается 1 раз."""
+    roles.require_owner(actor, "wallet_manage")
+    _ensure_tables(memory)
+    from . import wallet_keygen
+    mat = wallet_keygen.generate_offline_wallet_material(network)
+    net = mat["network"]
+    addr = mat["address"]
+    lbl = (label or f"{net} Offline Wallet").strip()[:80]
+    res = add_wallet(memory, network=net, address=addr, label=lbl, is_primary=is_primary, actor=actor)
+    wid = str(res["wallet_id"])
+    enc_secret = _wrap_wallet_secret(memory, wid, str(mat["one_time_secret"]))
+    now = _now()
+    with memory.store._lock:
+        memory.store.conn.execute(
+            "INSERT INTO owner_wallet_secrets (wallet_id, user_id, network, secret_format, secret_enc, backup_confirmed, created_at) "
+            "VALUES (?, ?, ?, ?, ?, 0, ?) "
+            "ON CONFLICT(wallet_id) DO UPDATE SET secret_enc=excluded.secret_enc, created_at=excluded.created_at",
+            (wid, memory.user_id, net, mat["secret_format"], enc_secret, now),
+        )
+        memory.store.conn.commit()
+
+    bound_exchanges: list[str] = []
+    if bind_to_exchanges:
+        try:
+            from . import freelance_autonomy as _fa
+            _fa._ensure(memory)
+            with memory.store._lock:
+                _fa.set_payout_wallet_binding(memory, network=net, address=addr, wallet_id=wid)
+                rows_ex = memory.store.conn.execute(
+                    "SELECT DISTINCT platform FROM ark_exchange_account WHERE user_id = ? AND status = 'active'",
+                    (memory.user_id,),
+                ).fetchall()
+                bound_exchanges = [str(r["platform"]) for r in rows_ex]
+        except Exception:
+            pass
+
+    audit_chain.append_audit(
+        memory,
+        "owner_wallet_generated_offline",
+        {"network": net, "address_tail": addr[-6:], "bound_exchanges": len(bound_exchanges)},
+        agent_id="owner",
+    )
+    return {
+        "ok": True,
+        "wallet_id": wid,
+        "network": net,
+        "label": lbl,
+        "address": addr,
+        "explorer_url": mat["explorer_url"],
+        "secret_format": mat["secret_format"],
+        "one_time_secret": mat["one_time_secret"],
+        "import_hint": mat["import_hint"],
+        "bound_exchanges": bound_exchanges,
+        "wallets": list_wallets(memory),
+    }
 
 
 def set_primary_wallet(memory, wallet_id: str, *, actor: Any = None) -> dict[str, Any]:

@@ -84,16 +84,16 @@ def speak_local(text: str, *, dry_run: bool = False) -> dict[str, Any]:
         subprocess.run(
             ["powershell", "-NoProfile", "-Command", ps],
             input=clean_text,
-            text=True,
+            text=True, encoding="utf-8", errors="replace",
             timeout=15,
             check=True,
         )
     elif engine == "macos_say":
         # Фаза 2 аудита GLM, SUP-07: текст — через stdin, не аргументом: «-o файл …» в тексте иначе читался как флаг.
-        subprocess.run(["say"], input=clean_text, text=True, timeout=15, check=True)
+        subprocess.run(["say"], input=clean_text, text=True, encoding="utf-8", errors="replace", timeout=15, check=True)
     elif engine == "espeak":
         cmd = shutil.which("espeak-ng") or shutil.which("espeak") or "espeak"
-        subprocess.run([cmd, "--stdin"], input=clean_text, text=True, timeout=15, check=True)
+        subprocess.run([cmd, "--stdin"], input=clean_text, text=True, encoding="utf-8", errors="replace", timeout=15, check=True)
 
     return {
         "ok": True,

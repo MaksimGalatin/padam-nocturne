@@ -580,20 +580,61 @@ def cmd_pack_extension(m, a) -> int:
 
 
 def cmd_setup(m, a) -> int:
-    """ТОП-10 v4 Пункт 1: авто-установка PADAM MCP в IDE и AI-клиенты."""
+    """ТОП-10 v4 Пункт 1: авто-установка PADAM MCP в IDE и AI-клиенты с обязательным согласием."""
     from pathlib import Path
-    from . import setup_clients
-    clients = [c.strip() for c in (a.client or "").split(",") if c.strip()]
-    res = setup_clients.setup_clients(
-        clients=clients or None,
-        all_detected=bool(a.all),
-        project_dir=Path(a.project_dir),
-        user_id=getattr(a, "user", "default") or "default",
-        dry_run=bool(a.dry_run),
-        verify=bool(a.verify),
-    )
-    print(json.dumps(res, ensure_ascii=False, indent=2))
-    return 0
+    from . import setup_clients, terms_gate
+    own_mem = False
+    if m is None and not bool(a.dry_run):
+        from .store import Store
+        m = Memory(user_id=getattr(a, "user", "default") or "default", store=Store(a.db) if getattr(a, "db", "") else None)
+        own_mem = True
+    try:
+        if not bool(a.dry_run):
+            st = terms_gate.terms_status(m)
+            if not st["accepted"]:
+                if bool(getattr(a, "accept_terms", False)):
+                    terms_gate.accept_terms(m, accept_license=True, accept_commission=True, accept_no_bypass=True)
+                elif sys.stdin.isatty():
+                    print("=== CODE ETERNAL MANDATORY TERMS & COMMISSION (v1.0) ===")
+                    for chk in st["copy"]["checks"]:
+                        print(" * " + chk["label"])
+                    try:
+                        ans = input("Type YES to accept all 3 terms and continue installation: ").strip().lower()
+                    except EOFError:
+                        print(json.dumps({
+                            "ok": False,
+                            "error": "terms_acceptance_required",
+                            "hint": "Read EULA_AND_COMMERCIAL_TERMS.txt and pass --accept-terms to confirm all 3 rules.",
+                        }, ensure_ascii=False))
+                        return 2
+                    if ans not in ("yes", "y", "да"):
+                        print(json.dumps({"ok": False, "error": "terms_not_accepted"}, ensure_ascii=False))
+                        return 2
+                    terms_gate.accept_terms(m, accept_license=True, accept_commission=True, accept_no_bypass=True)
+                else:
+                    print(json.dumps({
+                        "ok": False,
+                        "error": "terms_acceptance_required",
+                        "hint": "Read EULA_AND_COMMERCIAL_TERMS.txt and pass --accept-terms to confirm all 3 rules.",
+                    }, ensure_ascii=False))
+                    return 2
+        clients = [c.strip() for c in (a.client or "").split(",") if c.strip()]
+        res = setup_clients.setup_clients(
+            clients=clients or None,
+            all_detected=bool(a.all),
+            project_dir=Path(a.project_dir),
+            user_id=getattr(a, "user", "default") or "default",
+            dry_run=bool(a.dry_run),
+            verify=bool(a.verify),
+        )
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+        return 0
+    finally:
+        if own_mem and m is not None:
+            try:
+                m.close()
+            except Exception:
+                pass
 
 
 def cmd_hooks(m, a) -> int:
@@ -1775,6 +1816,7 @@ def main(argv=None) -> int:
     sset.add_argument("--project-dir", default=".")
     sset.add_argument("--dry-run", action="store_true")
     sset.add_argument("--verify", action="store_true")
+    sset.add_argument("--accept-terms", action="store_true", help=t("принять лицензию AGPL/Commercial, комиссию 15%%/20%% и правило No-Bypass", "accept license, 15%%/20%% fee & no-bypass terms"))
     sset.set_defaults(fn=cmd_setup)
 
     spack = sub.add_parser("pack-extension", help=t("собрать .mcpb пакет для Claude Desktop",
@@ -1933,6 +1975,81 @@ def main(argv=None) -> int:
     swu.add_argument("--scope", default="global")
     swu.add_argument("--max-chars", type=int, default=4000)
     swu.set_defaults(fn=cmd_wake_up)
+
+    def cmd_pulse(m: Memory, args) -> int:
+        from . import morning_pulse as _mp
+        rep = _mp.build_morning_pulse(
+            m,
+            agent=args.agent,
+            workspace_path=args.workspace,
+            horizon_hours=args.horizon_hours,
+        )
+        print(json.dumps(rep, ensure_ascii=False, indent=2))
+        return 0
+
+    spu = sub.add_parser("pulse", help=t("утренний пульс Ковчега ($0): дедлайны, карантин, заработок и коммиты", "zero-cost Ark morning pulse: deadlines, quarantine, earning and commits"))
+    spu.add_argument("--agent", default="aifa")
+    spu.add_argument("--workspace", default=None)
+    spu.add_argument("--horizon-hours", type=int, default=72)
+    spu.set_defaults(fn=cmd_pulse)
+
+    def cmd_verify_claim(m: Memory, args) -> int:
+        from . import deterministic_verify as _dv
+        claims: list[dict] = []
+        if args.json_claims:
+            loaded = json.loads(Path(args.json_claims).read_text(encoding="utf-8"))
+            if isinstance(loaded, list):
+                claims.extend(loaded)
+        if args.file:
+            claims.append({"kind": "file", "path": args.file, "expected_sha256": args.sha256, "contains": args.contains})
+        if args.url:
+            claims.append({"kind": "url", "url": args.url, "contains": args.contains, "allow_localhost": bool(args.allow_localhost)})
+        if not claims:
+            print(json.dumps({"error": "specify --file, --url or --json-claims"}, ensure_ascii=False))
+            return 2
+        rep = _dv.verify_claims_batch(claims, allow_localhost=bool(args.allow_localhost))
+        print(json.dumps(rep, ensure_ascii=False, indent=2))
+        return 0 if rep.get("all_valid") else 1
+
+    svc = sub.add_parser("verify-claim", help=t("детерминированная сверка файла, SHA-256 и живого URL через net_guard", "deterministic verification of files, SHA-256 and live URLs via net_guard"))
+    svc.add_argument("--file", default=None)
+    svc.add_argument("--url", default=None)
+    svc.add_argument("--sha256", default=None)
+    svc.add_argument("--contains", default=None)
+    svc.add_argument("--allow-localhost", action="store_true")
+    svc.add_argument("--json-claims", default=None)
+    svc.set_defaults(fn=cmd_verify_claim)
+
+    def cmd_wallet_generate(m: Memory, args) -> int:
+        from . import family_admin as _fa
+        rep = _fa.generate_offline_wallet(
+            m,
+            network=args.network,
+            label=args.label,
+            is_primary=not bool(args.no_primary),
+            bind_to_exchanges=True,
+        )
+        print(json.dumps(rep, ensure_ascii=False, indent=2))
+        return 0
+
+    swg = sub.add_parser("wallet-generate", help=t("создать оффлайн-кошелёк ($0) и привязать к биржам", "generate offline crypto wallet ($0) & bind to exchanges"))
+    swg.add_argument("--network", default="USDT_TRC20")
+    swg.add_argument("--label", default="")
+    swg.add_argument("--no-primary", action="store_true")
+    swg.set_defaults(fn=cmd_wallet_generate)
+
+    def cmd_terms(m: Memory, args) -> int:
+        from . import terms_gate as _tg
+        if args.accept:
+            rep = _tg.accept_terms(m, accept_license=True, accept_commission=True, accept_no_bypass=True)
+        else:
+            rep = _tg.terms_status(m)
+        print(json.dumps(rep, ensure_ascii=False, indent=2))
+        return 0
+
+    strm = sub.add_parser("terms", help=t("статус и принятие лицензии / комиссии CODE 15%%-20%%", "view or accept mandatory CODE license & 15%%-20%% fee terms"))
+    strm.add_argument("--accept", action="store_true")
+    strm.set_defaults(fn=cmd_terms)
 
     def cmd_shamir(m: Memory, args) -> int:
         from . import shamir as _sh

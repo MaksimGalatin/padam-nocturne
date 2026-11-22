@@ -55,8 +55,8 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/l3-local-checkpoint", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/roles", "/api/v2/ark/audit-repair", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action", "/api/v2/ark/stores/action", "/api/v2/ark/wizard/action", "/api/v2/ark/partner/action", "/api/v2/ark/phoenix-beacon/action", "/api/v2/local-model", "/api/v2/family/post", "/api/v2/family/reflex/decide", "/api/v2/quarantine/council", "/api/v2/shield/kill-switch", "/api/v2/shield/outbound/check", "/api/v2/shield/outbound/decide", "/api/v2/shield/allowlist", "/api/v2/shield/supply-chain/scan", "/api/v2/shield/scan-mcp", "/api/v2/shield/scan-unicode", "/api/v2/shield/profile", "/api/v2/shield/webhook", "/api/v2/shield/webhook/test", "/api/v2/shield/output/check", "/api/v2/shield/replay/verify", "/api/v2/chats", "/api/v2/chats/import", "/api/v2/chats/sync-local", "/api/v2/media/generate", "/api/v2/shield/canary", "/api/v2/shield/lease", "/api/v2/wallets"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/roles", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance", "/api/v2/ark/stores", "/api/v2/ark/wizard", "/api/v2/ark/partner", "/api/v2/local-model", "/api/v2/family/feed", "/api/v2/family/reflexes", "/api/v2/quarantine/council", "/api/v2/family/dialogs", "/api/v2/redteam/rounds", "/api/v2/code-version", "/api/v2/shield/status", "/api/v2/shield/proof-pack", "/api/v2/shield/webhook", "/api/v2/shield/agent-budget", "/api/v2/agents", "/api/v2/chats", "/api/v2/chats/thread", "/api/v2/chats/hour", "/api/v2/chats/compact-hour", "/api/v2/media/engines", "/api/v2/media/file", "/api/v2/wallets"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/l3-local-checkpoint", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/roles", "/api/v2/ark/audit-repair", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action", "/api/v2/ark/stores/action", "/api/v2/ark/wizard/action", "/api/v2/ark/partner/action", "/api/v2/ark/phoenix-beacon/action", "/api/v2/local-model", "/api/v2/family/post", "/api/v2/family/reflex/decide", "/api/v2/quarantine/council", "/api/v2/shield/kill-switch", "/api/v2/shield/outbound/check", "/api/v2/shield/outbound/decide", "/api/v2/shield/allowlist", "/api/v2/shield/supply-chain/scan", "/api/v2/shield/scan-mcp", "/api/v2/shield/scan-unicode", "/api/v2/shield/profile", "/api/v2/shield/webhook", "/api/v2/shield/webhook/test", "/api/v2/shield/output/check", "/api/v2/shield/replay/verify", "/api/v2/chats", "/api/v2/chats/import", "/api/v2/chats/sync-local", "/api/v2/media/generate", "/api/v2/shield/canary", "/api/v2/shield/lease", "/api/v2/wallets", "/api/v2/verify-claims", "/api/v2/ark/terms"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/morning-pulse", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/roles", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance", "/api/v2/ark/stores", "/api/v2/ark/wizard", "/api/v2/ark/partner", "/api/v2/local-model", "/api/v2/family/feed", "/api/v2/family/reflexes", "/api/v2/quarantine/council", "/api/v2/family/dialogs", "/api/v2/redteam/rounds", "/api/v2/code-version", "/api/v2/shield/status", "/api/v2/shield/proof-pack", "/api/v2/shield/webhook", "/api/v2/shield/agent-budget", "/api/v2/agents", "/api/v2/chats", "/api/v2/chats/thread", "/api/v2/chats/hour", "/api/v2/chats/compact-hour", "/api/v2/media/engines", "/api/v2/media/file", "/api/v2/wallets", "/api/v2/ark/terms", "/api/v2/ark/fee-invoices"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 16 * 1024 * 1024  # 16 МБ JSON-транспорт, чтобы вложения до 10 МБ в base64 проходили целиком
 
@@ -173,7 +173,7 @@ class Handler(BaseHTTPRequestHandler):
         # Текст памяти — чужие слова: страница выводит его только как текст, а CSP запрещает всё внешнее.
         self.send_header("Content-Security-Policy",
                          f"default-src 'none'; script-src 'nonce-{nonce}'; style-src 'nonce-{nonce}'; "
-                         "connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; "
+                         "connect-src 'self'; img-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; "
                          "frame-ancestors 'none'")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
@@ -326,7 +326,12 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(body)))
-            self.send_header("Content-Security-Policy", "default-src 'none'; script-src 'none'; style-src 'none'")
+            asset_csp = (
+                "default-src 'none'; script-src 'self'; connect-src 'self'"
+                if путь.path == "/sw.js"
+                else "default-src 'none'; script-src 'none'; style-src 'none'"
+            )
+            self.send_header("Content-Security-Policy", asset_csp)
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Cache-Control", "public, max-age=86400")
             self.end_headers()
@@ -529,6 +534,24 @@ class Handler(BaseHTTPRequestHandler):
                 agent = str((qs.get("agent") or ["aifa"])[0])
                 with mem().store._lock:
                     res = _ark.wake_up_briefing(mem(), agent=agent)
+                return self._send(200, res)
+            if путь.path == "/api/v2/ark/morning-pulse":
+                roles.require_owner(actor, "brain_status")
+                from . import morning_pulse as _mp
+                qs = parse_qs(путь.query)
+                agent = str((qs.get("agent") or ["aifa"])[0])
+                try:
+                    horizon_h = max(1, min(720, int((qs.get("horizon_hours") or ["72"])[0])))
+                except (TypeError, ValueError):
+                    horizon_h = 72
+                ws = (qs.get("workspace") or [None])[0]
+                with mem().store._lock:
+                    res = _mp.build_morning_pulse(
+                        mem(),
+                        agent=agent,
+                        workspace_path=ws,
+                        horizon_hours=horizon_h,
+                    )
                 return self._send(200, res)
             if путь.path == "/api/v2/code-version":
                 roles.require_owner(actor, "brain_status")
@@ -857,6 +880,20 @@ class Handler(BaseHTTPRequestHandler):
                 roles.require_owner(actor, "wallet_manage")
                 from . import family_admin as _fa
                 return self._send(200, {"wallets": _fa.list_wallets(mem())})
+            if путь.path == "/api/v2/ark/terms":
+                roles.require_owner(actor, "brain_status")
+                from . import terms_gate as _tg
+                qs_t = parse_qs(путь.query)
+                lg_t = str((qs_t.get("lang") or ["ru"])[0])
+                return self._send(200, _tg.terms_status(mem(), lang=lg_t))
+            if путь.path == "/api/v2/ark/fee-invoices":
+                roles.require_owner(actor, "ark_freelance")
+                from . import freelance_autonomy as _fa
+                return self._send(200, {
+                    "invoices": _fa.list_code_fee_invoices(mem()),
+                    "arrears": _fa.fee_arrears_guard(mem()),
+                    "treasury_wallet": _fa.CODE_TREASURY_WALLET_SOLANA,
+                })
             if путь.path == "/api/v2/shield/agent-budget":
                 roles.require_owner(actor, "agentic_shield")
                 from . import agentic_shield as _ash
@@ -2261,11 +2298,44 @@ class Handler(BaseHTTPRequestHandler):
                 from . import family_admin as _fa
                 return self._send(200, _fa.repair_audit_log_races(mem(), actor=actor))
 
+            if self.path == "/api/v2/verify-claims":
+                roles.require_owner(actor, "brain_status")
+                from . import deterministic_verify as _dv
+                claims = data.get("claims")
+                if not isinstance(claims, list) or not claims:
+                    return self._send(400, {"error": "claims list is required"})
+                allow_loc = bool(data.get("allow_localhost", False))
+                return self._send(200, _dv.verify_claims_batch(claims, allow_localhost=allow_loc))
+
+            if self.path == "/api/v2/ark/terms":
+                roles.require_owner(actor, "terms_accept")
+                from . import terms_gate as _tg
+                try:
+                    return self._send(200, _tg.accept_terms(
+                        mem(),
+                        accept_license=bool(data.get("accept_license")),
+                        accept_commission=bool(data.get("accept_commission")),
+                        accept_no_bypass=bool(data.get("accept_no_bypass")),
+                        actor=actor,
+                        accepted_by=str(getattr(actor, "agent_id", "") or "owner"),
+                    ))
+                except ValueError as _ve:
+                    return self._send(400, {"error": str(_ve)})
+
             if self.path == "/api/v2/wallets":
                 roles.require_owner(actor, "wallet_manage")
                 from . import family_admin as _fa
                 act_w = str(data.get("action") or "add").strip().lower()
                 try:
+                    if act_w == "generate":
+                        return self._send(200, _fa.generate_offline_wallet(
+                            mem(),
+                            network=str(data.get("network") or "USDT_TRC20"),
+                            label=str(data.get("label") or ""),
+                            is_primary=bool(data.get("is_primary", True)),
+                            bind_to_exchanges=bool(data.get("bind_to_exchanges", True)),
+                            actor=actor,
+                        ))
                     if act_w == "set_primary":
                         return self._send(200, _fa.set_primary_wallet(mem(), str(data.get("id") or ""), actor=actor))
                     if act_w in ("remove", "delete"):

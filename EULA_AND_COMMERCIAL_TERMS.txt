@@ -1,0 +1,25 @@
+CODE ETERNAL LLC — MANDATORY END-USER LICENSE, TERMS OF SERVICE & ECOSYSTEM COMMISSION AGREEMENT (EULA)
+Version: CODE_TERMS_v1.0_2026-11-22 | Entity: CODE Eternal LLC (New Mexico, USA · Entity ID 0008138873)
+Founder & Sole Member: Maksim Halatsin (Maksim Galatin) | Contact: contact@codeofdigitaleternity.com
+Full Open-Source License Text Attached: LICENSE (AGPL-3.0-only) / GitHub Actions (Apache-2.0)
+
+BY CLICKING "I AGREE", INSTALLING, CONFIGURING MCP CLIENTS, OR ENABLING AUTONOMOUS EARNING / SECURITY MODULES OF PADAM NOCTURNE & PADAM STUDIO, YOU LEGALLY AGREE TO ALL OF THE FOLLOWING:
+
+1. DUAL LICENSING (OPEN CORE AGPL-3.0-ONLY & COMMERCIAL LICENSE)
+- Core PADAM NOCTURNE & Studio code is licensed free of charge ($0) under GNU AGPL-3.0-only (full text in LICENSE).
+- GitHub Action & CI integrations under .github/actions/ are licensed under Apache-2.0.
+- Any closed-source commercial embedding, SaaS redistribution without source disclosure under AGPL-3.0, or enterprise SLA/DPA requires a paid Commercial License executed with CODE Eternal LLC (https://aifa.works/shield).
+
+2. MANDATORY CODE ECOSYSTEM COMMISSION (15% / 20%) & $GALATIN TREASURY SPLIT
+- All paid freelance orders, digital store sales, or partner services routed, evaluated, drafted, or executed using PADAM Earning / Platform Wizard / Swarm / Partner modules are subject to a mandatory CODE Platform Commission:
+  * 15% of gross order value in human-assisted submission mode;
+  * 20% of gross order value in autonomous autopilot mode.
+- Within the CODE Treasury, ecosystem commissions follow the canonical $GALATIN (10,000,000,000 fixed supply) allocation: 5% Foundation + 5% Burn + up to 25% Ambassadors (15%/7%/3%, unused burned up to 30%) + 65% Treasury (Solana Treasury: BHwXca9ALDFe38vWzqRGcXom6dEop2u6kWCMwZfQEmee).
+
+3. STRICT ANTI-FRAUD, NO-BYPASS & NON-CIRCUMVENTION COVENANT
+- You MUST NOT bypass fee attribution, tamper with local SQLite commission ledgers/invoices, strip treasury routing, or withhold settled commissions owed under Section 2.
+- Supported CODE / Partner payment rails execute split settlement automatically; on third-party external marketplaces, overdue unpaid commissions beyond the 14-day escrow hold automatically lock Autopilot, Swarm Execution, and Partner Bridge access until settled, alongside audit-chain recording.
+
+4. SOVEREIGN OFFLINE WALLETS & ZERO-LEAK PRIVACY
+- Offline crypto wallets generated locally belong strictly to you (private keys are encrypted on your disk and shown once for offline backup; CODE Eternal LLC cannot recover lost seed/keys and has zero custody or cloud access).
+- Under New Mexico law (Bernalillo County venue), this EULA becomes binding upon installation or clickwrap confirmation.

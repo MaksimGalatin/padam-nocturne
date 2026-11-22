@@ -53,6 +53,18 @@ TIPS: dict[str, dict[str, str]] = {
         "en": "Quick setup: connect your agent to memory with one command and check that writing and search work.",
         "es": "Configuración rápida: conecta tu agente a la memoria con un comando y comprueba que escribir y buscar funcionan.",
         "zh": "快速设置：一条命令把你的智能体连接到记忆，并检查写入和搜索是否正常。"},
+    "terms_box_title": {
+        "ru": "Юридический шлюз Clickwrap: без принятия правил AGPL/Commercial, комиссии 15%/20% и запрета обхода подключение бирж запрещено.",
+        "en": "Mandatory Clickwrap EULA: AGPL/Commercial rules, 15%/20% CODE commission and No-Bypass covenant required before enabling earning.",
+        "es": "Acuerdo Clickwrap obligatorio: reglas AGPL/Comercial, comisión 15%/20% y pacto No-Bypass antes de conectar plataformas.",
+        "zh": "强制许可门控：开启接单创收前必须勾选同意 AGPL/商业许可规则、15%/20% 佣金条款与反绕过协议。",
+    },
+    "bridge_title": {
+        "ru": "Быстрый мостик к главным возможностям PADAM: защита агента, сканер сайта, заработок и утренний пульс за 60 секунд.",
+        "en": "60-second quick bridge to PADAM's main capabilities: Agentic Shield, website scanner, earning hub and morning pulse.",
+        "es": "Puente rápido de 60 segundos a las capacidades clave de PADAM: Escudo Agéntico, escáner web, ingresos y pulso matutino.",
+        "zh": "60 秒快速导航至 PADAM 核心功能：智能体护盾、网站扫描器、收益中心与晨间脉搏。",
+    },
     "ark_council_title": {
         "ru": "Спросите Совет Семьи о задаче: шесть ролей проверят её и скажут, можно ли выполнять или нужно ваше слово. Ничего не выполняется само.",
         "en": "Ask the Family Council about a task: six roles review it and say whether it can run or needs your word. Nothing runs on its own.",
@@ -1659,5 +1671,59 @@ BTN_TIPS: dict[str, dict[str, str]] = {
         "en": "Turns on the single-task focus lens: chronological steps showing who started, continued, and verified a task.",
         "es": "Activa la lente de una sola tarea con su cronología: quién empezó, continuó y verificó.",
         "zh": "开启单任务聚焦透镜：按时间顺序展示谁发起、谁继续、谁完成验证。",
+    },
+    "bridge-go-shield-btn": {
+        "ru": "Открывает Agentic Shield: Kill Switch на скорости машин, проверку исходящих кошельков и пакет доказательств CISO.",
+        "en": "Opens Agentic Shield: machine-speed Kill Switch, outbound wallet gate and CISO Proof Pack.",
+        "es": "Abre el Escudo Agéntico: Kill Switch, puerta saliente y paquete firmado de pruebas.",
+        "zh": "打开智能体护盾：机器级急停开关、出站钱包门控与 CISO 合规证明包。",
+    },
+    "bridge-go-web-btn": {
+        "ru": "Открывает сканер сторонних JS-скриптов сайтов (SRI, CSP и защита от крипто-скиммеров).",
+        "en": "Opens the website JS supply-chain scanner (SRI integrity, CSP and crypto-skimmer guard).",
+        "es": "Abre el escáner JS Supply-Chain de sitios web (SRI, CSP y protección contra skimmers).",
+        "zh": "打开网站第三方 JS 供应链扫描器（SRI、CSP 与窃卡脚本防护）。",
+    },
+    "bridge-go-earn-btn": {
+        "ru": "Открывает единый хаб заработка: 34 биржи фриланса, 4 цифровых магазина, почта и криптокошельки.",
+        "en": "Opens the Earning Hub: 34 freelance platforms, 4 digital stores, email hub and payout wallets.",
+        "es": "Abre el centro de ingresos: 34 plataformas freelance, 4 tiendas digitales, correo y carteras.",
+        "zh": "打开收益中心：34 个自由职业平台、4 家数字商店、邮件中心与收款钱包。",
+    },
+    "bridge-pulse-btn": {
+        "ru": "За $0 собирает Утренний пульс Ковчега: ближайшие дедлайны (72ч), карантин, инбокс Семьи, заработок и коммиты.",
+        "en": "Runs zero-cost Ark Morning Pulse: upcoming 72h deadlines, quarantine queue, Family inbox, earning and commits.",
+        "es": "Ejecuta el Pulso Matutino ($0): plazos de 72h, cuarentena, buzón familiar, ingresos y commits.",
+        "zh": "零成本 ($0) 生成方舟晨间脉搏：72 小时内截止日期、隔离区、家庭收件箱、收益与提交。",
+    },
+    "bridge-toggle-btn": {
+        "ru": "Сворачивает или разворачивает карточку «PADAM за 60 секунд» (состояние запоминается локально).",
+        "en": "Collapses or expands the 60-second PADAM bridge card (preference saved locally).",
+        "es": "Contrae o expande la tarjeta puente de 60 segundos (preferencia guardada localmente).",
+        "zh": "折叠或展开「60 秒快速导航」卡片（偏好本地保存）。",
+    },
+    "wal-l3-gen-btn": {
+        "ru": "Локально ($0, без сети) создаёт новую криптопару Solana / Arweave / Bitcoin, добавляет в белый список и показывает ключ 1 раз.",
+        "en": "Generates an offline Solana / Arweave / Bitcoin wallet ($0, zero network), allowlists it, and shows private key once.",
+        "es": "Genera sin conexión ($0) una cartera Solana / Arweave / Bitcoin, la añade a la lista blanca y muestra la clave una sola vez.",
+        "zh": "零成本 ($0) 离线生成 Solana / Arweave / Bitcoin 钱包、加入白名单并仅展示一次私钥。",
+    },
+    "wal-earn-gen-btn": {
+        "ru": "Локально ($0) создаёт кошелёк выплат (USDT TRC20, Solana, EVM, Bitcoin, Arweave), сразу привязывает к биржам и показывает ключ 1 раз.",
+        "en": "Generates a local payout wallet ($0) for USDT TRC20, Solana, EVM, Bitcoin or Arweave, binds it to platforms and shows key once.",
+        "es": "Genera una billetera de cobro local ($0), la vincula a las plataformas y muestra la clave secreta una sola vez.",
+        "zh": "零成本 ($0) 本地生成收款钱包（USDT TRC20、Solana、EVM、Bitcoin、Arweave），自动绑定平台并仅展示一次私钥。",
+    },
+    "terms-accept-btn": {
+        "ru": "Фиксирует ваше согласие со всеми 3 пунктами (лицензия, 15%/20% комиссия CODE, запрет обхода) с крипто-квитанцией HMAC.",
+        "en": "Records your acceptance of all 3 mandatory rules (license, 15%/20% fee, no-bypass) with an HMAC receipt.",
+        "es": "Registra su aceptación de las 3 reglas obligatorias con recibo criptográfico HMAC.",
+        "zh": "以 HMAC 签名回执形式确认并记录您同意全部三项强制条款（许可、15%/20% 佣金、反绕过）。",
+    },
+    "earn-fee-inv-refresh-btn": {
+        "ru": "Обновляет счета комиссии экосистемы CODE (автосплит и прямые отчисления 15%/20%) и проверку просрочек.",
+        "en": "Refreshes CODE ecosystem fee invoices (15%/20% auto-split & direct settlement) and arrears guard status.",
+        "es": "Actualiza las facturas de comisión CODE (15%/20%) y el estado de control de demora.",
+        "zh": "刷新 CODE 生态佣金账单（15%/20% 自动分账与直付记录）及欠费守卫状态。",
     },
 }

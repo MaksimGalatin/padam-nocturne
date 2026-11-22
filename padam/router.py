@@ -606,7 +606,7 @@ def recommend_local_model() -> dict[str, Any]:
         try:
             out = subprocess.check_output(
                 [smi, "--query-gpu=name,memory.free", "--format=csv,noheader,nounits"],
-                text=True,
+                text=True, encoding="utf-8", errors="replace",
                 timeout=3,
             ).strip()
             if out:
