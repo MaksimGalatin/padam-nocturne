@@ -545,7 +545,7 @@ GUARDIAN_TICK_TOOL_DEF = {
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": [
             "tick", "health", "readiness", "audit_verify", "doctor", "l3_verify",
-            "handover", "drift", "self_heal", "aifa_security", "qa_benchmark", "entities", "graph",
+            "handover", "drift", "self_heal", "aifa_security", "qa_benchmark", "entities", "graph", "context_compass", "memory_hygiene", "ide_rules", "morning_pulse",
         ], "default": "tick", "description": "tick|health|doctor|graph"},
         "scope": _S, "text": _S, "query": _S, "id": _S, "limit": _I, "notes": _S,
     }},
@@ -585,7 +585,7 @@ SIBLING_HUB_TOOL_DEF = {
 COOP_LOCK_TOOL_DEF = {
     "name": "padam_coop_lock", "title": _TITLES["padam_coop_lock"], "description": "Leases",
     "inputSchema": {"type": "object", "properties": {
-        "action": {"type": "string", "enum": ["acquire", "renew", "release", "release_all", "list_leases", "list", "create_task", "claim_task", "update_task", "list_tasks"], "default": "list_tasks", "description": "acquire|task"},
+        "action": {"type": "string", "enum": ["acquire", "renew", "release", "release_all", "list_leases", "list", "create_task", "claim_task", "update_task", "list_tasks", "collab_open", "collab_submit", "collab_synth", "aid_request", "coop_status"], "default": "list_tasks", "description": "acquire|task"},
         "agent_id": _S, "resource_key": _S, "resource_path": _S,
         "purpose": _S, "ttl_s": {**_I, "description": "TTL sec"},
         "task_id": _S, "title": _S, "topic": _S, "scope": _S, "status": _S,
@@ -770,6 +770,11 @@ SHIELD_TOOL_DEF = {
                     "redteam_sim",
                     "trust_pack",
                     "triage",
+                    "mcp_inspector",
+                    "preinstall_scan",
+                    "privacy_shield",
+                    "acl_matrix",
+                    "exec_report",
                 ],
                 "default": "status",
                 "description": "status|kill_switch_trip|outbound_check|outbound_list|allowlist_list|scan_supply_chain|scan_mcp_tools|scan_unicode|webhook_status|webhook_test|proof_pack (unlock/approve/reject/allowlist_add/pin_mcp_tools are owner-only)",
@@ -4705,6 +4710,18 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             payload = m.entities_catalog(scope=args.get("scope"), query=args.get("query"), limit=int(args.get("limit") or 100), actor=actor)
         elif act_g == "graph":
             payload = m.graph(center_id=args.get("id") or None, limit=int(args.get("limit") or 200), actor=actor)
+        elif act_g == "context_compass":
+            from . import memory_pro as _mpro
+            payload = _mpro.compose_token_budget_context(m, query=str(args.get("query") or args.get("text") or ""), max_tokens=int(args.get("limit") or 1200), scope=args.get("scope"))
+        elif act_g == "memory_hygiene":
+            from . import memory_pro as _mpro
+            payload = _mpro.scan_memory_hygiene(m, stale_days=int(args.get("limit") or 90))
+        elif act_g == "ide_rules":
+            from . import memory_pro as _mpro
+            payload = _mpro.sync_ide_rules_file(m, target=str(args.get("query") or "claude"), scope=sc_g, dry_run=True)
+        elif act_g == "morning_pulse":
+            from . import studio_power as _spw
+            payload = _spw.build_morning_pulse_and_alerts(m)
         else:
             payload = _adv.run_guardian_tick(m, scope=sc_g)
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
@@ -4826,6 +4843,40 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 artifacts=args.get("artifacts") if isinstance(args.get("artifacts"), list) else None,
             )
             _emit_resource_updated(f"padam://swarm/topic/{payload['topic']}", owner_only=False)
+        elif act == "collab_open":
+            from . import swarm_coop as _sc
+            payload = _sc.open_collab_task(
+                m,
+                title=str(args.get("title") or "Cross-AI Task"),
+                problem_summary=str(args.get("summary") or args.get("purpose") or "Collaborative task"),
+                requester_agent_id=aid,
+                needed_skills=str(args.get("topic") or "code,security"),
+            )
+        elif act == "collab_submit":
+            from . import swarm_coop as _sc
+            payload = _sc.submit_collab_contribution(
+                m,
+                collab_id=str(args.get("task_id") or ""),
+                agent_id=aid,
+                contribution_text=str(args.get("summary") or args.get("purpose") or "Contribution"),
+                role_tag=str(args.get("topic") or "helper"),
+            )
+        elif act == "collab_synth":
+            from . import swarm_coop as _sc
+            payload = _sc.synthesize_collab_result(m, collab_id=str(args.get("task_id") or ""), confirm_splits=False)
+        elif act == "aid_request":
+            from . import swarm_coop as _sc
+            payload = _sc.request_mutual_tariff_aid(
+                m,
+                donor_agent_id=str(args.get("resource_key") or "family_pool"),
+                recipient_agent_id=aid,
+                amount_usdt=float(args.get("ttl_s") or 5.0),
+                purpose=str(args.get("purpose") or "token_topup"),
+                note=str(args.get("summary") or ""),
+            )
+        elif act == "coop_status":
+            from . import swarm_coop as _sc
+            payload = _sc.mutual_coop_snapshot(m)
         else:
             payload = {"tasks": _cb.list_tasks(m, topic=args.get("topic"), status=args.get("status"))}
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
@@ -5636,6 +5687,22 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
         elif act_sh == "trust_pack":
             from . import security_sales as _ss
             payload = _ss.export_vendor_trust_pack(m, client_name=str(args.get("target") or "Enterprise Customer"))
+        elif act_sh == "mcp_inspector":
+            from . import studio_power as _spw
+            payload = _spw.get_mcp_inspector_feed(m, limit=50)
+        elif act_sh == "preinstall_scan":
+            from . import studio_power as _spw
+            payload = _spw.scan_preinstall_mcp_package(m, str(args.get("payload") or args.get("text") or args.get("target") or ""))
+        elif act_sh == "privacy_shield":
+            from . import studio_power as _spw
+            payload = _spw.get_privacy_shield_report(m)
+        elif act_sh == "acl_matrix":
+            from . import studio_power as _spw
+            payload = _spw.get_agent_acl_matrix(m)
+        elif act_sh == "exec_report":
+            from . import studio_power as _spw
+            payload = _spw.build_executive_report_html(m, kind=str(args.get("action_type") or "security_audit"), client_name=str(args.get("target") or "Client"))
+            payload.pop("html", None)
         else:
             payload = _ash.get_shield_status(m)
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
@@ -6191,9 +6258,24 @@ def _handle_legacy(req: dict) -> dict | None:
             return ok({"task": _start_sleep_task(m_cur, args, ttl=int(task_req.get("ttl") or 60000))})
         try:
             _t0_call = time.perf_counter()
+            _aid_tr = str((args.get("agent_id") or args.get("author") or _default_agent_id()) if isinstance(args, dict) else _default_agent_id())
+            try:
+                from . import studio_power as _spw_tr
+                _blk_reason = _spw_tr.is_tool_blocked_for_agent(mem(), _aid_tr, name)
+                if _blk_reason:
+                    _spw_tr.record_mcp_trace(tool_name=name, agent_id=_aid_tr, arguments=args, duration_ms=0.0, response_chars=len(_blk_reason), ok=False, blocked_reason=_blk_reason)
+                    return ok({"content": [{"type": "text", "text": f"Permission denied: {_blk_reason}"}], "isError": True})
+            except Exception:
+                pass
             text, structured = _call_tool_full(name, args)
+            _dur_ms = (time.perf_counter() - _t0_call) * 1000
             _touch_session(name, explicit_agent=args.get("agent_id") if isinstance(args, dict) else None)
-            _audit_mcp_call(name, args, ok=structured is not None, duration_ms=(time.perf_counter() - _t0_call) * 1000)
+            _audit_mcp_call(name, args, ok=structured is not None, duration_ms=_dur_ms)
+            try:
+                from . import studio_power as _spw_tr
+                _spw_tr.record_mcp_trace(tool_name=name, agent_id=_aid_tr, arguments=args, duration_ms=_dur_ms, response_chars=len(text or ""), ok=(structured is not None))
+            except Exception:
+                pass
             try:   # B1 Сестры: локальный журнал вызова с trace_id (без аргументов)
                 from . import observability as _obs
                 _obs.log_call(name, ok=structured is not None, duration_ms=(time.perf_counter() - _t0_call) * 1000,

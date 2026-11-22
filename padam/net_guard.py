@@ -21,6 +21,9 @@ import subprocess
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections import deque
+from datetime import datetime, timezone
+import threading
 from typing import Any
 
 # Известные имена облачных метаданных и внутренних системных адресов
@@ -80,6 +83,51 @@ _NUMERIC_HOST_RE = re.compile(
 )
 _CANONICAL_DECIMAL_V4_PART_RE = re.compile(r"^(?:0|[1-9]\d{0,2})$")
 
+
+
+# Режим Авиа (Air-Gap) и Стеклянный Щит Данных — журнал всех исходящих сетевых обращений
+_EGRESS_LOCK = threading.Lock()
+_EGRESS_LOG: deque[dict[str, Any]] = deque(maxlen=200)
+_AIRGAP_MODE = False
+
+
+def is_airgap_enabled() -> bool:
+    """Возвращает True, если включён Режим Авиа (полный оффлайн, внешние URL запрещены)."""
+    return bool(_AIRGAP_MODE or os.environ.get("PADAM_AIRGAP", "").strip() == "1")
+
+
+def set_airgap_enabled(enabled: bool) -> dict[str, Any]:
+    """Включает или выключает Режим Авиа (Air-Gap) на уровне net_guard."""
+    global _AIRGAP_MODE
+    _AIRGAP_MODE = bool(enabled)
+    return {"ok": True, "airgap": is_airgap_enabled()}
+
+
+def record_egress_event(
+    domain: str,
+    *,
+    reason: str = "outbound_check",
+    bytes_out: int = 0,
+    allowed: bool = True,
+    dlp_clean: bool = True,
+) -> None:
+    """Фиксирует исходящее сетевое обращение (только домен и метаданные, без секретов и тела)."""
+    with _EGRESS_LOCK:
+        _EGRESS_LOG.append({
+            "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "domain": str(domain or "")[:120],
+            "reason": str(reason or "outbound")[:64],
+            "bytes_out": max(0, int(bytes_out)),
+            "allowed": bool(allowed),
+            "dlp_clean": bool(dlp_clean),
+        })
+
+
+def get_egress_log(limit: int = 50) -> list[dict[str, Any]]:
+    """Возвращает последние исходящие сетевые обращения (свежие сверху)."""
+    lim = max(1, min(200, int(limit)))
+    with _EGRESS_LOCK:
+        return list(_EGRESS_LOG)[-lim:][::-1]
 
 def _is_canonical_v4_literal(host: str) -> bool:
     """Проверяет, что строка является строго стандартной 4-октетной IPv4 без ведущих нулей/hex."""
@@ -234,13 +282,20 @@ def validate_outbound_url(
                         allow_ipv6_loopback=False,
                     )
 
+    # 2б. Режим Авиа (Air-Gap): блокируем любые не-локальные внешние соединения
+    if not is_local_target and is_airgap_enabled():
+        record_egress_event(host_clean, reason="airgap_blocked", allowed=False)
+        raise ValueError(f"Включён Режим Авиа (Air-Gap): внешний адрес {host_clean!r} заблокирован.")
+
     # 3. Проверка HTTPS против plain HTTP
     if scheme == "http":
         if is_local_target and allow_localhost and allow_http_localhost:
+            record_egress_event(host_clean, reason="local_http", allowed=True)
             return u
         if require_https:
             raise ValueError("Исходящий URL должен использовать https:// (http:// допускается только для локального адреса при явном разрешении).")
 
+    record_egress_event(host_clean, reason="local_https" if is_local_target else "external_https", allowed=True)
     return u
 
 

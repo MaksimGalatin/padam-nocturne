@@ -112,6 +112,10 @@ PARITY_MAP: dict[tuple[str, str], tuple[str, str, str, str]] = {
     ("padam_guardian_tick", "qa_benchmark"): ("panel-attacks", "#att-qa-load", "GET /api/v2/qa-benchmark", "benchmarks.quality"),
     ("padam_guardian_tick", "entities"): ("panel-entities", "#panel-entities | #entities-filter", "GET /entities", "padam.memory"),
     ("padam_guardian_tick", "graph"): ("panel-graph", "#panel-graph | #graph-id-input", "GET /graph", "padam.memory"),
+    ("padam_guardian_tick", "context_compass"): ("panel-feed", "#mpro-compass-btn | #mpro-query-inp", "POST /api/v2/memory/pro/action", "padam.memory_pro"),
+    ("padam_guardian_tick", "memory_hygiene"): ("panel-feed", "#mpro-hygiene-btn", "POST /api/v2/memory/pro/action", "padam.memory_pro"),
+    ("padam_guardian_tick", "ide_rules"): ("panel-feed", "#mpro-ide-btn", "POST /api/v2/memory/pro/action", "padam.memory_pro"),
+    ("padam_guardian_tick", "morning_pulse"): ("panel-family", "#pulse-run-btn", "POST /api/v2/power/action", "padam.studio_power"),
 
     # padam_mesh_sync
     ("padam_mesh_sync", "identity"): ("panel-brain", "#ark-mesh-id-btn", "GET /api/v2/ark/mesh/identity", "padam.live_mesh"),
@@ -154,6 +158,11 @@ PARITY_MAP: dict[tuple[str, str], tuple[str, str, str, str]] = {
     ("padam_coop_lock", "claim_task"): ("panel-family", "#ark-coop-tclaim-btn", "POST /api/v2/ark/coop", "padam.coop_broker"),
     ("padam_coop_lock", "update_task"): ("panel-family", "#ark-coop-tdone-btn", "POST /api/v2/ark/coop", "padam.coop_broker"),
     ("padam_coop_lock", "list_tasks"): ("panel-family", "#ark-coop-list-btn", "POST /api/v2/ark/coop", "padam.coop_broker"),
+    ("padam_coop_lock", "collab_open"): ("panel-family", "#coop-open-btn | #coop-title-inp", "POST /api/v2/swarm/coop/action", "padam.swarm_coop"),
+    ("padam_coop_lock", "collab_submit"): ("panel-family", "#coop-open-btn | #coop-text-inp", "POST /api/v2/swarm/coop/action", "padam.swarm_coop"),
+    ("padam_coop_lock", "collab_synth"): ("panel-family", "#coop-status-btn | #coop-open-btn", "POST /api/v2/swarm/coop/action", "padam.swarm_coop"),
+    ("padam_coop_lock", "aid_request"): ("panel-family", "#coop-aid-req-btn | #coop-agent-inp", "POST /api/v2/swarm/coop/action", "padam.swarm_coop"),
+    ("padam_coop_lock", "coop_status"): ("panel-family", "#coop-status-btn", "GET /api/v2/swarm/coop | POST /api/v2/swarm/coop/action", "padam.swarm_coop"),
 
     # Session pack, code anchor, batch, conflicts, telemetry
     ("padam_session_pack", "-"): ("panel-family", "#ark-sespack-btn", "GET /api/v2/ark/session-pack", "padam.ark_advanced"),
@@ -286,6 +295,11 @@ PARITY_MAP: dict[tuple[str, str], tuple[str, str, str, str]] = {
     ("padam_agentic_shield", "redteam_sim"): ("panel-attacks", "#sh-sales-redteam-btn", "POST /api/v2/shield/sales/action", "padam.security_sales"),
     ("padam_agentic_shield", "triage"): ("panel-attacks", "#sh-sales-triage-btn", "POST /api/v2/shield/sales/action", "padam.security_sales"),
     ("padam_agentic_shield", "trust_pack"): ("panel-attacks", "#sh-sales-trust-btn", "POST /api/v2/shield/sales/action", "padam.security_sales"),
+    ("padam_agentic_shield", "mcp_inspector"): ("panel-attacks", "#sh-insp-btn", "GET /api/v2/mcp/inspector", "padam.studio_power"),
+    ("padam_agentic_shield", "preinstall_scan"): ("panel-attacks", "#sh-preinst-btn | #sh-pw-inp", "POST /api/v2/power/action", "padam.studio_power"),
+    ("padam_agentic_shield", "privacy_shield"): ("panel-attacks", "#privacy-pill-btn | #sh-airgap-btn", "GET /api/v2/power/status | POST /api/v2/power/action", "padam.studio_power"),
+    ("padam_agentic_shield", "acl_matrix"): ("panel-attacks", "#sh-acl-save-btn", "GET /api/v2/power/status | POST /api/v2/power/action", "padam.studio_power"),
+    ("padam_agentic_shield", "exec_report"): ("panel-attacks", "#sh-exec-rep-btn", "POST /api/v2/power/action", "padam.studio_power"),
 }
 
 # Обратная таблица: функции Studio, которые намеренно ограничены владельцем или являются UI-сервисом
@@ -311,6 +325,10 @@ STUDIO_EXTRA_CONTROLS: list[tuple[str, str, str, str, str]] = [
     ("panel-attacks", "#sh-mcp-pin-btn", "POST /api/v2/shield/scan-mcp", "Только владелец в Studio/CLI (SHIELD-05)", "Закрепление эталонных хэшей MCP инструментов запрещено агенту через MCP"),
     ("panel-attacks", "#sh-wh-save-btn", "POST /api/v2/shield/webhook", "Только владелец в Studio/CLI (SHIELD-06)", "Изменение URL корпоративных оповещений SIEM/Slack запрещено через MCP"),
     ("panel-chats", "#chats-add-btn | #chats-import-btn", "POST /api/v2/chats | POST /api/v2/chats/import", "Только владелец в Studio/CLI", "Хронология живых переписок по агентам без кода и секретов"),
+    ("panel-family", "#coop-pay-save-btn", "POST /api/v2/swarm/coop/action", "Только владелец в Studio", "Разрешение агентам оплачивать тарифы друг друга и лимиты взаимооплаты меняет только владелец"),
+    ("panel-attacks", "#sh-pin-save-btn | #sh-airgap-btn", "POST /api/v2/power/action", "Только владелец в Studio", "PIN-замок сейфа и Режим Авиа (Air-Gap) меняет только владелец"),
+    ("panel-quickstart", "#setup-scan-btn", "GET /api/v2/setup/clients | POST /api/v2/setup/clients/action", "Только владелец в Studio/CLI", "Запись конфигов 13+ AI-клиентов на диске владельца"),
+    ("panel-backup", "#bak321-save-btn | #bak321-run-btn", "POST /api/v2/power/action", "Только владелец в Studio/CLI", "Автоматические зашифрованные бэкапы 3-2-1 и восстановление"),
 ]
 
 
@@ -387,7 +405,7 @@ def main() -> int:
             "test_studio_ark_buttons_1711.py",
             "test_studio_family_tab_1811.py",
             "test_partner_studio_1811.py",
-            "test_freelance_client_lock_escrow_1811.py", "test_20_enhancements_2211.py",
+            "test_freelance_client_lock_escrow_1811.py", "test_20_enhancements_2211.py", "test_21_power_and_coop_2211.py",
         )
         if (ROOT / "tests" / name).exists()
     )

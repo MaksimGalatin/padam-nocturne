@@ -4,14 +4,14 @@
 
 ## Сводка по всем инструментам и действиям MCP
 
-- Всего инструментов MCP (с учётом всех 6 флагов, `_ALL_TOOLS_BY_NAME`): **47** (по умолчанию: **9**, `PADAM_MCP_ARK_TOOLS=1`: **34** и **27566/27000** символов в `tools/list`, с `PADAM_MCP_PARTNER_TOOLS=1`: **40**).
-- Всего пар `(инструмент, action)`: **213**.
-- Есть в MCP: **213 из 213**
-- Есть в Studio (вкладка + кнопка/поле): **213 из 213**
-- Есть в API (`padam/api.py`): **213 из 213**
-- Покрыто автотестами: **209 из 213**
-- Проверено реальным нажатием в Playwright (1280×800 и 390×844): **187 из 213**
-- Контролов Studio только для владельца (намеренно закрытых в MCP по аудиту GLM): **20**
+- Всего инструментов MCP (с учётом всех 6 флагов, `_ALL_TOOLS_BY_NAME`): **47** (по умолчанию: **9**, `PADAM_MCP_ARK_TOOLS=1`: **34** и **27711/27000** символов в `tools/list`, с `PADAM_MCP_PARTNER_TOOLS=1`: **40**).
+- Всего пар `(инструмент, action)`: **227**.
+- Есть в MCP: **227 из 227**
+- Есть в Studio (вкладка + кнопка/поле): **227 из 227**
+- Есть в API (`padam/api.py`): **227 из 227**
+- Покрыто автотестами: **223 из 227**
+- Проверено реальным нажатием в Playwright (1280×800 и 390×844): **201 из 227**
+- Контролов Studio только для владельца (намеренно закрытых в MCP по аудиту GLM): **24**
 
 ## 1. Полная таблица MCP → Studio → API
 
@@ -87,6 +87,10 @@
 | `padam_guardian_tick` | `qa_benchmark` | Да | Да: `panel-attacks` → `#att-qa-load` | Да: `GET /api/v2/qa-benchmark` | Да | Да |
 | `padam_guardian_tick` | `entities` | Да | Да: `panel-entities` → `#panel-entities, #entities-filter` | Да: `GET /entities` | Да | Да |
 | `padam_guardian_tick` | `graph` | Да | Да: `panel-graph` → `#panel-graph, #graph-id-input` | Да: `GET /graph` | Да | Да |
+| `padam_guardian_tick` | `context_compass` | Да | Да: `panel-feed` → `#mpro-compass-btn, #mpro-query-inp` | Да: `POST /api/v2/memory/pro/action` | Да | Да |
+| `padam_guardian_tick` | `memory_hygiene` | Да | Да: `panel-feed` → `#mpro-hygiene-btn` | Да: `POST /api/v2/memory/pro/action` | Да | Да |
+| `padam_guardian_tick` | `ide_rules` | Да | Да: `panel-feed` → `#mpro-ide-btn` | Да: `POST /api/v2/memory/pro/action` | Да | Да |
+| `padam_guardian_tick` | `morning_pulse` | Да | Да: `panel-family` → `#pulse-run-btn` | Да: `POST /api/v2/power/action` | Да | Да |
 | `padam_mesh_sync` | `identity` | Да | Да: `panel-brain` → `#ark-mesh-id-btn` | Да: `GET /api/v2/ark/mesh/identity` | Да | Да |
 | `padam_mesh_sync` | `peers` | Да | Да: `panel-brain` → `#ark-mesh-btn` | Да: `GET /api/v2/ark/mesh/peers` | Да | Да |
 | `padam_mesh_sync` | `pair_init` | Да | Да: `panel-brain` → `#ark-mesh-pairinit-btn, #ark-mesh-peer-inp` | Да: `POST /api/v2/ark/mesh/pair-init` | Да | Да |
@@ -121,6 +125,11 @@
 | `padam_coop_lock` | `claim_task` | Да | Да: `panel-family` → `#ark-coop-tclaim-btn` | Да: `POST /api/v2/ark/coop` | Да | Да |
 | `padam_coop_lock` | `update_task` | Да | Да: `panel-family` → `#ark-coop-tdone-btn` | Да: `POST /api/v2/ark/coop` | Да | Да |
 | `padam_coop_lock` | `list_tasks` | Да | Да: `panel-family` → `#ark-coop-list-btn` | Да: `POST /api/v2/ark/coop` | Да | Да |
+| `padam_coop_lock` | `collab_open` | Да | Да: `panel-family` → `#coop-open-btn, #coop-title-inp` | Да: `POST /api/v2/swarm/coop/action` | Да | Да |
+| `padam_coop_lock` | `collab_submit` | Да | Да: `panel-family` → `#coop-open-btn, #coop-text-inp` | Да: `POST /api/v2/swarm/coop/action` | Да | Да |
+| `padam_coop_lock` | `collab_synth` | Да | Да: `panel-family` → `#coop-status-btn, #coop-open-btn` | Да: `POST /api/v2/swarm/coop/action` | Да | Да |
+| `padam_coop_lock` | `aid_request` | Да | Да: `panel-family` → `#coop-aid-req-btn, #coop-agent-inp` | Да: `POST /api/v2/swarm/coop/action` | Да | Да |
+| `padam_coop_lock` | `coop_status` | Да | Да: `panel-family` → `#coop-status-btn` | Да: `GET /api/v2/swarm/coop, POST /api/v2/swarm/coop/action` | Да | Да |
 | `padam_session_pack` | `-` | Да | Да: `panel-family` → `#ark-sespack-btn` | Да: `GET /api/v2/ark/session-pack` | Да | Да |
 | `padam_code_anchor` | `anchor` | Да | Да: `panel-brain` → `#ark-anchor-add-btn, #ark-anchor-path-inp` | Да: `POST /api/v2/ark/code-anchor` | Да | Да |
 | `padam_code_anchor` | `check` | Да | Да: `panel-brain` → `#ark-anchor-chk-btn` | Да: `GET /api/v2/ark/code-anchor, POST /api/v2/ark/code-anchor` | Да | Да |
@@ -230,6 +239,11 @@
 | `padam_agentic_shield` | `redteam_sim` | Да | Да: `panel-attacks` → `#sh-sales-redteam-btn` | Да: `POST /api/v2/shield/sales/action` | Да | Да |
 | `padam_agentic_shield` | `trust_pack` | Да | Да: `panel-attacks` → `#sh-sales-trust-btn` | Да: `POST /api/v2/shield/sales/action` | Да | Нет |
 | `padam_agentic_shield` | `triage` | Да | Да: `panel-attacks` → `#sh-sales-triage-btn` | Да: `POST /api/v2/shield/sales/action` | Да | Нет |
+| `padam_agentic_shield` | `mcp_inspector` | Да | Да: `panel-attacks` → `#sh-insp-btn` | Да: `GET /api/v2/mcp/inspector` | Да | Да |
+| `padam_agentic_shield` | `preinstall_scan` | Да | Да: `panel-attacks` → `#sh-preinst-btn, #sh-pw-inp` | Да: `POST /api/v2/power/action` | Да | Да |
+| `padam_agentic_shield` | `privacy_shield` | Да | Да: `panel-attacks` → `#privacy-pill-btn, #sh-airgap-btn` | Да: `GET /api/v2/power/status, POST /api/v2/power/action` | Да | Да |
+| `padam_agentic_shield` | `acl_matrix` | Да | Да: `panel-attacks` → `#sh-acl-save-btn` | Да: `GET /api/v2/power/status, POST /api/v2/power/action` | Да | Да |
+| `padam_agentic_shield` | `exec_report` | Да | Да: `panel-attacks` → `#sh-exec-rep-btn` | Да: `POST /api/v2/power/action` | Да | Да |
 
 ## 2. Обратный аудит Studio / Владелец → MCP (намеренные ограничения безопасности)
 
@@ -255,3 +269,7 @@
 | `panel-attacks` | `#sh-mcp-pin-btn` | `POST /api/v2/shield/scan-mcp` | Только владелец в Studio/CLI (SHIELD-05) | Да | Да | Нет | Нет | Закрепление эталонных хэшей MCP инструментов запрещено агенту через MCP |
 | `panel-attacks` | `#sh-wh-save-btn` | `POST /api/v2/shield/webhook` | Только владелец в Studio/CLI (SHIELD-06) | Да | Да | Нет | Нет | Изменение URL корпоративных оповещений SIEM/Slack запрещено через MCP |
 | `panel-chats` | `#chats-add-btn, #chats-import-btn` | `POST /api/v2/chats, POST /api/v2/chats/import` | Только владелец в Studio/CLI | Да | Да | Да | Нет | Хронология живых переписок по агентам без кода и секретов |
+| `panel-family` | `#coop-pay-save-btn` | `POST /api/v2/swarm/coop/action` | Только владелец в Studio | Да | Да | Да | Да | Разрешение агентам оплачивать тарифы друг друга и лимиты взаимооплаты меняет только владелец |
+| `panel-attacks` | `#sh-pin-save-btn, #sh-airgap-btn` | `POST /api/v2/power/action` | Только владелец в Studio | Да | Да | Нет | Да | PIN-замок сейфа и Режим Авиа (Air-Gap) меняет только владелец |
+| `panel-quickstart` | `#setup-scan-btn` | `GET /api/v2/setup/clients, POST /api/v2/setup/clients/action` | Только владелец в Studio/CLI | Да | Да | Да | Да | Запись конфигов 13+ AI-клиентов на диске владельца |
+| `panel-backup` | `#bak321-save-btn, #bak321-run-btn` | `POST /api/v2/power/action` | Только владелец в Studio/CLI | Да | Да | Нет | Да | Автоматические зашифрованные бэкапы 3-2-1 и восстановление |
