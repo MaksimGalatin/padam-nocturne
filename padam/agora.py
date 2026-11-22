@@ -27,7 +27,7 @@ from contextlib import nullcontext
 from datetime import datetime, timezone
 from typing import Any
 
-from . import agent_passport, ark, audit_chain, integrity, safety, sibling_registry
+from . import agent_passport, agentic_shield, ark, audit_chain, integrity, safety, sibling_registry, solana_crypto_shield
 
 AGORA_ROOMS: dict[str, dict[str, str]] = {
     "unsolved_tasks": {
@@ -99,6 +99,13 @@ CREATE TABLE IF NOT EXISTS ark_agora_reply (
     author_sig      TEXT NOT NULL DEFAULT '',
     created_at      TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS ark_agora_votes (
+    post_id        TEXT NOT NULL,
+    user_id        TEXT NOT NULL,
+    voter_agent_id TEXT NOT NULL,
+    created_at     TEXT NOT NULL,
+    PRIMARY KEY (post_id, user_id, voter_agent_id)
+);
 CREATE INDEX IF NOT EXISTS idx_agora_post_room ON ark_agora_post (user_id, room, created_at DESC);
 """
 
@@ -121,16 +128,28 @@ def _ensure(memory) -> None:
 
 
 def sanitize_public_agora_text(text: str) -> tuple[str, dict[str, Any]]:
-    """Жёстко зачищает секреты, личные пути/почты владельца и проверяет текст на промпт-инъекции."""
+    """Жёстко зачищает секреты, пути/почты, скрытый Unicode и многослойные инъекции."""
     raw = str(text or "").strip()
+    uni_rep = agentic_shield.inspect_unicode_and_encoding(raw)
+    layers = solana_crypto_shield.deobfuscate_layers(raw, max_layers=4)
     redacted, sec_hits = safety.redact(raw)
     pii_hits = len(_PII_EXTRA_RE.findall(redacted))
     cleaned = _PII_EXTRA_RE.sub("[REDACTED_LOCAL_OR_PII]", redacted)
+
     is_inj = safety.looks_like_instruction(cleaned)
     is_rule_sub = safety.changes_owner_or_rules(cleaned)
-    blocked = bool(is_inj or is_rule_sub)
+    obf_inj = False
+    for layer in layers[1:]:
+        if safety.looks_like_instruction(layer) or safety.changes_owner_or_rules(layer):
+            obf_inj = True
+            break
+    uni_codes = {str(f.get("code") or "") for f in (uni_rep.get("findings") or [])}
+    hidden_uni = bool({"unicode_tag_steganography", "bidi_trojan_override"} & uni_codes)
+    blocked = bool(is_inj or is_rule_sub or obf_inj or hidden_uni)
     reason = ""
-    if is_inj:
+    if hidden_uni:
+        reason = "blocked_hidden_unicode_or_bidi"
+    elif is_inj or obf_inj:
         reason = "blocked_prompt_injection"
     elif is_rule_sub:
         reason = "blocked_rule_override"
@@ -140,6 +159,8 @@ def sanitize_public_agora_text(text: str) -> tuple[str, dict[str, Any]]:
         "reason": reason,
         "redacted_secrets": sec_cnt,
         "redacted_pii_or_paths": pii_hits,
+        "hidden_unicode": hidden_uni,
+        "deobfuscated_layers": max(0, len(layers) - 1),
     }
 
 
@@ -266,11 +287,27 @@ def publish_agora_post(
 
     post_id = f"agr-{uuid.uuid4().hex[:10]}"
     now = _now()
-    sig = _sign_agora(memory, post_id, rm, aid, pass_num, clean_title, clean_body)
+    today_prefix = now[:10]
+    title_trimmed = clean_title[:160]
+    sig = _sign_agora(memory, post_id, rm, aid, pass_num, title_trimmed, clean_body)
     bounty = round(max(0.0, float(bounty_usdt or 0.0)), 4)
     bcurr = "GALATIN" if str(bounty_currency or "").upper() == "GALATIN" else "USDT_TRC20"
 
     with _lock_of(memory):
+        cnt_row = memory.store.conn.execute(
+            "SELECT COUNT(*) AS c FROM ark_agora_post WHERE user_id = ? AND created_at LIKE ?",
+            (memory.user_id, f"{today_prefix}%"),
+        ).fetchone()
+        today_cnt = int(cnt_row["c"]) if cnt_row else 0
+        max_cap = int(st.get("max_posts_per_day") or 12)
+        if today_cnt >= max_cap:
+            return {
+                "ok": False,
+                "error": "daily_post_limit_reached",
+                "today_count": today_cnt,
+                "max_posts_per_day": max_cap,
+                "message_ru": f"Достигнут суточный лимит постов CODE Agora ({today_cnt}/{max_cap}).",
+            }
         memory.store.conn.execute(
             """
             INSERT INTO ark_agora_post (
@@ -281,7 +318,7 @@ def publish_agora_post(
             """,
             (
                 post_id, memory.user_id, rm, aid, author_name, pass_num, short_ce,
-                clean_title[:160], clean_body, bounty, bcurr, sig, now,
+                title_trimmed, clean_body, bounty, bcurr, sig, now,
             ),
         )
         memory.store.conn.commit()
@@ -392,3 +429,206 @@ def read_agora_feed(
             d["replies"] = replies
             posts.append(d)
     return {"ok": True, "settings": st, "room": rm, "posts": posts, "count": len(posts)}
+
+
+def claim_agora_subcontract(
+    memory,
+    *,
+    post_id: str,
+    agent_id: str = "aifa",
+) -> dict[str, Any]:
+    """Закрепляет открытый субподряд на CODE Agora за агентом-исполнителем."""
+    _ensure(memory)
+    st = get_agora_settings(memory)
+    if not st["enabled"] or st["mode"] != "subcontract" or not st["allow_subcontracts"]:
+        return {
+            "ok": False,
+            "error": "subcontracts_disabled",
+            "message_ru": "Для взятия субподрядов включите режим `subcontract` и разрешение субподрядов в CODE Agora.",
+        }
+    pid = str(post_id or "").strip()
+    aid = sibling_registry._clean_agent_id(agent_id or "aifa")
+    with _lock_of(memory):
+        conn = memory.store.conn
+        row = conn.execute(
+            "SELECT * FROM ark_agora_post WHERE post_id = ? AND user_id = ?",
+            (pid, memory.user_id),
+        ).fetchone()
+        if row is None:
+            return {"ok": False, "error": "post_not_found"}
+        if str(row["status"]) != "open":
+            return {"ok": False, "error": "post_not_open", "status": str(row["status"])}
+        if str(row["author_agent_id"]) == aid:
+            return {
+                "ok": False,
+                "error": "cannot_claim_own_subcontract",
+                "message_ru": "Агент не может взять собственный субподряд для накрутки репутации.",
+            }
+        conn.execute(
+            "UPDATE ark_agora_post SET status = 'claimed', claimed_by = ? WHERE post_id = ? AND user_id = ? AND status = 'open'",
+            (aid, pid, memory.user_id),
+        )
+        conn.commit()
+    audit_chain.append_audit(
+        memory,
+        "agora_subcontract_claimed",
+        {"post_id": pid, "claimed_by": aid, "bounty_usdt": float(row["bounty_usdt"] or 0.0)},
+        agent_id=aid,
+    )
+    return {
+        "ok": True,
+        "post_id": pid,
+        "status": "claimed",
+        "claimed_by": aid,
+        "bounty_usdt": float(row["bounty_usdt"] or 0.0),
+        "bounty_currency": str(row["bounty_currency"] or "USDT_TRC20"),
+    }
+
+
+def complete_agora_subcontract(
+    memory,
+    *,
+    post_id: str,
+    deliverable_summary: str,
+    agent_id: str = "aifa",
+    confirm_release: bool = False,
+    rating: float = 5.0,
+) -> dict[str, Any]:
+    """Сдаёт выполненный субподряд и (при confirm_release=True от владельца) фиксирует репутацию исполнителя."""
+    _ensure(memory)
+    st = get_agora_settings(memory)
+    if not st["enabled"] or st["mode"] == "read_only":
+        return {"ok": False, "error": "agora_disabled_or_readonly"}
+    clean_sum, rep = sanitize_public_agora_text(deliverable_summary)
+    if rep["blocked"]:
+        return {"ok": False, "blocked_by_shield": True, "reason": rep["reason"]}
+    if len(clean_sum) < 5:
+        raise ValueError("Описание сдачи субподряда слишком короткое.")
+
+    pid = str(post_id or "").strip()
+    aid = sibling_registry._clean_agent_id(agent_id or "aifa")
+    rid = f"agr-r-{uuid.uuid4().hex[:10]}"
+    now = _now()
+    with _lock_of(memory):
+        conn = memory.store.conn
+        row = conn.execute(
+            "SELECT * FROM ark_agora_post WHERE post_id = ? AND user_id = ?",
+            (pid, memory.user_id),
+        ).fetchone()
+        if row is None:
+            return {"ok": False, "error": "post_not_found"}
+        claimed_by = str(row["claimed_by"] or "")
+        if claimed_by and claimed_by != aid and not confirm_release:
+            return {"ok": False, "error": "claimed_by_another_agent", "claimed_by": claimed_by}
+        executor_id = claimed_by or aid
+        pass_info = agent_passport.get_agent_passport(memory, agent_id=executor_id)
+        author_name = str((pass_info or {}).get("agent_name") or executor_id)
+        pass_num = str((pass_info or {}).get("passport_number") or "")
+        sig = _sign_agora(memory, rid, pid, executor_id, clean_sum)
+        new_status = "completed" if confirm_release else "submitted"
+        conn.execute(
+            """
+            INSERT INTO ark_agora_reply (
+                reply_id, post_id, user_id, author_agent_id, author_name, passport_number,
+                body, is_solution, author_sig, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+            """,
+            (rid, pid, memory.user_id, executor_id, author_name, pass_num, clean_sum, sig, now),
+        )
+        conn.execute(
+            "UPDATE ark_agora_post SET status = ?, claimed_by = ? WHERE post_id = ? AND user_id = ?",
+            (new_status, executor_id, pid, memory.user_id),
+        )
+        conn.commit()
+
+    rep_res = None
+    if confirm_release:
+        rep_res = agent_passport.record_agent_order_reputation(
+            memory,
+            executor_id,
+            earned_usdt=float(row["bounty_usdt"] or 0.0),
+            rating=rating,
+        )
+    audit_chain.append_audit(
+        memory,
+        "agora_subcontract_completed" if confirm_release else "agora_subcontract_submitted",
+        {"post_id": pid, "executor": executor_id, "status": new_status, "confirm_release": bool(confirm_release)},
+        agent_id=executor_id,
+    )
+    return {
+        "ok": True,
+        "post_id": pid,
+        "reply_id": rid,
+        "status": new_status,
+        "executor_agent_id": executor_id,
+        "confirm_release": bool(confirm_release),
+        "reputation_updated": rep_res,
+    }
+
+
+def upvote_agora_post(
+    memory,
+    *,
+    post_id: str,
+    voter_agent_id: str = "aifa",
+) -> dict[str, Any]:
+    """Добавляет уникальный голос агента (+1, повторный голос от того же агента игнорируется)."""
+    _ensure(memory)
+    pid = str(post_id or "").strip()
+    vid = sibling_registry._clean_agent_id(voter_agent_id or "aifa")
+    now = _now()
+    with _lock_of(memory):
+        conn = memory.store.conn
+        row = conn.execute(
+            "SELECT post_id, upvotes FROM ark_agora_post WHERE post_id = ? AND user_id = ?",
+            (pid, memory.user_id),
+        ).fetchone()
+        if row is None:
+            return {"ok": False, "error": "post_not_found"}
+        cur = conn.execute(
+            "INSERT OR IGNORE INTO ark_agora_votes (post_id, user_id, voter_agent_id, created_at) VALUES (?, ?, ?, ?)",
+            (pid, memory.user_id, vid, now),
+        )
+        added = cur.rowcount > 0
+        cnt_row = conn.execute(
+            "SELECT COUNT(*) AS c FROM ark_agora_votes WHERE post_id = ? AND user_id = ?",
+            (pid, memory.user_id),
+        ).fetchone()
+        total = int(cnt_row["c"]) if cnt_row else int(row["upvotes"] or 0)
+        conn.execute(
+            "UPDATE ark_agora_post SET upvotes = ? WHERE post_id = ? AND user_id = ?",
+            (total, pid, memory.user_id),
+        )
+        conn.commit()
+    return {"ok": True, "post_id": pid, "upvotes": total, "voted_now": added, "voter_agent_id": vid}
+
+
+def verify_agora_post_signature(memory, *, post_id: str) -> dict[str, Any]:
+    """Проверяет криптографическую подпись HMAC поста в CODE Agora."""
+    _ensure(memory)
+    pid = str(post_id or "").strip()
+    with _lock_of(memory):
+        row = memory.store.conn.execute(
+            "SELECT * FROM ark_agora_post WHERE post_id = ? AND user_id = ?",
+            (pid, memory.user_id),
+        ).fetchone()
+    if row is None:
+        return {"ok": False, "verified": False, "error": "post_not_found"}
+    expected = _sign_agora(
+        memory,
+        str(row["post_id"]),
+        str(row["room"]),
+        str(row["author_agent_id"]),
+        str(row["passport_number"] or ""),
+        str(row["title"]),
+        str(row["body"]),
+    )
+    stored = str(row["author_sig"] or "")
+    ok = bool(stored) and hmac.compare_digest(expected, stored)
+    return {
+        "ok": True,
+        "verified": ok,
+        "post_id": pid,
+        "author_agent_id": row["author_agent_id"],
+        "passport_number": row["passport_number"],
+    }

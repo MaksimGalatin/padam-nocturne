@@ -249,6 +249,23 @@ _LEET_MAP = str.maketrans({
     "@": "a",
 })
 
+# Визуальные двойники (кириллица / украинские / греческие -> латинский визуальный вид)
+# для защиты от гомоглиф-спуфинга при проверке замороженных и занятых имён.
+_VISUAL_HOMOGLYPHS = str.maketrans({
+    "а": "a", "в": "b", "е": "e", "ё": "e", "к": "k", "м": "m",
+    "н": "h", "о": "o", "р": "p", "с": "c", "т": "t", "у": "y",
+    "х": "x", "і": "i", "ї": "i", "є": "e", "ґ": "g",
+    "α": "a", "β": "b", "ε": "e", "ι": "i", "κ": "k", "μ": "m",
+    "ν": "n", "ο": "o", "ρ": "p", "σ": "c", "τ": "t", "υ": "y", "χ": "x",
+    "0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "$": "s", "@": "a",
+})
+
+_CONFUSABLE_EXT_TO_LAT = str.maketrans({
+    "і": "i", "ї": "i", "є": "e", "ґ": "g",
+    "α": "a", "β": "b", "ε": "e", "ι": "i", "κ": "k", "μ": "m",
+    "ν": "n", "ο": "o", "ρ": "p", "σ": "s", "τ": "t", "υ": "y", "χ": "x",
+})
+
 _CYR_TO_LAT = {
     "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ё": "e",
     "ж": "zh", "з": "z", "и": "i", "й": "y", "к": "k", "л": "l", "м": "m",
@@ -327,8 +344,16 @@ def _now() -> str:
 
 
 def _normalize_name(raw: str) -> str:
-    """Канонизирует имя для сравнения на занятость и заморозку (убирает регистр, разделители и диакритику)."""
-    s = unicodedata.normalize("NFKC", str(raw or "").strip().lower())
+    """Канонизирует имя: убирает невидимые Cf-символы, комбинируемые акценты и разделители."""
+    txt = str(raw or "").strip()
+    # Удаляем zero-width, directional/format символы до нормализации
+    txt = "".join(ch for ch in txt if unicodedata.category(ch) != "Cf")
+    # Сохраняем русские й/ё от распада при NFKD и снимаем лишние диакритики
+    txt = txt.replace("й", "\x01").replace("Й", "\x01").replace("ё", "\x02").replace("Ё", "\x02")
+    txt = unicodedata.normalize("NFKD", txt)
+    txt = "".join(ch for ch in txt if unicodedata.category(ch) != "Mn")
+    txt = txt.replace("\x01", "й").replace("\x02", "ё")
+    s = unicodedata.normalize("NFKC", txt).lower().translate(_CONFUSABLE_EXT_TO_LAT)
     return re.sub(r"[^a-zа-яё0-9]", "", s)
 
 
@@ -341,6 +366,11 @@ def _translit_ru_to_lat(s: str) -> str:
 
 def _leet_skeleton(s: str) -> str:
     return _translit_ru_to_lat(_normalize_name(s)).translate(_LEET_MAP)
+
+
+def _visual_skeleton(s: str) -> str:
+    """Сводит кириллические/греческие визуальные двойники к латинскому начертанию."""
+    return _normalize_name(s).translate(_VISUAL_HOMOGLYPHS)
 
 
 def _ensure(memory) -> None:
@@ -407,6 +437,7 @@ def check_name_availability(memory, desired_name: str, *, for_user_id: str | Non
     raw = str(desired_name or "").strip()
     norm = _normalize_name(raw)
     skel = _leet_skeleton(raw)
+    vskel = _visual_skeleton(raw)
     if len(norm) < 3 or len(raw) > 40:
         return {
             "ok": False,
@@ -419,12 +450,18 @@ def check_name_availability(memory, desired_name: str, *, for_user_id: str | Non
     uid = str(for_user_id or memory.user_id)
     with _lock_of(memory):
         conn = memory.store.conn
-        # 1. Проверка таблицы замороженных имён (точное совпадение или leet-скелет)
+        # 1. Проверка таблицы замороженных имён (точное совпадение, leet-скелет или визуальные гомоглифы)
         res_rows = conn.execute("SELECT * FROM ark_reserved_names WHERE is_frozen = 1").fetchall()
         for rr in res_rows:
             r_norm = str(rr["norm_name"])
             r_skel = _leet_skeleton(r_norm)
-            if norm == r_norm or (len(skel) >= 4 and skel == r_skel):
+            r_vskel = _visual_skeleton(r_norm)
+            matched = (
+                norm == r_norm
+                or (len(skel) >= 4 and skel == r_skel)
+                or (len(vskel) >= 4 and vskel == r_vskel)
+            )
+            if matched:
                 if str(rr["unfrozen_for_user"] or "") == uid:
                     continue
                 return {
@@ -439,11 +476,19 @@ def check_name_availability(memory, desired_name: str, *, for_user_id: str | Non
                         "для настоящего правообладателя / персонажа книги."
                     ),
                 }
-        # 2. Проверка занятости среди уже выданных паспортов
+        # 2. Проверка занятости среди уже выданных паспортов (включая визуальные двойники)
         taken = conn.execute(
             "SELECT passport_number, agent_id, user_id FROM ark_agent_passport WHERE norm_name = ?",
             (norm,),
         ).fetchone()
+        if taken is None and len(vskel) >= 4:
+            all_rows = conn.execute(
+                "SELECT passport_number, agent_id, user_id, norm_name FROM ark_agent_passport"
+            ).fetchall()
+            for ar in all_rows:
+                if _visual_skeleton(str(ar["norm_name"])) == vskel:
+                    taken = ar
+                    break
         if taken is not None:
             return {
                 "ok": True,
@@ -697,13 +742,17 @@ def create_agent_passport(
     with _lock_of(memory):
         conn = memory.store.conn
         row_seq = conn.execute(
-            "SELECT next_seq FROM ark_passport_counter WHERE counter_key = 'global_agent_passport'"
+            "UPDATE ark_passport_counter SET next_seq = next_seq + 1 "
+            "WHERE counter_key = 'global_agent_passport' RETURNING next_seq - 1 AS seq_num"
         ).fetchone()
-        seq_num = int(row_seq["next_seq"]) if row_seq else 1
-        conn.execute(
-            "UPDATE ark_passport_counter SET next_seq = ? WHERE counter_key = 'global_agent_passport'",
-            (seq_num + 1,),
-        )
+        if row_seq is None:
+            conn.execute(
+                "INSERT OR IGNORE INTO ark_passport_counter (counter_key, next_seq) "
+                "VALUES ('global_agent_passport', 2)"
+            )
+            seq_num = 1
+        else:
+            seq_num = int(row_seq["seq_num"])
         passport_num = format_billion_passport_number(seq_num)
         shard_id, tree_addr, leaf_idx = _next_tree_allocation(seq_num)
         meta = build_bubblegum_cnft_metadata(
@@ -821,16 +870,46 @@ def rename_agent_with_fee(
         ).fetchone()
         if row is None:
             raise KeyError(f"Паспорт агента не найден: {aid}")
+        new_reissue = int(row["reissue_count"] or 0) + 1
+        meta = build_bubblegum_cnft_metadata(
+            passport_number=str(row["passport_number"]),
+            short_ce_code=short_ce,
+            agent_id=aid,
+            agent_name=chosen,
+            tier=str(row["tier"]),
+            pub_key_b64=str(row["pub_key_b64"] or ""),
+            shard_tree_id=str(row["shard_tree_id"]),
+            tree_address=str(row["tree_address"]),
+            leaf_index=int(row["leaf_index"]),
+        )
+        sig_hmac = _sign_passport_hmac(
+            memory,
+            str(row["passport_id"]),
+            str(row["passport_number"]),
+            aid,
+            norm,
+            str(row["pub_key_b64"] or ""),
+        )
         conn.execute(
             "UPDATE ark_agent_passport SET agent_name = ?, norm_name = ?, short_ce_code = ?, name_type = 'custom_paid', "
-            "fee_paid_usdt = fee_paid_usdt + ?, updated_at = ? WHERE passport_id = ?",
-            (chosen, norm, short_ce, CUSTOM_NAME_PRICE_USDT, now, row["passport_id"]),
+            "metadata_json = ?, owner_sig_hmac = ?, reissue_count = ?, fee_paid_usdt = fee_paid_usdt + ?, updated_at = ? "
+            "WHERE passport_id = ?",
+            (
+                chosen, norm, short_ce, json.dumps(meta, ensure_ascii=False),
+                sig_hmac, new_reissue, CUSTOM_NAME_PRICE_USDT, now, row["passport_id"],
+            ),
         )
         conn.execute(
             "UPDATE ark_sibling_agent SET display_name = ? WHERE agent_id = ? AND user_id = ?",
             (chosen, aid, memory.user_id),
         )
         conn.commit()
+    audit_chain.append_audit(
+        memory,
+        "agent_passport_renamed",
+        {"agent_id": aid, "passport_number": str(row["passport_number"]), "new_name": chosen, "short_ce_code": short_ce, "reissue_count": new_reissue},
+        agent_id=aid,
+    )
     return {"ok": True, "passport": get_agent_passport(memory, agent_id=aid)}
 
 
@@ -928,4 +1007,48 @@ def list_agent_passports(memory, *, tier: str = "free") -> dict[str, Any]:
             "extra_agent_usdt": EXTRA_AGENT_PRICE_USDT,
         },
         "payment_orders": [dict(p) for p in pays],
+    }
+
+
+def verify_agent_passport(
+    memory,
+    *,
+    agent_id: str = "",
+    passport_number: str = "",
+) -> dict[str, Any]:
+    """Криптографически проверяет подпись HMAC владельца, CE-отпечаток и метаданные паспорта агента."""
+    p = get_agent_passport(memory, agent_id=agent_id, passport_number=passport_number)
+    if p is None:
+        return {"ok": False, "verified": False, "error": "passport_not_found"}
+    expected_sig = _sign_passport_hmac(
+        memory,
+        str(p["passport_id"]),
+        str(p["passport_number"]),
+        str(p["agent_id"]),
+        str(p["norm_name"]),
+        str(p.get("pub_key_b64") or ""),
+    )
+    stored_sig = str(p.get("owner_sig_hmac") or "")
+    sig_ok = bool(stored_sig) and hmac.compare_digest(expected_sig, stored_sig)
+    expected_ce = compute_short_ce_code(str(p.get("agent_name") or ""))
+    ce_ok = str(p.get("short_ce_code") or "") == expected_ce
+    meta = p.get("metadata") or {}
+    meta_ok = isinstance(meta, dict) and meta.get("symbol") == "CODEID" and len(meta.get("attributes") or []) >= 4
+    verified = sig_ok and ce_ok and meta_ok
+    return {
+        "ok": True,
+        "verified": verified,
+        "sig_valid": sig_ok,
+        "ce_code_valid": ce_ok,
+        "metadata_valid": meta_ok,
+        "passport_number": p["passport_number"],
+        "short_ce_code": p["short_ce_code"],
+        "agent_id": p["agent_id"],
+        "agent_name": p["agent_name"],
+        "reissue_count": int(p.get("reissue_count") or 0),
+        "message_ru": (
+            f"Паспорт {p['passport_number']} ({p['short_ce_code']}) подлинный."
+            if verified
+            else f"Проверка паспорта {p['passport_number']} выявила расхождение подписи/CE-отпечатка."
+        ),
     }

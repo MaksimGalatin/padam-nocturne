@@ -83,6 +83,9 @@ PARITY_MAP: dict[tuple[str, str], tuple[str, str, str, str]] = {
     ("padam_family_feed", "agora_read"): ("panel-family", "#ag-feed-list | GET /api/v2/ark/agora", "GET /api/v2/ark/agora", "padam.agora"),
     ("padam_family_feed", "agora_post"): ("panel-family", "#ag-post-btn | #ag-title | #ag-body", "POST /api/v2/ark/agora/action", "padam.agora"),
     ("padam_family_feed", "agora_reply"): ("panel-family", "#ag-feed-list (reply) | #ag-post-btn", "POST /api/v2/ark/agora/action", "padam.agora"),
+    ("padam_family_feed", "agora_claim"): ("panel-family", "#ag-feed-list | POST /api/v2/ark/agora/action", "POST /api/v2/ark/agora/action", "padam.agora"),
+    ("padam_family_feed", "agora_complete"): ("panel-family", "#ag-feed-list | POST /api/v2/ark/agora/action", "POST /api/v2/ark/agora/action", "padam.agora"),
+    ("padam_family_feed", "agora_upvote"): ("panel-family", "#ag-feed-list | POST /api/v2/ark/agora/action", "POST /api/v2/ark/agora/action", "padam.agora"),
 
     # padam_memory_branch
     ("padam_memory_branch", "create"): ("panel-brain", "#ark-branch-create-btn | #ark-branch-input", "POST /api/v2/ark/branches", "padam.ark_advanced"),
@@ -225,6 +228,10 @@ PARITY_MAP: dict[tuple[str, str], tuple[str, str, str, str]] = {
     ("padam_freelance_hub", "build_outreach"): ("panel-earning", "#earn-mail-build-btn | #earn-mail-domain", "POST /api/v2/ark/mail/action", "padam.partner_bridge"),
     ("padam_freelance_hub", "run_outreach_batch"): ("panel-earning", "#earn-mail-batch-btn", "POST /api/v2/ark/mail/action", "padam.email_autonomy"),
     ("padam_freelance_hub", "run_follow_up"): ("panel-earning", "#earn-mail-followup-btn", "POST /api/v2/ark/mail/action", "padam.email_autonomy"),
+    ("padam_freelance_hub", "auto_roi"): ("panel-earning", "#earn-auto-roi-btn | #earn-auto-budget-inp", "POST /api/v2/ark/automation/action", "padam.exchange_automation"),
+    ("padam_freelance_hub", "client_risk"): ("panel-earning", "#earn-auto-risk-btn | #earn-auto-text-inp", "POST /api/v2/ark/automation/action", "padam.exchange_automation"),
+    ("padam_freelance_hub", "delivery_bundle"): ("panel-earning", "#earn-auto-deliver-btn | #earn-auto-text-inp", "POST /api/v2/ark/automation/action", "padam.exchange_automation"),
+    ("padam_freelance_hub", "auto_digest"): ("panel-earning", "#earn-auto-digest-btn", "POST /api/v2/ark/automation/action", "padam.exchange_automation"),
 
     # padam_phoenix_family
     ("padam_phoenix_family", "status"): ("panel-earning", "#earn-beacon-out | #earn-ollama-out", "POST /api/v2/ark/phoenix-beacon/action", "padam.phoenix_beacon"),
@@ -273,6 +280,12 @@ PARITY_MAP: dict[tuple[str, str], tuple[str, str, str, str]] = {
     ("padam_agentic_shield", "webhook_status"): ("panel-attacks", "#sh-wh-box | #sh-wh-fmt", "GET /api/v2/shield/webhook", "padam.siem_webhook"),
     ("padam_agentic_shield", "webhook_test"): ("panel-attacks", "#sh-wh-test-btn", "POST /api/v2/shield/webhook/test", "padam.siem_webhook"),
     ("padam_agentic_shield", "proof_pack"): ("panel-attacks", "#sh-proof-gen-btn | #sh-proof-dl-json-btn", "GET /api/v2/shield/proof-pack", "padam.agentic_shield"),
+    ("padam_agentic_shield", "sales_audit"): ("panel-attacks", "#sh-sales-audit-btn | #sh-sales-target-inp", "POST /api/v2/shield/sales/action", "padam.security_sales"),
+    ("padam_agentic_shield", "compliance"): ("panel-attacks", "#sh-sales-comp-btn", "POST /api/v2/shield/sales/action", "padam.security_sales"),
+    ("padam_agentic_shield", "csp_sri"): ("panel-attacks", "#sh-sales-csp-btn", "POST /api/v2/shield/sales/action", "padam.security_sales"),
+    ("padam_agentic_shield", "redteam_sim"): ("panel-attacks", "#sh-sales-redteam-btn", "POST /api/v2/shield/sales/action", "padam.security_sales"),
+    ("padam_agentic_shield", "triage"): ("panel-attacks", "#sh-sales-triage-btn", "POST /api/v2/shield/sales/action", "padam.security_sales"),
+    ("padam_agentic_shield", "trust_pack"): ("panel-attacks", "#sh-sales-trust-btn", "POST /api/v2/shield/sales/action", "padam.security_sales"),
 }
 
 # Обратная таблица: функции Studio, которые намеренно ограничены владельцем или являются UI-сервисом
@@ -374,7 +387,7 @@ def main() -> int:
             "test_studio_ark_buttons_1711.py",
             "test_studio_family_tab_1811.py",
             "test_partner_studio_1811.py",
-            "test_freelance_client_lock_escrow_1811.py",
+            "test_freelance_client_lock_escrow_1811.py", "test_20_enhancements_2211.py",
         )
         if (ROOT / "tests" / name).exists()
     )
