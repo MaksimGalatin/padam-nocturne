@@ -51,6 +51,9 @@ def _client_config_path(client: str, *, home: Path, project_dir: Path) -> tuple[
     if client == "codex":
         return home / ".codex" / "config.toml", "toml_codex"
     if client == "antigravity":
+        cfg_modern = home / ".gemini" / "config" / "mcp_config.json"
+        if cfg_modern.exists():
+            return cfg_modern, "json_mcpServers"
         return home / ".gemini" / "antigravity" / "mcp_config.json", "json_mcpServers"
     if client == "gemini_cli":
         return home / ".gemini" / "settings.json", "json_mcpServers"
@@ -238,4 +241,72 @@ def build_deeplinks() -> dict[str, str]:
     return {
         "cursor": f"cursor://anysphere.cursor-deeplink/mcp/install?name=padam&config={quote(b64)}",
         "vscode": f"vscode:mcp/install?{vs_payload}",
+    }
+
+
+def rollback_client(
+    client: str,
+    *,
+    home: Path | None = None,
+    project_dir: Path | None = None,
+) -> dict[str, Any]:
+    """Откатывает конфиг клиента из резервной копии .bak или аккуратно убирает запись padam."""
+    h = home or Path.home()
+    proj = project_dir or Path.cwd()
+    cfg_path, fmt = _client_config_path(client, home=h, project_dir=proj)
+    bak = cfg_path.with_suffix(cfg_path.suffix + ".bak")
+    if bak.exists():
+        shutil.copy2(bak, cfg_path)
+        return {"ok": True, "client": client, "path": str(cfg_path), "restored_from": str(bak)}
+    if not cfg_path.exists():
+        return {"ok": False, "client": client, "path": str(cfg_path), "error": "config_not_found"}
+    if fmt == "toml_codex":
+        raw = cfg_path.read_text(encoding="utf-8", errors="replace")
+        idx = raw.find("[mcp_servers.padam]")
+        if idx >= 0:
+            cfg_path.write_text(raw[:idx].rstrip() + "\n", encoding="utf-8")
+            return {"ok": True, "client": client, "path": str(cfg_path), "removed": True}
+        return {"ok": False, "client": client, "error": "padam_not_found"}
+    try:
+        data = json.loads(cfg_path.read_text(encoding="utf-8"))
+        changed = False
+        for key in ("mcpServers", "servers", "context_servers"):
+            if isinstance(data.get(key), dict) and "padam" in data[key]:
+                del data[key]["padam"]
+                changed = True
+        if changed:
+            cfg_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        return {"ok": changed, "client": client, "path": str(cfg_path), "removed": changed}
+    except Exception as exc:
+        return {"ok": False, "client": client, "error": str(exc)}
+
+
+def ping_client_setup(
+    client: str,
+    *,
+    home: Path | None = None,
+    project_dir: Path | None = None,
+) -> dict[str, Any]:
+    """Проверяет конфиг клиента и живой ответ встроенного MCP-сервера PADAM."""
+    h = home or Path.home()
+    proj = project_dir or Path.cwd()
+    cfg_path, fmt = _client_config_path(client, home=h, project_dir=proj)
+    configured = False
+    if cfg_path.exists():
+        txt = cfg_path.read_text(encoding="utf-8", errors="replace")
+        configured = ("padam" in txt)
+    from . import mcp_server
+    init_r = mcp_server.handle({
+        "jsonrpc": "2.0", "id": 1, "method": "initialize",
+        "params": {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": f"ping-{client}", "version": "0.7.1"}},
+    })
+    tools_r = mcp_server.handle({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}})
+    tools = (tools_r.get("result") or {}).get("tools") or []
+    return {
+        "ok": bool("result" in init_r and len(tools) >= 9),
+        "client": client,
+        "path": str(cfg_path),
+        "format": fmt,
+        "config_has_padam": configured,
+        "mcp_tools_ready": len(tools),
     }

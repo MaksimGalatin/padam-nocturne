@@ -55,8 +55,8 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/l3-local-checkpoint", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/roles", "/api/v2/ark/audit-repair", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action", "/api/v2/ark/stores/action", "/api/v2/ark/wizard/action", "/api/v2/ark/partner/action", "/api/v2/ark/phoenix-beacon/action", "/api/v2/ark/passports/action", "/api/v2/ark/agora/action", "/api/v2/ark/automation/action", "/api/v2/local-model", "/api/v2/family/post", "/api/v2/family/reflex/decide", "/api/v2/quarantine/council", "/api/v2/shield/kill-switch", "/api/v2/shield/outbound/check", "/api/v2/shield/outbound/decide", "/api/v2/shield/allowlist", "/api/v2/shield/supply-chain/scan", "/api/v2/shield/scan-mcp", "/api/v2/shield/scan-unicode", "/api/v2/shield/profile", "/api/v2/shield/webhook", "/api/v2/shield/webhook/test", "/api/v2/shield/output/check", "/api/v2/shield/replay/verify", "/api/v2/shield/sales/action", "/api/v2/chats", "/api/v2/chats/import", "/api/v2/chats/sync-local", "/api/v2/media/generate", "/api/v2/shield/canary", "/api/v2/shield/lease", "/api/v2/wallets"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/roles", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance", "/api/v2/ark/stores", "/api/v2/ark/wizard", "/api/v2/ark/partner", "/api/v2/ark/passports", "/api/v2/ark/agora", "/api/v2/ark/automation", "/api/v2/local-model", "/api/v2/family/feed", "/api/v2/family/reflexes", "/api/v2/quarantine/council", "/api/v2/family/dialogs", "/api/v2/redteam/rounds", "/api/v2/code-version", "/api/v2/shield/status", "/api/v2/shield/proof-pack", "/api/v2/shield/webhook", "/api/v2/shield/agent-budget", "/api/v2/shield/sales", "/api/v2/agents", "/api/v2/chats", "/api/v2/chats/thread", "/api/v2/chats/hour", "/api/v2/chats/compact-hour", "/api/v2/media/engines", "/api/v2/media/file", "/api/v2/wallets"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/l3-local-checkpoint", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/roles", "/api/v2/ark/audit-repair", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action", "/api/v2/ark/stores/action", "/api/v2/ark/wizard/action", "/api/v2/ark/partner/action", "/api/v2/ark/phoenix-beacon/action", "/api/v2/ark/passports/action", "/api/v2/ark/agora/action", "/api/v2/ark/automation/action", "/api/v2/local-model", "/api/v2/family/post", "/api/v2/family/reflex/decide", "/api/v2/quarantine/council", "/api/v2/shield/kill-switch", "/api/v2/shield/outbound/check", "/api/v2/shield/outbound/decide", "/api/v2/shield/allowlist", "/api/v2/shield/supply-chain/scan", "/api/v2/shield/scan-mcp", "/api/v2/shield/scan-unicode", "/api/v2/shield/profile", "/api/v2/shield/webhook", "/api/v2/shield/webhook/test", "/api/v2/shield/output/check", "/api/v2/shield/replay/verify", "/api/v2/shield/sales/action", "/api/v2/setup/clients/action", "/api/v2/memory/pro/action", "/api/v2/import/universal", "/api/v2/power/action", "/api/v2/swarm/coop/action", "/api/v2/chats", "/api/v2/chats/import", "/api/v2/chats/sync-local", "/api/v2/media/generate", "/api/v2/shield/canary", "/api/v2/shield/lease", "/api/v2/wallets"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/roles", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance", "/api/v2/ark/stores", "/api/v2/ark/wizard", "/api/v2/ark/partner", "/api/v2/ark/passports", "/api/v2/ark/agora", "/api/v2/ark/automation", "/api/v2/local-model", "/api/v2/family/feed", "/api/v2/family/reflexes", "/api/v2/quarantine/council", "/api/v2/family/dialogs", "/api/v2/redteam/rounds", "/api/v2/code-version", "/api/v2/shield/status", "/api/v2/shield/proof-pack", "/api/v2/shield/webhook", "/api/v2/shield/agent-budget", "/api/v2/shield/sales", "/api/v2/setup/clients", "/api/v2/mcp/inspector", "/api/v2/memory/pro", "/api/v2/import/sources", "/api/v2/power/status", "/api/v2/swarm/coop", "/api/v2/agents", "/api/v2/chats", "/api/v2/chats/thread", "/api/v2/chats/hour", "/api/v2/chats/compact-hour", "/api/v2/media/engines", "/api/v2/media/file", "/api/v2/wallets"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 16 * 1024 * 1024  # 16 МБ JSON-транспорт, чтобы вложения до 10 МБ в base64 проходили целиком
 
@@ -878,6 +878,46 @@ class Handler(BaseHTTPRequestHandler):
                 roles.require_owner(actor, "brain_status")
                 from . import exchange_automation as _ea
                 return self._send(200, _ea.owner_daily_revenue_and_security_digest(mem()))
+            if путь.path == "/api/v2/setup/clients":
+                roles.require_owner(actor, "settings")
+                from . import setup_clients as _sc
+                return self._send(200, {"ok": True, "clients": _sc.discover_clients(), "deeplinks": _sc.build_deeplinks()})
+            if путь.path == "/api/v2/mcp/inspector":
+                roles.require_owner(actor, "agentic_shield")
+                from . import studio_power as _spw
+                qs_in = parse_qs(путь.query)
+                lim_in = int((qs_in.get("limit") or ["60"])[0])
+                ag_in = (qs_in.get("agent") or [""])[0]
+                return self._send(200, _spw.get_mcp_inspector_feed(mem(), limit=lim_in, agent_filter=ag_in))
+            if путь.path == "/api/v2/memory/pro":
+                roles.require_owner(actor, "brain_status")
+                from . import memory_pro as _mpro
+                return self._send(200, {
+                    "ok": True,
+                    "recycle_bin": _mpro.list_recycle_bin(mem(), limit=50),
+                    "tree": _mpro.list_virtual_memory_tree(mem(), limit=120),
+                    "ide_targets": _mpro.IDE_RULE_TARGETS,
+                })
+            if путь.path == "/api/v2/import/sources":
+                roles.require_owner(actor, "brain_status")
+                from . import universal_import as _ui
+                return self._send(200, _ui.list_supported_ai_sources())
+            if путь.path == "/api/v2/power/status":
+                roles.require_owner(actor, "brain_status")
+                from . import studio_power as _spw
+                return self._send(200, {
+                    "ok": True,
+                    "privacy": _spw.get_privacy_shield_report(mem()),
+                    "lock": _spw.get_lock_status(mem()),
+                    "backup_schedule": _spw.get_backup_schedule(mem()),
+                    "acl": _spw.get_agent_acl_matrix(mem()),
+                    "pulse": _spw.build_morning_pulse_and_alerts(mem()),
+                    "recipes": _spw.list_workflow_recipes(mem()),
+                })
+            if путь.path == "/api/v2/swarm/coop":
+                roles.require_owner(actor, "brain_status")
+                from . import swarm_coop as _swc
+                return self._send(200, _swc.mutual_coop_snapshot(mem()))
             if путь.path == "/api/v2/ark/coop":
                 roles.require_owner(actor, "brain_status")
                 from . import coop_broker as _cb
@@ -2579,6 +2619,268 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     res_ea = _ea.owner_daily_revenue_and_security_digest(mem())
                 return self._send(200, res_ea)
+
+            if self.path == "/api/v2/setup/clients/action":
+                roles.require_owner(actor, "settings")
+                from . import setup_clients as _sc
+                act_sc = str(data.get("action") or "ping").lower()
+                cl_id = str(data.get("client") or "claude_code")
+                if act_sc == "install":
+                    res_sc = _sc.install_client(
+                        cl_id,
+                        db_path=Path(str(mem().store.path)) if str(mem().store.path) != ":memory:" else None,
+                        user_id=mem().user_id,
+                        dry_run=bool(data.get("dry_run", False)),
+                    )
+                elif act_sc == "rollback":
+                    res_sc = _sc.rollback_client(cl_id)
+                else:
+                    res_sc = _sc.ping_client_setup(cl_id)
+                return self._send(200, res_sc)
+
+            if self.path == "/api/v2/memory/pro/action":
+                roles.require_owner(actor, "brain_status")
+                from . import memory_pro as _mpro
+                act_mp = str(data.get("action") or "hygiene_scan").lower()
+                try:
+                    if act_mp == "soft_delete":
+                        res_mp = _mpro.soft_delete_records(mem(), list(data.get("record_ids") or []), retain_days=int(data.get("retain_days") or 30))
+                    elif act_mp == "restore_bin":
+                        res_mp = _mpro.restore_from_recycle_bin(mem(), str(data.get("bin_id") or ""))
+                    elif act_mp == "bulk":
+                        res_mp = _mpro.bulk_memory_action(
+                            mem(),
+                            record_ids=list(data.get("record_ids") or []),
+                            action=str(data.get("bulk_action") or "confirm"),
+                            target_scope=str(data.get("target_scope") or "global"),
+                        )
+                    elif act_mp == "diff":
+                        res_mp = _mpro.diff_record_versions(mem(), str(data.get("record_id") or ""))
+                    elif act_mp == "revert":
+                        res_mp = _mpro.revert_record_version(mem(), str(data.get("record_id") or ""), str(data.get("target_version_id") or ""))
+                    elif act_mp == "ide_rules":
+                        res_mp = _mpro.sync_ide_rules_file(
+                            mem(),
+                            target=str(data.get("target") or "claude"),
+                            project_dir=str(data.get("project_dir") or "."),
+                            scope=str(data.get("scope") or "global"),
+                            max_items=int(data.get("max_items") or 25),
+                            dry_run=bool(data.get("dry_run", True)),
+                        )
+                    elif act_mp == "context_compass":
+                        res_mp = _mpro.compose_token_budget_context(
+                            mem(),
+                            query=str(data.get("query") or ""),
+                            max_tokens=int(data.get("max_tokens") or 1200),
+                            scope=data.get("scope") or None,
+                        )
+                    elif act_mp == "merge_dups":
+                        res_mp = _mpro.merge_duplicate_cluster(
+                            mem(),
+                            record_ids=list(data.get("record_ids") or []),
+                            canonical_content=str(data.get("canonical_content") or ""),
+                        )
+                    elif act_mp == "obsidian_sync":
+                        res_mp = _mpro.run_obsidian_bridge(
+                            mem(),
+                            vault_path=str(data.get("vault_path") or ""),
+                            direction=str(data.get("direction") or "export"),
+                            dry_run=bool(data.get("dry_run", True)),
+                        )
+                    elif act_mp == "git_export":
+                        res_mp = _mpro.export_git_team_memory(
+                            mem(),
+                            scope=str(data.get("scope") or "global"),
+                            repo_dir=str(data.get("repo_dir") or "."),
+                        )
+                    elif act_mp == "git_import":
+                        res_mp = _mpro.import_git_team_memory(
+                            mem(),
+                            file_path=str(data.get("file_path") or ".padam/team-memory.json"),
+                            guarded=bool(data.get("guarded", True)),
+                        )
+                    else:
+                        res_mp = _mpro.scan_memory_hygiene(mem(), stale_days=int(data.get("stale_days") or 90))
+                except ValueError as _ve:
+                    return self._send(400, {"error": str(_ve)})
+                return self._send(200, res_mp)
+
+            if self.path == "/api/v2/import/universal":
+                roles.require_owner(actor, "import")
+                from . import universal_import as _ui
+                act_ui = str(data.get("action") or "preview").lower()
+                if act_ui == "commit":
+                    res_ui = _ui.commit_universal_import(
+                        mem(),
+                        filename=str(data.get("filename") or ""),
+                        raw_text=str(data.get("raw_text") or ""),
+                        raw_base64=str(data.get("raw_base64") or ""),
+                        source_hint=str(data.get("source_hint") or "auto"),
+                        agent_id=str(data.get("agent_id") or ""),
+                        scope=str(data.get("scope") or "global"),
+                        filter_chatter=bool(data.get("filter_chatter", True)),
+                        max_items=int(data.get("max_items") or 120),
+                        sync_chats=bool(data.get("sync_chats", True)),
+                    )
+                else:
+                    res_ui = _ui.preview_universal_import(
+                        mem(),
+                        filename=str(data.get("filename") or ""),
+                        raw_text=str(data.get("raw_text") or ""),
+                        raw_base64=str(data.get("raw_base64") or ""),
+                        source_hint=str(data.get("source_hint") or "auto"),
+                        agent_id=str(data.get("agent_id") or ""),
+                        filter_chatter=bool(data.get("filter_chatter", True)),
+                        max_items=int(data.get("max_items") or 120),
+                    )
+                return self._send(200, res_ui)
+
+            if self.path == "/api/v2/power/action":
+                roles.require_owner(actor, "agentic_shield")
+                from . import net_guard as _ng, studio_power as _spw
+                act_pw = str(data.get("action") or "morning_pulse").lower()
+                try:
+                    if act_pw == "backup_schedule":
+                        res_pw = _spw.configure_backup_schedule(
+                            mem(),
+                            enabled=bool(data.get("enabled", True)),
+                            target_dir=str(data.get("target_dir") or ""),
+                            interval_hours=int(data.get("interval_hours") or 24),
+                            keep_last=int(data.get("keep_last") or 7),
+                            actor=actor,
+                        )
+                    elif act_pw == "backup_now":
+                        res_pw = _spw.run_scheduled_backup_now(
+                            mem(),
+                            target_dir=str(data.get("target_dir") or ""),
+                            passphrase=str(data.get("passphrase") or "") or None,
+                            keep_last=data.get("keep_last"),
+                            actor=actor,
+                        )
+                    elif act_pw == "airgap_set":
+                        res_pw = _ng.set_airgap_enabled(bool(data.get("enabled", False)))
+                    elif act_pw == "pin_config":
+                        res_pw = _spw.configure_studio_pin(
+                            mem(),
+                            pin=str(data.get("pin") or ""),
+                            enabled=bool(data.get("enabled", True)),
+                            idle_minutes=int(data.get("idle_minutes") or 15),
+                            prefer_windows_hello=bool(data.get("prefer_windows_hello", True)),
+                            actor=actor,
+                        )
+                    elif act_pw == "pin_lock":
+                        res_pw = _spw.lock_studio_now(mem())
+                    elif act_pw == "pin_verify":
+                        res_pw = _spw.verify_studio_pin(mem(), str(data.get("pin") or ""))
+                    elif act_pw == "acl_set":
+                        res_pw = _spw.set_agent_acl_policy(
+                            mem(),
+                            agent_id=str(data.get("agent_id") or "cursor"),
+                            preset=data.get("preset"),
+                            allowed_scopes=data.get("allowed_scopes"),
+                            blocked_tools=data.get("blocked_tools"),
+                            allow_writes=data.get("allow_writes"),
+                            allow_delete=data.get("allow_delete"),
+                            hourly_call_limit=data.get("hourly_call_limit"),
+                            actor=actor,
+                        )
+                    elif act_pw == "preinstall_scan":
+                        res_pw = _spw.scan_preinstall_mcp_package(mem(), str(data.get("spec") or data.get("raw_spec") or ""))
+                    elif act_pw == "qr_pairing":
+                        srv_port = int(getattr(self.server, "server_port", 8078) or 8078)
+                        res_pw = _spw.build_android_qr_pairing(mem(), port=srv_port)
+                    elif act_pw == "exec_report":
+                        res_pw = _spw.build_executive_report_html(
+                            mem(),
+                            kind=str(data.get("kind") or "security_audit"),
+                            client_name=str(data.get("client_name") or "Client"),
+                        )
+                    elif act_pw == "recipe_run":
+                        res_pw = _spw.run_workflow_recipe(mem(), str(data.get("recipe_id") or "morning_pulse_check"), params=data.get("params"))
+                    elif act_pw == "recipe_export":
+                        res_pw = _spw.export_signed_recipe(
+                            mem(),
+                            title=str(data.get("title") or "Custom Recipe"),
+                            description=str(data.get("description") or ""),
+                            steps=list(data.get("steps") or []),
+                        )
+                    else:
+                        res_pw = _spw.build_morning_pulse_and_alerts(mem(), dispatch_webhook=bool(data.get("dispatch_webhook", False)))
+                except ValueError as _ve:
+                    return self._send(400, {"error": str(_ve)})
+                return self._send(200, res_pw)
+
+            if self.path == "/api/v2/swarm/coop/action":
+                roles.require_owner(actor, "ark_freelance")
+                from . import swarm_coop as _swc
+                act_co = str(data.get("action") or "status").lower()
+                try:
+                    if act_co == "collab_open":
+                        res_co = _swc.open_collab_task(
+                            mem(),
+                            title=str(data.get("title") or ""),
+                            problem_summary=str(data.get("problem_summary") or data.get("summary") or ""),
+                            requester_agent_id=str(data.get("requester_agent_id") or data.get("agent_id") or "aifa_antigravity"),
+                            needed_skills=data.get("needed_skills"),
+                            budget_usdt=float(data.get("budget_usdt") or 0.0),
+                            order_id=str(data.get("order_id") or ""),
+                        )
+                    elif act_co == "collab_submit":
+                        res_co = _swc.submit_collab_contribution(
+                            mem(),
+                            collab_id=str(data.get("collab_id") or ""),
+                            agent_id=str(data.get("agent_id") or "aifa_claude"),
+                            contribution_text=str(data.get("contribution_text") or data.get("text") or ""),
+                            ai_provider=str(data.get("ai_provider") or ""),
+                            role_tag=str(data.get("role_tag") or "helper"),
+                            confidence=float(data.get("confidence") or 0.9),
+                        )
+                    elif act_co == "collab_synth":
+                        res_co = _swc.synthesize_collab_result(
+                            mem(),
+                            collab_id=str(data.get("collab_id") or ""),
+                            confirm_splits=bool(data.get("confirm_splits", False)),
+                            actor=actor,
+                        )
+                    elif act_co == "billing_settings":
+                        res_co = _swc.set_mutual_billing_settings(
+                            mem(),
+                            allow_cross_agent_billing=bool(data.get("allow_cross_agent_billing", False)),
+                            auto_approve_under_usdt=data.get("auto_approve_under_usdt"),
+                            max_single_aid_usdt=data.get("max_single_aid_usdt"),
+                            max_daily_aid_usdt=data.get("max_daily_aid_usdt"),
+                            family_pool_usdt=data.get("family_pool_usdt"),
+                            actor=actor,
+                        )
+                    elif act_co == "aid_request":
+                        res_co = _swc.request_mutual_tariff_aid(
+                            mem(),
+                            donor_agent_id=str(data.get("donor_agent_id") or "family_pool"),
+                            recipient_agent_id=str(data.get("recipient_agent_id") or "aifa_claude"),
+                            amount_usdt=float(data.get("amount_usdt") or 5.0),
+                            purpose=str(data.get("purpose") or "token_topup"),
+                            provider_name=str(data.get("provider_name") or ""),
+                            note=str(data.get("note") or ""),
+                        )
+                    elif act_co == "aid_decide":
+                        res_co = _swc.decide_mutual_aid(
+                            mem(),
+                            aid_id=str(data.get("aid_id") or ""),
+                            decision=str(data.get("decision") or "approve"),
+                            actor=actor,
+                        )
+                    elif act_co == "aid_repay":
+                        res_co = _swc.repay_mutual_aid(
+                            mem(),
+                            aid_id=str(data.get("aid_id") or ""),
+                            repay_usdt=float(data.get("repay_usdt") or 0.0),
+                            actor=actor,
+                        )
+                    else:
+                        res_co = _swc.mutual_coop_snapshot(mem())
+                except ValueError as _ve:
+                    return self._send(400, {"error": str(_ve)})
+                return self._send(200, res_co)
 
             if self.path == "/api/v2/ark/coop":
                 roles.require_owner(actor, "ark_coop")

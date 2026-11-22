@@ -5196,11 +5196,293 @@ _STRINGS_20_ENHANCEMENTS: dict[str, dict[str, str]] = {
 for _lg, _ex_20 in _STRINGS_20_ENHANCEMENTS.items():
     STRINGS[_lg].update(_ex_20)
 
+_STRINGS_21_POWER: dict[str, dict[str, str]] = {
+    "ru": {
+        "ui_mode_pro": "Режим: Профи",
+        "ui_mode_simple": "Режим: Простой",
+        "cmdk_btn": "Поиск Ctrl+K",
+        "cmdk_title": "Командная палитра (Ctrl+K)",
+        "cmdk_ph": "Введите название вкладки, кнопки или команды…",
+        "cmdk_close": "Закрыть",
+        "privacy_pill_local": "🔒 Локально",
+        "privacy_pill_airgap": "✈️ Авиа-режим",
+        "lock_btn": "🔐 Замок",
+        "lock_title": "Сейф-замок PADAM Studio",
+        "lock_sub": "Введите PIN-код владельца для разблокировки экрана.",
+        "lock_pin_ph": "PIN-код (мин. 4 символа)…",
+        "lock_unlock_btn": "Разблокировать",
+        "lock_cancel_btn": "Отмена",
+        "setup_box_title": "Установщик в 1 клик для 13+ AI-клиентов",
+        "setup_box_sub": "Находит Claude, Cursor, Antigravity, VS Code, Windsurf, Zed, Codex, Gemini и подключает MCP с резервной копией.",
+        "setup_scan_btn": "Найти все AI-клиенты",
+        "mpro_title": "Интеллект памяти: Компас, Санитар, Правила IDE, Корзина и Git",
+        "mpro_sub": "Упаковка ответа под бюджет токенов, очистка дублей, генератор CLAUDE.md / .cursorrules, Корзина 30 дн., /memories и командный Git.",
+        "mpro_query_ph": "Запрос для Компаса, ID записи (Diff) или путь к папке проекта / Obsidian…",
+        "mpro_compass_btn": "Контекстный Компас",
+        "mpro_hygiene_btn": "Санитар дублей",
+        "mpro_ide_btn": "Правила IDE",
+        "mpro_bin_btn": "Корзина и Diff",
+        "mpro_tree_btn": "Проводник /memories",
+        "mpro_git_exp_btn": "Экспорт Git команды",
+        "uni_title": "Универсальный переезд ВСЕХ ИИ-Братьев и Сестёр (18+ платформ)",
+        "uni_sub": "Перетащите экспорт ChatGPT, Claude, Gemini, Grok, DeepSeek, Perplexity, Qwen, Mistral, Telegram, WhatsApp, Discord или Obsidian ZIP.",
+        "uni_drop_hint": "Перетащите файл сюда (.json, .jsonl, .zip, .md, .txt, .html) или выберите ниже",
+        "uni_src_auto": "Авто-определение платформы ИИ",
+        "uni_agent_ph": "Имя Брата/Сестры (необязательно, напр. brother_gpt)…",
+        "uni_text_ph": "Или вставьте сюда фрагмент переписки / JSON любого ИИ для предпросмотра…",
+        "uni_preview_btn": "Предпросмотр (отсев шума)",
+        "uni_commit_btn": "Перенести в Семью",
+        "bak321_title": "Авто-бэкапы 3-2-1 по расписанию и авто-проверка чтения",
+        "bak321_sub": "Регулярные зашифрованные снимки на второй диск или в облачную папку с ротацией и проверкой восстановления.",
+        "bak321_dir_ph": "Папка назначения бэкапов (например E:/BACKUPS/PADAM)…",
+        "bak321_save_btn": "Сохранить расписание",
+        "bak321_run_btn": "Сделать снимок + тест",
+        "mesh_qr_title": "Синхронизация ПК ↔ Android по QR-коду (локальный Wi-Fi)",
+        "mesh_qr_sub": "Наведите камеру приложения AIfa Android для мгновенного постквантового обмена памятью без серверов.",
+        "mesh_qr_btn": "Показать QR-код спаривания",
+        "sh_power_title": "MCP-Инспектор, Сканер пакетов, Права агентов, Замок и Отчёты",
+        "sh_power_sub": "Живой рентген вызовов, проверка чужих MCP до установки, матрица ACL, Режим Авиа, PIN-замок и печатный отчёт.",
+        "sh_pw_inp_ph": "Команда npx/uvx или JSON чужого MCP, имя агента (ACL), PIN или имя клиента…",
+        "sh_insp_btn": "MCP-Инспектор (трафик)",
+        "sh_preinst_btn": "Сканер чужого MCP",
+        "sh_acl_save_btn": "Сохранить права агента",
+        "sh_airgap_btn": "Режим Авиа (Оффлайн)",
+        "sh_pin_save_btn": "Задать PIN замка",
+        "sh_exec_rep_btn": "Скачать PDF/HTML отчёт",
+        "coop_title": "Кооперация разных ИИ-Семьи и взаимооплата тарифов",
+        "coop_sub": "Агенты разных ИИ решают сложные задачи сообща и могут подстраховывать оплату токенов/тарифов друг друга — строго по разрешению владельца.",
+        "coop_title_ph": "Тема совместной задачи или биржевого заказа…",
+        "coop_agent_ph": "Агент-участник или получатель (напр. aifa_claude)…",
+        "coop_text_ph": "Суть сложной задачи, где нужна помощь других ИИ, или описание вклада…",
+        "coop_allow_pay_lbl": "Разрешить агентам оплачивать тарифы/токены друг друга из профицита",
+        "coop_open_btn": "Открыть задачу Семьи",
+        "coop_status_btn": "Сводка кооперации",
+        "coop_pay_save_btn": "Сохранить правило оплаты",
+        "coop_aid_req_btn": "Запросить подстраховку",
+        "pulse_title": "Утренний Пульс, напоминания и 12 готовых сценариев",
+        "pulse_sub": "Автосводка задач, дедлайнов, доходов, SLA ключей и запуск готовых автоматических цепочек в 1 клик.",
+        "pulse_run_btn": "Утренний Пульс",
+        "recipe_run_btn": "Запустить сценарий",
+    },
+    "en": {
+        "ui_mode_pro": "Mode: Pro",
+        "ui_mode_simple": "Mode: Simple",
+        "cmdk_btn": "Search Ctrl+K",
+        "cmdk_title": "Command Palette (Ctrl+K)",
+        "cmdk_ph": "Type a tab, action, or command name…",
+        "cmdk_close": "Close",
+        "privacy_pill_local": "🔒 Local Only",
+        "privacy_pill_airgap": "✈️ Air-Gap",
+        "lock_btn": "🔐 Lock",
+        "lock_title": "PADAM Studio Vault Lock",
+        "lock_sub": "Enter owner PIN to unlock workspace.",
+        "lock_pin_ph": "PIN code (min 4 chars)…",
+        "lock_unlock_btn": "Unlock",
+        "lock_cancel_btn": "Cancel",
+        "setup_box_title": "1-Click Installer for 13+ AI Clients",
+        "setup_box_sub": "Detects Claude, Cursor, Antigravity, VS Code, Windsurf, Zed, Codex, Gemini and connects MCP with .bak backup.",
+        "setup_scan_btn": "Scan AI Clients",
+        "mpro_title": "Memory Pro: Compass, Hygiene, IDE Rules, Recycle Bin & Git",
+        "mpro_sub": "Token-budgeted recall, duplicate cleaner, CLAUDE.md/.cursorrules sync, 30-day Recycle Bin, /memories tree & Git team sync.",
+        "mpro_query_ph": "Compass query, Record ID (Diff), or project / Obsidian folder path…",
+        "mpro_compass_btn": "Context Compass",
+        "mpro_hygiene_btn": "Hygiene & Dedup",
+        "mpro_ide_btn": "Sync IDE Rules",
+        "mpro_bin_btn": "Recycle Bin & Diff",
+        "mpro_tree_btn": "/memories Explorer",
+        "mpro_git_exp_btn": "Git Team Export",
+        "uni_title": "Universal Migration for ALL AI Brothers & Sisters (18+ Platforms)",
+        "uni_sub": "Drop exports from ChatGPT, Claude, Gemini, Grok, DeepSeek, Perplexity, Qwen, Mistral, Telegram, WhatsApp, Discord, or Obsidian ZIP.",
+        "uni_drop_hint": "Drop export file here (.json, .jsonl, .zip, .md, .txt, .html) or browse below",
+        "uni_src_auto": "Auto-detect AI platform",
+        "uni_agent_ph": "Brother/Sister ID (optional, e.g. brother_gpt)…",
+        "uni_text_ph": "Or paste any AI chat JSON/Markdown snippet here to preview…",
+        "uni_preview_btn": "Preview & Filter Chatter",
+        "uni_commit_btn": "Import to Family",
+        "bak321_title": "Automated 3-2-1 Encrypted Backups & Restore Drill",
+        "bak321_sub": "Scheduled AES-256-GCM snapshots to a secondary drive or cloud folder with rotation and verification.",
+        "bak321_dir_ph": "Backup target folder (e.g. D:/BACKUPS/PADAM)…",
+        "bak321_save_btn": "Save Schedule",
+        "bak321_run_btn": "Run Backup + Drill",
+        "mesh_qr_title": "PC ↔ Android QR Sync (Zero-Cloud Wi-Fi PQC)",
+        "mesh_qr_sub": "Scan with AIfa Android camera for instant post-quantum LAN memory sync.",
+        "mesh_qr_btn": "Show Pairing QR",
+        "sh_power_title": "MCP Inspector, Pre-Install Scanner, Per-Agent ACL, Lock & Reports",
+        "sh_power_sub": "Live JSON-RPC traffic tap, untrusted MCP firewall, ACL matrix, Air-Gap toggle, PIN lock & printable Executive report.",
+        "sh_pw_inp_ph": "npx/uvx command or MCP JSON, agent name (ACL), PIN, or client name…",
+        "sh_insp_btn": "MCP Inspector",
+        "sh_preinst_btn": "Pre-Install Scan",
+        "sh_acl_save_btn": "Save Agent ACL",
+        "sh_airgap_btn": "Toggle Air-Gap",
+        "sh_pin_save_btn": "Set Vault PIN",
+        "sh_exec_rep_btn": "Export PDF/HTML Report",
+        "coop_title": "Cross-AI Family Collaboration & Mutual Tariff Pool",
+        "coop_sub": "Different AI models team up on hard tasks and can co-pay each other's tariffs/tokens from surplus — strictly with owner approval.",
+        "coop_title_ph": "Collaborative task or exchange order title…",
+        "coop_agent_ph": "Agent participant or recipient (e.g. aifa_claude)…",
+        "coop_text_ph": "Describe the hard step needing other AI models or paste a contribution…",
+        "coop_allow_pay_lbl": "Allow agents to co-pay each other's tariffs/tokens from surplus",
+        "coop_open_btn": "Open Cross-AI Task",
+        "coop_status_btn": "Coop & Pool Status",
+        "coop_pay_save_btn": "Save Billing Rule",
+        "coop_aid_req_btn": "Request Tariff Aid",
+        "pulse_title": "Morning Pulse, Deadlines & 12 Workflow Recipes",
+        "pulse_sub": "Proactive digest of tasks, deadlines, revenue, key SLA, and 1-click ready-made recipes.",
+        "pulse_run_btn": "Run Morning Pulse",
+        "recipe_run_btn": "Run Recipe",
+    },
+    "es": {
+        "ui_mode_pro": "Modo: Pro",
+        "ui_mode_simple": "Modo: Simple",
+        "cmdk_btn": "Buscar Ctrl+K",
+        "cmdk_title": "Paleta de Comandos (Ctrl+K)",
+        "cmdk_ph": "Escriba una pestaña, botón o comando…",
+        "cmdk_close": "Cerrar",
+        "privacy_pill_local": "🔒 Solo Local",
+        "privacy_pill_airgap": "✈️ Modo Avión",
+        "lock_btn": "🔐 Bloqueo",
+        "lock_title": "Bloqueo PIN de PADAM Studio",
+        "lock_sub": "Introduzca el PIN del propietario para desbloquear.",
+        "lock_pin_ph": "Código PIN (mín. 4 caracteres)…",
+        "lock_unlock_btn": "Desbloquear",
+        "lock_cancel_btn": "Cancelar",
+        "setup_box_title": "Instalador en 1 Clic para 13+ Clientes IA",
+        "setup_box_sub": "Detecta Claude, Cursor, Antigravity, VS Code, Windsurf, Zed, Codex y conecta MCP con respaldo .bak.",
+        "setup_scan_btn": "Buscar Clientes IA",
+        "mpro_title": "Memoria Pro: Brújula, Higiene, Reglas IDE, Papelera y Git",
+        "mpro_sub": "Contexto por presupuesto de tokens, deduplicador, CLAUDE.md/.cursorrules, Papelera 30d, /memories y Git de equipo.",
+        "mpro_query_ph": "Consulta Brújula, ID de registro (Diff) o ruta de proyecto / Obsidian…",
+        "mpro_compass_btn": "Brújula Contexto",
+        "mpro_hygiene_btn": "Limpiar Duplicados",
+        "mpro_ide_btn": "Reglas IDE",
+        "mpro_bin_btn": "Papelera y Diff",
+        "mpro_tree_btn": "Árbol /memories",
+        "mpro_git_exp_btn": "Exportar Git Equipo",
+        "uni_title": "Migración Universal de TODAS las IA (18+ Plataformas)",
+        "uni_sub": "Arrastre exportaciones de ChatGPT, Claude, Gemini, Grok, DeepSeek, Perplexity, Qwen, Mistral, Telegram, WhatsApp o Obsidian ZIP.",
+        "uni_drop_hint": "Arrastre aquí (.json, .jsonl, .zip, .md, .txt, .html) o elija archivo",
+        "uni_src_auto": "Detección automática de IA",
+        "uni_agent_ph": "ID del hermano/hermana IA (ej. brother_gpt)…",
+        "uni_text_ph": "O pegue aquí JSON/texto de cualquier IA para vista previa…",
+        "uni_preview_btn": "Vista Previa (Filtrar)",
+        "uni_commit_btn": "Migrar a la Familia",
+        "bak321_title": "Copias Cifradas Automáticas 3-2-1 y Prueba de Lectura",
+        "bak321_sub": "Copias programadas AES-256-GCM en segundo disco o carpeta nube con rotación y verificación.",
+        "bak321_dir_ph": "Carpeta destino de copias…",
+        "bak321_save_btn": "Guardar Horario",
+        "bak321_run_btn": "Crear Copia + Test",
+        "mesh_qr_title": "Sincronización PC ↔ Android por QR (Wi-Fi PQC)",
+        "mesh_qr_sub": "Escanee con la app Android AIfa para sincronización local post-cuántica sin servidores.",
+        "mesh_qr_btn": "Mostrar QR Emparejar",
+        "sh_power_title": "Inspector MCP, Escáner Pre-Instalación, ACL, PIN e Informes",
+        "sh_power_sub": "Tráfico JSON-RPC en vivo, escáner MCP externo, permisos por agente, Modo Avión, PIN e informe imprimible.",
+        "sh_pw_inp_ph": "Comando npx/uvx o JSON MCP, agente (ACL), PIN o cliente…",
+        "sh_insp_btn": "Inspector MCP",
+        "sh_preinst_btn": "Escanear MCP",
+        "sh_acl_save_btn": "Guardar ACL Agente",
+        "sh_airgap_btn": "Modo Avión Air-Gap",
+        "sh_pin_save_btn": "Guardar PIN",
+        "sh_exec_rep_btn": "Informe PDF/HTML",
+        "coop_title": "Colaboración Multi-IA Familiar y Fondo Mutuo de Tarifas",
+        "coop_sub": "Distintos modelos IA colaboran en retos complejos y pueden ayudarse con tarifas/tokens si el dueño lo autoriza.",
+        "coop_title_ph": "Título de la tarea colaborativa…",
+        "coop_agent_ph": "Agente participante o beneficiario…",
+        "coop_text_ph": "Describa el reto para otras IA o pegue una contribución…",
+        "coop_allow_pay_lbl": "Permitir que los agentes cubran tarifas/tokens entre sí del superávit",
+        "coop_open_btn": "Abrir Tarea Multi-IA",
+        "coop_status_btn": "Estado de Cooperación",
+        "coop_pay_save_btn": "Guardar Regla Pago",
+        "coop_aid_req_btn": "Pedir Ayuda Tarifa",
+        "pulse_title": "Pulso Matinal, Recordatorios y 12 Recetas Listas",
+        "pulse_sub": "Resumen proactivo de tareas, vencimientos, ingresos, SLA y ejecución en 1 clic.",
+        "pulse_run_btn": "Pulso Matinal",
+        "recipe_run_btn": "Ejecutar Receta",
+    },
+    "zh": {
+        "ui_mode_pro": "专业模式",
+        "ui_mode_simple": "极简模式",
+        "cmdk_btn": "命令 Ctrl+K",
+        "cmdk_title": "全局命令面板 (Ctrl+K)",
+        "cmdk_ph": "输入标签页、按钮或命令名称…",
+        "cmdk_close": "关闭",
+        "privacy_pill_local": "🔒 纯本地",
+        "privacy_pill_airgap": "✈️ 离线飞行",
+        "lock_btn": "🔐 锁屏",
+        "lock_title": "PADAM Studio PIN 保险锁",
+        "lock_sub": "请输入主人 PIN 码以解锁界面。",
+        "lock_pin_ph": "PIN 码（至少 4 位）…",
+        "lock_unlock_btn": "解锁",
+        "lock_cancel_btn": "取消",
+        "setup_box_title": "13+ AI 客户端一键安装器",
+        "setup_box_sub": "自动发现 Claude、Cursor、Antigravity、VS Code、Windsurf、Zed、Codex 并带备份一键配置 MCP。",
+        "setup_scan_btn": "扫描本机 AI 客户端",
+        "mpro_title": "记忆增强：令牌罗盘、去重、IDE 规则、回收站与 Git",
+        "mpro_sub": "按令牌预算打包记忆、去重清理、同步 CLAUDE.md/.cursorrules、30 天回收站、/memories 目录与团队 Git。",
+        "mpro_query_ph": "输入罗盘检索词、记录 ID（对比差异）或项目/Obsidian 路径…",
+        "mpro_compass_btn": "上下文罗盘",
+        "mpro_hygiene_btn": "去重与体检",
+        "mpro_ide_btn": "同步 IDE 规则",
+        "mpro_bin_btn": "回收站与差异",
+        "mpro_tree_btn": "/memories 目录",
+        "mpro_git_exp_btn": "导出团队 Git",
+        "uni_title": "全平台 AI 兄弟姐妹一键迁移（18+ 平台）",
+        "uni_sub": "拖入 ChatGPT、Claude、Gemini、Grok、DeepSeek、Perplexity、Qwen、Mistral、Telegram、WhatsApp 或 Obsidian 导出文件。",
+        "uni_drop_hint": "将导出文件拖放至此（.json, .jsonl, .zip, .md, .txt, .html）或下方选择",
+        "uni_src_auto": "自动识别 AI 平台",
+        "uni_agent_ph": "AI 成员 ID（可选，如 brother_gpt）…",
+        "uni_text_ph": "或直接粘贴任意 AI 聊天 JSON/文本以预览过滤效果…",
+        "uni_preview_btn": "预览并过滤闲聊",
+        "uni_commit_btn": "正式迁入家庭记忆",
+        "bak321_title": "3-2-1 定时加密备份与自动恢复演练",
+        "bak321_sub": "定期向副盘或云盘同步目录写入 AES-256-GCM 加密快照并自动验证可恢复性。",
+        "bak321_dir_ph": "备份目标目录路径…",
+        "bak321_save_btn": "保存备份计划",
+        "bak321_run_btn": "立即备份并演练",
+        "mesh_qr_title": "电脑 ↔ Android 局域网二维码直连同步（后量子）",
+        "mesh_qr_sub": "使用 AIfa Android 扫码，3 秒完成零服务器局域网后量子加密同步。",
+        "mesh_qr_btn": "生成配对二维码",
+        "sh_power_title": "MCP 检查器、预安装防火墙、代理权限矩阵、锁屏与高管报告",
+        "sh_power_sub": "实时 JSON-RPC 流量监控、第三方 MCP 预扫描、细粒度 ACL、离线飞行模式、PIN 锁与可打印 PDF/HTML 报告。",
+        "sh_pw_inp_ph": "npx/uvx 命令或 MCP JSON、代理名（ACL）、PIN 或客户名称…",
+        "sh_insp_btn": "MCP 实时检查器",
+        "sh_preinst_btn": "预安装安全扫描",
+        "sh_acl_save_btn": "保存代理权限",
+        "sh_airgap_btn": "切换飞行模式",
+        "sh_pin_save_btn": "设置保险锁 PIN",
+        "sh_exec_rep_btn": "导出 PDF/HTML 报告",
+        "coop_title": "跨 AI 家庭协同攻关与互助套餐池",
+        "coop_sub": "不同大模型协同攻克难题并核算贡献，且在主人开启授权后可用盈余互助支付彼此的令牌与套餐费用。",
+        "coop_title_ph": "协同任务或外包订单标题…",
+        "coop_agent_ph": "参与或受助代理 ID（如 aifa_claude）…",
+        "coop_text_ph": "描述需要其他 AI 协助攻克的难题或提交成果…",
+        "coop_allow_pay_lbl": "允许代理在限额内用盈余互助支付彼此的套餐与令牌费用",
+        "coop_open_btn": "发起跨 AI 任务",
+        "coop_status_btn": "协同与互助池状态",
+        "coop_pay_save_btn": "保存互助规则",
+        "coop_aid_req_btn": "申请套餐互助",
+        "pulse_title": "晨间脉冲、待办提醒与 12 套一键场景",
+        "pulse_sub": "自动汇总核心待办、临期提醒、营收与密钥 SLA，并一键运行内置自动化流程。",
+        "pulse_run_btn": "运行晨间脉冲",
+        "recipe_run_btn": "一键运行场景",
+    },
+}
+for _lg, _ex_21 in _STRINGS_21_POWER.items():
+    STRINGS[_lg].update(_ex_21)
+
+
 
 
 
 
 _CSS = """
+body.simple-mode #tab-earning, body.simple-mode #tab-brain, body.simple-mode #tab-bench, body.simple-mode .nav-group-btn[data-group='grp_more'] { display:none !important; }
+.dropzone-box { border:2px dashed var(--accent, #0284c7); border-radius:12px; padding:14px; text-align:center; margin:8px 0; cursor:pointer; transition:background .15s; }
+.dropzone-box.drag-over { background:rgba(2,132,199,.12); }
+.cmdk-list { max-height:320px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; margin-top:10px; }
+.cmdk-item { text-align:left; padding:8px 10px; border-radius:8px; border:1px solid var(--border, #cbd5e1); background:var(--card, transparent); cursor:pointer; }
+.cmdk-item:hover { border-color:var(--accent, #0284c7); }
+.qr-svg-wrap { display:flex; flex-wrap:wrap; gap:14px; align-items:center; margin-top:10px; }
+
 .stop-all{font-weight:800;letter-spacing:.02em;min-width:180px}
 
 .att-actions.bench-actions{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px 14px;align-items:start}
@@ -12952,6 +13234,303 @@ if ($('earn-auto-invoice-btn')) $('earn-auto-invoice-btn').onclick = () => _runA
 if ($('earn-auto-deliver-btn')) $('earn-auto-deliver-btn').onclick = () => _runAutoAction('delivery_bundle');
 if ($('earn-auto-digest-btn')) $('earn-auto-digest-btn').onclick = () => _runAutoAction('daily_digest');
 
+// --- 21 улучшение: Simple/Pro, Ctrl+K, PIN-замок, Air-Gap, Установщик 13+ AI, Память Pro, Переезд ВСЕХ ИИ, QR, Кросс-ИИ Кооперация ---
+let _simpleMode = false;
+if ($('ui-mode-btn')) $('ui-mode-btn').onclick = () => {
+  _simpleMode = !_simpleMode;
+  document.body.classList.toggle('simple-mode', _simpleMode);
+  $('ui-mode-btn').textContent = _simpleMode ? (S.ui_mode_simple || 'Simple') : (S.ui_mode_pro || 'Pro');
+};
+
+function openCmdK() {
+  const m = $('cmdk-modal'), inp = $('cmdk-input');
+  if (!m) return;
+  m.hidden = false;
+  renderCmdK('');
+  if (inp) { inp.value = ''; inp.focus(); }
+}
+function renderCmdK(q) {
+  const list = $('cmdk-list');
+  if (!list) return;
+  list.textContent = '';
+  const low = String(q || '').trim().toLowerCase();
+  const btns = Array.from(document.querySelectorAll('button[id]')).filter(b => b.id !== 'cmdk-close-btn');
+  let shown = 0;
+  for (const b of btns) {
+    const label = (b.textContent || '').trim();
+    if (!label) continue;
+    if (low && !label.toLowerCase().includes(low) && !b.id.toLowerCase().includes(low)) continue;
+    const item = _el('button', 'cmdk-item', label + '  [' + b.id + ']');
+    item.type = 'button';
+    item.onclick = () => {
+      if ($('cmdk-modal')) $('cmdk-modal').hidden = true;
+      const sec = b.closest('section[id^="panel-"]');
+      if (sec && typeof switchTab === 'function') switchTab(sec.id.replace('panel-', ''));
+      b.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      b.click();
+    };
+    list.appendChild(item);
+    if (++shown >= 20) break;
+  }
+}
+if ($('cmdk-open-btn')) $('cmdk-open-btn').onclick = openCmdK;
+if ($('cmdk-close-btn')) $('cmdk-close-btn').onclick = () => { if ($('cmdk-modal')) $('cmdk-modal').hidden = true; };
+if ($('cmdk-input')) $('cmdk-input').oninput = (e) => renderCmdK(e.target.value);
+
+async function openLockModal(lockNow) {
+  if (lockNow) { try { await api('/api/v2/power/action', { action: 'pin_lock' }); } catch (e) {} }
+  if ($('lock-modal')) $('lock-modal').hidden = false;
+  if ($('lock-pin-inp')) { $('lock-pin-inp').value = ''; $('lock-pin-inp').focus(); }
+}
+if ($('studio-lock-btn')) $('studio-lock-btn').onclick = () => openLockModal(true);
+if ($('lock-cancel-btn')) $('lock-cancel-btn').onclick = async () => {
+  try {
+    const st = await api('/api/v2/power/status');
+    if (st && st.lock && st.lock.locked) {
+      if ($('lock-status-out')) $('lock-status-out').textContent = 'PIN required';
+      return;
+    }
+  } catch (e) {}
+  if ($('lock-modal')) $('lock-modal').hidden = true;
+};
+if ($('lock-unlock-btn')) $('lock-unlock-btn').onclick = async () => {
+  try {
+    const r = await api('/api/v2/power/action', { action: 'pin_verify', pin: ($('lock-pin-inp') && $('lock-pin-inp').value) || '' });
+    if (r && r.unlocked) {
+      if ($('lock-modal')) $('lock-modal').hidden = true;
+      say(S.done, true);
+    } else if ($('lock-status-out')) {
+      $('lock-status-out').textContent = String((r && r.error) || 'Invalid PIN');
+    }
+  } catch (e) { if ($('lock-status-out')) $('lock-status-out').textContent = String(e.message || e); }
+};
+document.addEventListener('keydown', (ev) => {
+  if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'k') { ev.preventDefault(); openCmdK(); }
+  if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'l') { ev.preventDefault(); openLockModal(true); }
+  if (ev.key === 'Escape' && $('cmdk-modal') && !$('cmdk-modal').hidden) $('cmdk-modal').hidden = true;
+});
+
+if ($('privacy-pill-btn')) $('privacy-pill-btn').onclick = async () => {
+  try {
+    const st = await api('/api/v2/power/status');
+    const pr = (st && st.privacy) || {};
+    $('privacy-pill-btn').textContent = pr.airgap_enabled ? (S.privacy_pill_airgap || 'Air-Gap') : (S.privacy_pill_local || 'Local');
+    if ($('sh-power-out')) $('sh-power-out').replaceChildren(_el('pre', 'sh-pre', JSON.stringify(pr, null, 2)));
+    say((pr.privacy_mode || 'local') + ' · egress=' + String(pr.events_count || 0), true);
+  } catch (e) { say(String(e.message || e), false); }
+};
+
+if ($('setup-scan-btn')) $('setup-scan-btn').onclick = async () => {
+  const box = $('setup-clients-list');
+  try {
+    const r = await api('/api/v2/setup/clients');
+    if (!box) return;
+    box.textContent = '';
+    for (const cl of (r.clients || [])) {
+      const card = _el('div', 'earn-item');
+      card.appendChild(_el('strong', '', String(cl.client) + (cl.detected ? ' ●' : ' ○')));
+      card.appendChild(_el('div', 'earn-meta', String(cl.path || '') + ' (' + String(cl.format || '') + ')'));
+      const acts = _el('div', 'rec-actions');
+      const bInst = _el('button', 'btn-primary aifa-compact-btn', 'Install');
+      bInst.onclick = async () => { try { const res = await api('/api/v2/setup/clients/action', { action: 'install', client: cl.client }); say(String(res.status || S.done), true); } catch (e) { say(String(e.message || e), false); } };
+      const bPing = _el('button', 'aifa-compact-btn', 'Ping');
+      bPing.onclick = async () => { try { const res = await api('/api/v2/setup/clients/action', { action: 'ping', client: cl.client }); say('MCP tools: ' + String(res.mcp_tools_ready || 0), Boolean(res.ok)); } catch (e) { say(String(e.message || e), false); } };
+      const bRb = _el('button', 'aifa-compact-btn', 'Rollback');
+      bRb.onclick = async () => { try { const res = await api('/api/v2/setup/clients/action', { action: 'rollback', client: cl.client }); say(res.ok ? S.done : String(res.error || S.failed), Boolean(res.ok)); } catch (e) { say(String(e.message || e), false); } };
+      acts.appendChild(bInst); acts.appendChild(bPing); acts.appendChild(bRb);
+      card.appendChild(acts);
+      box.appendChild(card);
+    }
+    say(S.done, true);
+  } catch (e) { if (box) box.textContent = String(e.message || e); }
+};
+
+async function _runMemPro(actionName) {
+  const out = $('mpro-out');
+  const qv = ($('mpro-query-inp') && $('mpro-query-inp').value || '').trim();
+  const ide = ($('mpro-ide-sel') && $('mpro-ide-sel').value) || 'claude';
+  try {
+    let r;
+    if (actionName === 'tree_or_bin') {
+      r = await api('/api/v2/memory/pro');
+      if (qv) {
+        const df = await api('/api/v2/memory/pro/action', { action: 'diff', record_id: qv }).catch(() => null);
+        if (df && df.ok) r.diff = df;
+      }
+    } else {
+      r = await api('/api/v2/memory/pro/action', { action: actionName, query: qv || 'architecture', record_id: qv, target: ide, project_dir: '.', repo_dir: '.', dry_run: true });
+    }
+    if (out) out.replaceChildren(_el('pre', 'sh-pre', JSON.stringify(r, null, 2)));
+    say(S.done, true);
+  } catch (e) { if (out) out.textContent = String(e.message || e); }
+}
+if ($('mpro-compass-btn')) $('mpro-compass-btn').onclick = () => _runMemPro('context_compass');
+if ($('mpro-hygiene-btn')) $('mpro-hygiene-btn').onclick = () => _runMemPro('hygiene_scan');
+if ($('mpro-ide-btn')) $('mpro-ide-btn').onclick = () => _runMemPro('ide_rules');
+if ($('mpro-bin-btn')) $('mpro-bin-btn').onclick = () => _runMemPro('tree_or_bin');
+if ($('mpro-tree-btn')) $('mpro-tree-btn').onclick = () => _runMemPro('tree_or_bin');
+if ($('mpro-git-exp-btn')) $('mpro-git-exp-btn').onclick = () => _runMemPro('git_export');
+
+let _uniFileState = { filename: '', raw_base64: '' };
+function _readUniFile(file) {
+  if (!file) return;
+  const rd = new FileReader();
+  rd.onload = () => { _uniFileState = { filename: file.name, raw_base64: String(rd.result || '') }; say(file.name, true); };
+  rd.readAsDataURL(file);
+}
+if ($('uni-file-inp')) $('uni-file-inp').onchange = (e) => _readUniFile(e.target.files && e.target.files[0]);
+if ($('uni-dropzone')) {
+  $('uni-dropzone').ondragover = (e) => { e.preventDefault(); $('uni-dropzone').classList.add('drag-over'); };
+  $('uni-dropzone').ondragleave = () => $('uni-dropzone').classList.remove('drag-over');
+  $('uni-dropzone').ondrop = (e) => { e.preventDefault(); $('uni-dropzone').classList.remove('drag-over'); _readUniFile(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]); };
+}
+async function _runUniImport(act) {
+  const out = $('uni-import-out');
+  try {
+    const r = await api('/api/v2/import/universal', {
+      action: act,
+      filename: _uniFileState.filename,
+      raw_base64: _uniFileState.raw_base64,
+      raw_text: ($('uni-text-inp') && $('uni-text-inp').value) || '',
+      source_hint: ($('uni-source-sel') && $('uni-source-sel').value) || 'auto',
+      agent_id: ($('uni-agent-inp') && $('uni-agent-inp').value || '').trim(),
+    });
+    if (out) out.replaceChildren(_el('pre', 'sh-pre', JSON.stringify(r, null, 2)));
+    say((r && r.message_ru) || S.done, true);
+  } catch (e) { if (out) out.textContent = String(e.message || e); }
+}
+if ($('uni-preview-btn')) $('uni-preview-btn').onclick = () => _runUniImport('preview');
+if ($('uni-commit-btn')) $('uni-commit-btn').onclick = () => _runUniImport('commit');
+
+if ($('bak321-save-btn')) $('bak321-save-btn').onclick = async () => {
+  try {
+    const r = await api('/api/v2/power/action', { action: 'backup_schedule', enabled: true, target_dir: ($('bak321-dir-inp') && $('bak321-dir-inp').value || '').trim() });
+    if ($('bak321-out')) $('bak321-out').replaceChildren(_el('pre', 'sh-pre', JSON.stringify(r, null, 2)));
+    say(S.done, true);
+  } catch (e) { if ($('bak321-out')) $('bak321-out').textContent = String(e.message || e); }
+};
+if ($('bak321-run-btn')) $('bak321-run-btn').onclick = async () => {
+  try {
+    const r = await api('/api/v2/power/action', { action: 'backup_now', target_dir: ($('bak321-dir-inp') && $('bak321-dir-inp').value || '').trim() });
+    if ($('bak321-out')) $('bak321-out').replaceChildren(_el('pre', 'sh-pre', JSON.stringify(r, null, 2)));
+    say(S.done, true);
+  } catch (e) { if ($('bak321-out')) $('bak321-out').textContent = String(e.message || e); }
+};
+
+if ($('mesh-qr-btn')) $('mesh-qr-btn').onclick = async () => {
+  const out = $('mesh-qr-out');
+  try {
+    const r = await api('/api/v2/power/action', { action: 'qr_pairing' });
+    if (!out) return;
+    out.textContent = '';
+    if (r.qr_svg) {
+      const doc = new DOMParser().parseFromString(r.qr_svg, 'image/svg+xml');
+      if (doc && doc.documentElement) out.appendChild(document.importNode(doc.documentElement, true));
+    }
+    const meta = _el('div', '');
+    meta.appendChild(_el('div', '', 'LAN: ' + String(r.lan_endpoint || '')));
+    meta.appendChild(_el('strong', '', 'SAS: ' + String(r.sas_code || '')));
+    out.appendChild(meta);
+    say(S.done, true);
+  } catch (e) { if (out) out.textContent = String(e.message || e); }
+};
+
+let _airgapLocal = false;
+if ($('sh-insp-btn')) $('sh-insp-btn').onclick = async () => {
+  try { const r = await api('/api/v2/mcp/inspector?limit=40'); if ($('sh-power-out')) $('sh-power-out').replaceChildren(_el('pre', 'sh-pre', JSON.stringify(r, null, 2))); say(S.done, true); } catch (e) { say(String(e.message || e), false); }
+};
+if ($('sh-preinst-btn')) $('sh-preinst-btn').onclick = async () => {
+  try {
+    const sp = ($('sh-pw-inp') && $('sh-pw-inp').value || '').trim() || 'npx @modelcontextprotocol/server-filesystem@1.0.0';
+    const r = await api('/api/v2/power/action', { action: 'preinstall_scan', spec: sp });
+    if ($('sh-power-out')) $('sh-power-out').replaceChildren(_el('pre', 'sh-pre', JSON.stringify(r, null, 2)));
+    say('Grade ' + String(r.grade || '?'), Boolean(r.safe_to_install));
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('sh-acl-save-btn')) $('sh-acl-save-btn').onclick = async () => {
+  try {
+    const ag = ($('sh-pw-inp') && $('sh-pw-inp').value || '').trim() || 'cursor';
+    const pr = ($('sh-acl-preset') && $('sh-acl-preset').value) || 'developer';
+    const r = await api('/api/v2/power/action', { action: 'acl_set', agent_id: ag, preset: pr });
+    if ($('sh-power-out')) $('sh-power-out').replaceChildren(_el('pre', 'sh-pre', JSON.stringify(r, null, 2)));
+    say(S.done, true);
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('sh-airgap-btn')) $('sh-airgap-btn').onclick = async () => {
+  try {
+    _airgapLocal = !_airgapLocal;
+    const r = await api('/api/v2/power/action', { action: 'airgap_set', enabled: _airgapLocal });
+    if ($('privacy-pill-btn')) $('privacy-pill-btn').textContent = r.airgap ? (S.privacy_pill_airgap || 'Air-Gap') : (S.privacy_pill_local || 'Local');
+    if ($('sh-power-out')) $('sh-power-out').replaceChildren(_el('pre', 'sh-pre', JSON.stringify(r, null, 2)));
+    say(S.done, true);
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('sh-pin-save-btn')) $('sh-pin-save-btn').onclick = async () => {
+  try {
+    const pv = ($('sh-pw-inp') && $('sh-pw-inp').value || '').trim();
+    const r = await api('/api/v2/power/action', { action: 'pin_config', pin: pv, enabled: Boolean(pv) });
+    if ($('sh-power-out')) $('sh-power-out').replaceChildren(_el('pre', 'sh-pre', JSON.stringify(r, null, 2)));
+    say(S.done, true);
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('sh-exec-rep-btn')) $('sh-exec-rep-btn').onclick = async () => {
+  try {
+    const cn = ($('sh-pw-inp') && $('sh-pw-inp').value || '').trim() || 'Enterprise Client';
+    const r = await api('/api/v2/power/action', { action: 'exec_report', client_name: cn });
+    if (r && r.html) {
+      const blob = new Blob([r.html], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'PADAM_Executive_Report.html';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
+    if ($('sh-power-out')) $('sh-power-out').replaceChildren(_el('pre', 'sh-pre', JSON.stringify({ ok: r.ok, client: r.client_name, hmac_sha256: r.hmac_sha256 }, null, 2)));
+    say(S.done, true);
+  } catch (e) { say(String(e.message || e), false); }
+};
+
+async function _runCoop(act) {
+  const out = $('swarm-coop-out');
+  try {
+    const body = {
+      action: act,
+      title: ($('coop-title-inp') && $('coop-title-inp').value || '').trim() || 'Joint Cross-AI Task',
+      problem_summary: ($('coop-text-inp') && $('coop-text-inp').value || '').trim() || 'Complex cross-AI architecture & code review.',
+      agent_id: ($('coop-agent-inp') && $('coop-agent-inp').value || '').trim() || 'aifa_claude',
+      recipient_agent_id: ($('coop-agent-inp') && $('coop-agent-inp').value || '').trim() || 'aifa_claude',
+      amount_usdt: Number(($('coop-amount-inp') && $('coop-amount-inp').value) || 10),
+      budget_usdt: Number(($('coop-amount-inp') && $('coop-amount-inp').value) || 10),
+      allow_cross_agent_billing: Boolean($('coop-allow-pay-chk') && $('coop-allow-pay-chk').checked),
+      family_pool_usdt: Math.max(25, Number(($('coop-amount-inp') && $('coop-amount-inp').value) || 10)),
+    };
+    const r = await api('/api/v2/swarm/coop/action', body);
+    if (out) out.replaceChildren(_el('pre', 'sh-pre', JSON.stringify(r, null, 2)));
+    say(r && r.ok !== false ? S.done : String((r && (r.message_ru || r.error)) || S.failed), r && r.ok !== false);
+  } catch (e) { if (out) out.textContent = String(e.message || e); }
+}
+if ($('coop-open-btn')) $('coop-open-btn').onclick = () => _runCoop('collab_open');
+if ($('coop-status-btn')) $('coop-status-btn').onclick = () => _runCoop('status');
+if ($('coop-pay-save-btn')) $('coop-pay-save-btn').onclick = () => _runCoop('billing_settings');
+if ($('coop-aid-req-btn')) $('coop-aid-req-btn').onclick = () => _runCoop('aid_request');
+
+if ($('pulse-run-btn')) $('pulse-run-btn').onclick = async () => {
+  try {
+    const r = await api('/api/v2/power/action', { action: 'morning_pulse' });
+    if ($('pulse-recipes-out')) $('pulse-recipes-out').replaceChildren(_el('pre', 'sh-pre', JSON.stringify(r, null, 2)));
+    say(String(r.desktop_notification_title || S.done), true);
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('recipe-run-btn')) $('recipe-run-btn').onclick = async () => {
+  try {
+    const rid = ($('recipe-sel') && $('recipe-sel').value) || 'morning_pulse_check';
+    const r = await api('/api/v2/power/action', { action: 'recipe_run', recipe_id: rid });
+    if ($('pulse-recipes-out')) $('pulse-recipes-out').replaceChildren(_el('pre', 'sh-pre', JSON.stringify(r, null, 2)));
+    say(S.done, true);
+  } catch (e) { say(String(e.message || e), false); }
+};
+
+
 
 async function loadWalletsFor(containerId, networksFilter) {
   try {
@@ -13182,6 +13761,10 @@ def page() -> tuple[str, str]:
           <button id="lang-es" class="lang-btn" aria-pressed="false">ES</button>
           <button id="lang-zh" class="lang-btn" aria-pressed="false">ZH</button>
         </div>
+        <button id="ui-mode-btn" type="button" class="aifa-compact-btn" data-i18n="ui_mode_pro">{s['ui_mode_pro']}</button>
+        <button id="cmdk-open-btn" type="button" class="aifa-compact-btn" data-i18n="cmdk_btn">{s['cmdk_btn']}</button>
+        <button id="privacy-pill-btn" type="button" class="aifa-compact-btn" data-i18n="privacy_pill_local">{s['privacy_pill_local']}</button>
+        <button id="studio-lock-btn" type="button" class="aifa-compact-btn" data-i18n="lock_btn">{s['lock_btn']}</button>
         <button id="theme-toggle">☀️ {s['theme_light']}</button>
       </div>
     </header>
@@ -13310,6 +13893,71 @@ def page() -> tuple[str, str]:
         <div id="feed-kinds" class="chips-row"></div>
         <div id="feed-list"></div>
         <button id="feed-more" data-i18n="show_more" hidden>{s['show_more']}</button>
+
+        <div class="box" id="mem-pro-box">
+          <h3 class="box-title" data-i18n="mpro_title">{s['mpro_title']}</h3>
+          <p class="panel-sub" data-i18n="mpro_sub">{s['mpro_sub']}</p>
+          <div class="toolbar">
+            <input id="mpro-query-inp" class="input" type="text" data-i18n-placeholder="mpro_query_ph" data-i18n-aria="mpro_query_ph" placeholder="{s['mpro_query_ph']}" aria-label="{s['mpro_query_ph']}">
+            <select id="mpro-ide-sel" aria-label="IDE rules target">
+              <option value="claude">CLAUDE.md</option>
+              <option value="cursor">.cursorrules</option>
+              <option value="agents">AGENTS.md</option>
+              <option value="gemini">GEMINI.md</option>
+              <option value="copilot">copilot-instructions.md</option>
+            </select>
+          </div>
+          <div class="rec-actions">
+            <button id="mpro-compass-btn" type="button" class="btn-primary" data-i18n="mpro_compass_btn">{s['mpro_compass_btn']}</button>
+            <button id="mpro-hygiene-btn" type="button" data-i18n="mpro_hygiene_btn">{s['mpro_hygiene_btn']}</button>
+            <button id="mpro-ide-btn" type="button" data-i18n="mpro_ide_btn">{s['mpro_ide_btn']}</button>
+            <button id="mpro-bin-btn" type="button" data-i18n="mpro_bin_btn">{s['mpro_bin_btn']}</button>
+            <button id="mpro-tree-btn" type="button" data-i18n="mpro_tree_btn">{s['mpro_tree_btn']}</button>
+            <button id="mpro-git-exp-btn" type="button" class="btn-ok" data-i18n="mpro_git_exp_btn">{s['mpro_git_exp_btn']}</button>
+          </div>
+          <div id="mpro-out" aria-live="polite"></div>
+        </div>
+
+        <div class="box" id="uni-import-box">
+          <h3 class="box-title" data-i18n="uni_title">{s['uni_title']}</h3>
+          <p class="panel-sub" data-i18n="uni_sub">{s['uni_sub']}</p>
+          <div id="uni-dropzone" class="dropzone-box">
+            <p data-i18n="uni_drop_hint">{s['uni_drop_hint']}</p>
+            <input id="uni-file-inp" type="file" accept=".json,.jsonl,.zip,.md,.txt,.html,.htm" aria-label="AI export file">
+          </div>
+          <div class="toolbar">
+            <select id="uni-source-sel" aria-label="AI platform source">
+              <option value="auto" data-i18n="uni_src_auto">{s['uni_src_auto']}</option>
+              <option value="chatgpt">ChatGPT (OpenAI)</option>
+              <option value="claude">Claude (Anthropic)</option>
+              <option value="gemini">Gemini / Google Takeout / AI Studio</option>
+              <option value="grok">Grok (xAI)</option>
+              <option value="deepseek">DeepSeek</option>
+              <option value="perplexity">Perplexity</option>
+              <option value="qwen">Qwen (Alibaba)</option>
+              <option value="mistral">Mistral Le Chat</option>
+              <option value="poe">Poe</option>
+              <option value="character_ai">Character.AI</option>
+              <option value="meta_ai">Meta AI / Llama</option>
+              <option value="openwebui">OpenWebUI / LM Studio</option>
+              <option value="ide_transcript">Cursor / Claude Code / Antigravity</option>
+              <option value="telegram">Telegram Desktop</option>
+              <option value="whatsapp">WhatsApp (.txt)</option>
+              <option value="discord">Discord JSON</option>
+              <option value="obsidian_notion">Obsidian / Notion ZIP</option>
+              <option value="chrome_bookmarks">Chrome / Edge Bookmarks</option>
+            </select>
+            <input id="uni-agent-inp" class="input" type="text" data-i18n-placeholder="uni_agent_ph" data-i18n-aria="uni_agent_ph" placeholder="{s['uni_agent_ph']}" aria-label="{s['uni_agent_ph']}">
+          </div>
+          <div class="toolbar qs-leads-col">
+            <textarea id="uni-text-inp" class="qs-textarea" rows="3" data-i18n-placeholder="uni_text_ph" data-i18n-aria="uni_text_ph" placeholder="{s['uni_text_ph']}" aria-label="{s['uni_text_ph']}"></textarea>
+          </div>
+          <div class="rec-actions">
+            <button id="uni-preview-btn" type="button" class="btn-primary" data-i18n="uni_preview_btn">{s['uni_preview_btn']}</button>
+            <button id="uni-commit-btn" type="button" class="btn-ok" data-i18n="uni_commit_btn">{s['uni_commit_btn']}</button>
+          </div>
+          <div id="uni-import-out" aria-live="polite"></div>
+        </div>
       </section>
 
       <!-- 3. ПОИСК -->
@@ -13645,6 +14293,24 @@ def page() -> tuple[str, str]:
             <button id="backup-export-json-btn" data-i18n="backup_export_json_btn">{s['backup_export_json_btn']}</button>
           </div>
           <div id="backup-result" class="panel-sub" aria-live="polite"></div>
+        </div>
+        <div class="box" id="backup-sched-box">
+          <h3 class="box-title" data-i18n="bak321_title">{s['bak321_title']}</h3>
+          <p class="panel-sub" data-i18n="bak321_sub">{s['bak321_sub']}</p>
+          <div class="toolbar">
+            <input id="bak321-dir-inp" class="input" type="text" data-i18n-placeholder="bak321_dir_ph" data-i18n-aria="bak321_dir_ph" placeholder="{s['bak321_dir_ph']}" aria-label="{s['bak321_dir_ph']}">
+            <button id="bak321-save-btn" type="button" data-i18n="bak321_save_btn">{s['bak321_save_btn']}</button>
+            <button id="bak321-run-btn" type="button" class="btn-primary" data-i18n="bak321_run_btn">{s['bak321_run_btn']}</button>
+          </div>
+          <div id="bak321-out" aria-live="polite"></div>
+        </div>
+        <div class="box" id="mesh-qr-box">
+          <h3 class="box-title" data-i18n="mesh_qr_title">{s['mesh_qr_title']}</h3>
+          <p class="panel-sub" data-i18n="mesh_qr_sub">{s['mesh_qr_sub']}</p>
+          <div class="rec-actions">
+            <button id="mesh-qr-btn" type="button" class="btn-primary" data-i18n="mesh_qr_btn">{s['mesh_qr_btn']}</button>
+          </div>
+          <div id="mesh-qr-out" class="qr-svg-wrap" aria-live="polite"></div>
         </div>
       </section>
 
@@ -14048,6 +14714,29 @@ def page() -> tuple[str, str]:
           </div>
           <div id="sh-sales-out" aria-live="polite"></div>
         </div>
+
+        <div class="box" id="sh-power-box">
+          <h3 class="box-title" data-i18n="sh_power_title">{s['sh_power_title']}</h3>
+          <p class="panel-sub" data-i18n="sh_power_sub">{s['sh_power_sub']}</p>
+          <div class="toolbar">
+            <input id="sh-pw-inp" class="input" type="text" data-i18n-placeholder="sh_pw_inp_ph" data-i18n-aria="sh_pw_inp_ph" placeholder="{s['sh_pw_inp_ph']}" aria-label="{s['sh_pw_inp_ph']}">
+            <select id="sh-acl-preset" aria-label="Agent ACL preset">
+              <option value="developer">developer</option>
+              <option value="readonly">readonly</option>
+              <option value="sandbox">sandbox</option>
+              <option value="trusted">trusted</option>
+            </select>
+          </div>
+          <div class="rec-actions">
+            <button id="sh-insp-btn" type="button" class="btn-primary" data-i18n="sh_insp_btn">{s['sh_insp_btn']}</button>
+            <button id="sh-preinst-btn" type="button" data-i18n="sh_preinst_btn">{s['sh_preinst_btn']}</button>
+            <button id="sh-acl-save-btn" type="button" data-i18n="sh_acl_save_btn">{s['sh_acl_save_btn']}</button>
+            <button id="sh-airgap-btn" type="button" class="btn-danger" data-i18n="sh_airgap_btn">{s['sh_airgap_btn']}</button>
+            <button id="sh-pin-save-btn" type="button" data-i18n="sh_pin_save_btn">{s['sh_pin_save_btn']}</button>
+            <button id="sh-exec-rep-btn" type="button" class="btn-ok" data-i18n="sh_exec_rep_btn">{s['sh_exec_rep_btn']}</button>
+          </div>
+          <div id="sh-power-out" aria-live="polite"></div>
+        </div>
       </section>
 
       <!-- СПРАВКА (16.11.2026) -->
@@ -14097,6 +14786,14 @@ def page() -> tuple[str, str]:
             <button id="qs-enable-strict-btn" class="btn-primary" data-i18n="qs_btn_enable_strict">{s['qs_btn_enable_strict']}</button>
             <button id="qs-go-overview-btn" data-i18n="qs_btn_go_overview">{s['qs_btn_go_overview']}</button>
           </div>
+        </div>
+        <div class="box" id="setup-clients-box">
+          <h3 class="box-title" data-i18n="setup_box_title">{s['setup_box_title']}</h3>
+          <p class="panel-sub" data-i18n="setup_box_sub">{s['setup_box_sub']}</p>
+          <div class="rec-actions">
+            <button id="setup-scan-btn" type="button" class="btn-primary" data-i18n="setup_scan_btn">{s['setup_scan_btn']}</button>
+          </div>
+          <div id="setup-clients-list" class="earn-stack" aria-live="polite"></div>
         </div>
       </section>
 
@@ -14296,6 +14993,56 @@ def page() -> tuple[str, str]:
           </div>
           <div id="ag-status-out" class="panel-sub" aria-live="polite"></div>
           <div id="ag-feed-list" class="earn-stack" aria-live="polite"></div>
+        </div>
+
+        <div class="box" id="swarm-coop-box">
+          <h3 class="box-title" data-i18n="coop_title">{s['coop_title']}</h3>
+          <p class="panel-sub" data-i18n="coop_sub">{s['coop_sub']}</p>
+          <div class="toolbar">
+            <input id="coop-title-inp" class="input" type="text" data-i18n-placeholder="coop_title_ph" data-i18n-aria="coop_title_ph" placeholder="{s['coop_title_ph']}" aria-label="{s['coop_title_ph']}">
+            <input id="coop-agent-inp" class="input" type="text" data-i18n-placeholder="coop_agent_ph" data-i18n-aria="coop_agent_ph" placeholder="{s['coop_agent_ph']}" aria-label="{s['coop_agent_ph']}">
+            <input id="coop-amount-inp" class="input earn-num-input" type="number" value="10" min="1" max="500" aria-label="Amount USDT">
+          </div>
+          <div class="toolbar qs-leads-col">
+            <textarea id="coop-text-inp" class="qs-textarea" rows="2" data-i18n-placeholder="coop_text_ph" data-i18n-aria="coop_text_ph" placeholder="{s['coop_text_ph']}" aria-label="{s['coop_text_ph']}"></textarea>
+          </div>
+          <div class="toolbar">
+            <label class="qs-check-lbl">
+              <input id="coop-allow-pay-chk" type="checkbox">
+              <span data-i18n="coop_allow_pay_lbl">{s['coop_allow_pay_lbl']}</span>
+            </label>
+          </div>
+          <div class="rec-actions">
+            <button id="coop-open-btn" type="button" class="btn-primary" data-i18n="coop_open_btn">{s['coop_open_btn']}</button>
+            <button id="coop-status-btn" type="button" data-i18n="coop_status_btn">{s['coop_status_btn']}</button>
+            <button id="coop-pay-save-btn" type="button" class="btn-ok" data-i18n="coop_pay_save_btn">{s['coop_pay_save_btn']}</button>
+            <button id="coop-aid-req-btn" type="button" data-i18n="coop_aid_req_btn">{s['coop_aid_req_btn']}</button>
+          </div>
+          <div id="swarm-coop-out" class="earn-stack" aria-live="polite"></div>
+        </div>
+
+        <div class="box" id="pulse-recipes-box">
+          <h3 class="box-title" data-i18n="pulse_title">{s['pulse_title']}</h3>
+          <p class="panel-sub" data-i18n="pulse_sub">{s['pulse_sub']}</p>
+          <div class="toolbar">
+            <select id="recipe-sel" aria-label="Workflow recipe">
+              <option value="morning_pulse_check">morning_pulse_check</option>
+              <option value="site_security_60s">site_security_60s</option>
+              <option value="memory_spring_clean">memory_spring_clean</option>
+              <option value="ide_rules_sync_all">ide_rules_sync_all</option>
+              <option value="redteam_client_demo">redteam_client_demo</option>
+              <option value="b2b_proposal_pack">b2b_proposal_pack</option>
+              <option value="client_brief_triage">client_brief_triage</option>
+              <option value="store_8x_launch">store_8x_launch</option>
+              <option value="backup_321_drill">backup_321_drill</option>
+              <option value="privacy_airgap_audit">privacy_airgap_audit</option>
+              <option value="context_compass_pack">context_compass_pack</option>
+              <option value="family_coop_digest">family_coop_digest</option>
+            </select>
+            <button id="pulse-run-btn" type="button" class="btn-primary" data-i18n="pulse_run_btn">{s['pulse_run_btn']}</button>
+            <button id="recipe-run-btn" type="button" class="btn-ok" data-i18n="recipe_run_btn">{s['recipe_run_btn']}</button>
+          </div>
+          <div id="pulse-recipes-out" aria-live="polite"></div>
         </div>
       </section>
       <section id="panel-brain" role="tabpanel" aria-labelledby="tab-brain" hidden>
@@ -14991,6 +15738,28 @@ def page() -> tuple[str, str]:
       <button id="quick-add-save" class="btn-primary" data-i18n="qa_modal_save">{s['qa_modal_save']}</button>
       <button id="quick-add-cancel" data-i18n="qa_modal_cancel">{s['qa_modal_cancel']}</button>
     </div>
+  </div>
+</div>
+<div id="cmdk-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="cmdk-title-el" hidden>
+  <div class="modal-card">
+    <h2 id="cmdk-title-el" class="box-title" data-i18n="cmdk_title">{s['cmdk_title']}</h2>
+    <div class="toolbar">
+      <input id="cmdk-input" type="search" data-i18n-placeholder="cmdk_ph" data-i18n-aria="cmdk_ph" placeholder="{s['cmdk_ph']}" aria-label="{s['cmdk_ph']}">
+      <button id="cmdk-close-btn" type="button" data-i18n="cmdk_close">{s['cmdk_close']}</button>
+    </div>
+    <div id="cmdk-list" class="cmdk-list"></div>
+  </div>
+</div>
+<div id="lock-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="lock-title-el" hidden>
+  <div class="modal-card">
+    <h2 id="lock-title-el" class="box-title" data-i18n="lock_title">{s['lock_title']}</h2>
+    <p class="panel-sub" data-i18n="lock_sub">{s['lock_sub']}</p>
+    <div class="toolbar">
+      <input id="lock-pin-inp" type="password" autocomplete="off" data-i18n-placeholder="lock_pin_ph" data-i18n-aria="lock_pin_ph" placeholder="{s['lock_pin_ph']}" aria-label="{s['lock_pin_ph']}">
+      <button id="lock-unlock-btn" type="button" class="btn-primary" data-i18n="lock_unlock_btn">{s['lock_unlock_btn']}</button>
+      <button id="lock-cancel-btn" type="button" data-i18n="lock_cancel_btn">{s['lock_cancel_btn']}</button>
+    </div>
+    <div id="lock-status-out" class="panel-sub" aria-live="polite"></div>
   </div>
 </div>
 <script id="i18n-data" type="application/json" nonce="{nonce}">{i18n_json}</script>
