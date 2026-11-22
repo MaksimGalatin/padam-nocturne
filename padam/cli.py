@@ -237,10 +237,37 @@ def cmd_import_ext(m: Memory, a) -> int:
     return 0
 
 
+
+def _maybe_star_hint(m: Memory, trigger: str) -> None:
+    """Тихая разовая подсказка со ссылкой на GitHub Star (макс. 1 раз на trigger, не более 2 раз за жизнь установки)."""
+    if os.environ.get("PADAM_NO_HINTS") == "1" or os.environ.get("PYTEST_CURRENT_TEST"):
+        return
+    if not sys.stdout.isatty():
+        return
+    try:
+        from pathlib import Path
+        state_path = Path(m.store.path).parent / ".padam_star_hints.json"
+        data = json.loads(state_path.read_text(encoding="utf-8")) if state_path.is_file() else {}
+        shown = data.get("shown", [])
+        if trigger in shown or len(shown) >= 2:
+            return
+        shown.append(trigger)
+        data["shown"] = shown
+        state_path.write_text(json.dumps(data), encoding="utf-8")
+        if trigger in ("confirm", "refute"):
+            print(t(
+                f"{DIM}✔ Решение записано в цепочку версий — агент не сможет его переписать. Открытый код: ⭐ https://github.com/MaksimGalatin/padam-nocturne{RESET}",
+                f"{DIM}✔ Decision recorded in the version chain — no agent can rewrite it. Open source: ⭐ https://github.com/MaksimGalatin/padam-nocturne{RESET}",
+            ))
+    except Exception:
+        pass
+
+
 def cmd_confirm(m: Memory, a) -> int:
     if m.confirm(a.id):
         print(t(f"{GREEN}Подтверждено.{RESET} Свежесть обновлена, уверенность выше.",
                 f"{GREEN}Confirmed.{RESET} Freshness renewed, confidence raised."))
+        _maybe_star_hint(m, "confirm")
         return 0
     _not_found()
     return 1
@@ -252,6 +279,7 @@ def cmd_refute(m: Memory, a) -> int:
         return 1
     print(t(f"{GREEN}Уверенность снижена.{RESET} Свежесть не обновлялась.",
             f"{GREEN}Confidence lowered.{RESET} Freshness not renewed."))
+    _maybe_star_hint(m, "refute")
     return 0
 
 
@@ -1367,7 +1395,7 @@ def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="padam", description=t(__doc__, DOC_EN),
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     from . import __version__ as _ver
-    p.add_argument("--version", action="version", version=f"padam-nocturne {_ver}")
+    p.add_argument("--version", action="version", version=f"padam-nocturne {_ver} · local agent memory · github.com/MaksimGalatin/padam-nocturne")
     # Тот же пользователь, что у MCP-сервера и API: иначе `padam review` не видит записей агента.
     p.add_argument("--user", default=os.environ.get("PADAM_USER", "default"))
     p.add_argument("--db", default=None, help=t("путь к файлу базы", "path to the database file"))

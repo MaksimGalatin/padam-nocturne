@@ -2,10 +2,7 @@
 
 PADAM NOCTURNE is a local memory server for AI agents (MCP over stdio, one SQLite file). What an agent saves today it
 reads back tomorrow as context, so memory is an injection and leakage surface. This page is the short path through
-what we claim, how it was measured, what still gets through, and how to check it yourself. Version 0.4.16,
-13 November 2026. 0.4.15 added six secret rules written from round 6's eleven secret misses (see below); 0.4.16 removes
-three classes of false alarm around the word "password" without opening a secret (see CHANGELOG). Command and owner
-recognition and search are as measured on 0.4.13 (0.4.14 changed only the language of messages).
+what we claim, how it was measured, what still gets through, and how to check it yourself. **Version 0.7.2, 22 November 2026.** Core test suite: **1,704 automated tests** passing locally (`v0.7.2`), MCP Registry (`io.github.MaksimGalatin/padam-nocturne` v0.7.2), HOL Guard (`#7505`, `#7686`; hosted sibling `aifa-memory` v1.9.8 in `#8324`). Historical red-team rounds 1–7 below are preserved verbatim from 0.4.3–0.4.16 so every prior miss remains visible.
 
 ## The model in one paragraph
 
@@ -83,11 +80,34 @@ has exactly one opening and one closing tag with equal 32-hex nonces.
 5 for 97.0 % of answerable questions (top 10: 99.2 %), against 96.0 % (97.7 %) for a plain BM25 baseline on the same data; 400 of those
 questions were not used while tuning (97.6 %). Two separate runs agree on every question.
 
-**Build and release.** 968 tests on Python 3.14 (with PADAM_LANG=en and with ru), 963 on 3.10, CI on Linux and Windows for 3.10–3.13. PyPI releases
+**Build and release.** 1,704 automated tests on v0.7.2 (previously 968 on 0.4.16) (with PADAM_LANG=en and with ru), 963 on 3.10, CI on Linux and Windows for 3.10–3.13. PyPI releases
 come from a GitHub Actions workflow through Trusted Publishing (OIDC), with no stored token; the actions are pinned
 by commit hash. The same way, with no stored token, `server.json` is published to the official MCP registry as
 `io.github.MaksimGalatin/padam-nocturne` (manual `mcp-registry` workflow, `mcp-publisher` checked against the
 release's checksum file).
+
+## Data at Rest & Cryptographic Guarantees (verified against v0.7.2 code)
+
+We state storage boundaries explicitly so no reviewer confuses local privacy with full-database disk encryption:
+
+| Layer | Stored Format | Protection & Honest Boundary |
+|---|---|---|
+| **L2 Local SQLite content (`memory.db`)** | Plaintext SQLite table + `PRAGMA secure_delete = ON` (`padam/store.py`) + `PRAGMA wal_checkpoint(TRUNCATE)` | Local-only (`$0` cloud telemetry); **NOT encrypted at rest by PADAM**. Pair with OS full-disk encryption (BitLocker / FileVault / LUKS). |
+| **L2 Search Index (FTS5 & local vectors)** | Plaintext FTS5 tokens + local embeddings inside `memory.db` | Enables fast offline BM25 + hybrid retrieval; relies on OS full-disk encryption. |
+| **Per-record Key Vault (`padam protect-keys`)** | Wrapped per-record 256-bit keys (`padam/keyvault.py`) | Key-encryption key derived with **`scrypt(n=32768, r=8, p=1, len=32)`** + per-vault random salt; keys wrapped with **`AES-256-GCM`** using fresh 96-bit `secrets.token_bytes(12)` nonces and `memory_id` AAD. |
+| **L3 Arweave / Backups / P2P Sync** | Client-side ciphertext before leaving machine | Individual **`AES-256-GCM`** key per record; `padam forget` deletes the local row (`secure_delete = ON`), destroys its key (rendering external ciphertext unrecoverable), and writes a receipt. Cannot erase unmanaged user backups or CoW SSD blocks. |
+
+## Additional Bugs We Shipped and Fixed (0.4.9 – 0.7.2)
+
+- **0.4.9 (Shared DB timeline isolation):** `timeline` could return another `PADAM_USER`'s row by ID, and unauthenticated REST `/timeline` showed held text. Fixed with owner checks across all 47 lookups in `padam/memory.py`.
+- **0.6.3 (ReDoS, Shamir fingerprint & hidden MCP tools):** Fixed catastrophic backtracking (ReDoS `153.8s → 29ms`) in secret-masking regexes, removed a 32-bit fingerprint leak in Shamir secret shares, and blocked direct MCP invocation of feature-flagged hidden tools.
+- **0.7.2 (Ollama model verification & embedding space isolation):** `_check_ollama()` previously trusted HTTP 200 without checking whether `config.EMBED_MODEL` was actually installed in `/api/tags`, which could poison `embedding_model` metadata and cause 404 timeouts. Fixed in `padam/embeddings.py` and `padam/retrieval.py` with strict embedding-space isolation, uniform Latin diacritics + `ё → е` folding, and monotonic `0.50–1.00` relevance scoring.
+
+## Benchmark Scope & Self-Reported Disclosure
+
+- **All published metrics (`214/214` public red-team cases, `AIFaSecurity-100 Grade S 100/100`, `LongMemEval-S 97.0% top-5 / 99.2% top-10`, bilingual MCP `recall@5 = 1.0`) are self-reported by the maintainer until an independent third-party audit is completed.**
+- **`AIFaSecurity-100` breakdown:** The suite tests portable agent-memory threat classes (secret redaction, prompt-injection quarantine, data fencing, schema pinning, outbound payee-swap checks) alongside PADAM-specific API controls (owner quarantine workflow, `PADAM_STRICT=1`, per-record key destruction receipts). Treat it as an open, offline reproducible regression suite (`python -m benchmarks.aifa_security.run_aifa_sec --no-write`), not a neutral cross-vendor leaderboard.
+- **Independent challengers welcome:** See [`HALL_OF_FAME.md`](../HALL_OF_FAME.md) and [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 
 ## What still gets through — read this before the rest
 

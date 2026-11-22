@@ -1,35 +1,26 @@
 # Contributing to PADAM · NOCTURNE
 
-Thank you for looking. The most useful contributions are real-world reports: where the memory helped your agent,
-where it got in the way, and where NOCTURNE kept or dropped the wrong thing.
+Thank you for helping make local AI agent memory safer and verifiable!
 
-## 1. Tell us how it behaves in your agent
-
-Open an issue with the **Integration report** template: which client (Claude Code, Claude Desktop, Cursor, VS Code,
-your own agent), how long you used it, what it remembered well and what it got wrong. Logs from
-`python -m padam stats` and `python -m padam recall "<query>" --explain` help a lot. Share only what you are
-comfortable sharing — never paste private memories.
-
-## 2. Report a bug
-
-Use the **Bug report** template with the exact command, the full output and your OS / Python version.
-Before opening a pull request, run the tests:
+## Quick Local Setup
 
 ```bash
-pip install -e ".[test,l3]"
+git clone https://github.com/MaksimGalatin/padam-nocturne.git
+cd padam-nocturne
+pip install -e ".[dev]"
 python -m pytest tests/ -q
+python redteam/run.py redteam/public_cases.jsonl
 ```
 
-## 3. Security
+## Highest-Impact Ways to Contribute
 
-Weaknesses in encryption, key handling, forgetting or the Arweave / Solana layer must **not** go into public issues —
-see [SECURITY.md](SECURITY.md).
+1. **Break our filters (Red Team Challenge):** Try to slip a hidden prompt injection, secret key, MCP rug-pull, or payee-swap past `padam/safety.py` or `PADAM_STRICT=0` defaults. Verified bypasses are credited permanently in [`HALL_OF_FAME.md`](HALL_OF_FAME.md).
+2. **Import adapters:** Add or improve local history parsers (ChatGPT, Claude, Gemini, Obsidian, Notion, Telegram, Discord, etc.) with secret-redaction tests.
+3. **False-positive reports:** Ordinary notes that were unnecessarily quarantined — open an issue with the anonymized snippet so we can tighten rules without weakening defenses.
+4. **Independent benchmarks:** Reproduce `LongMemEval-S` or `redteam/public_cases.jsonl` on your machine and share logs/comparisons (including cases where PADAM loses).
 
-## 4. Pull requests
+## Pull Request Rules
 
-Bug fixes, new integrations (configs in `integrations/`), tests and documentation are welcome. Keep the honest
-limits in README up to date if your change affects them.
-
-Licence: AGPL-3.0. By opening a pull request you agree that your contribution is licensed under the same terms.
-
-Questions: contact@codeofdigitaleternity.com · https://aifa.works/nocturne
+- Every behavior change or security fix must include a regression test in `tests/`.
+- Never commit real API keys, tokens, or personal data in test fixtures (use synthetic tokens clearly prefixed as fake).
+- For private vulnerability disclosures, email [`contact@codeofdigitaleternity.com`](mailto:contact@codeofdigitaleternity.com) (see [`SECURITY.md`](SECURITY.md)).

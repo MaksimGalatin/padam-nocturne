@@ -28,6 +28,37 @@
 
 Measured, not claimed: seven red-team rounds with their results published (the sets of rounds 1–3 in full; rounds 4–7 were hashed before each run, their sets will follow after a read for real names), LongMemEval-S retrieval 97.0 % in the top 5 and 99.2 % in the top 10, against 96.0 % and 97.7 % for plain BM25, 1,704 automated tests (`100/100 Grade S` on AIFaSecurity-100) and public CI. Listed in the [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) catalog and the official MCP registry (`0.7.2`).
 
+## Storage & Encryption Boundaries
+
+| Layer | Format on Disk / Network | Honest Security Boundary |
+|---|---|---|
+| **L2 Local SQLite (`memory.db`)** | Plaintext SQLite + `PRAGMA secure_delete = ON` + `wal_checkpoint(TRUNCATE)` | 100% local (`$0` cloud telemetry). **Not encrypted at rest by PADAM** — pair with OS full-disk encryption (BitLocker / FileVault / LUKS). |
+| **L2 Search Indexes (FTS5 / vectors)** | Plaintext local tokens & vectors | Fast offline retrieval (`p95 = 3.69 ms` on bilingual MCP check); protected by OS full-disk encryption. |
+| **Per-record Key Vault (`padam protect-keys`)** | `scrypt(n=32768, r=8, p=1)` + `AES-256-GCM` wrapped keys | Protects per-record encryption keys behind your passphrase. |
+| **L3 Anchoring / Backups / Sync** | Client-side per-record **`AES-256-GCM`** ciphertext | `padam forget` wipes the local row (`secure_delete = ON`), destroys its key (making external Arweave ciphertext unrecoverable), and writes a receipt. Cannot erase unmanaged local backups or CoW SSD blocks. |
+
+> **Honest self-reported metrics (reproducible offline, `$0`):** `1,704` automated tests green on `v0.7.2` · `214/214` public red-team cases held · `AIFaSecurity-100 Grade S (100/100)` *(self-reported regression suite; includes PADAM-specific API checks alongside portable threat classes)* · `LongMemEval-S` retrieval `97.0%` top-5 / `99.2%` top-10 vs `96.0%` / `97.7%` plain BM25 · `19` platforms supported for local migration · `0` servers see your local memory. External independent audit has not been run yet — challengers welcome in [`HALL_OF_FAME.md`](HALL_OF_FAME.md).
+
+## Early Supporters ⭐
+
+PADAM is built in public, and the first engineers who starred, tested, or broke it deserve permanent credit here.
+
+Become one of the first 100: ⭐ star this repo, [open an issue](https://github.com/MaksimGalatin/padam-nocturne/issues/new) with `#early` in the title (or submit a red-team bypass for [`HALL_OF_FAME.md`](HALL_OF_FAME.md)), and share which client or platform you migrated from — we add every name below by hand.
+
+| # | Supporter | How they helped |
+|---|---|---|
+| 1 | *(first spot open)* | Test `uvx padam-nocturne`, run `redteam/run.py`, or open an `#early` issue |
+
+*Every name here is added by hand. No bots, no star-for-star swaps.*
+
+---
+
+## License FAQ (AGPL-3.0-only + Apache-2.0 CI Action)
+
+- **Does running `padam-nocturne` locally via MCP with Claude Code / Cursor / VS Code require open-sourcing my project?** **No.** Using PADAM locally as a standalone MCP tool or desktop Studio alongside proprietary repositories does not trigger AGPL-3.0 on your code.
+- **Can I run the GitHub CI Action in private corporate repos?** **Yes.** `.github/actions/padam-agentic-shield/` is licensed under **`Apache-2.0`** (with explicit patent grant).
+- **When is a Commercial License (MSA) needed?** Only when embedding/modifying `padam-nocturne` inside a closed-source product or hosted multi-tenant SaaS without AGPL disclosure, or when you require Zero-Telemetry DPAs, SLA, and IP indemnity (`contact@codeofdigitaleternity.com`).
+
 **Security reviewers:** start at [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md) — what we claim, every Red Team round and its results, what still gets through, and a ten-minute check.
 
 **PADAM** is a local-first, persistent memory for AI assistants and agents. It lives in one SQLite file on your machine, plugs into any MCP client (Claude Code, Claude Desktop, Cursor, VS Code) or into your own code through a CLI and a small REST API.
