@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="65%">
+      <stop offset="0%" stop-color="#141838"/>
+      <stop offset="100%" stop-color="#070818"/>
+    </radialGradient>
+    <linearGradient id="moonGrad" x1="20%" y1="10%" x2="80%" y2="90%">
+      <stop offset="0%" stop-color="#8B6BFF"/>
+      <stop offset="55%" stop-color="#6E52FF"/>
+      <stop offset="100%" stop-color="#5B3CF5"/>
+    </linearGradient>
+    <filter id="glow" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur stdDeviation="16" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" rx="180" fill="url(#bg)"/>
+  <!-- Crescent moon (NOCTURNE) -->
+  <path d="M 488 158 C 332 182 246 346 300 494 C 348 626 492 694 622 642 C 506 646 410 562 396 446 C 382 328 430 220 488 158 Z"
+        fill="url(#moonGrad)" filter="url(#glow)"/>
+  <!-- PADAM NOCTURNE crisp wordmark -->
+  <text x="512" y="810" text-anchor="middle" fill="#FFFFFF"
+        font-family="Segoe UI, Inter, Arial, sans-serif" font-weight="800" font-size="144" letter-spacing="8">PADAM</text>
+  <text x="512" y="902" text-anchor="middle" fill="#7D62FF"
+        font-family="Segoe UI, Inter, Arial, sans-serif" font-weight="700" font-size="72" letter-spacing="18">NOCTURNE</text>
+</svg>

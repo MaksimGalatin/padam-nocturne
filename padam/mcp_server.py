@@ -125,8 +125,8 @@ def mem() -> Memory:
 # --- описания инструментов --------------------------------------------
 
 _KINDS = ["preference", "identity", "decision", "correction", "fact", "state", "event"]
-_ID = {"type": "string", "minLength": 1, "maxLength": 64}
-_SCOPE = {"type": "string", "minLength": 1, "maxLength": 200}
+_ID = {"type": "string", "minLength": 1, "maxLength": 64, "description": "Unique record ID returned by padam_search or padam_write."}
+_SCOPE = {"type": "string", "minLength": 1, "maxLength": 200, "description": "Optional namespace/project scope filter (default: 'global')."}
 _AS_OF_PATTERN = r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?(Z|[+-]\d{2}:\d{2})?)?$"
 _REL = ["cause", "correction", "contradiction", "source", "derived"]
 _RO = {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False}
@@ -148,24 +148,28 @@ def _hints(read_only: bool, destructive: bool, idempotent: bool) -> dict:
 TOOLS = [
     {
         "name": "padam_search",
-        "description": "Search memory facts; returns stored data.",
+        "description": (
+            "Search local SQLite memory by hybrid lexical+vector relevance and return fenced data records. "
+            "Use when recalling prior facts, decisions, or preferences; use padam_profile for session-start identity "
+            "or padam_timeline for one record's version history. Read-only, no side effects; results are wrapped in a 128-bit data fence."
+        ),
         "annotations": _hints(True, False, True),
         "inputSchema": {
             "type": "object",
             "properties": {
-                "query": {"type": "string", "minLength": 1, "maxLength": 4000},
-                "kind": {"type": "string", "enum": _KINDS, "description": "Kind"},
+                "query": {"type": "string", "minLength": 1, "maxLength": 4000, "description": "Natural-language or keyword search query (diacritics-insensitive)."},
+                "kind": {"type": "string", "enum": _KINDS, "description": "Filter by record kind (preference, identity, decision, correction, fact, state, event)."},
                 "scope": _SCOPE,
-                "limit": {"type": "integer", "minimum": 1, "maximum": config.MAX_RECALL_LIMIT},
-                "compact": {"type": "boolean", "description": "Trim text"},
-                "as_of": {"type": "string", "maxLength": 40, "pattern": _AS_OF_PATTERN, "description": "As-of ISO"},
-                "scopes": {"type": "array", "maxItems": 10, "items": {"type": "string", "minLength": 1, "maxLength": 200}, "description": "Scope list"},
-                "agent_id": {"type": "string"},
-                "graph_hops": {"type": "integer", "minimum": 0, "maximum": 2, "description": "Hops 0..2"},
-                "max_tokens": {"type": "integer", "minimum": 50, "maximum": 32000, "description": "Token cap"},
-                "known_at": {"type": "string", "maxLength": 40, "pattern": _AS_OF_PATTERN, "description": "Known ISO"},
-                "reflect": {"type": "boolean", "description": "Reflect"},
-                "mode": {"type": "string", "enum": ["default", "reflect"], "description": "Mode"},
+                "limit": {"type": "integer", "minimum": 1, "maximum": config.MAX_RECALL_LIMIT, "description": "Maximum number of matching records to return (default 5)."},
+                "compact": {"type": "boolean", "description": "When true, trims record snippets for lower token usage."},
+                "as_of": {"type": "string", "maxLength": 40, "pattern": _AS_OF_PATTERN, "description": "ISO-8601 timestamp to query facts valid at that point in time."},
+                "scopes": {"type": "array", "maxItems": 10, "items": {"type": "string", "minLength": 1, "maxLength": 200}, "description": "Search across multiple named scopes at once (up to 10)."},
+                "agent_id": {"type": "string", "description": "Optional filter for memories authored by a specific agent ID."},
+                "graph_hops": {"type": "integer", "minimum": 0, "maximum": 2, "description": "Number of relation-graph hops to expand (0..2; default 0)."},
+                "max_tokens": {"type": "integer", "minimum": 50, "maximum": 32000, "description": "Approximate output token budget cap (50..32000)."},
+                "known_at": {"type": "string", "maxLength": 40, "pattern": _AS_OF_PATTERN, "description": "ISO-8601 bi-temporal cutoff for when a fact was recorded."},
+                "reflect": {"type": "boolean", "description": "When true, synthesizes higher-level observations across matches."},
+                "mode": {"type": "string", "enum": ["default", "reflect"], "description": "Retrieval mode: 'default' for direct matches, 'reflect' for synthesis."},
             },
             "required": ["query"],
             "additionalProperties": False,
@@ -173,39 +177,43 @@ TOOLS = [
     },
     {
         "name": "padam_write",
-        "description": "Save fact, decision or fix; masks secrets.",
+        "description": (
+            "Store a new durable fact, decision, correction, or preference in local SQLite memory. "
+            "Use for information needed in future sessions; do not use to confirm or refute an existing ID (use padam_confirm/padam_refute). "
+            "Side effects: writes to SQLite, masks secrets before disk write, and quarantines untrusted/external or command-like text for owner review (always quarantined under PADAM_STRICT=1)."
+        ),
         "annotations": _hints(False, False, False),
         "inputSchema": {
             "type": "object",
             "properties": {
-                "content": {"type": "string", "minLength": 1, "maxLength": config.MAX_CONTENT_CHARS},
-                "text": {"type": "string", "minLength": 1, "maxLength": config.MAX_CONTENT_CHARS},
-                "kind": {"type": "string", "enum": _KINDS, "description": "Kind"},
-                "importance": {"type": "number", "minimum": 0.0, "maximum": 1.0, "description": "0..1"},
+                "content": {"type": "string", "minLength": 1, "maxLength": config.MAX_CONTENT_CHARS, "description": "Text content to remember; secrets are automatically redacted before storage."},
+                "text": {"type": "string", "minLength": 1, "maxLength": config.MAX_CONTENT_CHARS, "description": "Deprecated alias for content; prefer content."},
+                "kind": {"type": "string", "enum": _KINDS, "description": "Memory category (fact, decision, preference, correction, identity, state, event)."},
+                "importance": {"type": "number", "minimum": 0.0, "maximum": 1.0, "description": "Importance weight from 0.0 (low) to 1.0 (critical); default 0.5."},
                 "scope": _SCOPE,
-                "origin": {"type": "string", "enum": list(config.ORIGINS), "description": "Origin"},
-                "derived_from": {"type": "array", "maxItems": 20, "items": _ID, "description": "Parent ids"},
-                "agent_id": {"type": "string"},
-                "valid_from": {"type": "string", "maxLength": 40, "pattern": _AS_OF_PATTERN, "description": "From ISO"},
-                "valid_to": {"type": "string", "maxLength": 40, "pattern": _AS_OF_PATTERN, "description": "To ISO"},
-                "visibility": {"type": "string", "enum": ["private", "team_read", "team_write"], "description": "Sharing"},
-                "workspace_id": {"type": "string", "description": "Workspace"},
+                "origin": {"type": "string", "enum": list(config.ORIGINS), "description": "Source provenance ('user', 'agent', 'external', etc.); external text is quarantined."},
+                "derived_from": {"type": "array", "maxItems": 20, "items": _ID, "description": "Optional list of source record IDs this memory was derived from."},
+                "agent_id": {"type": "string", "description": "Optional identifier of the calling agent for attribution."},
+                "valid_from": {"type": "string", "maxLength": 40, "pattern": _AS_OF_PATTERN, "description": "ISO-8601 start timestamp when this fact becomes valid."},
+                "valid_to": {"type": "string", "maxLength": 40, "pattern": _AS_OF_PATTERN, "description": "ISO-8601 end timestamp when this fact expires."},
+                "visibility": {"type": "string", "enum": ["private", "team_read", "team_write"], "description": "Workspace visibility level ('private' by default)."},
+                "workspace_id": {"type": "string", "description": "Optional team workspace ID for shared scopes."},
                 "links": {
-                    "type": "array", "maxItems": 20, "description": "Edges",
+                    "type": "array", "maxItems": 20, "description": "Typed graph edges linking this memory to related record IDs.",
                     "items": {
                         "type": "object",
                         "properties": {
-                            "target": {"type": "string", "description": "Target"},
-                            "source": {"type": "string", "description": "Source id"},
-                            "id": {"type": "string", "description": "Node id"},
-                            "relation": {"type": "string", "enum": _REL, "description": "Relation"},
-                            "type": {"type": "string", "enum": _REL, "description": "Rel alias"},
-                            "direction": {"type": "string", "enum": ["in", "out"], "description": "in|out"},
+                            "target": {"type": "string", "description": "Target record ID for the relation edge."},
+                            "source": {"type": "string", "description": "Optional source record ID override."},
+                            "id": {"type": "string", "description": "Fallback node ID if target is omitted."},
+                            "relation": {"type": "string", "enum": _REL, "description": "Edge relation type (cause, correction, contradiction, source, derived)."},
+                            "type": {"type": "string", "enum": _REL, "description": "Alias for relation."},
+                            "direction": {"type": "string", "enum": ["in", "out"], "description": "Edge direction relative to this record ('in' or 'out')."},
                         },
                         "additionalProperties": False,
                     },
                 },
-                "dedup_mode": {"type": "string", "enum": ["default", "atomic_merge"], "description": "Merge"},
+                "dedup_mode": {"type": "string", "enum": ["default", "atomic_merge"], "description": "Deduplication policy: 'default' versions conflicts, 'atomic_merge' merges duplicates."},
             },
             "required": ["content"],
             "additionalProperties": False,
@@ -213,44 +221,66 @@ TOOLS = [
     },
     {
         "name": "padam_confirm",
-        "description": "Confirm stored record to raise confidence.",
+        "description": (
+            "Confirm an existing memory record to renew its confirmation timestamp and boost confidence. "
+            "Use when the user verifies a recalled fact is still true; do not use for new facts (use padam_write) or wrong facts (use padam_refute). "
+            "Non-destructive mutation: updates metadata only without overwriting text."
+        ),
         "annotations": _hints(False, False, False),
         "inputSchema": {"type": "object", "properties": {"id": _ID}, "required": ["id"], "additionalProperties": False},
     },
     {
         "name": "padam_refute",
-        "description": "Refute a wrong record to lower confidence.",
+        "description": (
+            "Lower confidence of an inaccurate or outdated memory record without renewing freshness. "
+            "Use when a recalled record is wrong or contradicted; do not use for permanent deletion (only the owner can forget via CLI/REST). "
+            "Destructive-flagged mutation: penalizes ranking and may deactivate the record from active recall; version history is preserved."
+        ),
         "annotations": _hints(False, True, False),
         "inputSchema": {
             "type": "object",
-            "properties": {"id": _ID, "drop": {"type": "number", "minimum": 0.01, "maximum": 0.5, "description": "Penalty"}},
+            "properties": {
+                "id": _ID,
+                "drop": {"type": "number", "minimum": 0.01, "maximum": 0.5, "description": "Confidence penalty to subtract (0.01..0.5; larger drops suppress recall faster)."},
+            },
             "required": ["id"],
             "additionalProperties": False,
         },
     },
     {
         "name": "padam_timeline",
-        "description": "Read version history of one memory record.",
+        "description": (
+            "Retrieve the chronological version chain of a single memory record by ID, showing prior superseded versions and timestamps. "
+            "Use to audit how a specific fact changed over time; do not use for keyword search across all records (use padam_search). "
+            "Read-only, idempotent, fenced output."
+        ),
         "annotations": _hints(True, False, True),
         "inputSchema": {"type": "object", "properties": {"id": _ID}, "required": ["id"], "additionalProperties": False},
     },
     {
         "name": "padam_stats",
-        "description": "Read-only memory counts, queue and DB path.",
+        "description": (
+            "Return read-only health diagnostics for local memory: active record counts, pending owner quarantine queue size, schema version, and SQLite DB path. "
+            "Use to check memory state or verify quarantine backlog before writing or sleeping; returns metadata only, never private record text."
+        ),
         "annotations": _hints(True, False, True),
         "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
     },
     {
         "name": "padam_sleep",
-        "description": "Consolidate episodes; dry_run previews only.",
+        "description": (
+            "Run the NOCTURNE consolidation cycle to merge duplicate episodes, decay stale unconfirmed records, and optionally synthesize REM insights. "
+            "Use periodically after long sessions or with dry_run=true to preview changes first; do not call on every turn. "
+            "Destructive-flagged state mutation when dry_run=false: supersedes/fades low-value episodes while preserving version history."
+        ),
         "annotations": _hints(False, True, False),
         "inputSchema": {
             "type": "object",
             "properties": {
-                "batch": {"type": "integer", "minimum": 1, "maximum": 4096, "description": "Batch"},
-                "dry_run": {"type": "boolean", "description": "Preview"},
-                "rem": {"type": "boolean", "description": "REM"},
-                "max_insights": {"type": "integer", "minimum": 1, "maximum": 20, "description": "REM cap"},
+                "batch": {"type": "integer", "minimum": 1, "maximum": 4096, "description": "Maximum episodes to process in this cycle (1..4096)."},
+                "dry_run": {"type": "boolean", "description": "When true, previews consolidation counts without modifying the database."},
+                "rem": {"type": "boolean", "description": "When true, generates cross-record REM summary insights."},
+                "max_insights": {"type": "integer", "minimum": 1, "maximum": 20, "description": "Cap on new REM insights created when rem=true (1..20)."},
                 "scope": _SCOPE,
             },
             "additionalProperties": False,
@@ -258,27 +288,34 @@ TOOLS = [
     },
     {
         "name": "padam_export",
-        "description": "Export memory JSON. Owner confirms via elicitation when the client supports it; PADAM_MCP_EXPORT_CONFIRM=strict always requires it.",
+        "description": (
+            "Export stored memory records as plain structured JSON outside the data fence for backup or migration. "
+            "Use only when the user explicitly requests a full export; do not use for normal recall (use padam_search). "
+            "Read-only, requires owner elicitation confirmation when supported (mandatory under PADAM_MCP_EXPORT_CONFIRM=strict)."
+        ),
         "annotations": _hints(True, False, True),
         "inputSchema": {
             "type": "object",
             "properties": {
-                "include_superseded": {"type": "boolean", "description": "Old"},
+                "include_superseded": {"type": "boolean", "description": "When true, includes historical superseded record versions in export."},
                 "scope": _SCOPE,
-                "limit": {"type": "integer", "minimum": 1, "maximum": config.MAX_EXPORT_LIMIT},
-                "offset": {"type": "integer", "minimum": 0, "maximum": config.MAX_EXPORT_OFFSET},
+                "limit": {"type": "integer", "minimum": 1, "maximum": config.MAX_EXPORT_LIMIT, "description": "Page size of records to export."},
+                "offset": {"type": "integer", "minimum": 0, "maximum": config.MAX_EXPORT_OFFSET, "description": "Zero-based pagination offset for large exports."},
             },
             "additionalProperties": False,
         },
     },
     {
         "name": "padam_profile",
-        "description": "Load owner-signed profile at session start.",
+        "description": (
+            "Load the owner-signed identity and stable preferences profile at the start of a conversation. "
+            "Use once at session start to ground tone, rules, and user context; use padam_search for topic-specific facts. "
+            "Read-only, idempotent, fenced output; flags unsigned/tampered identity records."
+        ),
         "annotations": _hints(True, False, True),
         "inputSchema": {"type": "object", "properties": {"scope": _SCOPE}, "additionalProperties": False},
     },
 ]
-
 
 _TITLES = {
     "padam_search": "Search", "padam_write": "Remember", "padam_confirm": "Confirm",
