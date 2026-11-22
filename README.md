@@ -20,6 +20,13 @@
   <img src="./docs/assets/demo-quarantine.svg" alt="PADAM Agentic Shield 4-Ring Defense Demo" width="100%" />
 </p>
 
+<details open>
+<summary><strong>▶ Watch 28-second Live Engine Run (real SQLite quarantine + secret DLP + browser scanner)</strong></summary>
+<p align="center">
+  <img src="./docs/assets/padam-nocturne-demo.gif" alt="PADAM NOCTURNE v0.7.2 Live Attack Interception &amp; Agentic Shield Demo" width="100%" />
+</p>
+</details>
+
 **Your agent reads a web page today and treats it as memory tomorrow.** PADAM keeps that memory in one local SQLite file and makes it safe to read back:
 
 - an order hidden in a page can be held for you instead of becoming an instruction (`PADAM_STRICT=1` holds every agent write for your review);
