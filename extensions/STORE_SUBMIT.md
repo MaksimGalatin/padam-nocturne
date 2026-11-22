@@ -65,3 +65,9 @@
 2. Visual Studio Marketplace (`https://marketplace.visualstudio.com/manage/publishers/code-eternal`): загрузите файл `.vsix` как новое расширение издателя `code-eternal`.
 3. Open-VSX (`https://open-vsx.org/user-settings/tokens`, используется в Cursor, Windsurf и VSCodium):
    `npx ovsx publish extensions/dist/padam-nocturne-mcp-0.6.5.vsix -p <OPEN_VSX_TOKEN>`
+
+## Support & Open Source
+
+- ⭐ **Star PADAM NOCTURNE on GitHub:** https://github.com/MaksimGalatin/padam-nocturne
+- ⭐ **Star AIfa Memory MCP (Cloud):** https://github.com/MaksimGalatin/aifa-memory-mcp
+- Free 100% client-side MCP & Web SRI/CSP Scanner: https://aifa.works/shield
