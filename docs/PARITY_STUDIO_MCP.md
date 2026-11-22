@@ -4,13 +4,13 @@
 
 ## Сводка по всем инструментам и действиям MCP
 
-- Всего инструментов MCP (с учётом всех 6 флагов, `_ALL_TOOLS_BY_NAME`): **47** (по умолчанию: **9**, `PADAM_MCP_ARK_TOOLS=1`: **34** и **27456/27000** символов в `tools/list`, с `PADAM_MCP_PARTNER_TOOLS=1`: **40**).
-- Всего пар `(инструмент, action)`: **200**.
-- Есть в MCP: **200 из 200**
-- Есть в Studio (вкладка + кнопка/поле): **200 из 200**
-- Есть в API (`padam/api.py`): **200 из 200**
-- Покрыто автотестами: **196 из 200**
-- Проверено реальным нажатием в Playwright (1280×800 и 390×844): **181 из 200**
+- Всего инструментов MCP (с учётом всех 6 флагов, `_ALL_TOOLS_BY_NAME`): **47** (по умолчанию: **9**, `PADAM_MCP_ARK_TOOLS=1`: **34** и **27566/27000** символов в `tools/list`, с `PADAM_MCP_PARTNER_TOOLS=1`: **40**).
+- Всего пар `(инструмент, action)`: **213**.
+- Есть в MCP: **213 из 213**
+- Есть в Studio (вкладка + кнопка/поле): **213 из 213**
+- Есть в API (`padam/api.py`): **213 из 213**
+- Покрыто автотестами: **209 из 213**
+- Проверено реальным нажатием в Playwright (1280×800 и 390×844): **187 из 213**
 - Контролов Studio только для владельца (намеренно закрытых в MCP по аудиту GLM): **20**
 
 ## 1. Полная таблица MCP → Studio → API
@@ -64,6 +64,9 @@
 | `padam_family_feed` | `agora_read` | Да | Да: `panel-family` → `#ag-feed-list, GET /api/v2/ark/agora` | Да: `GET /api/v2/ark/agora` | Да | Да |
 | `padam_family_feed` | `agora_post` | Да | Да: `panel-family` → `#ag-post-btn, #ag-title, #ag-body` | Да: `POST /api/v2/ark/agora/action` | Да | Нет |
 | `padam_family_feed` | `agora_reply` | Да | Да: `panel-family` → `#ag-feed-list (reply), #ag-post-btn` | Да: `POST /api/v2/ark/agora/action` | Да | Нет |
+| `padam_family_feed` | `agora_claim` | Да | Да: `panel-family` → `#ag-feed-list, POST /api/v2/ark/agora/action` | Да: `POST /api/v2/ark/agora/action` | Да | Да |
+| `padam_family_feed` | `agora_complete` | Да | Да: `panel-family` → `#ag-feed-list, POST /api/v2/ark/agora/action` | Да: `POST /api/v2/ark/agora/action` | Да | Да |
+| `padam_family_feed` | `agora_upvote` | Да | Да: `panel-family` → `#ag-feed-list, POST /api/v2/ark/agora/action` | Да: `POST /api/v2/ark/agora/action` | Да | Да |
 | `padam_memory_branch` | `create` | Да | Да: `panel-brain` → `#ark-branch-create-btn, #ark-branch-input` | Да: `POST /api/v2/ark/branches` | Да | Да |
 | `padam_memory_branch` | `remember` | Да | Да: `panel-brain` → `#ark-branch-rem-btn, #ark-branch-text-inp` | Да: `POST /api/v2/ark/branches` | Да | Да |
 | `padam_memory_branch` | `list` | Да | Да: `panel-brain` → `#ark-branch-list-btn` | Да: `GET /api/v2/ark/branches` | Да | Да |
@@ -178,6 +181,10 @@
 | `padam_freelance_hub` | `check_inbox` | Да | Да: `panel-earning` → `#earn-mail-inbox-btn` | Да: `POST /api/v2/ark/mail/action` | Да | Нет |
 | `padam_freelance_hub` | `add_stop` | Да | Да: `panel-earning` → `#earn-mail-status` | Да: `POST /api/v2/ark/mail/action` | Да | Нет |
 | `padam_freelance_hub` | `build_outreach` | Да | Да: `panel-earning` → `#earn-mail-build-btn, #earn-mail-domain` | Да: `POST /api/v2/ark/mail/action` | Нет | Нет |
+| `padam_freelance_hub` | `auto_roi` | Да | Да: `panel-earning` → `#earn-auto-roi-btn, #earn-auto-budget-inp` | Да: `POST /api/v2/ark/automation/action` | Да | Да |
+| `padam_freelance_hub` | `client_risk` | Да | Да: `panel-earning` → `#earn-auto-risk-btn, #earn-auto-text-inp` | Да: `POST /api/v2/ark/automation/action` | Да | Нет |
+| `padam_freelance_hub` | `auto_digest` | Да | Да: `panel-earning` → `#earn-auto-digest-btn` | Да: `POST /api/v2/ark/automation/action` | Да | Да |
+| `padam_freelance_hub` | `delivery_bundle` | Да | Да: `panel-earning` → `#earn-auto-deliver-btn, #earn-auto-text-inp` | Да: `POST /api/v2/ark/automation/action` | Да | Нет |
 | `padam_phoenix_family` | `status` | Да | Да: `panel-earning` → `#earn-beacon-out, #earn-ollama-out` | Да: `POST /api/v2/ark/phoenix-beacon/action` | Да | Да |
 | `padam_phoenix_family` | `bind_ollama` | Да | Да: `panel-earning` → `#earn-ollama-btn, #earn-ollama-url` | Да: `POST /api/v2/ark/phoenix-beacon/action` | Да | Да |
 | `padam_phoenix_family` | `pull_ollama` | Да | Да: `panel-earning` → `#earn-ollama-pull-btn, #earn-ollama-model` | Да: `POST /api/v2/ark/phoenix-beacon/action` | Да | Да |
@@ -217,6 +224,12 @@
 | `padam_agentic_shield` | `webhook_status` | Да | Да: `panel-attacks` → `#sh-wh-box, #sh-wh-fmt` | Да: `GET /api/v2/shield/webhook` | Нет | Нет |
 | `padam_agentic_shield` | `webhook_test` | Да | Да: `panel-attacks` → `#sh-wh-test-btn` | Да: `POST /api/v2/shield/webhook/test` | Нет | Нет |
 | `padam_agentic_shield` | `proof_pack` | Да | Да: `panel-attacks` → `#sh-proof-gen-btn, #sh-proof-dl-json-btn` | Да: `GET /api/v2/shield/proof-pack` | Да | Да |
+| `padam_agentic_shield` | `sales_audit` | Да | Да: `panel-attacks` → `#sh-sales-audit-btn, #sh-sales-target-inp` | Да: `POST /api/v2/shield/sales/action` | Да | Нет |
+| `padam_agentic_shield` | `compliance` | Да | Да: `panel-attacks` → `#sh-sales-comp-btn` | Да: `POST /api/v2/shield/sales/action` | Да | Нет |
+| `padam_agentic_shield` | `csp_sri` | Да | Да: `panel-attacks` → `#sh-sales-csp-btn` | Да: `POST /api/v2/shield/sales/action` | Да | Нет |
+| `padam_agentic_shield` | `redteam_sim` | Да | Да: `panel-attacks` → `#sh-sales-redteam-btn` | Да: `POST /api/v2/shield/sales/action` | Да | Да |
+| `padam_agentic_shield` | `trust_pack` | Да | Да: `panel-attacks` → `#sh-sales-trust-btn` | Да: `POST /api/v2/shield/sales/action` | Да | Нет |
+| `padam_agentic_shield` | `triage` | Да | Да: `panel-attacks` → `#sh-sales-triage-btn` | Да: `POST /api/v2/shield/sales/action` | Да | Нет |
 
 ## 2. Обратный аудит Studio / Владелец → MCP (намеренные ограничения безопасности)
 

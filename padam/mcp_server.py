@@ -516,7 +516,7 @@ FAMILY_COUNCIL_TOOL_DEF = {
 FAMILY_FEED_TOOL_DEF = {
     "name": "padam_family_feed", "title": _TITLES["padam_family_feed"], "description": "Feeds",
     "inputSchema": {"type": "object", "properties": {
-        "action": {"type": "string", "enum": ["read", "post", "counts", "reflex_propose", "reflex_list", "reflex_match", "agora_status", "agora_read", "agora_post", "agora_reply"], "default": "read", "description": "post|agora"},
+        "action": {"type": "string", "enum": ["read", "post", "counts", "reflex_propose", "reflex_list", "reflex_match", "agora_status", "agora_read", "agora_post", "agora_reply", "agora_claim", "agora_complete", "agora_upvote"], "default": "read", "description": "post|agora"},
         "channel": {"type": "string", "enum": ["work", "quarantine", "office", "smoke"], "description": "Channel"},
         "room": _S, "title": _S, "post_id": _S, "bounty_usdt": _N,
         "content": _S, "author": _S, "trigger": _S, "response": _S,
@@ -663,7 +663,7 @@ FREELANCE_HUB_TOOL_DEF = {
             "wizard_catalog", "wizard_connect", "wizard_questionnaire", "wizard_publish_profile", "wizard_autopick_jobs",
             "signup", "login", "autopilot_config", "autopilot_dispatch",
             "sample_prepare", "sample_reject", "official_api", "client_reply_draft", "client_reply_list",
-            "mail_status", "pause_mail", "check_inbox", "add_stop", "build_outreach",
+            "mail_status", "pause_mail", "check_inbox", "add_stop", "build_outreach", "auto_roi", "client_risk", "auto_digest", "delivery_bundle",
         ], "default": "dashboard", "description": "evaluate_job|wizard"},
         "platform": _S, "mode": {"type": "string", "enum": ["oauth_api", "desk", "webhook"]},
         "account_label": _S, "agent_id": _S, "skills": {**_SA, "description": "Skills"},
@@ -764,6 +764,12 @@ SHIELD_TOOL_DEF = {
                     "webhook_status",
                     "webhook_test",
                     "proof_pack",
+                    "sales_audit",
+                    "compliance",
+                    "csp_sri",
+                    "redteam_sim",
+                    "trust_pack",
+                    "triage",
                 ],
                 "default": "status",
                 "description": "status|kill_switch_trip|outbound_check|outbound_list|allowlist_list|scan_supply_chain|scan_mcp_tools|scan_unicode|webhook_status|webhook_test|proof_pack (unlock/approve/reject/allowlist_add/pin_mcp_tools are owner-only)",
@@ -4616,6 +4622,21 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 body=str(args.get("content") or args.get("text") or ""),
                 agent_id=who,
             )
+        elif act == "agora_claim":
+            from . import agora as _ag
+            payload = _ag.claim_agora_subcontract(m, post_id=str(args.get("post_id") or ""), agent_id=who)
+        elif act == "agora_complete":
+            from . import agora as _ag
+            payload = _ag.complete_agora_subcontract(
+                m,
+                post_id=str(args.get("post_id") or ""),
+                deliverable_summary=str(args.get("content") or args.get("text") or "Completed deliverable"),
+                agent_id=who,
+                confirm_release=False,
+            )
+        elif act == "agora_upvote":
+            from . import agora as _ag
+            payload = _ag.upvote_agora_post(m, post_id=str(args.get("post_id") or ""), voter_agent_id=who)
         else:
             payload = {"channel": str(args.get("channel") or "office"), "items": _ff.read(m, str(args.get("channel") or "office"), limit=lim)}
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
@@ -5345,6 +5366,34 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             payload = _fa.bind_referrer_code(m, str(args.get("ref_code") or ""))
         elif act == "release_payouts":
             payload = _fa.release_matured_payouts(m)
+        elif act == "auto_roi":
+            from . import exchange_automation as _ex
+            payload = _ex.calculate_true_net_hourly(
+                float(args.get("budget_usdt") or 100.0),
+                estimated_hours=float(args.get("estimated_hours") or 4.0),
+                work_mode=str(args.get("work_mode") or "assisted"),
+                platform=str(args.get("platform") or "upwork"),
+            )
+        elif act == "client_risk":
+            from . import exchange_automation as _ex
+            payload = _ex.score_client_risk_and_red_flags(
+                m,
+                brief_text=str(args.get("brief") or args.get("description") or ""),
+                platform=str(args.get("platform") or "upwork"),
+            )
+        elif act == "delivery_bundle":
+            from . import exchange_automation as _ex
+            payload = _ex.package_client_delivery_bundle(
+                m,
+                order_id=str(args.get("order_id") or "ord-mcp"),
+                client_name=str(args.get("client_email") or "Client"),
+                deliverable_text=str(args.get("deliverable_text") or ""),
+                gross_usdt=float(args.get("budget_usdt") or 100.0),
+                product_sold=str(args.get("title") or "Delivery"),
+            )
+        elif act == "auto_digest":
+            from . import exchange_automation as _ex
+            payload = _ex.owner_daily_revenue_and_security_digest(m)
         else:
             payload = _fa.freelance_dashboard_snapshot(m)
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
@@ -5569,6 +5618,24 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             payload = _sw.dispatch_webhook_event(m, event_type="shield_mcp_dry_run_test", severity="medium", title="Dry-run test event", detail="Dry-run preview via MCP", agent_id=aid_sh, dry_run=True, fmt_override=args.get("action_type"))
         elif act_sh == "proof_pack":
             payload = _ash.build_proof_pack(m)
+        elif act_sh == "sales_audit":
+            from . import security_sales as _ss
+            payload = _ss.presale_local_security_audit(m, str(args.get("target") or "."))
+        elif act_sh == "compliance":
+            from . import security_sales as _ss
+            payload = _ss.map_compliance_posture(m, framework=str(args.get("target") or "all"))
+        elif act_sh == "csp_sri":
+            from . import security_sales as _ss
+            payload = _ss.generate_csp_and_sri_remediation(str(args.get("html") or args.get("text") or ""), page_url=str(args.get("url") or "https://example.com/"))
+        elif act_sh == "redteam_sim":
+            from . import security_sales as _ss
+            payload = _ss.run_redteam_attack_simulator(m, client_name=str(args.get("target") or "Demo Corp"))
+        elif act_sh == "triage":
+            from . import security_sales as _ss
+            payload = _ss.triage_quarantine_incidents(m, limit=25, emit_cef=True)
+        elif act_sh == "trust_pack":
+            from . import security_sales as _ss
+            payload = _ss.export_vendor_trust_pack(m, client_name=str(args.get("target") or "Enterprise Customer"))
         else:
             payload = _ash.get_shield_status(m)
         return json.dumps(payload, ensure_ascii=False, indent=2), payload

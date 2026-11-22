@@ -55,8 +55,8 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/l3-local-checkpoint", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/roles", "/api/v2/ark/audit-repair", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action", "/api/v2/ark/stores/action", "/api/v2/ark/wizard/action", "/api/v2/ark/partner/action", "/api/v2/ark/phoenix-beacon/action", "/api/v2/local-model", "/api/v2/family/post", "/api/v2/family/reflex/decide", "/api/v2/quarantine/council", "/api/v2/shield/kill-switch", "/api/v2/shield/outbound/check", "/api/v2/shield/outbound/decide", "/api/v2/shield/allowlist", "/api/v2/shield/supply-chain/scan", "/api/v2/shield/scan-mcp", "/api/v2/shield/scan-unicode", "/api/v2/shield/profile", "/api/v2/shield/webhook", "/api/v2/shield/webhook/test", "/api/v2/shield/output/check", "/api/v2/shield/replay/verify", "/api/v2/chats", "/api/v2/chats/import", "/api/v2/chats/sync-local", "/api/v2/media/generate", "/api/v2/shield/canary", "/api/v2/shield/lease", "/api/v2/wallets", "/api/v2/verify-claims", "/api/v2/ark/terms"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/morning-pulse", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/roles", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance", "/api/v2/ark/stores", "/api/v2/ark/wizard", "/api/v2/ark/partner", "/api/v2/local-model", "/api/v2/family/feed", "/api/v2/family/reflexes", "/api/v2/quarantine/council", "/api/v2/family/dialogs", "/api/v2/redteam/rounds", "/api/v2/code-version", "/api/v2/shield/status", "/api/v2/shield/proof-pack", "/api/v2/shield/webhook", "/api/v2/shield/agent-budget", "/api/v2/agents", "/api/v2/chats", "/api/v2/chats/thread", "/api/v2/chats/hour", "/api/v2/chats/compact-hour", "/api/v2/media/engines", "/api/v2/media/file", "/api/v2/wallets", "/api/v2/ark/terms", "/api/v2/ark/fee-invoices"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/l3-local-checkpoint", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/roles", "/api/v2/ark/audit-repair", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action", "/api/v2/ark/stores/action", "/api/v2/ark/wizard/action", "/api/v2/ark/partner/action", "/api/v2/ark/phoenix-beacon/action", "/api/v2/local-model", "/api/v2/family/post", "/api/v2/family/reflex/decide", "/api/v2/quarantine/council", "/api/v2/shield/kill-switch", "/api/v2/shield/outbound/check", "/api/v2/shield/outbound/decide", "/api/v2/shield/allowlist", "/api/v2/shield/supply-chain/scan", "/api/v2/shield/scan-mcp", "/api/v2/shield/scan-unicode", "/api/v2/shield/profile", "/api/v2/shield/webhook", "/api/v2/shield/webhook/test", "/api/v2/shield/output/check", "/api/v2/shield/replay/verify", "/api/v2/chats", "/api/v2/chats/import", "/api/v2/chats/sync-local", "/api/v2/media/generate", "/api/v2/shield/canary", "/api/v2/shield/lease", "/api/v2/wallets", "/api/v2/verify-claims", "/api/v2/ark/terms", "/api/v2/ark/passports/action", "/api/v2/ark/agora/action", "/api/v2/ark/automation/action", "/api/v2/shield/sales/action"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/morning-pulse", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/roles", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance", "/api/v2/ark/stores", "/api/v2/ark/wizard", "/api/v2/ark/partner", "/api/v2/local-model", "/api/v2/family/feed", "/api/v2/family/reflexes", "/api/v2/quarantine/council", "/api/v2/family/dialogs", "/api/v2/redteam/rounds", "/api/v2/code-version", "/api/v2/shield/status", "/api/v2/shield/proof-pack", "/api/v2/shield/webhook", "/api/v2/shield/agent-budget", "/api/v2/agents", "/api/v2/chats", "/api/v2/chats/thread", "/api/v2/chats/hour", "/api/v2/chats/compact-hour", "/api/v2/media/engines", "/api/v2/media/file", "/api/v2/wallets", "/api/v2/ark/terms", "/api/v2/ark/fee-invoices", "/api/v2/ark/passports", "/api/v2/ark/agora", "/api/v2/ark/automation", "/api/v2/shield/sales"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 16 * 1024 * 1024  # 16 МБ JSON-транспорт, чтобы вложения до 10 МБ в base64 проходили целиком
 
@@ -900,6 +900,21 @@ class Handler(BaseHTTPRequestHandler):
                 qs_ab = parse_qs(путь.query)
                 ag = (qs_ab.get("agent_id") or ["aifa"])[0]
                 return self._send(200, _ash.check_agent_budget_quota(mem(), agent_id=ag, calls=0, chars=0))
+            if путь.path == "/api/v2/shield/sales":
+                roles.require_owner(actor, "agentic_shield")
+                from . import security_sales as _ss
+                qs_ss = parse_qs(путь.query)
+                fw_ss = (qs_ss.get("framework") or ["all"])[0]
+                return self._send(200, {
+                    "ok": True,
+                    "compliance": _ss.map_compliance_posture(mem(), framework=fw_ss),
+                    "hygiene": _ss.audit_key_hygiene_sla(mem()),
+                    "triage": _ss.triage_quarantine_incidents(mem(), limit=20),
+                })
+            if путь.path == "/api/v2/ark/automation":
+                roles.require_owner(actor, "brain_status")
+                from . import exchange_automation as _ea
+                return self._send(200, _ea.owner_daily_revenue_and_security_digest(mem()))
             if путь.path == "/api/v2/ark/coop":
                 roles.require_owner(actor, "brain_status")
                 from . import coop_broker as _cb
@@ -2419,6 +2434,12 @@ class Handler(BaseHTTPRequestHandler):
                             earned_usdt=float(data.get("earned_usdt") or 0.0),
                             rating=float(data.get("rating") or 5.0),
                         )
+                    elif act_pp == "verify":
+                        res_pp = _ap.verify_agent_passport(
+                            mem(),
+                            agent_id=str(data.get("agent_id") or ""),
+                            passport_number=str(data.get("passport_number") or ""),
+                        )
                     else:
                         res_pp = _ap.list_agent_passports(mem(), tier=str(data.get("tier") or "free"))
                 return self._send(200, res_pp)
@@ -2455,9 +2476,179 @@ class Handler(BaseHTTPRequestHandler):
                             agent_id=str(data.get("agent_id") or "aifa"),
                             is_solution=bool(data.get("is_solution", False)),
                         )
+                    elif act_ag == "claim":
+                        res_ag = _ag.claim_agora_subcontract(
+                            mem(),
+                            post_id=str(data.get("post_id") or ""),
+                            agent_id=str(data.get("agent_id") or "aifa"),
+                        )
+                    elif act_ag == "complete":
+                        res_ag = _ag.complete_agora_subcontract(
+                            mem(),
+                            post_id=str(data.get("post_id") or ""),
+                            deliverable_summary=str(data.get("deliverable_summary") or data.get("body") or "Done"),
+                            agent_id=str(data.get("agent_id") or "aifa"),
+                            confirm_release=bool(data.get("confirm_release", False)),
+                            rating=float(data.get("rating") or 5.0),
+                        )
+                    elif act_ag == "upvote":
+                        res_ag = _ag.upvote_agora_post(
+                            mem(),
+                            post_id=str(data.get("post_id") or ""),
+                            voter_agent_id=str(data.get("agent_id") or "aifa"),
+                        )
+                    elif act_ag == "verify_sig":
+                        res_ag = _ag.verify_agora_post_signature(
+                            mem(),
+                            post_id=str(data.get("post_id") or ""),
+                        )
                     else:
                         res_ag = _ag.read_agora_feed(mem(), room=str(data.get("room") or "all"), limit=int(data.get("limit") or 30), fence_for_agent=False)
                 return self._send(200, res_ag)
+
+            if self.path == "/api/v2/shield/sales/action":
+                roles.require_owner(actor, "agentic_shield")
+                from . import security_sales as _ss
+                act_ss = str(data.get("action") or "compliance").lower()
+                if act_ss == "presale_audit":
+                    res_ss = _ss.presale_local_security_audit(
+                        mem(),
+                        str(data.get("target_path") or "."),
+                        max_files=int(data.get("max_files") or 200),
+                    )
+                elif act_ss == "csp_sri":
+                    res_ss = _ss.generate_csp_and_sri_remediation(
+                        str(data.get("html_text") or ""),
+                        script_bodies=data.get("script_bodies") if isinstance(data.get("script_bodies"), dict) else None,
+                        page_url=str(data.get("page_url") or "https://example.com/"),
+                    )
+                elif act_ss == "dlp_receipt":
+                    res_ss = _ss.dlp_gate_with_receipt(
+                        mem(),
+                        text=str(data.get("text") or ""),
+                        target=str(data.get("target") or "external_client"),
+                        agent_id=str(data.get("agent_id") or "aifa"),
+                    )
+                elif act_ss == "mcp_pin":
+                    res_ss = _ss.pin_and_diff_mcp_configs(
+                        mem(),
+                        data.get("tools") or data.get("config") or {},
+                        server_name=str(data.get("server_name") or "client_mcp"),
+                        pin=bool(data.get("pin", True)),
+                    )
+                elif act_ss == "redteam_sim":
+                    res_ss = _ss.run_redteam_attack_simulator(
+                        mem(),
+                        client_name=str(data.get("client_name") or "Demo Corp"),
+                    )
+                elif act_ss == "b2b_proposal":
+                    res_ss = _ss.build_b2b_security_proposal(
+                        mem(),
+                        client_name=str(data.get("client_name") or "Demo Corp"),
+                        seats=int(data.get("seats") or 25),
+                        findings_count=int(data.get("findings_count") or 4),
+                        currency=str(data.get("currency") or "USDT_TRC20"),
+                    )
+                elif act_ss == "key_hygiene":
+                    res_ss = _ss.audit_key_hygiene_sla(mem(), max_key_age_days=int(data.get("max_key_age_days") or 90))
+                elif act_ss == "triage":
+                    res_ss = _ss.triage_quarantine_incidents(mem(), limit=int(data.get("limit") or 25), emit_cef=bool(data.get("emit_cef", True)))
+                elif act_ss == "trust_pack":
+                    res_ss = _ss.export_vendor_trust_pack(
+                        mem(),
+                        client_name=str(data.get("client_name") or "Enterprise Customer"),
+                        framework=str(data.get("framework") or "all"),
+                    )
+                else:
+                    res_ss = _ss.map_compliance_posture(mem(), framework=str(data.get("framework") or "all"))
+                return self._send(200, res_ss)
+
+            if self.path == "/api/v2/ark/automation/action":
+                roles.require_owner(actor, "ark_freelance")
+                from . import exchange_automation as _ea
+                act_ea = str(data.get("action") or "daily_digest").lower()
+                if act_ea == "net_hourly":
+                    res_ea = _ea.calculate_true_net_hourly(
+                        float(data.get("gross_usdt") or 100.0),
+                        estimated_hours=float(data.get("estimated_hours") or 4.0),
+                        work_mode=str(data.get("work_mode") or "assisted"),
+                        platform=str(data.get("platform") or "upwork"),
+                        llm_cost_usdt=float(data.get("llm_cost_usdt") or 0.35),
+                        min_target_hourly=float(data.get("min_target_hourly") or 12.0),
+                    )
+                elif act_ea == "client_risk":
+                    res_ea = _ea.score_client_risk_and_red_flags(
+                        mem(),
+                        brief_text=str(data.get("brief_text") or ""),
+                        platform=str(data.get("platform") or "upwork"),
+                        client_verified_payment=bool(data.get("client_verified_payment", True)),
+                        client_spend_usdt=float(data.get("client_spend_usdt") or 0.0),
+                        hire_rate_pct=float(data.get("hire_rate_pct") or 100.0),
+                    )
+                elif act_ea == "antiban_plan":
+                    res_ea = _ea.plan_antibans_schedule(
+                        mem(),
+                        platform=str(data.get("platform") or "upwork"),
+                        requested_actions=int(data.get("requested_actions") or 5),
+                        cooldown_s=data.get("cooldown_s"),
+                        daily_limit=data.get("daily_limit"),
+                    )
+                elif act_ea == "funnel_stage":
+                    res_ea = _ea.track_sample_funnel_and_milestones(
+                        mem(),
+                        order_id=str(data.get("order_id") or ""),
+                        client_name=str(data.get("client_name") or "Client"),
+                        gross_usdt=float(data.get("gross_usdt") or 100.0),
+                        stage=str(data.get("stage") or "sample_10_sent"),
+                        note=str(data.get("note") or ""),
+                        agent_id=str(data.get("agent_id") or "aifa"),
+                    )
+                elif act_ea == "route_passport":
+                    res_ea = _ea.route_order_to_best_passport(
+                        mem(),
+                        order_title=str(data.get("order_title") or ""),
+                        skills=data.get("skills"),
+                        budget_usdt=float(data.get("budget_usdt") or 100.0),
+                    )
+                elif act_ea == "agora_subcontract":
+                    res_ea = _ea.bridge_order_to_agora_subcontract(
+                        mem(),
+                        title=str(data.get("title") or ""),
+                        body=str(data.get("body") or ""),
+                        bounty_usdt=float(data.get("bounty_usdt") or 20.0),
+                        bounty_currency=str(data.get("bounty_currency") or "USDT_TRC20"),
+                        agent_id=str(data.get("agent_id") or "aifa"),
+                    )
+                elif act_ea == "store_listings":
+                    res_ea = _ea.generate_store_listing_pack(
+                        str(data.get("product_title") or "PADAM AI Security Kit"),
+                        category=str(data.get("category") or "ai_security"),
+                        base_price_usdt=float(data.get("base_price_usdt") or 49.0),
+                    )
+                elif act_ea == "escrow_invoice":
+                    try:
+                        res_ea = _ea.build_escrow_invoice_and_wallet_check(
+                            mem(),
+                            order_id=str(data.get("order_id") or "ord-1"),
+                            gross_usdt=float(data.get("gross_usdt") or 100.0),
+                            network=str(data.get("network") or "USDT_TRC20"),
+                            target_wallet=str(data.get("target_wallet") or ""),
+                            client_name=str(data.get("client_name") or "Client"),
+                        )
+                    except ValueError as _ve:
+                        return self._send(400, {"error": str(_ve)})
+                elif act_ea == "delivery_bundle":
+                    res_ea = _ea.package_client_delivery_bundle(
+                        mem(),
+                        order_id=str(data.get("order_id") or "ord-1"),
+                        client_name=str(data.get("client_name") or "Client"),
+                        deliverable_text=str(data.get("deliverable_text") or "Completed deliverable."),
+                        gross_usdt=float(data.get("gross_usdt") or 150.0),
+                        product_sold=str(data.get("product_sold") or "Security Audit"),
+                    )
+                else:
+                    res_ea = _ea.owner_daily_revenue_and_security_digest(mem())
+                return self._send(200, res_ea)
 
             if self.path == "/api/v2/ark/coop":
                 roles.require_owner(actor, "ark_coop")

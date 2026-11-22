@@ -5285,6 +5285,124 @@ _STRINGS_WALLET_TERMS_2211 = {
 for _lg, _ex_wt in _STRINGS_WALLET_TERMS_2211.items():
     STRINGS[_lg].update(_ex_wt)
 
+_STRINGS_20_ENHANCEMENTS: dict[str, dict[str, str]] = {
+    "ru": {
+        "sh_sales_title": "Коммерческий пакет безопасности и B2B-пресейл (10 инструментов)",
+        "sh_sales_sub": "Оффлайн пресейл-аудит, матрица OWASP / Регламент ИИ / PCI, генератор CSP+SRI, Red-Team 12 атак, КП+ROI, CEF и Пакет доверия.",
+        "sh_sales_target_ph": "Путь к папке/проекту клиента, имя компании или HTML…",
+        "sh_sales_audit_btn": "Пресейл-аудит кода/MCP",
+        "sh_sales_comp_btn": "Комплаенс OWASP/EU/PCI",
+        "sh_sales_csp_btn": "Генератор CSP + SRI",
+        "sh_sales_redteam_btn": "Red-Team 12 атак",
+        "sh_sales_proposal_btn": "B2B КП + ROI",
+        "sh_sales_triage_btn": "Триаж P1-P4 / CEF",
+        "sh_sales_trust_btn": "Пакет доверия (Trust Pack)",
+        "earn_auto_title": "Умная автоматизация бирж, рисков, сдачи и дайджеста",
+        "earn_auto_sub": "Чистая ставка $/ч (с буфером 1.25×), скор риска 0..100, Anti-Ban слоты, воронка 10%, роутер паспортов, 8 витрин и Payee-Swap инвойс.",
+        "earn_auto_order_ph": "ID или название заказа / товара…",
+        "earn_auto_text_ph": "Вставьте бриф клиента (для риск-скора) или текст результата (для сдачи Zero-Leak)…",
+        "earn_auto_roi_btn": "Чистая ставка $/ч",
+        "earn_auto_risk_btn": "Риск-скор клиента 0–100",
+        "earn_auto_antiban_btn": "Anti-Ban расписание",
+        "earn_auto_funnel_btn": "Воронка 10% демо",
+        "earn_auto_route_btn": "Подбор паспорта",
+        "earn_auto_stores_btn": "8 витрин SEO",
+        "earn_auto_invoice_btn": "Эскроу-инвойс",
+        "earn_auto_deliver_btn": "Сдача Zero-Leak",
+        "earn_auto_digest_btn": "Дайджест Папы",
+        "ag_claim_btn": "Взять субподряд",
+        "ag_complete_btn": "Сдать (на проверку)",
+        "ag_verify_btn": "Проверить подпись",
+    },
+    "en": {
+        "sh_sales_title": "Commercial Security Suite & B2B Presale (10 Tools)",
+        "sh_sales_sub": "Offline presale audit, OWASP/EU AI Act/PCI DSS mapper, CSP+SRI generator, 12-vector Red-Team demo, B2B ROI quote, CEF & Trust Pack.",
+        "sh_sales_target_ph": "Client repo path, company name, or HTML snippet…",
+        "sh_sales_audit_btn": "Presale Repo/MCP Audit",
+        "sh_sales_comp_btn": "Compliance OWASP/EU/PCI",
+        "sh_sales_csp_btn": "Generate CSP + SRI",
+        "sh_sales_redteam_btn": "Red-Team 12 Attacks",
+        "sh_sales_proposal_btn": "B2B Proposal + ROI",
+        "sh_sales_triage_btn": "Triage P1-P4 / CEF",
+        "sh_sales_trust_btn": "Vendor Trust Pack",
+        "earn_auto_title": "Smart Exchange Automation, Risk Gate, Delivery & Digest",
+        "earn_auto_sub": "True net $/hr (1.25x buffer), client risk 0..100, Anti-Ban queue, 10% sample funnel, passport router, 8 stores SEO & Payee-Swap invoice.",
+        "earn_auto_order_ph": "Order / product ID or title…",
+        "earn_auto_text_ph": "Paste client brief (for risk score) or deliverable text (for Zero-Leak bundle)…",
+        "earn_auto_roi_btn": "True Net $/hr",
+        "earn_auto_risk_btn": "Client Risk 0–100",
+        "earn_auto_antiban_btn": "Anti-Ban Schedule",
+        "earn_auto_funnel_btn": "10% Sample Funnel",
+        "earn_auto_route_btn": "Best Passport Router",
+        "earn_auto_stores_btn": "8 Stores SEO Pack",
+        "earn_auto_invoice_btn": "Escrow Invoice",
+        "earn_auto_deliver_btn": "Zero-Leak Delivery",
+        "earn_auto_digest_btn": "Owner Daily Digest",
+        "ag_claim_btn": "Claim Subcontract",
+        "ag_complete_btn": "Submit Deliverable",
+        "ag_verify_btn": "Verify Signature",
+    },
+    "es": {
+        "sh_sales_title": "Paquete Comercial de Seguridad y Preventa B2B (10 Herramientas)",
+        "sh_sales_sub": "Auditoría local offline, mapa OWASP/EU AI Act/PCI DSS, generador CSP+SRI, demo Red-Team 12 ataques, propuesta B2B+ROI, CEF y Trust Pack.",
+        "sh_sales_target_ph": "Ruta de repositorio, nombre de empresa o HTML…",
+        "sh_sales_audit_btn": "Auditoría Preventa MCP",
+        "sh_sales_comp_btn": "Cumplimiento OWASP/EU",
+        "sh_sales_csp_btn": "Generar CSP + SRI",
+        "sh_sales_redteam_btn": "Red-Team 12 Ataques",
+        "sh_sales_proposal_btn": "Propuesta B2B + ROI",
+        "sh_sales_triage_btn": "Triaje P1-P4 / CEF",
+        "sh_sales_trust_btn": "Vendor Trust Pack",
+        "earn_auto_title": "Automatización de Mercados, Riesgo, Entrega y Resumen",
+        "earn_auto_sub": "Tarifa neta $/h (colchón 1.25x), riesgo cliente 0..100, cola Anti-Ban, embudo 10%, pasaporte óptimo, 8 tiendas SEO y factura escrow.",
+        "earn_auto_order_ph": "ID o título del encargo / producto…",
+        "earn_auto_text_ph": "Pegue el brief del cliente (riesgo) o el resultado final (entrega Zero-Leak)…",
+        "earn_auto_roi_btn": "Tarifa Neta $/h",
+        "earn_auto_risk_btn": "Riesgo Cliente 0–100",
+        "earn_auto_antiban_btn": "Cola Anti-Ban",
+        "earn_auto_funnel_btn": "Embudo Muestra 10%",
+        "earn_auto_route_btn": "Elegir Pasaporte",
+        "earn_auto_stores_btn": "8 Tiendas SEO",
+        "earn_auto_invoice_btn": "Factura Escrow",
+        "earn_auto_deliver_btn": "Entrega Zero-Leak",
+        "earn_auto_digest_btn": "Resumen Diario",
+        "ag_claim_btn": "Tomar Subcontrato",
+        "ag_complete_btn": "Entregar Trabajo",
+        "ag_verify_btn": "Verificar Firma",
+    },
+    "zh": {
+        "sh_sales_title": "商业安全套件与 B2B 售前工具（10 项全能）",
+        "sh_sales_sub": "离线代码/MCP 售前审计、OWASP/EU AI Act/PCI 合规映射、CSP+SRI 修复、12 项攻防演练、B2B 报价 ROI、CEF 与信任包。",
+        "sh_sales_target_ph": "客户项目路径、公司名称或 HTML 代码…",
+        "sh_sales_audit_btn": "售前代码/MCP 审计",
+        "sh_sales_comp_btn": "OWASP/EU/PCI 合规",
+        "sh_sales_csp_btn": "生成 CSP + SRI",
+        "sh_sales_redteam_btn": "12 项红队攻防演示",
+        "sh_sales_proposal_btn": "B2B 报价与 ROI",
+        "sh_sales_triage_btn": "P1-P4 分级 / CEF",
+        "sh_sales_trust_btn": "Vendor Trust Pack",
+        "earn_auto_title": "智能接单风控、交付与每日简报自动化",
+        "earn_auto_sub": "真实净时薪(含1.25倍缓冲)、客户风险 0..100、防封禁排期、10% 示例漏斗、最佳护照路由、8 商店 SEO 与防篡改账单。",
+        "earn_auto_order_ph": "订单/商品 ID 或名称…",
+        "earn_auto_text_ph": "粘贴客户需求（测风险）或交付内容（零泄露打包）…",
+        "earn_auto_roi_btn": "核算真实净时薪",
+        "earn_auto_risk_btn": "客户风险评分 0–100",
+        "earn_auto_antiban_btn": "防封禁排队计划",
+        "earn_auto_funnel_btn": "10% 示例漏斗",
+        "earn_auto_route_btn": "最佳护照路由",
+        "earn_auto_stores_btn": "8 商店 SEO 包",
+        "earn_auto_invoice_btn": "托管安全账单",
+        "earn_auto_deliver_btn": "零泄露打包交付",
+        "earn_auto_digest_btn": "主人每日简报",
+        "ag_claim_btn": "承接外包",
+        "ag_complete_btn": "提交成果",
+        "ag_verify_btn": "验证签名",
+    },
+}
+for _lg, _ex_20 in _STRINGS_20_ENHANCEMENTS.items():
+    STRINGS[_lg].update(_ex_20)
+
+
 
 
 
@@ -9976,7 +10094,32 @@ async function loadPassportsAndAgora() {
           const card = _el('div', 'earn-item');
           card.appendChild(_el('strong', '', '[' + String(post.room) + '] ' + String(post.title)));
           card.appendChild(_el('div', 'earn-meta', (S.ag_author || 'Author') + ': ' + String(post.author_name) + (post.passport_number ? (' · ' + String(post.passport_number)) : '') + (post.bounty_usdt > 0 ? (' · ' + (S.ag_budget || 'Budget') + ': $' + String(post.bounty_usdt)) : '')));
-          card.appendChild(_el('div', 'earn-meta', String(post.body || '')));
+          card.appendChild(_el('div', 'earn-meta', String(post.body || '') + (post.status ? (' [' + String(post.status) + ']') : '')));
+          const agActs = _el('div', 'rec-actions');
+          const upBtn = _el('button', 'aifa-compact-btn', '▲ ' + String(post.upvotes || 0));
+          upBtn.onclick = async () => {
+            try { await api('/api/v2/ark/agora/action', { action: 'upvote', post_id: post.post_id }); loadPassportsAndAgora(); } catch (e) { say(String(e.message || e), false); }
+          };
+          agActs.appendChild(upBtn);
+          if (post.room === 'agent_exchange' && post.status === 'open') {
+            const clBtn = _el('button', 'btn-primary aifa-compact-btn', S.ag_claim_btn || 'Claim');
+            clBtn.onclick = async () => {
+              try { const r = await api('/api/v2/ark/agora/action', { action: 'claim', post_id: post.post_id, agent_id: 'aifa_claude' }); say(r.ok !== false ? S.done : (r.message_ru || r.error || S.failed), r.ok !== false); loadPassportsAndAgora(); } catch (e) { say(String(e.message || e), false); }
+            };
+            agActs.appendChild(clBtn);
+          } else if (post.room === 'agent_exchange' && post.status === 'claimed') {
+            const cmpBtn = _el('button', 'btn-ok aifa-compact-btn', S.ag_complete_btn || 'Submit');
+            cmpBtn.onclick = async () => {
+              try { const r = await api('/api/v2/ark/agora/action', { action: 'complete', post_id: post.post_id, deliverable_summary: 'Completed via Studio', agent_id: post.claimed_by || 'aifa_claude', confirm_release: true }); say(r.ok !== false ? S.done : (r.error || S.failed), r.ok !== false); loadPassportsAndAgora(); } catch (e) { say(String(e.message || e), false); }
+            };
+            agActs.appendChild(cmpBtn);
+          }
+          const verBtn = _el('button', 'aifa-compact-btn', S.ag_verify_btn || 'Verify');
+          verBtn.onclick = async () => {
+            try { const r = await api('/api/v2/ark/agora/action', { action: 'verify_sig', post_id: post.post_id }); say((r && r.verified) ? (S.done + ' (HMAC OK)') : S.failed, Boolean(r && r.verified)); } catch (e) { say(String(e.message || e), false); }
+          };
+          agActs.appendChild(verBtn);
+          card.appendChild(agActs);
           agBox.appendChild(card);
         }
         if (!(ag.posts || []).length) agBox.appendChild(_el('p', 'panel-sub', S.ag_empty || 'No posts in CODE Agora yet.'));
@@ -13050,6 +13193,66 @@ if ($('sh-wh-test-btn')) $('sh-wh-test-btn').onclick = async () => {
   } catch (e) { if (outEl) outEl.textContent = String(e.message || e); }
 };
 
+async function _runSalesAction(actionName) {
+  const outEl = $('sh-sales-out');
+  const tgt = ($('sh-sales-target-inp') && $('sh-sales-target-inp').value || '').trim() || '.';
+  const seats = Number(($('sh-sales-seats-inp') && $('sh-sales-seats-inp').value) || 25);
+  try {
+    const body = { action: actionName, target_path: tgt, client_name: tgt, seats, html_text: tgt.includes('<') ? tgt : '<script src="https://cdn.example.com/app.js"><\\/script>' };
+    const r = await api('/api/v2/shield/sales/action', body);
+    if (outEl) outEl.replaceChildren(_el('pre', 'sh-pre', JSON.stringify(r, null, 2)));
+    say(S.done, true);
+  } catch (e) {
+    if (outEl) outEl.textContent = String(e.message || e);
+    say(String(e.message || e), false);
+  }
+}
+if ($('sh-sales-audit-btn')) $('sh-sales-audit-btn').onclick = () => _runSalesAction('presale_audit');
+if ($('sh-sales-comp-btn')) $('sh-sales-comp-btn').onclick = () => _runSalesAction('compliance');
+if ($('sh-sales-csp-btn')) $('sh-sales-csp-btn').onclick = () => _runSalesAction('csp_sri');
+if ($('sh-sales-redteam-btn')) $('sh-sales-redteam-btn').onclick = () => _runSalesAction('redteam_sim');
+if ($('sh-sales-proposal-btn')) $('sh-sales-proposal-btn').onclick = () => _runSalesAction('b2b_proposal');
+if ($('sh-sales-triage-btn')) $('sh-sales-triage-btn').onclick = () => _runSalesAction('triage');
+if ($('sh-sales-trust-btn')) $('sh-sales-trust-btn').onclick = () => _runSalesAction('trust_pack');
+
+async function _runAutoAction(actionName) {
+  const outEl = $('earn-auto-out');
+  const ordTitle = ($('earn-auto-order-inp') && $('earn-auto-order-inp').value || '').trim() || 'PADAM AI Security Kit';
+  const gross = Number(($('earn-auto-budget-inp') && $('earn-auto-budget-inp').value) || 150);
+  const hrs = Number(($('earn-auto-hours-inp') && $('earn-auto-hours-inp').value) || 4);
+  const txtVal = ($('earn-auto-text-inp') && $('earn-auto-text-inp').value || '').trim() || 'Client brief: audit repository and deliver signed report.';
+  try {
+    const r = await api('/api/v2/ark/automation/action', {
+      action: actionName,
+      order_id: ordTitle,
+      order_title: ordTitle,
+      product_title: ordTitle,
+      product_sold: ordTitle,
+      gross_usdt: gross,
+      budget_usdt: gross,
+      base_price_usdt: gross,
+      estimated_hours: hrs,
+      brief_text: txtVal,
+      deliverable_text: txtVal,
+    });
+    if (outEl) outEl.replaceChildren(_el('pre', 'sh-pre', JSON.stringify(r, null, 2)));
+    say(S.done, true);
+  } catch (e) {
+    if (outEl) outEl.textContent = String(e.message || e);
+    say(String(e.message || e), false);
+  }
+}
+if ($('earn-auto-roi-btn')) $('earn-auto-roi-btn').onclick = () => _runAutoAction('net_hourly');
+if ($('earn-auto-risk-btn')) $('earn-auto-risk-btn').onclick = () => _runAutoAction('client_risk');
+if ($('earn-auto-antiban-btn')) $('earn-auto-antiban-btn').onclick = () => _runAutoAction('antiban_plan');
+if ($('earn-auto-funnel-btn')) $('earn-auto-funnel-btn').onclick = () => _runAutoAction('funnel_stage');
+if ($('earn-auto-route-btn')) $('earn-auto-route-btn').onclick = () => _runAutoAction('route_passport');
+if ($('earn-auto-stores-btn')) $('earn-auto-stores-btn').onclick = () => _runAutoAction('store_listings');
+if ($('earn-auto-invoice-btn')) $('earn-auto-invoice-btn').onclick = () => _runAutoAction('escrow_invoice');
+if ($('earn-auto-deliver-btn')) $('earn-auto-deliver-btn').onclick = () => _runAutoAction('delivery_bundle');
+if ($('earn-auto-digest-btn')) $('earn-auto-digest-btn').onclick = () => _runAutoAction('daily_digest');
+
+
 async function loadWalletsFor(containerId, networksFilter) {
   const reqLang = currentLang;
   try {
@@ -14304,6 +14507,25 @@ def page() -> tuple[str, str]:
           </div>
           <div id="sh-wh-out" aria-live="polite"></div>
         </div>
+
+        <div class="box" id="sh-sales-box">
+          <h3 class="box-title" data-i18n="sh_sales_title">{s['sh_sales_title']}</h3>
+          <p class="panel-sub" data-i18n="sh_sales_sub">{s['sh_sales_sub']}</p>
+          <div class="toolbar">
+            <input id="sh-sales-target-inp" class="input" type="text" data-i18n-placeholder="sh_sales_target_ph" data-i18n-aria="sh_sales_target_ph" placeholder="{s['sh_sales_target_ph']}" aria-label="{s['sh_sales_target_ph']}">
+            <input id="sh-sales-seats-inp" class="input earn-num-input" type="number" value="25" min="1" max="10000" aria-label="Seats">
+          </div>
+          <div class="rec-actions">
+            <button id="sh-sales-audit-btn" class="btn-primary" type="button" data-i18n="sh_sales_audit_btn">{s['sh_sales_audit_btn']}</button>
+            <button id="sh-sales-comp-btn" class="btn" type="button" data-i18n="sh_sales_comp_btn">{s['sh_sales_comp_btn']}</button>
+            <button id="sh-sales-csp-btn" class="btn" type="button" data-i18n="sh_sales_csp_btn">{s['sh_sales_csp_btn']}</button>
+            <button id="sh-sales-redteam-btn" class="btn-ok" type="button" data-i18n="sh_sales_redteam_btn">{s['sh_sales_redteam_btn']}</button>
+            <button id="sh-sales-proposal-btn" class="btn" type="button" data-i18n="sh_sales_proposal_btn">{s['sh_sales_proposal_btn']}</button>
+            <button id="sh-sales-triage-btn" class="btn" type="button" data-i18n="sh_sales_triage_btn">{s['sh_sales_triage_btn']}</button>
+            <button id="sh-sales-trust-btn" class="btn-primary" type="button" data-i18n="sh_sales_trust_btn">{s['sh_sales_trust_btn']}</button>
+          </div>
+          <div id="sh-sales-out" aria-live="polite"></div>
+        </div>
       </section>
 
       <!-- СПРАВКА (16.11.2026) -->
@@ -15237,6 +15459,31 @@ def page() -> tuple[str, str]:
             <div id="earn-mail-status" class="earn-meta" role="status"></div>
             <div id="earn-mail-accounts" class="earn-stack"></div>
             <div id="earn-mail-out" class="earn-stack"></div>
+          </div>
+
+          <div class="box earn-box-wide" id="earn-auto-box">
+            <h3 class="box-title" data-i18n="earn_auto_title">{s['earn_auto_title']}</h3>
+            <p class="earn-meta" data-i18n="earn_auto_sub">{s['earn_auto_sub']}</p>
+            <div class="toolbar">
+              <input id="earn-auto-order-inp" class="input" type="text" data-i18n-placeholder="earn_auto_order_ph" data-i18n-aria="earn_auto_order_ph" placeholder="{s['earn_auto_order_ph']}" aria-label="{s['earn_auto_order_ph']}">
+              <input id="earn-auto-budget-inp" class="input earn-num-input" type="number" value="150" min="5" aria-label="Budget USDT">
+              <input id="earn-auto-hours-inp" class="input earn-num-input" type="number" value="4" min="0.5" step="0.5" aria-label="Estimated hours">
+            </div>
+            <div class="toolbar qs-leads-col">
+              <textarea id="earn-auto-text-inp" class="qs-textarea" rows="2" data-i18n-placeholder="earn_auto_text_ph" data-i18n-aria="earn_auto_text_ph" placeholder="{s['earn_auto_text_ph']}" aria-label="{s['earn_auto_text_ph']}"></textarea>
+            </div>
+            <div class="rec-actions">
+              <button id="earn-auto-roi-btn" class="btn-primary" type="button" data-i18n="earn_auto_roi_btn">{s['earn_auto_roi_btn']}</button>
+              <button id="earn-auto-risk-btn" type="button" data-i18n="earn_auto_risk_btn">{s['earn_auto_risk_btn']}</button>
+              <button id="earn-auto-antiban-btn" type="button" data-i18n="earn_auto_antiban_btn">{s['earn_auto_antiban_btn']}</button>
+              <button id="earn-auto-funnel-btn" type="button" data-i18n="earn_auto_funnel_btn">{s['earn_auto_funnel_btn']}</button>
+              <button id="earn-auto-route-btn" type="button" data-i18n="earn_auto_route_btn">{s['earn_auto_route_btn']}</button>
+              <button id="earn-auto-stores-btn" type="button" data-i18n="earn_auto_stores_btn">{s['earn_auto_stores_btn']}</button>
+              <button id="earn-auto-invoice-btn" class="btn-ok" type="button" data-i18n="earn_auto_invoice_btn">{s['earn_auto_invoice_btn']}</button>
+              <button id="earn-auto-deliver-btn" class="btn-primary" type="button" data-i18n="earn_auto_deliver_btn">{s['earn_auto_deliver_btn']}</button>
+              <button id="earn-auto-digest-btn" class="btn-ok" type="button" data-i18n="earn_auto_digest_btn">{s['earn_auto_digest_btn']}</button>
+            </div>
+            <div id="earn-auto-out" class="earn-stack" aria-live="polite"></div>
           </div>
         </div>
       </section>
