@@ -1,8 +1,8 @@
 {
   "name": "@padam/mcp",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "description": "Zero-install stdio launcher for PADAM NOCTURNE local sovereign MCP server",
-  "license": "AGPL-3.0-only",
+  "license": "SEE LICENSE IN LICENSE",
   "bin": {
     "padam-mcp": "./bin/padam-mcp.js"
   },

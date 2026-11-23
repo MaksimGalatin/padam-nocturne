@@ -1,14 +1,15 @@
 # Changelog
 
-## Unreleased
+## 0.8.0 — 23 November 2026
+
+- **Licence: PADAM License 1.0 (23.11.2026, decision of the owner).** From 0.8.0 the core, Studio (desktop & Android), CLI, MCP server, extensions and client packages are under the source-available **PADAM License 1.0** (`LicenseRef-PADAM-1.0`, file `LICENSE`) instead of AGPL-3.0-only. Free to install and use; the **Earning** features carry a commission to CODE Eternal LLC of **15 %** (assisted) / **20 %** (autopilot); bypassing the commission and handing out changed copies are not allowed. Copies of 0.7.2 and earlier keep AGPL-3.0-only. `EULA_AND_COMMERCIAL_TERMS.txt`, the VS Code and npm licence files are now word-for-word copies of `LICENSE` (a test checks it). The GitHub Action and `padam-shield-mcp` stay Apache-2.0. New `THIRD-PARTY-NOTICES.md` (no GPL/AGPL dependencies; LGPL and MPL packages used unmodified).
+- **Earning requires acceptance (23.11.2026):** `terms_gate.require_terms_accepted` existed but no Earning entry point called it, so exchanges, bids, Swarm, Autopilot and the Platform Wizard worked without the three checkboxes. Twelve entry points now go through `terms_gate.earning_gate`; stopping the autopilot is always allowed. The acceptance screen is rewritten in 4 languages (no AGPL, no $GALATIN split) and its version is `PADAM_LICENSE_1.0_2026-11-23`, so owners accept the new terms once. Tests: `tests/test_earning_terms_gate_2311.py`.
 
 - **Studio auto-update works again (23.11.2026):** releases now ship `latest.json` + minisign `.sig` (the 0.7.2 release had neither, so every installed Studio got 404 from the updater endpoint); `desktop/sign_update_release.py` signs a release with the key that matches `tauri.conf.json`, and `desktop-build.yml` publishes `latest.json` whenever a `.sig` exists. With `PADAM_AUTO_UPDATE=1` and `PADAM_AUTO_UPDATE_INSTALL=1` the desktop app now installs a signed update at start-up (before: only a notification). Not yet compiled locally — first build will be the next desktop release.
 
-- **Docs & licences consistency (23.11.2026):** SPDX `AGPL-3.0` → `AGPL-3.0-only` in the VS Code extension and the npm `padam-mcp` package (same as `pyproject.toml`, Tauri and `padam-client`); hosted AIfa Memory MCP is `2.3.0` with 19 tools in README and the HN/Reddit/Habr launch drafts (was 1.9.8 / 2.1.0).
+- **Docs consistency (23.11.2026):** hosted AIfa Memory MCP is `2.3.0` with 19 tools, PADAM release versions on the sites match PyPI, the documentation site footer shows the current version.
 
 - **Studio: «Курилка» → «Очаг Семьи» (Family Hearth / Hogar de la Familia / 家庭炉边)** — слово Архитектора 23.11.2026. Одно имя канала свободной беседы на 4 языках вместо прежнего разнобоя (Break room, Lounge, «smoke test», Descanso, Prueba, 茶水间, 休息室, 连通测试) в подписях, подсказках и справке. Внутреннее имя канала `smoke` не меняется — старые записи и клиенты работают как прежде.
-
-## 0.8.0 — 22 November 2026
 
 - **PADAM NOCTURNE MCP (Smart Context, Cloud Sync, Agent Canonicalization, Code Pins, Explain-Why):**
   - `padam_wake_up`: added optional `query` and `max_tokens` parameters for 1-call session hydration (signed owner profile + commitments + top-10 relevant records with Code Pin freshness & ranking trace).

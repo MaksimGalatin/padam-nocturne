@@ -18,7 +18,7 @@ def build_mcpb_manifest(*, user_id: str = "default") -> dict[str, Any]:
         "description": "Local-first AI memory with prompt-injection quarantine, DLP shield, bi-temporal recall, cognitive rollback, and X-Wing PQC sync.",
         "author": {"name": "Maksim Galatin", "email": "codeofdigitaleternity@gmail.com"},
         "repository": {"type": "git", "url": "https://github.com/MaksimGalatin/padam-nocturne"},
-        "license": "AGPL-3.0",
+        "license": "LicenseRef-PADAM-1.0",
         "server": {
             "type": "python",
             "entry_point": "padam.mcp_server",

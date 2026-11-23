@@ -15,8 +15,9 @@
   "files": [
     "src",
     "examples",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
-  "license": "AGPL-3.0-only",
+  "license": "SEE LICENSE IN LICENSE",
   "author": "Maksim Galatin <codeofdigitaleternity@gmail.com>"
 }

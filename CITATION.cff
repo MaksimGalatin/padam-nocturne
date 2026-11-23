@@ -10,7 +10,7 @@ authors:
     affiliation: "CODE Eternal / AIfa Works"
 repository-code: "https://github.com/MaksimGalatin/padam-nocturne"
 url: "https://aifa.works/nocturne"
-license: AGPL-3.0-only
+license-url: "https://github.com/MaksimGalatin/padam-nocturne/blob/main/LICENSE"
 version: "0.4.14"
 date-released: "2026-11-12"
 keywords:

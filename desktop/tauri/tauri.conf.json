@@ -34,7 +34,7 @@
     "homepage": "https://aifa.works",
     "shortDescription": "PADAM · NOCTURNE Studio — Локальная защищённая память ИИ-агентов",
     "longDescription": "PADAM · NOCTURNE Studio — локальный центр управления защищённой памятью ИИ-агентов в одном SQLite-файле с встроенной средой Python 3.14 (runtime/python.exe) на 127.0.0.1.",
-    "licenseFile": "../../EULA_AND_COMMERCIAL_TERMS.txt",
+    "licenseFile": "../../LICENSE",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

@@ -5,7 +5,7 @@
   ],
   "name": "padam-nocturne",
   "description": "Local-first AI memory with prompt-injection quarantine, DLP shield, bi-temporal recall, cognitive rollback, X-Wing PQC sync, and verifiable cryptographic forgetting.",
-  "license": "AGPL-3.0",
+  "license": "LicenseRef-PADAM-1.0",
   "transport": ["stdio", "streamable-http"],
   "toolsCount": 9
 }

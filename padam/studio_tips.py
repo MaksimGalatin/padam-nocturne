@@ -54,10 +54,10 @@ TIPS: dict[str, dict[str, str]] = {
         "es": "Configuración rápida: conecta tu agente a la memoria con un comando y comprueba que escribir y buscar funcionan.",
         "zh": "快速设置：一条命令把你的智能体连接到记忆，并检查写入和搜索是否正常。"},
     "terms_box_title": {
-        "ru": "Юридический шлюз Clickwrap: без принятия правил AGPL/Commercial, комиссии 15%/20% и запрета обхода подключение бирж запрещено.",
-        "en": "Mandatory Clickwrap EULA: AGPL/Commercial rules, 15%/20% CODE commission and No-Bypass covenant required before enabling earning.",
-        "es": "Acuerdo Clickwrap obligatorio: reglas AGPL/Comercial, comisión 15%/20% y pacto No-Bypass antes de conectar plataformas.",
-        "zh": "强制许可门控：开启接单创收前必须勾选同意 AGPL/商业许可规则、15%/20% 佣金条款与反绕过协议。",
+        "ru": "Окно согласия: без принятия Лицензии PADAM 1.0, комиссии 15%/20% с Заработка и запрета обхода подключение бирж закрыто.",
+        "en": "Acceptance screen: the PADAM License 1.0, the 15%/20% Earning commission and the no-bypass rule must be accepted before enabling Earning.",
+        "es": "Pantalla de aceptación: la Licencia PADAM 1.0, la comisión del 15%/20% de los Ingresos y la regla de no eludirla antes de conectar plataformas.",
+        "zh": "许可确认：开启创收前须接受 PADAM 许可证 1.0、15%/20% 创收佣金与反绕过规则。",
     },
     "bridge_title": {
         "ru": "Быстрый мостик к главным возможностям PADAM: защита агента, сканер сайта, заработок и утренний пульс за 60 секунд.",

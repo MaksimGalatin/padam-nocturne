@@ -807,6 +807,7 @@ def connect_platform_step(
     password: str = "",
 ) -> dict[str, Any]:
     """Шаг 2 мастера («вошёл»): принимает только OAuth, ключ API или зашифрованную сессию браузера. Пароли отвергаются."""
+    from . import terms_gate as _terms_gate; _terms_gate.earning_gate(memory)  # Лицензия PADAM 1.0: Заработок — только после согласия
     _ensure_wizard_schema(memory)
     if str(password or "").strip():
         raise ValueError("ПАРОЛИ НЕ ХРАНИМ НИКОГДА: используйте только OAuth, ключ API или зашифрованную сессию браузера.")
@@ -1082,6 +1083,7 @@ def publish_profile_draft(
     owner_approved: bool = False,
 ) -> dict[str, Any]:
     """Публикует черновик профиля площадки СТРОГО по кнопке владельца (owner_approved=True)."""
+    from . import terms_gate as _terms_gate; _terms_gate.earning_gate(memory)  # Лицензия PADAM 1.0: Заработок — только после согласия
     _ensure_wizard_schema(memory)
     conn = memory.store.conn
     with freelance_autonomy._lock_of(memory):
@@ -1515,6 +1517,7 @@ def one_click_platform_auth(
     auto_start_autopilot: bool = False,
 ) -> dict[str, Any]:
     """Регистрация через Google ('signup') или Вход ('login') в отдельном окне профиля PADAM без хранения пароля."""
+    from . import terms_gate as _terms_gate; _terms_gate.earning_gate(memory)  # Лицензия PADAM 1.0: Заработок — только после согласия
     _ensure_stage3_schema(memory)
     if str(password or "").strip():
         raise ValueError("ПАРОЛИ НЕ ХРАНИМ НИКОГДА: ввод пароля происходит только на сайте площадки в окне браузера.")
@@ -1765,6 +1768,7 @@ def set_platform_autopilot(
     allow_forbids_bots: bool = True,
 ) -> dict[str, Any]:
     """Включает или выключает полный автопилот на площадке (вкл = 20% без кнопки, выкл = 15% черновик и кнопка)."""
+    from . import terms_gate as _terms_gate; _terms_gate.earning_gate(memory)  # Лицензия PADAM 1.0: Заработок — только после согласия
     _ensure_stage3_schema(memory)
     spec = get_platform_spec(platform_id)
     pid = spec["platform_id"]
@@ -1897,6 +1901,7 @@ def dispatch_platform_autopilot_action(
     agent_id: str = "aifa",
 ) -> dict[str, Any]:
     """Выполняет шаг автопилота площадки с проверкой переключателя (15%/20%), суточного лимита, паузы, 429/капчи и платных действий."""
+    from . import terms_gate as _terms_gate; _terms_gate.earning_gate(memory)  # Лицензия PADAM 1.0: Заработок — только после согласия
     _ensure_stage3_schema(memory)
     spec = get_platform_spec(platform_id)
     pid = spec["platform_id"]
@@ -2508,6 +2513,7 @@ def send_client_negotiation(
     owner_approved: bool = False,
 ) -> dict[str, Any]:
     """Отправляет утверждённый ответ клиенту через транспорт (или переводит в ready_to_send_manual, где боты запрещены)."""
+    from . import terms_gate as _terms_gate; _terms_gate.earning_gate(memory)  # Лицензия PADAM 1.0: Заработок — только после согласия
     _ensure_stage3_schema(memory)
     mid = str(message_id or "").strip()
     with freelance_autonomy._lock_of(memory):

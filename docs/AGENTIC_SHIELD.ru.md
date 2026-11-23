@@ -2,7 +2,7 @@
 
 Локальная детерминированная система активной безопасности от атак ИИ-агентов на скорости машин, отравления памяти, атак MCP (`Tool Poisoning` и `Rug-Pull`), невидимой стеганографии Юникода, подмены реквизитов и взлома цепочек поставки фронтенд-скриптов (кейс Optimizely CDN). Работает **без облачной телеметрии**.
 
-- **Лицензирование:** ядро под `AGPL-3.0-only`, CI/CD GitHub Action (`.github/actions/padam-agentic-shield/`) под `Apache-2.0`, корпоративная коммерческая лицензия от **CODE Eternal LLC** — см. [`COMMERCIAL-LICENSE.md`](../COMMERCIAL-LICENSE.md) и [`LICENSING.md`](LICENSING.md).
+- **Лицензирование:** ядро под Лицензией PADAM 1.0 (код доступен для чтения; с Заработка комиссия 15%/20%), CI/CD GitHub Action (`.github/actions/padam-agentic-shield/`) под `Apache-2.0`, корпоративная коммерческая лицензия от **CODE Eternal LLC** — см. [`COMMERCIAL-LICENSE.md`](../COMMERCIAL-LICENSE.md) и [`LICENSING.md`](LICENSING.md).
 - **Стандарты и конкуренты:** [`COMPLIANCE_MAPPING.md`](COMPLIANCE_MAPPING.md) (OWASP ASI01–ASI10 и PCI DSS v4.0.1) и [`COMPETITIVE_COMPARISON.md`](COMPETITIVE_COMPARISON.md).
 
 ## 4 кольца обороны (фактически реализованные модули)

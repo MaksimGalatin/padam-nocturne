@@ -8,7 +8,7 @@
 - **Двуязычный поиск MCP (`0.7.2`)**: **`recall@5 = 1.0`**, **`p95 = 3.69 ms`**
 - **Полный выпуск `v0.7.2` (`9/9` артефактов)**: Windows Setup `.exe`, Linux `.AppImage` + `.deb`, macOS `.dmg`, Android `.apk` (`58.7 MB`, подписанный), Chrome/Edge `.zip`, Firefox `.zip`, VS Code `.vsix`
 - **Онлайн экспресс-сканер (100% локально в браузере, без отправки на сервер):** https://aifa.works/shield
-- **Публичные репозитории:** https://github.com/MaksimGalatin/padam-nocturne (`AGPL-3.0-only` + `Apache-2.0` CI Action) и https://github.com/MaksimGalatin/aifa-memory-mcp (`MIT`)
+- **Публичные репозитории:** https://github.com/MaksimGalatin/padam-nocturne (PADAM License 1.0, source-available + `Apache-2.0` CI Action) и https://github.com/MaksimGalatin/aifa-memory-mcp (`MIT`)
 
 > ⚠️ **Правило публикации:** перед отправкой на любую внешнюю площадку Архитектор проверяет текст и даёт «да». На Reddit в чужих сабреддитах публиковать только вручную / в режиме «черновик → одобрение» (без автоботов, чтобы исключить бан по Reddit Bot Policy и Rules Hub).
 
@@ -43,7 +43,7 @@
 ## 2. Reddit — 4 разные нативные версии (НЕ копипастить один текст в 4 сабреддита!)
 
 ### 2А. `r/LocalLLaMA` (акцент: 100% локально, SQLite, `$0`, без облака, Ollama)
-- **Title:** `Built a 100% local SQLite MCP memory + prompt-injection firewall for local agents (0 cloud calls, 1,704 tests, AGPL-3.0)`
+- **Title:** `Built a 100% local SQLite MCP memory + prompt-injection firewall for local agents (0 cloud calls, 1,704 tests, source-available)`
 - **Body (EN):**
 > If you run local agents with Ollama / Claude Code / Cursor, you probably hit the same problem we did: agents read untrusted web pages or tool outputs, dump them into memory, and next session treat a hidden prompt injection as your own instruction — or silently save your API keys into the vector store.
 >
@@ -69,7 +69,7 @@
 - **Body (EN):**
 > Sharing two complementary MCP memory servers we just shipped to `v0.7.2` and `v2.3.0` (both live in the Official MCP Registry):
 >
-> 1. **PADAM NOCTURNE (`io.github.MaksimGalatin/padam-nocturne`, v0.7.2, AGPL-3.0):** local `stdio` MCP server in one SQLite file (`uvx padam-nocturne`, `padam setup --all` configures 13 clients including Claude Code, Cursor, VS Code, Windsurf, Codex, Antigravity). Adds SHA-256 MCP tool-schema pinning against rug-pulls, memory quarantine, secret redaction before disk, and an Apache-2.0 GitHub Action (`SARIF 2.1.0`).
+> 1. **PADAM NOCTURNE (`io.github.MaksimGalatin/padam-nocturne`, PADAM License 1.0, source-available):** local `stdio` MCP server in one SQLite file (`uvx padam-nocturne`, `padam setup --all` configures 13 clients including Claude Code, Cursor, VS Code, Windsurf, Codex, Antigravity). Adds SHA-256 MCP tool-schema pinning against rug-pulls, memory quarantine, secret redaction before disk, and an Apache-2.0 GitHub Action (`SARIF 2.1.0`).
 > 2. **AIfa Memory (`works.aifa/aifa-memory`, v2.3.0, MIT docs/examples):** hosted Streamable HTTP server (`https://aifa.works/api/mcp`) with scoped memory-only Bearer keys, AES-256-GCM optional Arweave anchoring, and full Markdown export.
 >
 > You can also test your `mcp.json` locally in the browser (100% client-side, nothing uploaded): https://aifa.works/shield
@@ -85,13 +85,13 @@
 > - **Memory Firewall:** masks API keys (`sk-`, `ghp_`, `AIza`, seed phrases) *before* disk write, quarantines hidden commands from web pages, and fences returned memories with random nonces so Claude treats them strictly as data.
 > - **One command setup:** `pip install padam-nocturne && padam setup --all` (or `uvx padam-nocturne`).
 >
-> Source (AGPL-3.0, 1,704 tests, AIFaSecurity-100 100/100): https://github.com/MaksimGalatin/padam-nocturne
+> Source (PADAM License 1.0, 1,704 tests, AIFaSecurity-100 100/100): https://github.com/MaksimGalatin/padam-nocturne
 > If you prefer hosted sync across devices, there's also a Streamable HTTP server (`AIfa Memory` v2.3.0): https://github.com/MaksimGalatin/aifa-memory-mcp.
 
 ### 2Г. `r/netsec` (акцент: чистый AppSec / AI Sec, red-team, воспроизводимый бенчмарк, без маркетинга)
-- **Title:** `Open-source deterministic firewall & 100-case benchmark for AI agent memory poisoning, MCP schema rug-pulls, and payee-swaps`
+- **Title:** `Source-available deterministic firewall & 100-case benchmark for AI agent memory poisoning, MCP schema rug-pulls, and payee-swaps`
 - **Body (EN):**
-> We open-sourced **PADAM Agentic Shield** (inside `padam-nocturne` v0.7.2, `AGPL-3.0` core + `Apache-2.0` GitHub Action) along with an offline, reproducible security benchmark (`AIFaSecurity-100`) and 7 red-team rounds (`docs/SECURITY_REVIEW.md`).
+> We published **PADAM Agentic Shield** (inside `padam-nocturne`, PADAM License 1.0 core + `Apache-2.0` GitHub Action) along with an offline, reproducible security benchmark (`AIFaSecurity-100`) and 7 red-team rounds (`docs/SECURITY_REVIEW.md`).
 >
 > Threat model covered deterministically (zero cloud telemetry):
 > - Invisible Unicode tag smuggling (`U+E00xx`), Bidi overrides, homoglyphs, Base64-wrapped `<IMPORTANT>` tool-description injections

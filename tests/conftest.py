@@ -77,3 +77,20 @@ def _свой_журнал_казны(tmp_path, monkeypatch):
     """18.11.2026, аудит фазы 3 FA-06: окно пополнений казны хранится в файле. Каждому тесту — свой файл,
     чтобы тесты не делили предел и не писали в домашнюю папку пользователя."""
     monkeypatch.setenv("PADAM_TREASURY_LOG", str(tmp_path / "treasury_topup_log.json"))
+
+
+# 23.11.2026, Лицензия PADAM 1.0: входы в Заработок требуют согласия (terms_gate.require_terms_accepted).
+# Тесты Заработка проверяют саму работу бирж и автопилота, а не окно согласия, поэтому для них подменяется
+# только terms_gate.earning_gate; сама проверка require_terms_accepted не подменяется нигде.
+# Настоящие ворота проверяет файл из _НАСТОЯЩИЕ_ВОРОТА — там подмены нет.
+_НАСТОЯЩИЕ_ВОРОТА = {"test_earning_terms_gate_2311.py"}
+
+
+@pytest.fixture(autouse=True)
+def _согласие_для_тестов_заработка(request, monkeypatch):
+    if request.node.path.name in _НАСТОЯЩИЕ_ВОРОТА:
+        yield
+        return
+    from padam import terms_gate
+    monkeypatch.setattr(terms_gate, "earning_gate", lambda memory: {"accepted": True})
+    yield

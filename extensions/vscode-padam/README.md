@@ -7,7 +7,7 @@ Automatically registers the local sovereign **PADAM NOCTURNE** MCP server (`127.
 - **Install Python core first:** `pip install padam-nocturne` (or `uvx padam-nocturne`).
 - **Source & Docs:** [github.com/MaksimGalatin/padam-nocturne](https://github.com/MaksimGalatin/padam-nocturne)
 
-## Support & Open Source
+## Support & Source Code
 
 - ⭐ **Star PADAM NOCTURNE on GitHub:** https://github.com/MaksimGalatin/padam-nocturne
 - ⭐ **Star AIfa Memory MCP (Cloud):** https://github.com/MaksimGalatin/aifa-memory-mcp

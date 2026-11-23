@@ -696,6 +696,7 @@ def connect_exchange_account(
     allow_localhost: bool = False,
 ) -> dict[str, Any]:
     """Подключает пользовательский профиль биржи (OAuth/API/Webhook или Desk) без хранения открытых секретов."""
+    from . import terms_gate as _terms_gate; _terms_gate.earning_gate(memory)  # Лицензия PADAM 1.0: Заработок — только после согласия
     _ensure(memory)
     plat = _clean_platform(platform)
     md = _clean_mode(mode)
@@ -1518,6 +1519,7 @@ def propose_or_place_bid(
     owner_approved: bool = False,
 ) -> dict[str, Any]:
     """Готовит или отправляет отклик на заказ; публикация возможна только по явному owner_approved=True (и PADAM_FREELANCE_AUTOBID=1)."""
+    from . import terms_gate as _terms_gate; _terms_gate.earning_gate(memory)  # Лицензия PADAM 1.0: Заработок — только после согласия
     order = _get_order(memory, order_id)
     if order["status"] == "rejected_security":
         return {"ok": False, "order_id": order_id, "error": "Нельзя делать ставку на отклонённый по безопасности заказ."}
@@ -1580,6 +1582,7 @@ def dispatch_bid_http(
     allow_localhost: bool = False,
 ) -> dict[str, Any]:
     """Отправляет ставку на реальный REST endpoint биржи (строго при снятом замке и одобрении владельца)."""
+    from . import terms_gate as _terms_gate; _terms_gate.earning_gate(memory)  # Лицензия PADAM 1.0: Заработок — только после согласия
     res = propose_or_place_bid(memory, order_id, owner_approved=owner_approved)
     if not res.get("ok") or not res.get("placed"):
         return {**res, "http_dispatched": False}
@@ -1620,6 +1623,7 @@ def execute_order_with_swarm(
     agent_id: str = "aifa",
 ) -> dict[str, Any]:
     """Передаёт заказ в исполнение Рою: coop_broker + изолированная ветка + Совет Семьи + проверка сметы."""
+    from . import terms_gate as _terms_gate; _terms_gate.earning_gate(memory)  # Лицензия PADAM 1.0: Заработок — только после согласия
     order = _get_order(memory, order_id)
     if order["status"] == "rejected_security":
         return {"ok": False, "order_id": order_id, "error": "Заказ заблокирован по безопасности."}
@@ -2839,6 +2843,8 @@ def set_autopilot_state(memory, *, running: bool, interval_s: float = 300.0, not
     """Включает или останавливает непрерывный цикл работы агентов на биржах (до команды владельца)."""
     # GLM раунд 3, Паттерн 1 (18.11.2026): замок владельца внутри, а не только у вызывающего. API передаёт актёра;
     # агент с ролью не-владельца получит PermissionError, даже если найдёт обходной путь к функции.
+    if running:  # включить — только после согласия; остановить можно всегда
+        from . import terms_gate as _terms_gate; _terms_gate.earning_gate(memory)  # Лицензия PADAM 1.0: Заработок — только после согласия
     from . import roles as _roles
     _roles.require_owner(actor, "autopilot_start" if running else "autopilot_stop")
     _ensure(memory)
@@ -2871,6 +2877,7 @@ _AUTOPILOT_WORKER_THREAD: threading.Thread | None = None
 @_synchronized_memory
 def run_autopilot_cycle(memory, *, allow_localhost: bool = False) -> dict[str, Any]:
     """Полный автономный цикл Роя: опрос бирж и магазинов -> отклики -> исполнение -> безопасная сдача -> выплаты."""
+    from . import terms_gate as _terms_gate; _terms_gate.earning_gate(memory)  # Лицензия PADAM 1.0: Заработок — только после согласия
     st = get_autopilot_state(memory)
     if not st["autopilot_running"]:
         return {"ok": True, "skipped": True, "reason": "autopilot_stopped_by_owner", "state": st}

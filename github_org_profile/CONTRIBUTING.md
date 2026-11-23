@@ -4,12 +4,12 @@ Thank you for your interest in contributing to **CODE Eternal** repositories.
 
 ## 1. Sole Ownership & Licensing Clarity
 - **CODE Eternal LLC** (New Mexico, USA · Entity ID `0008138873`) is **100% solely owned and controlled by Maksim Galatin (Maksim Halatsin)**.
-- Open-source repositories carry their explicit root licenses (`AGPL-3.0-only`, `Apache-2.0`, `MIT`, or `PolyForm Noncommercial 1.0.0`) paired with optional commercial licensing (`contact@codeofdigitaleternity.com`).
+- Each repository carries its own root licence: `padam-nocturne` — PADAM License 1.0 (source-available, commission on Earning); `padam-shield-mcp` and the PADAM GitHub Action — `Apache-2.0`; `aifa-memory-mcp` — `MIT`; `aifa-biobench` — `PolyForm Noncommercial 1.0.0`. Commercial licensing: `contact@codeofdigitaleternity.com`.
 
 ## 2. Contributor Grant & DCO
 By submitting a pull request, patch, issue reproduction, or documentation improvement to any CODE Eternal repository, you represent and agree that:
 1. Your submission is your original work (or you have the legal right to submit it under the repository license) and contains no secrets, real user data, or proprietary third-party code.
-2. You certify the **Developer Certificate of Origin (DCO)** and grant **CODE Eternal LLC** and **Maksim Galatin** a perpetual, worldwide, royalty-free, irrevocable license to use, modify, distribute, and relicense your contribution under both the repository's open-source license and CODE Eternal's commercial licenses.
+2. Code contributions to `padam-nocturne` are not accepted until a Contributor License Agreement (CLA) is published and signed by you; for the other repositories you certify the **Developer Certificate of Origin (DCO)**, which confirms that you have the right to submit your contribution under that repository's licence.
 3. Contributions do not create any partnership, employment, equity, revenue share, or governance rights.
 
 ## 3. Quality Bar

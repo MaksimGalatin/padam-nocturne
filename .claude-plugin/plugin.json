@@ -1,6 +1,6 @@
 {
   "name": "padam-nocturne",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "description": "Local-first verifiable memory for AI agents: recall before acting, record decisions and corrections after, mask secrets before disk, and hold untrusted commands for owner review.",
   "author": {
     "name": "Maksim Galatin",
@@ -9,7 +9,7 @@
   },
   "homepage": "https://aifa.works/nocturne",
   "repository": "https://github.com/MaksimGalatin/padam-nocturne",
-  "license": "AGPL-3.0-only",
+  "license": "LicenseRef-PADAM-1.0",
   "keywords": [
     "memory",
     "mcp",

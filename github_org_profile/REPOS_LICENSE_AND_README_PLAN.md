@@ -23,7 +23,7 @@
 
 | Репозиторий / Продукт | Рекомендуемая лицензия | Что разрешено бесплатно | Что требует оплаты / договора | Что доделать перед пушем |
 |---|---|---|---|---|
-| **`padam-nocturne`** (ядро, MCP, Studio) | **`AGPL-3.0-only`** + **`COMMERCIAL-LICENSE.md`** | Личное локальное использование физлицами навсегда; open-source проекты с раскрытием кода по AGPL-3.0 | Коммерческое закрытое внедрение в компаниях/SaaS без раскрытия исходников, Multi-tenant, NDA/DPA/SLA | Обновлены `README.md` и `COMMERCIAL-LICENSE.md` в ветке `agentic-shield-1911` |
+| **`padam-nocturne`** (ядро, MCP, Studio) | **Лицензия PADAM 1.0** (`LicenseRef-PADAM-1.0`) + **`COMMERCIAL-LICENSE.md`**; версии до 0.7.2 — AGPL-3.0-only | Установка и пользование — всем бесплатно | Комиссия с Заработка 15 % / 20 %; изменённые копии, хостинг для других, встраивание, NDA/DPA/SLA — по отдельной коммерческой лицензии | Обновлены `README.md` и `COMMERCIAL-LICENSE.md` в ветке `agentic-shield-1911` |
 | **`.github/actions/padam-agentic-shield/`** | **`Apache-2.0`** (файл `LICENSE` уже есть) | Разрешено любому бизнесу включать в закрытые приватные CI/CD пайплайны с патентной защитой | Расширенная поддержка, SIEM коннекторы, SLA — по Commercial License | Публиковать и продвигать как бесплатную воронку привлечения CISO |
 | **`aifa-memory-mcp`** | **`MIT`** для `examples/`, `scripts/`, `README.md` + **`CODE Eternal Platform Terms`** для облака | Просмотр спецификации `server.json`, запуск `scripts/conformance.py`, подключение клиентов | Облачные тарифы вечной памяти (`Spark $15`, `Family $100`, `Digital DNA $1,000+$200`), API квоты | **Обязательно дописать в `README.md`** секцию о `PADAM Agentic Shield v2`, `CodeOfDigitalEternity`, разграничении MIT (спека/примеры) vs платные услуги `aifa.works` (чтобы компании не думали, что весь облачный сервис MIT!) |
 | **`aifa-biobench`** (открытый) и **`aifa-biobench-pro`** (закрытый) | **`PolyForm-Noncommercial-1.0.0`** / **`Apache-2.0`** (`aifa-biobench`) / **Proprietary** (`aifa-biobench-pro`) | Наука, проверка результатов, некоммерческие проекты | Любое коммерческое использование бенчмарка, проприетарное ядро (`aifa_sdk/` в `aifa-biobench-pro`) | Привязать `LICENSE` файл `PolyForm-Noncommercial-1.0.0` в корне GitHub `aifa-biobench` (сейчас GitHub распознаёт как `other`); `aifa-biobench-pro` уже корректно приватный |
@@ -41,7 +41,7 @@
 
 Looking for offline local-first memory, per-record crypto-shredding, Prompt Injection & MCP Rug-Pull protection, or CI/CD supply-chain auditing (`PCI DSS v4.0.1 Req 6.4.3 / 11.6.1`)?
 
-- **Local Engine & Studio (`AGPL-3.0-only` + Commercial):** [padam-nocturne](https://github.com/MaksimGalatin/padam-nocturne)
+- **Local Engine & Studio (PADAM License 1.0, source-available):** [padam-nocturne](https://github.com/MaksimGalatin/padam-nocturne)
 - **GitHub Organization:** [CodeOfDigitalEternity](https://github.com/CodeOfDigitalEternity)
 - **Enterprise Commercial Licensing / Mutual NDA / Zero-Telemetry DPA:** `contact@codeofdigitaleternity.com`
 ```

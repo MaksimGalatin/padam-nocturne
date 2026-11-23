@@ -26,7 +26,7 @@
    ```
 5. Нажмите на иконку **PADAM · NOCTURNE Memory Guard** в панели браузера, откройте блок «Настройки подключения к локальному PADAM», укажите адрес (`http://127.0.0.1:8078`) и токен владельца, затем нажмите **«Сохранить»**.
 
-## Support & Open Source
+## Support & Source Code
 
 - ⭐ **Star PADAM NOCTURNE on GitHub:** https://github.com/MaksimGalatin/padam-nocturne
 - ⭐ **Star AIfa Memory MCP (Cloud):** https://github.com/MaksimGalatin/aifa-memory-mcp

@@ -6,7 +6,7 @@
 
 ### Память для ИИ-агентов, которая спит, честно забывает и проверяется навсегда
 
-[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%209%20tools-8A2BE2) [![PyPI](https://img.shields.io/pypi/v/padam-nocturne)](https://pypi.org/project/padam-nocturne/)
+[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-PADAM%20License%201.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%209%20tools-8A2BE2) [![PyPI](https://img.shields.io/pypi/v/padam-nocturne)](https://pypi.org/project/padam-nocturne/)
 
 **Установка в 1 клик:** [Установить в Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=padam&config=eyJjb21tYW5kIjoicGFkYW0tbWNwIiwiYXJncyI6W119) · [Установить в VS Code](vscode:mcp/install?%7B%22name%22%3A%22padam%22%2C%22command%22%3A%22padam-mcp%22%2C%22args%22%3A%5B%5D%7D) · CLI (`13` клиентов вкл. Claude Code и Antigravity): `padam setup --all` · Без установки: `uvx padam-nocturne` · [★ Поставить Star на GitHub](https://github.com/MaksimGalatin/padam-nocturne/stargazers)
 
@@ -557,9 +557,9 @@ PADAM — открытая локальная память проекта CODE E
 
 ## Лицензия
 
-**Ядро `padam-nocturne`, `PADAM Studio` и `Android APK`:** **`AGPL-3.0-only`** ([LICENSE](https://github.com/MaksimGalatin/padam-nocturne/blob/main/LICENSE)). Бесплатно для личного и локального использования; если вы запускаете модифицированную версию как закрытый сетевой SaaS — изменения необходимо открыть или оформить коммерческую лицензию.
+**Ядро `padam-nocturne`, `PADAM Studio` и `Android APK` (с версии 0.8.0):** **Лицензия PADAM 1.0** ([LICENSE](https://github.com/MaksimGalatin/padam-nocturne/blob/main/LICENSE), `LicenseRef-PADAM-1.0`) — код доступен для чтения, но это не открытая лицензия. Устанавливать и пользоваться — бесплатно. С **Заработка** — комиссия CODE Eternal LLC: **15 %**, когда отправляете сами, и **20 %** в автопилоте. Не хотите платить — не пользуйтесь Заработком. Обходить комиссию, раздавать, продавать и сдавать как сервис изменённые копии нельзя. Копии версий 0.7.2 и раньше остаются под AGPL-3.0-only, с которой вышли.
 
-**Независимый Docker-шлюз и GitHub CI Action (`Apache-2.0`):** лёгкий stateless-сканер [**`padam-shield-mcp`**](https://github.com/MaksimGalatin/padam-shield-mcp) и [`.github/actions/padam-agentic-shield/`](.github/actions/padam-agentic-shield/LICENSE) выпущены независимо под **`Apache-2.0`** без копилефт-риска для закрытых корпоративных конвейеров.
+**Независимый Docker-шлюз и GitHub CI Action (`Apache-2.0`):** лёгкий stateless-сканер [**`padam-shield-mcp`**](https://github.com/MaksimGalatin/padam-shield-mcp) и [`.github/actions/padam-agentic-shield/`](.github/actions/padam-agentic-shield/LICENSE) выпущены независимо под **`Apache-2.0`** и не содержат кода ядра PADAM.
 
 **Коммерческая лицензия (`Commercial MSA`):** [`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md) · `contact@codeofdigitaleternity.com` · [aifa.works](https://aifa.works).
 

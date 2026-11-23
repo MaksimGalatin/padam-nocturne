@@ -43,7 +43,7 @@
 2. Нажмите **Create new extension** и загрузите тот же архив `extensions/dist/padam-memory-guard-chromium.zip`.
 3. Заполните карточку описания, приложите 3 снимка `1280×800` из `extensions/screenshots/` и ссылку на `extensions/PRIVACY.md`.
 4. В разделе **Notes for certification** укажите:
-   > *This extension connects to the user's local open-source PADAM memory server on `http://127.0.0.1:8078` (`pip install padam-nocturne && padam studio`). No external cloud servers are contacted.*
+   > *This extension connects to the user's local PADAM memory server (source-available, PADAM License 1.0) on `http://127.0.0.1:8078` (`pip install padam-nocturne && padam studio`). No external cloud servers are contacted.*
 5. Нажмите **Publish**.
 
 ---
@@ -66,7 +66,7 @@
 3. Open-VSX (`https://open-vsx.org/user-settings/tokens`, используется в Cursor, Windsurf и VSCodium):
    `npx ovsx publish extensions/dist/padam-nocturne-mcp-0.6.5.vsix -p <OPEN_VSX_TOKEN>`
 
-## Support & Open Source
+## Support & Source Code
 
 - ⭐ **Star PADAM NOCTURNE on GitHub:** https://github.com/MaksimGalatin/padam-nocturne
 - ⭐ **Star AIfa Memory MCP (Cloud):** https://github.com/MaksimGalatin/aifa-memory-mcp

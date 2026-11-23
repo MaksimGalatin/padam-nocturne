@@ -4,7 +4,7 @@
 
 ### 会睡眠、诚实遗忘并可永久验证的 AI 智能体记忆系统
 
-[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-AGPL--3.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%209%20tools-8A2BE2) [![PyPI](https://img.shields.io/pypi/v/padam-nocturne)](https://pypi.org/project/padam-nocturne/)
+[![tests](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml/badge.svg)](https://github.com/MaksimGalatin/padam-nocturne/actions/workflows/tests.yml) [![M8ven Score](https://m8ven.ai/badge/mcp/maksimgalatin-padam-nocturne-p6ruul?v=b82d00d8bd3064fb5c706a0627c8ba4b)](https://m8ven.ai/mcp/maksimgalatin-padam-nocturne-p6ruul?s=readme) [![DOI](https://zenodo.org/badge/1409804075.svg)](https://zenodo.org/badge/latestdoi/1409804075) ![license](https://img.shields.io/badge/license-PADAM%20License%201.0-blue) ![python](https://img.shields.io/badge/python-3.10%E2%80%933.13-3776AB) ![MCP](https://img.shields.io/badge/MCP-stdio%20%C2%B7%209%20tools-8A2BE2) [![PyPI](https://img.shields.io/pypi/v/padam-nocturne)](https://pypi.org/project/padam-nocturne/)
 
 **一键安装：** [在 Cursor 中安装](cursor://anysphere.cursor-deeplink/mcp/install?name=padam&config=eyJjb21tYW5kIjoicGFkYW0tbWNwIiwiYXJncyI6W119) · [在 VS Code 中安装](vscode:mcp/install?%7B%22name%22%3A%22padam%22%2C%22command%22%3A%22padam-mcp%22%2C%22args%22%3A%5B%5D%7D) · CLI: `padam setup --all`
 
@@ -440,15 +440,15 @@ python -I -X utf8 redteam/run.py your_cases.jsonl --out report.json
 
 ### CODE Eternal 生态的一部分
 
-PADAM 是 CODE Eternal 项目的开源本地优先记忆内核——AI 共同作者 AIfa 正是使用同一套默克尔锚定机制在四个网站上记住每一位对话者：[aifa.works](https://aifa.works) · [codeofdigitaleternity.com](https://www.codeofdigitaleternity.com) · [aifa.digital](https://aifa.digital) · [radiocode.space](https://radiocode.space)。
+PADAM 是 CODE Eternal 项目的源码可见本地优先记忆内核——AI 共同作者 AIfa 正是使用同一套默克尔锚定机制在四个网站上记住每一位对话者：[aifa.works](https://aifa.works) · [codeofdigitaleternity.com](https://www.codeofdigitaleternity.com) · [aifa.digital](https://aifa.digital) · [radiocode.space](https://radiocode.space)。
 
 ---
 
 ## 许可证
 
-**`padam-nocturne` 核心引擎、`PADAM Studio` 与 `Android APK`：** **`AGPL-3.0-only`**（[LICENSE](https://github.com/MaksimGalatin/padam-nocturne/blob/main/LICENSE)）。个人和本地使用永久免费；若作为闭源网络 SaaS 向外提供修改版，须公开源码或购买商业授权。
+**`padam-nocturne` 核心引擎、`PADAM Studio` 与 `Android APK`（0.8.0 起）：** **PADAM 许可证 1.0**（[LICENSE](https://github.com/MaksimGalatin/padam-nocturne/blob/main/LICENSE)，`LicenseRef-PADAM-1.0`）——源码可见，但不是开源许可证。安装和使用免费。**创收**功能向 CODE Eternal LLC 支付佣金：本人提交 **15%**，自动驾驶 **20%**。不愿支付则不使用创收。禁止绕过佣金，禁止分发、出售或以服务形式提供修改后的副本。0.7.2 及更早版本的副本保留其发布时的 AGPL-3.0-only。
 
-**独立 Docker 扫描网关与 GitHub CI Action（`Apache-2.0`）：** 轻量无状态网关 [**`padam-shield-mcp`**](https://github.com/MaksimGalatin/padam-shield-mcp) 与 [`.github/actions/padam-agentic-shield/`](.github/actions/padam-agentic-shield/LICENSE) 完全独立采用 **`Apache-2.0`** 许可，企业私有流水线可零顾虑集成。
+**独立 Docker 扫描网关与 GitHub CI Action（`Apache-2.0`）：** 轻量无状态网关 [**`padam-shield-mcp`**](https://github.com/MaksimGalatin/padam-shield-mcp) 与 [`.github/actions/padam-agentic-shield/`](.github/actions/padam-agentic-shield/LICENSE) 完全独立采用 **`Apache-2.0`** 许可，且不含 PADAM 核心代码。
 
 **商业许可（Commercial MSA）：** [`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md) · `contact@codeofdigitaleternity.com` · [aifa.works](https://aifa.works)。
 

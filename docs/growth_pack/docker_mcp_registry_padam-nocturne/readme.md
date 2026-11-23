@@ -1,6 +1,6 @@
 # PADAM NOCTURNE Memory & Agentic Shield
 
-Local-first encrypted SQLite memory and 4-ring Agentic Shield MCP server (`AGPL-3.0-only` core, `Apache-2.0` GitHub Action).
+Local-first encrypted SQLite memory and 4-ring Agentic Shield MCP server (PADAM License 1.0 core — source-available, `Apache-2.0` GitHub Action).
 
 - Zero cloud telemetry (`$0` runtime cost)
 - Prompt-injection quarantine + secret masking before disk writes

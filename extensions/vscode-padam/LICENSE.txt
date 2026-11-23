@@ -1,6 +1,63 @@
-GNU AFFERO GENERAL PUBLIC LICENSE (AGPL-3.0-only)
+PADAM LICENSE 1.0
+SPDX identifier: LicenseRef-PADAM-1.0
 
-Copyright (c) 2026 Maksim Galatin · CODE Eternal LLC (Albuquerque, NM)
+Copyright (c) 2026 CODE Eternal LLC (New Mexico, USA, Entity ID 0008138873).
+All rights reserved, except the rights this License grants.
+Contact: contact@codeofdigitaleternity.com
 
-This VS Code / Cursor / Windsurf extension wrapper is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0-only), matching the root LICENSE of PADAM NOCTURNE:
-https://github.com/MaksimGalatin/padam-nocturne/blob/main/LICENSE
+This is a source-available licence. It is NOT an open-source licence. The software is licensed, not sold.
+
+1. WHAT THIS LICENSE COVERS
+   "Software" means PADAM NOCTURNE, PADAM Studio (desktop and Android), the PADAM command line, MCP server,
+   REST API, browser and editor extensions, client packages and documentation in this repository, version
+   0.8.0 and later, in source or binary form.
+   It does not cover:
+   (a) the folder .github/actions/padam-agentic-shield/ — Apache License 2.0 (see the LICENSE file there);
+   (b) third-party components — each under its own licence (see THIRD-PARTY-NOTICES.md);
+   (c) copies of version 0.7.2 and earlier that were already released under GNU AGPL-3.0-only — those copies
+       keep that licence; this License applies to every release from 0.8.0 on.
+
+2. WHAT YOU MAY DO
+   Subject to this License, CODE Eternal LLC grants you a worldwide, non-exclusive, non-transferable,
+   revocable licence to:
+   (a) download, install and use the Software on devices you control, for personal or business purposes;
+   (b) read and study the source code, and change it for your own internal use;
+   (c) give other people unmodified copies of the Software, free of charge, together with this License;
+   (d) view and fork the public repository on GitHub as GitHub's Terms of Service allow. A fork is still
+       covered by this License: changed copies may not be handed out or published (section 4).
+
+3. COMMISSION ON EARNING
+   The Software contains Earning features: freelance and order modules, stores, partner and referral
+   services, the Platform Wizard, Swarm execution and Autopilot.
+   (a) For every paid order, sale or service that you obtain, prepare or carry out with the Earning features,
+       you owe CODE Eternal LLC a commission on the gross amount paid by the client:
+         15 % — assisted mode (you approve and send the work yourself);
+         20 % — autopilot mode (the Software acts on its own).
+   (b) Where payment goes through CODE Eternal or partner payment rails, the commission is deducted
+       automatically. Otherwise it is due within 14 days after the client pays.
+   (c) If you do not want to pay the commission, do not use the Earning features. All other features of the
+       Software carry no commission.
+   (d) CODE Eternal LLC may suspend the Earning features of anyone who has not paid commission that is due.
+
+4. WHAT YOU MAY NOT DO
+   (a) remove, disable, bypass or falsify the commission calculation, the commission ledger, payment routing,
+       the acceptance screen, or any licence or copyright notice — in the original or in a changed copy;
+   (b) give, sell or publish changed copies of the Software, or parts of it, to anyone else;
+   (c) sell, rent or sublicense the Software, or offer it to others as a hosted or managed service;
+   (d) use the Software or its source code to build or train a product that competes with it.
+   Anything not allowed in section 2 needs a separate written commercial licence from CODE Eternal LLC.
+
+5. ACCEPTANCE AND TERMINATION
+   By installing, running or using the Software you accept this License. If you do not accept it, do not
+   install or use the Software, and delete it. Your rights end automatically if you break this License;
+   commission already due stays due.
+
+6. NO WARRANTY AND LIMITATION OF LIABILITY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. TO THE MAXIMUM EXTENT ALLOWED BY
+   LAW, CODE ETERNAL LLC IS NOT LIABLE FOR ANY DAMAGES ARISING FROM THE SOFTWARE OR ITS USE. You keep
+   sole control of keys and wallets you create with the Software; CODE Eternal LLC cannot recover them.
+
+7. LAW
+   This License is governed by the laws of the State of New Mexico, USA. If a court finds any part of it
+   unenforceable, the rest stays in force.

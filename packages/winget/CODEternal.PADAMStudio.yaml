@@ -5,7 +5,7 @@ Publisher: CODE Eternal LLC
 PublisherUrl: https://aifa.works
 PackageName: PADAM Studio
 PackageUrl: https://github.com/MaksimGalatin/padam-nocturne
-License: AGPL-3.0
+License: Proprietary (PADAM License 1.0, source-available)
 ShortDescription: Local-first AI memory studio and MCP server (9 tools, DLP shield, PQC sync)
 Installers:
   - Architecture: x64

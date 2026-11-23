@@ -257,7 +257,7 @@ def _maybe_star_hint(m: Memory, trigger: str) -> None:
         if trigger in ("confirm", "refute"):
             print(t(
                 f"{DIM}✔ Решение записано в цепочку версий — агент не сможет его переписать. Открытый код: ⭐ https://github.com/MaksimGalatin/padam-nocturne{RESET}",
-                f"{DIM}✔ Decision recorded in the version chain — no agent can rewrite it. Open source: ⭐ https://github.com/MaksimGalatin/padam-nocturne{RESET}",
+                f"{DIM}✔ Decision recorded in the version chain — no agent can rewrite it. Source code: ⭐ https://github.com/MaksimGalatin/padam-nocturne{RESET}",
             ))
     except Exception:
         pass
@@ -1844,7 +1844,7 @@ def main(argv=None) -> int:
     sset.add_argument("--project-dir", default=".")
     sset.add_argument("--dry-run", action="store_true")
     sset.add_argument("--verify", action="store_true")
-    sset.add_argument("--accept-terms", action="store_true", help=t("принять лицензию AGPL/Commercial, комиссию 15%%/20%% и правило No-Bypass", "accept license, 15%%/20%% fee & no-bypass terms"))
+    sset.add_argument("--accept-terms", action="store_true", help=t("принять Лицензию PADAM 1.0, комиссию 15%%/20%% с Заработка и запрет обхода", "accept the PADAM License 1.0, the 15%%/20%% Earning commission & no-bypass rule"))
     sset.set_defaults(fn=cmd_setup)
 
     spack = sub.add_parser("pack-extension", help=t("собрать .mcpb пакет для Claude Desktop",

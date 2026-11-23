@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Юридический шлюз обязательного согласия (Clickwrap EULA + Комиссия CODE 15%/20%) при установке и запуске заработка.
+"""Шлюз согласия с Лицензией PADAM 1.0 (комиссия CODE Eternal 15%/20% с Заработка) при установке и запуске заработка.
 
-Хранит версию соглашения `CODE_TERMS_v1.0` на 4 языках (`ru`, `en`, `es`, `zh`), проверяет 3 обязательные
-галочки (Лицензия/EULA, Комиссия экосистемы 15%/20% и $GALATIN сплит, Запрет обхода No-Bypass), записывает
+Хранит версию `PADAM_LICENSE_1.0` на 4 языках (`ru`, `en`, `es`, `zh`), проверяет 3 галочки
+(Лицензия, Комиссия 15%/20%, Запрет обхода), записывает
 подписанную HMAC-SHA256 квитанцию в SQLite (`ark_terms_acceptance`) и блокирует обход.
 """
 from __future__ import annotations
@@ -15,59 +15,60 @@ from typing import Any
 
 from . import audit_chain, integrity, roles
 
-CURRENT_TERMS_VERSION = "CODE_TERMS_v1.0_2026-11-22"
+CURRENT_TERMS_VERSION = "PADAM_LICENSE_1.0_2026-11-23"
 
+# Конспект PADAM License 1.0 (файл LICENSE); его SHA-256 входит в подписанную квитанцию согласия.
 TERMS_TEXT_HASH_SOURCE = (
-    "CODE Eternal LLC (New Mexico Entity ID 0008138873, Sole Member: Maksim Halatsin / Maksim Galatin, "
-    "contact@codeofdigitaleternity.com). Core open-source license: AGPL-3.0-only; CI Action: Apache-2.0. "
-    "Commercial closed embedding requires Enterprise license. Ecosystem revenue commission on freelance/store "
-    "orders routed through CODE / PADAM: 15% (assisted human submission) / 20% (autonomous autopilot); "
-    "treasury split: 5% Foundation + 5% burn + up to 25% (15/7/3%) ambassadors (unused burned <=30%) + 65% treasury ($GALATIN 10B supply). "
-    "Anti-fraud & No-Bypass covenant: bypassing commission attribution, forging ledgers or swapping treasury addresses triggers immediate "
-    "autopilot/partner/swarm suspension and legal claim under New Mexico law."
+    "PADAM License 1.0 (LicenseRef-PADAM-1.0), CODE Eternal LLC (New Mexico Entity ID 0008138873, "
+    "contact@codeofdigitaleternity.com). Source-available, not open source; versions 0.8.0 and later. "
+    "Free to install and use. Commission to CODE Eternal LLC on every paid order, sale or service obtained, "
+    "prepared or carried out with the Earning features: 15% assisted mode, 20% autopilot mode; due within 14 days "
+    "unless deducted by payment rails; unpaid commission may suspend the Earning features. Not allowed: removing, "
+    "disabling, bypassing or falsifying the commission calculation, ledger, payment routing, acceptance screen or "
+    "notices; distributing changed copies; selling, renting, sublicensing or hosting for others; building a competing "
+    "product. Governed by the laws of New Mexico, USA."
 )
 
 TERMS_SHA256 = hashlib.sha256(TERMS_TEXT_HASH_SOURCE.encode("utf-8")).hexdigest()
 
 TERMS_COPY: dict[str, dict[str, Any]] = {
     "ru": {
-        "title": "Обязательное соглашение о лицензии, правилах и комиссии экосистемы CODE",
-        "summary": "Поставщик: CODE Eternal LLC (Нью-Мексико, США · Entity ID 0008138873 · contact@codeofdigitaleternity.com). Ядро открыто по AGPL-3.0-only (CI — Apache-2.0). Без принятия всех трёх пунктов установка MCP и включение модулей заработка запрещены.",
+        "title": "Лицензия PADAM 1.0 и комиссия CODE Eternal",
+        "summary": "Лицензиар: CODE Eternal LLC (Нью-Мексико, США · Entity ID 0008138873 · contact@codeofdigitaleternity.com). PADAM — программа с доступным для чтения кодом по Лицензии PADAM 1.0 (не открытая лицензия). Пользоваться бесплатно; с Заработка — комиссия. Без трёх галочек установка MCP и модули Заработка закрыты.",
         "checks": [
-            {"id": "accept_license", "label": "Я прочитал(а) и принимаю Условия пользования (AGPL-3.0-only / Apache-2.0, запрет закрытого коммерческого встраивания без коммерческой лицензии CODE Eternal LLC) и Политику конфиденциальности."},
-            {"id": "accept_commission", "label": "Я соглашаюсь с обязательной комиссией экосистемы CODE по заказам через PADAM (15% при отправке человеком, 20% в автопилоте; сплит в казне: 5% Фонд + 5% сжигание + 15/7/3% амбассадоры + 65% казна $GALATIN)."},
-            {"id": "accept_no_bypass", "label": "Я обязуюсь не обходить учёт комиссии (No-Bypass), не подменять адрес казны CODE и признаю, что при просрочке/попытке удержания комиссии автопилот, рой и партнёрский шлюз автоматически блокируются."},
+            {"id": "accept_license", "label": "Я прочитал(а) и принимаю Лицензию PADAM 1.0 (файл LICENSE): пользоваться можно; изменённые копии раздавать, продавать и сдавать как сервис нельзя; а также Политику конфиденциальности."},
+            {"id": "accept_commission", "label": "Я соглашаюсь платить CODE Eternal LLC комиссию с каждого оплаченного заказа, продажи или услуги, полученных или выполненных с помощью Заработка: 15% — когда отправляю сам, 20% — в автопилоте. Не хочу платить — не пользуюсь Заработком."},
+            {"id": "accept_no_bypass", "label": "Я не буду обходить, отключать или подделывать расчёт комиссии, её журнал и маршрут оплаты и понимаю, что при неоплаченной комиссии Заработок может быть приостановлен."},
         ],
     },
     "en": {
-        "title": "Mandatory EULA, Terms of Service & CODE Ecosystem Commission Agreement",
-        "summary": "Licensor: CODE Eternal LLC (New Mexico, USA · Entity ID 0008138873 · contact@codeofdigitaleternity.com). Core licensed under AGPL-3.0-only (CI Action under Apache-2.0). Installation and earning modules remain locked until all 3 boxes are checked.",
+        "title": "PADAM License 1.0 & CODE Eternal Commission",
+        "summary": "Licensor: CODE Eternal LLC (New Mexico, USA · Entity ID 0008138873 · contact@codeofdigitaleternity.com). PADAM is source-available software under the PADAM License 1.0 (not an open-source licence). Free to use; Earning carries a commission. MCP setup and the Earning features stay locked until all 3 boxes are checked.",
         "checks": [
-            {"id": "accept_license", "label": "I have read and accept the EULA, AGPL-3.0-only / Apache-2.0 licensing rules (no closed commercial embedding without a CODE Eternal LLC commercial license), and Privacy Policy."},
-            {"id": "accept_commission", "label": "I agree to the mandatory CODE platform commission on orders handled through PADAM (15% human-assisted, 20% autopilot; treasury allocation: 5% Foundation + 5% burn + 15/7/3% ambassadors + 65% treasury $GALATIN)."},
-            {"id": "accept_no_bypass", "label": "I agree not to bypass fee attribution, tamper with treasury addresses or withhold commissions (No-Bypass), and understand arrears/tampering automatically suspend autopilot, swarm and partner bridge."},
+            {"id": "accept_license", "label": "I have read and accept the PADAM License 1.0 (LICENSE file): I may use the software; I may not hand out, sell or host changed copies for others; and I accept the Privacy Policy."},
+            {"id": "accept_commission", "label": "I agree to pay CODE Eternal LLC a commission on every paid order, sale or service obtained or carried out with the Earning features: 15% when I send the work myself, 20% in autopilot. If I do not want to pay, I do not use Earning."},
+            {"id": "accept_no_bypass", "label": "I will not bypass, disable or falsify the commission calculation, its ledger or payment routing, and I understand that unpaid commission may suspend the Earning features."},
         ],
     },
     "es": {
-        "title": "Acuerdo obligatorio de licencia, uso y comisión del ecosistema CODE",
-        "summary": "Titular: CODE Eternal LLC (Nuevo México, EE. UU. · Entity ID 0008138873). Núcleo bajo AGPL-3.0-only (CI Apache-2.0). La instalación y los módulos de ingresos permanecen bloqueados sin aceptar las 3 casillas.",
+        "title": "Licencia PADAM 1.0 y comisión de CODE Eternal",
+        "summary": "Licenciante: CODE Eternal LLC (Nuevo México, EE. UU. · Entity ID 0008138873 · contact@codeofdigitaleternity.com). PADAM es software de código disponible bajo la Licencia PADAM 1.0 (no es una licencia de código abierto). Uso gratuito; los Ingresos llevan comisión. La configuración MCP y los módulos de Ingresos siguen bloqueados sin las 3 casillas.",
         "checks": [
-            {"id": "accept_license", "label": "Acepto la licencia AGPL-3.0-only / Apache-2.0, la prohibición de uso comercial cerrado sin contrato con CODE Eternal LLC y la Política de Privacidad."},
-            {"id": "accept_commission", "label": "Acepto la comisión obligatoria de CODE en pedidos gestionados vía PADAM (15% asistido, 20% piloto automático; reparto: 5% Fundación + 5% quema + 15/7/3% embajadores + 65% tesorería $GALATIN)."},
-            {"id": "accept_no_bypass", "label": "Me comprometo a no eludir ni manipular la comisión (No-Bypass); cualquier impago o alteración bloqueará automáticamente el piloto automático y el puente de socios."},
+            {"id": "accept_license", "label": "He leído y acepto la Licencia PADAM 1.0 (archivo LICENSE): puedo usar el software; no puedo distribuir, vender ni ofrecer como servicio copias modificadas; y acepto la Política de Privacidad."},
+            {"id": "accept_commission", "label": "Acepto pagar a CODE Eternal LLC una comisión por cada pedido, venta o servicio pagado obtenido o realizado con los Ingresos: 15% si envío yo, 20% en piloto automático. Si no quiero pagar, no uso los Ingresos."},
+            {"id": "accept_no_bypass", "label": "No eludiré, desactivaré ni falsificaré el cálculo de la comisión, su registro ni la ruta de pago, y entiendo que una comisión impagada puede suspender los Ingresos."},
         ],
     },
     "zh": {
-        "title": "强制性许可协议、使用条款与 CODE 生态佣金协议",
-        "summary": "许可方：CODE Eternal LLC（美国新墨西哥州 · Entity ID 0008138873）。核心采用 AGPL-3.0-only（CI 采用 Apache-2.0）。未勾选全部三项条款前禁止安装及启用接单创收模块。",
+        "title": "PADAM 许可证 1.0 与 CODE Eternal 佣金",
+        "summary": "许可方：CODE Eternal LLC（美国新墨西哥州 · Entity ID 0008138873 · contact@codeofdigitaleternity.com）。PADAM 为源码可见软件，采用 PADAM 许可证 1.0（非开源许可证）。免费使用；创收功能需支付佣金。未勾选全部三项前，MCP 配置与创收功能保持锁定。",
         "checks": [
-            {"id": "accept_license", "label": "我已阅读并同意 EULA、AGPL-3.0-only / Apache-2.0 开源规则（未购商业许可禁止闭源商用嵌入）及隐私政策。"},
-            {"id": "accept_commission", "label": "我同意 PADAM 经手订单的强制生态佣金（人工协助 15%、全自动 20%；金库分配：5% 基金 + 5% 销毁 + 15/7/3% 大使 + 65% 国库 $GALATIN）。"},
-            {"id": "accept_no_bypass", "label": "我承诺不绕过佣金核算、不篡改金库收款地址（反绕过条款），若欠费或篡改将自动冻结全自动接单与合作桥接权限。"},
+            {"id": "accept_license", "label": "我已阅读并接受 PADAM 许可证 1.0（LICENSE 文件）：可以使用本软件；不得分发、出售或以服务形式提供修改后的副本；并接受隐私政策。"},
+            {"id": "accept_commission", "label": "我同意就通过创收功能获得或完成的每一笔已付款订单、销售或服务向 CODE Eternal LLC 支付佣金：本人提交 15%，自动驾驶 20%。不愿支付则不使用创收功能。"},
+            {"id": "accept_no_bypass", "label": "我不会绕过、停用或伪造佣金计算、佣金记录或付款路由，并理解未付佣金可能导致创收功能被暂停。"},
         ],
     },
 }
-
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -154,7 +155,7 @@ def accept_terms(
     roles.require_owner(actor, "terms_accept")
     if not (bool(accept_license) and bool(accept_commission) and bool(accept_no_bypass)):
         raise ValueError(
-            "All 3 mandatory checkboxes (license, 15%/20% commission rules, no-bypass covenant) must be accepted"
+            "All 3 checkboxes (PADAM License 1.0, 15%/20% Earning commission, no-bypass) must be accepted"
         )
     _ensure_table(memory)
     checks = {
@@ -192,6 +193,12 @@ def require_terms_accepted(memory) -> dict[str, Any]:
     st = terms_status(memory)
     if not st["accepted"]:
         raise PermissionError(
-            f"Terms acceptance required ({CURRENT_TERMS_VERSION}): accept license, 15%/20% commission rules & no-bypass covenant first"
+            f"Terms acceptance required ({CURRENT_TERMS_VERSION}): accept the PADAM License 1.0, the 15%/20% Earning commission and the no-bypass rule first"
         )
     return st
+
+
+def earning_gate(memory) -> dict[str, Any]:
+    """Вход в Заработок (биржи, ставки, Рой, автопилот, Мастер платформ): только после согласия с Лицензией PADAM 1.0.
+    Отдельная функция, чтобы тесты работы бирж могли считать согласие данным, не трогая проверку самого шлюза."""
+    return require_terms_accepted(memory)

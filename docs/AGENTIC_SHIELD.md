@@ -2,7 +2,7 @@
 
 Local-first active defense against machine-speed AI agent exploitation, memory poisoning, MCP tool poisoning/rug-pulls, Unicode steganography, payee-swap attacks, and frontend JS supply-chain compromises (`$0`, zero external cloud telemetry by default).
 
-- **Dual-Licensing:** Core under `AGPL-3.0-only`, GitHub CI Action (`.github/actions/padam-agentic-shield/`) under `Apache-2.0`, Enterprise Commercial License from **CODE Eternal LLC** — see [`COMMERCIAL-LICENSE.md`](../COMMERCIAL-LICENSE.md) &amp; [`LICENSING.md`](LICENSING.md).
+- **Licensing:** Core under the PADAM License 1.0 (source-available; 15%/20% commission on Earning), GitHub CI Action (`.github/actions/padam-agentic-shield/`) under `Apache-2.0`, Enterprise Commercial License from **CODE Eternal LLC** — see [`COMMERCIAL-LICENSE.md`](../COMMERCIAL-LICENSE.md) &amp; [`LICENSING.md`](LICENSING.md).
 - **Standards &amp; Competitors:** [`COMPLIANCE_MAPPING.md`](COMPLIANCE_MAPPING.md) (OWASP ASI01–ASI10 &amp; PCI DSS v4.0.1) and [`COMPETITIVE_COMPARISON.md`](COMPETITIVE_COMPARISON.md).
 
 ## Threat Boundaries (Honest Scope)
