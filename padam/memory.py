@@ -65,8 +65,6 @@ _AGENT_CLIENT_ALIASES = {
     'antigravity-ide': 'aifa_antigravity',
     'antigravity': 'aifa_antigravity',
     'aifa-antigravity': 'aifa_antigravity',
-    'aifaantigravity': 'aifa_antigravity',
-    'aifaantigraviti': 'aifa_antigravity',
     'openclaw': 'autoclaw',
     'auto-claw': 'autoclaw',
     'user': 'owner',
@@ -85,7 +83,7 @@ def canonicalize_agent_id(raw: str | None, *, fallback: str = '') -> str:
         return _AGENT_CLIENT_ALIASES[low]
     if low.startswith(('claude-code', 'claude code', 'aifa-claude')) and 'worker' not in low:
         return 'aifa_claude'
-    if 'antigravity' in low and 'worker' not in low:
+    if 'antigravity' in low and 'worker' not in low and not low.startswith('aifa'):
         return 'aifa_antigravity'
     return s[:64]
 _GRAPH_STOPWORDS = frozenset({
