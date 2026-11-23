@@ -316,13 +316,26 @@ def list_lan_ips() -> list[str]:
             s.close()
     except Exception:
         pass
-    try:
-        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
-            cand = str(info[4][0])
+    # 23.11.2026: на macOS getaddrinfo(gethostname()) ждёт системную службу имён десятки секунд, и предложение
+    # сопряжения зависало (тест test_live_api_endpoints_and_studio_4_langs падал по тайм-ауту на всех macOS в CI).
+    # Нашли реальный адрес первым способом — второй не нужен; иначе спрашиваем имя не дольше 1,5 с в отдельном потоке.
+    if not found or all(_is_virtual_ip(ip) for ip in found):
+        import threading as _th
+        ответ: list[str] = []
+
+        def _по_имени() -> None:
+            try:
+                for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+                    ответ.append(str(info[4][0]))
+            except Exception:
+                pass
+
+        поток = _th.Thread(target=_по_имени, daemon=True)
+        поток.start()
+        поток.join(1.5)
+        for cand in list(ответ):
             if cand and not cand.startswith("127.") and cand not in found:
                 found.append(cand)
-    except Exception:
-        pass
     real = [ip for ip in found if not _is_virtual_ip(ip)]
     phys_192 = [ip for ip in real if ip.startswith("192.168.")]
     other_real = [ip for ip in real if not ip.startswith("192.168.")]
