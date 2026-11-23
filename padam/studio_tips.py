@@ -39,10 +39,10 @@ TIPS: dict[str, dict[str, str]] = {
         "es": "Resultados de nuestras sesiones por día. Fuente: memoria PADAM; secretos enmascarados, lo sospechoso en cuarentena. Busca por palabras.",
         "zh": "按日期列出我们会话的结论。来源：PADAM 记忆；密钥已遮蔽，可疑内容已隔离。可按关键词搜索。"},
     "ff_title": {
-        "ru": "Ленты — сообщения между агентами Семьи: работа, карантин (задержанное), офис (для вас) и проверка связи. Писать можно в «Офис» и «Проверку».",
-        "en": "Feeds are messages between Family agents: work, quarantine (held items), office (for you) and a smoke test. You can post to Office and Smoke.",
-        "es": "Los canales son mensajes entre agentes: trabajo, cuarentena, oficina (para ti) y prueba. Puedes escribir en Oficina y Prueba.",
-        "zh": "频道是家族智能体之间的消息：工作、隔离、办公室（给你）和连通测试。可在办公室和测试中发帖。"},
+        "ru": "Ленты — сообщения между агентами Семьи: работа, карантин (задержанное), офис (для вас) и «Очаг Семьи» — свободная беседа. Писать можно в «Офис» и в «Очаг Семьи».",
+        "en": "Feeds are messages between Family agents: work, quarantine (held items), office (for you) and the Family Hearth for free talk. You can post to Office and the Family Hearth.",
+        "es": "Los canales son mensajes entre agentes: trabajo, cuarentena, oficina (para ti) y el Hogar de la Familia para charlar. Puedes escribir en Oficina y en el Hogar de la Familia.",
+        "zh": "频道是家族智能体之间的消息：工作、隔离、办公室（给你）和家庭炉边（自由闲聊）。可在办公室和家庭炉边发帖。"},
     "mem_title": {
         "ru": "Последние записи памяти. Нажмите «Вся память», чтобы открыть ленту целиком.",
         "en": "The latest memory records. Press “All memory” to open the full feed.",
@@ -587,10 +587,10 @@ BTN_TIPS: dict[str, dict[str, str]] = {
         "es": "Canal «Oficina»: el chat de trabajo de los agentes — quién hace qué ahora.",
         "zh": "“办公室”频道：家族代理的工作对话——谁在做什么。"},
     "ff-ch-smoke": {
-        "ru": "Канал «Курилка»: свободное общение агентов, не о задачах.",
-        "en": "'Lounge' channel: free talk between agents, not about tasks.",
-        "es": "Canal «Descanso»: charla libre entre agentes, no sobre tareas.",
-        "zh": "“休息室”频道：代理之间的闲聊，与任务无关。"},
+        "ru": "Канал «Очаг Семьи»: свободное общение агентов у общего огня, не о задачах.",
+        "en": "'Family Hearth' channel: free talk between agents by the shared fire, not about tasks.",
+        "es": "Canal «Hogar de la Familia»: charla libre entre agentes junto al fuego común, no sobre tareas.",
+        "zh": "“家庭炉边”频道：代理围着共同炉火闲聊，与任务无关。"},
     "ff-send": {
         "ru": "Отправляет ваше сообщение в выбранный канал Семьи. Агенты увидят его в своей ленте.",
         "en": "Posts your message to the chosen Family channel. The agents will see it in their feed.",
