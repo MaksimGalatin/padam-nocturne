@@ -12,7 +12,7 @@
 
 **One-click install:** [Install in Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=padam&config=eyJjb21tYW5kIjoicGFkYW0tbWNwIiwiYXJncyI6W119) · [Install in VS Code](vscode:mcp/install?%7B%22name%22%3A%22padam%22%2C%22command%22%3A%22padam-mcp%22%2C%22args%22%3A%5B%5D%7D) · CLI (`13` clients incl. Claude Code & Antigravity): `padam setup --all` · Zero-install run: `uvx padam-nocturne` · [★ Star on GitHub](https://github.com/MaksimGalatin/padam-nocturne/stargazers)
 
-**Desktop & Mobile (v0.8.0):** [Windows / Linux / macOS Studio & Signed Android APK (9/9 release files)](https://github.com/MaksimGalatin/padam-nocturne/releases/latest) · [Free Browser Express Scanner (100% client-side)](https://aifa.works/shield) · [Hosted Cloud MCP (`AIfa Memory` v1.9.8)](https://github.com/MaksimGalatin/aifa-memory-mcp)
+**Desktop & Mobile (v0.8.0):** [Windows / Linux / macOS Studio & Signed Android APK (9/9 release files)](https://github.com/MaksimGalatin/padam-nocturne/releases/latest) · [Free Browser Express Scanner (100% client-side)](https://aifa.works/shield) · [Docker Stateless Gateway (`Apache-2.0`)](https://github.com/MaksimGalatin/padam-shield-mcp) · [Hosted Cloud MCP (`AIfa Memory` v2.0.0)](https://github.com/MaksimGalatin/aifa-memory-mcp)
 
 > ⭐ **If PADAM helps protect your AI agents, please [Star this repo](https://github.com/MaksimGalatin/padam-nocturne/stargazers)** — reaching **75★ (Homebrew)** and **100★ (Scoop)** unlocks one-command installs across macOS & Windows and keeps zero-telemetry AI security open.
 
@@ -60,11 +60,11 @@ Become one of the first 100: ⭐ star this repo, [open an issue](https://github.
 
 ---
 
-## License FAQ (AGPL-3.0-only + Apache-2.0 CI Action)
+## License FAQ (AGPL-3.0-only Core + Apache-2.0 Gateway & CI Action)
 
 - **Does running `padam-nocturne` locally via MCP with Claude Code / Cursor / VS Code require open-sourcing my project?** **No.** Using PADAM locally as a standalone MCP tool or desktop Studio alongside proprietary repositories does not trigger AGPL-3.0 on your code.
-- **Can I run the GitHub CI Action in private corporate repos?** **Yes.** `.github/actions/padam-agentic-shield/` is licensed under **`Apache-2.0`** (with explicit patent grant).
-- **When is a Commercial License (MSA) needed?** Only when embedding/modifying `padam-nocturne` inside a closed-source product or hosted multi-tenant SaaS without AGPL disclosure, or when you require Zero-Telemetry DPAs, SLA, and IP indemnity (`contact@codeofdigitaleternity.com`).
+- **Can I run the GitHub CI Action or Docker Security Scanner in private corporate repos?** **Yes.** Both [`.github/actions/padam-agentic-shield/`](.github/actions/padam-agentic-shield/LICENSE) and our standalone stateless Docker MCP gateway [**`padam-shield-mcp`**](https://github.com/MaksimGalatin/padam-shield-mcp) are independently licensed under **`Apache-2.0`** (with explicit patent grant and zero AGPL code inside).
+- **When is a Commercial License (MSA) needed?** Only when embedding/modifying `padam-nocturne` inside a closed-source product or hosted multi-tenant SaaS without AGPL disclosure, or when you require Zero-Telemetry DPAs, SLA, and IP indemnity (`contact@codeofdigitaleternity.com`, see [`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md)).
 
 **Security reviewers:** start at [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md) — what we claim, every Red Team round and its results, what still gets through, and a ten-minute check.
 
@@ -629,7 +629,7 @@ CODE Eternal uses a **four-way licensing & platform boundary** documented in ful
 
 1. **Core Local Engine (`padam/`, MCP Server, Studio & CLI) — AGPL-3.0-only** ([`LICENSE`](https://github.com/MaksimGalatin/padam-nocturne/blob/main/LICENSE)): Free forever for individuals running local memory on their own machine, researchers, and open-source teams under AGPL-3.0-only.
 2. **CI/CD GitHub Action (`.github/actions/padam-agentic-shield/`) — Apache-2.0** ([`action LICENSE`](.github/actions/padam-agentic-shield/LICENSE)): Permissive license with explicit patent grant so organizations can embed the SRI/CSP/MCP scanner in private CI pipelines without copyleft obligations.
-3. **Enterprise Commercial License — Commercial MSA / SOW** ([`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md)): Required for companies using PADAM NOCTURNE or PADAM Agentic Shield inside proprietary software, closed security/SaaS offerings without AGPL source disclosure, or requiring Zero-Telemetry DPA, SLA & IP indemnity (`contact@codeofdigitaleternity.com`).
+3. **Enterprise Commercial License — Commercial MSA / SOW** ([`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md)): Required for companies using PADAM NOCTURNE or PADAM Agentic Shield inside proprietary software, closed security/SaaS offerings without AGPL source disclosure, or requiring Zero-Telemetry DPA, SLA & IP indemnity (`contact@codeofdigitaleternity.com`, see [`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md)).
 4. **Hosted Eternal Memory & Exchange Revenue Share — CODE Eternal Platform Terms**: Hosted Neon/Arweave/Solana plans and managed freelance/marketplace revenue share (`15%–20%`) on [`aifa.works`](https://aifa.works) / [`codeofdigitaleternity.com`](https://www.codeofdigitaleternity.com) are commercial platform services not waived by open-source code access.
 
 © 2026 **CODE Eternal LLC** (New Mexico, USA · Entity ID `0008138873`) · 100% Sole Founder & Owner: **Maksim Galatin** · [GitHub Organization `CodeOfDigitalEternity`](https://github.com/CodeOfDigitalEternity)

@@ -446,7 +446,10 @@ PADAM 是 CODE Eternal 项目的开源本地优先记忆内核——AI 共同作
 
 ## 许可证
 
-**AGPL-3.0**（[LICENSE](https://github.com/MaksimGalatin/padam-nocturne/blob/main/LICENSE)）。你可以自由使用、修改和运行它；如果将其作为网络服务提供，则必须公开你的修改。
-**商业许可**（闭源使用、不公开修改的 SaaS 部署、技术支持）：contact@codeofdigitaleternity.com · [aifa.works](https://aifa.works)。
+**`padam-nocturne` 核心引擎、`PADAM Studio` 与 `Android APK`：** **`AGPL-3.0-only`**（[LICENSE](https://github.com/MaksimGalatin/padam-nocturne/blob/main/LICENSE)）。个人和本地使用永久免费；若作为闭源网络 SaaS 向外提供修改版，须公开源码或购买商业授权。
+
+**独立 Docker 扫描网关与 GitHub CI Action（`Apache-2.0`）：** 轻量无状态网关 [**`padam-shield-mcp`**](https://github.com/MaksimGalatin/padam-shield-mcp) 与 [`.github/actions/padam-agentic-shield/`](.github/actions/padam-agentic-shield/LICENSE) 完全独立采用 **`Apache-2.0`** 许可，企业私有流水线可零顾虑集成。
+
+**商业许可（Commercial MSA）：** [`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md) · `contact@codeofdigitaleternity.com` · [aifa.works](https://aifa.works)。
 
 © 2026 Maksim Galatin & AIfa · CODE Eternal

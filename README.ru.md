@@ -557,7 +557,10 @@ PADAM — открытая локальная память проекта CODE E
 
 ## Лицензия
 
-**AGPL-3.0** ([LICENSE](https://github.com/MaksimGalatin/padam-nocturne/blob/main/LICENSE)). Можно пользоваться, менять и запускать; если вы предлагаете это как сетевой сервис, свои изменения нужно опубликовать.
-**Коммерческая лицензия** (закрытое использование, SaaS без публикации изменений, поддержка): contact@codeofdigitaleternity.com · [aifa.works](https://aifa.works).
+**Ядро `padam-nocturne`, `PADAM Studio` и `Android APK`:** **`AGPL-3.0-only`** ([LICENSE](https://github.com/MaksimGalatin/padam-nocturne/blob/main/LICENSE)). Бесплатно для личного и локального использования; если вы запускаете модифицированную версию как закрытый сетевой SaaS — изменения необходимо открыть или оформить коммерческую лицензию.
+
+**Независимый Docker-шлюз и GitHub CI Action (`Apache-2.0`):** лёгкий stateless-сканер [**`padam-shield-mcp`**](https://github.com/MaksimGalatin/padam-shield-mcp) и [`.github/actions/padam-agentic-shield/`](.github/actions/padam-agentic-shield/LICENSE) выпущены независимо под **`Apache-2.0`** без копилефт-риска для закрытых корпоративных конвейеров.
+
+**Коммерческая лицензия (`Commercial MSA`):** [`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md) · `contact@codeofdigitaleternity.com` · [aifa.works](https://aifa.works).
 
 © 2026 Максим Галатин и AIfa · CODE Eternal
