@@ -7917,7 +7917,8 @@ async function loadReview(skip) {
           if (pos < rawTxt.length) frag.append(document.createTextNode(rawTxt.slice(pos)));
           inspectBox.append(frag);
           if (d.cleaned_text) {
-            inspectBox.append(el('div', 'q-clean-preview', '✓ ' + String(d.cleaned_text)));
+            const rm = d.diff_chars_removed ? (' (-' + String(d.diff_chars_removed) + ' ch)') : '';
+            inspectBox.append(el('div', 'q-clean-preview', '✓' + rm + ' ' + String(d.cleaned_text)));
           }
           inspectBox.hidden = false;
         } catch (e) { say(String(e.message || e), false); }
@@ -13781,7 +13782,13 @@ if ($('live-pulse-bar')) {
     const r = await api('/api/v2/pulse/recent?limit=12');
     for (const ev of ((r && r.events) || [])) _pushPulseEv(ev);
   } catch (e) {}
+  let _pulseStopped = false;
+  try {
+    window.addEventListener('pagehide', () => { _pulseStopped = true; });
+    window.addEventListener('beforeunload', () => { _pulseStopped = true; });
+  } catch (e) {}
   setInterval(async () => {
+    if (_pulseStopped || document.hidden) return;
     try {
       const maxSeq = _pulseBuffer.length ? _pulseBuffer[0].seq : 0;
       const r = await api('/api/v2/pulse/recent?limit=12&since_seq=' + String(maxSeq));
@@ -13862,6 +13869,12 @@ async function _runVoiceCommandText(rawText, requireWake) {
     if (out) out.textContent = '[' + String((res && res.intent) || 'ok') + '] ' + sp;
     say(sp, Boolean(res && res.ok));
     _speakReply(sp);
+    if (res && res.ui_action && res.ui_action.type === 'switch_tab') {
+      if (res.ui_action.tab === 'cloud' && $('sync-qr-modal')) { $('sync-qr-modal').hidden = false; }
+      else if (typeof switchTab === 'function') { switchTab(String(res.ui_action.tab)); }
+    } else if (res && res.ui_action && res.ui_action.type === 'open_sync_modal' && $('sync-qr-modal')) {
+      $('sync-qr-modal').hidden = false;
+    }
     if (res && res.intent === 'remember' && typeof loadOverview === 'function') loadOverview();
     return res;
   } catch (e) {

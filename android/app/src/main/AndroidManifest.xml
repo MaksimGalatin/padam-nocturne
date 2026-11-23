@@ -32,6 +32,14 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
+            <!-- Фишка 17 (Волна 2): deep-link QR LAN-синхронизации из системной камеры -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="padam" />
+                <data android:scheme="padam-sync" />
+            </intent-filter>
         </activity>
 
         <!-- Фишка 20: виджет домашнего экрана PADAM -->

@@ -7,7 +7,9 @@
 """
 from __future__ import annotations
 
+import ast
 import hashlib
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -31,11 +33,43 @@ _CODE_ANCHOR_STMTS = (
 )
 
 
+def _extract_symbol_hash(target: Path, symbol_name: str) -> str:
+    """Вычисляет SHA-256 тела конкретной функции/класса (AST для .py или декларация блока)."""
+    sym = str(symbol_name or "").strip()
+    if not sym:
+        return ""
+    try:
+        src = target.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return ""
+    lines = src.splitlines()
+    if target.suffix == ".py":
+        try:
+            tree = ast.parse(src)
+            for node in ast.walk(tree):
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and node.name == sym:
+                    start = max(0, int(node.lineno) - 1)
+                    end = int(getattr(node, "end_lineno", node.lineno))
+                    chunk = "\n".join(lines[start:end])
+                    return hashlib.sha256(chunk.encode("utf-8")).hexdigest()
+        except SyntaxError:
+            pass
+    pat = re.compile(rf"(?:def|async\s+def|class|function|const|let|fn|fun|struct|impl)\s+{re.escape(sym)}\b")
+    for i, ln in enumerate(lines):
+        if pat.search(ln):
+            chunk = "\n".join(lines[i : min(len(lines), i + 80)])
+            return hashlib.sha256(chunk.encode("utf-8")).hexdigest()
+    return ""
+
+
 def _ensure(memory) -> None:
     ark._ensure_tables(memory)
     with memory.store._lock:
         for stmt in _CODE_ANCHOR_STMTS:
             memory.store.conn.execute(stmt)
+        cols = {r[1] for r in memory.store.conn.execute('PRAGMA table_info(ark_code_anchor)').fetchall()}
+        if 'symbol_sha256' not in cols:
+            memory.store.conn.execute("ALTER TABLE ark_code_anchor ADD COLUMN symbol_sha256 TEXT NOT NULL DEFAULT ''")
         memory.store.conn.commit()
 
 
@@ -71,9 +105,9 @@ def anchor_fact_to_file(
     now = time.time()
     with memory.store._lock:
         cur = memory.store.conn.execute(
-            "INSERT INTO ark_code_anchor (user_id, memory_id, file_path, symbol_name, file_sha256, status, stale_reason, checked_at, created_at) "
-            "VALUES (?, ?, ?, ?, ?, 'fresh', '', ?, ?)",
-            (memory.user_id, str(memory_id), rel_norm, str(symbol_name or "")[:120], digest, now, now),
+            "INSERT INTO ark_code_anchor (user_id, memory_id, file_path, symbol_name, file_sha256, symbol_sha256, status, stale_reason, checked_at, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, 'fresh', '', ?, ?)",
+            (memory.user_id, str(memory_id), rel_norm, str(symbol_name or "")[:120], digest, _extract_symbol_hash(target, symbol_name), now, now),
         )
         memory.store.conn.commit()
         aid = cur.lastrowid
@@ -84,6 +118,7 @@ def anchor_fact_to_file(
         "file_path": rel_norm,
         "symbol_name": str(symbol_name or ""),
         "file_sha256": digest,
+        "symbol_sha256": _extract_symbol_hash(target, symbol_name),
         "status": "fresh",
     }
 
@@ -107,7 +142,7 @@ def get_pins_for_memory_ids(
                 return {}
             placeholders = ",".join("?" * len(clean_ids))
             rows = memory.store.conn.execute(
-                f"SELECT anchor_id, memory_id, file_path, symbol_name, file_sha256 "
+                f"SELECT anchor_id, memory_id, file_path, symbol_name, file_sha256, symbol_sha256 "
                 f"FROM ark_code_anchor WHERE user_id = ? AND memory_id IN ({placeholders}) "
                 f"ORDER BY anchor_id DESC",
                 (memory.user_id, *clean_ids),
@@ -135,8 +170,19 @@ def get_pins_for_memory_ids(
             status = "stale"
             reason = err_reason
         elif cur_sha != str(r["file_sha256"]):
-            status = "stale"
-            reason = "file_hash_changed"
+            sym_name = str(r["symbol_name"] or "")
+            old_sym_sha = str(r["symbol_sha256"] or "") if "symbol_sha256" in r.keys() else ""
+            if sym_name and old_sym_sha:
+                cur_sym_sha = _extract_symbol_hash(_safe_resolve_under_root(root, rel), sym_name)
+                if cur_sym_sha and cur_sym_sha == old_sym_sha:
+                    status = "symbol_fresh"
+                    reason = "other_lines_changed"
+                else:
+                    status = "stale"
+                    reason = "file_hash_changed"
+            else:
+                status = "stale"
+                reason = "file_hash_changed"
         else:
             status = "fresh"
             reason = ""
@@ -156,7 +202,7 @@ def check_stale_anchors(memory, *, repo_root: str | Path = ".") -> dict[str, Any
     root = Path(repo_root).resolve()
     with memory.store._lock:
         rows = memory.store.conn.execute(
-            "SELECT anchor_id, memory_id, file_path, symbol_name, file_sha256, status FROM ark_code_anchor WHERE user_id = ? ORDER BY anchor_id ASC",
+            "SELECT anchor_id, memory_id, file_path, symbol_name, file_sha256, symbol_sha256, status FROM ark_code_anchor WHERE user_id = ? ORDER BY anchor_id ASC",
             (memory.user_id,),
         ).fetchall()
 
@@ -182,8 +228,19 @@ def check_stale_anchors(memory, *, repo_root: str | Path = ".") -> dict[str, Any
             else:
                 cur_sha = hashlib.sha256(target.read_bytes()).hexdigest()
                 if cur_sha != str(r["file_sha256"]):
-                    reason = "file_hash_changed"
-                    new_status = "stale"
+                    sym_name = str(r["symbol_name"] or "")
+                    old_sym_sha = str(r["symbol_sha256"] or "") if "symbol_sha256" in r.keys() else ""
+                    if sym_name and old_sym_sha:
+                        cur_sym_sha = _extract_symbol_hash(target, sym_name)
+                        if cur_sym_sha and cur_sym_sha == old_sym_sha:
+                            reason = "other_lines_changed"
+                            new_status = "symbol_fresh"
+                        else:
+                            reason = "file_hash_changed"
+                            new_status = "stale"
+                    else:
+                        reason = "file_hash_changed"
+                        new_status = "stale"
                 else:
                     reason = ""
                     new_status = "fresh"
@@ -223,4 +280,62 @@ def check_stale_anchors(memory, *, repo_root: str | Path = ".") -> dict[str, Any
         "fresh_count": fresh_count,
         "stale_count": len(stale_items),
         "stale": stale_items,
+    }
+
+
+def verify_claim_with_memory_and_code(
+    memory,
+    claim: str,
+    *,
+    scope: str = "global",
+    repo_root: str | Path = ".",
+    limit: int = 8,
+) -> dict[str, Any]:
+    """Проверяет утверждение агента: ищет подтверждения, противоречия и свежесть кодовых якорей."""
+    q = str(claim or "").strip()
+    if not q:
+        raise ValueError("claim must be non-empty")
+    hits = memory.recall(q, scope=scope, limit=max(1, min(int(limit or 8), 20)))
+    mids = [h.id for h in hits]
+    pins_map = get_pins_for_memory_ids(memory, mids, repo_root=repo_root)
+    stale_pins: list[dict[str, Any]] = []
+    conflicts: list[dict[str, Any]] = []
+    evidence: list[dict[str, Any]] = []
+
+    for h in hits:
+        pins = pins_map.get(h.id, [])
+        for p in pins:
+            if p.get("status") == "stale":
+                stale_pins.append({"memory_id": h.id, **p})
+        if getattr(h, "conflict", False) or h.kind == "contradiction":
+            conflicts.append({"memory_id": h.id, "content": (h.content or "")[:240], "kind": h.kind})
+        evidence.append({
+            "id": h.id,
+            "kind": h.kind,
+            "score": round(float(h.score), 4),
+            "trace": h.explain_trace(),
+            "pins": pins,
+            "snippet": (h.content or "")[:240],
+        })
+
+    if stale_pins:
+        verdict = "stale_code_drift"
+    elif conflicts:
+        verdict = "conflict_detected"
+    elif evidence and float(evidence[0]["score"]) >= 0.01:
+        verdict = "verified"
+    else:
+        verdict = "unverified"
+
+    return {
+        "ok": True,
+        "claim": q[:260],
+        "scope": scope,
+        "verdict": verdict,
+        "evidence_count": len(evidence),
+        "stale_pins_count": len(stale_pins),
+        "conflicts_count": len(conflicts),
+        "stale_pins": stale_pins,
+        "conflicts": conflicts,
+        "evidence": evidence[:5],
     }

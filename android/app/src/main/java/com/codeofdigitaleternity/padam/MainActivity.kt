@@ -43,6 +43,7 @@ class MainActivity : AppCompatActivity() {
     private var studioReady = false
     private var pendingSharedText: String? = null
     private var pendingWidgetAction: String? = null
+    private var pendingLanPairUri: String? = null
 
     private val openDocLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -167,6 +168,16 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        if (intent.action == Intent.ACTION_VIEW) {
+            val dataStr = intent.dataString?.trim()
+            if (!dataStr.isNullOrEmpty() && (dataStr.startsWith("padam://") || dataStr.startsWith("padam-sync://"))) {
+                if (studioReady) {
+                    dispatchLanPairUri(dataStr)
+                } else {
+                    pendingLanPairUri = dataStr
+                }
+            }
+        }
         val widgetAct = intent.getStringExtra(PadamWidgetProvider.EXTRA_WIDGET_ACTION)
         if (!widgetAct.isNullOrBlank()) {
             if (studioReady) {
@@ -193,6 +204,21 @@ class MainActivity : AppCompatActivity() {
                     }
                     Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
                 }
+            }
+        }.start()
+    }
+
+    private fun dispatchLanPairUri(pairUri: String) {
+        Thread {
+            val res = PadamAndroidBridge().syncLanWithPc(pairUri)
+            val safeUri = JSONObject.quote(pairUri)
+            val safeRes = JSONObject.quote(res)
+            runOnUiThread {
+                webView.evaluateJavascript(
+                    "window.__padamOnLanPairUri && window.__padamOnLanPairUri($safeUri, $safeRes);",
+                    null,
+                )
+                Toast.makeText(this, "PADAM LAN Sync: completed", Toast.LENGTH_SHORT).show()
             }
         }.start()
     }
@@ -316,6 +342,10 @@ class MainActivity : AppCompatActivity() {
                 pendingWidgetAction?.let { act ->
                     pendingWidgetAction = null
                     dispatchWidgetAction(act)
+                }
+                pendingLanPairUri?.let { uriStr ->
+                    pendingLanPairUri = null
+                    dispatchLanPairUri(uriStr)
                 }
             }
         }.start()

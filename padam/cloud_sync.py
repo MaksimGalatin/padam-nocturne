@@ -33,6 +33,14 @@ _DDL_STMTS = (
         UNIQUE(user_id, content_sha256)
     )""",
     "CREATE INDEX IF NOT EXISTS idx_ark_cloud_sync_user ON ark_cloud_sync_map(user_id, synced_at)",
+    """CREATE TABLE IF NOT EXISTS ark_cloud_sync_state (
+        user_id TEXT PRIMARY KEY,
+        last_direction TEXT NOT NULL DEFAULT '',
+        last_scope TEXT NOT NULL DEFAULT 'global',
+        last_pushed_ts TEXT NOT NULL DEFAULT '',
+        last_pulled_ts REAL NOT NULL DEFAULT 0,
+        updated_at REAL NOT NULL
+    )""",
 )
 
 
@@ -174,7 +182,14 @@ def sync_status(memory) -> dict[str, Any]:
         ).fetchone()
         return dict(row) if row else {}
 
+    def _read_state():
+        r = memory.store.conn.execute(
+            "SELECT last_direction, last_scope, last_pushed_ts, last_pulled_ts FROM ark_cloud_sync_state WHERE user_id = ?",
+            (memory.user_id,),
+        ).fetchone()
+        return dict(r) if r else {}
     data = _read() if lock is None else _with_lock(lock, _read)
+    st_meta = _read_state() if lock is None else _with_lock(lock, _read_state)
     has_key = bool(_resolve_api_key())
     return {
         "ok": True,
@@ -184,6 +199,9 @@ def sync_status(memory) -> dict[str, Any]:
         "pushed_count": int(data.get("pushed") or 0),
         "pulled_count": int(data.get("pulled") or 0),
         "last_sync_ts": float(data.get("last_sync") or 0.0),
+        "last_direction": str(st_meta.get("last_direction") or ""),
+        "last_scope": str(st_meta.get("last_scope") or "global"),
+        "last_pushed_ts": str(st_meta.get("last_pushed_ts") or ""),
     }
 
 
@@ -198,6 +216,8 @@ def sync_bidirectional(
     api_key: str | None = None,
     endpoint: str | None = None,
     direction: str = "both",
+    scope: str = "global",
+    kind: str | None = None,
     limit: int = 20,
     dry_run: bool = False,
     rpc_fn=None,
@@ -222,6 +242,7 @@ def sync_bidirectional(
     pulled = 0
     skipped = 0
     quarantined_pull = 0
+    redacted_secrets_count = 0
     errors: list[str] = []
 
     lock = getattr(memory.store, "_lock", None)
@@ -251,17 +272,31 @@ def sync_bidirectional(
             _with_lock(lock, _w)
 
     # 1. PUSH: Локальные активные записи -> Облачный AIfa Memory MCP
+    latest_pushed_ts = ""
     if direction in ("both", "push"):
-        rows = memory.store.query(
-            "SELECT id, content, kind, origin FROM memory "
-            "WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT ?",
-            (memory.user_id, lim),
-        )
+        sql_p = "SELECT id, content, kind, origin, created_at FROM memory WHERE user_id = ? AND status = 'active'"
+        params_p: list[Any] = [memory.user_id]
+        sc_clean = str(scope or "").strip()
+        if sc_clean and sc_clean != "all":
+            sql_p += " AND scope = ?"
+            params_p.append(sc_clean)
+        k_clean = str(kind or "").strip()
+        if k_clean:
+            sql_p += " AND kind = ?"
+            params_p.append(k_clean)
+        sql_p += " ORDER BY created_at DESC LIMIT ?"
+        params_p.append(lim)
+        rows = memory.store.query(sql_p, tuple(params_p))
         for r in rows:
             raw_content = str(r["content"] or "").strip()
             if not raw_content:
                 continue
             redacted, _masked = safety.redact(raw_content)
+            if _masked:
+                redacted_secrets_count += sum(_masked.values()) if isinstance(_masked, dict) else int(_masked or 0)
+            c_ts = str(r["created_at"] or "")
+            if c_ts > latest_pushed_ts:
+                latest_pushed_ts = c_ts
             digest = _sha256(redacted)
             if _already_synced(digest):
                 skipped += 1
@@ -327,6 +362,23 @@ def sync_bidirectional(
             except Exception as exc:
                 errors.append(f"pull: {exc}")
 
+    if not dry_run:
+        def _upd_state():
+            now_t = time.time()
+            memory.store.conn.execute(
+                "INSERT INTO ark_cloud_sync_state (user_id, last_direction, last_scope, last_pushed_ts, last_pulled_ts, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET "
+                "last_direction=excluded.last_direction, last_scope=excluded.last_scope, "
+                "last_pushed_ts=CASE WHEN excluded.last_pushed_ts!='' THEN excluded.last_pushed_ts ELSE ark_cloud_sync_state.last_pushed_ts END, "
+                "last_pulled_ts=CASE WHEN excluded.last_pulled_ts>0 THEN excluded.last_pulled_ts ELSE ark_cloud_sync_state.last_pulled_ts END, "
+                "updated_at=excluded.updated_at",
+                (memory.user_id, direction, str(scope or "global"), latest_pushed_ts, now_t if pulled else 0.0, now_t),
+            )
+            memory.store.conn.commit()
+        try:
+            _upd_state() if lock is None else _with_lock(lock, _upd_state)
+        except Exception:
+            pass
     if not dry_run and (pushed or pulled):
         try:
             audit_chain.append_audit(
@@ -354,6 +406,8 @@ def sync_bidirectional(
         "pulled": pulled,
         "quarantined_pull": quarantined_pull,
         "skipped": skipped,
+        "redacted_secrets_count": redacted_secrets_count,
+        "scope": str(scope or "global"),
         "errors": errors,
     }
 
@@ -381,6 +435,7 @@ def push_local_to_cloud(
         api_key=api_key,
         endpoint=endpoint,
         direction="push",
+        scope=scope,
         limit=limit,
         dry_run=dry_run,
         rpc_fn=rpc_fn,
@@ -405,6 +460,7 @@ def pull_cloud_to_local(
         api_key=api_key,
         endpoint=endpoint,
         direction="pull",
+        scope=scope,
         limit=limit,
         dry_run=dry_run,
         rpc_fn=rpc_fn,

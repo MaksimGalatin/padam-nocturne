@@ -59,8 +59,12 @@ class PadamWidgetProvider : AppWidgetProvider() {
 
         private fun buildViews(context: Context, active: Int, held: Int): RemoteViews {
             val rv = RemoteViews(context.packageName, R.layout.padam_widget)
+            val isRu = java.util.Locale.getDefault().language.equals("ru", ignoreCase = true)
             rv.setTextViewText(R.id.widget_title, "PADAM · Grade S")
-            rv.setTextViewText(R.id.widget_stats, "Память: $active · Карантин: $held")
+            rv.setTextViewText(R.id.widget_stats, if (isRu) "Память: $active · Карантин: $held" else "Memory: $active · Quarantine: $held")
+            rv.setTextViewText(R.id.widget_btn_voice, if (isRu) "🎙 Айфа" else "🎙 AIfa")
+            rv.setTextViewText(R.id.widget_btn_search, if (isRu) "🔍 Поиск" else "🔍 Search")
+            rv.setTextViewText(R.id.widget_btn_chat, if (isRu) "💬 Чат" else "💬 Chat")
             rv.setOnClickPendingIntent(R.id.widget_btn_voice, actionIntent(context, "voice", 101))
             rv.setOnClickPendingIntent(R.id.widget_btn_search, actionIntent(context, "search", 102))
             rv.setOnClickPendingIntent(R.id.widget_btn_chat, actionIntent(context, "aifa", 103))

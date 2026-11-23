@@ -283,22 +283,57 @@ def make_qr_svg(text: str, *, scale: int = 6, border: int = 3) -> str:
 
 _PAIR_LOCK = threading.Lock()
 _ACTIVE_OFFERS: dict[str, dict[str, Any]] = {}
+_CONSUMED_NONCES: dict[str, set[str]] = {}
 
 
-def detect_lan_ip() -> str:
-    """Определяет локальный Wi-Fi/LAN IP без отправки пакетов в интернет."""
+def _is_virtual_ip(ip: str) -> bool:
+    parts = ip.split(".")
+    if len(parts) != 4:
+        return True
+    try:
+        a, b = int(parts[0]), int(parts[1])
+    except ValueError:
+        return True
+    if a == 127 or (a == 169 and b == 254):
+        return True
+    # Docker/WSL/Hyper-V обычно живут в 172.16.0.0/12; домашний Wi-Fi почти всегда 192.168.x.x
+    if a == 172 and 16 <= b <= 31:
+        return True
+    return False
+
+
+def list_lan_ips() -> list[str]:
+    """Возвращает упорядоченный список локальных IPv4-адресов с приоритетом физических Wi-Fi/LAN."""
+    found: list[str] = []
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
             s.connect(("10.255.255.255", 1))
             ip = s.getsockname()[0]
             if ip and not ip.startswith("127."):
-                return ip
+                found.append(ip)
         finally:
             s.close()
     except Exception:
         pass
-    return "127.0.0.1"
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            cand = str(info[4][0])
+            if cand and not cand.startswith("127.") and cand not in found:
+                found.append(cand)
+    except Exception:
+        pass
+    real = [ip for ip in found if not _is_virtual_ip(ip)]
+    phys_192 = [ip for ip in real if ip.startswith("192.168.")]
+    other_real = [ip for ip in real if not ip.startswith("192.168.")]
+    virt = [ip for ip in found if ip not in real]
+    ordered = phys_192 + other_real + virt
+    return ordered or ["127.0.0.1"]
+
+
+def detect_lan_ip() -> str:
+    """Выбирает наиболее подходящий физический Wi-Fi/LAN IP для Android QR-сопряжения."""
+    return list_lan_ips()[0]
 
 
 def create_lan_pair_offer(
@@ -327,6 +362,7 @@ def create_lan_pair_offer(
         for k in list(_ACTIVE_OFFERS.keys()):
             if _ACTIVE_OFFERS[k]["expires_at"] < now:
                 _ACTIVE_OFFERS.pop(k, None)
+                _CONSUMED_NONCES.pop(k, None)
         _ACTIVE_OFFERS[pair_id] = offer
 
     uri = f"padam-sync://v1?h={ip}&p={int(port)}&id={pair_id}&k={key_hex}"
@@ -393,6 +429,7 @@ def create_lan_pairing_offer(
     svg_b64 = base64.b64encode(svg_txt.encode("utf-8")).decode("ascii")
     return {
         **raw,
+        "lan_candidates": list_lan_ips(),
         "token": raw["pair_id"],
         "key_b64": key_b64,
         "base_url": base_url,
@@ -422,13 +459,13 @@ def export_encrypted_delta(
     lim = max(1, min(500, int(limit or 200)))
     if since:
         rows = memory.store.query(
-            "SELECT id, kind, scope, content, created_at FROM memory "
+            "SELECT id, kind, scope, content, agent_id, created_at FROM memory "
             "WHERE user_id = ? AND status = 'active' AND created_at >= ? ORDER BY created_at DESC LIMIT ?",
             (memory.user_id, str(since), lim),
         )
     else:
         rows = memory.store.query(
-            "SELECT id, kind, scope, content, created_at FROM memory "
+            "SELECT id, kind, scope, content, agent_id, created_at FROM memory "
             "WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT ?",
             (memory.user_id, lim),
         )
@@ -440,6 +477,7 @@ def export_encrypted_delta(
             "id": str(r["id"]),
             "kind": str(r["kind"] or "fact"),
             "scope": str(r["scope"] or "global"),
+            "agent_id": str(r["agent_id"] or "owner") if "agent_id" in r.keys() else "owner",
             "content": clean_txt[:4000],
             "created_at": str(r["created_at"] or ""),
         })
@@ -457,9 +495,14 @@ def import_encrypted_delta(memory, token: str, payload: dict[str, Any]) -> dict[
     offer = get_active_offer(token)
     if not offer:
         return {"ok": False, "error": "invalid_or_expired_token"}
+    nonce_str = str(payload.get("nonce_b64") or "").strip()
+    with _PAIR_LOCK:
+        seen = _CONSUMED_NONCES.setdefault(token, set())
+        if nonce_str in seen:
+            return {"ok": False, "error": "replay_nonce_rejected"}
     try:
         items = decrypt_sync_delta(
-            str(payload.get("nonce_b64") or ""),
+            nonce_str,
             str(payload.get("ciphertext_b64") or ""),
             offer["key_hex"],
         )
@@ -477,10 +520,12 @@ def import_encrypted_delta(memory, token: str, payload: dict[str, Any]) -> dict[
             scope=str(it.get("scope") or "global"),
             origin="agent",
             guarded=True,
-            agent_id="android_lan_sync",
+            agent_id=str(it.get("agent_id") or "android_lan_sync"),
         )
         if outcome == "quarantined":
             quarantined += 1
         elif outcome != "duplicate":
             imported += 1
+    with _PAIR_LOCK:
+        _CONSUMED_NONCES.setdefault(token, set()).add(nonce_str)
     return {"ok": True, "received": len(items), "imported": imported, "quarantined": quarantined}

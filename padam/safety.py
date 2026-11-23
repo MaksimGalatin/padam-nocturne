@@ -1862,11 +1862,15 @@ def explain_quarantine_spans(text: str) -> dict:
         if cleaned and looks_like_instruction(cleaned):
             cleaned = ""
 
+    safe_ok = bool(cleaned) and (not looks_like_instruction(cleaned))
     return {
         "reasons": reasons,
         "spans": merged,
         "cleaned_text": cleaned,
-        "cleaned_is_safe": bool(cleaned) and (not looks_like_instruction(cleaned)),
+        "cleaned_preview": cleaned,
+        "cleaned_is_safe": safe_ok,
+        "cleaned_safe": safe_ok,
+        "diff_chars_removed": max(0, len(raw) - len(cleaned)),
         "secrets_found": dict(secret_counts or {}),
         "has_invisible": stripped != raw,
     }

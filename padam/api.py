@@ -105,6 +105,11 @@ def mem() -> Memory:
         _state["memory"] = Memory(
             user_id=os.environ.get("PADAM_USER") or shared.get("user") or "default",
             store=Store(os.environ.get("PADAM_DB") or shared.get("db") or None))
+    try:
+        from . import pulse_stream as _ps
+        _ps.set_pulse_db_path(getattr(_state["memory"].store, "path", None))
+    except Exception:
+        pass
     return _state["memory"]
 
 
@@ -1172,7 +1177,7 @@ class Handler(BaseHTTPRequestHandler):
                 qs_p = parse_qs(путь.query)
                 lim_p = int((qs_p.get("limit") or ["40"])[0])
                 since_p = int((qs_p.get("since_seq") or ["0"])[0])
-                return self._send(200, {"ok": True, "events": _ps.get_recent_pulse(limit=lim_p, since_seq=since_p)})
+                return self._send(200, {"ok": True, "events": _ps.get_recent_pulse(limit=lim_p, since_seq=since_p, db_path=getattr(mem().store, "path", None))})
             if путь.path == "/api/v2/pulse/stream":
                 roles.require_owner(actor, "pulse")
                 from . import pulse_stream as _ps
@@ -1189,7 +1194,8 @@ class Handler(BaseHTTPRequestHandler):
                     self.send_header("Access-Control-Allow-Origin", cors_o)
                 self.end_headers()
                 try:
-                    initial = _ps.get_recent_pulse(limit=20, since_seq=last_seq)
+                    _pdb = getattr(mem().store, "path", None)
+                    initial = _ps.get_recent_pulse(limit=20, since_seq=last_seq, db_path=_pdb)
                     for ev in initial:
                         last_seq = max(last_seq, int(ev.get("seq") or 0))
                         self.wfile.write(_ps.format_sse_event(ev).encode("utf-8"))
@@ -1197,7 +1203,7 @@ class Handler(BaseHTTPRequestHandler):
                         self.wfile.write(b": pulse-connected\n\n")
                     self.wfile.flush()
                     for _ in range(max_ticks):
-                        nxt = _ps.wait_for_pulse(last_seq, timeout=2.5)
+                        nxt = _ps.wait_for_pulse(last_seq, timeout=2.5, db_path=_pdb)
                         if nxt:
                             for ev in nxt:
                                 last_seq = max(last_seq, int(ev.get("seq") or 0))

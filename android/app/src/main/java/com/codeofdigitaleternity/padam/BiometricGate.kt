@@ -24,15 +24,20 @@ class BiometricGate(private val ownerActivity: AppCompatActivity) {
                 onFinished(false, "device_lock_not_set")
                 return@runOnUiThread
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                val prompt = BiometricPrompt.Builder(ownerActivity)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val builder = BiometricPrompt.Builder(ownerActivity)
                     .setTitle(titleText.ifBlank { "PADAM Studio" })
-                    .setSubtitle(noteText.ifBlank { "Подтвердите личность владельца" })
-                    .setAllowedAuthenticators(
+                    .setSubtitle(noteText.ifBlank { "Verify owner identity" })
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    builder.setAllowedAuthenticators(
                         BiometricManager.Authenticators.BIOMETRIC_WEAK or
                             BiometricManager.Authenticators.DEVICE_CREDENTIAL
                     )
-                    .build()
+                } else {
+                    @Suppress("DEPRECATION")
+                    builder.setDeviceCredentialAllowed(true)
+                }
+                val prompt = builder.build()
                 val signal = CancellationSignal()
                 prompt.authenticate(
                     signal,
@@ -48,7 +53,7 @@ class BiometricGate(private val ownerActivity: AppCompatActivity) {
                     },
                 )
             } else {
-                onFinished(false, "requires_android_11_plus")
+                onFinished(false, "requires_android_10_plus")
             }
         }
     }

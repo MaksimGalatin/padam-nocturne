@@ -9,6 +9,8 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
+import androidx.core.os.HandlerCompat
 import java.util.Locale
 
 /**
@@ -27,6 +29,13 @@ class VoiceAssistantManager(
     private var wakeModeEnabled = false
     @Volatile
     private var activeListenWake = false
+    @Volatile
+    private var ttsSpeaking = false
+    private var consecutiveErrors = 0
+
+    companion object {
+        private const val WAKE_RESTART_TOKEN = "padam_wake_restart"
+    }
 
     init {
         tts = TextToSpeech(appContext) { status ->
@@ -36,6 +45,21 @@ class VoiceAssistantManager(
                 if (res == TextToSpeech.LANG_MISSING_DATA || res == TextToSpeech.LANG_NOT_SUPPORTED) {
                     tts?.setLanguage(Locale.US)
                 }
+                tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                    override fun onStart(utteranceId: String?) {
+                        ttsSpeaking = true
+                        mainHandler.post { stopRecognition() }
+                    }
+                    override fun onDone(utteranceId: String?) {
+                        ttsSpeaking = false
+                        if (wakeModeEnabled) scheduleWakeRestart()
+                    }
+                    @Deprecated("Deprecated in Java")
+                    override fun onError(utteranceId: String?) {
+                        ttsSpeaking = false
+                        if (wakeModeEnabled) scheduleWakeRestart()
+                    }
+                })
             }
         }
     }
@@ -46,6 +70,8 @@ class VoiceAssistantManager(
         val clean = reply.trim()
         if (clean.isEmpty() || !ttsReady) return
         mainHandler.post {
+            ttsSpeaking = true
+            stopRecognition()
             tts?.speak(clean.take(260), TextToSpeech.QUEUE_FLUSH, null, "padam_voice_reply")
         }
     }
@@ -94,18 +120,25 @@ class VoiceAssistantManager(
             override fun onEvent(eventType: Int, params: Bundle?) {}
 
             override fun onResults(results: Bundle?) {
+                consecutiveErrors = 0
                 val list = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 val phrase = list?.firstOrNull()?.trim().orEmpty()
                 if (phrase.isNotEmpty()) {
                     onTranscript(phrase, continuousWake)
                 }
-                if (wakeModeEnabled) {
+                if (wakeModeEnabled && !ttsSpeaking) {
                     scheduleWakeRestart()
                 }
             }
 
             override fun onError(error: Int) {
-                if (wakeModeEnabled) {
+                if (error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) {
+                    wakeModeEnabled = false
+                    stopRecognition()
+                    return
+                }
+                consecutiveErrors = (consecutiveErrors + 1).coerceAtMost(4)
+                if (wakeModeEnabled && !ttsSpeaking) {
                     scheduleWakeRestart()
                 }
             }
@@ -125,13 +158,19 @@ class VoiceAssistantManager(
     }
 
     private fun scheduleWakeRestart() {
-        mainHandler.removeCallbacksAndMessages("wake_restart")
-        mainHandler.postDelayed({
-            if (wakeModeEnabled) {
+        mainHandler.removeCallbacksAndMessages(WAKE_RESTART_TOKEN)
+        val delay = when (consecutiveErrors) {
+            0 -> 700L
+            1 -> 1500L
+            2 -> 3000L
+            else -> 5000L
+        }
+        HandlerCompat.postDelayed(mainHandler, {
+            if (wakeModeEnabled && !ttsSpeaking) {
                 activeListenWake = true
                 launchRecognition(continuousWake = true)
             }
-        }, 700L)
+        }, WAKE_RESTART_TOKEN, delay)
     }
 
     fun release() {

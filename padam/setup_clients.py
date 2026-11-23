@@ -343,18 +343,33 @@ def clients_connection_status(
         exists = cfg_path.exists()
         detected = exists or cfg_path.parent.exists()
         connected = False
+        config_valid = True
+        config_error = ""
+        command_preview = ""
         if exists:
             try:
                 txt = cfg_path.read_text(encoding="utf-8", errors="replace")
                 if fmt == "toml_codex":
                     connected = "[mcp_servers.padam]" in txt
+                    if connected:
+                        command_preview = "codex [mcp_servers.padam]"
                 else:
                     obj = json.loads(txt)
                     for key in ("mcpServers", "servers", "context_servers"):
-                        if isinstance(obj.get(key), dict) and any("padam" in str(k).lower() for k in obj[key].keys()):
-                            connected = True
+                        if isinstance(obj.get(key), dict):
+                            for k_srv, v_srv in obj[key].items():
+                                if "padam" in str(k_srv).lower():
+                                    connected = True
+                                    if isinstance(v_srv, dict):
+                                        cmd = str(v_srv.get("command") or "")
+                                        args = " ".join(str(a) for a in (v_srv.get("args") or [])[:3])
+                                        command_preview = (cmd + " " + args).strip()[:120]
+                                    break
+                        if connected:
                             break
-            except Exception:
+            except Exception as exc:
+                config_valid = False
+                config_error = str(exc)[:140]
                 connected = ("padam" in txt) if "txt" in locals() else False
         out.append({
             "client": cl,
@@ -364,5 +379,8 @@ def clients_connection_status(
             "exists": exists,
             "detected": detected,
             "connected": connected,
+            "config_valid": config_valid,
+            "config_error": config_error,
+            "command_preview": command_preview,
         })
     return out

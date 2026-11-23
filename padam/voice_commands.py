@@ -8,8 +8,8 @@ from typing import Any
 from . import ark, family_feeds
 
 _WAKE_PREFIX_RE = re.compile(
-    r"^\s*(?:(?:эй|привет|слушай|окей|ok|hey|hi)[,\s]+)?"
-    r"(?:айфа|айфочка|айфуля|aifa|alpha)[,\s:!.-]*",
+    r"^\s*(?:(?:эй|привет|слушай|окей|ok|hey|hi|oye|hola|你好|喂)[,\s]+)?"
+    r"(?:айфа|айфочка|айфуля|aifa|alpha|艾法)[,\s:!.-]*",
     re.IGNORECASE,
 )
 
@@ -17,8 +17,19 @@ _CMD_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("remember", re.compile(r"^(?:запиши|запомни|сохрани|remember|save|note)(?:\s+(?:в\s+память|что))?\s*[:,-]?\s*(.+)$", re.IGNORECASE | re.DOTALL)),
     ("search", re.compile(r"^(?:найди|найти|поищи|вспомни|search|find|recall|look\s+up)\s*[:,-]?\s*(.+)$", re.IGNORECASE | re.DOTALL)),
     ("task", re.compile(r"^(?:поставь\s+задачу|создай\s+задачу|задача|выполни|сделай|напомни|add\s+task|task|todo|remind\s+me)\s*[:,-]?\s*(.+)$", re.IGNORECASE | re.DOTALL)),
-    ("status", re.compile(r"^(?:статус|отч[её]т|сводка|как\s+дела|status|report|summary)\s*[?!.]*$", re.IGNORECASE)),
+    ("cloud_sync", re.compile(r"^(?:синхронизируй\s+облако|облачная\s+синхронизация|sync\s+cloud|sincroniza\s+nube|同步云端).*$", re.IGNORECASE)),
+    ("quarantine_check", re.compile(r"^(?:проверь\s+карантин|открой\s+карантин|карантин|check\s+quarantine|revisar\s+cuarentena|检查隔离区).*$", re.IGNORECASE)),
+    ("code_check", re.compile(r"^(?:проверь\s+код|свежесть\s+кода|якори\s+кода|check\s+code|code\s+anchors|verificar\s+código|检查代码).*$", re.IGNORECASE)),
+    ("open_tab", re.compile(r"^(?:открой|перейди|покажи|open|go\s+to|abrir|打开)\s+(?:вкладку\s+)?(память|memory|граф|graph|защит[ау]|щит|shield|семью|family|мозг|brain|заработок|earning|облако|cloud)\s*[?!.]*$", re.IGNORECASE)),
+    ("status", re.compile(r"^(?:статус|отч[её]т|сводка|как\s+дела|status|report|summary|estado|状态)\s*[?!.]*$", re.IGNORECASE)),
 )
+
+_TAB_MAP = {
+    "память": "review", "memory": "review", "граф": "graph", "graph": "graph",
+    "защита": "attacks", "защиту": "attacks", "щит": "attacks", "shield": "attacks",
+    "семью": "family", "family": "family", "мозг": "brain", "brain": "brain",
+    "заработок": "earning", "earning": "earning", "облако": "cloud", "cloud": "cloud",
+}
 
 
 def parse_voice_utterance(text: str, *, require_wake_word: bool = False) -> dict[str, Any]:
@@ -148,6 +159,34 @@ def execute_voice_command(
             "speak": sp,
             "spoken_reply": sp,
         }
+
+    if intent == "open_tab":
+        target = _TAB_MAP.get(payload.lower().strip(), "overview")
+        sp = f"Открываю раздел {target}." if ru else f"Opening {target} view."
+        return {**parsed, "executed": True, "ui_action": {"type": "switch_tab", "tab": target}, "speak": sp, "spoken_reply": sp}
+
+    if intent == "quarantine_check":
+        st = memory.stats()
+        quar = int(st.get("quarantined") or 0)
+        sp = f"В карантине сейчас {quar} записей. Открываю инспектор." if ru else f"There are {quar} records in quarantine. Opening inspector."
+        return {**parsed, "executed": True, "quarantined": quar, "ui_action": {"type": "switch_tab", "tab": "review"}, "speak": sp, "spoken_reply": sp}
+
+    if intent == "code_check":
+        from . import code_anchor as _ca
+        res = _ca.check_stale_anchors(memory, repo_root=".")
+        stale_c = int(res.get("stale_count") or 0)
+        sp = (f"Проверено {res.get('checked', 0)} якорей кода, устарело {stale_c}." if ru else f"Checked {res.get('checked', 0)} code anchors, {stale_c} stale.")
+        return {**parsed, "executed": True, "code_check": res, "ui_action": {"type": "switch_tab", "tab": "brain"}, "speak": sp, "spoken_reply": sp}
+
+    if intent == "cloud_sync":
+        from . import cloud_sync as _cs
+        st = _cs.get_cloud_sync_status(memory)
+        if not st.get("has_api_key"):
+            sp = "Ключ облачного MCP не настроен, открываю окно синхронизации." if ru else "Cloud MCP key not configured; opening sync modal."
+            return {**parsed, "executed": True, "cloud_status": st, "ui_action": {"type": "open_sync_modal"}, "speak": sp, "spoken_reply": sp}
+        sync_res = _cs.sync_bidirectional(memory, direction="both", limit=20)
+        sp = (f"Облако синхронизировано: отправлено {sync_res.get('pushed', 0)}, получено {sync_res.get('pulled', 0)}." if ru else f"Cloud synced: pushed {sync_res.get('pushed', 0)}, pulled {sync_res.get('pulled', 0)}.")
+        return {**parsed, "executed": True, "cloud_sync": sync_res, "speak": sp, "spoken_reply": sp}
 
     if intent == "status":
         st = memory.stats()

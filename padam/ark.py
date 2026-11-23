@@ -447,23 +447,24 @@ def wake_up_briefing(
         except Exception:
             relevant_records = []
 
-    raw_sections: list[str] = []
+    # Priority-tagged sections (Фишка 5 Волны 2): 1 = защищаемые (identity, commitments, owner, relevant/STALE), 2..4 = сжимаются первыми
+    tagged_sections: list[tuple[int, str, str]] = []
     for item in (prof.get("identity") or []):
-        raw_sections.append(f"[identity] {item.get('content') or ''}")
+        tagged_sections.append((1, "identity", f"[identity] {item.get('content') or ''}"))
     for item in (prof.get("preferences") or prof.get("preference") or []):
-        raw_sections.append(f"[preference] {item.get('content') or ''}")
+        tagged_sections.append((3, "preference", f"[preference] {item.get('content') or ''}"))
     if commitments:
-        raw_sections.append("[commitments] " + "; ".join(f"{c['id']}:{c['title']}({c['status']})" for c in commitments))
+        tagged_sections.append((1, "commitments", "[commitments] " + "; ".join(f"{c['id']}:{c['title']}({c['status']})" for c in commitments)))
     if checkpoint:
-        raw_sections.append(f"[checkpoint] task={checkpoint['task']} | next={checkpoint['next_step']}")
+        tagged_sections.append((2, "checkpoint", f"[checkpoint] task={checkpoint['task']} | next={checkpoint['next_step']}"))
     if relevant_records:
         rel_lines = []
         for rr in relevant_records:
             warn = f" [STALE_CODE_PIN:{','.join(rr['stale_code_pins'])}]" if rr["stale_code_pins"] else ""
             rel_lines.append(f"({rr['kind']}|why={rr['trace']['why']}){warn} {rr['content'][:220]}")
-        raw_sections.append("[relevant_context] " + " | ".join(rel_lines))
+        tagged_sections.append((1, "relevant_context", "[relevant_context] " + " | ".join(rel_lines)))
     if inbox:
-        raw_sections.append("[family_inbox] " + "; ".join(f"{m['from_agent']}: {m['payload']}" for m in inbox if m["verified"]))
+        tagged_sections.append((3, "family_inbox", "[family_inbox] " + "; ".join(f"{m['from_agent']}: {m['payload']}" for m in inbox if m["verified"])))
     owner_msgs: list[dict[str, Any]] = []
     try:
         ff_rows = memory.store.query(
@@ -485,15 +486,31 @@ def wake_up_briefing(
     except Exception:
         pass
     if owner_msgs:
-        raw_sections.append("[owner_recent_messages] " + " | ".join(f"[{om['source']} {om['ts'][:16]}] {om['text']}" for om in owner_msgs[:5]))
+        tagged_sections.append((1, "owner_recent_messages", "[owner_recent_messages] " + " | ".join(f"[{om['source']} {om['ts'][:16]}] {om['text']}" for om in owner_msgs[:5])))
     if lessons:
-        raw_sections.append("[lessons] " + "; ".join(l["rule_learned"] for l in lessons))
+        tagged_sections.append((4, "lessons", "[lessons] " + "; ".join(l["rule_learned"] for l in lessons)))
     if pulse_data and pulse_data.get("summary_text"):
-        raw_sections.append("[morning_pulse] " + pulse_data["summary_text"].replace("\n", " | "))
+        tagged_sections.append((4, "morning_pulse", "[morning_pulse] " + pulse_data["summary_text"].replace("\n", " | ")))
 
-    body_text = _clean("\n".join(raw_sections))
+    kept = list(tagged_sections)
+    truncated_sections: list[str] = []
+    body_text = _clean("\n".join(s[2] for s in kept))
+    if len(body_text) > eff_chars:
+        for prio_cut in (4, 3, 2):
+            if len(body_text) <= eff_chars:
+                break
+            for idx_s in range(len(kept) - 1, -1, -1):
+                if kept[idx_s][0] == prio_cut:
+                    dropped = kept.pop(idx_s)
+                    if dropped[1] not in truncated_sections:
+                        truncated_sections.append(dropped[1])
+                    body_text = _clean("\n".join(s[2] for s in kept))
+                    if len(body_text) <= eff_chars:
+                        break
     if len(body_text) > eff_chars:
         body_text = body_text[: max(100, eff_chars - 3)] + "..."
+        if "briefing_body" not in truncated_sections:
+            truncated_sections.append("briefing_body")
 
     out = {
         "agent": agent,
@@ -510,6 +527,8 @@ def wake_up_briefing(
         "owner_recent_messages": owner_msgs[:5],
         "latest_checkpoint": checkpoint,
         "recent_lessons": lessons,
+        "estimated_tokens": max(1, (len(body_text) + 3) // 4) if body_text else 0,
+        "truncated_sections": truncated_sections,
         "router_status": {
             "mode": r_snap.get("mode", "auto"),
             "active_contour": r_snap.get("active_contour"),

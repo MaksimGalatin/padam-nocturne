@@ -119,6 +119,11 @@ def mem() -> Memory:
     if _memory is None:
         _memory = Memory(user_id=os.environ.get("PADAM_USER", "default"),
                          store=Store(os.environ.get("PADAM_DB") or None))
+    try:
+        from . import pulse_stream as _ps
+        _ps.set_pulse_db_path(getattr(_memory.store, "path", None))
+    except Exception:
+        pass
     return _memory
 
 
@@ -501,7 +506,7 @@ SOVEREIGN_SYNC_TOOL_DEF = {
     "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
 }
 WAKE_UP_TOOL_DEF = {
-    "name": "padam_wake_up", "title": _TITLES["padam_wake_up"], "description": "Smart briefing",
+    "name": "padam_wake_up", "title": _TITLES["padam_wake_up"], "description": "Brief",
     "inputSchema": {"type": "object", "properties": {
         "agent": _S, "scope": _S, "query": _S,
         "max_tokens": {**_I, "description": "Tok cap"}, "max_chars": {**_I, "description": "Char cap"},
@@ -513,7 +518,7 @@ COMMITMENTS_TOOL_DEF = {
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": ["add", "update", "list"], "default": "list", "description": "add(title)|update(id,status)"},
         "id": _S, "title": _S, "status": _S,
-        "priority": {**_I, "description": "1..5"}, "due_at": {**_S, "description": "Due ISO"}, "context": {**_S, "description": "Notes"},
+        "priority": {**_I, "description": "1..5"}, "due_at": {**_S, "description": "Due"}, "context": {**_S, "description": "Notes"},
     }},
     "annotations": _RW,
 }
@@ -538,7 +543,7 @@ CHECKPOINT_TOOL_DEF = {
 }
 TIMELINE_TOOL_DEF = {
     "name": "padam_ark_timeline", "title": _TITLES["padam_ark_timeline"], "description": "Timeline",
-    "inputSchema": {"type": "object", "properties": {"query": _S, "since": {**_S, "description": "From ISO"}, "limit": _I}},
+    "inputSchema": {"type": "object", "properties": {"query": _S, "since": {**_S, "description": "ISO"}, "limit": _I}},
     "annotations": _RO,
 }
 LESSON_TOOL_DEF = {
@@ -546,7 +551,7 @@ LESSON_TOOL_DEF = {
     "inputSchema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": ["record", "list"], "default": "list", "description": "record(what_happened,rule_learned)|list"},
         "what_happened": {**_S, "description": "Incident"}, "why_failed": {**_S, "description": "Cause"},
-        "rule_learned": {**_S, "description": "Rule"}, "tags": {**_S, "description": "CSV tags"}, "limit": _I,
+        "rule_learned": {**_S, "description": "Rule"}, "tags": {**_S, "description": "Tags"}, "limit": _I,
     }},
     "annotations": _RW,
 }
@@ -644,11 +649,12 @@ SESSION_PACK_TOOL_DEF = {
     "annotations": _RO,
 }
 CODE_ANCHOR_TOOL_DEF = {
-    "name": "padam_code_anchor", "title": _TITLES["padam_code_anchor"], "description": "Anchors",
+    "name": "padam_code_anchor", "title": _TITLES["padam_code_anchor"], "description": "Pins",
     "inputSchema": {"type": "object", "properties": {
-        "action": {"type": "string", "enum": ["anchor", "check"], "default": "check", "description": "anchor(memory_id,file_path)|check"},
-        "memory_id": {**_S, "description": "Record id"}, "file_path": {**_S, "description": "Repo file"},
-        "symbol_name": {**_S, "description": "Symbol"}, "repo_root": {**_S, "description": "Repo root"},
+        "action": {"type": "string", "enum": ["anchor", "check", "verify_claim"], "default": "check", "description": "anchor|verify"},
+        "memory_id": {**_S, "description": "Id"}, "file_path": {**_S, "description": "File"},
+        "symbol_name": {**_S, "description": "Sym"}, "repo_root": {**_S, "description": "Root"},
+        "claim": {**_S, "description": "Claim"}, "scope": _S,
     }},
     "annotations": _RW,
 }
@@ -827,11 +833,11 @@ SHIELD_TOOL_DEF = {
             "action_type": {**_S, "description": "Outbound action kind (crypto_transfer|http_request|shell_command|email|payment)"},
             "target": {**_S, "description": "Target wallet, domain or URL"},
             "payload": {**_S, "description": "Outbound payload or command"},
-            "url": {**_S, "description": "Site URL for JS Supply-Chain & SRI/CSP scan"},
-            "html": {**_S, "description": "Optional offline HTML snapshot to analyze"},
-            "reason": {**_S, "description": "Trip reason"},
+            "url": {**_S, "description": "Site URL"},
+            "html": {**_S, "description": "Offline HTML"},
+            "reason": {**_S, "description": "Reason"},
             "gate_id": {**_S, "description": "Outbound gate id"},
-            "entry_type": {**_S, "description": "Allowlist type (domain|wallet|iban|payee)"},
+            "entry_type": {**_S, "description": "Type (domain|wallet|iban|payee)"},
             "value": {**_S, "description": "Allowlist value"},
             "agent_id": _S,
             "use_playwright": {"type": "boolean", "default": False},
@@ -3765,6 +3771,7 @@ _BATCH_ALLOWED_READONLY_ACTIONS: dict[str, tuple[str, frozenset[str]]] = {
     "padam_local_model": ("status", frozenset({"status"})),
     "padam_freelance_hub": ("dashboard", frozenset({"dashboard", "list_accounts", "list_orders", "monetization", "recommend_spend", "client_lock_status", "agent_ledger", "stores_status", "wizard_catalog", "autopilot_config", "mail_status"})),
     "padam_agentic_shield": ("status", frozenset({"status", "outbound_list", "allowlist_list", "proof_pack"})),
+    "padam_code_anchor": ("check", frozenset({"check", "verify_claim"})),
 }
 
 
@@ -3876,6 +3883,7 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 agent_id=_resolve_agent_arg(args),
                 summary=f"search({str(args.get('query') or '')[:80]}) -> {len(found)} hits",
                 detail={"count": len(found), "scope": args.get("scope") or "global"},
+                db_path=getattr(m.store, "path", None),
             )
         except Exception:
             pass
@@ -4590,6 +4598,7 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 agent_id=_ag,
                 summary=f"wake_up(scope={args.get('scope') or 'global'}, query={str(args.get('query') or '-')[:60]})",
                 detail={"relevant": len(payload.get("relevant_records") or []), "commitments": len(payload.get("open_commitments") or [])},
+                db_path=getattr(m.store, "path", None),
             )
         except Exception:
             pass
@@ -5010,6 +5019,8 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
         root = str(root_p)
         if act == "anchor":
             payload = _ca.anchor_fact_to_file(m, str(args.get("memory_id") or ""), str(args.get("file_path") or ""), repo_root=root, symbol_name=str(args.get("symbol_name") or ""))
+        elif act == "verify_claim":
+            payload = _ca.verify_claim_with_memory_and_code(m, str(args.get("claim") or ""), scope=str(args.get("scope") or "global"), repo_root=root)
         else:
             payload = _ca.check_stale_anchors(m, repo_root=root)
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
