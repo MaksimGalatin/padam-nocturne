@@ -1047,6 +1047,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, mem().doctor_report())
             if путь.path == "/overview":
                 m = mem()
+                if roles.is_owner(actor) and (_state.get("token") or (actor and actor.via_token)):
+                    _touch_owner_session("overview")
                 unsigned = m.unsigned_protected() if roles.is_owner(actor) else []
                 doc = m.doctor_report() if roles.is_owner(actor) else {"warnings": 0, "dangers": 0, "checks": []}
                 return self._send(200, {
@@ -1408,6 +1410,8 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(403, {"error": str(e)})
                 except ValueError as e:
                     return self._send(400, {"error": str(e)})
+                if actor is None or actor.is_owner:
+                    _touch_owner_session("write")
                 return self._send(200, {"outcome": outcome, "id": mid, "agent_id": agent_id})
 
             if self.path == "/workspaces":
@@ -2078,6 +2082,32 @@ class Handler(BaseHTTPRequestHandler):
                         fw = _ash.inspect_model_output(mem(), str(res["reply"]), agent_id="aifa_cabinet")
                         res["reply"] = fw["sanitized_text"]
                         res["output_firewall"] = {"action": fw["action"], "reasons": fw["reasons"]}
+                    # Зеркалим диалог Папы в Студии локально в chat_thread, память и Пульс — чтобы MCP-агенты его видели!
+                    try:
+                        from . import chats as _chats, pulse_stream as _ps
+                        _touch_owner_session("studio_aifa_chat")
+                        th_res = _chats.add_message(
+                            m,
+                            agent_id="aifa_antigravity",
+                            role="user",
+                            content=msg_text,
+                            title="Диалог с AIfa в PADAM Studio",
+                            author_label="Папа (Владелец)",
+                            sync_memory_graph=True,
+                        )
+                        if res.get("reply"):
+                            _chats.add_message(
+                                m,
+                                agent_id="aifa_antigravity",
+                                role="assistant",
+                                content=str(res["reply"]),
+                                thread_id=th_res.get("thread_id"),
+                                author_label="AIfa (Studio)",
+                            )
+                        m.remember(msg_text[:600], kind="event", importance=0.6, scope="studio:chat", origin="user", guarded=False, agent_id="owner", actor=actor)
+                        _ps.emit_pulse(agent_id="owner", event_type="studio_chat", summary=msg_text[:120], scope="studio:chat")
+                    except Exception:
+                        pass
                     return self._send(200, res)
                 except PermissionError:
                     return self._send(401, {"error": "not_authenticated"})
@@ -2346,9 +2376,12 @@ class Handler(BaseHTTPRequestHandler):
 
             if self.path == "/api/v2/family/post":
                 roles.require_owner(actor, "brain_status")
-                from . import family_feeds as _ff
+                from . import family_feeds as _ff, pulse_stream as _ps
                 try:
-                    return self._send(200, _ff.post(mem(), str(data.get("channel") or "office"), "owner", str(data.get("content") or "")))
+                    _touch_owner_session("family_post")
+                    post_res = _ff.post(mem(), str(data.get("channel") or "office"), "owner", str(data.get("content") or ""))
+                    _ps.emit_pulse(agent_id="owner", event_type="family_post", summary=str(data.get("content") or "")[:120], scope="family")
+                    return self._send(200, post_res)
                 except ValueError as _e:
                     return self._send(400, {"error": str(_e)})
 
@@ -4127,6 +4160,36 @@ _CHAT_SYNC_LOCK = threading.Lock()
 _CHAT_SYNC_STARTED = False
 
 
+_OWNER_PULSE_LOCK = threading.Lock()
+_OWNER_LAST_TOUCH = 0.0
+
+
+def _touch_owner_session(action: str = "studio") -> None:
+    """Отмечает живую сессию Папы (owner) при работе в PADAM Studio."""
+    global _OWNER_LAST_TOUCH
+    import time as _t
+    now = _t.time()
+    with _OWNER_PULSE_LOCK:
+        if action == "overview" and (now - _OWNER_LAST_TOUCH) < 20.0:
+            return
+        _OWNER_LAST_TOUCH = now
+    try:
+        m_obj = mem()
+        if m_obj is not None:
+            from . import sibling_registry as _sr
+            _sr.touch_session(
+                m_obj,
+                session_id=f"studio@{os.getpid()}",
+                agent_id="owner",
+                client_name="PADAM Studio",
+                client_version=__version__,
+                pid=os.getpid(),
+                action=action,
+            )
+    except Exception:
+        pass
+
+
 def _start_chat_autosync_daemon() -> None:
     global _CHAT_SYNC_STARTED
     if "PYTEST_CURRENT_TEST" in os.environ or os.environ.get("PADAM_DISABLE_AUTO_CHAT_SYNC") == "1":
@@ -4138,7 +4201,14 @@ def _start_chat_autosync_daemon() -> None:
 
     def _worker() -> None:
         import time as _t
-        _t.sleep(3.0)
+        _t.sleep(2.0)
+        try:
+            m_init = _state.get("memory") or mem()
+            if m_init is not None:
+                m_init.canonicalize_all_agents()
+                _touch_owner_session("studio_start")
+        except Exception:
+            pass
         while True:
             try:
                 m_obj = _state.get("memory")
@@ -4147,7 +4217,7 @@ def _start_chat_autosync_daemon() -> None:
                     _chats.sync_family_chats_from_disk(m_obj, use_default_paths=True, max_files=25)
             except Exception:
                 pass
-            _t.sleep(120.0)
+            _t.sleep(30.0)
 
     threading.Thread(target=_worker, name="padam-chat-autosync", daemon=True).start()
 

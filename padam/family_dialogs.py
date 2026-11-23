@@ -26,8 +26,7 @@ AUTHORS: dict[str, dict[str, str]] = {
     "autoclaw": {"ru": "Брат · AutoClaw", "en": "Brother · AutoClaw", "es": "Hermano · AutoClaw", "zh": "兄弟 · AutoClaw"},
 }
 
-# 18.11.2026, замечание Antigravity: до переименования агенты писали под прежними именами — 75 + 6 записей решений
-# в той же области. Показываем их в ленте под нынешними подписями, без дублирования записей.
+# 18.11.2026, замечание Antigravity: канонические и прежние id отображаются в ленте с единой подписью без дублирования.
 ALIASES: dict[str, str] = {
     "aifa_claude": "aifa-claude-code",
     "aifa_antigravity": "antigravity",
@@ -69,8 +68,8 @@ def _day_of(path: Path) -> str:
 def import_files(memory, paths: Iterable[str | Path], *, author: str = "aifa-claude-code",
                  scope: str = DIALOG_SCOPE) -> dict[str, Any]:
     """Заносит итоги из файлов в память. Возвращает счёт: занесено, задержано карантином, повторов, ошибок."""
-    if author not in AUTHORS:
-        raise ValueError(f"неизвестный автор {author!r}; допустимы: {', '.join(AUTHORS)}")
+    if author not in ALL_AUTHOR_IDS:
+        raise ValueError(f"неизвестный автор {author!r}; допустимы: {', '.join(ALL_AUTHOR_IDS)}")
     counts = {"files": 0, "sections": 0, "added": 0, "held": 0, "duplicates": 0, "errors": 0}
     for raw in paths:
         p = Path(raw)

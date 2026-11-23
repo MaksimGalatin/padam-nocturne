@@ -4242,6 +4242,7 @@ _STRINGS_CHATS_AGENTS_SHIELD2: dict[str, dict[str, str]] = {
         "ov_agent_active": "записей",
         "ov_agent_quar": "ожидает",
         "ov_agent_chats": "сообщений",
+        "ov_agent_sessions": "сессий",
         "ov_agent_graph_btn": "Граф агента",
         "ov_agent_chats_btn": "Чаты агента",
         "ov_unsigned_hint": "Неподписанная запись:",
@@ -4374,6 +4375,7 @@ _STRINGS_CHATS_AGENTS_SHIELD2: dict[str, dict[str, str]] = {
         "ov_agent_active": "active",
         "ov_agent_quar": "held",
         "ov_agent_chats": "chat msgs",
+        "ov_agent_sessions": "sessions",
         "ov_agent_graph_btn": "Agent graph",
         "ov_agent_chats_btn": "Agent chats",
         "ov_unsigned_hint": "Unsigned record:",
@@ -4506,6 +4508,7 @@ _STRINGS_CHATS_AGENTS_SHIELD2: dict[str, dict[str, str]] = {
         "ov_agent_active": "activos",
         "ov_agent_quar": "retenidos",
         "ov_agent_chats": "mensajes",
+        "ov_agent_sessions": "sesiones",
         "ov_agent_graph_btn": "Grafo del agente",
         "ov_agent_chats_btn": "Chats del agente",
         "ov_unsigned_hint": "Registro sin firma:",
@@ -4638,6 +4641,7 @@ _STRINGS_CHATS_AGENTS_SHIELD2: dict[str, dict[str, str]] = {
         "ov_agent_active": "有效记录",
         "ov_agent_quar": "待审",
         "ov_agent_chats": "聊天消息",
+        "ov_agent_sessions": "会话",
         "ov_agent_graph_btn": "智能体图谱",
         "ov_agent_chats_btn": "智能体聊天",
         "ov_unsigned_hint": "未签名记录:",
@@ -7510,11 +7514,13 @@ async function loadOverview() {
           const titleWrap = el('strong', '');
           const dot = el('span', 'agent-badge-dot ag-env-' + String(ag.environment || 'mcp'));
           titleWrap.append(dot, document.createTextNode(String(ag.display_name || ag.agent_id)));
-          const pill = el('span', 'badge', ag.online ? ('🟢 ' + S.ov_agent_online) : ('⏸ ' + S.ov_agent_idle));
+          const sesAll = Number(ag.sessions_count || 0), sesOn = Number(ag.active_sessions_count || 0);
+          const sesSuffix = sesAll > 0 ? (' · ' + (sesOn > 0 ? (sesOn + '/' + sesAll) : sesAll) + ' ' + (S.ov_agent_sessions || 'sessions')) : '';
+          const pill = el('span', 'badge', (ag.online ? ('🟢 ' + S.ov_agent_online) : ('⏸ ' + S.ov_agent_idle)) + (sesOn > 0 ? (' · ' + sesOn) : ''));
           head.append(titleWrap, pill);
           card.append(head);
-          card.append(el('div', 'rec-meta', String(ag.agent_id) + (ag.last_seen_at ? (' · ' + fmtTime(ag.last_seen_at, true)) : '')));
-          card.append(el('div', 'panel-sub', String(ag.active || 0) + ' ' + S.ov_agent_active + ' · ' + String(ag.quarantined || 0) + ' ' + S.ov_agent_quar + ' · ' + String(ag.chat_messages || 0) + ' ' + S.ov_agent_chats));
+          card.append(el('div', 'rec-meta', String(ag.agent_id) + (ag.last_action ? (' · ' + String(ag.last_action)) : '') + (ag.last_seen_at ? (' · ' + fmtTime(ag.last_seen_at, true)) : '')));
+          card.append(el('div', 'panel-sub', String(ag.active || 0) + ' ' + S.ov_agent_active + ' · ' + String(ag.quarantined || 0) + ' ' + S.ov_agent_quar + ' · ' + String(ag.chat_messages || 0) + ' ' + S.ov_agent_chats + sesSuffix));
           const acts = el('div', 'rec-actions');
           const bGr = el('button', '', S.ov_agent_graph_btn);
           bGr.type = 'button';
@@ -8534,7 +8540,8 @@ function _renderGraphAgentsUI(data) {
   if (pills) {
     pills.replaceChildren();
     for (const ag of (data.agents || [])) {
-      const b = el('button', 'agent-pill' + (window._graphAgentFilter === ag.agent_id ? ' active' : ''), String(ag.display_name || ag.agent_id) + ' (' + String(ag.active || 0) + ')');
+      const sesTxt = (ag.sessions_count || 0) > 0 ? (' · ' + String(ag.sessions_count) + 's') : '';
+      const b = el('button', 'agent-pill' + (window._graphAgentFilter === ag.agent_id ? ' active' : ''), (ag.online ? '🟢 ' : '') + String(ag.display_name || ag.agent_id) + ' (' + String(ag.active || 0) + sesTxt + ')');
       b.type = 'button';
       b.onclick = () => { window._graphAgentFilter = ag.agent_id; window._graphMode = 'agent'; $('graph-id-input').value = ''; loadGraph(); };
       pills.append(b);

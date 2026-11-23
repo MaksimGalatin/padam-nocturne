@@ -86,6 +86,20 @@ def canonicalize_agent_id(raw: str | None, *, fallback: str = '') -> str:
     if 'antigravity' in low and 'worker' not in low and not low.startswith('aifa'):
         return 'aifa_antigravity'
     return s[:64]
+
+
+def agent_aliases_for(canonical_id: str | None) -> list[str]:
+    """Все известные сырые alias-имена, относящиеся к одному каноническому агенту (1 агент -> много сессий)."""
+    canon = canonicalize_agent_id(canonical_id) or str(canonical_id or '').strip()
+    if not canon:
+        return []
+    out = [canon]
+    for raw_k, target_k in _AGENT_CLIENT_ALIASES.items():
+        if target_k == canon and raw_k not in out:
+            out.append(raw_k)
+    if canon == 'owner':
+        out.append('')
+    return out
 _GRAPH_STOPWORDS = frozenset({
     'that', 'this', 'with', 'from', 'have', 'been', 'were', 'will', 'they', 'their', 'about', 'which', 'when',
     'what', 'there', 'into', 'also', 'only', 'more', 'most', 'some', 'such', 'than', 'then', 'very', 'just',
@@ -2295,7 +2309,7 @@ class Memory:
     # -- статистика -----------------------------------------------------
 
     def _touch_agent_registry(self, agent_id: str | None, action: str = 'write') -> None:
-        aid = (str(agent_id or '').strip()[:64])
+        aid = canonicalize_agent_id(agent_id) or (str(agent_id or '').strip()[:64])
         if not aid:
             return
         meta = infer_agent_meta(aid)
@@ -2320,6 +2334,16 @@ class Memory:
         """Полная сводка по всем подключённым и писавшим агентам (память, аудит, чаты и живые MCP-сессии)."""
         vis_sql, vis_params, _ = roles.visibility_sql(actor)
         agents: dict[str, dict] = {}
+        now_dt = datetime.now(timezone.utc)
+        cutoff_dt = now_dt - timedelta(minutes=20)
+        def _is_recent(ts_val: str) -> bool:
+            if not ts_val:
+                return False
+            try:
+                return parse_ts(ts_val) >= cutoff_dt
+            except Exception:
+                return False
+
         def _ensure(aid: str) -> dict:
             key = canonicalize_agent_id(aid, fallback='owner') or 'owner'
             if key not in agents:
@@ -2329,6 +2353,7 @@ class Memory:
                     'display_name': meta['display_name'],
                     'environment': meta['environment'],
                     'color': meta['color'],
+                    'is_worker': 'worker' in key,
                     'active': 0,
                     'quarantined': 0,
                     'superseded': 0,
@@ -2342,6 +2367,9 @@ class Memory:
                     'last_seen_at': '',
                     'last_action': '',
                     'session_calls': 0,
+                    'sessions_count': 0,
+                    'active_sessions_count': 0,
+                    'sessions': [],
                     'online': False,
                 }
             return agents[key]
@@ -2361,6 +2389,8 @@ class Memory:
                 rec['last_memory_at'] = ts
             if ts > rec['last_seen_at']:
                 rec['last_seen_at'] = ts
+            if _is_recent(ts):
+                rec['online'] = True
 
         if roles.is_owner(actor):
             try:
@@ -2377,6 +2407,8 @@ class Memory:
                     ts = str(r['last_ts'] or '')
                     if ts > rec['last_seen_at']:
                         rec['last_seen_at'] = ts
+                    if _is_recent(ts):
+                        rec['online'] = True
             except Exception:
                 pass
             try:
@@ -2393,6 +2425,8 @@ class Memory:
                     ts = str(r['last_seen_at'] or '')
                     if ts > rec['last_seen_at']:
                         rec['last_seen_at'] = ts
+                    if _is_recent(ts):
+                        rec['online'] = True
             except Exception:
                 pass
             try:
@@ -2407,20 +2441,64 @@ class Memory:
                     ts = str(r['last_ts'] or '')
                     if ts > rec['last_seen_at']:
                         rec['last_seen_at'] = ts
+                    if _is_recent(ts):
+                        rec['online'] = True
+                # Свежие сообщения Папы (role='user') в чатах и family_feed -> owner online
+                u_msg = self.store.one(
+                    "SELECT MAX(created_at) AS last_ts FROM chat_message WHERE user_id = ? AND role = 'user'",
+                    (self.user_id,),
+                )
+                if u_msg and u_msg['last_ts']:
+                    rec_ow = _ensure('owner')
+                    uts = str(u_msg['last_ts'] or '')
+                    if uts > rec_ow['last_seen_at']:
+                        rec_ow['last_seen_at'] = uts
+                    if _is_recent(uts):
+                        rec_ow['online'] = True
+                        if not rec_ow['last_action']:
+                            rec_ow['last_action'] = 'chat_message'
+            except Exception:
+                pass
+            try:
+                for r in self.store.query(
+                        """SELECT COALESCE(NULLIF(author, ''), 'owner') AS ag, MAX(created_at) AS last_ts
+                           FROM family_feed WHERE user_id = ? GROUP BY ag""",
+                        (self.user_id,)):
+                    rec = _ensure(r['ag'])
+                    fts = str(r['last_ts'] or '')
+                    if fts > rec['last_seen_at']:
+                        rec['last_seen_at'] = fts
+                    if _is_recent(fts):
+                        rec['online'] = True
+                        if not rec['last_action']:
+                            rec['last_action'] = 'family_post'
             except Exception:
                 pass
             try:
                 from . import sibling_registry as _sr
-                cutoff_iso = (datetime.now(timezone.utc) - timedelta(minutes=20)).isoformat()
                 for ss in _sr.list_sessions(self, since_hours=168.0):
                     rec = _ensure(ss.get('agent_id') or 'agent')
                     rec['session_calls'] += int(ss.get('calls') or 0)
-                    if ss.get('last_action'):
+                    if ss.get('last_action') and not rec['last_action']:
                         rec['last_action'] = ss['last_action']
                     ts = str(ss.get('last_seen_at') or '')
                     if ts > rec['last_seen_at']:
                         rec['last_seen_at'] = ts
-                    if ts >= cutoff_iso:
+                        if ss.get('last_action'):
+                            rec['last_action'] = ss['last_action']
+                    ses_live = _is_recent(ts) or bool(ss.get('pid_alive'))
+                    rec['sessions'].append({
+                        'session_id': ss.get('session_id'),
+                        'pid': ss.get('pid'),
+                        'client_name': ss.get('client_name') or '',
+                        'last_action': ss.get('last_action') or '',
+                        'last_seen_at': ts,
+                        'calls': int(ss.get('calls') or 0),
+                        'online': ses_live,
+                    })
+                    rec['sessions_count'] += 1
+                    if ses_live:
+                        rec['active_sessions_count'] += 1
                         rec['online'] = True
             except Exception:
                 pass
@@ -2430,11 +2508,11 @@ class Memory:
         return out
 
     def canonicalize_all_agents(self, actor: roles.ActorContext | None = None) -> dict:
-        """Приводит старые дублирующиеся agent_id в таблицах memory, audit_log и chat_thread к каноническим именам (Фишка 3)."""
+        """Приводит старые дублирующиеся agent_id во всех таблицах (включая чаты и сессии) к каноническим агентам."""
         roles.require_owner(actor, "canonicalize_agents")
-        updated = {"memory": 0, "audit_log": 0, "chat_thread": 0}
+        updated = {"memory": 0, "audit_log": 0, "chat_thread": 0, "chat_message": 0, "agent_registry": 0, "sessions": 0}
         with self.store._lock:
-            for tbl in ("memory", "audit_log", "chat_thread"):
+            for tbl in ("memory", "audit_log", "chat_thread", "chat_message"):
                 try:
                     rows = self.store.conn.execute(
                         f"SELECT DISTINCT agent_id FROM {tbl} WHERE user_id = ? AND agent_id IS NOT NULL AND agent_id != ''",
@@ -2451,7 +2529,46 @@ class Memory:
                             (canon, self.user_id, raw_id),
                         )
                         updated[tbl] += int(cur.rowcount or 0)
+            try:
+                reg_rows = self.store.conn.execute(
+                    "SELECT agent_id, writes_count, last_seen_at FROM agent_registry WHERE user_id = ?",
+                    (self.user_id,),
+                ).fetchall()
+                for rr in reg_rows:
+                    raw_id = str(rr["agent_id"] or "")
+                    canon = canonicalize_agent_id(raw_id)
+                    if canon and canon != raw_id:
+                        exists = self.store.conn.execute(
+                            "SELECT 1 FROM agent_registry WHERE user_id = ? AND agent_id = ?",
+                            (self.user_id, canon),
+                        ).fetchone()
+                        if exists:
+                            self.store.conn.execute(
+                                "UPDATE agent_registry SET writes_count = writes_count + ?, "
+                                "last_seen_at = CASE WHEN ? > last_seen_at THEN ? ELSE last_seen_at END "
+                                "WHERE user_id = ? AND agent_id = ?",
+                                (int(rr["writes_count"] or 0), str(rr["last_seen_at"] or ""), str(rr["last_seen_at"] or ""), self.user_id, canon),
+                            )
+                            self.store.conn.execute(
+                                "DELETE FROM agent_registry WHERE user_id = ? AND agent_id = ?",
+                                (self.user_id, raw_id),
+                            )
+                        else:
+                            meta = infer_agent_meta(canon)
+                            self.store.conn.execute(
+                                "UPDATE agent_registry SET agent_id = ?, display_name = ?, environment = ?, color_hex = ? "
+                                "WHERE user_id = ? AND agent_id = ?",
+                                (canon, meta["display_name"], meta["environment"], meta["color"], self.user_id, raw_id),
+                            )
+                        updated["agent_registry"] += 1
+            except Exception:
+                pass
             self.store.conn.commit()
+        try:
+            from . import sibling_registry as _sr
+            updated["sessions"] = _sr.canonicalize_sessions(self, canonicalize_agent_id)
+        except Exception:
+            pass
         return {"ok": True, "updated": updated, "agents_count": len(self.list_agents(actor=actor))}
 
     def stats(self, actor: roles.ActorContext | None = None) -> dict:
@@ -2948,11 +3065,13 @@ class Memory:
             связанные_ids = {nid for nid in связанные_ids if nid in допустимые_на_дату}
 
         agent_allowed_ids: set[str] | None = None
+        target_aliases = agent_aliases_for(target_agent) if target_agent else []
         if target_agent and graph_mode == "agent":
+            ph_al = ",".join("?" * len(target_aliases))
             ag_rows = self.store.query(
                 f"""SELECT id FROM memory WHERE user_id = ? AND status != 'revoked'{vis_sql}
-                   AND COALESCE(NULLIF(agent_id, ''), 'owner') = ? ORDER BY created_at DESC LIMIT ?""",
-                (self.user_id, *vis_params, target_agent, max(предел * 3, 400)),
+                   AND COALESCE(NULLIF(agent_id, ''), 'owner') IN ({ph_al}) ORDER BY created_at DESC LIMIT ?""",
+                (self.user_id, *vis_params, *target_aliases, max(предел * 3, 400)),
             )
             agent_allowed_ids = {r["id"] for r in ag_rows}
             if допустимые_на_дату is not None:
@@ -3056,12 +3175,14 @@ class Memory:
             sphere_rows: dict[str, list[tuple[str, set[str], str | None]]] = {}
             for ag_info in top_ags:
                 aid_k = str(ag_info["agent_id"])
+                als_k = agent_aliases_for(aid_k) or [aid_k]
+                ph_k = ",".join("?" * len(als_k))
                 ag_recs = self.store.query(
                     f"""SELECT id, content, факт_ключ FROM memory
                        WHERE user_id = ? AND status = 'active'{vis_sql}
-                       AND COALESCE(NULLIF(agent_id, ''), 'owner') = ?
+                       AND COALESCE(NULLIF(agent_id, ''), 'owner') IN ({ph_k})
                        ORDER BY importance DESC, created_at DESC LIMIT ?""",
-                    (self.user_id, *vis_params, aid_k, per_ag * 2),
+                    (self.user_id, *vis_params, *als_k, per_ag * 2),
                 )
                 picked: list[tuple[str, set[str], str | None]] = []
                 for rr in ag_recs:
@@ -3156,12 +3277,13 @@ class Memory:
             target_fill = min(60 if target_agent else 30, предел)
             if len(узлы_ids) < target_fill:
                 if agent_allowed_ids is not None:
-                    # Для персонального графа агента показываем его свежие записи, даже если они еще не связаны.
+                    # Для персонального графа агента показываем его свежие записи по ВСЕМ сессиям/алиасам.
+                    ph_al2 = ",".join("?" * len(target_aliases))
                     доп = self.store.query(
                         f"""SELECT id FROM memory WHERE user_id = ? AND status = 'active'{vis_sql}
-                           AND COALESCE(NULLIF(agent_id, ''), 'owner') = ?
+                           AND COALESCE(NULLIF(agent_id, ''), 'owner') IN ({ph_al2})
                            ORDER BY created_at DESC LIMIT ?""",
-                        (self.user_id, *vis_params, target_agent, target_fill - len(узлы_ids)),
+                        (self.user_id, *vis_params, *target_aliases, target_fill - len(узлы_ids)),
                     )
                     for r in доп:
                         if допустимые_на_дату is None or r["id"] in допустимые_на_дату:
@@ -3193,7 +3315,7 @@ class Memory:
                 (self.user_id, *vis_params, *список_ids))
             for r in rows:
                 текст = r["content"]
-                ag = r["ag"] or "owner"
+                ag = canonicalize_agent_id(r["ag"], fallback="owner") or "owner"
                 ameta = infer_agent_meta(ag)
                 node_agent_map[r["id"]] = ag
                 node_tokens_map[r["id"]] = _extract_topic_tokens(текст or "")
@@ -3249,7 +3371,7 @@ class Memory:
             )
             ag_bucket: dict[str, dict] = {}
             for mr in m_rows:
-                ag_k = mr["ag"]
+                ag_k = canonicalize_agent_id(mr["ag"], fallback="owner") or "owner" 
                 b = ag_bucket.setdefault(ag_k, {"tokens": set(), "fks": set(), "days": set(), "ids": set()})
                 b["tokens"].update(_extract_topic_tokens(mr["content"] or ""))
                 if mr["факт_ключ"]:
@@ -3269,7 +3391,8 @@ class Memory:
                 (self.user_id, *vis_params, *vis_params),
             )
             for clr in all_cross_links:
-                sa, ta = clr["sa"], clr["ta"]
+                sa = canonicalize_agent_id(clr["sa"], fallback="owner") or "owner"
+                ta = canonicalize_agent_id(clr["ta"], fallback="owner") or "owner" 
                 if sa and ta and sa != ta:
                     pk = tuple(sorted((sa, ta)))
                     direct_pair_cnt[pk] = direct_pair_cnt.get(pk, 0) + 1
@@ -3382,15 +3505,18 @@ class Memory:
                 "steps": steps_out,
             }
 
+        agents_full = self.list_agents(actor=actor)
+        target_profile = next((a for a in agents_full if a["agent_id"] == target_agent), None) if target_agent else None
         return {
             "center_id": center_id,
             "agent_id": target_agent,
+            "agent_profile": target_profile,
             "mode": graph_mode,
             "topic": focus_topic,
             "task_lens": task_lens_info,
             "as_of": момент.isoformat() if момент is not None else None,
             "relations": list(LINK_RELATIONS),
-            "agents": self.list_agents(actor=actor),
+            "agents": agents_full,
             "agent_spheres": agent_spheres,
             "nodes": nodes,
             "edges": edges,

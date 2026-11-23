@@ -6277,6 +6277,7 @@ def _handle_legacy(req: dict) -> dict | None:
             _cancelled_request_ids.clear()
         set_client_capabilities(params.get("capabilities") if isinstance(params, dict) else None)
         _remember_client(params.get("clientInfo") if isinstance(params, dict) else None)
+        _touch_session("initialize")
         if config.mcp_roots_enabled() and isinstance(params, dict) and isinstance(params.get("roots"), list):
             set_client_roots(params["roots"])
         return ok({
@@ -6313,6 +6314,7 @@ def _handle_legacy(req: dict) -> dict | None:
         return None
 
     if method == "tools/list":
+        _touch_session("tools/list")
         try:
             return ok(_paginate_list(_list_tools_payload(), req.get("params"), "tools"))
         except ValueError as exc:
@@ -6419,6 +6421,7 @@ def _handle_legacy(req: dict) -> dict | None:
             return err(-32602, str(exc), key="invalid_params", detail=str(exc))
 
     if method == "resources/read":
+        _touch_session("resources/read")
         params = req.get("params") or {}
         uri = params.get("uri") if isinstance(params, dict) else None
         if not isinstance(uri, str) or not uri.strip():
@@ -7678,6 +7681,15 @@ def _run_stdio_loop(stdin_stream, stdout_stream, *, async_mode: bool | None = No
 
     pool = ThreadPoolExecutor(max_workers=max(1, int(max_workers))) if use_async else None
     futures = []
+    _ka_stop = threading.Event()
+    _ka_thread = None
+    if "PYTEST_CURRENT_TEST" not in os.environ:
+        def _session_keepalive() -> None:
+            _touch_session("mcp_alive")
+            while not _ka_stop.wait(90.0):
+                _touch_session("mcp_alive")
+        _ka_thread = threading.Thread(target=_session_keepalive, name="padam-mcp-keepalive", daemon=True)
+        _ka_thread.start()
     try:
         while True:
             line = stdin_stream.readline()
@@ -7734,6 +7746,7 @@ def _run_stdio_loop(stdin_stream, stdout_stream, *, async_mode: bool | None = No
             futures = [f for f in futures if not f.done()]
             futures.append(pool.submit(_process_async_payload, req))
     finally:
+        _ka_stop.set()
         if pool is not None:
             pool.shutdown(wait=True)
         set_live_notification_callback(None)

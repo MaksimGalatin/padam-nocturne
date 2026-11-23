@@ -62,6 +62,53 @@ def _clean_agent_id(raw: str) -> str:
     return cid
 
 
+def _clean_session_agent_id(raw: str) -> str:
+    """Нормализует agent_id для учёта живой сессии (разрешая owner для Studio/CLI владельца)."""
+    s = str(raw or "").strip()[:64]
+    try:
+        from .memory import canonicalize_agent_id as _canon
+        c = _canon(s)
+        if c:
+            s = c
+    except Exception:
+        pass
+    cid = re.sub(r"[^a-zA-Z0-9_\-]", "", s.lower())[:64]
+    return cid or "agent"
+
+
+def _is_pid_alive(pid: int) -> bool:
+    """Кроссплатформенно проверяет, жив ли процесс с данным PID на этом хосте."""
+    try:
+        p = int(pid or 0)
+    except (TypeError, ValueError):
+        return False
+    if p <= 10:
+        return False
+    if os.name == "nt":
+        try:
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            h = kernel32.OpenProcess(0x1000, False, p)
+            if not h:
+                return ctypes.get_last_error() == 5
+            try:
+                code = ctypes.c_ulong(0)
+                if kernel32.GetExitCodeProcess(h, ctypes.byref(code)):
+                    return int(code.value) == 259
+                return True
+            finally:
+                kernel32.CloseHandle(h)
+        except Exception:
+            return False
+    try:
+        os.kill(p, 0)
+        return True
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+
+
 def _ensure(memory) -> None:
     ark._ensure_tables(memory)
     memory.store.conn.executescript(_SIBLING_DDL)
@@ -425,7 +472,7 @@ def touch_session(memory, *, session_id: str, agent_id: str, client_name: str = 
     sid = re.sub(r"[^\w.:@-]", "", str(session_id or ""))[:80]
     if not sid:
         return
-    aid = _clean_agent_id(agent_id or client_name or "agent")
+    aid = _clean_session_agent_id(agent_id or client_name or "agent")
     act = ((re.match(r"[\w.-]+", str(action or "")) or [""])[0])[:60]
     now = _now()
     c = _sessions_conn(memory)
@@ -439,6 +486,8 @@ def touch_session(memory, *, session_id: str, agent_id: str, client_name: str = 
                ON CONFLICT(session_id) DO UPDATE SET last_seen_at = excluded.last_seen_at,
                    user_id = excluded.user_id,
                    agent_id = CASE WHEN excluded.agent_id != '' AND excluded.agent_id != 'agent' THEN excluded.agent_id ELSE ark_sibling_session.agent_id END,
+                   client_name = CASE WHEN excluded.client_name != '' THEN excluded.client_name ELSE ark_sibling_session.client_name END,
+                   pid = CASE WHEN excluded.pid > 0 THEN excluded.pid ELSE ark_sibling_session.pid END,
                    last_action = CASE WHEN excluded.last_action != '' THEN excluded.last_action ELSE last_action END,
                    calls = calls + 1""",
             (sid, memory.user_id, aid, str(client_name or "")[:60], str(client_version or "")[:30], int(pid or 0),
@@ -449,8 +498,35 @@ def touch_session(memory, *, session_id: str, agent_id: str, client_name: str = 
         c.close()
 
 
+def canonicalize_sessions(memory, canon_fn=None) -> int:
+    """Перепривязывает старые алиасы сессий к каноническому agent_id, сохраняя все сессии отдельно."""
+    c = _sessions_conn(memory)
+    if c is None:
+        return 0
+    fn = canon_fn or (lambda x: _clean_session_agent_id(x))
+    updated = 0
+    try:
+        rows = c.execute(
+            "SELECT DISTINCT agent_id FROM ark_sibling_session WHERE user_id = ?",
+            (memory.user_id,),
+        ).fetchall()
+        for (raw_aid,) in rows:
+            canon = fn(raw_aid) or raw_aid
+            if canon and canon != raw_aid:
+                cur = c.execute(
+                    "UPDATE ark_sibling_session SET agent_id = ? WHERE user_id = ? AND agent_id = ?",
+                    (canon, memory.user_id, raw_aid),
+                )
+                updated += int(cur.rowcount or 0)
+        if updated:
+            c.commit()
+    finally:
+        c.close()
+    return updated
+
+
 def list_sessions(memory, *, since_hours: float = 24.0) -> list[dict[str, Any]]:
-    """Сессии за последние since_hours часов, новые сверху."""
+    """Сессии за последние since_hours часов, новые сверху (с проверкой живого PID)."""
     import datetime as _dt
     c = _sessions_conn(memory)
     if c is None:
@@ -465,4 +541,21 @@ def list_sessions(memory, *, since_hours: float = 24.0) -> list[dict[str, Any]]:
     finally:
         c.close()
     keys = ("session_id", "agent_id", "client_name", "client_version", "pid", "started_at", "last_seen_at", "last_action", "calls")
-    return [dict(zip(keys, r)) for r in rows]
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        item = dict(zip(keys, r))
+        pid_val = int(item.get("pid") or 0)
+        alive = False
+        if pid_val > 10:
+            try:
+                seen_dt = _dt.datetime.fromisoformat(str(item.get("last_seen_at") or "").replace("Z", "+00:00"))
+                if seen_dt.tzinfo is None:
+                    seen_dt = seen_dt.replace(tzinfo=_dt.timezone.utc)
+                age_h = (_dt.datetime.now(_dt.timezone.utc) - seen_dt).total_seconds() / 3600.0
+                if age_h <= 12.0:
+                    alive = _is_pid_alive(pid_val)
+            except Exception:
+                alive = False
+        item["pid_alive"] = alive
+        out.append(item)
+    return out

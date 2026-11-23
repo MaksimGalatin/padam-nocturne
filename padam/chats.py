@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from . import safety
-from .memory import infer_agent_meta
+from .memory import agent_aliases_for, canonicalize_agent_id, infer_agent_meta
 from .store import new_id, now_iso
 
 _CODE_FENCE_RE = re.compile(r"```[\s\S]*?```", re.MULTILINE)
@@ -475,8 +475,9 @@ def save_parsed_thread(
     sync_memory_graph: bool = True,
     prev_milestone_id: str | None = None,
 ) -> dict[str, Any]:
-    """Идемпотентно сохраняет переписку (chat_thread + chat_message) и хронологию графа."""
-    agent_id = (str(parsed.get("agent_id") or "").strip()[:64]) or "aifa_antigravity"
+    """Идемпотентно сохраняет переписку (chat_thread + chat_message) и хронологию графа от канонического агента."""
+    raw_aid = (str(parsed.get("agent_id") or "").strip()[:64]) or "aifa_antigravity"
+    agent_id = canonicalize_agent_id(raw_aid, fallback="aifa_antigravity") or "aifa_antigravity"
     source_kind = str(parsed.get("source_kind") or "manual")[:40]
     source_ref = str(parsed.get("source_ref") or "")[:500]
     title = clean_chat_text(str(parsed.get("title") or "Диалог"), max_len=160) or "Диалог"
@@ -587,8 +588,9 @@ def add_message(
     created_at: str | None = None,
     sync_memory_graph: bool = False,
 ) -> dict[str, Any]:
-    """Добавляет одно сообщение в существующий или новый диалог агента (чистит код и секреты)."""
-    aid = (str(agent_id or "").strip()[:64]) or "aifa_antigravity"
+    """Добавляет одно сообщение в существующий или новый диалог канонического агента (чистит код и секреты)."""
+    raw_aid = (str(agent_id or "").strip()[:64]) or "aifa_antigravity"
+    aid = canonicalize_agent_id(raw_aid, fallback="aifa_antigravity") or "aifa_antigravity"
     cleaned = clean_chat_text(content)
     if not cleaned:
         raise ValueError("empty message after code/tag cleanup")
@@ -713,7 +715,7 @@ def batch_import_history(
             if sp.is_file() and sp.suffix.lower() in (".md", ".txt"):
                 raw_t = sp.read_text(encoding="utf-8", errors="replace")
                 item = parse_markdown_or_text_chat(
-                    raw_t, agent_id="aifa-claude-code", title=sp.stem, source_kind="sisters_chat", source_ref=str(sp)
+                    raw_t, agent_id="aifa_claude", title=sp.stem, source_kind="sisters_chat", source_ref=str(sp)
                 )
                 if item:
                     parsed_items.append(item)
@@ -892,7 +894,7 @@ def sync_family_chats_from_disk(
     dialogs_added = 0
     if handover_paths:
         try:
-            dlg_res = _fd.import_files(memory, handover_paths, author="aifa-claude-code")
+            dlg_res = _fd.import_files(memory, handover_paths, author="aifa_claude")
             dialogs_added = int(dlg_res.get("added") or 0)
         except Exception:
             dialogs_added = 0
@@ -935,9 +937,12 @@ def list_threads(
     lim = max(1, min(int(limit), 500))
     where = ["t.user_id = ?"]
     params: list[Any] = [memory.user_id]
+    canon_filter = None
     if agent_id and str(agent_id).strip():
-        where.append("t.agent_id = ?")
-        params.append(str(agent_id).strip())
+        canon_filter = canonicalize_agent_id(agent_id) or str(agent_id).strip()
+        als = agent_aliases_for(canon_filter) or [canon_filter]
+        where.append(f"t.agent_id IN ({','.join('?' * len(als))})")
+        params.extend(als)
     if day and str(day).strip():
         where.append("(substr(t.started_at, 1, 10) = ? OR EXISTS (SELECT 1 FROM chat_message m WHERE m.thread_id = t.id AND substr(m.created_at, 1, 10) = ?))")
         d_s = str(day).strip()[:10]
@@ -988,23 +993,35 @@ def list_threads(
            GROUP BY agent_id ORDER BY last_at DESC""",
         (memory.user_id,),
     )
-    agents = []
+    merged_ag: dict[str, dict[str, Any]] = {}
     for ar in by_ag_rows:
-        am = infer_agent_meta(ar["agent_id"])
-        agents.append({
-            "agent_id": ar["agent_id"],
-            "display_name": am["display_name"],
-            "color": am["color"],
-            "threads": int(ar["threads"] or 0),
-            "messages": int(ar["messages"] or 0),
-            "first_at": ar["first_at"],
-            "last_at": ar["last_at"],
-        })
+        ca = canonicalize_agent_id(ar["agent_id"]) or ar["agent_id"]
+        am = infer_agent_meta(ca)
+        cur = merged_ag.get(ca)
+        if not cur:
+            merged_ag[ca] = {
+                "agent_id": ca,
+                "display_name": am["display_name"],
+                "color": am["color"],
+                "threads": int(ar["threads"] or 0),
+                "messages": int(ar["messages"] or 0),
+                "first_at": ar["first_at"] or "",
+                "last_at": ar["last_at"] or "",
+            }
+        else:
+            cur["threads"] += int(ar["threads"] or 0)
+            cur["messages"] += int(ar["messages"] or 0)
+            if ar["first_at"] and (not cur["first_at"] or ar["first_at"] < cur["first_at"]):
+                cur["first_at"] = ar["first_at"]
+            if ar["last_at"] and ar["last_at"] > cur["last_at"]:
+                cur["last_at"] = ar["last_at"]
+    agents = sorted(merged_ag.values(), key=lambda x: str(x["last_at"] or ""), reverse=True)
     day_where = ["m.user_id = ?"]
     day_params: list[Any] = [memory.user_id]
-    if agent_id and str(agent_id).strip():
-        day_where.append("m.agent_id = ?")
-        day_params.append(str(agent_id).strip())
+    if canon_filter:
+        als_d = agent_aliases_for(canon_filter) or [canon_filter]
+        day_where.append(f"m.agent_id IN ({','.join('?' * len(als_d))})")
+        day_params.extend(als_d)
     if not include_workers:
         day_where.append("t.is_worker = 0")
     day_sql_cond = " AND ".join(day_where)
@@ -1057,8 +1074,10 @@ def get_hour_messages(
     where = ["m.user_id = ?", f"substr(m.created_at, 1, {col_len}) = ?"]
     params: list[Any] = [memory.user_id, prefix]
     if agent_id and str(agent_id).strip():
-        where.append("m.agent_id = ?")
-        params.append(str(agent_id).strip())
+        ca_h = canonicalize_agent_id(agent_id) or str(agent_id).strip()
+        als_h = agent_aliases_for(ca_h) or [ca_h]
+        where.append(f"m.agent_id IN ({','.join('?' * len(als_h))})")
+        params.extend(als_h)
     if not include_workers:
         where.append("t.is_worker = 0")
     lim = max(1, min(int(limit), 2000))

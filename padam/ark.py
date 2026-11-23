@@ -464,6 +464,28 @@ def wake_up_briefing(
         raw_sections.append("[relevant_context] " + " | ".join(rel_lines))
     if inbox:
         raw_sections.append("[family_inbox] " + "; ".join(f"{m['from_agent']}: {m['payload']}" for m in inbox if m["verified"]))
+    owner_msgs: list[dict[str, Any]] = []
+    try:
+        ff_rows = memory.store.query(
+            "SELECT channel, author, content, created_at FROM family_feed WHERE user_id = ? AND author IN ('owner', 'user', 'studio') ORDER BY created_at DESC LIMIT 5",
+            (memory.user_id,),
+        )
+        for fr in ff_rows:
+            owner_msgs.append({"source": f"family:{fr['channel']}", "text": str(fr["content"] or "")[:200], "ts": str(fr["created_at"] or "")})
+    except Exception:
+        pass
+    try:
+        cm_rows = memory.store.query(
+            "SELECT m.content, m.created_at, t.source_kind FROM chat_message m JOIN chat_thread t ON t.id = m.thread_id "
+            "WHERE m.user_id = ? AND m.role = 'user' AND t.is_worker = 0 ORDER BY m.created_at DESC LIMIT 4",
+            (memory.user_id,),
+        )
+        for cr in cm_rows:
+            owner_msgs.append({"source": str(cr["source_kind"] or "chat"), "text": str(cr["content"] or "")[:200], "ts": str(cr["created_at"] or "")})
+    except Exception:
+        pass
+    if owner_msgs:
+        raw_sections.append("[owner_recent_messages] " + " | ".join(f"[{om['source']} {om['ts'][:16]}] {om['text']}" for om in owner_msgs[:5]))
     if lessons:
         raw_sections.append("[lessons] " + "; ".join(l["rule_learned"] for l in lessons))
     if pulse_data and pulse_data.get("summary_text"):
@@ -485,6 +507,7 @@ def wake_up_briefing(
         "open_commitments": commitments,
         "relevant_records": relevant_records,
         "family_inbox": inbox,
+        "owner_recent_messages": owner_msgs[:5],
         "latest_checkpoint": checkpoint,
         "recent_lessons": lessons,
         "router_status": {
