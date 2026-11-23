@@ -12,7 +12,7 @@
 
 **One-click install:** [Install in Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=padam&config=eyJjb21tYW5kIjoicGFkYW0tbWNwIiwiYXJncyI6W119) · [Install in VS Code](vscode:mcp/install?%7B%22name%22%3A%22padam%22%2C%22command%22%3A%22padam-mcp%22%2C%22args%22%3A%5B%5D%7D) · CLI (`13` clients incl. Claude Code & Antigravity): `padam setup --all` · Zero-install run: `uvx padam-nocturne` · [★ Star on GitHub](https://github.com/MaksimGalatin/padam-nocturne/stargazers)
 
-**Desktop & Mobile (v0.7.2):** [Windows / Linux / macOS Studio & Signed Android APK (9/9 release files)](https://github.com/MaksimGalatin/padam-nocturne/releases/latest) · [Free Browser Express Scanner (100% client-side)](https://aifa.works/shield) · [Hosted Cloud MCP (`AIfa Memory` v1.9.8)](https://github.com/MaksimGalatin/aifa-memory-mcp)
+**Desktop & Mobile (v0.8.0):** [Windows / Linux / macOS Studio & Signed Android APK (9/9 release files)](https://github.com/MaksimGalatin/padam-nocturne/releases/latest) · [Free Browser Express Scanner (100% client-side)](https://aifa.works/shield) · [Hosted Cloud MCP (`AIfa Memory` v1.9.8)](https://github.com/MaksimGalatin/aifa-memory-mcp)
 
 > ⭐ **If PADAM helps protect your AI agents, please [Star this repo](https://github.com/MaksimGalatin/padam-nocturne/stargazers)** — reaching **75★ (Homebrew)** and **100★ (Scoop)** unlocks one-command installs across macOS & Windows and keeps zero-telemetry AI security open.
 
@@ -23,7 +23,7 @@
 <details open>
 <summary><strong>▶ Watch 28-second Live Engine Run (real SQLite quarantine + secret DLP + browser scanner)</strong></summary>
 <p align="center">
-  <img src="./docs/assets/padam-nocturne-demo.gif" alt="PADAM NOCTURNE v0.7.2 Live Attack Interception &amp; Agentic Shield Demo" width="100%" />
+  <img src="./docs/assets/padam-nocturne-demo.gif" alt="PADAM NOCTURNE v0.8.0 Live Attack Interception &amp; Agentic Shield Demo" width="100%" />
 </p>
 </details>
 

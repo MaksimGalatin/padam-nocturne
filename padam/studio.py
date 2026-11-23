@@ -13800,11 +13800,15 @@ if ($('qr-gen-btn')) $('qr-gen-btn').onclick = async () => {
     const r = await api('/api/v2/lan-sync/offer', { ttl_sec: 300 });
     if (!out) return;
     out.replaceChildren();
-    const img = document.createElement('img');
-    img.className = 'qr-sync-img';
-    img.alt = 'PADAM Android LAN Sync QR';
-    img.src = String(r.qr_data_uri || '');
-    out.append(img, _el('div', 'earn-meta', 'LAN: ' + String(r.base_url || '') + ' · TTL ' + String(r.ttl_sec || 300) + 's'));
+    const doc = new DOMParser().parseFromString(String(r.qr_svg || ''), 'image/svg+xml');
+    const svgEl = doc && doc.documentElement && doc.documentElement.tagName.toLowerCase() === 'svg' ? doc.documentElement : null;
+    if (svgEl) {
+      svgEl.setAttribute('class', 'qr-sync-img');
+      svgEl.setAttribute('role', 'img');
+      svgEl.setAttribute('aria-label', 'PADAM Android LAN Sync QR');
+      out.append(document.importNode(svgEl, true));
+    }
+    out.append(_el('div', 'earn-meta', 'LAN: ' + String(r.base_url || '') + ' · TTL ' + String(r.ttl_sec || 300) + 's'));
     say(S.done, true);
   } catch (e) { if (out) out.textContent = String(e.message || e); }
 };
