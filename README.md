@@ -33,7 +33,7 @@
 - API keys and passwords are masked before they reach the disk;
 - what comes back is fenced as data, and a forgotten record is wiped from the file; if it was sent to Arweave, destroying its own key leaves only unreadable ciphertext there.
 
-Measured, not claimed: seven red-team rounds with their results published (the sets of rounds 1–3 in full; rounds 4–7 were hashed before each run, their sets will follow after a read for real names), LongMemEval-S retrieval 97.0 % in the top 5 and 99.2 % in the top 10, against 96.0 % and 97.7 % for plain BM25, 1,704 automated tests (`100/100 Grade S` on AIFaSecurity-100) and public CI. Listed in the [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) catalog and the official MCP registry (`0.7.2`).
+Measured, not claimed: seven red-team rounds with their results published (the sets of rounds 1–3 in full; rounds 4–7 were hashed before each run, their sets will follow after a read for real names), LongMemEval-S retrieval 97.0 % in the top 5 and 99.2 % in the top 10, against 96.0 % and 97.7 % for plain BM25, 1,712 automated tests on v0.8.0 (`100/100 Grade S` on AIFaSecurity-100) and public CI. Listed in the [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) catalog and the official MCP registry (`0.8.0`).
 
 ## Storage & Encryption Boundaries
 
