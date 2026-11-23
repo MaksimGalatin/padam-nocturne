@@ -210,7 +210,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun dispatchLanPairUri(pairUri: String) {
         Thread {
-            val res = PadamAndroidBridge().syncLanWithPc(pairUri)
+            val res = PadamAndroidBridge().syncLanFromUri(pairUri)
             val safeUri = JSONObject.quote(pairUri)
             val safeRes = JSONObject.quote(res)
             runOnUiThread {
