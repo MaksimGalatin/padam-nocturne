@@ -62,7 +62,9 @@ def test_studio_benchmark_buttons_and_endpoints(tmp_path: Path) -> None:
     t.start()
     try:
         base, tok = link.split("/studio#t=", 1)
-        html = urllib.request.urlopen(f"{base}/studio", timeout=5).read().decode("utf-8")
+        # 23.11.2026: запас 30 с вместо 5. Локально /studio отдаётся за 0,06 с (замер), но на windows-latest 3.12 после 1 700 тестов
+        # первый запрос дважды подряд не уложился в 5 с (CI 36c05ce, 6b85900) — это нагрузка машины CI, не Studio.
+        html = urllib.request.urlopen(f"{base}/studio", timeout=30).read().decode("utf-8")
         for marker in (
             "att-aifasec-dl-json",
             "att-aifasec-dl-sarif",
@@ -82,7 +84,7 @@ def test_studio_benchmark_buttons_and_endpoints(tmp_path: Path) -> None:
             ("/api/v2/qa-benchmark", "benchmark"),
         ):
             req = urllib.request.Request(f"{base}{ep}", headers={"Authorization": f"Bearer {tok}"})
-            body = urllib.request.urlopen(req, timeout=10).read().decode("utf-8")
+            body = urllib.request.urlopen(req, timeout=30).read().decode("utf-8")
             assert expect in body
     finally:
         srv.shutdown()
