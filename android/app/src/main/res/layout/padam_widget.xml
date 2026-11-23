@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/padam_widget_bg"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <TextView
+        android:id="@+id/widget_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="PADAM · Grade S"
+        android:textColor="#38BDF8"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/widget_stats"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Память: 0 · Карантин: 0"
+        android:textColor="#E2E8F0"
+        android:textSize="12sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/widget_btn_voice"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:backgroundTint="#1E293B"
+            android:text="🎙 Айфа"
+            android:textColor="#F8FAFC"
+            android:textSize="11sp" />
+
+        <Button
+            android:id="@+id/widget_btn_search"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:backgroundTint="#1E293B"
+            android:text="🔍 Поиск"
+            android:textColor="#F8FAFC"
+            android:textSize="11sp" />
+
+        <Button
+            android:id="@+id/widget_btn_chat"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:backgroundTint="#1E293B"
+            android:text="💬 Чат"
+            android:textColor="#F8FAFC"
+            android:textSize="11sp" />
+    </LinearLayout>
+</LinearLayout>

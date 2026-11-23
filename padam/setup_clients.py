@@ -310,3 +310,59 @@ def ping_client_setup(
         "config_has_padam": configured,
         "mcp_tools_ready": len(tools),
     }
+
+
+CLIENT_LABELS: dict[str, str] = {
+    "claude_desktop": "Claude Desktop",
+    "claude_code": "Claude Code",
+    "antigravity": "Antigravity IDE",
+    "cursor": "Cursor",
+    "vscode": "VS Code",
+    "codex": "OpenAI Codex",
+    "gemini_cli": "Gemini CLI",
+    "windsurf": "Windsurf",
+    "zed": "Zed",
+    "cline": "Cline",
+    "roo_code": "Roo Code",
+    "continue_dev": "Continue.dev",
+    "jetbrains": "JetBrains AI",
+}
+
+
+def clients_connection_status(
+    *,
+    home: Path | None = None,
+    project_dir: Path | None = None,
+) -> list[dict[str, Any]]:
+    """Возвращает состояние всех 13 ИИ-клиентов на ПК: найден ли, подключён ли PADAM, путь к конфигу (Фишка 15)."""
+    h = home or Path.home()
+    proj = project_dir or Path.cwd()
+    out: list[dict[str, Any]] = []
+    for cl in SUPPORTED_CLIENTS:
+        cfg_path, fmt = _client_config_path(cl, home=h, project_dir=proj)
+        exists = cfg_path.exists()
+        detected = exists or cfg_path.parent.exists()
+        connected = False
+        if exists:
+            try:
+                txt = cfg_path.read_text(encoding="utf-8", errors="replace")
+                if fmt == "toml_codex":
+                    connected = "[mcp_servers.padam]" in txt
+                else:
+                    obj = json.loads(txt)
+                    for key in ("mcpServers", "servers", "context_servers"):
+                        if isinstance(obj.get(key), dict) and any("padam" in str(k).lower() for k in obj[key].keys()):
+                            connected = True
+                            break
+            except Exception:
+                connected = ("padam" in txt) if "txt" in locals() else False
+        out.append({
+            "client": cl,
+            "label": CLIENT_LABELS.get(cl, cl),
+            "path": str(cfg_path),
+            "format": fmt,
+            "exists": exists,
+            "detected": detected,
+            "connected": connected,
+        })
+    return out

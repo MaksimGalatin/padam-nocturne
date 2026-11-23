@@ -37,6 +37,9 @@ def test_android_project_files_and_manifest_safety() -> None:
     assert set(perms) == {
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.POST_NOTIFICATIONS",
     }
     app_el = m_root.find("application")
     assert app_el is not None

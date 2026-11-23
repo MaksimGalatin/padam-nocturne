@@ -5407,6 +5407,27 @@ _STRINGS_21_POWER: dict[str, dict[str, str]] = {
         "ui_mode_pro": "Режим: Профи",
         "ui_mode_simple": "Режим: Простой",
         "cmdk_btn": "Поиск Ctrl+K",
+        "voice_aifa_btn": "🎙 Айфа",
+        "voice_wake_off": "👂 Слушать: ВЫКЛ",
+        "voice_wake_on": "👂 Слушаю «Айфа…»",
+        "lan_qr_btn": "📱 QR / Облако",
+        "pulse_idle": "Пульс агентов: тишина · ожидание событий…",
+        "pulse_live": "Пульс агентов",
+        "sync_qr_title": "Синхронизация: Android (QR LAN) · Облако AIfa · Агенты",
+        "qr_gen_btn": "📱 Создать QR-код для Android",
+        "cloud_sync_btn": "☁ Синхронизировать с AIfa Cloud",
+        "agents_canon_btn": "✨ Объединить дубли агентов",
+        "voice_modal_title": "🎙 Голосовой помощник «Айфа…»",
+        "voice_modal_ph": "Например: Айфа, запиши мы выпустили версию 0.8.0",
+        "voice_run_btn": "Выполнить",
+        "voice_mic_btn": "🎙 Диктовать",
+        "q_inspect_btn": "🔍 Разобрать угрозу",
+        "q_approve_clean_btn": "✨ Одобрить безопасно",
+        "q_reject_similar_btn": "🚫 Отклонить однотипные",
+        "cl_connected": "✓ Подключён",
+        "cl_detected": "● Найден",
+        "cl_missing": "○ Не найден",
+        "cmdk_mem_group": "Память PADAM",
         "cmdk_title": "Командная палитра (Ctrl+K)",
         "cmdk_ph": "Введите название вкладки, кнопки или команды…",
         "cmdk_close": "Закрыть",
@@ -5474,6 +5495,27 @@ _STRINGS_21_POWER: dict[str, dict[str, str]] = {
         "ui_mode_pro": "Mode: Pro",
         "ui_mode_simple": "Mode: Simple",
         "cmdk_btn": "Search Ctrl+K",
+        "voice_aifa_btn": "🎙 AIfa",
+        "voice_wake_off": "👂 Wake: OFF",
+        "voice_wake_on": "👂 Listening «AIfa…»",
+        "lan_qr_btn": "📱 QR / Cloud",
+        "pulse_idle": "Agent pulse: idle · waiting for live events…",
+        "pulse_live": "Agent pulse",
+        "sync_qr_title": "Sync: Android (QR LAN) · AIfa Cloud · Agents",
+        "qr_gen_btn": "📱 Generate Android QR",
+        "cloud_sync_btn": "☁ Sync with AIfa Cloud",
+        "agents_canon_btn": "✨ Merge Duplicate Agents",
+        "voice_modal_title": "🎙 Voice Assistant «AIfa…»",
+        "voice_modal_ph": "Example: AIfa, remember we released version 0.8.0",
+        "voice_run_btn": "Run",
+        "voice_mic_btn": "🎙 Speak",
+        "q_inspect_btn": "🔍 Inspect Threat",
+        "q_approve_clean_btn": "✨ Approve Clean",
+        "q_reject_similar_btn": "🚫 Reject Similar",
+        "cl_connected": "✓ Connected",
+        "cl_detected": "● Detected",
+        "cl_missing": "○ Not found",
+        "cmdk_mem_group": "PADAM Memory",
         "cmdk_title": "Command Palette (Ctrl+K)",
         "cmdk_ph": "Type a tab, action, or command name…",
         "cmdk_close": "Close",
@@ -5541,6 +5583,27 @@ _STRINGS_21_POWER: dict[str, dict[str, str]] = {
         "ui_mode_pro": "Modo: Pro",
         "ui_mode_simple": "Modo: Simple",
         "cmdk_btn": "Buscar Ctrl+K",
+        "voice_aifa_btn": "🎙 AIfa",
+        "voice_wake_off": "👂 Escucha: OFF",
+        "voice_wake_on": "👂 Escuchando «AIfa…»",
+        "lan_qr_btn": "📱 QR / Nube",
+        "pulse_idle": "Pulso de agentes: en espera de eventos…",
+        "pulse_live": "Pulso de agentes",
+        "sync_qr_title": "Sincronización: Android (QR LAN) · AIfa Cloud · Agentes",
+        "qr_gen_btn": "📱 Generar QR para Android",
+        "cloud_sync_btn": "☁ Sincronizar AIfa Cloud",
+        "agents_canon_btn": "✨ Unificar Agentes",
+        "voice_modal_title": "🎙 Asistente de Voz «AIfa…»",
+        "voice_modal_ph": "Ej.: AIfa, recuerda que lanzamos la versión 0.8.0",
+        "voice_run_btn": "Ejecutar",
+        "voice_mic_btn": "🎙 Hablar",
+        "q_inspect_btn": "🔍 Analizar amenaza",
+        "q_approve_clean_btn": "✨ Aprobar limpio",
+        "q_reject_similar_btn": "🚫 Rechazar similares",
+        "cl_connected": "✓ Conectado",
+        "cl_detected": "● Detectado",
+        "cl_missing": "○ No encontrado",
+        "cmdk_mem_group": "Memoria PADAM",
         "cmdk_title": "Paleta de Comandos (Ctrl+K)",
         "cmdk_ph": "Escriba una pestaña, botón o comando…",
         "cmdk_close": "Cerrar",
@@ -5608,6 +5671,27 @@ _STRINGS_21_POWER: dict[str, dict[str, str]] = {
         "ui_mode_pro": "专业模式",
         "ui_mode_simple": "极简模式",
         "cmdk_btn": "命令 Ctrl+K",
+        "voice_aifa_btn": "🎙 AIfa",
+        "voice_wake_off": "👂 唤醒: 关",
+        "voice_wake_on": "👂 正在监听 «AIfa…»",
+        "lan_qr_btn": "📱 二维码 / 云端",
+        "pulse_idle": "代理实时脉搏：等待事件…",
+        "pulse_live": "代理脉搏",
+        "sync_qr_title": "同步中心：Android 二维码 · AIfa 云端 · 代理规范化",
+        "qr_gen_btn": "📱 生成 Android 二维码",
+        "cloud_sync_btn": "☁ 同步到 AIfa 云端",
+        "agents_canon_btn": "✨ 合并重复代理",
+        "voice_modal_title": "🎙 语音助手 «AIfa…»",
+        "voice_modal_ph": "例如：AIfa, remember we released version 0.8.0",
+        "voice_run_btn": "执行",
+        "voice_mic_btn": "🎙 语音输入",
+        "q_inspect_btn": "🔍 检查风险",
+        "q_approve_clean_btn": "✨ 净化并批准",
+        "q_reject_similar_btn": "🚫 批量拒绝同类",
+        "cl_connected": "✓ 已连接",
+        "cl_detected": "● 已发现",
+        "cl_missing": "○ 未发现",
+        "cmdk_mem_group": "PADAM 记忆",
         "cmdk_title": "全局命令面板 (Ctrl+K)",
         "cmdk_ph": "输入标签页、按钮或命令名称…",
         "cmdk_close": "关闭",
@@ -7800,7 +7884,59 @@ async function loadReview(skip) {
       return;
     }
     for (const item of rows) {
-      list.append(renderRecordCard(item));
+      const card = renderRecordCard(item);
+      const qBar = el('div', 'rec-actions');
+      const inspectBox = el('div', 'q-inspect-box');
+      inspectBox.hidden = true;
+      const bInsp = el('button', 'aifa-compact-btn', S.q_inspect_btn || '🔍 Inspect');
+      bInsp.type = 'button';
+      bInsp.onclick = async () => {
+        try {
+          const d = await api('/api/v2/quarantine/inspect?id=' + encodeURIComponent(item.id));
+          inspectBox.replaceChildren();
+          const reasonsTxt = (d.reasons && d.reasons.length) ? d.reasons.join(', ') : (d.quarantine_reason || 'policy');
+          inspectBox.append(el('div', 'rec-meta', '⚠ ' + reasonsTxt));
+          const frag = el('div', 'rec-text');
+          const rawTxt = String(d.content || '');
+          let pos = 0;
+          for (const sp of (d.spans || [])) {
+            if (sp.start > pos) frag.append(document.createTextNode(rawTxt.slice(pos, sp.start)));
+            const mk = document.createElement('mark');
+            mk.className = 'q-hit';
+            mk.textContent = rawTxt.slice(sp.start, sp.end);
+            mk.title = String(sp.label || '');
+            frag.append(mk);
+            pos = sp.end;
+          }
+          if (pos < rawTxt.length) frag.append(document.createTextNode(rawTxt.slice(pos)));
+          inspectBox.append(frag);
+          if (d.cleaned_text) {
+            inspectBox.append(el('div', 'q-clean-preview', '✓ ' + String(d.cleaned_text)));
+          }
+          inspectBox.hidden = false;
+        } catch (e) { say(String(e.message || e), false); }
+      };
+      const bClean = el('button', 'btn-primary aifa-compact-btn', S.q_approve_clean_btn || '✨ Approve Clean');
+      bClean.type = 'button';
+      bClean.onclick = async () => {
+        try {
+          const res = await api('/api/v2/quarantine/approve-clean', { id: item.id });
+          if (res && res.ok) { say(S.done, true); loadReview(); if (typeof loadOverview === 'function') loadOverview(); }
+          else { say(String((res && res.error) || S.failed), false); }
+        } catch (e) { say(String(e.message || e), false); }
+      };
+      const bSim = el('button', 'aifa-compact-btn', S.q_reject_similar_btn || '🚫 Reject Similar');
+      bSim.type = 'button';
+      bSim.onclick = async () => {
+        try {
+          const res = await api('/api/v2/quarantine/reject-similar', { id: item.id });
+          say(S.done + ' (' + String((res && res.rejected_count) || 0) + ')', true);
+          loadReview(); if (typeof loadOverview === 'function') loadOverview();
+        } catch (e) { say(String(e.message || e), false); }
+      };
+      qBar.append(bInsp, bClean, bSim);
+      card.append(qBar, inspectBox);
+      list.append(card);
     }
   } catch (e) { say(S.failed + ': ' + e.message, false); }
 }
@@ -13575,7 +13711,237 @@ function renderCmdK(q) {
 }
 if ($('cmdk-open-btn')) $('cmdk-open-btn').onclick = openCmdK;
 if ($('cmdk-close-btn')) $('cmdk-close-btn').onclick = () => { if ($('cmdk-modal')) $('cmdk-modal').hidden = true; };
-if ($('cmdk-input')) $('cmdk-input').oninput = (e) => renderCmdK(e.target.value);
+let _cmdkTimer = null;
+function _renderCmdKFull(q) {
+  renderCmdK(q);
+  const low = String(q || '').trim();
+  if (low.length < 2) return;
+  if (_cmdkTimer) clearTimeout(_cmdkTimer);
+  _cmdkTimer = setTimeout(async () => {
+    try {
+      const r = await api('/search', { query: low, limit: 6 });
+      const hits = (r && r.results) || [];
+      const list = $('cmdk-list');
+      if (!list || !hits.length) return;
+      list.appendChild(_el('div', 'cmdk-sep', S.cmdk_mem_group || 'PADAM Memory'));
+      for (const h of hits) {
+        const snippet = String(h.content || '').slice(0, 110);
+        const btn = _el('button', 'cmdk-item', '[' + String(h.kind || 'fact') + '] ' + snippet);
+        btn.type = 'button';
+        btn.onclick = () => {
+          if ($('cmdk-modal')) $('cmdk-modal').hidden = true;
+          if (typeof switchTab === 'function') switchTab('search');
+          if ($('search-query')) $('search-query').value = low;
+          if (typeof runSearch === 'function') runSearch();
+        };
+        list.appendChild(btn);
+      }
+    } catch (e) {}
+  }, 180);
+}
+if ($('cmdk-input')) $('cmdk-input').oninput = (e) => _renderCmdKFull(e.target.value);
+
+// --- Фишка 12: Живой Пульс Агентов (SSE + recent fallback) ---
+const _pulseBuffer = [];
+function _renderPulseBar() {
+  const txt = $('live-pulse-text'), log = $('live-pulse-log');
+  if (!txt) return;
+  if (!_pulseBuffer.length) {
+    txt.textContent = S.pulse_idle || 'Agent pulse: idle';
+    return;
+  }
+  const top = _pulseBuffer[0];
+  txt.textContent = (S.pulse_live || 'Pulse') + ' · [' + String(top.agent_id || 'agent') + '] ' + String(top.event_type || 'ev') + ': ' + String(top.summary || '').slice(0, 110);
+  if (log) {
+    log.textContent = '';
+    for (const ev of _pulseBuffer.slice(0, 12)) {
+      log.appendChild(_el('div', '', String(ev.ts || '').slice(11, 19) + ' [' + String(ev.agent_id || '') + '] ' + String(ev.event_type || '') + ' — ' + String(ev.summary || '').slice(0, 120)));
+    }
+  }
+}
+function _pushPulseEv(ev) {
+  if (!ev || !ev.seq) return;
+  if (_pulseBuffer.some(x => x.seq === ev.seq)) return;
+  _pulseBuffer.unshift(ev);
+  if (_pulseBuffer.length > 24) _pulseBuffer.length = 24;
+  _renderPulseBar();
+}
+if ($('live-pulse-bar')) {
+  $('live-pulse-bar').onclick = () => { const lg = $('live-pulse-log'); if (lg) lg.hidden = !lg.hidden; };
+}
+(async function _initLivePulse() {
+  try {
+    const r = await api('/api/v2/pulse/recent?limit=12');
+    for (const ev of ((r && r.events) || [])) _pushPulseEv(ev);
+  } catch (e) {}
+  setInterval(async () => {
+    try {
+      const maxSeq = _pulseBuffer.length ? _pulseBuffer[0].seq : 0;
+      const r = await api('/api/v2/pulse/recent?limit=12&since_seq=' + String(maxSeq));
+      for (const ev of ((r && r.events) || [])) _pushPulseEv(ev);
+    } catch (e) {}
+  }, 6000);
+})();
+
+// --- Фишки 2, 3, 18: Модалка QR LAN Sync + Облако AIfa + Канонизация агентов ---
+if ($('lan-qr-btn')) $('lan-qr-btn').onclick = async () => {
+  if ($('sync-qr-modal')) $('sync-qr-modal').hidden = false;
+  try {
+    const st = await api('/api/v2/cloud/status');
+    if ($('cloud-sync-out')) {
+      $('cloud-sync-out').textContent = 'AIfa Cloud: ' + String(st.endpoint || '') + ' · key=' + (st.has_api_key ? 'OK' : 'not set') + ' · synced=' + String(st.synced_records || 0);
+    }
+  } catch (e) {}
+};
+if ($('sync-qr-close-btn')) $('sync-qr-close-btn').onclick = () => { if ($('sync-qr-modal')) $('sync-qr-modal').hidden = true; };
+if ($('qr-gen-btn')) $('qr-gen-btn').onclick = async () => {
+  const out = $('qr-sync-out');
+  try {
+    const r = await api('/api/v2/lan-sync/offer', { ttl_sec: 300 });
+    if (!out) return;
+    out.replaceChildren();
+    const img = document.createElement('img');
+    img.className = 'qr-sync-img';
+    img.alt = 'PADAM Android LAN Sync QR';
+    img.src = String(r.qr_data_uri || '');
+    out.append(img, _el('div', 'earn-meta', 'LAN: ' + String(r.base_url || '') + ' · TTL ' + String(r.ttl_sec || 300) + 's'));
+    say(S.done, true);
+  } catch (e) { if (out) out.textContent = String(e.message || e); }
+};
+if ($('cloud-sync-btn')) $('cloud-sync-btn').onclick = async () => {
+  const out = $('cloud-sync-out');
+  try {
+    const r = await api('/api/v2/cloud/sync', { direction: 'both', limit: 20 });
+    if (out) out.textContent = JSON.stringify(r);
+    say(r.ok ? S.done : String((r.push && r.push.error) || (r.pull && r.pull.error) || S.failed), Boolean(r.ok));
+  } catch (e) { if (out) out.textContent = String(e.message || e); }
+};
+if ($('agents-canon-btn')) $('agents-canon-btn').onclick = async () => {
+  const out = $('cloud-sync-out');
+  try {
+    const r = await api('/api/v2/agents/canonicalize', {});
+    if (out) out.textContent = JSON.stringify(r);
+    say(S.done, true);
+    if (typeof loadOverview === 'function') loadOverview();
+  } catch (e) { if (out) out.textContent = String(e.message || e); }
+};
+
+// --- Фишка 19 + Wake Word «Айфа…» (Web Speech API на ПК + мост window.PadamAndroid на Android) ---
+let _wakeActive = false;
+let _wakeRec = null;
+function _speakReply(text) {
+  try {
+    if (window.PadamAndroid && typeof window.PadamAndroid.speakText === 'function') {
+      window.PadamAndroid.speakText(String(text || ''));
+      return;
+    }
+    if (window.speechSynthesis && text) {
+      const u = new SpeechSynthesisUtterance(String(text).slice(0, 260));
+      u.lang = (currentLang === 'ru') ? 'ru-RU' : (currentLang === 'es' ? 'es-ES' : (currentLang === 'zh' ? 'zh-CN' : 'en-US'));
+      window.speechSynthesis.speak(u);
+    }
+  } catch (e) {}
+}
+async function _runVoiceCommandText(rawText, requireWake) {
+  const out = $('voice-cmd-out');
+  try {
+    const res = await api('/api/v2/voice/command', { text: String(rawText || ''), require_wake_word: Boolean(requireWake) });
+    if (res && res.ignored) return res;
+    const sp = String((res && res.spoken_reply) || S.done);
+    if (out) out.textContent = '[' + String((res && res.intent) || 'ok') + '] ' + sp;
+    say(sp, Boolean(res && res.ok));
+    _speakReply(sp);
+    if (res && res.intent === 'remember' && typeof loadOverview === 'function') loadOverview();
+    return res;
+  } catch (e) {
+    if (out) out.textContent = String(e.message || e);
+    return null;
+  }
+}
+window.__padamOnAndroidVoiceResult = (text, fromWake) => {
+  if ($('voice-cmd-inp')) $('voice-cmd-inp').value = String(text || '');
+  _runVoiceCommandText(text, Boolean(fromWake));
+};
+function _startSingleMic() {
+  if (window.PadamAndroid && typeof window.PadamAndroid.startVoice === 'function') {
+    window.PadamAndroid.startVoice();
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    if ($('voice-cmd-out')) $('voice-cmd-out').textContent = 'SpeechRecognition unavailable — type command above.';
+    return;
+  }
+  const rec = new SR();
+  rec.lang = (currentLang === 'ru') ? 'ru-RU' : 'en-US';
+  rec.interimResults = false;
+  rec.onresult = (ev) => {
+    const txt = ev.results && ev.results[0] && ev.results[0][0] ? ev.results[0][0].transcript : '';
+    if ($('voice-cmd-inp')) $('voice-cmd-inp').value = txt;
+    _runVoiceCommandText(txt, false);
+  };
+  rec.onerror = (ev) => { if ($('voice-cmd-out')) $('voice-cmd-out').textContent = 'Mic: ' + String(ev.error || 'error'); };
+  rec.start();
+}
+function _toggleWakeListening() {
+  _wakeActive = !_wakeActive;
+  const btn = $('voice-wake-btn');
+  if (btn) {
+    btn.classList.toggle('voice-active', _wakeActive);
+    btn.textContent = _wakeActive ? (S.voice_wake_on || '👂 Listening «AIfa…»') : (S.voice_wake_off || '👂 Wake: OFF');
+  }
+  if (window.PadamAndroid && typeof window.PadamAndroid.setWakeWordEnabled === 'function') {
+    window.PadamAndroid.setWakeWordEnabled(_wakeActive);
+    say(_wakeActive ? (S.voice_wake_on || 'Wake ON') : (S.voice_wake_off || 'Wake OFF'), true);
+    return;
+  }
+  if (!_wakeActive) {
+    try { if (_wakeRec) _wakeRec.stop(); } catch (e) {}
+    _wakeRec = null;
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    _wakeActive = false;
+    if (btn) { btn.classList.remove('voice-active'); btn.textContent = S.voice_wake_off || '👂 Wake: OFF'; }
+    say('Web Speech API unavailable in this browser', false);
+    return;
+  }
+  const startLoop = () => {
+    if (!_wakeActive) return;
+    const rec = new SR();
+    _wakeRec = rec;
+    rec.lang = (currentLang === 'ru') ? 'ru-RU' : 'en-US';
+    rec.continuous = true;
+    rec.interimResults = false;
+    rec.onresult = (ev) => {
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        if (ev.results[i].isFinal) {
+          const phrase = String(ev.results[i][0].transcript || '').trim();
+          if (phrase) _runVoiceCommandText(phrase, true);
+        }
+      }
+    };
+    rec.onend = () => { if (_wakeActive) setTimeout(startLoop, 500); };
+    try { rec.start(); } catch (e) {}
+  };
+  startLoop();
+  say(S.voice_wake_on || 'Listening «AIfa…»', true);
+}
+if ($('voice-aifa-btn')) $('voice-aifa-btn').onclick = () => {
+  if ($('voice-cmd-modal')) $('voice-cmd-modal').hidden = false;
+  if ($('voice-cmd-inp')) $('voice-cmd-inp').focus();
+};
+if ($('voice-wake-btn')) $('voice-wake-btn').onclick = _toggleWakeListening;
+if ($('voice-cmd-close-btn')) $('voice-cmd-close-btn').onclick = () => { if ($('voice-cmd-modal')) $('voice-cmd-modal').hidden = true; };
+if ($('voice-cmd-mic-btn')) $('voice-cmd-mic-btn').onclick = _startSingleMic;
+if ($('voice-cmd-run-btn')) $('voice-cmd-run-btn').onclick = () => {
+  const v = ($('voice-cmd-inp') && $('voice-cmd-inp').value || '').trim();
+  if (v) _runVoiceCommandText(v, false);
+};
+if ($('voice-cmd-inp')) $('voice-cmd-inp').onkeydown = (ev) => {
+  if (ev.key === 'Enter') { ev.preventDefault(); const v = ev.target.value.trim(); if (v) _runVoiceCommandText(v, false); }
+};
 
 async function openLockModal(lockNow) {
   if (lockNow) { try { await api('/api/v2/power/action', { action: 'pin_lock' }); } catch (e) {} }
@@ -13620,7 +13986,7 @@ if ($('privacy-pill-btn')) $('privacy-pill-btn').onclick = async () => {
   } catch (e) { say(String(e.message || e), false); }
 };
 
-if ($('setup-scan-btn')) $('setup-scan-btn').onclick = async () => {
+async function _loadSetupClientsList() {
   const box = $('setup-clients-list');
   try {
     const r = await api('/api/v2/setup/clients');
@@ -13628,22 +13994,28 @@ if ($('setup-scan-btn')) $('setup-scan-btn').onclick = async () => {
     box.textContent = '';
     for (const cl of (r.clients || [])) {
       const card = _el('div', 'earn-item');
-      card.appendChild(_el('strong', '', String(cl.client) + (cl.detected ? ' ●' : ' ○')));
+      const hdr = _el('div', '');
+      hdr.appendChild(_el('strong', '', String(cl.label || cl.client)));
+      const stCls = cl.connected ? 'cl-badge-ok' : (cl.detected ? 'cl-badge-det' : 'cl-badge-no');
+      const stTxt = cl.connected ? (S.cl_connected || '✓ Connected') : (cl.detected ? (S.cl_detected || '● Detected') : (S.cl_missing || '○ Not found'));
+      hdr.appendChild(_el('span', stCls, stTxt));
+      card.appendChild(hdr);
       card.appendChild(_el('div', 'earn-meta', String(cl.path || '') + ' (' + String(cl.format || '') + ')'));
       const acts = _el('div', 'rec-actions');
       const bInst = _el('button', 'btn-primary aifa-compact-btn', 'Install');
-      bInst.onclick = async () => { try { const res = await api('/api/v2/setup/clients/action', { action: 'install', client: cl.client }); say(String(res.status || S.done), true); } catch (e) { say(String(e.message || e), false); } };
+      bInst.onclick = async () => { try { const res = await api('/api/v2/setup/clients/action', { action: 'install', client: cl.client }); say(String(res.status || S.done), true); _loadSetupClientsList(); } catch (e) { say(String(e.message || e), false); } };
       const bPing = _el('button', 'aifa-compact-btn', 'Ping');
       bPing.onclick = async () => { try { const res = await api('/api/v2/setup/clients/action', { action: 'ping', client: cl.client }); say('MCP tools: ' + String(res.mcp_tools_ready || 0), Boolean(res.ok)); } catch (e) { say(String(e.message || e), false); } };
       const bRb = _el('button', 'aifa-compact-btn', 'Rollback');
-      bRb.onclick = async () => { try { const res = await api('/api/v2/setup/clients/action', { action: 'rollback', client: cl.client }); say(res.ok ? S.done : String(res.error || S.failed), Boolean(res.ok)); } catch (e) { say(String(e.message || e), false); } };
+      bRb.onclick = async () => { try { const res = await api('/api/v2/setup/clients/action', { action: 'rollback', client: cl.client }); say(res.ok ? S.done : String(res.error || S.failed), Boolean(res.ok)); _loadSetupClientsList(); } catch (e) { say(String(e.message || e), false); } };
       acts.appendChild(bInst); acts.appendChild(bPing); acts.appendChild(bRb);
       card.appendChild(acts);
       box.appendChild(card);
     }
     say(S.done, true);
   } catch (e) { if (box) box.textContent = String(e.message || e); }
-};
+}
+if ($('setup-scan-btn')) $('setup-scan-btn').onclick = _loadSetupClientsList;
 
 async function _runMemPro(actionName) {
   const out = $('mpro-out');
@@ -14134,7 +14506,20 @@ def page() -> tuple[str, str]:
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="PADAM Studio">
 <meta name="theme-color" content="#080b12">
-<style nonce="{nonce}">{_CSS}</style>
+<style nonce="{nonce}">{_CSS}
+.pulse-bar{{display:flex;align-items:center;gap:10px;padding:7px 14px;margin-bottom:10px;border-radius:10px;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.22);font-size:.84rem;cursor:pointer;flex-wrap:wrap}}
+.pulse-dot{{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 8px #34d399;display:inline-block;flex-shrink:0}}
+.pulse-log{{width:100%;margin-top:6px;display:flex;flex-direction:column;gap:4px;font-family:monospace;font-size:.78rem;opacity:.92}}
+mark.q-hit{{background:rgba(244,63,94,.28);color:inherit;padding:1px 4px;border-radius:4px;border-bottom:2px solid #f43f5e}}
+.q-inspect-box{{margin-top:8px;padding:10px;border-radius:8px;background:rgba(244,63,94,.07);border:1px solid rgba(244,63,94,.28);font-size:.86rem}}
+.q-clean-preview{{margin-top:6px;padding:8px;border-radius:6px;background:rgba(52,211,153,.09);border:1px solid rgba(52,211,153,.28)}}
+.qr-sync-img{{display:block;max-width:220px;width:220px;height:220px;margin:10px auto;border-radius:10px;background:#fff;padding:6px}}
+.cl-badge-ok{{color:#34d399;font-weight:700;margin-left:6px}}
+.cl-badge-det{{color:#fbbf24;font-weight:600;margin-left:6px}}
+.cl-badge-no{{opacity:.65;margin-left:6px}}
+.voice-active{{border-color:#34d399 !important;box-shadow:0 0 0 2px rgba(52,211,153,.35) !important}}
+.cmdk-sep{{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;opacity:.7;margin:8px 0 4px}}
+</style>
 </head>
 <body>
 <div class="layout">
@@ -14238,6 +14623,9 @@ def page() -> tuple[str, str]:
         </div>
         <button id="ui-mode-btn" type="button" class="aifa-compact-btn" data-i18n="ui_mode_pro">{s['ui_mode_pro']}</button>
         <button id="cmdk-open-btn" type="button" class="aifa-compact-btn" data-i18n="cmdk_btn">{s['cmdk_btn']}</button>
+        <button id="voice-aifa-btn" type="button" class="aifa-compact-btn" data-i18n="voice_aifa_btn">{s['voice_aifa_btn']}</button>
+        <button id="voice-wake-btn" type="button" class="aifa-compact-btn" data-i18n="voice_wake_off">{s['voice_wake_off']}</button>
+        <button id="lan-qr-btn" type="button" class="aifa-compact-btn" data-i18n="lan_qr_btn">{s['lan_qr_btn']}</button>
         <button id="privacy-pill-btn" type="button" class="aifa-compact-btn" data-i18n="privacy_pill_local">{s['privacy_pill_local']}</button>
         <button id="studio-lock-btn" type="button" class="aifa-compact-btn" data-i18n="lock_btn">{s['lock_btn']}</button>
         <button id="theme-toggle">☀️ {s['theme_light']}</button>
@@ -14249,6 +14637,7 @@ def page() -> tuple[str, str]:
         <span id="sh-banner-text" data-i18n="sh_lockdown_banner">{s['sh_lockdown_banner']}</span>
         <button id="sh-banner-go-btn" class="btn" type="button" data-i18n="sh_banner_go_btn">{s['sh_banner_go_btn']}</button>
       </div>
+      <div id="live-pulse-bar" class="pulse-bar" role="status" aria-live="polite"><span class="pulse-dot" aria-hidden="true"></span><span id="live-pulse-text" data-i18n="pulse_idle">{s['pulse_idle']}</span><div id="live-pulse-log" class="pulse-log" hidden></div></div>
       <div id="status-msg" role="status" aria-live="polite"></div>
 
       <!-- 1. ОБЗОР -->
@@ -16279,6 +16668,31 @@ def page() -> tuple[str, str]:
       <button id="lock-cancel-btn" type="button" data-i18n="lock_cancel_btn">{s['lock_cancel_btn']}</button>
     </div>
     <div id="lock-status-out" class="panel-sub" aria-live="polite"></div>
+  </div>
+</div>
+<div id="sync-qr-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="sync-qr-title-el" hidden>
+  <div class="modal-card">
+    <h2 id="sync-qr-title-el" class="box-title" data-i18n="sync_qr_title">{s['sync_qr_title']}</h2>
+    <div class="toolbar">
+      <button id="qr-gen-btn" type="button" class="btn-primary" data-i18n="qr_gen_btn">{s['qr_gen_btn']}</button>
+      <button id="cloud-sync-btn" type="button" data-i18n="cloud_sync_btn">{s['cloud_sync_btn']}</button>
+      <button id="agents-canon-btn" type="button" data-i18n="agents_canon_btn">{s['agents_canon_btn']}</button>
+      <button id="sync-qr-close-btn" type="button" data-i18n="cmdk_close">{s['cmdk_close']}</button>
+    </div>
+    <div id="qr-sync-out" class="panel-sub" aria-live="polite"></div>
+    <div id="cloud-sync-out" class="panel-sub" aria-live="polite"></div>
+  </div>
+</div>
+<div id="voice-cmd-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="voice-cmd-title-el" hidden>
+  <div class="modal-card">
+    <h2 id="voice-cmd-title-el" class="box-title" data-i18n="voice_modal_title">{s['voice_modal_title']}</h2>
+    <div class="toolbar">
+      <input id="voice-cmd-inp" type="text" data-i18n-placeholder="voice_modal_ph" data-i18n-aria="voice_modal_ph" placeholder="{s['voice_modal_ph']}" aria-label="{s['voice_modal_ph']}">
+      <button id="voice-cmd-mic-btn" type="button" data-i18n="voice_mic_btn">{s['voice_mic_btn']}</button>
+      <button id="voice-cmd-run-btn" type="button" class="btn-primary" data-i18n="voice_run_btn">{s['voice_run_btn']}</button>
+      <button id="voice-cmd-close-btn" type="button" data-i18n="cmdk_close">{s['cmdk_close']}</button>
+    </div>
+    <div id="voice-cmd-out" class="panel-sub" aria-live="polite"></div>
   </div>
 </div>
 <script id="i18n-data" type="application/json" nonce="{nonce}">{i18n_json}</script>

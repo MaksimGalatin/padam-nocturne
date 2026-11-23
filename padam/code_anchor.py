@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Привязка фактов памяти к исходному коду и детектор устаревания по SHA-256 (ТОП-5).
+"""Привязка фактов памяти к исходному коду и детектор устаревания по SHA-256 (Фишка 4).
 
 Зачем: в разработке факт вида «функция X делает Y» часто устаревает в момент изменения
 файла на диске. Якорь фиксирует `file_path` и `SHA-256` содержимого файла на момент
@@ -14,27 +14,29 @@ from typing import Any
 
 from . import ark, audit_chain
 
-_CODE_ANCHOR_DDL = """
-CREATE TABLE IF NOT EXISTS ark_code_anchor (
-    anchor_id     INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id       TEXT NOT NULL,
-    memory_id     TEXT NOT NULL,
-    file_path     TEXT NOT NULL,
-    symbol_name   TEXT NOT NULL DEFAULT '',
-    file_sha256   TEXT NOT NULL,
-    status        TEXT NOT NULL DEFAULT 'fresh',
-    stale_reason  TEXT NOT NULL DEFAULT '',
-    checked_at    REAL NOT NULL,
-    created_at    REAL NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_ark_code_anchor_mem ON ark_code_anchor(user_id, memory_id);
-"""
+_CODE_ANCHOR_STMTS = (
+    """CREATE TABLE IF NOT EXISTS ark_code_anchor (
+        anchor_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id       TEXT NOT NULL,
+        memory_id     TEXT NOT NULL,
+        file_path     TEXT NOT NULL,
+        symbol_name   TEXT NOT NULL DEFAULT '',
+        file_sha256   TEXT NOT NULL,
+        status        TEXT NOT NULL DEFAULT 'fresh',
+        stale_reason  TEXT NOT NULL DEFAULT '',
+        checked_at    REAL NOT NULL,
+        created_at    REAL NOT NULL
+    )""",
+    "CREATE INDEX IF NOT EXISTS idx_ark_code_anchor_mem ON ark_code_anchor(user_id, memory_id)",
+)
 
 
 def _ensure(memory) -> None:
     ark._ensure_tables(memory)
-    memory.store.conn.executescript(_CODE_ANCHOR_DDL)
-    memory.store.conn.commit()
+    with memory.store._lock:
+        for stmt in _CODE_ANCHOR_STMTS:
+            memory.store.conn.execute(stmt)
+        memory.store.conn.commit()
 
 
 def _safe_resolve_under_root(repo_root: str | Path, rel_path: str) -> Path:
@@ -67,15 +69,17 @@ def anchor_fact_to_file(
     rel_norm = target.relative_to(Path(repo_root).resolve()).as_posix()
     digest = hashlib.sha256(target.read_bytes()).hexdigest()
     now = time.time()
-    cur = memory.store.conn.execute(
-        "INSERT INTO ark_code_anchor (user_id, memory_id, file_path, symbol_name, file_sha256, status, stale_reason, checked_at, created_at) "
-        "VALUES (?, ?, ?, ?, ?, 'fresh', '', ?, ?)",
-        (memory.user_id, str(memory_id), rel_norm, str(symbol_name or "")[:120], digest, now, now),
-    )
-    memory.store.conn.commit()
+    with memory.store._lock:
+        cur = memory.store.conn.execute(
+            "INSERT INTO ark_code_anchor (user_id, memory_id, file_path, symbol_name, file_sha256, status, stale_reason, checked_at, created_at) "
+            "VALUES (?, ?, ?, ?, ?, 'fresh', '', ?, ?)",
+            (memory.user_id, str(memory_id), rel_norm, str(symbol_name or "")[:120], digest, now, now),
+        )
+        memory.store.conn.commit()
+        aid = cur.lastrowid
     return {
         "ok": True,
-        "anchor_id": cur.lastrowid,
+        "anchor_id": aid,
         "memory_id": str(memory_id),
         "file_path": rel_norm,
         "symbol_name": str(symbol_name or ""),
@@ -84,19 +88,82 @@ def anchor_fact_to_file(
     }
 
 
+def get_pins_for_memory_ids(
+    memory,
+    memory_ids: list[str],
+    *,
+    repo_root: str | Path = ".",
+) -> dict[str, list[dict[str, Any]]]:
+    """Возвращает живой статус кодовых якорей для набора memory_id (свежий или устарел)."""
+    clean_ids = [str(mid) for mid in memory_ids if mid]
+    if not clean_ids:
+        return {}
+    try:
+        with memory.store._lock:
+            has_tbl = memory.store.conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ark_code_anchor'"
+            ).fetchone()
+            if not has_tbl:
+                return {}
+            placeholders = ",".join("?" * len(clean_ids))
+            rows = memory.store.conn.execute(
+                f"SELECT anchor_id, memory_id, file_path, symbol_name, file_sha256 "
+                f"FROM ark_code_anchor WHERE user_id = ? AND memory_id IN ({placeholders}) "
+                f"ORDER BY anchor_id DESC",
+                (memory.user_id, *clean_ids),
+            ).fetchall()
+    except Exception:
+        return {}
+    if not rows:
+        return {}
+    root = Path(repo_root).resolve()
+    sha_cache: dict[str, tuple[str, str]] = {}
+    out: dict[str, list[dict[str, Any]]] = {}
+    for r in rows:
+        rel = str(r["file_path"])
+        if rel not in sha_cache:
+            try:
+                target = _safe_resolve_under_root(root, rel)
+                if not target.is_file():
+                    sha_cache[rel] = ("file_missing", "")
+                else:
+                    sha_cache[rel] = ("", hashlib.sha256(target.read_bytes()).hexdigest())
+            except Exception:
+                sha_cache[rel] = ("invalid_path", "")
+        err_reason, cur_sha = sha_cache[rel]
+        if err_reason:
+            status = "stale"
+            reason = err_reason
+        elif cur_sha != str(r["file_sha256"]):
+            status = "stale"
+            reason = "file_hash_changed"
+        else:
+            status = "fresh"
+            reason = ""
+        out.setdefault(str(r["memory_id"]), []).append({
+            "anchor_id": int(r["anchor_id"]),
+            "file_path": rel,
+            "symbol_name": str(r["symbol_name"] or ""),
+            "status": status,
+            "reason": reason,
+        })
+    return out
+
+
 def check_stale_anchors(memory, *, repo_root: str | Path = ".") -> dict[str, Any]:
     """Проверяет все привязки к файлам в `repo_root` и отмечает те, чей файл изменён или удалён."""
     _ensure(memory)
     root = Path(repo_root).resolve()
-    conn = memory.store.conn
-    rows = conn.execute(
-        "SELECT anchor_id, memory_id, file_path, symbol_name, file_sha256, status FROM ark_code_anchor WHERE user_id = ? ORDER BY anchor_id ASC",
-        (memory.user_id,),
-    ).fetchall()
+    with memory.store._lock:
+        rows = memory.store.conn.execute(
+            "SELECT anchor_id, memory_id, file_path, symbol_name, file_sha256, status FROM ark_code_anchor WHERE user_id = ? ORDER BY anchor_id ASC",
+            (memory.user_id,),
+        ).fetchall()
 
     now = time.time()
     stale_items: list[dict[str, Any]] = []
     fresh_count = 0
+    updates: list[tuple[str, str, float, int]] = []
 
     for r in rows:
         aid = int(r["anchor_id"])
@@ -121,10 +188,7 @@ def check_stale_anchors(memory, *, repo_root: str | Path = ".") -> dict[str, Any
                     reason = ""
                     new_status = "fresh"
 
-        conn.execute(
-            "UPDATE ark_code_anchor SET status = ?, stale_reason = ?, checked_at = ? WHERE anchor_id = ?",
-            (new_status, reason, now, aid),
-        )
+        updates.append((new_status, reason, now, aid))
         if new_status == "stale":
             stale_items.append({
                 "anchor_id": aid,
@@ -138,7 +202,14 @@ def check_stale_anchors(memory, *, repo_root: str | Path = ".") -> dict[str, Any
         else:
             fresh_count += 1
 
-    conn.commit()
+    with memory.store._lock:
+        for upd in updates:
+            memory.store.conn.execute(
+                "UPDATE ark_code_anchor SET status = ?, stale_reason = ?, checked_at = ? WHERE anchor_id = ?",
+                upd,
+            )
+        memory.store.conn.commit()
+
     if stale_items:
         audit_chain.append_audit(
             memory,

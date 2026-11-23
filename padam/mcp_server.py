@@ -198,6 +198,8 @@ TOOLS = [
                 "valid_to": {"type": "string", "maxLength": 40, "pattern": _AS_OF_PATTERN, "description": "ISO-8601 end timestamp when this fact expires."},
                 "visibility": {"type": "string", "enum": ["private", "team_read", "team_write"], "description": "Workspace visibility level ('private' by default)."},
                 "workspace_id": {"type": "string", "description": "Optional team workspace ID for shared scopes."},
+                "code_path": {"type": "string", "maxLength": 400, "description": "Optional repository-relative file path to pin this memory via SHA-256 staleness detection."},
+                "symbol_name": {"type": "string", "maxLength": 120, "description": "Optional function or class symbol name associated with code_path."},
                 "links": {
                     "type": "array", "maxItems": 20, "description": "Typed graph edges linking this memory to related record IDs.",
                     "items": {
@@ -499,8 +501,11 @@ SOVEREIGN_SYNC_TOOL_DEF = {
     "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
 }
 WAKE_UP_TOOL_DEF = {
-    "name": "padam_wake_up", "title": _TITLES["padam_wake_up"], "description": "Briefing",
-    "inputSchema": {"type": "object", "properties": {"agent": _S, "scope": _S, "max_chars": {**_I, "description": "Char cap"}}},
+    "name": "padam_wake_up", "title": _TITLES["padam_wake_up"], "description": "Smart briefing",
+    "inputSchema": {"type": "object", "properties": {
+        "agent": _S, "scope": _S, "query": _S,
+        "max_tokens": {**_I, "description": "Tok cap"}, "max_chars": {**_I, "description": "Char cap"},
+    }},
     "annotations": _RO,
 }
 COMMITMENTS_TOOL_DEF = {
@@ -3852,12 +3857,28 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             })
         ids = [r.id for r in found]
         valid_map: dict[str, tuple[str | None, str | None]] = {}
+        pins_map: dict[str, list[dict]] = {}
         if ids:
             vrows = m.store.query(
                 f"SELECT id, valid_from, valid_to FROM memory WHERE id IN ({','.join('?' * len(ids))})",
                 tuple(ids),
             )
             valid_map = {vr["id"]: (vr["valid_from"], vr["valid_to"]) for vr in vrows}
+            try:
+                from . import code_anchor as _ca
+                pins_map = _ca.get_pins_for_memory_ids(m, ids)
+            except Exception:
+                pins_map = {}
+        try:
+            from . import pulse_stream as _ps
+            _ps.emit_pulse(
+                event_type="search",
+                agent_id=_resolve_agent_arg(args),
+                summary=f"search({str(args.get('query') or '')[:80]}) -> {len(found)} hits",
+                detail={"count": len(found), "scope": args.get("scope") or "global"},
+            )
+        except Exception:
+            pass
         token_budget = int(args["max_tokens"]) if "max_tokens" in args else config.mcp_default_max_tokens()
         cand_items: list[tuple[bool, int, str, str, dict, object]] = []
         показано: list[str] = []
@@ -3882,16 +3903,22 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                     flags.append("not signed by the owner: may have been written around PADAM")
                 if r.conflict:
                     flags.append("another active record says otherwise: ask the person which is right")
+                rec_pins = pins_map.get(r.id, [])
+                for _pin in rec_pins:
+                    if _pin.get("status") == "stale":
+                        flags.append(f"STALE_CODE_PIN: {_pin.get('file_path')}")
                 suffix = f"  [{'; '.join(flags)}]" if flags else ""
                 vf, vt = valid_map.get(r.id, (None, None))
                 vw = _format_valid_window(vf, vt)
+                trace_info = r.explain_trace()
                 text = (retrieval.compact_text(r.content) if args.get("compact")
                         else r.content)
                 # Отступ у каждой строки записи: многострочный текст не притворится соседней записью.
                 text_ind = (text or "").replace("\n", "\n  ")
                 meta_line = (
                     f"  id={r.id}  kind={r.kind}  score={r.score:.4f}  confidence={r.confidence:.2f}"
-                    f"  origin={r.origin or 'unknown'}" + (f"  scope={r.scope}" if args.get("scopes") else "")
+                    f"  origin={r.origin or 'unknown'}  why={trace_info['why']}"
+                    + (f"  scope={r.scope}" if args.get("scopes") else "")
                     + f"  saved={(r.created_at or '')[:10]}{vw}{suffix}"
                 )
                 line_full = f"- {text_ind}\n{meta_line}"
@@ -3910,6 +3937,8 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                     "signed": r.signed,
                     "valid_from": vf,
                     "valid_to": vt,
+                    "trace": trace_info,
+                    "code_pins": rec_pins,
                 }
                 cand_items.append((is_high_prio, idx_r, line_full, meta_line, rec_dict, r))
 
@@ -4199,12 +4228,30 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                         note += f" (linked atomic refinement to {best_id})"
             except Exception:
                 merged_with_id = None
+        code_pin_info = None
+        code_pin_err = None
+        if args.get("code_path") and outcome != "rejected_via_elicitation":
+            try:
+                from . import code_anchor as _ca
+                code_pin_info = _ca.anchor_fact_to_file(
+                    m,
+                    mid,
+                    str(args["code_path"]),
+                    symbol_name=str(args.get("symbol_name") or ""),
+                )
+                note += f" (pinned to {code_pin_info['file_path']})"
+            except Exception as _cpe:
+                code_pin_err = str(_cpe)
         w_payload = {
             "id": mid,
             "outcome": outcome,
             "maskedSecrets": int(masked_total),
             "holdReason": reason_str or None,
         }
+        if code_pin_info:
+            w_payload["codePin"] = code_pin_info
+        if code_pin_err:
+            w_payload["codePinError"] = code_pin_err
         if dlp_info.get("aliases"):
             w_payload["dlpAliases"] = dlp_info["aliases"]
         if dedup_mode == "atomic_merge":
@@ -4527,12 +4574,25 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
 
     if name == "padam_wake_up":
         from . import ark as _ark
+        _ag = str(args.get("agent") or _default_agent_id())
         payload = _ark.wake_up_briefing(
             m,
-            agent=str(args.get("agent") or _default_agent_id()),
+            agent=_ag,
             scope=str(args.get("scope") or "global"),
             max_chars=int(args.get("max_chars") or 4000),
+            query=args.get("query"),
+            max_tokens=args.get("max_tokens"),
         )
+        try:
+            from . import pulse_stream as _ps
+            _ps.emit_pulse(
+                event_type="wake_up",
+                agent_id=_ag,
+                summary=f"wake_up(scope={args.get('scope') or 'global'}, query={str(args.get('query') or '-')[:60]})",
+                detail={"relevant": len(payload.get("relevant_records") or []), "commitments": len(payload.get("open_commitments") or [])},
+            )
+        except Exception:
+            pass
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
 
     if name == "padam_commitments":

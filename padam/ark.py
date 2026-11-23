@@ -403,9 +403,14 @@ def wake_up_briefing(
     max_chars: int = 4000,
     include_pulse: bool = True,
     workspace_path: str | None = None,
+    query: str | None = None,
+    max_tokens: int | None = None,
 ) -> dict[str, Any]:
-    """Собирает целостный пакет пробуждения сознания за один вызов."""
+    """Собирает целостный пакет пробуждения сознания за один вызов (Фишка 1: Smart Context)."""
     _ensure_tables(memory)
+    eff_chars = int(max_chars or 4000)
+    if max_tokens is not None and int(max_tokens) > 0:
+        eff_chars = min(eff_chars, max(400, int(max_tokens) * 4))
     prof = memory.profile(scope=scope)
     commitments = list_commitments(memory, limit=10)
     inbox = read_family_inbox(memory, to_agent=agent, limit=10)
@@ -421,6 +426,27 @@ def wake_up_briefing(
             workspace_path=workspace_path,
         )
 
+    relevant_records: list[dict[str, Any]] = []
+    q_clean = str(query or "").strip()
+    if q_clean:
+        try:
+            hits = memory.recall(q_clean, scope=scope, limit=10)
+            from . import code_anchor as _ca
+            pins_map = _ca.get_pins_for_memory_ids(memory, [h.id for h in hits], repo_root=workspace_path or ".")
+            for h in hits:
+                pins = pins_map.get(h.id, [])
+                stale_files = [p["file_path"] for p in pins if p.get("status") == "stale"]
+                relevant_records.append({
+                    "id": h.id,
+                    "kind": h.kind,
+                    "content": (h.content or "")[:360],
+                    "score": round(float(h.score), 4),
+                    "trace": h.explain_trace(),
+                    "stale_code_pins": stale_files,
+                })
+        except Exception:
+            relevant_records = []
+
     raw_sections: list[str] = []
     for item in (prof.get("identity") or []):
         raw_sections.append(f"[identity] {item.get('content') or ''}")
@@ -430,6 +456,12 @@ def wake_up_briefing(
         raw_sections.append("[commitments] " + "; ".join(f"{c['id']}:{c['title']}({c['status']})" for c in commitments))
     if checkpoint:
         raw_sections.append(f"[checkpoint] task={checkpoint['task']} | next={checkpoint['next_step']}")
+    if relevant_records:
+        rel_lines = []
+        for rr in relevant_records:
+            warn = f" [STALE_CODE_PIN:{','.join(rr['stale_code_pins'])}]" if rr["stale_code_pins"] else ""
+            rel_lines.append(f"({rr['kind']}|why={rr['trace']['why']}){warn} {rr['content'][:220]}")
+        raw_sections.append("[relevant_context] " + " | ".join(rel_lines))
     if inbox:
         raw_sections.append("[family_inbox] " + "; ".join(f"{m['from_agent']}: {m['payload']}" for m in inbox if m["verified"]))
     if lessons:
@@ -438,17 +470,20 @@ def wake_up_briefing(
         raw_sections.append("[morning_pulse] " + pulse_data["summary_text"].replace("\n", " | "))
 
     body_text = _clean("\n".join(raw_sections))
-    if len(body_text) > max_chars:
-        body_text = body_text[: max(100, max_chars - 3)] + "..."
+    if len(body_text) > eff_chars:
+        body_text = body_text[: max(100, eff_chars - 3)] + "..."
 
     out = {
         "agent": agent,
+        "query": q_clean or None,
+        "max_tokens": int(max_tokens) if max_tokens else None,
         "fenced_briefing": safety.fence(body_text) if body_text else "",
         "profile_counts": {
             "identity": len(prof.get("identity") or []),
             "preference": len(prof.get("preferences") or prof.get("preference") or []),
         },
         "open_commitments": commitments,
+        "relevant_records": relevant_records,
         "family_inbox": inbox,
         "latest_checkpoint": checkpoint,
         "recent_lessons": lessons,

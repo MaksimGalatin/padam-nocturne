@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 0.8.0 — 22 November 2026
+
+- **PADAM NOCTURNE MCP (Smart Context, Cloud Sync, Agent Canonicalization, Code Pins, Explain-Why):**
+  - `padam_wake_up`: added optional `query` and `max_tokens` parameters for 1-call session hydration (signed owner profile + commitments + top-10 relevant records with Code Pin freshness & ranking trace).
+  - `padam/cloud_sync.py`: bidirectional Local SQLite <-> AIfa Cloud MCP bridge (`GET /api/v2/cloud/status`, `POST /api/v2/cloud/sync`) with `net_guard`, automatic secret redaction, `guarded=True` quarantine enforcement and SHA-256 deduplication.
+  - `padam/memory.py`: canonicalized agent aliases (`aifa-claude-code` -> `aifa_claude`, `antigravity` -> `aifa_antigravity`, `user`/`desktop`/`studio` -> `owner`) inside `list_agents()`, `graph()` and `canonicalize_all_agents()` (`POST /api/v2/agents/canonicalize`); added `Record.explain_trace()` (`verified=... why=...`).
+  - `padam/code_anchor.py` & `padam/mcp_server.py`: `padam_write` accepts `code_path` & `symbol_name` to pin facts to file SHA-256; `padam_search` flags `STALE_CODE_PIN` automatically when pinned files change on disk.
+- **PADAM Studio Desktop & Web UI (v0.8.0):**
+  - `desktop/tauri/src/main.rs`: session- and desktop-aware single-instance IPC (`session_id` + `desktop_name` via Win32 `GetThreadDesktop`/`GetUserObjectInformationW`), `AllowSetForegroundWindow` before `WAKE`, and isolated per-desktop `WEBVIEW2_USER_DATA_FOLDER`.
+  - Live Agent Pulse bar (`padam/pulse_stream.py`, `GET /api/v2/pulse/recent`, SSE `GET /api/v2/pulse/stream`), upgraded `Ctrl+K` palette with live `/search` across memory records, Quarantine Threat Inspector (`safety.explain_quarantine_spans`, highlighted `<mark class="q-hit">` spans, `Approve Clean` & `Reject Similar`), and live 13-client 1-Click MCP connection badges (`setup_clients.clients_connection_status`).
+  - Standard pure-Python ISO/IEC 18004 QR SVG generator + AES-256-GCM LAN Pairing protocol (`padam/qr_svg.py`, `/api/v2/lan-sync/offer|pull|push`) and Voice Assistant / Wake-Word «AIfa…» engine (`padam/voice_commands.py`, `POST /api/v2/voice/command`).
+- **PADAM Android (v0.8.0, versionCode 11):**
+  - Native `BiometricGate.kt` (Android BiometricPrompt), `Share-to-PADAM` (`ACTION_SEND text/plain` through Agentic Shield), LAN QR AES-256-GCM sync (`android_runtime.sync_lan_with_pc`), `VoiceAssistantManager.kt` (one-shot mic + continuous hands-free «AIfa…» wake-word + TTS reply), and Home Screen Widget (`PadamWidgetProvider.kt`).
+
 ## 0.7.2 — 22 November 2026
 
 - **Search & ranking overhaul (fixes mixed-embedder poisoning, diacritics and ~0.01 scores):**

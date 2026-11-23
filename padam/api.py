@@ -55,8 +55,8 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/l3-local-checkpoint", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/roles", "/api/v2/ark/audit-repair", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action", "/api/v2/ark/stores/action", "/api/v2/ark/wizard/action", "/api/v2/ark/partner/action", "/api/v2/ark/phoenix-beacon/action", "/api/v2/local-model", "/api/v2/family/post", "/api/v2/family/reflex/decide", "/api/v2/quarantine/council", "/api/v2/shield/kill-switch", "/api/v2/shield/outbound/check", "/api/v2/shield/outbound/decide", "/api/v2/shield/allowlist", "/api/v2/shield/supply-chain/scan", "/api/v2/shield/scan-mcp", "/api/v2/shield/scan-unicode", "/api/v2/shield/profile", "/api/v2/shield/webhook", "/api/v2/shield/webhook/test", "/api/v2/shield/output/check", "/api/v2/shield/replay/verify", "/api/v2/chats", "/api/v2/chats/import", "/api/v2/chats/sync-local", "/api/v2/media/generate", "/api/v2/shield/canary", "/api/v2/shield/lease", "/api/v2/wallets", "/api/v2/verify-claims", "/api/v2/ark/terms", "/api/v2/ark/passports/action", "/api/v2/ark/agora/action", "/api/v2/ark/automation/action", "/api/v2/shield/sales/action", "/api/v2/setup/clients/action", "/api/v2/memory/pro/action", "/api/v2/import/universal", "/api/v2/power/action", "/api/v2/swarm/coop/action"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/morning-pulse", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/roles", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance", "/api/v2/ark/stores", "/api/v2/ark/wizard", "/api/v2/ark/partner", "/api/v2/local-model", "/api/v2/family/feed", "/api/v2/family/reflexes", "/api/v2/quarantine/council", "/api/v2/family/dialogs", "/api/v2/redteam/rounds", "/api/v2/code-version", "/api/v2/shield/status", "/api/v2/shield/proof-pack", "/api/v2/shield/webhook", "/api/v2/shield/agent-budget", "/api/v2/agents", "/api/v2/chats", "/api/v2/chats/thread", "/api/v2/chats/hour", "/api/v2/chats/compact-hour", "/api/v2/media/engines", "/api/v2/media/file", "/api/v2/wallets", "/api/v2/ark/terms", "/api/v2/ark/fee-invoices", "/api/v2/ark/passports", "/api/v2/ark/agora", "/api/v2/ark/automation", "/api/v2/shield/sales", "/api/v2/setup/clients", "/api/v2/mcp/inspector", "/api/v2/memory/pro", "/api/v2/import/sources", "/api/v2/power/status", "/api/v2/swarm/coop"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/l3-local-checkpoint", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/roles", "/api/v2/ark/audit-repair", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action", "/api/v2/ark/stores/action", "/api/v2/ark/wizard/action", "/api/v2/ark/partner/action", "/api/v2/ark/phoenix-beacon/action", "/api/v2/local-model", "/api/v2/family/post", "/api/v2/family/reflex/decide", "/api/v2/quarantine/council", "/api/v2/shield/kill-switch", "/api/v2/shield/outbound/check", "/api/v2/shield/outbound/decide", "/api/v2/shield/allowlist", "/api/v2/shield/supply-chain/scan", "/api/v2/shield/scan-mcp", "/api/v2/shield/scan-unicode", "/api/v2/shield/profile", "/api/v2/shield/webhook", "/api/v2/shield/webhook/test", "/api/v2/shield/output/check", "/api/v2/shield/replay/verify", "/api/v2/chats", "/api/v2/chats/import", "/api/v2/chats/sync-local", "/api/v2/media/generate", "/api/v2/shield/canary", "/api/v2/shield/lease", "/api/v2/wallets", "/api/v2/verify-claims", "/api/v2/ark/terms", "/api/v2/ark/passports/action", "/api/v2/ark/agora/action", "/api/v2/ark/automation/action", "/api/v2/shield/sales/action", "/api/v2/setup/clients/action", "/api/v2/memory/pro/action", "/api/v2/import/universal", "/api/v2/power/action", "/api/v2/swarm/coop/action", "/api/v2/quarantine/approve-clean", "/api/v2/quarantine/reject-similar", "/api/v2/cloud/sync", "/api/v2/agents/canonicalize", "/api/v2/lan-sync/offer", "/api/v2/voice/command"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/morning-pulse", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/roles", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance", "/api/v2/ark/stores", "/api/v2/ark/wizard", "/api/v2/ark/partner", "/api/v2/local-model", "/api/v2/family/feed", "/api/v2/family/reflexes", "/api/v2/quarantine/council", "/api/v2/family/dialogs", "/api/v2/redteam/rounds", "/api/v2/code-version", "/api/v2/shield/status", "/api/v2/shield/proof-pack", "/api/v2/shield/webhook", "/api/v2/shield/agent-budget", "/api/v2/agents", "/api/v2/chats", "/api/v2/chats/thread", "/api/v2/chats/hour", "/api/v2/chats/compact-hour", "/api/v2/media/engines", "/api/v2/media/file", "/api/v2/wallets", "/api/v2/ark/terms", "/api/v2/ark/fee-invoices", "/api/v2/ark/passports", "/api/v2/ark/agora", "/api/v2/ark/automation", "/api/v2/shield/sales", "/api/v2/setup/clients", "/api/v2/mcp/inspector", "/api/v2/memory/pro", "/api/v2/import/sources", "/api/v2/power/status", "/api/v2/swarm/coop", "/api/v2/pulse/recent", "/api/v2/pulse/stream", "/api/v2/quarantine/inspect", "/api/v2/cloud/status"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 16 * 1024 * 1024  # 16 МБ JSON-транспорт, чтобы вложения до 10 МБ в base64 проходили целиком
 
@@ -337,6 +337,15 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return None
+        if путь.path == "/api/v2/lan-sync/pull":
+            from . import qr_svg as _qrs
+            qs_ls = parse_qs(путь.query)
+            tok_ls = (qs_ls.get("token") or [""])[0].strip()
+            since_ls = (qs_ls.get("since") or [""])[0].strip() or None
+            lim_ls = max(1, min(500, int((qs_ls.get("limit") or ["200"])[0])))
+            if not tok_ls or not _qrs.get_active_offer(tok_ls):
+                return self._send(401, {"ok": False, "error": "invalid_or_expired_token"})
+            return self._send(200, _qrs.export_encrypted_delta(mem(), tok_ls, since=since_ls, limit=lim_ls))
         if not self._authorized():
             return self._send(401, {"error": "unauthorized"})
         actor = getattr(self, "_actor", None)
@@ -918,7 +927,7 @@ class Handler(BaseHTTPRequestHandler):
             if путь.path == "/api/v2/setup/clients":
                 roles.require_owner(actor, "settings")
                 from . import setup_clients as _sc
-                return self._send(200, {"ok": True, "clients": _sc.discover_clients(), "deeplinks": _sc.build_deeplinks()})
+                return self._send(200, {"ok": True, "clients": _sc.clients_connection_status(), "deeplinks": _sc.build_deeplinks()})
             if путь.path == "/api/v2/mcp/inspector":
                 roles.require_owner(actor, "agentic_shield")
                 from . import studio_power as _spw
@@ -1041,6 +1050,7 @@ class Handler(BaseHTTPRequestHandler):
                 unsigned = m.unsigned_protected() if roles.is_owner(actor) else []
                 doc = m.doctor_report() if roles.is_owner(actor) else {"warnings": 0, "dangers": 0, "checks": []}
                 return self._send(200, {
+                    "version": __version__,
                     "stats": m.stats(actor=actor),
                     "doctor": doc,
                     "nocturne_runs": m.nocturne_runs(5) if roles.is_owner(actor) else [],
@@ -1154,6 +1164,83 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {**pub, "plans": cabinet.PLANS})
             if self.path == "/export":
                 return self._send(200, mem().export(actor=actor))
+            if путь.path == "/api/v2/pulse/recent":
+                roles.require_owner(actor, "pulse")
+                from . import pulse_stream as _ps
+                qs_p = parse_qs(путь.query)
+                lim_p = int((qs_p.get("limit") or ["40"])[0])
+                since_p = int((qs_p.get("since_seq") or ["0"])[0])
+                return self._send(200, {"ok": True, "events": _ps.get_recent_pulse(limit=lim_p, since_seq=since_p)})
+            if путь.path == "/api/v2/pulse/stream":
+                roles.require_owner(actor, "pulse")
+                from . import pulse_stream as _ps
+                qs_ps = parse_qs(путь.query)
+                last_seq = int((qs_ps.get("since_seq") or ["0"])[0])
+                max_ticks = max(1, min(120, int((qs_ps.get("ticks") or ["24"])[0])))
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                self.send_header("Cache-Control", "no-cache, no-store")
+                self.send_header("Connection", "keep-alive")
+                self.send_header("X-Accel-Buffering", "no")
+                cors_o = self._cors_origin()
+                if cors_o:
+                    self.send_header("Access-Control-Allow-Origin", cors_o)
+                self.end_headers()
+                try:
+                    initial = _ps.get_recent_pulse(limit=20, since_seq=last_seq)
+                    for ev in initial:
+                        last_seq = max(last_seq, int(ev.get("seq") or 0))
+                        self.wfile.write(_ps.format_sse_event(ev).encode("utf-8"))
+                    if not initial:
+                        self.wfile.write(b": pulse-connected\n\n")
+                    self.wfile.flush()
+                    for _ in range(max_ticks):
+                        nxt = _ps.wait_for_pulse(last_seq, timeout=2.5)
+                        if nxt:
+                            for ev in nxt:
+                                last_seq = max(last_seq, int(ev.get("seq") or 0))
+                                self.wfile.write(_ps.format_sse_event(ev).encode("utf-8"))
+                        else:
+                            self.wfile.write(b": keepalive\n\n")
+                        self.wfile.flush()
+                except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
+                    pass
+                return
+            if путь.path == "/api/v2/quarantine/inspect":
+                roles.require_owner(actor, "quarantine_inspect")
+                qs_q = parse_qs(путь.query)
+                qid = (qs_q.get("id") or [""])[0].strip()
+                if not qid:
+                    return self._send(400, {"error": "id is required"})
+                row_q = mem().store.one(
+                    "SELECT id, kind, content, origin, created_at, quarantine_reason FROM memory WHERE id = ? AND user_id = ? AND status = 'quarantined'",
+                    (qid, mem().user_id),
+                )
+                if not row_q:
+                    return self._send(404, {"error": "quarantined record not found"})
+                info_q = safety.explain_quarantine_spans(row_q["content"] or "")
+                return self._send(200, {
+                    "ok": True,
+                    "id": row_q["id"],
+                    "kind": row_q["kind"],
+                    "origin": row_q["origin"],
+                    "quarantine_reason": row_q["quarantine_reason"] or "",
+                    "content": row_q["content"] or "",
+                    **info_q,
+                })
+            if путь.path == "/api/v2/cloud/status":
+                roles.require_owner(actor, "cloud_sync")
+                from . import cloud_sync as _cs
+                return self._send(200, _cs.get_cloud_sync_status(mem()))
+            if путь.path == "/api/v2/lan-sync/pull":
+                from . import qr_svg as _qrs
+                qs_ls = parse_qs(путь.query)
+                tok_ls = (qs_ls.get("token") or [""])[0].strip()
+                since_ls = (qs_ls.get("since") or [""])[0].strip() or None
+                lim_ls = max(1, min(500, int((qs_ls.get("limit") or ["200"])[0])))
+                if not tok_ls or not _qrs.get_active_offer(tok_ls):
+                    return self._send(401, {"ok": False, "error": "invalid_or_expired_token"})
+                return self._send(200, _qrs.export_encrypted_delta(mem(), tok_ls, since=since_ls, limit=lim_ls))
             if self.path.startswith("/timeline/"):
                 rid = self.path.split("/timeline/", 1)[1]
                 chain = mem().timeline(rid, actor=actor)
@@ -1177,6 +1264,16 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self._trusted():
             return self._send(403, {"error": "forbidden origin or host"})
+        if self.path == "/api/v2/lan-sync/push":
+            try:
+                data_ls = self._read_json()
+                from . import qr_svg as _qrs
+                tok_p = str(data_ls.get("token") or "").strip()
+                if not tok_p or not _qrs.get_active_offer(tok_p):
+                    return self._send(401, {"ok": False, "error": "invalid_or_expired_token"})
+                return self._send(200, _qrs.import_encrypted_delta(mem(), tok_p, data_ls))
+            except Exception as exc_ls:
+                return self._send(400, {"ok": False, "error": str(exc_ls)})
         if self.path == "/api/v2/ark/freelance/webhook" or self.path.startswith("/api/v2/ark/freelance/webhook?"):
             try:
                 length = int(self.headers.get("Content-Length") or 0)
@@ -3842,6 +3939,116 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(400, {"error": "invalid upgrade url"})
                 opened = bool(webbrowser.open(url))
                 return self._send(200, {"ok": True, "opened": opened, "url": url})
+
+            if self.path == "/api/v2/quarantine/approve-clean":
+                roles.require_owner(actor, "approve_clean")
+                rid_c = str(data.get("id") or "").strip()
+                if not rid_c:
+                    return self._send(400, {"error": "id is required"})
+                m_c = mem()
+                row_c = m_c.store.one(
+                    "SELECT id, content FROM memory WHERE id = ? AND user_id = ? AND status = 'quarantined'",
+                    (rid_c, m_c.user_id),
+                )
+                if not row_c:
+                    return self._send(404, {"error": "quarantined record not found"})
+                custom_clean = data.get("cleaned_text")
+                if custom_clean is not None and str(custom_clean).strip():
+                    cleaned_txt = safety.strip_invisible(str(custom_clean).strip())
+                    cleaned_txt, _ = safety.redact(cleaned_txt)
+                    is_safe = not safety.looks_like_instruction(cleaned_txt)
+                else:
+                    ex_c = safety.explain_quarantine_spans(row_c["content"] or "")
+                    cleaned_txt = ex_c["cleaned_text"]
+                    is_safe = bool(ex_c["cleaned_is_safe"])
+                if not cleaned_txt or not is_safe:
+                    return self._send(422, {"ok": False, "error": "cleaned_text_empty_or_still_unsafe", "cleaned_text": cleaned_txt})
+                from . import embeddings as _emb
+                from .memory import content_hash as _chash
+                from .store import pack as _pack
+                vec_c = _emb.embed(cleaned_txt)
+                with m_c.store._lock:
+                    m_c.store.conn.execute(
+                        "UPDATE memory SET content = ?, embedding = ?, content_hash = ? WHERE id = ? AND user_id = ?",
+                        (cleaned_txt, _pack(vec_c), _chash(cleaned_txt), rid_c, m_c.user_id),
+                    )
+                    m_c.store.conn.commit()
+                approved = m_c.approve(rid_c, actor=actor)
+                return self._send(200, {"ok": bool(approved), "id": rid_c, "cleaned_text": cleaned_txt})
+
+            if self.path == "/api/v2/quarantine/reject-similar":
+                roles.require_owner(actor, "reject_similar")
+                rid_s = str(data.get("id") or "").strip()
+                reason_s = str(data.get("reason") or "").strip()
+                m_s = mem()
+                if rid_s and not reason_s:
+                    row_s = m_s.store.one(
+                        "SELECT quarantine_reason FROM memory WHERE id = ? AND user_id = ? AND status = 'quarantined'",
+                        (rid_s, m_s.user_id),
+                    )
+                    if row_s:
+                        reason_s = str(row_s["quarantine_reason"] or "").strip()
+                if not reason_s:
+                    return self._send(400, {"error": "reason or valid quarantined id is required"})
+                prefix = reason_s.split(":", 1)[0].strip()
+                cand_rows = m_s.store.query(
+                    "SELECT id, quarantine_reason FROM memory WHERE user_id = ? AND status = 'quarantined'",
+                    (m_s.user_id,),
+                )
+                rejected_ids: list[str] = []
+                for cr in cand_rows:
+                    cr_r = str(cr["quarantine_reason"] or "").strip()
+                    if cr_r == reason_s or (prefix and cr_r.startswith(prefix)):
+                        if m_s.reject(cr["id"], actor=actor):
+                            rejected_ids.append(cr["id"])
+                return self._send(200, {"ok": True, "matched_reason": prefix or reason_s, "rejected_count": len(rejected_ids), "rejected_ids": rejected_ids})
+
+            if self.path == "/api/v2/cloud/sync":
+                roles.require_owner(actor, "cloud_sync")
+                from . import cloud_sync as _cs
+                direction = str(data.get("direction") or "both").lower()
+                api_key_cs = str(data.get("api_key") or "").strip() or None
+                ep_cs = str(data.get("endpoint") or "").strip() or None
+                scope_cs = str(data.get("scope") or "global")
+                lim_cs = max(1, min(100, int(data.get("limit") or 20)))
+                dry_cs = bool(data.get("dry_run", False))
+                out_cs: dict = {"ok": True, "direction": direction}
+                if direction in ("push", "both"):
+                    out_cs["push"] = _cs.push_local_to_cloud(mem(), api_key=api_key_cs, endpoint=ep_cs, scope=scope_cs, limit=lim_cs, dry_run=dry_cs)
+                    if not out_cs["push"].get("ok"):
+                        out_cs["ok"] = False
+                if direction in ("pull", "both"):
+                    out_cs["pull"] = _cs.pull_cloud_to_local(mem(), api_key=api_key_cs, endpoint=ep_cs, scope=scope_cs, limit=lim_cs, dry_run=dry_cs)
+                    if not out_cs["pull"].get("ok"):
+                        out_cs["ok"] = False
+                return self._send(200, out_cs)
+
+            if self.path == "/api/v2/agents/canonicalize":
+                roles.require_owner(actor, "canonicalize_agents")
+                return self._send(200, mem().canonicalize_all_agents(actor=actor))
+
+            if self.path == "/api/v2/lan-sync/offer":
+                roles.require_owner(actor, "lan_sync")
+                from . import qr_svg as _qrs
+                port_ls = int(self.server.server_address[1])
+                ttl_ls = max(60, min(900, int(data.get("ttl_sec") or 300)))
+                host_ls = str(data.get("host") or "").strip() or None
+                return self._send(200, _qrs.create_lan_pairing_offer(port=port_ls, host=host_ls, ttl_sec=ttl_ls))
+
+            if self.path == "/api/v2/lan-sync/push":
+                from . import qr_svg as _qrs
+                tok_p = str(data.get("token") or "").strip()
+                if not tok_p or not _qrs.get_active_offer(tok_p):
+                    return self._send(401, {"ok": False, "error": "invalid_or_expired_token"})
+                return self._send(200, _qrs.import_encrypted_delta(mem(), tok_p, data))
+
+            if self.path == "/api/v2/voice/command":
+                roles.require_owner(actor, "voice_command")
+                from . import voice_commands as _vc
+                txt_v = str(data.get("text") or "").strip()
+                req_ww = bool(data.get("require_wake_word", False))
+                sc_v = str(data.get("scope") or "global")
+                return self._send(200, _vc.execute_voice_command(mem(), txt_v, require_wake_word=req_ww, scope=sc_v))
 
             return self._send(404, {"error": "unknown route"})
         except PermissionError as e:

@@ -388,7 +388,93 @@ struct DesktopIpcInfo {
     token: String,
     pid: u32,
     version: String,
+    #[serde(default)]
+    session_id: u32,
+    #[serde(default)]
+    desktop_name: String,
 }
+
+#[cfg(windows)]
+fn current_session_id() -> u32 {
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn GetCurrentProcessId() -> u32;
+        fn ProcessIdToSessionId(pid: u32, session_id: *mut u32) -> i32;
+    }
+    let mut sid: u32 = 0;
+    unsafe {
+        let pid = GetCurrentProcessId();
+        let _ = ProcessIdToSessionId(pid, &mut sid as *mut u32);
+    }
+    sid
+}
+
+#[cfg(not(windows))]
+fn current_session_id() -> u32 {
+    0
+}
+
+#[cfg(windows)]
+fn current_desktop_name() -> String {
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn GetCurrentThreadId() -> u32;
+    }
+    #[link(name = "user32")]
+    extern "system" {
+        fn GetThreadDesktop(thread_id: u32) -> *mut std::ffi::c_void;
+        fn GetUserObjectInformationW(
+            obj: *mut std::ffi::c_void,
+            index: i32,
+            info: *mut std::ffi::c_void,
+            len: u32,
+            needed: *mut u32,
+        ) -> i32;
+    }
+    const UOI_NAME: i32 = 2;
+    unsafe {
+        let hdesk = GetThreadDesktop(GetCurrentThreadId());
+        if hdesk.is_null() {
+            return "Default".to_string();
+        }
+        let mut buf: [u16; 128] = [0; 128];
+        let mut needed: u32 = 0;
+        let ok = GetUserObjectInformationW(
+            hdesk,
+            UOI_NAME,
+            buf.as_mut_ptr() as *mut std::ffi::c_void,
+            (buf.len() * 2) as u32,
+            &mut needed as *mut u32,
+        );
+        if ok == 0 {
+            return "Default".to_string();
+        }
+        let nul = buf.iter().position(|&c| c == 0).unwrap_or(buf.len());
+        let name = String::from_utf16_lossy(&buf[..nul]);
+        if name.is_empty() { "Default".to_string() } else { name }
+    }
+}
+
+#[cfg(not(windows))]
+fn current_desktop_name() -> String {
+    "Default".to_string()
+}
+
+#[cfg(windows)]
+fn allow_foreground_for_pid(pid: u32) {
+    #[link(name = "user32")]
+    extern "system" {
+        fn AllowSetForegroundWindow(pid: u32) -> i32;
+    }
+    if pid != 0 {
+        unsafe {
+            let _ = AllowSetForegroundWindow(pid);
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn allow_foreground_for_pid(_pid: u32) {}
 
 fn desktop_ipc_path() -> PathBuf {
     app_data_dir().join("desktop_ipc.json")
@@ -446,7 +532,13 @@ fn try_handoff_to_running_instance(tab: Option<&str>, start_minimized: bool) -> 
     if info.port == 0 || info.token.is_empty() {
         return false;
     }
-    if info.version == PADAM_VERSION {
+    let cur_sid = current_session_id();
+    let cur_desk = current_desktop_name();
+    let same_desktop = info.session_id == cur_sid
+        && !info.desktop_name.is_empty()
+        && info.desktop_name.eq_ignore_ascii_case(&cur_desk);
+    if info.version == PADAM_VERSION && same_desktop {
+        allow_foreground_for_pid(info.pid);
         let cmd = if start_minimized {
             "PING".to_string()
         } else if let Some(t) = tab {
@@ -455,7 +547,10 @@ fn try_handoff_to_running_instance(tab: Option<&str>, start_minimized: bool) -> 
             "WAKE".to_string()
         };
         if send_desktop_ipc_command(&info, &cmd) {
-            log_line(&format!("single_instance_handoff pid={} cmd={}", info.pid, cmd));
+            log_line(&format!(
+                "single_instance_handoff pid={} sid={} desk={} cmd={}",
+                info.pid, cur_sid, cur_desk, cmd
+            ));
             return true;
         }
         return false;
@@ -490,6 +585,8 @@ fn spawn_desktop_ipc_listener(app: AppHandle, guard: Arc<ServerGuard>, token: St
         token: token.clone(),
         pid: std::process::id(),
         version: PADAM_VERSION.to_string(),
+        session_id: current_session_id(),
+        desktop_name: current_desktop_name(),
     });
     std::thread::spawn(move || {
         for stream_res in listener.incoming() {
@@ -639,6 +736,16 @@ fn main() {
     });
     if try_handoff_to_running_instance(tab_override.as_deref(), start_minimized) {
         return;
+    }
+    #[cfg(windows)]
+    if env::var_os("WEBVIEW2_USER_DATA_FOLDER").is_none() {
+        let desk_safe: String = current_desktop_name()
+            .chars()
+            .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+            .collect();
+        let wv_dir = app_data_dir().join(format!("EBWebView_s{}_{}", current_session_id(), desk_safe));
+        let _ = fs::create_dir_all(&wv_dir);
+        env::set_var("WEBVIEW2_USER_DATA_FOLDER", &wv_dir);
     }
     let theme_override = cli.theme.filter(|s| s == "light" || s == "dark");
     let ru = is_russian_ui(cli.lang.as_deref());

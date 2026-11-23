@@ -25,6 +25,16 @@ def register_change_listener(fn) -> None:
 
 
 def _notify_change(event: dict) -> None:
+    try:
+        from . import pulse_stream as _ps
+        _ps.emit_pulse(
+            event_type=str(event.get("action") or "memory_change"),
+            agent_id=str(event.get("agent_id") or "owner"),
+            summary=f"{event.get('kind') or 'memory'} [{event.get('scope') or 'global'}] -> {event.get('status') or event.get('action') or 'ok'}",
+            detail={"id": event.get("id"), "scope": event.get("scope"), "kind": event.get("kind"), "status": event.get("status")},
+        )
+    except Exception:
+        pass
     for fn in list(_CHANGE_LISTENERS):
         try:
             fn(event)
@@ -47,24 +57,35 @@ _AGENT_CLIENT_ALIASES = {
     'claude-code': 'aifa_claude',
     'claude code': 'aifa_claude',
     'claude_code': 'aifa_claude',
+    'aifa-claude-code': 'aifa_claude',
+    'aifa_claude_active': 'aifa_claude',
+    'aifaclaude': 'aifa_claude',
     'google-antigravity': 'aifa_antigravity',
     'google antigravity': 'aifa_antigravity',
     'antigravity-ide': 'aifa_antigravity',
+    'antigravity': 'aifa_antigravity',
+    'aifa-antigravity': 'aifa_antigravity',
+    'aifaantigravity': 'aifa_antigravity',
+    'aifaantigraviti': 'aifa_antigravity',
     'openclaw': 'autoclaw',
+    'auto-claw': 'autoclaw',
+    'user': 'owner',
+    'desktop': 'owner',
+    'studio': 'owner',
 }
 
 
 def canonicalize_agent_id(raw: str | None, *, fallback: str = '') -> str:
-    """Нормализует имя MCP-клиента в стабильный agent_id без смешения агентов Семьи."""
+    """Нормализует имя MCP-клиента в стабильный agent_id без смешения агентов Семьи (Фишка 3)."""
     s = str(raw or '').strip()
     if not s:
         return fallback
     low = s.lower()
     if low in _AGENT_CLIENT_ALIASES:
         return _AGENT_CLIENT_ALIASES[low]
-    if low.startswith(('claude-code', 'claude code')):
+    if low.startswith(('claude-code', 'claude code', 'aifa-claude')) and 'worker' not in low:
         return 'aifa_claude'
-    if 'antigravity' in low and low not in _AGENT_KNOWN_META and 'worker' not in low and not low.startswith('aifa'):
+    if 'antigravity' in low and 'worker' not in low:
         return 'aifa_antigravity'
     return s[:64]
 _GRAPH_STOPWORDS = frozenset({
@@ -149,6 +170,31 @@ class Record:
         return (f"rrf={self.similarity:.3f} × imp={self.importance:.2f} "
                 f"× conf={self.confidence:.2f} × decay={d:.2f} "
                 f"= {self.score:.4f}   [{found_by}]{stale}")
+
+    def explain_trace(self) -> dict:
+        """Структурированное объяснение ранжирования и доверия записи (Фишка 5)."""
+        d = round(decay(self.kind, self.last_confirmed_at), 3)
+        verified = "owner" if (self.signed is True or (self.origin or "") == "user") else (self.origin or "agent")
+        why_parts = list(self.strategies) if self.strategies else ["semantic"]
+        if d >= 0.85 and not self.expired:
+            why_parts.append("fresh")
+        elif self.expired:
+            why_parts.append("expired")
+        if self.signed is True:
+            why_parts.append("signed")
+        return {
+            "verified": verified,
+            "confidence": round(float(self.confidence), 3),
+            "importance": round(float(self.importance), 3),
+            "decay": d,
+            "score": round(float(self.score), 4),
+            "strategies": list(self.strategies),
+            "why": "+".join(why_parts),
+        }
+
+    def format_trace(self) -> str:
+        tr = self.explain_trace()
+        return f"verified={tr['verified']} why={tr['why']} decay={tr['decay']:.2f}" 
 
 
 LINK_RELATIONS = ("derived", "cause", "correction", "contradiction")
@@ -972,6 +1018,7 @@ class Memory:
             "scope": scope,
             "kind": kind,
             "status": status,
+            "agent_id": canonicalize_agent_id(agent_id, fallback=origin or "owner"),
             "visibility": visibility or "private",
             "workspace_id": workspace_id,
         })
@@ -2276,7 +2323,7 @@ class Memory:
         vis_sql, vis_params, _ = roles.visibility_sql(actor)
         agents: dict[str, dict] = {}
         def _ensure(aid: str) -> dict:
-            key = (str(aid or '').strip() or 'owner')
+            key = canonicalize_agent_id(aid, fallback='owner') or 'owner'
             if key not in agents:
                 meta = infer_agent_meta(key)
                 agents[key] = {
@@ -2357,8 +2404,8 @@ class Memory:
                            FROM chat_thread WHERE user_id = ? GROUP BY ag""",
                         (self.user_id,)):
                     rec = _ensure(r['ag'])
-                    rec['chat_threads'] = int(r['th_cnt'] or 0)
-                    rec['chat_messages'] = int(r['msg_cnt'] or 0)
+                    rec['chat_threads'] += int(r['th_cnt'] or 0)
+                    rec['chat_messages'] += int(r['msg_cnt'] or 0)
                     ts = str(r['last_ts'] or '')
                     if ts > rec['last_seen_at']:
                         rec['last_seen_at'] = ts
@@ -2383,6 +2430,31 @@ class Memory:
         out = list(agents.values())
         out.sort(key=lambda x: (0 if x['online'] else 1, -x['active'], -x['chat_messages'], x['agent_id']))
         return out
+
+    def canonicalize_all_agents(self, actor: roles.ActorContext | None = None) -> dict:
+        """Приводит старые дублирующиеся agent_id в таблицах memory, audit_log и chat_thread к каноническим именам (Фишка 3)."""
+        roles.require_owner(actor, "canonicalize_agents")
+        updated = {"memory": 0, "audit_log": 0, "chat_thread": 0}
+        with self.store._lock:
+            for tbl in ("memory", "audit_log", "chat_thread"):
+                try:
+                    rows = self.store.conn.execute(
+                        f"SELECT DISTINCT agent_id FROM {tbl} WHERE user_id = ? AND agent_id IS NOT NULL AND agent_id != ''",
+                        (self.user_id,),
+                    ).fetchall()
+                except Exception:
+                    continue
+                for r in rows:
+                    raw_id = str(r["agent_id"] or "")
+                    canon = canonicalize_agent_id(raw_id)
+                    if canon and canon != raw_id:
+                        cur = self.store.conn.execute(
+                            f"UPDATE {tbl} SET agent_id = ? WHERE user_id = ? AND agent_id = ?",
+                            (canon, self.user_id, raw_id),
+                        )
+                        updated[tbl] += int(cur.rowcount or 0)
+            self.store.conn.commit()
+        return {"ok": True, "updated": updated, "agents_count": len(self.list_agents(actor=actor))}
 
     def stats(self, actor: roles.ActorContext | None = None) -> dict:
         vis_sql, vis_params, _ = roles.visibility_sql(actor)
@@ -2810,7 +2882,7 @@ class Memory:
         """
         предел = max(10, min(int(limit), 500))
         момент = parse_as_of(as_of) if as_of is not None and str(as_of).strip() else None
-        target_agent = (str(agent_id).strip() if agent_id is not None and str(agent_id).strip() else None)
+        target_agent = (canonicalize_agent_id(agent_id) if agent_id is not None and str(agent_id).strip() else None)
         focus_topic = (str(topic).strip().lower() if topic is not None and str(topic).strip() else None)
         graph_mode = (str(mode or "all").strip().lower())
         if focus_topic and graph_mode in ("all", "spheres", "intersections", "task_lens"):

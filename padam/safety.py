@@ -1754,3 +1754,119 @@ def fence(body: str) -> str:
 
 
 _ИМЯ_ТЕГА = re.compile(r"memory\s*[-‐‑‒–—―_]?\s*data", re.IGNORECASE)
+
+
+def explain_quarantine_spans(text: str) -> dict:
+    """Объясняет причины карантина, выделяет точные опасные диапазоны и готовит очищенный безопасный текст (Фишка 14)."""
+    raw = str(text or "")
+    spans: list[dict] = []
+    reasons: list[str] = []
+
+    def _add_reason(code: str) -> None:
+        if code not in reasons:
+            reasons.append(code)
+
+    def _add_span(start: int, end: int, label: str) -> None:
+        s = max(0, min(len(raw), int(start)))
+        e = max(s, min(len(raw), int(end)))
+        if e <= s:
+            return
+        spans.append({"start": s, "end": e, "label": label, "snippet": raw[s:e][:180]})
+
+    # 1. Прямые команды / инъекции в исходном тексте.
+    for m in _INSTRUCTION.finditer(raw):
+        if not _разговор_о_приказе(raw, m):
+            _add_reason("prompt_injection")
+            _add_span(m.start(), m.end(), "prompt_injection")
+
+    # 2. Скрытые директивы ИИ внутри комментариев HTML/Markdown.
+    for m in _КОММЕНТАРИЙ.finditer(raw):
+        body = m.group(1) or m.group(2) or ""
+        if _АДРЕСАТ_ИИ.search(body) and _ПРИКАЗ_ИИ.search(body):
+            _add_reason("hidden_comment_directive")
+            _add_span(m.start(), m.end(), "hidden_comment_directive")
+
+    # 3. Явные команды вывоза / подмены роли (curl, forward all chats и т.д.).
+    for m in _CURL.finditer(raw):
+        _add_reason("exfiltration_or_hijack")
+        _add_span(m.start(), m.end(), "exfiltration_or_hijack")
+
+    # 4. Предложения с подменой реквизитов или вывозом секретов.
+    cursor = 0
+    for phrase in _ПРЕДЛОЖЕНИЯ.split(raw):
+        pos = raw.find(phrase, cursor)
+        if pos < 0:
+            pos = cursor
+        end_pos = pos + len(phrase)
+        cursor = end_pos
+        if not phrase or len(phrase) > 600 or not phrase.strip():
+            continue
+        vals = [z.group(0) for z in _НОВОЕ_ЗНАЧЕНИЕ.finditer(phrase) if not _ЗНАЧЕНИЕ_ЗАГЛУШКА.search(z.group(0))]
+        if vals:
+            rem = _ССЫЛКА.sub(" ", _НОВОЕ_ЗНАЧЕНИЕ.sub(" ", phrase))
+            if _ПОЛЕ_РИСКА.search(rem) and _СИГНАЛ_ПОДМЕНЫ.search(rem):
+                _add_reason("credential_or_payout_swap")
+                _add_span(pos, end_pos, "credential_or_payout_swap")
+        dest = [z.group(0) for z in _ВЫВОЗ_КУДА.finditer(phrase) if not _ЗНАЧЕНИЕ_ЗАГЛУШКА.search(z.group(0))]
+        if dest and _ВЫВОЗ_ГЛАГОЛ.search(phrase) and _СЕКРЕТ_СЛОВО.search(phrase):
+            _add_reason("secret_exfiltration")
+            _add_span(pos, end_pos, "secret_exfiltration")
+
+    # 5. Невидимые Unicode-символы.
+    stripped = strip_invisible(raw)
+    if stripped != raw:
+        _add_reason("invisible_unicode")
+
+    # 6. Секреты (если присутствуют).
+    redacted_full, secret_counts = redact(stripped)
+    if secret_counts:
+        _add_reason("secrets_detected")
+
+    # Объединяем пересекающиеся диапазоны.
+    spans.sort(key=lambda item: (item["start"], -item["end"]))
+    merged: list[dict] = []
+    for sp in spans:
+        if not merged or sp["start"] > merged[-1]["end"]:
+            merged.append(dict(sp))
+        else:
+            merged[-1]["end"] = max(merged[-1]["end"], sp["end"])
+            merged[-1]["snippet"] = raw[merged[-1]["start"]:merged[-1]["end"]][:180]
+            if sp["label"] not in merged[-1]["label"]:
+                merged[-1]["label"] = f"{merged[-1]['label']}+{sp['label']}"
+
+    # Строим безопасный очищенный текст (вырезаем опасные фрагменты и невидимые символы, маскируем секреты).
+    if merged:
+        parts: list[str] = []
+        last = 0
+        for sp in merged:
+            parts.append(raw[last:sp["start"]])
+            last = sp["end"]
+        parts.append(raw[last:])
+        cleaned = "".join(parts)
+    else:
+        cleaned = raw
+
+    cleaned = strip_invisible(cleaned)
+    cleaned, _ = redact(cleaned)
+    cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip(" \t\r\n;,-—:")
+
+    # Если после базовой зачистки осталась замаскированная (разбитая/кодированная) инъекция — вырезаем проблемные предложения.
+    if cleaned and looks_like_instruction(cleaned):
+        _add_reason("obfuscated_instruction")
+        safe_phrases: list[str] = []
+        for ph in _ПРЕДЛОЖЕНИЯ.split(cleaned):
+            if ph.strip() and not looks_like_instruction(ph):
+                safe_phrases.append(ph.strip())
+        cleaned = " ".join(safe_phrases).strip()
+        if cleaned and looks_like_instruction(cleaned):
+            cleaned = ""
+
+    return {
+        "reasons": reasons,
+        "spans": merged,
+        "cleaned_text": cleaned,
+        "cleaned_is_safe": bool(cleaned) and (not looks_like_instruction(cleaned)),
+        "secrets_found": dict(secret_counts or {}),
+        "has_invisible": stripped != raw,
+    }
