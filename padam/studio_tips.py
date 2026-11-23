@@ -921,6 +921,11 @@ BTN_TIPS: dict[str, dict[str, str]] = {
         "en": "Checks all anchors: which facts went stale because files changed.",
         "es": "Revisa todas las anclas: qué hechos quedaron obsoletos.",
         "zh": "检查所有锚点：哪些事实因文件变化而过时。"},
+    "ark-claim-btn": {
+        "ru": "Проверяет утверждение по памяти и по коду: подтверждено ли оно фактами и не устарел ли привязанный файл.",
+        "en": "Checks a claim against memory and code: whether facts support it and whether the anchored file is stale.",
+        "es": "Verifica una afirmación con la memoria y el código: si los hechos la respaldan y si el archivo anclado está obsoleto.",
+        "zh": "用记忆和代码核验一条陈述：是否有事实支持，绑定的文件是否已过时。"},
     "ark-mm-btn": {
         "ru": "Проверяет картинку или документ (PNG, SVG, TXT) на спрятанные приказы для ИИ, прежде чем сохранить в память.",
         "en": "Checks an image or document (PNG, SVG, TXT) for hidden AI orders before saving it to memory.",

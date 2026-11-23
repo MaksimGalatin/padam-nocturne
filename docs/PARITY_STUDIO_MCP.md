@@ -4,13 +4,13 @@
 
 ## Сводка по всем инструментам и действиям MCP
 
-- Всего инструментов MCP (с учётом всех 6 флагов, `_ALL_TOOLS_BY_NAME`): **47** (по умолчанию: **9**, `PADAM_MCP_ARK_TOOLS=1`: **34** и **33447/27000** символов в `tools/list`, с `PADAM_MCP_PARTNER_TOOLS=1`: **40**).
-- Всего пар `(инструмент, action)`: **227**.
-- Есть в MCP: **227 из 227**
-- Есть в Studio (вкладка + кнопка/поле): **227 из 227**
-- Есть в API (`padam/api.py`): **227 из 227**
-- Покрыто автотестами: **223 из 227**
-- Проверено реальным нажатием в Playwright (1280×800 и 390×844): **201 из 227**
+- Всего инструментов MCP (с учётом всех 6 флагов, `_ALL_TOOLS_BY_NAME`): **47** (по умолчанию: **9**, `PADAM_MCP_ARK_TOOLS=1`: **34** и **33480/27000** символов в `tools/list`, с `PADAM_MCP_PARTNER_TOOLS=1`: **40**).
+- Всего пар `(инструмент, action)`: **228**.
+- Есть в MCP: **228 из 228**
+- Есть в Studio (вкладка + кнопка/поле): **228 из 228**
+- Есть в API (`padam/api.py`): **228 из 228**
+- Покрыто автотестами: **224 из 228**
+- Проверено реальным нажатием в Playwright (1280×800 и 390×844): **201 из 228**
 - Контролов Studio только для владельца (намеренно закрытых в MCP по аудиту GLM): **24**
 
 ## 1. Полная таблица MCP → Studio → API
@@ -133,6 +133,7 @@
 | `padam_session_pack` | `-` | Да | Да: `panel-family` → `#ark-sespack-btn` | Да: `GET /api/v2/ark/session-pack` | Да | Да |
 | `padam_code_anchor` | `anchor` | Да | Да: `panel-brain` → `#ark-anchor-add-btn, #ark-anchor-path-inp` | Да: `POST /api/v2/ark/code-anchor` | Да | Да |
 | `padam_code_anchor` | `check` | Да | Да: `panel-brain` → `#ark-anchor-chk-btn` | Да: `GET /api/v2/ark/code-anchor, POST /api/v2/ark/code-anchor` | Да | Да |
+| `padam_code_anchor` | `verify_claim` | Да | Да: `panel-brain` → `#ark-claim-btn, #ark-claim-inp` | Да: `POST /api/v2/ark/code-anchor` | Да | Нет |
 | `padam_batch` | `-` | Да | Да: `panel-family` → `#ark-batch-btn` | Да: `POST /api/v2/ark/batch` | Да | Да |
 | `padam_conflict_arbiter` | `open` | Да | Да: `panel-family` → `#ark-arb-open-btn, #ark-arb-topic-inp` | Да: `POST /api/v2/ark/conflicts` | Да | Да |
 | `padam_conflict_arbiter` | `evidence` | Да | Да: `panel-family` → `#ark-arb-ev-btn` | Да: `POST /api/v2/ark/conflicts` | Да | Да |

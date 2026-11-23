@@ -3555,6 +3555,8 @@ _STRINGS_PARITY_1811: dict[str, dict[str, str]] = {
         "ark_anchor_path_ph": "Путь к файлу или символу кода…",
         "ark_anchor_add_btn": "Привязать к коду",
         "ark_anchor_chk_btn": "Проверить якоря",
+        "ark_claim_btn": "Проверить утверждение",
+        "ark_claim_ph": "Утверждение для проверки по памяти и коду…",
         "ark_mm_path_ph": "Путь к медиафайлу (фото/аудио/PDF)…",
         "ark_mm_btn": "Инспектировать медиа",
         "ark_snap_name_ph": "Имя снимка / as_of…",
@@ -3655,6 +3657,8 @@ _STRINGS_PARITY_1811: dict[str, dict[str, str]] = {
         "ark_anchor_path_ph": "File path or symbol to anchor…",
         "ark_anchor_add_btn": "Anchor to code",
         "ark_anchor_chk_btn": "Check anchors",
+        "ark_claim_btn": "Verify claim",
+        "ark_claim_ph": "Claim to verify against memory and code…",
         "ark_mm_path_ph": "Media file path (image/audio/PDF)…",
         "ark_mm_btn": "Inspect media",
         "ark_snap_name_ph": "Snapshot name / as_of…",
@@ -3755,6 +3759,8 @@ _STRINGS_PARITY_1811: dict[str, dict[str, str]] = {
         "ark_anchor_path_ph": "Ruta de archivo o símbolo…",
         "ark_anchor_add_btn": "Anclar al código",
         "ark_anchor_chk_btn": "Verificar anclas",
+        "ark_claim_btn": "Verificar afirmación",
+        "ark_claim_ph": "Afirmación a verificar con memoria y código…",
         "ark_mm_path_ph": "Ruta de archivo multimedia…",
         "ark_mm_btn": "Inspeccionar media",
         "ark_snap_name_ph": "Nombre de captura / as_of…",
@@ -3855,6 +3861,8 @@ _STRINGS_PARITY_1811: dict[str, dict[str, str]] = {
         "ark_anchor_path_ph": "代码文件路径或符号名…",
         "ark_anchor_add_btn": "绑定代码锚点",
         "ark_anchor_chk_btn": "检查锚点",
+        "ark_claim_btn": "核验陈述",
+        "ark_claim_ph": "要用记忆和代码核验的陈述…",
         "ark_mm_path_ph": "媒体文件路径（图片/音频/PDF）…",
         "ark_mm_btn": "检查媒体文件",
         "ark_snap_name_ph": "快照名称 / as_of…",
@@ -12934,6 +12942,12 @@ if ($('ark-anchor-add-btn')) $('ark-anchor-add-btn').onclick = async () => {
 if ($('ark-anchor-chk-btn')) $('ark-anchor-chk-btn').onclick = async () => {
   try { _famShow('ark-parity-brain-out', await api('/api/v2/ark/code-anchor', { action: 'check' })); } catch (e) { _famShow('ark-parity-brain-out', { error: String(e.message || e) }); }
 };
+if ($('ark-claim-btn')) $('ark-claim-btn').onclick = async () => {
+  try {
+    const cl = ($('ark-claim-inp') && $('ark-claim-inp').value || '').trim();
+    _famShow('ark-parity-brain-out', await api('/api/v2/ark/code-anchor', { action: 'verify_claim', claim: cl }));
+  } catch (e) { _famShow('ark-parity-brain-out', { error: String(e.message || e) }); }
+};
 if ($('ark-mm-btn')) $('ark-mm-btn').onclick = async () => {
   try {
     const p = ($('ark-mm-path-inp') && $('ark-mm-path-inp').value || '').trim() || 'README.md';
@@ -16093,6 +16107,10 @@ mark.q-hit{{background:rgba(244,63,94,.28);color:inherit;padding:1px 4px;border-
             <input id="ark-anchor-path-inp" type="text" data-i18n-placeholder="ark_anchor_path_ph" data-i18n-aria="ark_anchor_path_ph" placeholder="{s['ark_anchor_path_ph']}" aria-label="{s['ark_anchor_path_ph']}">
             <button id="ark-anchor-add-btn" data-i18n="ark_anchor_add_btn">{s['ark_anchor_add_btn']}</button>
             <button id="ark-anchor-chk-btn" data-i18n="ark_anchor_chk_btn">{s['ark_anchor_chk_btn']}</button>
+          </div>
+          <div class="toolbar">
+            <input id="ark-claim-inp" type="text" data-i18n-placeholder="ark_claim_ph" data-i18n-aria="ark_claim_ph" placeholder="{s['ark_claim_ph']}" aria-label="{s['ark_claim_ph']}">
+            <button id="ark-claim-btn" data-i18n="ark_claim_btn">{s['ark_claim_btn']}</button>
           </div>
           <div class="toolbar">
             <input id="ark-mm-path-inp" type="text" data-i18n-placeholder="ark_mm_path_ph" data-i18n-aria="ark_mm_path_ph" placeholder="{s['ark_mm_path_ph']}" aria-label="{s['ark_mm_path_ph']}">

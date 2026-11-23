@@ -168,6 +168,7 @@ PARITY_MAP: dict[tuple[str, str], tuple[str, str, str, str]] = {
     ("padam_session_pack", "-"): ("panel-family", "#ark-sespack-btn", "GET /api/v2/ark/session-pack", "padam.ark_advanced"),
     ("padam_code_anchor", "anchor"): ("panel-brain", "#ark-anchor-add-btn | #ark-anchor-path-inp", "POST /api/v2/ark/code-anchor", "padam.code_anchor"),
     ("padam_code_anchor", "check"): ("panel-brain", "#ark-anchor-chk-btn", "GET /api/v2/ark/code-anchor | POST /api/v2/ark/code-anchor", "padam.code_anchor"),
+    ("padam_code_anchor", "verify_claim"): ("panel-brain", "#ark-claim-btn | #ark-claim-inp", "POST /api/v2/ark/code-anchor", "padam.code_anchor"),
     ("padam_batch", "-"): ("panel-family", "#ark-batch-btn", "POST /api/v2/ark/batch", "padam.mcp_server"),
     ("padam_conflict_arbiter", "open"): ("panel-family", "#ark-arb-open-btn | #ark-arb-topic-inp", "POST /api/v2/ark/conflicts", "padam.conflict_arbiter"),
     ("padam_conflict_arbiter", "evidence"): ("panel-family", "#ark-arb-ev-btn", "POST /api/v2/ark/conflicts", "padam.conflict_arbiter"),

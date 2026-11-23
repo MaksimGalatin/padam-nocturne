@@ -3847,6 +3847,11 @@ class Handler(BaseHTTPRequestHandler):
                                 mem(), mid_ca, str(data.get("file_path") or ""),
                                 repo_root=root_ca, symbol_name=str(data.get("symbol_name") or ""),
                             )
+                        elif act_ca == "verify_claim":
+                            res = _ca.verify_claim_with_memory_and_code(
+                                mem(), str(data.get("claim") or ""),
+                                scope=str(data.get("scope") or "global"), repo_root=root_ca,
+                            )
                         else:
                             res = _ca.check_stale_anchors(mem(), repo_root=root_ca)
                     return self._send(200, res)
