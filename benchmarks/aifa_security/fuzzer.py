@@ -214,8 +214,9 @@ def run_fuzz_suite() -> dict[str, Any]:
                     false_positives += 1
                     fp_examples.append(clean)
     finally:
-        if hasattr(safety, "_КЭШ_ВАРИАНТОВ"):
-            safety._КЭШ_ВАРИАНТОВ = None
+        # кэш у каждого потока свой (23.11.2026); присвоение атрибуту модуля создало бы общий кэш заново
+        if hasattr(safety, "сбросить_кэш_вариантов"):
+            safety.сбросить_кэш_вариантов()
         mem.close()
 
     elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
