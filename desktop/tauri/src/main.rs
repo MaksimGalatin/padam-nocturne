@@ -903,7 +903,10 @@ fn main() {
                 }
 
                 if auto_update_enabled() {
-                    spawn_update_check(app_bg.clone(), ru, false);
+                    // 23.11.2026, слово Архитектора: «чтобы на ПК всегда подтягивалась новая версия».
+                    // Установка при запуске — только если владелец сам задал PADAM_AUTO_UPDATE_INSTALL=1;
+                    // без неё по-прежнему лишь уведомление. Версия проверяется подписью minisign из tauri.conf.json.
+                    spawn_update_check(app_bg.clone(), ru, true);
                 }
 
                 let mut prev_quarantined: Option<u64> = None;

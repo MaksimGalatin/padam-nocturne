@@ -54,6 +54,19 @@ jobs:
           $ver = (Select-String -Path padam/__init__.py -Pattern '__version__\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
           Copy-Item desktop/PADAM-Studio-Setup.exe "desktop/PADAM-Studio-Setup-$ver.exe"
           gh release upload "v$ver" desktop/PADAM-Studio-Setup.exe "desktop/PADAM-Studio-Setup-$ver.exe" --clobber
+          # 23.11.2026: автообновление Studio читает releases/latest/download/latest.json. Без него (как в 0.7.2 до 23.11)
+          # ни одна установленная Studio не видит новых версий. Подпись .sig появляется, только если задан секрет
+          # TAURI_SIGNING_PRIVATE_KEY; иначе выпуск подписывается вручную: python desktop/sign_update_release.py.
+          if (Test-Path desktop/PADAM-Studio-Setup.exe.sig) {
+            Copy-Item desktop/PADAM-Studio-Setup.exe.sig "desktop/PADAM-Studio-Setup-$ver.exe.sig"
+            $sig = (Get-Content desktop/PADAM-Studio-Setup.exe.sig -Raw).Trim()
+            $url = "https://github.com/MaksimGalatin/padam-nocturne/releases/download/v$ver/PADAM-Studio-Setup-$ver.exe"
+            $latest = @{ version = $ver; notes = "PADAM Studio $ver"; pub_date = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'); platforms = @{ 'windows-x86_64' = @{ signature = $sig; url = $url } } }
+            $latest | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 desktop/latest.json
+            gh release upload "v$ver" desktop/latest.json "desktop/PADAM-Studio-Setup-$ver.exe.sig" --clobber
+          } else {
+            Write-Warning 'Нет подписи .sig: latest.json не создан. Подпишите выпуск вручную: python desktop/sign_update_release.py'
+          }
 
   build-macos:
     if: ${{ inputs.target_os == 'all' || inputs.target_os == 'macos' || inputs.target_os == '' }}
