@@ -12,7 +12,7 @@
 
 **One-click install:** [Install in Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=padam&config=eyJjb21tYW5kIjoicGFkYW0tbWNwIiwiYXJncyI6W119) · [Install in VS Code](vscode:mcp/install?%7B%22name%22%3A%22padam%22%2C%22command%22%3A%22padam-mcp%22%2C%22args%22%3A%5B%5D%7D) · CLI (`13` clients incl. Claude Code & Antigravity): `padam setup --all` · Zero-install run: `uvx padam-nocturne` · [★ Star on GitHub](https://github.com/MaksimGalatin/padam-nocturne/stargazers)
 
-**Desktop & Mobile (latest release):** [Windows / Linux / macOS Studio & Signed Android APK (9/9 release files)](https://github.com/MaksimGalatin/padam-nocturne/releases/latest) · [Free Browser Express Scanner (100% client-side)](https://aifa.works/shield) · [Docker Stateless Gateway (`Apache-2.0`)](https://github.com/MaksimGalatin/padam-shield-mcp) · [Hosted Cloud MCP (`AIfa Memory` v2.1.0)](https://github.com/MaksimGalatin/aifa-memory-mcp)
+**Desktop & Mobile (latest release):** [Windows / Linux / macOS Studio & Signed Android APK (9/9 release files)](https://github.com/MaksimGalatin/padam-nocturne/releases/latest) · [Free Browser Express Scanner (100% client-side)](https://aifa.works/shield) · [Docker Stateless Gateway (`Apache-2.0`)](https://github.com/MaksimGalatin/padam-shield-mcp) · [Hosted Cloud MCP (`AIfa Memory` v2.3.0)](https://github.com/MaksimGalatin/aifa-memory-mcp)
 
 > ⭐ **If PADAM helps protect your AI agents, please [Star this repo](https://github.com/MaksimGalatin/padam-nocturne/stargazers)** — reaching **75★ (Homebrew)** and **100★ (Scoop)** unlocks one-command installs across macOS & Windows and keeps zero-telemetry AI security open.
 

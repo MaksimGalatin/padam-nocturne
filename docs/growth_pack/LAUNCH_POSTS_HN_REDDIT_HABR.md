@@ -1,6 +1,6 @@
-# Готовый пакет публикаций и роста звёзд — PADAM NOCTURNE v0.7.2 + AIfa Memory v1.9.8
+# Готовый пакет публикаций и роста звёзд — PADAM NOCTURNE v0.7.2 + AIfa Memory v2.3.0
 
-Обновлено **22.11.2026** (CODE Eternal LLC). Все числа строго соответствуют проверенным замерам релизов `padam-nocturne v0.7.2` и `aifa-memory-mcp v1.9.8`:
+Обновлено **22.11.2026** (CODE Eternal LLC). Все числа строго соответствуют проверенным замерам релизов `padam-nocturne v0.7.2` и `aifa-memory-mcp v2.3.0` (облачный сервер, 19 инструментов):
 - **`1 704`** автотестов пройдено на `v0.7.2`
 - **`AIFaSecurity-100`**: **`Grade S (100/100)`** с чистого пакета
 - **Red Team (`redteam/public_cases.jsonl`)**: **`214/214`** (`88` benign, `73` command, `53` secret)
@@ -34,7 +34,7 @@
 > - `python redteam/run.py redteam/public_cases.jsonl` → **214 / 214** (`benign: 88`, `command: 73`, `secret: 53`)
 > - `python -m benchmarks.aifa_security.run_aifa_sec --no-write` → **Grade S (100/100)**
 > - `LongMemEval-S`: **97.0% top-5 / 99.2% top-10**; **1,704 automated tests** passing on v0.7.2.
-> - Desktop Studio (Windows / Linux AppImage & .deb / macOS), signed Android APK (`0.7.2`), plus hosted Streamable HTTP sibling **AIfa Memory (`v1.9.8`)** at https://github.com/MaksimGalatin/aifa-memory-mcp.
+> - Desktop Studio (Windows / Linux AppImage & .deb / macOS), signed Android APK (`0.7.2`), plus hosted Streamable HTTP sibling **AIfa Memory (`v2.3.0`)** at https://github.com/MaksimGalatin/aifa-memory-mcp.
 >
 > Honest limits: this is not a formal SOC 2 / ISO 27001 replacement, and pattern rules alone won't catch every novel zero-day paraphrase attack (optional local Ollama classifier supported). Red-team edge cases and honest critique are very welcome!
 
@@ -65,12 +65,12 @@
 > Happy to take feedback or brutal red-team test cases!
 
 ### 2Б. `r/mcp` (акцент: MCP протокол, 13 клиентов, SHA-256 rug-pull pinning, оба сервера)
-- **Title:** `PADAM NOCTURNE v0.7.2 (local SQLite MCP) & AIfa Memory v1.9.8 (Streamable HTTP) — both in the Official MCP Registry`
+- **Title:** `PADAM NOCTURNE v0.7.2 (local SQLite MCP) & AIfa Memory v2.3.0 (Streamable HTTP) — both in the Official MCP Registry`
 - **Body (EN):**
-> Sharing two complementary MCP memory servers we just shipped to `v0.7.2` and `v1.9.8` (both live in the Official MCP Registry):
+> Sharing two complementary MCP memory servers we just shipped to `v0.7.2` and `v2.3.0` (both live in the Official MCP Registry):
 >
 > 1. **PADAM NOCTURNE (`io.github.MaksimGalatin/padam-nocturne`, v0.7.2, AGPL-3.0):** local `stdio` MCP server in one SQLite file (`uvx padam-nocturne`, `padam setup --all` configures 13 clients including Claude Code, Cursor, VS Code, Windsurf, Codex, Antigravity). Adds SHA-256 MCP tool-schema pinning against rug-pulls, memory quarantine, secret redaction before disk, and an Apache-2.0 GitHub Action (`SARIF 2.1.0`).
-> 2. **AIfa Memory (`works.aifa/aifa-memory`, v1.9.8, MIT docs/examples):** hosted Streamable HTTP server (`https://aifa.works/api/mcp`) with scoped memory-only Bearer keys, AES-256-GCM optional Arweave anchoring, and full Markdown export.
+> 2. **AIfa Memory (`works.aifa/aifa-memory`, v2.3.0, MIT docs/examples):** hosted Streamable HTTP server (`https://aifa.works/api/mcp`) with scoped memory-only Bearer keys, AES-256-GCM optional Arweave anchoring, and full Markdown export.
 >
 > You can also test your `mcp.json` locally in the browser (100% client-side, nothing uploaded): https://aifa.works/shield
 > Repos: https://github.com/MaksimGalatin/padam-nocturne · https://github.com/MaksimGalatin/aifa-memory-mcp
@@ -86,7 +86,7 @@
 > - **One command setup:** `pip install padam-nocturne && padam setup --all` (or `uvx padam-nocturne`).
 >
 > Source (AGPL-3.0, 1,704 tests, AIFaSecurity-100 100/100): https://github.com/MaksimGalatin/padam-nocturne
-> If you prefer hosted sync across devices, there's also a Streamable HTTP server (`AIfa Memory` v1.9.8): https://github.com/MaksimGalatin/aifa-memory-mcp.
+> If you prefer hosted sync across devices, there's also a Streamable HTTP server (`AIfa Memory` v2.3.0): https://github.com/MaksimGalatin/aifa-memory-mcp.
 
 ### 2Г. `r/netsec` (акцент: чистый AppSec / AI Sec, red-team, воспроизводимый бенчмарк, без маркетинга)
 - **Title:** `Open-source deterministic firewall & 100-case benchmark for AI agent memory poisoning, MCP schema rug-pulls, and payee-swaps`
@@ -125,10 +125,10 @@
 2. `What it blocks deterministically before disk write: • Invisible Unicode tags (U+E00xx) & hidden <IMPORTANT> orders → owner Quarantine • 20+ secret formats (sk-, ghp_, seed phrases) → [REDACTED] • MCP tool schema rug-pulls → SHA-256 pinning • Outbound crypto/IBAN payee-swaps`
 3. `Zero marketing fluff — verify offline in 30s: pip install padam-nocturne && padam aifa-sec • 1,704 tests passing • AIFaSecurity-100: Grade S (100/100) • Red Team: 214/214 • LongMemEval-S: 99.2% top-10`
 4. `Try the 100% client-side MCP & Web SRI/CSP express scanner right in your browser (nothing leaves your tab): https://aifa.works/shield Or plug in our Apache-2.0 GitHub Action (SARIF 2.1.0).`
-5. `Full v0.7.2 release is live (Windows / Linux / macOS Studio + signed Android APK + Chrome/Firefox/VS Code extensions) + hosted sibling AIfa Memory v1.9.8. If this helps protect your agents, a ⭐ on GitHub helps us reach Homebrew & Scoop: https://github.com/MaksimGalatin/padam-nocturne`
+5. `Full v0.7.2 release is live (Windows / Linux / macOS Studio + signed Android APK + Chrome/Firefox/VS Code extensions) + hosted sibling AIfa Memory v2.3.0. If this helps protect your agents, a ⭐ on GitHub helps us reach Homebrew & Scoop: https://github.com/MaksimGalatin/padam-nocturne`
 
 ### Discord (Anthropic MCP / Cursor / CrewAI — короткое сообщение в `#showcase` / `#mcp-servers`):
-> Shipped **PADAM NOCTURNE v0.7.2** (local SQLite MCP memory + 4-ring prompt-injection & rug-pull firewall, `uvx padam-nocturne`, `1,704` tests, `AIFaSecurity-100: 100/100`, Windows/Linux/macOS Studio + Android APK) and **AIfa Memory v1.9.8** (hosted Streamable HTTP MCP at `https://aifa.works/api/mcp`). Both are live in the Official MCP Registry. Browser-only `mcp.json` scanner: https://aifa.works/shield · Repo: https://github.com/MaksimGalatin/padam-nocturne — feedback & red-team edge cases welcome!
+> Shipped **PADAM NOCTURNE v0.7.2** (local SQLite MCP memory + 4-ring prompt-injection & rug-pull firewall, `uvx padam-nocturne`, `1,704` tests, `AIFaSecurity-100: 100/100`, Windows/Linux/macOS Studio + Android APK) and **AIfa Memory v2.3.0** (hosted Streamable HTTP MCP at `https://aifa.works/api/mcp`). Both are live in the Official MCP Registry. Browser-only `mcp.json` scanner: https://aifa.works/shield · Repo: https://github.com/MaksimGalatin/padam-nocturne — feedback & red-team edge cases welcome!
 
 ---
 

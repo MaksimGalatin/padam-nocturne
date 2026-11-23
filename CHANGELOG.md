@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Docs & licences consistency (23.11.2026):** SPDX `AGPL-3.0` → `AGPL-3.0-only` in the VS Code extension and the npm `padam-mcp` package (same as `pyproject.toml`, Tauri and `padam-client`); hosted AIfa Memory MCP is `2.3.0` with 19 tools in README and the HN/Reddit/Habr launch drafts (was 1.9.8 / 2.1.0).
+
 - **Studio: «Курилка» → «Очаг Семьи» (Family Hearth / Hogar de la Familia / 家庭炉边)** — слово Архитектора 23.11.2026. Одно имя канала свободной беседы на 4 языках вместо прежнего разнобоя (Break room, Lounge, «smoke test», Descanso, Prueba, 茶水间, 休息室, 连通测试) в подписях, подсказках и справке. Внутреннее имя канала `smoke` не меняется — старые записи и клиенты работают как прежде.
 
 ## 0.8.0 — 22 November 2026
