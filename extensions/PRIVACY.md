@@ -1,7 +1,7 @@
 # PADAM · NOCTURNE Memory Guard — Политика конфиденциальности расширения / Extension Privacy Policy
 
 **Издатель / Publisher:** CODE Eternal LLC (Maksim Galatin, `contact@codeofdigitaleternity.com`)  
-**Версия / Version:** 0.4.18  
+**Версия / Version:** 0.8.0  
 **Лицензия / License:** Лицензия PADAM 1.0 / PADAM License 1.0 (`LicenseRef-PADAM-1.0`)
 
 ---

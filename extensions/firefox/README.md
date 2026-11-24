@@ -1,4 +1,4 @@
-# PADAM · NOCTURNE Memory Guard — Расширение для Chrome и Edge (Manifest V3)
+# PADAM · NOCTURNE Memory Guard — Расширение для Mozilla Firefox (Manifest V3)
 
 Локальное расширение браузера для сохранения выделенных фрагментов текста и веб-страниц в защищённую память **PADAM NOCTURNE**.
 
@@ -16,13 +16,10 @@
    padam studio
    ```
    Скопируйте одноразовый токен из ссылки `#t=<токен>` (или задайте постоянный `PADAM_API_TOKEN`).
-2. Откройте страницу управления расширениями:
-   - В **Google Chrome**: `chrome://extensions`
-   - В **Microsoft Edge**: `edge://extensions`
-3. Включите переключатель **«Режим разработчика» (Developer mode)**.
-4. Нажмите **«Загрузить распакованное расширение» (Load unpacked)** и выберите папку:
+2. Откройте в **Mozilla Firefox** страницу отладки дополнений: `about:debugging#/runtime/this-firefox`.
+3. Нажмите **«Загрузить временное дополнение…» (Load Temporary Add-on…)** и выберите файл:
    ```text
-   extensions/chromium
+   extensions/firefox/manifest.json
    ```
 5. Нажмите на иконку **PADAM · NOCTURNE Memory Guard** в панели браузера, откройте блок «Настройки подключения к локальному PADAM», укажите адрес (`http://127.0.0.1:8078`) и токен владельца, затем нажмите **«Сохранить»**.
 
@@ -31,3 +28,7 @@
 - ⭐ **Star PADAM NOCTURNE on GitHub:** https://github.com/MaksimGalatin/padam-nocturne
 - ⭐ **Star AIfa Memory MCP (Cloud):** https://github.com/MaksimGalatin/aifa-memory-mcp
 - Free 100% client-side MCP & Web SRI/CSP Scanner: https://aifa.works/shield
+
+## Лицензия / License
+
+**PADAM License 1.0** (`LicenseRef-PADAM-1.0`, [`LICENSE`](../../LICENSE)) — source-available с отложенным переходом каждой версии в `Apache-2.0` через 24 месяца. Правообладатель: **CODE Eternal LLC** (New Mexico, USA). Коммерческие условия: [`COMMERCIAL-LICENSE.md`](../../COMMERCIAL-LICENSE.md).

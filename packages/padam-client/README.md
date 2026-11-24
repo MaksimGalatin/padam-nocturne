@@ -43,3 +43,7 @@ const cloud = new PadamCloudMcpClient({
 const prof = await cloud.profile("global");
 const hits = await cloud.search({ query: "deployment checklist" });
 ```
+
+## License
+
+- **PADAM NOCTURNE & Client SDK (`v0.8.0+`):** [`PADAM License 1.0`](LICENSE) (`LicenseRef-PADAM-1.0`) — source-available with 24-month delayed conversion to `Apache-2.0`; copyright © 2026 **CODE Eternal LLC** (New Mexico, USA · Entity ID `0008138873`). Commercial MSA: [`COMMERCIAL-LICENSE.md`](../../COMMERCIAL-LICENSE.md).

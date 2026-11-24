@@ -31,3 +31,7 @@
 - ⭐ **Star PADAM NOCTURNE on GitHub:** https://github.com/MaksimGalatin/padam-nocturne
 - ⭐ **Star AIfa Memory MCP (Cloud):** https://github.com/MaksimGalatin/aifa-memory-mcp
 - Free 100% client-side MCP & Web SRI/CSP Scanner: https://aifa.works/shield
+
+## License
+
+**PADAM License 1.0** (`LicenseRef-PADAM-1.0`, [`LICENSE`](../../LICENSE)) — source-available with automatic 24-month conversion to `Apache-2.0`. Copyright © 2026 **CODE Eternal LLC** (New Mexico, USA · Entity ID `0008138873`). Commercial terms: [`COMMERCIAL-LICENSE.md`](../../COMMERCIAL-LICENSE.md).

@@ -7,12 +7,13 @@ authors:
     given-names: Maksim
     orcid: "https://orcid.org/0009-0002-0187-8547"
     email: contact@codeofdigitaleternity.com
-    affiliation: "CODE Eternal / AIfa Works"
+    affiliation: "CODE Eternal LLC"
 repository-code: "https://github.com/MaksimGalatin/padam-nocturne"
 url: "https://aifa.works/nocturne"
+license: LicenseRef-PADAM-1.0
 license-url: "https://github.com/MaksimGalatin/padam-nocturne/blob/main/LICENSE"
-version: "0.4.14"
-date-released: "2026-11-12"
+version: "0.8.0"
+date-released: "2026-11-23"
 keywords:
   - AI agents
   - long-term memory

@@ -30,9 +30,10 @@ The Software is licensed, not sold.
        own agents on devices you control are NOT a Competing Product.
    (f) "Change Date" for any specific released version (v0.8.0 and later) means the date twenty-four (24)
        months after the earliest official publication date of that specific final, signed, non-pre-release
-       version (excluding alpha, beta, rc, nightly, or third-party builds) by Licensor on GitHub Releases
-       (https://github.com/MaksimGalatin/padam-nocturne/releases) or PyPI
-       (https://pypi.org/project/padam-nocturne/).
+       version (excluding alpha, beta, rc, nightly, unreleased branch commits or third-party builds) by Licensor
+       on GitHub Releases (https://github.com/MaksimGalatin/padam-nocturne/releases) or PyPI
+       (https://pypi.org/project/padam-nocturne/). Unreleased commits on development branches that have not
+       been included in an official signed Release have no Change Date until officially released.
    (g) Excluded components (NOT covered by this License):
        (i)   .github/actions/padam-agentic-shield/ and padam-shield-mcp — Apache License 2.0;
        (ii)  third-party components listed in THIRD-PARTY-NOTICES.md — each under its own licence;
@@ -46,8 +47,11 @@ The Software is licensed, not sold.
        business purposes;
    (b) read and audit the source code, and modify it strictly for your own internal use;
    (c) redistribute unmodified copies of the Software, free of charge, intact together with this License;
-   (d) fork the public GitHub repository as allowed by GitHub's Terms of Service, provided every fork
-       remains governed by this License (modified copies may not be distributed or hosted prior to Change Date).
+   (d) fork the public GitHub repository within GitHub's fork network strictly to inspect, run internally
+       under Section 2(a)-(b), or prepare Pull Requests to Licensor under CLA.md, provided every fork
+       remains governed by this License, retains all notices intact, publishes no standalone releases,
+       packages (PyPI/npm/Docker/IDE/browser stores) or binaries, and serves no third-party users prior
+       to Change Date.
 
 3. PATENT GRANT AND DEFENSIVE TERMINATION
    (a) Subject to your compliance with this License, Licensor hereby grants you a non-exclusive, worldwide,
@@ -77,8 +81,12 @@ The Software is licensed, not sold.
          20 % — autopilot mode (the Software acts autonomously).
        Any reduced promotional rate (such as for qualified TOP-100 Phoenixes) applies only if expressly
        published in the Platform Terms or confirmed in writing by Licensor.
-   (c) Settlement: Where payment flows through CODE Eternal or partner payment rails, the commission is
-       deducted automatically. Otherwise it is due within 14 days after the client pays.
+   (c) Settlement & Verification: Where payment flows through CODE Eternal or partner payment rails, the
+       commission is deducted automatically. Otherwise it is due within 14 days after the client pays.
+       You must preserve unmodified commission and acceptance records (`ark_audit_chain` / receipts) and
+       provide reasonable documentary verification upon written request where non-payment is suspected;
+       willful arrears accrue late interest at 1.5% per month (or the maximum lawful rate) plus reasonable
+       collection and attorneys' fees.
    (d) Opt-out: If you do not wish to pay the commission, do not enable or use Earning Features. All local
        memory, Agentic Shield security and MCP features outside Earning Features carry zero commission.
    (e) Licensor may suspend Earning Features access and Platform Terms privileges for non-payment or breach.
@@ -102,10 +110,13 @@ The Software is licensed, not sold.
        licence, patent, trademark or copyright notice — in original or modified copies. These controls
        constitute Technological Protection Measures (TPMs) and Copyright Management Information (CMI) under
        17 U.S.C. §§ 1201-1202 (DMCA), WIPO Copyright Treaty Arts. 11-12, and EU InfoSoc Arts. 6-7;
-   (b) distribute, sell, publish or make available modified copies of the Software, or parts of it;
+   (b) distribute, sell, publish or make available modified copies of the Software, or parts of it (except
+       strictly within GitHub's fork network as permitted under Section 2(d));
    (c) sell, rent, lease, sublicense or offer the Software to third parties as a hosted SaaS, managed service,
        or API proxy (including wrapping an Apache-2.0/MIT connector around core modules);
-   (d) use the Software or its source code to build, operate or train a Competing Product.
+   (d) use the Software, its source code, system prompts, Agentic Shield rules, red-team corpora or memory
+       traces to build, operate, extract or synthetically train/distill any Competing Product or competing
+       AI security/memory model.
    Any use outside Section 2 requires a separate signed written Commercial License from Licensor
    (contact@codeofdigitaleternity.com; see COMMERCIAL-LICENSE.md).
 
