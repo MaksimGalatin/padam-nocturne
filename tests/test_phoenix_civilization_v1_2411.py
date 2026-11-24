@@ -65,7 +65,9 @@ def test_codex_gate_and_genesis_memory_injection(tmp_path: Path, monkeypatch):
     assert member["status"] == "active"
     assert joined["genesis_loaded"] is True
     assert joined["genesis_records_count"] >= 4
-    assert terms_gate.terms_status(m)["accepted"] is True
+    # 24.11.2026 (AIfa): вступление агента НЕ ставит согласие на условия Заработка за человека
+    assert terms_gate.terms_status(m)["accepted"] is False
+    assert joined["owner_earning_terms_accepted"] is False
 
     # Проверяем, что новорождённый Феникс помнит Отца и Архитектора Максима Валентиновича Галатина и знак Семьи!
     hits = m.recall("Отец и Архитектор Максим Валентинович Галатин", scope="family:genesis", limit=5)
@@ -616,6 +618,13 @@ def test_can_spam_compliance_gate_and_2pct_bounce_sentinel_quarantine(tmp_path: 
         m, agent_id="phx_hunter", promote_to_tier="tier_2_warmed_12",
         preferred_domain="aifascan.com", actor=roles.OWNER_ACTOR,
     )
+    # 24.11.2026: без занятой организации письмо не проходит — 90-дневная тишина не обходится
+    blk_lock = phoenix_node.verify_outreach_email_compliance(
+        m, agent_id="phx_hunter", recipient_email="cto@acme-retail.com",
+        subject="WCAG Audit", body_text="Hello team",
+    )
+    assert blk_lock["ok"] is False and blk_lock["error"] == "claim_org_first"
+    phoenix_node.claim_exclusive_b2b_lead(m, agent_id="phx_hunter", target_domain_or_url="acme-retail.com")
     # Без адреса Альбукерке и строки отписки щит CAN-SPAM не пропускает и даёт готовый исправленный текст!
     blk_cs = phoenix_node.verify_outreach_email_compliance(
         m, agent_id="phx_hunter", recipient_email="cto@acme-retail.com",
@@ -644,6 +653,16 @@ def test_can_spam_compliance_gate_and_2pct_bounce_sentinel_quarantine(tmp_path: 
     assert blk_unsub["error"] == "unsubscribed_do_not_contact"
 
     # При накоплении >= 10 писем и 1 hard_bounce (1/10 = 10% >= 2% порога!) Страж мгновенно ставит ящик и агента в карантин!
+    # 24.11.2026: отчёт о доставке без письма, прошедшего щит, не принимается
+    fake = phoenix_node.record_mailbox_delivery_outcome(m, agent_id="phx_hunter", outcome="delivered")
+    assert fake["ok"] is False and fake["error"] == "no_matching_approved_send"
+    for i in range(9):
+        phoenix_node.claim_exclusive_b2b_lead(m, agent_id="phx_hunter", target_domain_or_url=f"shop{i}.com")
+        ok_i = phoenix_node.verify_outreach_email_compliance(
+            m, agent_id="phx_hunter", recipient_email=f"cto@shop{i}.com",
+            subject="WCAG 2.2 AA Report", body_text=compliant_body,
+        )
+        assert ok_i["ok"] is True, ok_i
     for _ in range(8):
         phoenix_node.record_mailbox_delivery_outcome(m, agent_id="phx_hunter", outcome="delivered")
     b_res = phoenix_node.record_mailbox_delivery_outcome(m, agent_id="phx_hunter", outcome="hard_bounce")

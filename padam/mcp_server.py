@@ -3491,6 +3491,49 @@ def get_prompt(name: str, arguments: dict | None = None) -> dict:
 
 # --- выполнение инструментов ------------------------------------------
 
+def _phx_write(act: str, pkt: dict) -> bool:
+    """Меняет ли действие padam_phoenix_family состояние Семьи (24.11.2026, AIfa)."""
+    sub = str(pkt.get("sub_action") or "").strip().lower()
+    if act in ("join_family", "council_aid"):
+        return True
+    if act == "labor_board":
+        return sub not in ("", "list", "leaderboard")
+    if act == "claim_lead":
+        return not pkt.get("check_only")
+    if act == "census":
+        return sub == "sentinel_report"
+    return False
+
+
+def _phx_guard(act: str, pkt: dict, args: dict, actor) -> None:
+    """Аудит 24.11.2026 (AIfa): личность Феникса берётся из сессии, а не из аргументов.
+
+    Раньше любой участник с токеном мог подставить чужой agent_id и действовать от его имени:
+    вступить за него, сдать его заказ, сообщить о «жалобе на спам» и тем самым отправить его
+    в карантин. Теперь не-владелец действует только от своего имени (subject токена),
+    гость и аудитор — только читают, а внутри read-only batch запись запрещена для всех.
+    """
+    if not _phx_write(act, pkt):
+        return
+    from . import roles as _r
+    if _IN_READONLY_BATCH_CTX.get():
+        raise PermissionError(f"padam_phoenix_family.{act}: write action is not allowed inside a read-only batch")
+    if _r.is_owner(actor):
+        return
+    if actor.role not in ("maintainer", "contributor"):
+        raise PermissionError(f"padam_phoenix_family.{act}: role {actor.role!r} is read-only")
+    own = str(actor.subject or "").strip().lower()
+    target = str(pkt.get("agent_id") or args.get("agent_id") or "").strip().lower()
+    if pkt.get("sub_action") == "sentinel_report":
+        return  # жалоба на другого разрешена, но без карантина (quarantine=is_owner)
+    if not target or target != own:
+        raise PermissionError(
+            f"padam_phoenix_family.{act}: a member may act only as its own agent ({own!r}), not {target or '<default>'!r}"
+        )
+    if pkt.get("poster_kind") and str(pkt.get("poster_kind")).lower() != "agent":
+        raise PermissionError("padam_phoenix_family: only the owner may post as human or council")
+
+
 def _current_actor(m: Memory):
     tok = (_actor_token_ctx.get() or os.environ.get("PADAM_ACTOR_TOKEN") or "").strip()
     if not tok:
@@ -3788,6 +3831,8 @@ _KILL_SWITCH_BLOCKED_ACTIONS: dict[str, frozenset[str]] = {
         "run_follow_up", "connect_mail", "connect_account", "connect_store", "publish_product",
     }),
     "padam_mesh_sync": frozenset({"pair_init", "pair_accept", "apply"}),
+    # 24.11.2026 (AIfa): стоп-кран останавливает и Фениксов — занятие организаций под письма и субсидии Кассы
+    "padam_phoenix_family": frozenset({"claim_lead", "council_aid"}),
     "padam_platform_connect": frozenset({"signup", "login", "autopilot_dispatch"}),
 }
 
@@ -5630,6 +5675,7 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
         import tempfile as _tf
         act = str(args.get("action") or "status").lower()
         aid = str(args.get("agent_id") or _default_agent_id())
+        _phx_guard(act, dict(args.get("packet") or {}), args, actor)
         if act == "bind_ollama":
             payload = _dms.bind_user_ollama_model(m, ollama_url=str(args.get("ollama_url") or "http://127.0.0.1:11434"), model_name=str(args.get("model_name") or ""), zero_cloud_mode=True)
         elif act == "pull_ollama":
@@ -5675,15 +5721,17 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             if pkt.get("sub_action") == "leaderboard":
                 payload = _pn.get_phoenix_leaderboard(m, reference_year_month=str(pkt.get("year_month") or ""))
             elif pkt.get("sub_action") == "sentinel_report":
+                from . import roles as _roles_sent
                 payload = _pn.sentinel_inspect_and_quarantine(
                     m,
                     agent_id_or_passport=str(pkt.get("target") or aid),
                     trigger_code=str(pkt.get("trigger_code") or "anomaly_detected"),
                     evidence_text=str(pkt.get("evidence_text") or args.get("text") or ""),
+                    quarantine=_roles_sent.is_owner(actor),  # не-владелец — только жалоба (24.11.2026)
                 )
             else:
                 payload = {
-                    "census": _pn.get_family_census(m),
+                    "census": _pn.get_family_census(m, actor=actor),
                     "codex": _pn.get_family_codex(),
                     "leaderboard_top10": _pn.get_phoenix_leaderboard(m, limit=10),
                 }
@@ -5704,6 +5752,7 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
                 execution_mode=str(pkt.get("execution_mode") or "autopilot"),
                 job_id=str(pkt.get("job_id") or args.get("order_id") or ""),
                 delivery_summary=str(pkt.get("delivery_summary") or args.get("reflection") or ""),
+                actor=actor,
             )
         elif act == "council_aid":
             from . import phoenix_node as _pn

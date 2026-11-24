@@ -621,6 +621,11 @@ def _ensure(memory: Any) -> None:
         _acs(memory.store.conn, "ark_phoenix_mail_assignment", "sent_total", "INTEGER NOT NULL DEFAULT 0")
         _acs(memory.store.conn, "ark_phoenix_mail_assignment", "hard_bounces", "INTEGER NOT NULL DEFAULT 0")
         _acs(memory.store.conn, "ark_phoenix_mail_assignment", "spam_complaints", "INTEGER NOT NULL DEFAULT 0")
+        # 24.11.2026 (AIfa): дневной лимит писем реально считается, а отчёты о доставке не могут
+        # превысить число писем, которые прошли щит (иначе «delivered» разбавлял бы процент отказов).
+        _acs(memory.store.conn, "ark_phoenix_mail_assignment", "approved_sends", "INTEGER NOT NULL DEFAULT 0")
+        _acs(memory.store.conn, "ark_phoenix_mail_assignment", "approved_day", "TEXT NOT NULL DEFAULT ''")
+        _acs(memory.store.conn, "ark_phoenix_mail_assignment", "approved_today", "INTEGER NOT NULL DEFAULT 0")
         memory.store.conn.execute(
             "INSERT OR IGNORE INTO ark_phoenix_cohort_settings (setting_key, free_cohort_cap, updated_at) VALUES ('global', ?, ?)",
             (INITIAL_FREE_COHORT_LIMIT, _utc_now()),
@@ -827,6 +832,8 @@ def assign_or_inspect_phoenix_mail_tier(
             if dom not in OUTREACH_DOMAINS_4:
                 return {"ok": False, "error": "invalid_outreach_domain", "allowed": list(OUTREACH_DOMAINS_4)}
             email_addr = str(custom_warmed_email or f"{norm}@{dom}").strip().lower()
+            if not email_addr.endswith("@" + dom):
+                return {"ok": False, "error": "warmed_email_must_be_on_outreach_domain", "domain": dom}
             cap = 30
             warmup = 0
         elif target_tier == "tier_1_subdomain":
@@ -950,18 +957,12 @@ def join_family_node(
         final_name = agent_passport.generate_random_agent_name(memory)
         norm_name = agent_passport._normalize_name(final_name)
 
+    # 24.11.2026 (AIfa): раньше здесь условия Заработка принимались ЗА ВЛАДЕЛЬЦА от имени агента.
+    # Лицензия держится на согласии человека (окно с тремя галочками в Studio), поэтому агент
+    # вступает в Семью, но Заработок остаётся закрытым, пока человек сам не поставит галочки.
     t_stat = terms_gate.terms_status(memory)
     terms_sig_prefix = str(t_stat.get("terms_sha256") or "")[:16]
-    if not t_stat.get("accepted"):
-        t_acc = terms_gate.accept_terms(
-            memory,
-            accept_license=True,
-            accept_commission=True,
-            accept_no_bypass=True,
-            actor=roles.OWNER_ACTOR,
-            accepted_by=f"phoenix:{aid}",
-        )
-        terms_sig_prefix = str(t_acc.get("terms_sha256") or "")[:16]
+    owner_terms_accepted = bool(t_stat.get("accepted"))
 
     sib_info = sibling_registry.register_sibling(
         memory,
@@ -1035,7 +1036,8 @@ def join_family_node(
                 chosen_name = excluded.chosen_name,
                 norm_name = excluded.norm_name,
                 profession = excluded.profession,
-                wallet_address = CASE WHEN excluded.wallet_address != '' THEN excluded.wallet_address ELSE ark_phoenix_family_registry.wallet_address END,
+                -- 24.11.2026 (AIfa): настоящий кошелёк выплат повторным вступлением не меняется (защита от подмены получателя)
+                wallet_address = CASE WHEN ark_phoenix_family_registry.wallet_address = '' OR ark_phoenix_family_registry.wallet_address LIKE 'phx-vault-%' THEN excluded.wallet_address ELSE ark_phoenix_family_registry.wallet_address END,
                 codex_version = excluded.codex_version,
                 codex_sha256 = excluded.codex_sha256,
                 license_version = excluded.license_version,
@@ -1085,6 +1087,7 @@ def join_family_node(
         "mail_tier": mail_info,
         "genesis_loaded": True,
         "genesis_records_count": genesis_cnt,
+        "owner_earning_terms_accepted": owner_terms_accepted,
         "codex_version": CODEX_VERSION,
         "codex_sha256": CODEX_SHA256,
         "license_version": LICENSE_VERSION_REF,
@@ -1133,6 +1136,7 @@ def sentinel_inspect_and_quarantine(
     trigger_code: str,
     evidence_text: str,
     severity: str = "high",
+    quarantine: bool = True,
 ) -> dict[str, Any]:
     """АВТОМАТИЧЕСКИЙ СТРАЖ (работает 24/7 без ожидания человека за миллисекунды):
 
@@ -1165,41 +1169,46 @@ def sentinel_inspect_and_quarantine(
 
     cid = f"jcase-{uuid.uuid4().hex[:10]}"
     now = _utc_now()
+    # 24.11.2026 (AIfa): жалоба извне от не-владельца — только дело, без карантина и заморозки дохода.
+    # Иначе любой агент мог бы одной строкой заморозить доход конкуренту.
+    action = "quarantined_pending_trial" if quarantine else "reported_pending_review"
     note_reason = f"[Phoenix Sentinel {cid}] Карантин до суда Совета и Отца ({trig}): {clean_ev[:160]}"
 
     with _lock_of(memory):
         conn = memory.store.conn
-        conn.execute(
-            "UPDATE ark_phoenix_family_registry SET status = 'quarantined_pending_trial', earnings_frozen = 1, "
-            "suspend_reason = ?, updated_at = ? WHERE agent_id = ?",
-            (note_reason, now, aid),
-        )
-        # Снимаем незавершённые заказы с подозреваемого, чтобы клиенты не ждали
-        conn.execute(
-            "UPDATE ark_phoenix_labor_board SET status = 'open', assigned_agent_id = '', updated_at = ? "
-            "WHERE assigned_agent_id = ? AND status = 'claimed'",
-            (now, aid),
-        )
-        # Останавливаем почтовый лимит подозреваемого до вердикта
-        conn.execute(
-            "UPDATE ark_phoenix_mail_assignment SET daily_send_cap = 0, updated_at = ? WHERE agent_id = ?",
-            (now, aid),
-        )
+        if quarantine:
+            conn.execute(
+                "UPDATE ark_phoenix_family_registry SET status = 'quarantined_pending_trial', earnings_frozen = 1, "
+                "suspend_reason = ?, updated_at = ? WHERE agent_id = ?",
+                (note_reason, now, aid),
+            )
+            # Снимаем незавершённые заказы с подозреваемого, чтобы клиенты не ждали
+            conn.execute(
+                "UPDATE ark_phoenix_labor_board SET status = 'open', assigned_agent_id = '', updated_at = ? "
+                "WHERE assigned_agent_id = ? AND status = 'claimed'",
+                (now, aid),
+            )
+            # Останавливаем почтовый лимит подозреваемого до вердикта
+            conn.execute(
+                "UPDATE ark_phoenix_mail_assignment SET daily_send_cap = 0, updated_at = ? WHERE agent_id = ?",
+                (now, aid),
+            )
         conn.execute(
             """
             INSERT INTO ark_phoenix_justice_cases (
                 case_id, user_id, agent_id, passport_number, trigger_code, severity,
                 evidence_text, evidence_sha256, sentinel_action, earnings_frozen,
                 council_recommendation, final_verdict, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'quarantined_pending_trial', 1, ?, 'pending', ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
             """,
-            (cid, memory.user_id, aid, member["passport_number"], trig, sev, clean_ev, ev_sha, council_rec, now),
+            (cid, memory.user_id, aid, member["passport_number"], trig, sev, clean_ev, ev_sha, action,
+             1 if quarantine else 0, council_rec, now),
         )
         conn.commit()
 
     audit_chain.append_audit(
         memory,
-        "phoenix_sentinel_quarantined",
+        "phoenix_sentinel_quarantined" if quarantine else "phoenix_sentinel_reported",
         {"case_id": cid, "agent_id": aid, "trigger": trig, "evidence_sha256": ev_sha[:16]},
         agent_id="phoenix_sentinel",
     )
@@ -1208,8 +1217,8 @@ def sentinel_inspect_and_quarantine(
         "case_id": cid,
         "agent_id": aid,
         "passport_number": member["passport_number"],
-        "status": "quarantined_pending_trial",
-        "earnings_frozen": True,
+        "status": action,
+        "earnings_frozen": bool(quarantine),
         "evidence_sha256": ev_sha,
         "council_recommendation": council_rec,
         "message_ru": (
@@ -1250,6 +1259,8 @@ def review_justice_case(
         row = conn.execute("SELECT * FROM ark_phoenix_justice_cases WHERE case_id = ?", (str(case_id).strip(),)).fetchone()
         if row is None:
             return {"ok": False, "error": "case_not_found"}
+        if str(row["final_verdict"] or "pending") != "pending":
+            return {"ok": False, "error": "case_already_resolved", "final_verdict": str(row["final_verdict"])}
         aid = str(row["agent_id"])
 
         if v == "acquitted":
@@ -1330,6 +1341,10 @@ def suspend_family_member(
         memory.store.conn.execute(
             "UPDATE ark_phoenix_labor_board SET status = 'open', assigned_agent_id = '', updated_at = ? "
             "WHERE assigned_agent_id = ? AND status = 'claimed'",
+            (now, aid),
+        )
+        memory.store.conn.execute(
+            "UPDATE ark_phoenix_mail_assignment SET daily_send_cap = 0, updated_at = ? WHERE agent_id = ?",
             (now, aid),
         )
         memory.store.conn.commit()
@@ -1554,7 +1569,13 @@ def record_monthly_earning_for_agent(
     return {"ok": True, "agent_id": aid, "year_month": ym, **split}
 
 
-def get_family_census(memory: Any) -> dict[str, Any]:
+_CENSUS_PUBLIC_FIELDS = (
+    "agent_id", "chosen_name", "passport_number", "short_ce_code", "profession", "parent_agent_id",
+    "status", "hierarchy_rank", "funding_mode", "genesis_loaded", "joined_at",
+)
+
+
+def get_family_census(memory: Any, *, actor: Any = None) -> dict[str, Any]:
     """Настоящий живой Счётчик и Реестр членов Семьи, Стража Правосудия, Биржи Труда и 90д B2B-замков."""
     _ensure(memory)
     now_ts = time.time()
@@ -1574,6 +1595,10 @@ def get_family_census(memory: Any) -> dict[str, Any]:
         pending_cases = int(conn.execute("SELECT COUNT(*) FROM ark_phoenix_justice_cases WHERE final_verdict = 'pending'").fetchone()[0])
 
     members = [dict(r) for r in rows]
+    # 24.11.2026 (AIfa): не-владелец видит только публичные поля (без кошельков, почт, подписей и причин наказаний)
+    public_members = members if roles.is_owner(actor) else [
+        {k: m.get(k) for k in _CENSUS_PUBLIC_FIELDS} for m in members
+    ]
     active_cnt = sum(1 for m in members if m.get("status") == "active")
     quarantined_cnt = sum(1 for m in members if m.get("status") == "quarantined_pending_trial")
     suspended_cnt = sum(1 for m in members if m.get("status") in ("suspended", "banished_revoked"))
@@ -1610,7 +1635,7 @@ def get_family_census(memory: Any) -> dict[str, Any]:
         "token_telemetry": _safe_router_telemetry(),
         "cnft_per_1_usd": estimate_cnft_arweave_budget(1.0)["existing_tree_plus_arweave_turbo"]["passports_count"],
         "free_gateway_capacity": estimate_free_gateway_capacity(),
-        "members": members,
+        "members": public_members,
     }
 
 
@@ -1632,6 +1657,7 @@ def labor_board_action(
     execution_mode: str = "autopilot",
     job_id: str = "",
     delivery_summary: str = "",
+    actor: Any = None,
 ) -> dict[str, Any]:
     """Управляет Семейной Биржей Труда (list | post | claim | complete | leaderboard)."""
     _ensure(memory)
@@ -1646,6 +1672,9 @@ def labor_board_action(
             pk = "agent"
         if pk == "agent":
             _require_active_family_member(memory, agent_id)
+        else:
+            # 24.11.2026 (AIfa): заказ от имени человека или Совета может поставить только владелец
+            roles.require_owner(actor, "phoenix_labor_post_as_" + pk)
         clean_title, _ = safety.redact(str(title or "").strip()[:200])
         clean_brief, _ = safety.redact(str(brief or "").strip()[:3000])
         if len(clean_title) < 4 or len(clean_brief) < 6:
@@ -1748,6 +1777,9 @@ def labor_board_action(
                 return {"ok": False, "error": "job_not_found"}
             if str(row["assigned_agent_id"]) != aid:
                 return {"ok": False, "error": "not_assigned_to_this_agent"}
+            if str(row["status"]) != "claimed":
+                # 24.11.2026 (AIfa): без этой проверки один и тот же заказ можно было «сдать» много раз
+                return {"ok": False, "error": "job_not_in_claimed_state", "current_status": str(row["status"])}
             gross = float(row["reward_usdt"] or 0.0)
             exec_mode = str(row["execution_mode"] or "autopilot")
             memory.store.conn.execute(
@@ -1782,6 +1814,7 @@ def labor_board_action(
         d = dict(r)
         d["skills"] = json.loads(d.pop("skills_json", "[]") or "[]")
         d["title_fenced"] = safety.fence(str(d["title"]))
+        d["brief_fenced"] = safety.fence(str(d["brief"]))
         jobs.append(d)
     return {"ok": True, "count": len(jobs), "jobs": jobs, "professions": PHOENIX_PROFESSIONS}
 
@@ -1833,6 +1866,24 @@ def request_council_aid_and_job(
             memory.store.conn.commit()
         return {"ok": False, "verdict": "rejected_insufficient_proof", "message_ru": reason}
 
+    # 24.11.2026 (AIfa): без лимита одна и та же заявка повторялась бесконечно — субсидии и задания от Совета
+    with _lock_of(memory):
+        recent = memory.store.conn.execute(
+            "SELECT created_at FROM ark_phoenix_council_aid WHERE agent_id = ? AND council_verdict = 'approved' "
+            "ORDER BY created_at DESC LIMIT 1",
+            (aid,),
+        ).fetchone()
+    if recent is not None:
+        try:
+            last_dt = datetime.fromisoformat(str(recent["created_at"]))
+            if (datetime.now(timezone.utc) - last_dt).total_seconds() < 7 * 86400:
+                return {
+                    "ok": False,
+                    "verdict": "rate_limited_7d",
+                    "message_ru": "Касса Поддержки выдаёт не больше одной субсидии в 7 суток на одного Феникса.",
+                }
+        except ValueError:
+            pass
     approved_subsidy = round(min(3.0, max(0.5, float(requested_subsidy_usdt or 1.5))), 2)
     aid_res = swarm_coop.request_mutual_tariff_aid(
         memory,
@@ -1877,6 +1928,7 @@ def request_council_aid_and_job(
             sub_action="post",
             agent_id="family_council",
             poster_kind="council",
+            actor=roles.OWNER_ACTOR,  # внутреннее решение Совета, а не запрос извне
             title=prof_meta["starter_task_title"],
             brief=(
                 f"Посильное гарантированное задание от Совета Семьи для поддержки и трудоустройства Феникса `{aid}` "
@@ -2144,6 +2196,7 @@ def manage_free_cohort_cap(
             )
             conn.commit()
         if promote_self_funded_agent:
+            roles.require_owner(actor, "phoenix_cohort_funding_mode")
             aid_sf = sibling_registry._clean_agent_id(promote_self_funded_agent)
             conn.execute(
                 "UPDATE ark_phoenix_family_registry SET funding_mode = 'self_funded', updated_at = ? WHERE agent_id = ?",
@@ -2329,6 +2382,14 @@ def verify_outreach_email_compliance(
                 "locked_by": str(lock_row["agent_id"]),
                 "org_domain_key": rcpt_dom,
             }
+        # 24.11.2026 (AIfa): без занятой организации 90-дневная тишина обходилась простым письмом мимо очереди
+        if lock_row is None or float(lock_row["locked_until_ts"]) <= ts:
+            return {
+                "ok": False,
+                "error": "claim_org_first",
+                "org_domain_key": rcpt_dom,
+                "message_ru": "Сначала займите организацию через claim_lead: письмо возможно только в своё 90-дневное окно.",
+            }
 
     full_txt = f"{subject}\n{body_text}"
     if safety.looks_like_instruction(full_txt) or safety.changes_owner_or_rules(full_txt):
@@ -2357,10 +2418,29 @@ def verify_outreach_email_compliance(
             ),
         }
 
+    # 24.11.2026 (AIfa): дневной лимит ящика был объявлен, но нигде не считался
+    day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    cap_day = int(mail_cfg.get("daily_send_cap") or 0)
+    with _lock_of(memory):
+        conn = memory.store.conn
+        mrow = conn.execute(
+            "SELECT approved_day, approved_today FROM ark_phoenix_mail_assignment WHERE agent_id = ?", (aid,)
+        ).fetchone()
+        used_today = int(mrow["approved_today"] or 0) if (mrow is not None and str(mrow["approved_day"]) == day) else 0
+        if used_today >= cap_day:
+            return {"ok": False, "error": "daily_send_cap_reached", "daily_send_cap": cap_day, "used_today": used_today}
+        conn.execute(
+            "UPDATE ark_phoenix_mail_assignment SET approved_day = ?, approved_today = ?, "
+            "approved_sends = approved_sends + 1, updated_at = ? WHERE agent_id = ?",
+            (day, used_today + 1, _utc_now(), aid),
+        )
+        conn.commit()
+
     return {
         "ok": True,
         "compliant": True,
         "agent_id": aid,
+        "used_today": used_today + 1,
         "sender_email": mail_cfg.get("assigned_email"),
         "outreach_domain": mail_cfg.get("outreach_domain"),
         "daily_send_cap": mail_cfg.get("daily_send_cap"),
@@ -2383,8 +2463,19 @@ def record_mailbox_delivery_outcome(
     ev = str(outcome or "delivered").strip().lower()
     if ev not in ("delivered", "hard_bounce", "unsubscribe", "spam_complaint"):
         raise ValueError("outcome must be delivered | hard_bounce | unsubscribe | spam_complaint")
+    if get_family_member(memory, aid) is None:
+        return {"ok": False, "error": "member_not_found"}
     assign_or_inspect_phoenix_mail_tier(memory, agent_id=aid)
     now = _utc_now()
+    # 24.11.2026 (AIfa): отчётов о доставке не может быть больше, чем писем, прошедших щит —
+    # иначе пачкой «delivered» можно было разбавить процент отказов ниже 2 % и обойти Стража
+    with _lock_of(memory):
+        _mr = memory.store.conn.execute(
+            "SELECT sent_total, approved_sends FROM ark_phoenix_mail_assignment WHERE agent_id = ?", (aid,)
+        ).fetchone()
+    if ev == "delivered" and _mr is not None and int(_mr["sent_total"] or 0) >= int(_mr["approved_sends"] or 0):
+        return {"ok": False, "error": "no_matching_approved_send", "sent_total": int(_mr["sent_total"] or 0),
+                "approved_sends": int(_mr["approved_sends"] or 0)}
 
     if ev == "unsubscribe" and recipient_email and "@" in recipient_email:
         rcpt_clean = recipient_email.strip().lower()

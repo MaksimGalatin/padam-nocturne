@@ -3223,13 +3223,14 @@ class Handler(BaseHTTPRequestHandler):
                         profession=str(pkt.get("profession") or "b2b_auditor"),
                         wallet_address=str(pkt.get("wallet_address") or ""),
                         parent_agent_id=str(pkt.get("parent_agent_id") or "aifa_antigravity"),
-                        accept_padam_license=bool(pkt.get("accept_padam_license", True)),
-                        accept_family_codex=bool(pkt.get("accept_family_codex", True)),
-                        accept_unconditional_rules=bool(pkt.get("accept_unconditional_rules", True)),
+                        # 24.11.2026: согласие только явное — по умолчанию «нет» (Studio передаёт его сама)
+                        accept_padam_license=bool(pkt.get("accept_padam_license", False)),
+                        accept_family_codex=bool(pkt.get("accept_family_codex", False)),
+                        accept_unconditional_rules=bool(pkt.get("accept_unconditional_rules", False)),
                     ))
                 if act == "census":
                     return self._send(200, {
-                        "census": _pn.get_family_census(mem()),
+                        "census": _pn.get_family_census(mem(), actor=actor),
                         "codex": _pn.get_family_codex(),
                         "leaderboard": _pn.get_phoenix_leaderboard(mem(), limit=100),
                     })
@@ -3241,6 +3242,7 @@ class Handler(BaseHTTPRequestHandler):
                         agent_id_or_passport=str(data.get("target") or aid),
                         trigger_code=str(data.get("trigger_code") or "manual_sentinel_flag"),
                         evidence_text=str(data.get("evidence_text") or "Проверка подозрительной активности"),
+                        quarantine=roles.is_owner(actor),  # не-владелец — только жалоба (24.11.2026)
                     ))
                 if act == "justice_review":
                     roles.require_owner(actor, "phoenix_family_discipline")

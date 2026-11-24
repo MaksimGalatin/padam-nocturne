@@ -40,7 +40,7 @@ MAIL_PROVIDER_PRESETS: dict[str, dict[str, Any]] = {
     "smtp_imap": {"smtp_host": "", "smtp_port": 465, "imap_host": "", "imap_port": 993, "hint_ru": "Произвольный SMTP/IMAP сервер вашего домена."},
     "gmail_oauth2": {"smtp_host": "smtp.gmail.com", "smtp_port": 465, "imap_host": "imap.gmail.com", "imap_port": 993, "hint_ru": "Gmail OAuth2 (токен доступа Google без App Password)."},
     "resend": {"smtp_host": "api.resend.com", "smtp_port": 443, "imap_host": "", "imap_port": 0, "hint_ru": "Resend HTTP API (только отправка по ключу re_...)."},
-    "instantly": {"smtp_host": "api.instantly.ai", "smtp_port": 443, "imap_host": "api.instantly.ai", "imap_port": 443, "hint_ru": "Instantly API v2 (HTTPS 443 — обходит блокировку портов 465/587 у провайдера; 100/100 прогретые ящики Google Workspace)."},
+    "instantly": {"smtp_host": "api.instantly.ai", "smtp_port": 443, "imap_host": "api.instantly.ai", "imap_port": 443, "hint_ru": "Instantly API v2 (HTTPS 443 — обходит блокировку портов 465/587 у провайдера; ящики Google Workspace, прогретые в Instantly)."},
 }
 
 DEFAULT_STOP_LIST_PATH = Path(
@@ -626,12 +626,12 @@ def _deliver_email_via_account(
             return {"ok": 200 <= int(r.status) < 300, "status": int(r.status)}
 
     if prov == "instantly":
-        camp_id = os.environ.get("PADAM_INSTANTLY_CAMPAIGN_ID", "35f410eb-3f68-438f-b781-9e71cadcce52").strip()
+        camp_id = os.environ.get("PADAM_INSTANTLY_CAMPAIGN_ID", "").strip()  # 24.11.2026: id кампании владельца не хранится в открытом коде
         payload_inst: dict[str, Any] = {
             "email": to_email,
             "personalization": body,
-            "skip_if_in_workspace": False,
-            "skip_if_in_campaign": False,
+            "skip_if_in_workspace": True,  # 24.11.2026: не писать повторно тому, кто уже в базе
+            "skip_if_in_campaign": True,
             "custom_variables": {
                 "custom_subject": subject,
                 "subject": subject,
