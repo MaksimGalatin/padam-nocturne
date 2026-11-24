@@ -55,6 +55,19 @@ def test_qa_honest_bench_mrr_ndcg_rougel_em() -> None:
     assert qhb._rouge_l("Paris is the capital of France", "capital of France") > 0.5
 
 
+def _get_with_retry(req, attempts: int = 3, timeout: float = 60.0) -> str:
+    """24.11.2026: на windows-latest 3.12 после ~1 750 тестов сокет трижды за двое суток не дождался ответа
+    (36c05ce, 6b85900, 20edd22), хотя локально каждый адрес отвечает за 0,00–0,65 с, а отчёт берётся из кеша.
+    Тест проверяет кнопки и ответы, а не скорость машины CI, поэтому — до трёх попыток с запасом 60 с."""
+    last: Exception | None = None
+    for _ in range(attempts):
+        try:
+            return urllib.request.urlopen(req, timeout=timeout).read().decode("utf-8")
+        except (TimeoutError, OSError) as exc:  # socket.timeout — подкласс OSError
+            last = exc
+    raise AssertionError(f"нет ответа за {attempts} попытки: {last!r}")
+
+
 def test_studio_benchmark_buttons_and_endpoints(tmp_path: Path) -> None:
     m = Memory(user_id="bench_ui", store=Store(tmp_path / "b.db"))
     srv, link = api.make_studio_server(m, port=0)
@@ -64,7 +77,7 @@ def test_studio_benchmark_buttons_and_endpoints(tmp_path: Path) -> None:
         base, tok = link.split("/studio#t=", 1)
         # 23.11.2026: запас 30 с вместо 5. Локально /studio отдаётся за 0,06 с (замер), но на windows-latest 3.12 после 1 700 тестов
         # первый запрос дважды подряд не уложился в 5 с (CI 36c05ce, 6b85900) — это нагрузка машины CI, не Studio.
-        html = urllib.request.urlopen(f"{base}/studio", timeout=30).read().decode("utf-8")
+        html = _get_with_retry(f"{base}/studio")
         for marker in (
             "att-aifasec-dl-json",
             "att-aifasec-dl-sarif",
@@ -84,7 +97,7 @@ def test_studio_benchmark_buttons_and_endpoints(tmp_path: Path) -> None:
             ("/api/v2/qa-benchmark", "benchmark"),
         ):
             req = urllib.request.Request(f"{base}{ep}", headers={"Authorization": f"Bearer {tok}"})
-            body = urllib.request.urlopen(req, timeout=30).read().decode("utf-8")
+            body = _get_with_retry(req)
             assert expect in body
     finally:
         srv.shutdown()
