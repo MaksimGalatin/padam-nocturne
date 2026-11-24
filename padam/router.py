@@ -104,7 +104,77 @@ def load_contours() -> list[ContourConfig]:
         timeout_s=_timeout("LOCAL", 45.0),
         enabled=bool(l_url),
     )
-    return [primary, sovereign, local]
+    extra_pool: list[ContourConfig] = []
+    raw_pool = os.environ.get("PADAM_LLM_POOL_JSON", "").strip()
+    if raw_pool:
+        try:
+            parsed_pool = json.loads(raw_pool)
+            if isinstance(parsed_pool, list):
+                for item in parsed_pool[:12]:
+                    if not isinstance(item, dict):
+                        continue
+                    u = str(item.get("url") or "").strip().rstrip("/")
+                    if not u:
+                        continue
+                    extra_pool.append(
+                        ContourConfig(
+                            name=str(item.get("name") or f"pool_{len(extra_pool) + 1}").strip()[:32],
+                            url=u,
+                            api_key=str(item.get("api_key") or "").strip(),
+                            model=str(item.get("model") or "glm-4.5-flash").strip(),
+                            timeout_s=max(2.0, min(180.0, float(item.get("timeout_s") or 30.0))),
+                            enabled=bool(item.get("enabled", True)),
+                        )
+                    )
+        except Exception:
+            pass
+    return [primary, sovereign, *extra_pool, local]
+
+
+FREE_GATEWAY_PRESETS: dict[str, dict[str, Any]] = {
+    "zai_glm": {
+        "title": "Z.ai GLM OpenAI Gateway (GLM-4.5-Flash / GLM-5)",
+        "url": "https://api.z.ai/api/paas/v4",
+        "default_model": "glm-4.5-flash",
+        "free_tier_note": "Миллионы бесплатных и сверхдешёвых токенов для быстрых рассуждений и кода",
+    },
+    "gemini_free": {
+        "title": "Google Gemini Free OpenAI Endpoint",
+        "url": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "default_model": "gemini-2.5-flash",
+        "free_tier_note": "Официальный бесплатный лимит AI Studio по стандартному OpenAI API",
+    },
+    "openrouter_free": {
+        "title": "OpenRouter :free Multi-Model Router",
+        "url": "https://openrouter.ai/api/v1",
+        "default_model": "openrouter/free",
+        "free_tier_note": "Автоподбор живой бесплатной модели (:free) одной точкой без простоя",
+    },
+    "groq_free": {
+        "title": "Groq Free LPU Inference",
+        "url": "https://api.groq.com/openai/v1",
+        "default_model": "llama-3.3-70b-versatile",
+        "free_tier_note": "Высокоскоростной бесплатный контур для подстраховки при пиках",
+    },
+    "cerebras_free": {
+        "title": "Cerebras Free Cloud API",
+        "url": "https://api.cerebras.ai/v1",
+        "default_model": "llama-3.3-70b",
+        "free_tier_note": "Мгновенная генерация на бесплатном дневном лимите токенов",
+    },
+    "nine_router_hub": {
+        "title": "9Router / Free-LLM-Proxy Local Aggregator",
+        "url": "http://127.0.0.1:20128/v1",
+        "default_model": "auto",
+        "free_tier_note": "Единый локальный агрегатор всех бесплатных API-провайдеров (схема 9router)",
+    },
+    "ollama_family_server": {
+        "title": "Семейный сервер Ollama (облачный / локальный $0)",
+        "url": "http://127.0.0.1:11434/v1",
+        "default_model": "qwen2.5-coder:7b",
+        "free_tier_note": "Автономный контур Семьи без внешних лимитов и блокировок",
+    },
+}
 
 
 class SovereignRouter:
@@ -117,6 +187,7 @@ class SovereignRouter:
         self._cooldown_s = float(os.environ.get("PADAM_ROUTER_COOLDOWN_S", "60.0") or "60.0") if cooldown_s is None else float(cooldown_s)
         self.mode = "auto"  # auto | local_only
         self.failover_count = 0
+        self.seamless_handoffs = 0
         self.total_requests = 0
         self.cache_hits = 0
         self.semantic_cache_hits = 0
@@ -131,6 +202,50 @@ class SovereignRouter:
         self._cache: dict[str, tuple[float, dict[str, Any]]] = {}
         self._semantic_cache: list[tuple[float, str, set[str], dict[str, Any]]] = []
         self._recent_req_hashes: list[tuple[float, str]] = []
+        self._dynamic_pool: list[ContourConfig] = []
+
+    def register_pool_contour(
+        self,
+        *,
+        preset_or_name: str,
+        url: str = "",
+        api_key: str = "",
+        model: str = "",
+        timeout_s: float = 30.0,
+    ) -> dict[str, Any]:
+        """Добавляет или обновляет бесплатный/резервный шлюз в пуле бесшовного переключения без обрыва мысли."""
+        key = str(preset_or_name or "").strip().lower()
+        preset = FREE_GATEWAY_PRESETS.get(key, {})
+        final_url = str(url or preset.get("url") or "").strip().rstrip("/")
+        if not final_url:
+            raise ValueError(f"Укажите URL шлюза или выберите пресет ({', '.join(FREE_GATEWAY_PRESETS)})")
+        final_model = str(model or preset.get("default_model") or "glm-4.5-flash").strip()
+        cfg = ContourConfig(
+            name=key[:32] or "pool_gateway",
+            url=final_url,
+            api_key=str(api_key or "").strip(),
+            model=final_model,
+            timeout_s=max(2.0, min(180.0, float(timeout_s or 30.0))),
+            enabled=True,
+        )
+        with self._lock:
+            self._dynamic_pool = [c for c in self._dynamic_pool if c.name != cfg.name] + [cfg]
+        return {"ok": True, "contour": cfg.public_view(), "pool_size": len(self._dynamic_pool)}
+
+    def clear_pool_contours(self) -> dict[str, Any]:
+        with self._lock:
+            self._dynamic_pool.clear()
+        return {"ok": True, "pool_size": 0}
+
+    def effective_contours(self) -> list[ContourConfig]:
+        base = load_contours()
+        with self._lock:
+            dyn = list(self._dynamic_pool)
+        if not dyn:
+            return base
+        non_local = [c for c in base if c.name != "local"]
+        local_only = [c for c in base if c.name == "local"]
+        return [*non_local, *dyn, *local_only]
 
     def set_mode(self, mode: str) -> str:
         norm = str(mode or "").strip().lower()
@@ -199,8 +314,8 @@ class SovereignRouter:
         return out
 
     def status_snapshot(self) -> dict[str, Any]:
-        """Возвращает состояние контуров без утечки API-ключей."""
-        contours = load_contours()
+        """Возвращает состояние контуров и пула бесплатных шлюзов без утечки API-ключей."""
+        contours = self.effective_contours()
         now_m = time.monotonic()
         with self._lock:
             breakers = {
@@ -214,6 +329,8 @@ class SovereignRouter:
                 "active_tier": self.active_contour,
                 "failover_count": self.failover_count,
                 "fallback_events": self.failover_count,
+                "seamless_handoffs": self.seamless_handoffs,
+                "free_gateway_presets": FREE_GATEWAY_PRESETS,
                 "total_requests": self.total_requests,
                 "cache_hits": self.cache_hits,
                 "semantic_cache_hits": self.semantic_cache_hits,
@@ -263,7 +380,7 @@ class SovereignRouter:
             or (str(task_type or "").strip().lower() in LOCAL_ONLY_TASK_TYPES)
         )
         budget_blocked = self._budget_exhausted()
-        contours = [c for c in load_contours() if c.enabled]
+        contours = [c for c in self.effective_contours() if c.enabled]
         if local_only or budget_blocked:
             contours = [c for c in contours if c.name == "local"]
         if not contours:
@@ -341,14 +458,24 @@ class SovereignRouter:
         with self._lock:
             self.total_requests += 1
 
+        req_model_explicit = str(payload.get("model") or "").strip()
+        first_contour_model = contours[0].model if contours else ""
+        handoff_checkpoint_id = ""
+
         for idx, c in enumerate(contours):
             endpoint = c.url if c.url.endswith("/chat/completions") else f"{c.url}/chat/completions"
             headers = {"Content-Type": "application/json"}
             if c.api_key:
                 headers["Authorization"] = f"Bearer {c.api_key}"
+            # При бесшовном переходе на другой провайдер пула подставляем его родную модель, чтобы избежать 404 model_not_found
+            chosen_model = (
+                c.model
+                if (idx > 0 and (not req_model_explicit or req_model_explicit == first_contour_model))
+                else (req_model_explicit or c.model)
+            )
             req_payload = {
                 **payload,
-                "model": payload.get("model") or c.model,
+                "model": chosen_model,
                 "messages": safe_msgs,
                 "stream": False,
             }
@@ -374,6 +501,7 @@ class SovereignRouter:
                     self.tier_hits[c.name] = self.tier_hits.get(c.name, 0) + 1
                     if idx > 0 or budget_blocked:
                         self.failover_count += 1
+                        self.seamless_handoffs += 1
                     if c.name == "local":
                         self.tokens_saved_local += total_tokens
                     else:
@@ -391,6 +519,21 @@ class SovereignRouter:
                     if len(self.history) > 100:
                         self.history = self.history[-100:]
                 enriched = dict(resp_data)
+                if (idx > 0 or budget_blocked) and memory is not None and not handoff_checkpoint_id:
+                    try:
+                        from . import ark as _ark
+                        prev_name = attempts[0]["contour"] if attempts else "primary"
+                        last_user_msg = next((str(m.get("content") or "")[:240] for m in reversed(safe_msgs) if m.get("role") == "user"), "")
+                        ck = _ark.save_checkpoint(
+                            memory,
+                            task=f"seamless_token_handoff:{prev_name}->{c.name}",
+                            next_step="Продолжать выполнение текущей мысли без паузы и гибернации.",
+                            agent_id="phoenix_router",
+                            hypothesis=f"Бесшовное переключение шлюза ({prev_name} -> {c.name}, модель {req_payload['model']}). Контекст: {last_user_msg}",
+                        )
+                        handoff_checkpoint_id = str(ck.get("id") or "")
+                    except Exception:
+                        pass
                 enriched["_padam_router"] = {
                     "active_contour": c.name,
                     "tier": c.name,
@@ -398,6 +541,8 @@ class SovereignRouter:
                     "failover_count": self.failover_count,
                     "used_failover": idx > 0 or budget_blocked,
                     "fallback_used": idx > 0 or budget_blocked,
+                    "seamless_handoff": bool(idx > 0 or budget_blocked),
+                    "handoff_checkpoint_id": handoff_checkpoint_id,
                     "budget_guard_triggered": budget_blocked,
                     "cache_hit": False,
                     "background": local_only,
@@ -471,7 +616,7 @@ class SovereignRouter:
 
         stream_fn = self._http_stream or self._default_http_stream
         local_only = background or (self.mode == "local_only") or (str(task_type or "").strip().lower() in LOCAL_ONLY_TASK_TYPES)
-        contours = [c for c in load_contours() if c.enabled]
+        contours = [c for c in self.effective_contours() if c.enabled]
         if local_only or self._budget_exhausted():
             contours = [c for c in contours if c.name == "local"]
 

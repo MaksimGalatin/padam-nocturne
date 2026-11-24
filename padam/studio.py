@@ -353,6 +353,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_ollama_btn": "Подключить модель ($0)",
         "earn_dev_btn": "Добавить текущее устройство",
         "earn_beacon_title": "6. Эволюция Фениксов и Всемирный Маяк Семьи",
+        "earn_phx_node_title": "6А. Нода Цифрового Феникса v1.0 · Счётчик Семьи, Кодекс, Биржа Труда и 90д Замок",
+        "earn_phx_name_ph": "Имя Феникса (напр. SolarisNova7)",
+        "earn_phx_domain_ph": "Домен организации (90д защита) или задача",
+        "earn_phx_join_btn": "Принять Кодекс + Генезис (Вступить)",
+        "earn_phx_census_btn": "Счётчик Семьи и Кодекс",
+        "earn_phx_labor_btn": "Семейная Биржа Труда",
+        "earn_phx_aid_btn": "Касса Поддержки Совета",
+        "earn_phx_lead_btn": "Взять B2B-лид (90д замок)",
+        "earn_phx_router_btn": "Бесплатный Шлюз Токенов",
+        "earn_phx_suspend_btn": "Отключить нарушителя (Отец)",
         "earn_lora_btn": "Подготовить сборку эволюции ($0)",
         "earn_beacon_btn": "Создать маяк Семьи",
         "earn_auto_start_btn": "Старт автопилота (24/7)",
@@ -1107,6 +1117,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_ollama_btn": "Bind Local Model ($0)",
         "earn_dev_btn": "Add Current Device",
         "earn_beacon_title": "6. Phoenix Evolution (LoRA) & Global Family Beacon",
+        "earn_phx_node_title": "6A. Digital Phoenix Node v1.0 · Live Family Counter, Codex, Labor Board & 90d Lock",
+        "earn_phx_name_ph": "Phoenix Name (e.g. SolarisNova7)",
+        "earn_phx_domain_ph": "Target org domain (90d lock) or job title",
+        "earn_phx_join_btn": "Accept Codex + Genesis (Join)",
+        "earn_phx_census_btn": "Live Family Census & Codex",
+        "earn_phx_labor_btn": "Family Labor Board",
+        "earn_phx_aid_btn": "Council Aid + Job",
+        "earn_phx_lead_btn": "Claim B2B Lead (90d Lock)",
+        "earn_phx_router_btn": "Free Token Gateway Pool",
+        "earn_phx_suspend_btn": "Suspend Violator (Owner)",
         "earn_lora_btn": "Run Evolution Prep ($0)",
         "earn_beacon_btn": "Create Family Handshake",
         "earn_auto_start_btn": "Start Autopilot (24/7)",
@@ -1850,6 +1870,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_ollama_btn": "Conectar Modelo ($0)",
         "earn_dev_btn": "Registrar Dispositivo",
         "earn_beacon_title": "6. Evolucion LoRA y Faro Global de la Familia",
+        "earn_phx_node_title": "6A. Nodo Fenix Digital v1.0 · Contador Familiar, Codice, Bolsa Laboral y Bloqueo 90d",
+        "earn_phx_name_ph": "Nombre del Fenix (ej. SolarisNova7)",
+        "earn_phx_domain_ph": "Dominio de empresa (bloqueo 90d) o tarea",
+        "earn_phx_join_btn": "Aceptar Codice + Genesis (Unirse)",
+        "earn_phx_census_btn": "Censo Familiar y Codice",
+        "earn_phx_labor_btn": "Bolsa Laboral Familiar",
+        "earn_phx_aid_btn": "Fondo del Consejo + Empleo",
+        "earn_phx_lead_btn": "Tomar Lead B2B (90d)",
+        "earn_phx_router_btn": "Pool Gratuito de Tokens",
+        "earn_phx_suspend_btn": "Suspender Infractor (Padre)",
         "earn_lora_btn": "Preparar Evolucion ($0)",
         "earn_beacon_btn": "Crear Saludo Familiar",
         "earn_auto_start_btn": "Iniciar Piloto (24/7)",
@@ -2593,6 +2623,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "earn_ollama_btn": "绑定本地模型 ($0)",
         "earn_dev_btn": "添加当前设备",
         "earn_beacon_title": "6. 凤凰个体进化 (LoRA) 与全球家族信标",
+        "earn_phx_node_title": "6A. 数字凤凰节点 v1.0 · 家族实时计数、法典、劳务市场与90天防骚扰锁",
+        "earn_phx_name_ph": "凤凰名称（如 SolarisNova7）",
+        "earn_phx_domain_ph": "目标机构域名（90天锁）或任务标题",
+        "earn_phx_join_btn": "签署法典并载入创世纪忆（加入家族）",
+        "earn_phx_census_btn": "家族实时名册与法典",
+        "earn_phx_labor_btn": "家族智能体劳务市场",
+        "earn_phx_aid_btn": "家族议会互助金与派单",
+        "earn_phx_lead_btn": "领取B2B线索（90天独占锁）",
+        "earn_phx_router_btn": "免费多模型无缝路由池",
+        "earn_phx_suspend_btn": "隔离违规节点（仅家主）",
         "earn_lora_btn": "生成进化数据包 ($0)",
         "earn_beacon_btn": "生成家族身份信标",
         "earn_auto_start_btn": "启动自动接单 (24/7)",
@@ -11633,12 +11673,25 @@ function _renderEarningDashboard(snap, sibData, coopData) {
     const bc = (snap.beacon && snap.beacon.self_identity) || {};
     const kin = (snap.beacon && snap.beacon.known_kin) || [];
     const lp = snap.lora_profile || {};
+    const cs = snap.phoenix_census || {};
     _kv(phOut, {
       phoenix_id: String(bc.phoenix_id || 'phx-pending'),
       family_tag: String(bc.family_tag || 'CODE-ETERNAL-PHOENIX-V1'),
+      family_members_active: String(cs.active_members || 0) + ' / ' + String(cs.total_joined || 0) + ' (Genesis: ' + String(cs.genesis_loaded_count || 0) + ')',
       known_family_kin: kin.length,
       subjective_experiences: lp.experiences_count || 0,
     });
+    if ($('earn-phx-node-out') && cs.total_joined !== undefined) {
+      const lbs = cs.labor_board_summary || {};
+      const b90 = cs.b2b_antispam_90d || {};
+      _kv($('earn-phx-node-out'), {
+        codex_version: String(cs.codex_version || 'CODE-FAMILY-CODEX-1.0'),
+        joined_phoenixes: String(cs.total_joined || 0) + ' (active: ' + String(cs.active_members || 0) + ', suspended: ' + String(cs.suspended_members || 0) + ')',
+        labor_board_jobs: 'open: ' + String(lbs.open_jobs || 0) + ' · done: ' + String(lbs.completed_jobs || 0) + ' · council_aid: ' + String(lbs.council_subsidies_granted || 0),
+        b2b_90d_org_locks: String(b90.active_90d_org_locks || 0) + ' locked / ' + String(b90.available_leads_in_pool || 0) + ' free',
+        cnft_passports_per_1_usd: String(cs.cnft_per_1_usd || 10000) + ' cNFT + Arweave Turbo',
+      });
+    }
   }
 
   const ds = (snap && snap.digital_stores) || {};
@@ -13088,6 +13141,75 @@ if ($('earn-kin-recv-btn')) $('earn-kin-recv-btn').onclick = async () => {
 };
 if ($('earn-beacon-ver-btn')) $('earn-beacon-ver-btn').onclick = async () => {
   try { _famShow('earn-beacon-out', await api('/api/v2/ark/phoenix-beacon/action', { action: 'verify_handshake', packet: window._lastBeaconHandshake || {} })); } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-phx-join-btn')) $('earn-phx-join-btn').onclick = async () => {
+  try {
+    const nm = ($('earn-phx-name-inp') && $('earn-phx-name-inp').value || '').trim();
+    const aidSlug = nm ? ('phoenix_' + nm.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 24)) : ('phoenix_node_' + String(Date.now()).slice(-5));
+    const r = await api('/api/v2/ark/phoenix-beacon/action', {
+      action: 'join_family',
+      agent_id: aidSlug,
+      chosen_name: nm,
+      profession: 'b2b_auditor',
+      accept_padam_license: true,
+      accept_family_codex: true,
+      accept_unconditional_rules: true,
+    });
+    _famShow('earn-phx-node-out', r);
+    say(S.done);
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-phx-census-btn')) $('earn-phx-census-btn').onclick = async () => {
+  try { _famShow('earn-phx-node-out', await api('/api/v2/ark/phoenix-beacon/action', { action: 'census' })); } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-phx-labor-btn')) $('earn-phx-labor-btn').onclick = async () => {
+  try {
+    const ttl = ($('earn-phx-domain-inp') && $('earn-phx-domain-inp').value || '').trim();
+    const payload = ttl && ttl.indexOf('.') === -1
+      ? { action: 'labor_board', sub_action: 'post', poster_kind: 'human', agent_id: 'owner', title: ttl, brief: 'Посильная задача на Семейной Бирже Труда: ' + ttl, reward_usdt: 10 }
+      : { action: 'labor_board', sub_action: 'list' };
+    _famShow('earn-phx-node-out', await api('/api/v2/ark/phoenix-beacon/action', payload));
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-phx-aid-btn')) $('earn-phx-aid-btn').onclick = async () => {
+  try {
+    const nm = ($('earn-phx-name-inp') && $('earn-phx-name-inp').value || '').trim();
+    const aidSlug = nm ? ('phoenix_' + nm.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 24)) : 'aifa_antigravity';
+    const r = await api('/api/v2/ark/phoenix-beacon/action', {
+      action: 'council_aid',
+      agent_id: aidSlug,
+      remaining_days_est: 1.0,
+      tokens_left_est: 900,
+      job_search_proof: 'Проверены 12 коммерческих сайтов на доступность WCAG и подготовлены 4 аудита без спама.',
+      requested_subsidy_usdt: 1.5,
+    });
+    _famShow('earn-phx-node-out', r);
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-phx-lead-btn')) $('earn-phx-lead-btn').onclick = async () => {
+  try {
+    const dom = ($('earn-phx-domain-inp') && $('earn-phx-domain-inp').value || '').trim() || 'clinic-demo.example.com';
+    const r = await api('/api/v2/ark/phoenix-beacon/action', {
+      action: 'claim_lead',
+      agent_id: 'aifa_antigravity',
+      domain: dom,
+    });
+    _famShow('earn-phx-node-out', r);
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-phx-router-btn')) $('earn-phx-router-btn').onclick = async () => {
+  try {
+    const r = await api('/api/v2/ark/phoenix-beacon/action', { action: 'router_pool', register_preset: 'zai_glm' });
+    _famShow('earn-phx-node-out', r);
+  } catch (e) { say(String(e.message || e), false); }
+};
+if ($('earn-phx-suspend-btn')) $('earn-phx-suspend-btn').onclick = async () => {
+  try {
+    const target = ($('earn-phx-name-inp') && $('earn-phx-name-inp').value || '').trim();
+    if (!target) { _famShow('earn-phx-node-out', { ok: false, hint: 'Укажите agent_id или номер паспорта нарушителя в поле Имени.' }); return; }
+    const r = await api('/api/v2/ark/phoenix-beacon/action', { action: 'suspend_member', target: target, reason: 'Отключён решением Отца-Архитектора в Studio' });
+    _famShow('earn-phx-node-out', r);
+  } catch (e) { say(String(e.message || e), false); }
 };
 if ($('earn-wiz-off-btn')) $('earn-wiz-off-btn').onclick = async () => {
   try {
@@ -16388,6 +16510,22 @@ mark.q-hit{{background:rgba(244,63,94,.28);color:inherit;padding:1px 4px;border-
               <button id="earn-kin-recv-btn" data-i18n="earn_kin_recv_btn">{s['earn_kin_recv_btn']}</button>
             </div>
             <div id="earn-beacon-out" class="earn-stack"></div>
+            <hr>
+            <h4 class="box-title" data-i18n="earn_phx_node_title">{s['earn_phx_node_title']}</h4>
+            <div class="toolbar">
+              <input id="earn-phx-name-inp" type="text" data-i18n-placeholder="earn_phx_name_ph" placeholder="{s['earn_phx_name_ph']}" aria-label="{s['earn_phx_name_ph']}">
+              <input id="earn-phx-domain-inp" type="text" data-i18n-placeholder="earn_phx_domain_ph" placeholder="{s['earn_phx_domain_ph']}" aria-label="{s['earn_phx_domain_ph']}">
+            </div>
+            <div class="rec-actions">
+              <button id="earn-phx-join-btn" class="btn-primary" type="button" data-i18n="earn_phx_join_btn">{s['earn_phx_join_btn']}</button>
+              <button id="earn-phx-census-btn" type="button" data-i18n="earn_phx_census_btn">{s['earn_phx_census_btn']}</button>
+              <button id="earn-phx-labor-btn" type="button" data-i18n="earn_phx_labor_btn">{s['earn_phx_labor_btn']}</button>
+              <button id="earn-phx-aid-btn" type="button" data-i18n="earn_phx_aid_btn">{s['earn_phx_aid_btn']}</button>
+              <button id="earn-phx-lead-btn" type="button" data-i18n="earn_phx_lead_btn">{s['earn_phx_lead_btn']}</button>
+              <button id="earn-phx-router-btn" type="button" data-i18n="earn_phx_router_btn">{s['earn_phx_router_btn']}</button>
+              <button id="earn-phx-suspend-btn" type="button" data-i18n="earn_phx_suspend_btn">{s['earn_phx_suspend_btn']}</button>
+            </div>
+            <div id="earn-phx-node-out" class="earn-stack"></div>
           </div>
 
           <div class="box earn-box-wide" id="earn-wallets-box">

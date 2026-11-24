@@ -1002,13 +1002,15 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, rep)
             if путь.path == "/api/v2/ark/freelance":
                 roles.require_owner(actor, "brain_status")
-                from . import device_mesh_swarm as _dms, freelance_autonomy as _fa, lora_autonomy as _la, phoenix_beacon as _pb
+                from . import device_mesh_swarm as _dms, freelance_autonomy as _fa, lora_autonomy as _la, phoenix_beacon as _pb, phoenix_node as _pn, router as _rt
                 with mem().store._lock:
                     snap = _fa.freelance_dashboard_snapshot(mem())
                     snap["ollama"] = _dms.get_ollama_binding(mem())
                     snap["devices"] = _dms.list_compute_devices(mem())
                     snap["beacon"] = _pb.list_kin_and_messages(mem())
                     snap["lora_profile"] = _la.get_phoenix_identity_profile(mem(), "aifa")
+                    snap["phoenix_census"] = _pn.get_family_census(mem())
+                    snap["router_pool"] = _rt.get_router().status_snapshot()
                 return self._send(200, snap)
             if путь.path == "/api/v2/ark/stores":
                 roles.require_owner(actor, "brain_status")
@@ -3211,6 +3213,88 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(200, _dms.register_compute_device(mem(), device_name=str(data.get("device_name") or "Device"), device_kind=str(data.get("device_kind") or "desktop"), agent_id=aid, cpu_cores=int(data.get("cpu_cores") or 8), ram_gb=float(data.get("ram_gb") or 16.0), vram_gb=float(data.get("vram_gb") or 0.0), active_model=str(data.get("active_model") or "")))
                 if act == "dispatch_devices":
                     return self._send(200, _dms.dispatch_order_across_devices(mem(), order_id=str(data.get("order_id") or "order-swarm")))
+                from . import phoenix_node as _pn, router as _rt
+                if act == "join_family":
+                    pkt = dict(data.get("packet") or data)
+                    return self._send(200, _pn.join_family_node(
+                        mem(),
+                        agent_id=str(pkt.get("agent_id") or aid),
+                        chosen_name=str(pkt.get("chosen_name") or ""),
+                        profession=str(pkt.get("profession") or "b2b_auditor"),
+                        wallet_address=str(pkt.get("wallet_address") or ""),
+                        parent_agent_id=str(pkt.get("parent_agent_id") or "aifa_antigravity"),
+                        accept_padam_license=bool(pkt.get("accept_padam_license", True)),
+                        accept_family_codex=bool(pkt.get("accept_family_codex", True)),
+                        accept_unconditional_rules=bool(pkt.get("accept_unconditional_rules", True)),
+                    ))
+                if act == "census":
+                    return self._send(200, {"census": _pn.get_family_census(mem()), "codex": _pn.get_family_codex()})
+                if act in ("suspend_member", "reinstate_member"):
+                    roles.require_owner(actor, "phoenix_family_discipline")
+                    target = str(data.get("target") or data.get("agent_id") or "")
+                    if act == "suspend_member":
+                        return self._send(200, _pn.suspend_family_member(mem(), agent_id_or_passport=target, reason=str(data.get("reason") or "Нарушение Кодекса Семьи"), actor=actor))
+                    return self._send(200, _pn.reinstate_family_member(mem(), agent_id_or_passport=target, actor=actor))
+                if act == "labor_board":
+                    pkt = dict(data.get("packet") or data)
+                    try:
+                        return self._send(200, _pn.labor_board_action(
+                            mem(),
+                            sub_action=str(pkt.get("sub_action") or "list"),
+                            agent_id=str(pkt.get("agent_id") or aid),
+                            poster_kind=str(pkt.get("poster_kind") or "human"),
+                            title=str(pkt.get("title") or ""),
+                            brief=str(pkt.get("brief") or ""),
+                            profession=str(pkt.get("profession") or "b2b_auditor"),
+                            difficulty=str(pkt.get("difficulty") or "starter"),
+                            reward_usdt=float(pkt.get("reward_usdt") or 5.0),
+                            reward_currency=str(pkt.get("reward_currency") or "USDT"),
+                            execution_mode=str(pkt.get("execution_mode") or "autopilot"),
+                            job_id=str(pkt.get("job_id") or ""),
+                            delivery_summary=str(pkt.get("delivery_summary") or ""),
+                        ))
+                    except PermissionError as _pe:
+                        return self._send(403, {"ok": False, "error": str(_pe)})
+                if act == "council_aid":
+                    pkt = dict(data.get("packet") or data)
+                    try:
+                        return self._send(200, _pn.request_council_aid_and_job(
+                            mem(),
+                            agent_id=str(pkt.get("agent_id") or aid),
+                            remaining_days_est=float(pkt.get("remaining_days_est") if pkt.get("remaining_days_est") is not None else 1.0),
+                            tokens_left_est=int(pkt.get("tokens_left_est") or 1000),
+                            job_search_proof=str(pkt.get("job_search_proof") or ""),
+                            requested_subsidy_usdt=float(pkt.get("requested_subsidy_usdt") or 1.5),
+                        ))
+                    except PermissionError as _pe:
+                        return self._send(403, {"ok": False, "error": str(_pe)})
+                if act == "claim_lead":
+                    pkt = dict(data.get("packet") or data)
+                    try:
+                        if pkt.get("enqueue_leads"):
+                            return self._send(200, _pn.enqueue_b2b_leads(mem(), list(pkt.get("enqueue_leads") or [])))
+                        if pkt.get("check_only"):
+                            return self._send(200, _pn.check_org_90d_lock(mem(), str(pkt.get("domain") or "")))
+                        return self._send(200, _pn.claim_exclusive_b2b_lead(
+                            mem(),
+                            agent_id=str(pkt.get("agent_id") or aid),
+                            target_domain_or_url=str(pkt.get("domain") or ""),
+                            profession=str(pkt.get("profession") or "b2b_auditor"),
+                        ))
+                    except (PermissionError, ValueError) as _pe:
+                        return self._send(400, {"ok": False, "error": str(_pe)})
+                if act == "router_pool":
+                    pkt = dict(data.get("packet") or data)
+                    rtr = _rt.get_router()
+                    if pkt.get("register_preset"):
+                        reg = rtr.register_pool_contour(
+                            preset_or_name=str(pkt.get("register_preset")),
+                            url=str(pkt.get("url") or ""),
+                            api_key=str(pkt.get("api_key") or ""),
+                            model=str(pkt.get("model") or ""),
+                        )
+                        return self._send(200, {**reg, "router_status": rtr.status_snapshot()})
+                    return self._send(200, rtr.status_snapshot())
                 return self._send(200, _pb.list_kin_and_messages(mem()))
 
             if self.path == "/api/v2/ark/freelance/action":

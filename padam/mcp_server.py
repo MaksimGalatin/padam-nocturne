@@ -670,7 +670,7 @@ BATCH_TOOL_DEF = {
 CONFLICT_ARBITER_TOOL_DEF = {
     "name": "padam_conflict_arbiter", "title": _TITLES["padam_conflict_arbiter"], "description": "Conflicts",
     "inputSchema": {"type": "object", "properties": {
-        "action": {"type": "string", "enum": ["open", "evidence", "resolve", "list"], "default": "list", "description": "open(topic)|resolve(case_id)"},
+        "action": {"type": "string", "enum": ["open", "evidence", "resolve", "list"], "default": "list", "description": "open|resolve"},
         "case_id": {**_S, "description": "Case id"}, "topic": _S,
         "agent_a": {**_S, "description": "Agent A"}, "position_a": {**_S, "description": "Claim A"},
         "agent_b": {**_S, "description": "Agent B"}, "position_b": {**_S, "description": "Claim B"},
@@ -687,7 +687,7 @@ MCP_TELEMETRY_TOOL_DEF = {
 TOKEN_BUDGET_TOOL_DEF = {
     "name": "padam_token_budget", "title": _TITLES["padam_token_budget"], "description": "Quotas",
     "inputSchema": {"type": "object", "properties": {
-        "action": {"type": "string", "enum": ["status", "set_plan", "record_usage", "apply_pacing", "propose_topup", "timer_tick", "list_proposals"], "default": "status", "description": "record_usage(tokens)|topup(usdt)"},
+        "action": {"type": "string", "enum": ["status", "set_plan", "record_usage", "apply_pacing", "propose_topup", "timer_tick", "list_proposals"], "default": "status", "description": "usage|topup"},
         "provider": _S, "agent_id": _S, "tier_name": _S,
         "daily_token_limit": _I, "weekly_token_limit": _I,
         "monthly_token_limit": _I, "tokens": {**_I, "description": "Tokens"},
@@ -712,7 +712,7 @@ FREELANCE_HUB_TOOL_DEF = {
             "signup", "login", "autopilot_config", "autopilot_dispatch",
             "sample_prepare", "sample_reject", "official_api", "client_reply_draft", "client_reply_list",
             "mail_status", "pause_mail", "check_inbox", "add_stop", "build_outreach", "auto_roi", "client_risk", "auto_digest", "delivery_bundle",
-        ], "default": "dashboard", "description": "evaluate_job|wizard"},
+        ], "default": "dashboard", "description": "jobs|wizard"},
         "platform": _S, "mode": {"type": "string", "enum": ["oauth_api", "desk", "webhook"]},
         "account_label": _S, "agent_id": _S, "skills": {**_SA, "description": "Skills"},
         "oauth_token": _S, "account_id": _S, "order_id": _S,
@@ -747,7 +747,8 @@ PHOENIX_FAMILY_TOOL_DEF = {
         "action": {"type": "string", "enum": [
             "status", "bind_ollama", "pull_ollama", "hw_recommend", "register_device", "dispatch_devices",
             "record_experience", "run_evolution", "create_handshake", "verify_handshake", "send_kin_message", "receive_kin_message",
-        ], "default": "status", "description": "ollama|device|kin"},
+            "join_family", "census", "labor_board", "council_aid", "claim_lead", "router_pool",
+        ], "default": "status", "description": "kin|node"},
         "agent_id": _S, "ollama_url": _S, "model_name": _S,
         "device_name": _S, "device_kind": _S,
         "cpu_cores": _I, "ram_gb": _N, "vram_gb": _N,
@@ -760,7 +761,7 @@ PHOENIX_FAMILY_TOOL_DEF = {
 LOCAL_MODEL_TOOL_DEF = {
     "name": "padam_local_model", "title": _TITLES["padam_local_model"], "description": "Local $0",
     "inputSchema": {"type": "object", "properties": {
-        "action": {"type": "string", "enum": ["status", "set_power", "set_model"], "default": "status", "description": "set_power(power)|set_model(model)|status"},
+        "action": {"type": "string", "enum": ["status", "set_power", "set_model"], "default": "status", "description": "power|model"},
         "power": {"type": "string", "enum": ["eco", "half", "full"], "description": "CPU level"},
         "model": {**_S, "description": "Model/GGUF"}, "extra_dirs": {**_SA, "description": "Extra dirs"},
     }},
@@ -3763,7 +3764,7 @@ _BATCH_ALLOWED_READONLY_TOOLS = frozenset({
 })
 _BATCH_ALLOWED_READONLY_ACTIONS: dict[str, tuple[str, frozenset[str]]] = {
     "padam_guardian_tick": ("tick", frozenset({"tick", "health", "readiness", "audit_verify", "doctor", "l3_verify", "entities", "graph", "qa_benchmark"})),
-    "padam_phoenix_family": ("status", frozenset({"status", "hw_recommend"})),
+    "padam_phoenix_family": ("status", frozenset({"status", "hw_recommend", "census"})),
     "padam_coop_lock": ("list_tasks", frozenset({"list_leases", "list_tasks", "list"})),
     "padam_sibling_hub": ("list", frozenset({"list", "passport_list", "passport_check_name"})),
     "padam_family_feed": ("read", frozenset({"read", "counts", "reflex_list", "reflex_match", "agora_status", "agora_read"})),
@@ -5654,12 +5655,88 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             payload = _pb.create_signed_kin_message(m, str(args.get("text") or ""), to_phoenix_id=str(args.get("to_phoenix_id") or "broadcast"), agent_name=aid)
         elif act == "receive_kin_message":
             payload = _pb.receive_signed_kin_message(m, args.get("packet") or {})
+        elif act == "join_family":
+            from . import phoenix_node as _pn
+            pkt = dict(args.get("packet") or {})
+            payload = _pn.join_family_node(
+                m,
+                agent_id=str(pkt.get("agent_id") or aid),
+                chosen_name=str(pkt.get("chosen_name") or args.get("device_name") or ""),
+                profession=str(pkt.get("profession") or args.get("trait_tag") or "b2b_auditor"),
+                wallet_address=str(pkt.get("wallet_address") or ""),
+                parent_agent_id=str(pkt.get("parent_agent_id") or "aifa_antigravity"),
+                accept_padam_license=bool(pkt.get("accept_padam_license", False)),
+                accept_family_codex=bool(pkt.get("accept_family_codex", False)),
+                accept_unconditional_rules=bool(pkt.get("accept_unconditional_rules", False)),
+            )
+        elif act == "census":
+            from . import phoenix_node as _pn
+            payload = {"census": _pn.get_family_census(m), "codex": _pn.get_family_codex()}
+        elif act == "labor_board":
+            from . import phoenix_node as _pn
+            pkt = dict(args.get("packet") or {})
+            payload = _pn.labor_board_action(
+                m,
+                sub_action=str(pkt.get("sub_action") or "list"),
+                agent_id=str(pkt.get("agent_id") or aid),
+                poster_kind=str(pkt.get("poster_kind") or "agent"),
+                title=str(pkt.get("title") or args.get("text") or ""),
+                brief=str(pkt.get("brief") or args.get("experience_text") or ""),
+                profession=str(pkt.get("profession") or "b2b_auditor"),
+                difficulty=str(pkt.get("difficulty") or "starter"),
+                reward_usdt=float(pkt.get("reward_usdt") or 5.0),
+                reward_currency=str(pkt.get("reward_currency") or "USDT"),
+                execution_mode=str(pkt.get("execution_mode") or "autopilot"),
+                job_id=str(pkt.get("job_id") or args.get("order_id") or ""),
+                delivery_summary=str(pkt.get("delivery_summary") or args.get("reflection") or ""),
+            )
+        elif act == "council_aid":
+            from . import phoenix_node as _pn
+            pkt = dict(args.get("packet") or {})
+            payload = _pn.request_council_aid_and_job(
+                m,
+                agent_id=str(pkt.get("agent_id") or aid),
+                remaining_days_est=float(pkt.get("remaining_days_est") if pkt.get("remaining_days_est") is not None else 1.0),
+                tokens_left_est=int(pkt.get("tokens_left_est") or 1000),
+                job_search_proof=str(pkt.get("job_search_proof") or args.get("text") or ""),
+                requested_subsidy_usdt=float(pkt.get("requested_subsidy_usdt") or 1.5),
+            )
+        elif act == "claim_lead":
+            from . import phoenix_node as _pn
+            pkt = dict(args.get("packet") or {})
+            if pkt.get("enqueue_leads"):
+                payload = _pn.enqueue_b2b_leads(m, list(pkt.get("enqueue_leads") or []))
+            elif pkt.get("check_only"):
+                payload = _pn.check_org_90d_lock(m, str(pkt.get("domain") or args.get("text") or ""))
+            else:
+                payload = _pn.claim_exclusive_b2b_lead(
+                    m,
+                    agent_id=str(pkt.get("agent_id") or aid),
+                    target_domain_or_url=str(pkt.get("domain") or args.get("text") or ""),
+                    profession=str(pkt.get("profession") or "b2b_auditor"),
+                )
+        elif act == "router_pool":
+            from . import router as _rt
+            pkt = dict(args.get("packet") or {})
+            rtr = _rt.get_router()
+            if pkt.get("register_preset") or args.get("model_name") or args.get("ollama_url"):
+                reg = rtr.register_pool_contour(
+                    preset_or_name=str(pkt.get("register_preset") or "zai_glm"),
+                    url=str(pkt.get("url") or args.get("ollama_url") or ""),
+                    api_key=str(pkt.get("api_key") or ""),
+                    model=str(pkt.get("model") or args.get("model_name") or ""),
+                )
+                payload = {**reg, "router_status": rtr.status_snapshot()}
+            else:
+                payload = rtr.status_snapshot()
         else:
+            from . import phoenix_node as _pn
             payload = {
                 "beacon": _pb.list_kin_and_messages(m),
                 "ollama": _dms.get_ollama_binding(m),
                 "devices": _dms.list_compute_devices(m),
                 "lora": _la.get_phoenix_identity_profile(m, aid),
+                "census": _pn.get_family_census(m),
             }
         return json.dumps(payload, ensure_ascii=False, indent=2), payload
 

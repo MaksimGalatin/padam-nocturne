@@ -43,9 +43,9 @@ def test_parity_matrix_zero_gaps_and_4_languages():
     rc = parity_gen.main()
     assert rc == 0
     doc = (parity_gen.ROOT / "docs" / "PARITY_STUDIO_MCP.md").read_text(encoding="utf-8")
-    assert "228 из 228" in doc
-    assert "Есть в Studio (вкладка + кнопка/поле): **228 из 228**" in doc
-    assert "Есть в API (`padam/api.py`): **228 из 228**" in doc
+    assert "234 из 234" in doc
+    assert "Есть в Studio (вкладка + кнопка/поле): **234 из 234**" in doc
+    assert "Есть в API (`padam/api.py`): **234 из 234**" in doc
     assert "НЕТ:" not in doc
 
     ru_keys = set(studio.STRINGS["ru"].keys())
@@ -406,6 +406,20 @@ def test_parity_studio_playwright_all_buttons_1280_and_390(tmp_path: Path, monke
                     if page.locator("#earn-wiz-profiles-list button").count() > 0:
                         page.locator("#earn-wiz-profiles-list button").first.click()
                         page.wait_for_timeout(120)
+
+                    # Блок 6А. Нода Цифрового Феникса v1.0 (паритет нажатий)
+                    page.fill("#earn-phx-name-inp", "SolarisNova7")
+                    page.fill("#earn-phx-domain-inp", "clinic-parity.example.org")
+                    for bsel_phx in (
+                        "#earn-phx-join-btn",
+                        "#earn-phx-census-btn",
+                        "#earn-phx-labor-btn",
+                        "#earn-phx-aid-btn",
+                        "#earn-phx-lead-btn",
+                        "#earn-phx-router-btn",
+                        "#earn-phx-suspend-btn",
+                    ):
+                        click_and_check_text(bsel_phx, "#earn-phx-node-out")
 
                     # Блок 9. AIfaFocus
                     page.fill("#earn-partner-region", "US-CA")

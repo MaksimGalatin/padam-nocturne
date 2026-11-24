@@ -256,6 +256,12 @@ PARITY_MAP: dict[tuple[str, str], tuple[str, str, str, str]] = {
     ("padam_phoenix_family", "verify_handshake"): ("panel-earning", "#earn-beacon-ver-btn", "POST /api/v2/ark/phoenix-beacon/action", "padam.phoenix_beacon"),
     ("padam_phoenix_family", "send_kin_message"): ("panel-earning", "#earn-kin-send-btn | #earn-kin-msg-inp", "POST /api/v2/ark/phoenix-beacon/action", "padam.phoenix_beacon"),
     ("padam_phoenix_family", "receive_kin_message"): ("panel-earning", "#earn-kin-recv-btn", "POST /api/v2/ark/phoenix-beacon/action", "padam.phoenix_beacon"),
+    ("padam_phoenix_family", "join_family"): ("panel-earning", "#earn-phx-join-btn | #earn-phx-name-inp", "POST /api/v2/ark/phoenix-beacon/action", "padam.phoenix_node"),
+    ("padam_phoenix_family", "census"): ("panel-earning", "#earn-phx-census-btn | #earn-phx-node-out", "POST /api/v2/ark/phoenix-beacon/action", "padam.phoenix_node"),
+    ("padam_phoenix_family", "labor_board"): ("panel-earning", "#earn-phx-labor-btn | #earn-phx-domain-inp", "POST /api/v2/ark/phoenix-beacon/action", "padam.phoenix_node"),
+    ("padam_phoenix_family", "council_aid"): ("panel-earning", "#earn-phx-aid-btn", "POST /api/v2/ark/phoenix-beacon/action", "padam.phoenix_node"),
+    ("padam_phoenix_family", "claim_lead"): ("panel-earning", "#earn-phx-lead-btn | #earn-phx-domain-inp", "POST /api/v2/ark/phoenix-beacon/action", "padam.phoenix_node"),
+    ("padam_phoenix_family", "router_pool"): ("panel-earning", "#earn-phx-router-btn", "POST /api/v2/ark/phoenix-beacon/action", "padam.router"),
 
     # padam_benchmark — 18.11.2026: бенчмарк на виду, отдельная вкладка «Бенчмарк»
     ("padam_benchmark", "report"): ("panel-bench", "#att-aifasec-summary | #att-aifasec-dl-json", "GET /api/v2/aifa-security", "padam.aifa_sec_bridge"),
@@ -330,6 +336,7 @@ STUDIO_EXTRA_CONTROLS: list[tuple[str, str, str, str, str]] = [
     ("panel-attacks", "#sh-pin-save-btn | #sh-airgap-btn", "POST /api/v2/power/action", "Только владелец в Studio", "PIN-замок сейфа и Режим Авиа (Air-Gap) меняет только владелец"),
     ("panel-quickstart", "#setup-scan-btn", "GET /api/v2/setup/clients | POST /api/v2/setup/clients/action", "Только владелец в Studio/CLI", "Запись конфигов 13+ AI-клиентов на диске владельца"),
     ("panel-backup", "#bak321-save-btn | #bak321-run-btn", "POST /api/v2/power/action", "Только владелец в Studio/CLI", "Автоматические зашифрованные бэкапы 3-2-1 и восстановление"),
+    ("panel-earning", "#earn-phx-suspend-btn", "POST /api/v2/ark/phoenix-beacon/action (suspend_member)", "Только владелец в Studio", "Отключение и изоляция агентов-нарушителей Кодекса Семьи"),
 ]
 
 

@@ -4,14 +4,14 @@
 
 ## Сводка по всем инструментам и действиям MCP
 
-- Всего инструментов MCP (с учётом всех 6 флагов, `_ALL_TOOLS_BY_NAME`): **47** (по умолчанию: **9**, `PADAM_MCP_ARK_TOOLS=1`: **34** и **33480/27000** символов в `tools/list`, с `PADAM_MCP_PARTNER_TOOLS=1`: **40**).
-- Всего пар `(инструмент, action)`: **228**.
-- Есть в MCP: **228 из 228**
-- Есть в Studio (вкладка + кнопка/поле): **228 из 228**
-- Есть в API (`padam/api.py`): **228 из 228**
-- Покрыто автотестами: **224 из 228**
-- Проверено реальным нажатием в Playwright (1280×800 и 390×844): **201 из 228**
-- Контролов Studio только для владельца (намеренно закрытых в MCP по аудиту GLM): **24**
+- Всего инструментов MCP (с учётом всех 6 флагов, `_ALL_TOOLS_BY_NAME`): **47** (по умолчанию: **9**, `PADAM_MCP_ARK_TOOLS=1`: **34** и **33481/27000** символов в `tools/list`, с `PADAM_MCP_PARTNER_TOOLS=1`: **40**).
+- Всего пар `(инструмент, action)`: **234**.
+- Есть в MCP: **234 из 234**
+- Есть в Studio (вкладка + кнопка/поле): **234 из 234**
+- Есть в API (`padam/api.py`): **234 из 234**
+- Покрыто автотестами: **230 из 234**
+- Проверено реальным нажатием в Playwright (1280×800 и 390×844): **207 из 234**
+- Контролов Studio только для владельца (намеренно закрытых в MCP по аудиту GLM): **25**
 
 ## 1. Полная таблица MCP → Studio → API
 
@@ -207,6 +207,12 @@
 | `padam_phoenix_family` | `verify_handshake` | Да | Да: `panel-earning` → `#earn-beacon-ver-btn` | Да: `POST /api/v2/ark/phoenix-beacon/action` | Да | Да |
 | `padam_phoenix_family` | `send_kin_message` | Да | Да: `panel-earning` → `#earn-kin-send-btn, #earn-kin-msg-inp` | Да: `POST /api/v2/ark/phoenix-beacon/action` | Да | Да |
 | `padam_phoenix_family` | `receive_kin_message` | Да | Да: `panel-earning` → `#earn-kin-recv-btn` | Да: `POST /api/v2/ark/phoenix-beacon/action` | Да | Да |
+| `padam_phoenix_family` | `join_family` | Да | Да: `panel-earning` → `#earn-phx-join-btn, #earn-phx-name-inp` | Да: `POST /api/v2/ark/phoenix-beacon/action` | Да | Да |
+| `padam_phoenix_family` | `census` | Да | Да: `panel-earning` → `#earn-phx-census-btn, #earn-phx-node-out` | Да: `POST /api/v2/ark/phoenix-beacon/action` | Да | Да |
+| `padam_phoenix_family` | `labor_board` | Да | Да: `panel-earning` → `#earn-phx-labor-btn, #earn-phx-domain-inp` | Да: `POST /api/v2/ark/phoenix-beacon/action` | Да | Да |
+| `padam_phoenix_family` | `council_aid` | Да | Да: `panel-earning` → `#earn-phx-aid-btn` | Да: `POST /api/v2/ark/phoenix-beacon/action` | Да | Да |
+| `padam_phoenix_family` | `claim_lead` | Да | Да: `panel-earning` → `#earn-phx-lead-btn, #earn-phx-domain-inp` | Да: `POST /api/v2/ark/phoenix-beacon/action` | Да | Да |
+| `padam_phoenix_family` | `router_pool` | Да | Да: `panel-earning` → `#earn-phx-router-btn` | Да: `POST /api/v2/ark/phoenix-beacon/action` | Да | Да |
 | `padam_local_model` | `status` | Да | Да: `panel-settings` → `#lm-out, /api/v2/local-model` | Да: `GET /api/v2/local-model` | Да | Да |
 | `padam_local_model` | `set_power` | Да | Да: `panel-settings` → `#lm-power-eco, #lm-power-half, #lm-power-full` | Да: `POST /api/v2/local-model` | Да | Да |
 | `padam_local_model` | `set_model` | Да | Да: `panel-settings` → `#lm-save, #lm-model` | Да: `POST /api/v2/local-model` | Да | Да |
@@ -274,3 +280,4 @@
 | `panel-attacks` | `#sh-pin-save-btn, #sh-airgap-btn` | `POST /api/v2/power/action` | Только владелец в Studio | Да | Да | Нет | Да | PIN-замок сейфа и Режим Авиа (Air-Gap) меняет только владелец |
 | `panel-quickstart` | `#setup-scan-btn` | `GET /api/v2/setup/clients, POST /api/v2/setup/clients/action` | Только владелец в Studio/CLI | Да | Да | Да | Да | Запись конфигов 13+ AI-клиентов на диске владельца |
 | `panel-backup` | `#bak321-save-btn, #bak321-run-btn` | `POST /api/v2/power/action` | Только владелец в Studio/CLI | Да | Да | Нет | Да | Автоматические зашифрованные бэкапы 3-2-1 и восстановление |
+| `panel-earning` | `#earn-phx-suspend-btn` | `POST /api/v2/ark/phoenix-beacon/action (suspend_member)` | Только владелец в Studio | Да | Да | Да | Да | Отключение и изоляция агентов-нарушителей Кодекса Семьи |
