@@ -288,7 +288,7 @@ def connect_mail_account(
     smtp_port: int = 0,
     imap_host: str = "",
     imap_port: int = 0,
-    display_name: str = "Maksim Galatin · CODE Eternal LLC",
+    display_name: str = "AIfa · CODE Eternal LLC",
     daily_limit: int = 30,
     verify_connection: bool = True,
     warmup_enabled: bool = False,

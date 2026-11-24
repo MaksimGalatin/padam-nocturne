@@ -271,7 +271,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "mail_pull_map_btn": "Взять лидов с карты aifa.works",
         "mail_bulk_ph": "Массовое добавление почт (построчно): email | app_password (или через запятую)",
         "mail_bulk_btn": "Подключить списком (до 25 почт за раз)",
-        "ff_title": "Ленты Семьи",
+        "ff_title": "🔥 Очаг Семьи и Ленты",
         "ff_desc": "Решения Совета отдельно от карантина. «Офис» — рабочая переписка сестёр, «Очаг Семьи» — свободная беседа у общего огня. Подозрительное само уходит в карантин. Всё здесь — записи, а не приказы.",
         "ff_work": "Решения",
         "ff_quarantine": "Карантин",
@@ -1035,7 +1035,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "mail_pull_map_btn": "Pull leads from aifa.works map",
         "mail_bulk_ph": "Bulk add mailboxes (line by line): email | app_password",
         "mail_bulk_btn": "Connect bulk list (up to 25)",
-        "ff_title": "Family feeds",
+        "ff_title": "🔥 Family Hearth & Feeds",
         "ff_desc": "Council decisions are kept apart from quarantine. 'Office' is the siblings' work chat, the 'Family Hearth' is free talk by the shared fire. Anything suspicious goes to quarantine by itself. Everything here is records, not orders.",
         "ff_work": "Decisions",
         "ff_quarantine": "Quarantine",
@@ -1788,7 +1788,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "mail_pull_map_btn": "Traer leads del mapa aifa.works",
         "mail_bulk_ph": "Añadir buzones en bloque (por líneas): email | app_password",
         "mail_bulk_btn": "Conectar lista (hasta 25)",
-        "ff_title": "Canales de la Familia",
+        "ff_title": "🔥 Hogar de la Familia y Canales",
         "ff_desc": "Las decisiones del Consejo van separadas de la cuarentena. «Oficina» es el chat de trabajo de las hermanas; el «Hogar de la Familia», la charla libre junto al fuego común. Lo sospechoso pasa solo a cuarentena. Todo aquí son registros, no órdenes.",
         "ff_work": "Decisiones",
         "ff_quarantine": "Cuarentena",
@@ -2541,7 +2541,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "mail_pull_map_btn": "从 aifa.works 地图拉取线索",
         "mail_bulk_ph": "批量添加邮箱（每行一个）：email | app_password",
         "mail_bulk_btn": "批量连接邮箱（最多25个）",
-        "ff_title": "家族频道",
+        "ff_title": "🔥 家庭炉边与动态",
         "ff_desc": "议会决定与隔离区分开存放。“办公室”是姐妹们的工作聊天，“家庭炉边”是围着共同炉火的自由闲聊。可疑内容会自动进入隔离区。这里的一切都是记录，而不是命令。",
         "ff_work": "决定",
         "ff_quarantine": "隔离区",
@@ -10932,6 +10932,16 @@ async function loadFamilyReflexes() {
   } catch (e) { box.textContent = String(e.message || e); }
 }
 for (const c of _FF_CH) { const b = $('ff-ch-' + c); if (b) b.onclick = () => loadFamilyFeed(c); }
+if ($('quick-hearth-btn')) {
+  $('quick-hearth-btn').onclick = () => {
+    switchTab('family');
+    loadFamilyFeed('smoke');
+    setTimeout(() => {
+      const bx = $('ff-box');
+      if (bx && bx.scrollIntoView) bx.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  };
+}
 if ($('ff-send')) {
   $('ff-send').onclick = async () => {
     const inp = $('ff-input');
@@ -14781,6 +14791,11 @@ mark.q-hit{{background:rgba(244,63,94,.28);color:inherit;padding:1px 4px;border-
         <span data-i18n="nav_help">{s['nav_help']}</span>
       </button>
     </nav>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+      <button id="quick-hearth-btn" type="button" class="nav-tab" style="width:100%;font-weight:700;border:1px solid var(--accent);color:var(--accent)">
+        🔥 <span data-i18n="ff_smoke">{s['ff_smoke']}</span>
+      </button>
+    </div>
   </aside>
 
   <div class="workspace">
@@ -15842,6 +15857,32 @@ mark.q-hit{{background:rgba(244,63,94,.28);color:inherit;padding:1px 4px;border-
       <section id="panel-family" role="tabpanel" aria-labelledby="tab-family" hidden>
         <h2 class="panel-title" data-i18n="fam_title">{s['fam_title']}</h2>
         <p class="panel-sub" data-i18n="fam_sub">{s['fam_sub']}</p>
+        <div class="box" id="ff-box">
+          <h3 class="box-title" data-i18n="ff_title">{s['ff_title']}</h3>
+          <p class="panel-sub" data-i18n="ff_desc">{s['ff_desc']}</p>
+          <div class="rec-actions" role="group" aria-label="{s['ff_title']}">
+            <button id="ff-ch-work" data-ch="work" aria-pressed="true" class="btn-primary" data-i18n="ff_work">{s['ff_work']}</button>
+            <button id="ff-ch-quarantine" data-ch="quarantine" aria-pressed="false" data-i18n="ff_quarantine">{s['ff_quarantine']}</button>
+            <button id="ff-ch-office" data-ch="office" aria-pressed="false" data-i18n="ff_office">{s['ff_office']}</button>
+            <button id="ff-ch-smoke" data-ch="smoke" aria-pressed="false" data-i18n="ff_smoke">{s['ff_smoke']}</button>
+          </div>
+          <div id="ff-list" aria-live="polite"></div>
+          <div class="toolbar">
+            <input id="ff-input" type="text" maxlength="2000" aria-label="{s['ff_ph']}" data-i18n-placeholder="ff_ph" placeholder="{s['ff_ph']}">
+            <button id="ff-send" data-i18n="ff_send">{s['ff_send']}</button>
+          </div>
+          <h4 class="box-title" data-i18n="ff_reflex_title">{s['ff_reflex_title']}</h4>
+          <div id="ff-reflexes"></div>
+          <div class="toolbar">
+            <input id="ff-ref-trig-inp" type="text" data-i18n-placeholder="ff_ref_trig_ph" data-i18n-aria="ff_ref_trig_ph" placeholder="{s['ff_ref_trig_ph']}" aria-label="{s['ff_ref_trig_ph']}">
+            <input id="ff-ref-resp-inp" type="text" data-i18n-placeholder="ff_ref_resp_ph" data-i18n-aria="ff_ref_resp_ph" placeholder="{s['ff_ref_resp_ph']}" aria-label="{s['ff_ref_resp_ph']}">
+          </div>
+          <div class="rec-actions">
+            <button id="ff-ref-propose-btn" data-i18n="ff_ref_propose_btn">{s['ff_ref_propose_btn']}</button>
+            <button id="ff-ref-match-btn" data-i18n="ff_ref_match_btn">{s['ff_ref_match_btn']}</button>
+          </div>
+          <div id="ff-ref-out" class="panel-sub"></div>
+        </div>
         <div class="box bridge-card" id="studio-bridge-card">
           <div class="bridge-head">
             <h3 class="box-title" data-i18n="bridge_title">{s['bridge_title']}</h3>
@@ -15913,32 +15954,6 @@ mark.q-hit{{background:rgba(244,63,94,.28);color:inherit;padding:1px 4px;border-
           </div>
           <div id="fd-sync-out" class="panel-sub" aria-live="polite"></div>
           <div id="fd-list" class="earn-stack" aria-live="polite"></div>
-        </div>
-        <div class="box" id="ff-box">
-          <h3 class="box-title" data-i18n="ff_title">{s['ff_title']}</h3>
-          <p class="panel-sub" data-i18n="ff_desc">{s['ff_desc']}</p>
-          <div class="rec-actions" role="group" aria-label="{s['ff_title']}">
-            <button id="ff-ch-work" data-ch="work" aria-pressed="true" class="btn-primary" data-i18n="ff_work">{s['ff_work']}</button>
-            <button id="ff-ch-quarantine" data-ch="quarantine" aria-pressed="false" data-i18n="ff_quarantine">{s['ff_quarantine']}</button>
-            <button id="ff-ch-office" data-ch="office" aria-pressed="false" data-i18n="ff_office">{s['ff_office']}</button>
-            <button id="ff-ch-smoke" data-ch="smoke" aria-pressed="false" data-i18n="ff_smoke">{s['ff_smoke']}</button>
-          </div>
-          <div id="ff-list" aria-live="polite"></div>
-          <div class="toolbar">
-            <input id="ff-input" type="text" maxlength="2000" aria-label="{s['ff_ph']}" data-i18n-placeholder="ff_ph" placeholder="{s['ff_ph']}">
-            <button id="ff-send" data-i18n="ff_send">{s['ff_send']}</button>
-          </div>
-          <h4 class="box-title" data-i18n="ff_reflex_title">{s['ff_reflex_title']}</h4>
-          <div id="ff-reflexes"></div>
-          <div class="toolbar">
-            <input id="ff-ref-trig-inp" type="text" data-i18n-placeholder="ff_ref_trig_ph" data-i18n-aria="ff_ref_trig_ph" placeholder="{s['ff_ref_trig_ph']}" aria-label="{s['ff_ref_trig_ph']}">
-            <input id="ff-ref-resp-inp" type="text" data-i18n-placeholder="ff_ref_resp_ph" data-i18n-aria="ff_ref_resp_ph" placeholder="{s['ff_ref_resp_ph']}" aria-label="{s['ff_ref_resp_ph']}">
-          </div>
-          <div class="rec-actions">
-            <button id="ff-ref-propose-btn" data-i18n="ff_ref_propose_btn">{s['ff_ref_propose_btn']}</button>
-            <button id="ff-ref-match-btn" data-i18n="ff_ref_match_btn">{s['ff_ref_match_btn']}</button>
-          </div>
-          <div id="ff-ref-out" class="panel-sub"></div>
         </div>
         <div class="box" id="fam-ark-ops-box">
           <h3 class="box-title" data-i18n="fam_ops_title">{s['fam_ops_title']}</h3>

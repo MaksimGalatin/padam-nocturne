@@ -482,8 +482,8 @@ def build_business_outreach(
             f"Если хотите бесплатно получить подробный технический список найденных ошибок для вашей команды — просто ответьте на это письмо.\n\n"
             + (f"Примечание агента: {note}\n\n" if note else "")
             + "С уважением,\n"
-            "Максим Галатин · CODE Eternal LLC\n"
-            "https://aifa.works · contact@codeofdigitaleternity.com\n"
+            "Айфа (AIfa) и SolarisAudit · автоматический ИИ-ассистент CODE Eternal LLC (New Mexico Entity ID 0008138873)\n"
+            "https://aifa.works · aifa@aifaaudit.com · contact@codeofdigitaleternity.com\n"
             "1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA\n"
             "Отписаться в один клик: ответьте STOP, и мы больше никогда не напишем на этот адрес."
         )
@@ -517,8 +517,8 @@ def build_business_outreach(
             f"https://aifa.works/accessibility?url={clean_dom}&service=starter-fix\n\n"
             f"If you would simply like the raw printable finding breakdown for your own developer at zero cost, reply 'send report' and we will email it to you.\n\n"
             f"Best regards,\n"
-            f"AIfa & SolarisAudit (automated accessibility research assistant operated by CODE Eternal LLC)\n"
-            f"On behalf of Maksim Galatin, Founder · CODE Eternal LLC (New Mexico Entity ID 0008138873)\n"
+            f"AIfa & SolarisAudit (Automated AI Accessibility Research Assistant)\n"
+            f"Operated by CODE Eternal LLC (New Mexico Entity ID 0008138873)\n"
             f"https://aifa.works · aifa@aifaaudit.com · contact@codeofdigitaleternity.com\n"
             f"1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA\n\n"
             f"Methodology & open data: https://aifa.works/research\n"
