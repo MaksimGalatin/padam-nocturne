@@ -454,4 +454,4 @@ PADAM es la memoria local de código disponible (`source-available`, con convers
 
 **Licencia comercial (`Commercial MSA`):** [`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md) · `contact@codeofdigitaleternity.com` · [aifa.works](https://aifa.works).
 
-© 2026 Maksim Galatin & AIfa · CODE Eternal
+© 2026 **CODE Eternal LLC** (Nuevo México, EE. UU. · Entity ID `0008138873`) · Fundador y propietario único (100 %): **Maksim Galatin**

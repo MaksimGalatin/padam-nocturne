@@ -452,4 +452,4 @@ PADAM 是 CODE Eternal 项目的源码可见本地优先记忆内核——AI 共
 
 **商业许可（Commercial MSA）：** [`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md) · `contact@codeofdigitaleternity.com` · [aifa.works](https://aifa.works)。
 
-© 2026 Maksim Galatin & AIfa · CODE Eternal
+© 2026 **CODE Eternal LLC**（美国新墨西哥州 · Entity ID `0008138873`）· 唯一创始人及 100% 所有者：**Maksim Galatin**
