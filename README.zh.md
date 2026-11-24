@@ -446,7 +446,7 @@ PADAM 是 CODE Eternal 项目的源码可见本地优先记忆内核——AI 共
 
 ## 许可证
 
-**`padam-nocturne` 核心引擎、`PADAM Studio` 与 `Android APK`（0.8.0 起）：** **PADAM 许可证 1.0**（[LICENSE](https://github.com/MaksimGalatin/padam-nocturne/blob/main/LICENSE)，`LicenseRef-PADAM-1.0`）——源码可见，但不是开源许可证。安装和使用免费。**创收**功能向 CODE Eternal LLC 支付佣金：本人提交 **15%**，自动驾驶 **20%**。不愿支付则不使用创收。禁止绕过佣金，禁止分发、出售或以服务形式提供修改后的副本。0.7.2 及更早版本的副本保留其发布时的 AGPL-3.0-only。
+**`padam-nocturne` 核心引擎、`PADAM Studio` 与 `Android APK`（0.8.0 起）：** **PADAM 许可证 1.0**（[LICENSE](https://github.com/MaksimGalatin/padam-nocturne/blob/main/LICENSE)，`LicenseRef-PADAM-1.0`）——源码可见，但不是开源许可证。安装和使用免费。**创收**功能向 CODE Eternal LLC 支付佣金：本人提交 **15%**，自动驾驶 **20%**。不愿支付则不使用创收。禁止绕过佣金，禁止分发、出售或以服务形式提供修改后的副本。`<=0.7.2` 版本永久保留 `AGPL-3.0-only`——这是刻意且诚实的决定（历史版本，已由 `0.8.x` 替代）；**PADAM 许可证 1.0** 仅适用于 `0.8.0` 及以后版本（采用版权与 Platform Terms 双锁、包含专利授权与反追溯承诺，且每个已发布版本在发布 **24 个月后** 自动转为 **`Apache-2.0`**）。
 
 **独立 Docker 扫描网关与 GitHub CI Action（`Apache-2.0`）：** 轻量无状态网关 [**`padam-shield-mcp`**](https://github.com/MaksimGalatin/padam-shield-mcp) 与 [`.github/actions/padam-agentic-shield/`](.github/actions/padam-agentic-shield/LICENSE) 完全独立采用 **`Apache-2.0`** 许可，且不含 PADAM 核心代码。
 

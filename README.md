@@ -612,7 +612,7 @@ python -I -X utf8 redteam/run.py your_cases.jsonl --out report.json
 - The `origin` of a write is the agent's claim: MCP carries no proof of where a text came from. `PADAM_MCP_REVIEW_ALL=1` is the boundary that does not rely on it.
 - Our tests are not an independent audit. The [Red Team Challenge](https://github.com/MaksimGalatin/padam-nocturne/tree/main/redteam) asks outsiders for sealed attack sets; until one is run, the numbers here are our own.
 - The package is on PyPI since 0.3.0 and in the official MCP registry since 0.4.8 as `io.github.MaksimGalatin/padam-nocturne` (published from `server.json` by the manual `mcp-registry` workflow, GitHub Actions OIDC).
-- **Licence transition (`AGPL-3.0` → `PADAM License 1.0`):** versions `<=0.7.2` remain irrevocably under `AGPL-3.0-only` (and may be forked under AGPL); `0.8.0+` is `source-available` (NOT open-source) so that Earning commissions cannot be legally stripped, with automatic conversion of each released version to `Apache-2.0` after 24 months (Section 5 of [`LICENSE`](LICENSE)).
+- **Licence transition (`AGPL-3.0` → `PADAM License 1.0`):** Versions `<=0.7.2` remain `AGPL-3.0-only` forever — that is intentional and honest (legacy, superseded by `0.8.x`); `PADAM License 1.0` applies from `0.8.0` onward (`source-available`, NOT open-source prior to each release's 24-month automatic `Apache-2.0` conversion under Section 5 of [`LICENSE`](LICENSE)).
 
 ---
 
