@@ -14703,6 +14703,8 @@ mark.q-hit{{background:rgba(244,63,94,.28);color:inherit;padding:1px 4px;border-
 .cl-badge-no{{opacity:.65;margin-left:6px}}
 .voice-active{{border-color:#34d399 !important;box-shadow:0 0 0 2px rgba(52,211,153,.35) !important}}
 .cmdk-sep{{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;opacity:.7;margin:8px 0 4px}}
+.quick-hearth-wrap{{margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}}
+.quick-hearth-btn{{width:100%;font-weight:700;border:1px solid var(--accent);color:var(--accent)}}
 </style>
 </head>
 <body>
@@ -14791,8 +14793,8 @@ mark.q-hit{{background:rgba(244,63,94,.28);color:inherit;padding:1px 4px;border-
         <span data-i18n="nav_help">{s['nav_help']}</span>
       </button>
     </nav>
-    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-      <button id="quick-hearth-btn" type="button" class="nav-tab" style="width:100%;font-weight:700;border:1px solid var(--accent);color:var(--accent)">
+    <div class="quick-hearth-wrap">
+      <button id="quick-hearth-btn" type="button" class="nav-tab quick-hearth-btn">
         🔥 <span data-i18n="ff_smoke">{s['ff_smoke']}</span>
       </button>
     </div>

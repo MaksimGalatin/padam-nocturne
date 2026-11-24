@@ -91,7 +91,8 @@ def test_ручка_api_и_блок_studio(tmp_path):
             srv.shutdown(); srv.server_close()
         html = studio.page()[0]
         assert 'id="fd-box"' in html and 'id="fd-q"' in html and "loadFamilyDialogs" in html
-        assert html.index('id="fd-box"') < html.index('id="ff-box"')       # над Лентами
+        # Очаг Семьи (ff-box) поднят в самый верх вкладки Семья поверх Диалогов Семьи (решение 24.11.2026).
+        assert html.index('id="ff-box"') < html.index('id="fd-box"')
         src = open(studio.__file__, encoding="utf-8").read()
         for word in ("Диалоги Семьи", "Family dialogues", "Diálogos de la Familia", "家族对话"):
             assert word in src, word

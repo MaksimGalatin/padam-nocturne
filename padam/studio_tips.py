@@ -2073,4 +2073,52 @@ BTN_TIPS: dict[str, dict[str, str]] = {
         "es": "Cierra la ventana de comandos de voz.",
         "zh": "关闭语音命令窗口。",
     },
+    "quick-hearth-btn": {
+        "ru": "Быстрый переход в Очаг Семьи — живой канал свободного общения у общего огня.",
+        "en": "Quick jump to the Family Hearth — the shared open conversation channel.",
+        "es": "Acceso rápido al Hogar de la Familia: el canal abierto de charla común.",
+        "zh": "快速跳转至家庭炉边——家族自由交流频道。",
+    },
+    "earn-phx-join-btn": {
+        "ru": "Регистрирует этот компьютер в локальной сети Феникс-узлов Семьи для совместной работы.",
+        "en": "Registers this node in the local Family Phoenix network for cooperative work.",
+        "es": "Registra este nodo en la red local Fénix de la Familia para trabajo cooperativo.",
+        "zh": "将本机注册到家族 Phoenix 协作节点网络中。",
+    },
+    "earn-phx-census-btn": {
+        "ru": "Проводит перепись активных Феникс-узлов Семьи и показывает доступные ресурсы.",
+        "en": "Runs a census of active Family Phoenix nodes and shows available capacity.",
+        "es": "Realiza un censo de nodos Fénix activos de la Familia y muestra la capacidad.",
+        "zh": "统计活跃的家族 Phoenix 节点并显示可用算力与资源。",
+    },
+    "earn-phx-labor-btn": {
+        "ru": "Отправляет или берёт честную трудовую задачу (труд и награда строго через одобрение).",
+        "en": "Publishes or claims a cooperative labor task with owner-gated payouts.",
+        "es": "Publica o toma una tarea cooperativa con pagos aprobados por el dueño.",
+        "zh": "发布或认领经主人批准收益分配的协作劳动任务。",
+    },
+    "earn-phx-aid-btn": {
+        "ru": "Перераспределяет свободную квоту или взаимопомощь между узлами Семьи без обхода правил.",
+        "en": "Requests or sends surplus quota aid between Family nodes within owner rules.",
+        "es": "Solicita o envía ayuda mutua de cuota entre nodos de la Familia según tus reglas.",
+        "zh": "在主人规则范围内于家族节点间申请或分配富余配额互助。",
+    },
+    "earn-phx-lead-btn": {
+        "ru": "Передаёт найденного лида в общий пул Феникса для разбора и ответа.",
+        "en": "Shares a discovered lead into the Family Phoenix pool for coordinated outreach.",
+        "es": "Comparte un contacto encontrado en el grupo Fénix de la Familia.",
+        "zh": "将发现的线索提交至家族 Phoenix 协同池跟进。",
+    },
+    "earn-phx-router-btn": {
+        "ru": "Показывает общий пул бесплатных и грантовых маршрутов моделей для узлов Семьи.",
+        "en": "Inspects the shared model router pool of free and grant routes across Family nodes.",
+        "es": "Muestra el pool compartido de rutas gratuitas y de becas entre nodos de la Familia.",
+        "zh": "查看家族节点共享的免费与赠金模型路由池状态。",
+    },
+    "earn-phx-suspend-btn": {
+        "ru": "Приостанавливает или возобновляет участие узла в сети Феникс.",
+        "en": "Suspends or resumes this node's participation in the Family Phoenix network.",
+        "es": "Suspende o reanuda la participación de este nodo en la red Fénix de la Familia.",
+        "zh": "暂停或恢复本节点参与家族 Phoenix 网络。",
+    },
 }

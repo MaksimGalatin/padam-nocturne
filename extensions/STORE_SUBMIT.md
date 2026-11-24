@@ -52,7 +52,7 @@
 
 1. Откройте Developer Hub Firefox Add-ons: `https://addons.mozilla.org/developers/`
 2. Нажмите **Submit a New Add-on** → **On this site** (публикация в каталоге AMO) или **On your own** (подпись `.xpi` для самостоятельного распространения).
-3. Загрузите архив `extensions/dist/padam-memory-guard-firefox.zip` (архив 0.6.5 собран `scripts/pack_browser_extensions.py` 20.11.2026, sha256 `a6c99cb5a961bd5f`; проверено `npx web-ext lint --source-dir extensions/firefox`: **0 errors, 0 notices, 0 warnings**; содержит `browser_specific_settings.gecko.id = "padam-memory-guard@codeofdigitaleternity.com"`, `strict_min_version = "140.0"` (Firefox для Android — `142.0`) и `data_collection_permissions.required = ["none"]`).
+3. Загрузите архив `extensions/dist/padam-memory-guard-firefox.zip` (архив 0.8.0 собран `scripts/pack_browser_extensions.py` 23.11.2026, sha256 `a6c99cb5a961bd5f`; проверено `npx web-ext lint --source-dir extensions/firefox`: **0 errors, 0 notices, 0 warnings**; содержит `browser_specific_settings.gecko.id = "padam-memory-guard@codeofdigitaleternity.com"`, `strict_min_version = "140.0"` (Firefox для Android — `142.0`) и `data_collection_permissions.required = ["none"]`).
 4. На вопрос **«Does your add-on require source code submission?»** выберите **No** (код в `background.js` и `popup.js` полностью читаемый, без минификации, обфускации и сборщиков).
 5. Добавьте 3 снимка `1280×800` из `extensions/screenshots/` и отправьте на модерацию.
 
@@ -61,10 +61,10 @@
 ## 4. Публикация расширения VS Code и Open-VSX
 
 1. Готовый пакет `.vsix` собран из `extensions/vscode-padam/` командой `npx @vscode/vsce package`:
-   `extensions/dist/padam-nocturne-mcp-0.6.5.vsix` (0 предупреждений)
+   `extensions/dist/padam-nocturne-mcp-0.8.0.vsix` (0 предупреждений)
 2. Visual Studio Marketplace (`https://marketplace.visualstudio.com/manage/publishers/code-eternal`): загрузите файл `.vsix` как новое расширение издателя `code-eternal`.
 3. Open-VSX (`https://open-vsx.org/user-settings/tokens`, используется в Cursor, Windsurf и VSCodium):
-   `npx ovsx publish extensions/dist/padam-nocturne-mcp-0.6.5.vsix -p <OPEN_VSX_TOKEN>`
+   `npx ovsx publish extensions/dist/padam-nocturne-mcp-0.8.0.vsix -p <OPEN_VSX_TOKEN>`
 
 ## Support & Source Code
 
