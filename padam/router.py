@@ -21,7 +21,7 @@ from typing import Any
 
 from . import safety
 
-FAILOVER_STATUS_CODES = frozenset({401, 402, 403, 408, 429})
+FAILOVER_STATUS_CODES = frozenset({401, 402, 403, 404, 408, 429})
 LOCAL_ONLY_TASK_TYPES = frozenset({"sleep", "classify", "summarize", "maintenance"})
 
 
@@ -95,7 +95,7 @@ def load_contours() -> list[ContourConfig]:
 
     l_url = _env("LOCAL", "URL", "http://127.0.0.1:11434/v1")
     l_key = _env("LOCAL", "KEY", "ollama")
-    l_model = _env("LOCAL", "MODEL") or os.environ.get("PADAM_ASK_MODEL", "llama3.2:3b").strip() or "llama3.2:3b"
+    l_model = _env("LOCAL", "MODEL") or os.environ.get("PADAM_ASK_MODEL", "llama3.2:latest").strip() or "llama3.2:latest"
     local = ContourConfig(
         name="local",
         url=l_url.rstrip("/"),
@@ -138,7 +138,7 @@ def load_contours() -> list[ContourConfig]:
         gk = os.environ.get(f"PADAM_LLM_GEMINI_KEY_{idx_g}", "").strip()
         if gk and gk not in gemini_keys:
             gemini_keys.append(gk)
-    gem_model = os.environ.get("PADAM_LLM_GEMINI_MODEL", "gemini-2.5-flash").strip() or "gemini-2.5-flash"
+    gem_model = os.environ.get("PADAM_LLM_GEMINI_MODEL", "gemini-flash-latest").strip() or "gemini-flash-latest"
     gem_url = os.environ.get(
         "PADAM_LLM_GEMINI_URL",
         "https://generativelanguage.googleapis.com/v1beta/openai",
@@ -167,7 +167,7 @@ FREE_GATEWAY_PRESETS: dict[str, dict[str, Any]] = {
     "gemini_free": {
         "title": "Google Gemini Free / Paid Multi-Account Ring (3x AI Studio)",
         "url": "https://generativelanguage.googleapis.com/v1beta/openai",
-        "default_model": "gemini-2.5-flash",
+        "default_model": "gemini-flash-latest",
         "free_tier_note": "Карусель из 3 оплаченных и бесплатных ключей Gemini с мгновенным обходом 429",
     },
     "vertex_gfs_credits": {
@@ -324,7 +324,7 @@ class SovereignRouter:
         self,
         keys: list[str],
         *,
-        model: str = "gemini-2.5-flash",
+        model: str = "gemini-flash-latest",
         url: str = "https://generativelanguage.googleapis.com/v1beta/openai",
         timeout_s: float = 30.0,
     ) -> dict[str, Any]:
@@ -337,7 +337,7 @@ class SovereignRouter:
         if not clean_keys:
             raise ValueError("Передайте хотя бы один ключ Gemini для карусели.")
         final_url = str(url or "https://generativelanguage.googleapis.com/v1beta/openai").strip().rstrip("/")
-        final_model = str(model or "gemini-2.5-flash").strip()
+        final_model = str(model or "gemini-flash-latest").strip()
         ring_cfgs = [
             ContourConfig(
                 name=f"gemini_acct_{idx}",
@@ -668,6 +668,11 @@ class SovereignRouter:
             }
             try:
                 status, resp_data = self._http_post(endpoint, headers, req_payload, c.timeout_s)
+                if status == 404 and c.name == "local" and self._http_post == self._default_http_post:
+                    installed = probe_local_backend(timeout_s=0.8).get("models") or []
+                    if installed and installed[0] != req_payload["model"]:
+                        req_payload = {**req_payload, "model": installed[0]}
+                        status, resp_data = self._http_post(endpoint, headers, req_payload, c.timeout_s)
             except (TimeoutError, urllib.error.URLError, OSError) as exc:
                 status = 504
                 resp_data = {"error": f"{type(exc).__name__}: {exc}"}
