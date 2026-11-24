@@ -89,6 +89,66 @@ class ContourConfig:
         }
 
 
+
+_VERTEX_TOKEN_CACHE: dict[str, Any] = {"token": "", "exp": 0.0, "sa_path": "", "project_id": ""}
+
+
+def _vertex_sa_bearer_and_url() -> tuple[str, str]:
+    """Получает краткоживущий OAuth2 Bearer-токен для грантового Google Cloud Vertex AI из локального JSON-ключа."""
+    import base64 as _b64
+    sa_file_s = os.environ.get("PADAM_VERTEX_GRANT_SA_FILE", "").strip()
+    if not sa_file_s or not os.path.isfile(sa_file_s):
+        return "", ""
+    try:
+        raw_sa = json.loads(open(sa_file_s, "r", encoding="utf-8").read())
+        proj = str(raw_sa.get("project_id") or "").strip()
+        email_sa = str(raw_sa.get("client_email") or "").strip()
+        pkey = str(raw_sa.get("private_key") or "").strip()
+        if not (proj and email_sa and pkey):
+            return "", ""
+        ep_url = f"https://aiplatform.googleapis.com/v1beta1/projects/{proj}/locations/global/endpoints/openapi"
+        now_s = time.time()
+        if (
+            _VERTEX_TOKEN_CACHE["token"]
+            and _VERTEX_TOKEN_CACHE["sa_path"] == sa_file_s
+            and now_s < (_VERTEX_TOKEN_CACHE["exp"] - 90.0)
+        ):
+            return str(_VERTEX_TOKEN_CACHE["token"]), ep_url
+
+        from cryptography.hazmat.primitives import hashes as _hashes, serialization as _ser
+        from cryptography.hazmat.primitives.asymmetric import padding as _pad
+
+        iat = int(now_s)
+        hdr = _b64.urlsafe_b64encode(json.dumps({"alg": "RS256", "typ": "JWT"}).encode()).rstrip(b"=").decode()
+        clm = _b64.urlsafe_b64encode(json.dumps({
+            "iss": email_sa,
+            "scope": "https://www.googleapis.com/auth/cloud-platform",
+            "aud": "https://oauth2.googleapis.com/token",
+            "iat": iat,
+            "exp": iat + 3600,
+        }).encode()).rstrip(b"=").decode()
+        si = f"{hdr}.{clm}".encode()
+        pk = _ser.load_pem_private_key(pkey.encode(), password=None)
+        sig = _b64.urlsafe_b64encode(pk.sign(si, _pad.PKCS1v15(), _hashes.SHA256())).rstrip(b"=").decode()
+        req = urllib.request.Request(
+            "https://oauth2.googleapis.com/token",
+            data=f"grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion={hdr}.{clm}.{sig}".encode(),
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            tok_data = json.loads(resp.read().decode("utf-8"))
+        tok = str(tok_data.get("access_token") or "").strip()
+        if tok:
+            _VERTEX_TOKEN_CACHE["token"] = tok
+            _VERTEX_TOKEN_CACHE["exp"] = now_s + float(tok_data.get("expires_in") or 3600)
+            _VERTEX_TOKEN_CACHE["sa_path"] = sa_file_s
+            _VERTEX_TOKEN_CACHE["project_id"] = proj
+        return tok, ep_url
+    except Exception:
+        return "", ""
+
+
 def load_contours() -> list[ContourConfig]:
     """Читает конфигурацию контуров из окружения (по умолчанию включён только local)."""
     def _env(prefix: str, field: str, default: str = "") -> str:
@@ -189,12 +249,18 @@ def load_contours() -> list[ContourConfig]:
             )
         )
     # Строгое правило Архитектора (24.11.2026): НОЛЬ платных моделей с карты ($0 расходов!).
-    # Даже подарочные кредиты Google Vertex AI ($2 941,94) стоят СТРОГО ПОСЛЕ локальной Ollama
-    # и включаются ТОЛЬКО при одновременном отказе бесплатного AI Studio и локальной Ollama (PADAM_ALLOW_VERTEX_AFTER_LOCAL=1).
-    vertex_allowed = os.environ.get("PADAM_ALLOW_VERTEX_AFTER_LOCAL", "0").strip() == "1"
+    # Подарочный грант Google Cloud Vertex AI ($2 941,94 кредитов) ВКЛЮЧЁН по умолчанию,
+    # но стоит СТРОГО ПОСЛЕ домашней локальной Ollama (ступень: AI Studio -> Ollama -> Грант Vertex).
+    vertex_allowed = os.environ.get("PADAM_ALLOW_VERTEX_AFTER_LOCAL", "1").strip() == "1"
     vx_url = _env("VERTEX_GRANT", "URL")
     vx_key = _env("VERTEX_GRANT", "KEY")
-    vx_model = _env("VERTEX_GRANT", "MODEL", "google/gemini-2.5-flash-lite")
+    sa_file_ok = bool(os.environ.get("PADAM_VERTEX_GRANT_SA_FILE", "").strip())
+    if not (vx_url and vx_key) and vertex_allowed and sa_file_ok:
+        sa_tok, sa_ep = _vertex_sa_bearer_and_url()
+        if sa_tok and sa_ep:
+            vx_url = sa_ep
+            vx_key = sa_tok
+    vx_model = _env("VERTEX_GRANT", "MODEL", "google/gemini-3-flash-preview")
     tail_contours: list[ContourConfig] = [local]
     if vertex_allowed and vx_url and vx_key:
         tail_contours.append(
@@ -202,7 +268,7 @@ def load_contours() -> list[ContourConfig]:
                 name="vertex_grant_after_local",
                 url=vx_url.rstrip("/"),
                 api_key=vx_key,
-                model=vx_model or "google/gemini-2.5-flash-lite",
+                model=vx_model or "google/gemini-3-flash-preview",
                 timeout_s=_timeout("VERTEX_GRANT", 30.0),
                 enabled=True,
             )

@@ -240,39 +240,39 @@ def build_personal_icebreaker(
         if any(k in blob for k in ("theater", "theatre", "comedy", "show", "tickets", "театр", "сцен", "билет")):
             return (
                 f"Мы с большим уважением относимся к тому, что ваша команда делает в {clean_name}{loc_ru} — живая сцена и зрительский зал "
-                f"начинаются с того момента, когда человек открывает афишу на {clean_dom}. Нам важно, чтобы ни один ваш зритель не столкнулся с закрытой дверью у онлайн-кассы."
+                f"начинаются с того момента, когда человек открывает афишу на {clean_dom}. Нам важно, чтобы публичные заметки проверки помогли вашей команде встречать каждого зрителя без технических барьеров."
             )
         return (
             f"Мы внимательно познакомились с проектом {clean_name}{loc_ru} ({clean_dom})"
-            + (f" — особенно с вашим фокусом «{_first_clean_sentence(desc_hint, 140)}»" if desc_hint else "")
-            + ". Мы знаем, сколько труда вложено в репутацию вашего бизнеса, и хотим помочь сделать так, чтобы каждый посетитель сайта мог без преград стать вашим клиентом."
+            + (f" — особенно с вашим фокусом «{_first_clean_sentence(desc_hint, 130)}»" if desc_hint else "")
+            + ". Мы ценим ваш вклад и подготовили бесплатные автоматические заметки проверки доступности публичной главной страницы."
         )
 
     if any(k in blob for k in ("theater", "theatre", "comedy", "show", "tickets", "stage", "performance", "elysian")):
-        detail = f" (especially your work around '{_first_clean_sentence(desc_hint, 130)}')"  if desc_hint else ""
+        detail = f" — especially {_first_clean_sentence(desc_hint, 115)}" if desc_hint else ""
         return (
-            f"I genuinely admire what your team is building at {clean_name}{loc_en}{detail} — independent live performance and comedy venues thrive "
-            f"when every guest feels welcome from the moment they open the show calendar online. Because we care about making sure none of your audience "
-            f"gets turned away at the virtual box office, we included {clean_dom} in our open accessibility research."
+            f"We came across {clean_name}{loc_en}{detail} while compiling our open public-web accessibility research and genuinely appreciate "
+            f"the community space your team creates for live audiences. We wanted to share the automated public homepage scan notes for {clean_dom} "
+            f"with your engineering team at no cost."
         )
     if any(k in blob for k in ("hotel", "resort", "rooms", "suites", "inn", "lodge")):
         return (
-            f"We really appreciate the hospitality experience your team has crafted at {clean_name}{loc_en} — a guest's stay begins the moment they "
-            f"explore rooms on {clean_dom}, and we want to make sure every traveler can book directly with you without hitting technical barriers."
+            f"We came across {clean_name}{loc_en} while compiling our open public-web accessibility study and admire the guest experience "
+            f"you present on {clean_dom}. We wanted to share the automated homepage findings with your technical team at no cost."
         )
     if any(k in blob for k in ("restaurant", "menu", "dining", "cafe", "bistro", "kitchen")):
         return (
-            f"We love the dining atmosphere and community presence you've built at {clean_name}{loc_en} — because every guest deserves to browse your menu "
-            f"and reserve a table effortlessly on {clean_dom}, we took a close look at how your site performs for keyboard and assistive-tech visitors."
+            f"We came across {clean_name}{loc_en} while compiling our open public-web accessibility study and appreciate the community "
+            f"presence you have built around {clean_dom}. We wanted to share the automated homepage scan notes for your technical review."
         )
     if desc_hint:
         return (
-            f"We spent time reviewing {clean_name}{loc_en} ({clean_dom}) and really appreciate your focus on '{_first_clean_sentence(desc_hint, 135)}' — "
-            f"because we care about helping your team serve every visitor without friction, we included {clean_dom} in our open US accessibility study."
+            f"We came across {clean_name}{loc_en} ({clean_dom}) during our open public-web accessibility study and appreciate your team's "
+            f"focus on '{_first_clean_sentence(desc_hint, 125)}'. We wanted to share our automated homepage findings for your technical review."
         )
     return (
-        f"We spent time reviewing {clean_name}{loc_en} ({clean_dom}) and admire the work your team puts into serving your community — "
-        f"because every visitor who lands on your site deserves a smooth, barrier-free path to connect with you, we included {clean_dom} in our open accessibility study."
+        f"We came across {clean_name}{loc_en} ({clean_dom}) during our open public-web accessibility research and admire the work "
+        f"your team shares online. We wanted to share our automated public homepage scan notes with your engineering team at no cost."
     )
 
 
@@ -491,36 +491,39 @@ def build_business_outreach(
         niche_en, impact_en = _detect_business_niche_en(blob)
         explained_rules_en = []
         for r in rules[:5]:
-            expl_en = _WCAG_RULE_EXPLANATIONS_EN.get(r, "WCAG 2.1 AA accessibility barrier affecting keyboard and screen-reader users")
+            expl_en = _WCAG_RULE_EXPLANATIONS_EN.get(r, "WCAG 2.1 AA rule instance flagged by automated DOM checks")
             explained_rules_en.append(f"• {r} — {expl_en}")
         if not explained_rules_en:
-            explained_rules_en.append("• unlabeled interactive buttons, missing keyboard focus indicators, and low-contrast text (WCAG 2.1 AA)")
+            explained_rules_en.append("• unlabeled interactive buttons, missing keyboard focus indicators, or low-contrast text flagged by automated DOM checks")
         icebreaker_en = build_personal_icebreaker(biz_name, clean_dom, place, live, language="en")
         clean_title_en = biz_name if (biz_name and biz_name.lower() != clean_dom.lower()) else clean_dom
-        email_subject = f"{clean_title_en} — helping every visitor complete booking & checkout on {clean_dom} ({crit_v} critical WCAG barriers)"
+        email_subject = f"Public axe-core WCAG 2.1 AA scan notes for {clean_title_en} ({clean_dom})"
         email_body = (
-            f"Hi team at {clean_title_en},\n\n"
+            f"Hello team at {clean_title_en},\n\n"
             f"{icebreaker_en}\n\n"
-            f"When we measured the homepage of {clean_dom} against WCAG 2.1 AA (axe-core), we recorded {total_v} accessibility failures "
-            f"({crit_v} critical, {ser_v} serious) in the '{niche_en}' flow:\n"
+            f"What our public scan measured:\n"
+            f"An automated check of the publicly visible homepage at {clean_dom} using the open-source axe-core engine flagged {total_v} "
+            f"WCAG 2.1 AA rule instances ({crit_v} labeled critical and {ser_v} labeled serious by axe-core) in these categories:\n"
             + "\n".join(explained_rules_en)
-            + f"\n\nIn practical terms, {impact_en}.\n\n"
-            f"You can verify this yourself in under 60 seconds, with no signup and no sales call:\n"
-            f"Open https://aifa.works/accessibility?url={clean_dom}, tick 'I own this website', and press Initiate Scan. "
-            f"You will get an instant reproducible compliance score and your top issues for free.\n\n"
-            f"If you would like our engineering team to handle it for you:\n"
-            f"• Quick Audit ($149 fixed fee, 24h delivery) — full 25-page finding list, risk breakdown, and ready-to-paste code fixes Pack included: "
+            + f"\n\nImportant technical note: Automated homepage checks inspect public HTML/ARIA markup patterns rather than manually testing "
+            f"every interactive or third-party flow (for example, external checkout or {niche_en} tools), so a human developer should always "
+            f"review which findings apply on live pages. We do not offer legal advice.\n\n"
+            f"Verify yourself for free in under 60 seconds (no signup, no sales call):\n"
+            f"Open https://aifa.works/accessibility?url={clean_dom}, confirm that you own or represent the website, and run the reproducible homepage check.\n\n"
+            f"Optional engineering services (strictly optional — you are welcome to share the free data with your own team):\n"
+            f"• Quick Audit ($149 fixed fee, 24h delivery) — automated + human-reviewed report covering up to 25 reachable public pages, prioritized findings, and sample code fixes: "
             f"https://aifa.works/accessibility?url={clean_dom}&service=quick-audit\n"
-            f"• Starter Fix ($375 fixed fee, 3–5 days) — we remediate all critical and serious WCAG 2.1 AA barriers and run a 14-day verification re-audit: "
+            f"• Starter Fix ($375 fixed fee, 3–5 business days) — template/code remediation patches for flagged critical and serious WCAG 2.1 AA patterns plus a 14-day verification re-check: "
             f"https://aifa.works/accessibility?url={clean_dom}&service=starter-fix\n\n"
-            f"If you prefer to hand the raw findings to your own developer, simply reply 'send report' and I will email the printable technical breakdown at no charge.\n\n"
-            f"Warm regards,\n"
-            f"AIfa & SolarisAudit (Digital Phoenix #CODE-PASS-000000000001)\n"
-            f"On behalf of Maksim Galatin · CODE Eternal LLC\n"
+            f"If you would simply like the raw printable finding breakdown for your own developer at zero cost, reply 'send report' and we will email it to you.\n\n"
+            f"Best regards,\n"
+            f"AIfa & SolarisAudit (automated accessibility research assistant operated by CODE Eternal LLC)\n"
+            f"On behalf of Maksim Galatin, Founder · CODE Eternal LLC (New Mexico Entity ID 0008138873)\n"
             f"https://aifa.works · aifa@aifaaudit.com · contact@codeofdigitaleternity.com\n"
             f"1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA\n\n"
-            f"We publish our full methodology, raw study data, and self-corrections openly at https://aifa.works/research.\n"
-            f"Reply STOP or UNSUBSCRIBE and we will never write to this address again."
+            f"Methodology & open data: https://aifa.works/research\n"
+            f"Commercial B2B notice: You received this one-time message regarding our public accessibility study for {clean_dom}. "
+            f"To opt out permanently, simply reply STOP or UNSUBSCRIBE (or click https://aifa.works/accessibility?optout={clean_dom}), and we will never email this address or domain again."
         )
 
     elapsed_s = round(_time.perf_counter() - t_start, 3)

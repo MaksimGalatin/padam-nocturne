@@ -871,7 +871,7 @@ def build_aifa_chancellor_draft_for_antigravity(
         "Facts you know with 100% precision:\n"
         f"- Audit findings for {clean_dom}: {pkg.get('email_body', '')[:1200]}\n"
         f"- Free 60-second self-verification tool (no signup): https://aifa.works/accessibility?url={clean_dom}\n"
-        f"- Quick Audit ($149 fixed fee, 24h delivery): full 25-page finding list, risk breakdown, and ready-to-paste code fixes Pack: https://aifa.works/accessibility?url={clean_dom}&service=quick-audit\n"
+        f"- Quick Audit ($149 fixed fee, 24h delivery): finding breakdown (up to 25 reachable public pages), risk breakdown, and ready-to-paste code fixes Pack: https://aifa.works/accessibility?url={clean_dom}&service=quick-audit\n"
         f"- Starter Fix ($375 fixed fee, 3-5 days delivery): our engineering team remediates all critical and serious WCAG 2.1 AA barriers and runs a 14-day verification re-audit: https://aifa.works/accessibility?url={clean_dom}&service=starter-fix\n"
         "- Payment options on the website checkout modal: Visa/Mastercard (Fiat-to-Crypto), USDC, USDT, SOL, BTC, ETH via NOWPayments invoice.\n"
         "- No hidden retainers, no pressure, full transparency (open methodology at https://aifa.works/research).\n"
@@ -923,7 +923,7 @@ def build_aifa_chancellor_draft_for_antigravity(
                 f"You can verify the exact WCAG 2.1 AA findings on your homepage in under 60 seconds at no charge here:\n"
                 f"https://aifa.works/accessibility?url={clean_dom}\n\n"
                 f"When you are ready to proceed, you can choose either option directly on the page (payable via Card, USDC, USDT, or crypto):\n"
-                f"• Quick Audit ($149 fixed fee, 24h delivery — full 25-page finding list & ready-to-paste code fixes): https://aifa.works/accessibility?url={clean_dom}&service=quick-audit\n"
+                f"• Quick Audit ($149 fixed fee, 24h delivery — finding breakdown (up to 25 reachable public pages) & ready-to-paste code fixes): https://aifa.works/accessibility?url={clean_dom}&service=quick-audit\n"
                 f"• Starter Fix ($375 fixed fee, 3–5 days — full remediation of all critical & serious barriers + 14-day verification re-audit): https://aifa.works/accessibility?url={clean_dom}&service=starter-fix\n\n"
                 f"Warm regards,\nAIfa & SolarisAudit · CODE Eternal LLC\nhttps://aifa.works · aifa@aifaaudit.com\n1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA"
             )

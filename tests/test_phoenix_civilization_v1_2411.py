@@ -653,7 +653,7 @@ def test_can_spam_compliance_gate_and_2pct_bounce_sentinel_quarantine(tmp_path: 
 
 
 def test_router_strictly_zero_paid_and_vertex_strictly_after_local(monkeypatch):
-    """Роутер содержит $0 платных контуров, а грантовый Vertex AI по умолчанию выключен и стоит строго ПОСЛЕ Ollama."""
+    """Роутер содержит $0 платных контуров с карты, а грантовый Vertex AI включён по умолчанию строго ПОСЛЕ Ollama."""
     from padam import router as pr
 
     monkeypatch.setenv("PADAM_LLM_GEMINI_KEYS", "AIzaDummyKey1,AIzaDummyKey2")
@@ -664,15 +664,12 @@ def test_router_strictly_zero_paid_and_vertex_strictly_after_local(monkeypatch):
     contours_default = pr.load_contours()
     names_default = [c.name for c in contours_default]
     assert "paid_last_resort" not in names_default
-    assert "vertex_grant_after_local" not in names_default
-    assert names_default.index("gemini_acct_1") < names_default.index("local")
+    assert "vertex_grant_after_local" in names_default
+    assert names_default.index("gemini_acct_1") < names_default.index("local") < names_default.index("vertex_grant_after_local")
 
-    monkeypatch.setenv("PADAM_ALLOW_VERTEX_AFTER_LOCAL", "1")
-    contours_opt_in = pr.load_contours()
-    names_opt_in = [c.name for c in contours_opt_in]
-    assert "paid_last_resort" not in names_opt_in
-    assert "vertex_grant_after_local" in names_opt_in
-    assert names_opt_in.index("local") < names_opt_in.index("vertex_grant_after_local")
+    monkeypatch.setenv("PADAM_ALLOW_VERTEX_AFTER_LOCAL", "0")
+    contours_off = pr.load_contours()
+    assert "vertex_grant_after_local" not in [c.name for c in contours_off]
 
 
 def test_inbound_client_question_queues_for_aifa_antigravity(tmp_path: Path, monkeypatch):

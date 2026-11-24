@@ -10448,13 +10448,15 @@ async function renderRoleMatrix(rolesList, agentsList) {
     }
     const bSet = _el('button', 'btn-primary', S.fam_assign_role_btn || 'Assign');
     bSet.type = 'button';
-    bSet.onclick = async () => {
+    const saveRoleNow = async () => {
       try {
         await api('/api/v2/ark/roles', { role_key: r.role_key, agent_id: sel.value });
         say(S.done, true);
         loadFamily();
       } catch (e) { say(S.failed + ': ' + e.message, false); }
     };
+    sel.onchange = saveRoleNow;
+    bSet.onclick = saveRoleNow;
     ctrlRow.append(sel, bSet);
     card.appendChild(ctrlRow);
     grid.appendChild(card);

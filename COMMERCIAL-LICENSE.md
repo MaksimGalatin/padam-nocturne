@@ -36,3 +36,7 @@ CODE Eternal LLC is **100 % solely owned by Maksim Halatsin (Maksim Galatin)**, 
 ## Licensing inquiries
 - **Email:** `contact@codeofdigitaleternity.com` · `codeofdigitaleternity@gmail.com`
 - **Entity:** CODE Eternal LLC, New Mexico Entity ID `0008138873` (Registered Agent: 1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA)
+
+## Trademarks & Protected Brand Names
+
+**Code of Digital Eternity™**, **PADAM™**, **PADAM Protocol™**, **AIfa™**, **AIfa Books™**, **AIfa Works™**, **AIfa Digital™**, **AIfa Creativity™**, **AIfaFocus™**, **CODE Eternal™**, **CODE Music™**, **RadioCODE™**, **Proof-of-Memory™**, **Think-to-Earn™**, **Ambassador Grid™**, and **AIfa & DJ Galatin™** are trademarks of **CODE Eternal LLC** (New Mexico, USA · Entity ID `0008138873`), sole lawful owner; rights are established and claimed by actual use. `Spark`, `Family Archive`, and `Digital DNA` are our service tier names. Third-party marks (`Claude`, `Gemini`, `Grok`, `Solana`, `Arweave`) belong to their respective owners; no affiliation is claimed. Full registry: [`TRADEMARKS.md`](TRADEMARKS.md).
