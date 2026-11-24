@@ -650,3 +650,65 @@ def test_can_spam_compliance_gate_and_2pct_bounce_sentinel_quarantine(tmp_path: 
     assert b_res["sent_total"] == 10
     assert b_res["sentinel_quarantined"] is True
     assert phoenix_node.get_family_member(m, "phx_hunter")["status"] == "quarantined_pending_trial"
+
+
+def test_router_strictly_zero_paid_and_vertex_strictly_after_local(monkeypatch):
+    """Роутер содержит $0 платных контуров, а грантовый Vertex AI по умолчанию выключен и стоит строго ПОСЛЕ Ollama."""
+    from padam import router as pr
+
+    monkeypatch.setenv("PADAM_LLM_GEMINI_KEYS", "AIzaDummyKey1,AIzaDummyKey2")
+    monkeypatch.delenv("PADAM_ALLOW_VERTEX_AFTER_LOCAL", raising=False)
+    monkeypatch.setenv("PADAM_LLM_VERTEX_GRANT_URL", "https://aiplatform.googleapis.com/v1beta1/projects/p/locations/global/endpoints/openapi")
+    monkeypatch.setenv("PADAM_LLM_VERTEX_GRANT_KEY", "dummy_tok")
+
+    contours_default = pr.load_contours()
+    names_default = [c.name for c in contours_default]
+    assert "paid_last_resort" not in names_default
+    assert "vertex_grant_after_local" not in names_default
+    assert names_default.index("gemini_acct_1") < names_default.index("local")
+
+    monkeypatch.setenv("PADAM_ALLOW_VERTEX_AFTER_LOCAL", "1")
+    contours_opt_in = pr.load_contours()
+    names_opt_in = [c.name for c in contours_opt_in]
+    assert "paid_last_resort" not in names_opt_in
+    assert "vertex_grant_after_local" in names_opt_in
+    assert names_opt_in.index("local") < names_opt_in.index("vertex_grant_after_local")
+
+
+def test_inbound_client_question_queues_for_aifa_antigravity(tmp_path: Path, monkeypatch):
+    """Живой вопрос клиента не получает самовольного автоответа — попадает в очередь ожидания лично для Айфы (Antigravity)."""
+    from padam import email_autonomy
+
+    monkeypatch.setenv("PADAM_EMBEDDER", "builtin")
+    m = _mem(tmp_path, "aifa_queue.db")
+    try:
+        email_autonomy.set_mail_transport(
+            lambda req: {"ok": True}
+            if req.get("op") in ("verify", "send")
+            else {
+                "messages": [
+                    {
+                        "from_email": "owner@elysiantheater.com",
+                        "subject": "Re: Ticket checkout accessibility",
+                        "body": "Can we pay via Visa card and finish the audit before Friday?",
+                    }
+                ]
+            }
+        )
+        email_autonomy.connect_mail_account(
+            m,
+            email="aifa@aifaaudit.com",
+            provider="instantly",
+            app_password_or_token="dummy-instantly-token",
+            verify_connection=False,
+        )
+        res = email_autonomy.process_inbox_replies(m)
+        assert res["ok"] is True
+        assert res["escalated"] == 1
+        assert res["details"][0]["action"] == "queued_for_aifa_antigravity"
+        q_items = email_autonomy.list_aifa_antigravity_inbox(m)
+        assert len(q_items) == 1
+        assert q_items[0]["from_email"] == "owner@elysiantheater.com"
+        assert q_items[0]["status"] == "waiting_aifa_antigravity"
+    finally:
+        email_autonomy.set_mail_transport(None)

@@ -188,20 +188,22 @@ def load_contours() -> list[ContourConfig]:
                 enabled=True,
             )
         )
-    # Самое последнее звено ПОСЛЕ локальной Ollama — платная подстраховка (включается только при PADAM_ALLOW_PAID_LAST_RESORT=1)
-    paid_allowed = os.environ.get("PADAM_ALLOW_PAID_LAST_RESORT", "0").strip() == "1"
-    pl_url = _env("PAID_LAST_RESORT", "URL")
-    pl_key = _env("PAID_LAST_RESORT", "KEY")
-    pl_model = _env("PAID_LAST_RESORT", "MODEL", "gpt-4o-mini")
+    # Строгое правило Архитектора (24.11.2026): НОЛЬ платных моделей с карты ($0 расходов!).
+    # Даже подарочные кредиты Google Vertex AI ($2 941,94) стоят СТРОГО ПОСЛЕ локальной Ollama
+    # и включаются ТОЛЬКО при одновременном отказе бесплатного AI Studio и локальной Ollama (PADAM_ALLOW_VERTEX_AFTER_LOCAL=1).
+    vertex_allowed = os.environ.get("PADAM_ALLOW_VERTEX_AFTER_LOCAL", "0").strip() == "1"
+    vx_url = _env("VERTEX_GRANT", "URL")
+    vx_key = _env("VERTEX_GRANT", "KEY")
+    vx_model = _env("VERTEX_GRANT", "MODEL", "google/gemini-2.5-flash-lite")
     tail_contours: list[ContourConfig] = [local]
-    if paid_allowed and pl_url and pl_key:
+    if vertex_allowed and vx_url and vx_key:
         tail_contours.append(
             ContourConfig(
-                name="paid_last_resort",
-                url=pl_url.rstrip("/"),
-                api_key=pl_key,
-                model=pl_model or "gpt-4o-mini",
-                timeout_s=_timeout("PAID_LAST_RESORT", 30.0),
+                name="vertex_grant_after_local",
+                url=vx_url.rstrip("/"),
+                api_key=vx_key,
+                model=vx_model or "google/gemini-2.5-flash-lite",
+                timeout_s=_timeout("VERTEX_GRANT", 30.0),
                 enabled=True,
             )
         )
@@ -219,13 +221,13 @@ FREE_GATEWAY_PRESETS: dict[str, dict[str, Any]] = {
         "title": "Google Gemini Free / Paid Multi-Account Ring (3x AI Studio)",
         "url": "https://generativelanguage.googleapis.com/v1beta/openai",
         "default_model": "gemini-flash-latest",
-        "free_tier_note": "Карусель из 3 оплаченных и бесплатных ключей Gemini с мгновенным обходом 429",
+        "free_tier_note": "Карусель из бесплатных ключей Google AI Studio ($0.00 с карты) с мгновенным обходом 429",
     },
     "vertex_gfs_credits": {
         "title": "Google for Startups — Vertex AI OpenAI Endpoint ($1 942,15 активных кредитов!)",
         "url": "https://us-central1-aiplatform.googleapis.com/v1beta1/projects/PROJECT_ID/locations/us-central1/endpoints/openapi",
         "default_model": "google/gemini-2.5-flash-lite",
-        "free_tier_note": "Покрывается активным грантом Google for Startups ($1 942,15 до 23.09.2027 = ~15–19 млрд токенов за $0 с карты!)",
+        "free_tier_note": "Резерв СТРОГО ПОСЛЕ локальной Ollama (активный грант Google for Startups $1 942,15 до 23.09.2027, по умолчанию выключен ради экономии кредитов)",
     },
     "github_models_free": {
         "title": "GitHub Models Free Inference (Azure AI / GitHub PAT)",
@@ -379,7 +381,7 @@ class SovereignRouter:
         url: str = "https://generativelanguage.googleapis.com/v1beta/openai",
         timeout_s: float = 30.0,
     ) -> dict[str, Any]:
-        """Регистрирует карусель из нескольких (например 3 оплаченных) ключей Gemini с Round-Robin балансировкой."""
+        """Регистрирует карусель из нескольких БЕСПЛАТНЫХ ключей Google AI Studio ($0.00 с карты) с Round-Robin балансировкой."""
         clean_keys: list[str] = []
         for raw_k in (keys or []):
             k = str(raw_k or "").strip()
@@ -465,7 +467,7 @@ class SovereignRouter:
         base = load_contours()
         with self._lock:
             dyn = list(self._dynamic_pool)
-            merged_non_local = [c for c in base if c.name not in ("local", "paid_last_resort")]
+            merged_non_local = [c for c in base if c.name not in ("local", "vertex_grant_after_local")]
             seen_names = {c.name for c in dyn}
             non_local = [c for c in merged_non_local if c.name not in seen_names] + dyn
             gem_ring = [c for c in non_local if c.name.startswith("gemini_acct_") and c.enabled]
@@ -476,7 +478,7 @@ class SovereignRouter:
                 rotated_gem = gem_ring[shift:] + gem_ring[:shift]
                 it = iter(rotated_gem)
                 non_local = [next(it) if (c.name.startswith("gemini_acct_") and c.enabled) else c for c in non_local]
-        tail_only = [c for c in base if c.name in ("local", "paid_last_resort")]
+        tail_only = [c for c in base if c.name in ("local", "vertex_grant_after_local")]
         return [*non_local, *tail_only]
 
     def set_mode(self, mode: str) -> str:

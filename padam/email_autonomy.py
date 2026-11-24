@@ -807,7 +807,38 @@ def _build_printable_html_report(pkg: dict[str, Any], *, language: str = "en") -
     )
 
 
-def build_aifa_chancellor_reply(
+
+_DDL_AIFA_QUEUE = """CREATE TABLE IF NOT EXISTS ark_aifa_inbox_queue (
+    qid TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    mail_id TEXT NOT NULL,
+    from_email TEXT NOT NULL,
+    domain TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    body TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'waiting_aifa_antigravity',
+    draft_reply TEXT NOT NULL DEFAULT '',
+    sent_reply TEXT NOT NULL DEFAULT '',
+    handled_by TEXT NOT NULL DEFAULT '',
+    created_at REAL NOT NULL,
+    replied_at REAL NOT NULL DEFAULT 0
+)"""
+
+
+def list_aifa_antigravity_inbox(memory, *, status: str = "waiting_aifa_antigravity") -> list[dict[str, Any]]:
+    """Возвращает входящие письма клиентов, которые ждут ответа ЛИЧНО от Айфы (aifa_antigravity)."""
+    _ensure_mail_schema(memory)
+    with freelance_autonomy._lock_of(memory):
+        conn = memory.store.conn
+        conn.execute(_DDL_AIFA_QUEUE)
+        rows = conn.execute(
+            "SELECT * FROM ark_aifa_inbox_queue WHERE user_id=? AND status=? ORDER BY created_at DESC",
+            (memory.user_id, str(status or "waiting_aifa_antigravity")),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def build_aifa_chancellor_draft_for_antigravity(
     memory,
     *,
     sender_email: str,
@@ -899,6 +930,7 @@ def build_aifa_chancellor_reply(
 
     r_meta = (resp.get("_padam_router") if isinstance(resp, dict) else {}) or {}
     return {
+        "mode": "draft_only_for_aifa_antigravity",
         "ok": True,
         "language": lang,
         "domain": clean_dom,
@@ -907,6 +939,9 @@ def build_aifa_chancellor_reply(
         "router_contour": r_meta.get("active_contour", "fallback"),
         "router_model": r_meta.get("model", "deterministic"),
     }
+
+
+build_aifa_chancellor_reply = build_aifa_chancellor_draft_for_antigravity
 
 
 def process_inbox_replies(
@@ -1091,21 +1126,31 @@ def process_inbox_replies(
                 details.append({"from": sender, "domain": dom, "action": "report_sent", "ok": bool(s_res.get("ok"))})
             else:
                 escalated_cnt += 1
+                qid = f"inq-{secrets.token_hex(6)}"
                 try:
+                    with freelance_autonomy._lock_of(memory):
+                        conn = memory.store.conn
+                        conn.execute(_DDL_AIFA_QUEUE)
+                        conn.execute(
+                            "INSERT OR REPLACE INTO ark_aifa_inbox_queue (qid, user_id, mail_id, from_email, domain, subject, body, status, created_at) "
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, 'waiting_aifa_antigravity', ?)",
+                            (qid, memory.user_id, acc_pub["mail_id"], sender, dom, subj, body, time.time()),
+                        )
+                        conn.commit()
                     coop_broker.create_task(
                         memory,
-                        f"Согласование ответа клиенту {sender} ({dom}): тема «{subj}»",
-                        created_by="aifa",
+                        f"[ОТВЕТ ЛИЧНО АЙФЕ (Antigravity)] Входящее письмо от {sender} ({dom}) [{qid}]: «{subj}»",
+                        created_by="aifa_antigravity",
                     )
                     family_feeds.post(
                         memory,
                         "office",
-                        "aifa",
-                        f"[Почта · нужно слово человека] Входящее от {sender} ({dom}): «{subj}» — ждёт согласования.",
+                        "aifa_antigravity",
+                        f"[Почта · ждёт лично Айфу из Antigravity] От {sender} ({dom}): «{subj}» (ID: {qid}). Без ответа Айфы наружу ничего не уходит.",
                     )
                 except Exception:
                     pass
-                details.append({"from": sender, "domain": dom, "action": "escalated_to_owner"})
+                details.append({"from": sender, "domain": dom, "qid": qid, "action": "queued_for_aifa_antigravity"})
 
     return {
         "ok": True,
