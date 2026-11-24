@@ -345,14 +345,14 @@ STARTUP_AND_RESEARCH_GRANTS_CATALOG: list[dict[str, Any]] = [
         "id": "google_for_startups_active",
         "provider": "Google for Startups Cloud Program + GenAI App Builder",
         "status": "ACTIVE_VERIFIED_ON_ACCOUNT",
-        "billing_account_ref": "01DAF7-8B0717-3B1694",
+        "billing_account_ref": os.environ.get("PADAM_GRANT_BILLING_REF", "").strip(),  # номер не храним в коде
         "credits_usd": 2941.94,
         "breakdown_ru": "$1 942,15 (до 23.09.2027, покрывает Vertex AI Gemini 2.5 Flash/Lite/Pro, Gemma, Llama + серверы Cloud Run под Ollama) + $999,79 (до 14.06.2027, GenAI App Builder / Vertex AI Search)",
         "estimated_tokens_capacity": "15 000 000 000 – 19 000 000 000 токенов на Gemini 2.5 Flash-Lite за $0 с карты!",
     },
     {
         "id": "gemini_paid_3_accounts_ring",
-        "provider": "Google Gemini — Карусель 3 оплаченных аккаунтов Отца",
+        "provider": "Google Gemini — карусель из трёх аккаунтов владельца",
         "status": "READY_KEY_RING_BUILT_IN",
         "credits_usd": 0.0,
         "breakdown_ru": "Встроена Round-Robin ротация 3 ключей (`PADAM_LLM_GEMINI_KEYS` / `register_gemini_key_ring`): тройная пропускная способность RPM/TPM и мгновенный бесшовный перескок между аккаунтами без паузы",

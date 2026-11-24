@@ -90,6 +90,8 @@ The Software is licensed, not sold.
    (d) Opt-out: If you do not wish to pay the commission, do not enable or use Earning Features. All local
        memory, Agentic Shield security and MCP features outside Earning Features carry zero commission.
    (e) Licensor may suspend Earning Features access and Platform Terms privileges for non-payment or breach.
+   (f) Taxes: Commissions are stated exclusive of taxes. If any withholding or similar tax is required by law,
+       you shall gross up the payment so that Licensor receives the full commission.
 
 5. FUTURE CONVERSION TO APACHE-2.0 AND RELEASE STABILITY
    (a) Delayed Open-Source Conversion: On each released version's Change Date (24 months after its official
@@ -125,7 +127,8 @@ The Software is licensed, not sold.
    you accept this License, which has full legal force equivalent to a signed writing under the U.S.
    E-SIGN Act, UETA, EU eIDAS Regulation (EU 910/2014) and UNCITRAL electronic-signature rules. If you do
    not accept it, do not install or use the Software and delete all copies. Your rights terminate
-   automatically upon any breach. Sections 1, 3(b), 4(b)-(c) (for accrued commissions), 5(b), 6, 7, 8, 9
+   automatically and immediately upon any breach of Section 4 or Section 6(a). For any other breach, your
+   rights terminate if you fail to cure it within thirty (30) days after notice from Licensor. Sections 1, 3(b), 4(b)-(c) (for accrued commissions), 5(b), 6, 7, 8, 9
    and 10 survive any termination, expiration or Change Date conversion.
 
 8. NO WARRANTY, AI/SECURITY DISCLAIMER, MANDATORY LAW EXCEPTIONS AND LIABILITY CAP
@@ -166,6 +169,12 @@ The Software is licensed, not sold.
    (e) Construction: Section headings are for convenience only. Both parties agree that any ambiguity shall
        be construed fairly in accordance with its plain meaning and NOT strictly against the drafter
        (the doctrine of contra proferentem is expressly waived to the maximum extent permitted by law).
+   (f) International Commission Claims: Any claim for unpaid commissions against a licensee located outside
+       the United States may, at Licensor's election, be finally resolved by arbitration administered by the
+       International Centre for Dispute Resolution under its International Arbitration Rules, seated in
+       Albuquerque, New Mexico, in English, before a single arbitrator; judgment on the award may be entered
+       in any court of competent jurisdiction. Licensor's right to injunctive relief under Section 9(a) is
+       not affected.
 
 10. TRADEMARKS AND BRAND PROTECTION
     Code of Digital Eternity™, PADAM™, PADAM Protocol™, AIfa™, AIfa Books™, AIfa Works™, AIfa Digital™,
@@ -175,6 +184,20 @@ The Software is licensed, not sold.
     Digital DNA are service tier names of CODE Eternal LLC. Rights arise from and are claimed through actual
     use. No licence herein grants trademark rights, nor authorizes registering or using any confusingly
     similar domain name, social handle, API route, or package name on PyPI, npm, Docker Hub or IDE
-    marketplaces. Any unauthorized use violates trademark and unfair-competition laws and will be prosecuted.
+    marketplaces. Any unauthorized use violates trademark and unfair-competition laws and will be enforced.
     Claude, Gemini, Grok, Solana, Arweave and other third-party marks belong to their respective owners;
     no affiliation is claimed. See TRADEMARKS.md.
+
+11. LICENSE VERSIONS
+    Licensor may publish revised versions of this License. Each release of the Software is governed by the
+    version stated in that release; a revised version never applies retroactively to a release already
+    published (see Section 5(b)).
+
+12. ASSIGNMENT
+    You may not assign or transfer this License without Licensor's prior written consent. Licensor may
+    assign this License, including the right to collect commissions, to an affiliate or to a successor in a
+    merger, acquisition or sale of all or substantially all of its relevant assets.
+
+13. FEEDBACK
+    If you give Licensor suggestions or feedback about the Software, Licensor may use them without
+    restriction or any obligation to you.

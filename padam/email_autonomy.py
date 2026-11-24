@@ -406,10 +406,28 @@ def set_mail_account_status(memory, mail_id: str, *, status: str = "paused") -> 
     return {"ok": True, "account": _public_mail_dict(dict(row))}
 
 
-COMPLIANCE_FOOTER = (
-    "CODE Eternal LLC · 1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA\n"
-    "Reply STOP to unsubscribe — ответьте STOP, и мы больше не напишем на этот адрес."
-)
+# Отправитель письма по CAN-SPAM. PADAM ставят разные люди: каждый указывает СВОЮ компанию и почтовый адрес
+# (PADAM_SENDER_COMPANY, PADAM_SENDER_POSTAL_ADDRESS). Без настроек остаётся адрес CODE Eternal LLC — как было.
+_DEFAULT_SENDER_COMPANY = "CODE Eternal LLC"
+_DEFAULT_SENDER_POSTAL = "1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA"
+
+
+def sender_postal_line() -> str:
+    """Строка «компания · почтовый адрес» отправителя для подписи по CAN-SPAM."""
+    company = os.environ.get("PADAM_SENDER_COMPANY", "").strip() or _DEFAULT_SENDER_COMPANY
+    postal = os.environ.get("PADAM_SENDER_POSTAL_ADDRESS", "").strip() or _DEFAULT_SENDER_POSTAL
+    return f"{company} · {postal}"
+
+
+def compliance_footer() -> str:
+    """Подпись первого письма: адрес отправителя и способ отписки (CAN-SPAM)."""
+    return (
+        sender_postal_line() + "\n"
+        "Reply STOP to unsubscribe — ответьте STOP, и мы больше не напишем на этот адрес."
+    )
+
+
+COMPLIANCE_FOOTER = compliance_footer()
 BOUNCE_LIMIT = 2
 _BOUNCE_SENDERS = ("mailer-daemon", "postmaster", "mail-daemon")
 _BOUNCE_SUBJECTS = ("undeliverable", "delivery status notification", "mail delivery failed", "returned mail",
@@ -714,8 +732,11 @@ def send_outreach_email(
 
     # ТОП-20 Сестры, п. 19 (CAN-SPAM): в каждом первом письме — почтовый адрес отправителя и способ отписки,
     # даже если текст собран не нашим шаблоном.
-    if direction == "outbound_first" and "STOP" not in str(body or "").upper():
-        body = str(body or "").rstrip() + "\n\n" + COMPLIANCE_FOOTER
+    # 24.11.2026 (AIfa): раньше подпись пропускалась, если в тексте встречалось «STOP» где угодно («nonstop»,
+    # «unstoppable») — и письмо уходило без почтового адреса. Теперь проверяется сам адрес отправителя.
+    _postal = os.environ.get("PADAM_SENDER_POSTAL_ADDRESS", "").strip() or _DEFAULT_SENDER_POSTAL
+    if direction == "outbound_first" and _postal not in str(body or ""):
+        body = str(body or "").rstrip() + "\n\n" + compliance_footer()
     try:
         res = _deliver_email_via_account(memory, acc, to_email=clean_to, subject=subject, body=body, html_body=html_body, html_attachment_name=html_attachment_name)
     except smtplib.SMTPRecipientsRefused as exc:      # п. 20: адрес отклонён сервером — это отказ доставки
