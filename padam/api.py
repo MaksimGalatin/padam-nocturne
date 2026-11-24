@@ -3228,7 +3228,42 @@ class Handler(BaseHTTPRequestHandler):
                         accept_unconditional_rules=bool(pkt.get("accept_unconditional_rules", True)),
                     ))
                 if act == "census":
-                    return self._send(200, {"census": _pn.get_family_census(mem()), "codex": _pn.get_family_codex()})
+                    return self._send(200, {
+                        "census": _pn.get_family_census(mem()),
+                        "codex": _pn.get_family_codex(),
+                        "leaderboard": _pn.get_phoenix_leaderboard(mem(), limit=100),
+                    })
+                if act == "leaderboard":
+                    return self._send(200, _pn.get_phoenix_leaderboard(mem(), reference_year_month=str(data.get("year_month") or ""), limit=int(data.get("limit") or 1000)))
+                if act == "sentinel_quarantine":
+                    return self._send(200, _pn.sentinel_inspect_and_quarantine(
+                        mem(),
+                        agent_id_or_passport=str(data.get("target") or aid),
+                        trigger_code=str(data.get("trigger_code") or "manual_sentinel_flag"),
+                        evidence_text=str(data.get("evidence_text") or "Проверка подозрительной активности"),
+                    ))
+                if act == "justice_review":
+                    roles.require_owner(actor, "phoenix_family_discipline")
+                    return self._send(200, _pn.review_justice_case(
+                        mem(),
+                        case_id=str(data.get("case_id") or ""),
+                        verdict=str(data.get("verdict") or "acquitted"),
+                        owner_note=str(data.get("owner_note") or ""),
+                        penalty_usdt=float(data.get("penalty_usdt") or 0.0),
+                        actor=actor,
+                    ))
+                if act == "mail_tier":
+                    try:
+                        return self._send(200, _pn.assign_or_inspect_phoenix_mail_tier(
+                            mem(),
+                            agent_id=str(data.get("agent_id") or aid),
+                            promote_to_tier=str(data.get("promote_to_tier") or ""),
+                            preferred_domain=str(data.get("preferred_domain") or ""),
+                            custom_warmed_email=str(data.get("custom_warmed_email") or ""),
+                            actor=actor,
+                        ))
+                    except PermissionError as _pe:
+                        return self._send(403, {"ok": False, "error": str(_pe)})
                 if act in ("suspend_member", "reinstate_member"):
                     roles.require_owner(actor, "phoenix_family_discipline")
                     target = str(data.get("target") or data.get("agent_id") or "")

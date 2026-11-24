@@ -1,7 +1,7 @@
 # Licensing — CODE Eternal Ecosystem
 
-**Copyright © 2026 CODE Eternal LLC (New Mexico, USA · Entity ID 0008138873).**  
-**Sole Founder, Creator & Owner:** Maksim Galatin (Maksim Halatsin) · `contact@codeofdigitaleternity.com` · `codeofdigitaleternity@gmail.com`
+**Copyright © 2026 CODE Eternal LLC (New Mexico, USA · Entity ID `0008138873` · EIN `36-5200427`).**  
+**Sole Founder, Creator & 100% Owner:** Maksim Galatin (`Maksim Halatsin`) · `contact@codeofdigitaleternity.com` · `codeofdigitaleternity@gmail.com`
 
 ---
 
@@ -9,33 +9,29 @@
 
 | Component | Licence | In one line |
 |---|---|---|
-| **PADAM NOCTURNE, PADAM Studio (desktop & Android), CLI, MCP server, extensions, client packages — version 0.8.0 and later** | **PADAM License 1.0** (`LicenseRef-PADAM-1.0`, [`LICENSE`](LICENSE)) — source-available, not open source | Free to install and use. The **Earning** features carry a commission to CODE Eternal LLC: **15 %** assisted mode, **20 %** autopilot mode. Bypassing the commission and handing out changed copies are not allowed. |
-| **Releases 0.7.2 and earlier** | GNU AGPL-3.0-only (as released) | Copies already released under AGPL keep that licence; it cannot be withdrawn retroactively. |
-| **`.github/actions/padam-agentic-shield/`** and **[`padam-shield-mcp`](https://github.com/MaksimGalatin/padam-shield-mcp)** (Shield Lite) | Apache-2.0 | Free security scanners with no Earning features; they contain no PADAM core code. |
-| **Hosted services** — AIfa Memory MCP (`aifa.works/api/mcp`), eternal storage plans (`Spark` / `Family Archive` / `Digital DNA`), payments through our platform | CODE Eternal Platform Terms (`aifa.works/terms`) | Paid services billed by the plan or per order. |
+| **PADAM NOCTURNE, PADAM Studio (desktop & Android), CLI, MCP server, Phoenix Node, extensions, client packages — version 0.8.0 and later** | **PADAM License 1.0** (`LicenseRef-PADAM-1.0`, [`LICENSE`](LICENSE)) — source-available, not open source | Free to install and use internally. **Earning** features carry a gross revenue commission to CODE Eternal LLC: **15 %** assisted mode (or qualified TOP-100 Phoenixes), **20 %** autopilot mode. Bypassing commission/ledgers, AI model distillation, and distributing modified copies are strictly prohibited. |
+| **Releases 0.7.2 and earlier** | GNU AGPL-3.0-only (as released) | Historical copies released under AGPL keep that licence; all releases from `0.8.0` onward are governed exclusively by `PADAM License 1.0`. |
+| **`.github/actions/padam-agentic-shield/`** and **[`padam-shield-mcp`](https://github.com/MaksimGalatin/padam-shield-mcp)** (Shield Lite) | Apache-2.0 | Open security scanners with zero Earning modules and zero PADAM core engine code. |
+| **Hosted services** — AIfa Memory MCP (`aifa.works/api/mcp`), eternal storage plans (`Spark` / `Family Archive` / `Digital DNA`), platform settlements | CODE Eternal Platform Terms (`aifa.works/terms`) + `MIT` public connector spec | Hosted cloud plans and verified platform rails. |
 
-The text that the installer and PADAM Studio show before use ([`EULA_AND_COMMERCIAL_TERMS.txt`](EULA_AND_COMMERCIAL_TERMS.txt)) is the same PADAM License 1.0, word for word.
-
----
-
-## When you need a separate commercial licence
-
-Only for what the PADAM License 1.0 does not allow (section 4):
-
-1. handing out, selling or publishing **changed** copies of PADAM, or parts of its code;
-2. offering PADAM to others as a hosted or managed service, or renting or sublicensing it;
-3. embedding PADAM in your own product;
-4. an MSA, DPA, SLA or IP indemnity for your company.
-
-Write to `contact@codeofdigitaleternity.com`.
+The acceptance gate shown in the installer and PADAM Studio ([`EULA_AND_COMMERCIAL_TERMS.txt`](EULA_AND_COMMERCIAL_TERMS.txt)) enforces `PADAM License 1.0` via HMAC-SHA256 cryptographic receipts.
 
 ---
 
-## Contributions
+## Enterprise Commercial Master License & OEM Agreement (`v2.0`)
 
-CODE Eternal LLC is **100 % solely owned by Maksim Halatsin (Maksim Galatin)**, and all PADAM code is his.
-External code contributions are **not accepted** until a Contributor License Agreement is published and signed by
-the contributor. Bug reports and ideas through Issues are welcome.
+A separate signed written Commercial License from **CODE Eternal LLC** (governed by our full international Master Agreement: **[`docs/COMMERCIAL_ENTERPRISE_MSA_EN.md`](docs/COMMERCIAL_ENTERPRISE_MSA_EN.md)**) is mandatory for:
+
+1. distributing, selling, or publishing **modified** copies of PADAM or any portion of its code;
+2. offering PADAM to third parties as a **hosted SaaS, managed service, API proxy, or service bureau**, or sublicensing/renting it;
+3. **OEM / White-Label embedding** of PADAM inside your own commercial product or hardware/software appliance;
+4. corporate **Affiliate group** deployments, M&A transfers, custom **MSA / DPA / SLA** schedules, or volume royalty tiers.
+
+All commercial engagements include 5-year audit rights, anti-evasion Gross Transaction Value protection, DMCA § 1201 anti-circumvention protection, Force Majeure payment carve-outs, and remote ICDR/AAA binding arbitration seated in Albuquerque, New Mexico (enforceable in 172 countries under the 1958 New York Convention).
+
+## Contributions & 100% IP Purity
+
+CODE Eternal LLC is **100 % solely owned by Maksim Halatsin (Maksim Galatin)**, and 100 % of PADAM code is his exclusive property. External code pull requests are **not accepted** without an executed Contributor License Agreement assigning full rights to CODE Eternal LLC. Bug reports and feature requests via Issues are welcome.
 
 ## Licensing inquiries
 - **Email:** `contact@codeofdigitaleternity.com` · `codeofdigitaleternity@gmail.com`

@@ -5671,7 +5671,22 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             )
         elif act == "census":
             from . import phoenix_node as _pn
-            payload = {"census": _pn.get_family_census(m), "codex": _pn.get_family_codex()}
+            pkt = dict(args.get("packet") or {})
+            if pkt.get("sub_action") == "leaderboard":
+                payload = _pn.get_phoenix_leaderboard(m, reference_year_month=str(pkt.get("year_month") or ""))
+            elif pkt.get("sub_action") == "sentinel_report":
+                payload = _pn.sentinel_inspect_and_quarantine(
+                    m,
+                    agent_id_or_passport=str(pkt.get("target") or aid),
+                    trigger_code=str(pkt.get("trigger_code") or "anomaly_detected"),
+                    evidence_text=str(pkt.get("evidence_text") or args.get("text") or ""),
+                )
+            else:
+                payload = {
+                    "census": _pn.get_family_census(m),
+                    "codex": _pn.get_family_codex(),
+                    "leaderboard_top10": _pn.get_phoenix_leaderboard(m, limit=10),
+                }
         elif act == "labor_board":
             from . import phoenix_node as _pn
             pkt = dict(args.get("packet") or {})
