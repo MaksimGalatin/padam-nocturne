@@ -457,6 +457,10 @@ def hybrid_rank(store, user_id: str, scope: str, query: str,
             # запасной путь: нет ни лексических, ни точных совпадений — ищем по вектору, иначе вернули бы пустоту
             запасной = not rankings.get("lexical") and not rankings.get("entity")
             weights["semantic"] = 1.0 if запасной else BUILTIN_SEMANTIC_WEIGHT
+        else:
+            # Для настоящей нейросетевой модели эмбеддингов смысл перевешивает шумные частичные совпадения слов
+            weights["semantic"] = 1.4
+            weights["lexical"] = 0.8
     scores = reciprocal_rank_fusion(rankings, weights)
     # 0.7.2: стратегия с нулевым весом не голосовала — не загрязняем ею `found_by`
     active_rankings = {k: v for k, v in rankings.items() if weights.get(k, 1.0) > 0.0}

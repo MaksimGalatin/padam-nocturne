@@ -70,7 +70,14 @@ if EMBEDDER != "builtin":
         v = np.asarray(_vec(text[:8000]), dtype=np.float32)
         n = float(np.linalg.norm(v))
         return v / n if n > 0 else v
+
+    def _embed_with_model(text: str):
+        if not text or not text.strip():
+            return _builtin(text), f"builtin:{embeddings.config.EMBED_DIM}"
+        return _embed(text), EMBEDDER
+
     embeddings.embed = _embed
+    embeddings.embed_with_model = _embed_with_model
     embeddings.метка_модели = lambda: EMBEDDER
 
 data_path, out_dir = Path(sys.argv[1]), Path(sys.argv[2])

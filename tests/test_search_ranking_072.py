@@ -176,3 +176,40 @@ def test_feedback_second_pass_never_displaces_direct_hits_and_is_monotonic(tmp_p
             assert a.score >= b.score, f"Нарушена монотонность score: {a.score} < {b.score}"
     finally:
         mem.close()
+
+
+def test_neural_paraphrase_semantic_hit_not_buried_by_single_keyword_or_second_pass(tmp_path, monkeypatch):
+    """Нейросемантическое совпадение первого прохода без точных слов запроса не улетает ниже одиночного шумового слова."""
+    monkeypatch.setattr(config, "EMBEDDER", "fastembed:test")
+    monkeypatch.setattr(config, "SEARCH_FEEDBACK", True)
+
+    def _fake_embed_with_model(text: str):
+        v = np.zeros(8, dtype=np.float32)
+        low = text.lower()
+        if any(tok in low for tok in ("photography", "camera", "sony a7r", "godox")):
+            v[0] = 1.0
+        elif "coffee" in low:
+            v[1] = 1.0
+        else:
+            v[2] = 1.0
+        return v, "fastembed:test"
+
+    monkeypatch.setattr(embeddings, "embed_with_model", _fake_embed_with_model)
+    monkeypatch.setattr(embeddings, "embed", lambda t: _fake_embed_with_model(t)[0])
+
+    mem = Memory(user_id="u_neural", store=Store(tmp_path / "neural.db"))
+    try:
+        _, gold_id = mem.remember(
+            "I am upgrading my Sony A7R IV with a Godox V1 flash and 24-70mm lens.",
+            scope="global", kind="preference", importance=0.6, origin="user",
+        )
+        # 8 шумовых записей с точным словом "setup" или "accessories", но не про фото
+        for i in range(8):
+            mem.remember(
+                f"Evening coffee machine setup #{i}: cleaned grinder and checked accessories drawer.",
+                scope="global", kind="event", importance=0.9, origin="user",
+            )
+        res = mem.recall("Can you suggest accessories for my photography setup?", scope="global", limit=5)
+        assert res and res[0].id == gold_id, f"Ожидали перефразированный ответ на #1, получили {[r.id for r in res]}"
+    finally:
+        mem.close()

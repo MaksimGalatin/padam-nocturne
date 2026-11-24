@@ -1462,9 +1462,12 @@ class Memory:
         Но записи, появившиеся только во втором проходе, НИКОГДА не вытесняют прямые совпадения первого
         прохода (lexical / entity), а оценки `score` остаются строго монотонными по убыванию.
         """
+        use_neural_direct = bool(self.__dict__.get("_last_neural_sem", False))
         direct_ids = {
             r.id for r in найдено
-            if "lexical" in (r.strategies or ()) or "entity" in (r.strategies or ())
+            if "lexical" in (r.strategies or ())
+            or "entity" in (r.strategies or ())
+            or (use_neural_direct and "semantic" in (r.strategies or ()))
         }
         if not direct_ids and (not найдено or найдено[0].score < 0.35):
             return найдено
@@ -1688,6 +1691,7 @@ class Memory:
         scores, rankings = retrieval.hybrid_rank(
             self.store, self.user_id, scope, query, rows, statuses=statuses)
         if not scores:
+            self.__dict__["_last_neural_sem"] = False
             return []
 
         by_id = {r["id"]: r for r in rows}
@@ -1728,10 +1732,18 @@ class Memory:
             rrf_norm = _ratio if _ratio <= 1.0 else (1.0 + 0.35 * (_ratio - 1.0) / (_ratio + 0.5))
             has_lex = "lexical" in found_by
             has_ent = "entity" in found_by
+            is_neural_sem = (
+                "semantic" in found_by
+                and bool(r.get("embedding_model"))
+                and not str(r.get("embedding_model")).startswith("builtin")
+            )
             if has_lex or has_ent:
                 content_match = 0.55 + 0.30 * term_cov + 0.15 * exact_cov
                 if has_ent:
                     content_match = min(1.15, content_match + 0.15)
+            elif is_neural_sem:
+                # Перефразированный смысловой ответ от нейромодели не должен проигрывать одиночному шумовому слову
+                content_match = 0.65 + 0.25 * term_cov + 0.10 * exact_cov
             else:
                 content_match = 0.42 + 0.28 * term_cov + 0.10 * exact_cov
             rel = rrf_norm * content_match
@@ -1746,6 +1758,12 @@ class Memory:
             rec.score = round(0.80 * rel * meta, 6)
             out.append(rec)
 
+        self.__dict__["_last_neural_sem"] = any(
+            "semantic" in (rec.strategies or ())
+            and bool(by_id[rec.id].get("embedding_model"))
+            and not str(by_id[rec.id].get("embedding_model")).startswith("builtin")
+            for rec in out
+        )
         out.sort(key=lambda x: x.score, reverse=True)
         top = out[:limit]
         if момент:

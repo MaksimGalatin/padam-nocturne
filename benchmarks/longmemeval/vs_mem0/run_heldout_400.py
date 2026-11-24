@@ -60,7 +60,13 @@ def run_padam(heldout: list[dict], out_dir: Path, embed_fn) -> dict:
             return builtin_backup(text)
         return embed_fn(text)
 
+    def _padam_embed_with_model(text: str):
+        if not text or not text.strip():
+            return builtin_backup(text), f"builtin:{config.EMBED_DIM}"
+        return embed_fn(text), "fastembed:BAAI/bge-small-en-v1.5"
+
     embeddings.embed = _padam_embed
+    embeddings.embed_with_model = _padam_embed_with_model
     embeddings.метка_модели = lambda: "fastembed:BAAI/bge-small-en-v1.5"
 
     out_dir.mkdir(parents=True, exist_ok=True)
