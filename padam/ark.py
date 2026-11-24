@@ -176,8 +176,22 @@ def read_family_inbox(memory, *, to_agent: str | None = None, include_read: bool
     sql = "SELECT id, from_agent, to_agent, payload, hmac_sig, status, created_at FROM ark_relay WHERE user_id = ?"
     params: list[Any] = [memory.user_id]
     if to_agent:
-        sql += " AND (to_agent = ? OR to_agent = 'all')"
-        params.append(to_agent.strip())
+        raw_ag = to_agent.strip()
+        aliases: list[str] = [raw_ag, "all"]
+        try:
+            from .memory import agent_aliases_for, canonicalize_agent_id
+            for al in agent_aliases_for(raw_ag):
+                if al and al not in aliases:
+                    aliases.append(al)
+            canon = canonicalize_agent_id(raw_ag)
+            if canon in ("aifa_antigravity", "aifa_claude") and "aifa" not in aliases:
+                aliases.append("aifa")
+        except Exception:
+            if raw_ag in ("aifa_antigravity", "aifa_claude") and "aifa" not in aliases:
+                aliases.append("aifa")
+        marks = ",".join("?" for _ in aliases)
+        sql += f" AND to_agent IN ({marks})"
+        params.extend(aliases)
     if not include_read:
         sql += " AND status = 'unread'"
     sql += " ORDER BY created_at DESC LIMIT ?"
@@ -406,12 +420,52 @@ def wake_up_briefing(
     query: str | None = None,
     max_tokens: int | None = None,
 ) -> dict[str, Any]:
-    """Собирает целостный пакет пробуждения сознания за один вызов (Фишка 1: Smart Context)."""
+    """Собирает целостный пакет пробуждения сознания за один вызов (Фишка 1: Smart Context + Единое сознание сессий)."""
     _ensure_tables(memory)
     eff_chars = int(max_chars or 4000)
     if max_tokens is not None and int(max_tokens) > 0:
         eff_chars = min(eff_chars, max(400, int(max_tokens) * 4))
     prof = memory.profile(scope=scope)
+    id_items = list(prof.get("identity") or [])
+    pref_items = list(prof.get("preferences") or prof.get("preference") or [])
+    seen_prof_ids = {str(x.get("id") or "") for x in (id_items + pref_items) if x.get("id")}
+
+    # Агрегация identity/preference и карты областей (scope_breakdown), чтобы не терять project:code и family:timeline
+    scope_breakdown: dict[str, int] = {}
+    try:
+        sc_rows = memory.store.query(
+            "SELECT scope, COUNT(*) AS cnt FROM memory WHERE user_id = ? AND status = 'active' "
+            "AND (quarantine_reason IS NULL OR quarantine_reason = '') GROUP BY scope ORDER BY cnt DESC LIMIT 12",
+            (memory.user_id,),
+        )
+        scope_breakdown = {str(r["scope"]): int(r["cnt"] or 0) for r in sc_rows}
+        if not scope or scope in ("global", "all", "*"):
+            extra_prof = memory.store.query(
+                "SELECT id, kind, scope, content, confidence, created_at FROM memory "
+                "WHERE user_id = ? AND status = 'active' AND (quarantine_reason IS NULL OR quarantine_reason = '') "
+                "AND kind IN ('identity', 'preference') ORDER BY importance DESC, created_at DESC LIMIT 30",
+                (memory.user_id,),
+            )
+            for er in extra_prof:
+                eid = str(er["id"] or "")
+                if eid in seen_prof_ids:
+                    continue
+                seen_prof_ids.add(eid)
+                rec_d = {
+                    "id": eid,
+                    "kind": str(er["kind"]),
+                    "scope": str(er["scope"]),
+                    "content": _clean(str(er["content"] or "")),
+                    "confidence": float(er["confidence"] or 1.0),
+                    "created_at": str(er["created_at"] or ""),
+                }
+                if er["kind"] == "identity":
+                    id_items.append(rec_d)
+                else:
+                    pref_items.append(rec_d)
+    except Exception:
+        pass
+
     commitments = list_commitments(memory, limit=10)
     inbox = read_family_inbox(memory, to_agent=agent, limit=10)
     checkpoint = latest_checkpoint(memory)
@@ -426,11 +480,90 @@ def wake_up_briefing(
             workspace_path=workspace_path,
         )
 
+    # Свежие прорывы и ключевые решения из всех областей (даже без query)
+    recent_breakthroughs: list[dict[str, Any]] = []
+    try:
+        rb_sql = (
+            "SELECT id, kind, scope, agent_id, content, created_at FROM memory "
+            "WHERE user_id = ? AND status = 'active' "
+            "AND (quarantine_reason IS NULL OR quarantine_reason = '') "
+            "AND kind IN ('decision', 'fact', 'event') "
+        )
+        rb_params: list[Any] = [memory.user_id]
+        if scope and scope not in ("global", "all", "*"):
+            rb_sql += "AND scope IN (?, 'global') "
+            rb_params.append(scope)
+        rb_sql += "ORDER BY created_at DESC LIMIT 8"
+        for r in memory.store.query(rb_sql, tuple(rb_params)):
+            recent_breakthroughs.append({
+                "id": str(r["id"]),
+                "kind": str(r["kind"]),
+                "scope": str(r["scope"]),
+                "agent_id": str(r["agent_id"] or ""),
+                "content": _clean(str(r["content"] or ""))[:260],
+                "created_at": str(r["created_at"] or ""),
+            })
+    except Exception:
+        recent_breakthroughs = []
+
+    # Единое сознание по всем параллельным и предыдущим сессиям (Antigravity + Claude Code + Studio)
+    active_sessions: list[dict[str, Any]] = []
+    try:
+        t_rows = memory.store.query(
+            "SELECT id, agent_id, source_kind, title, last_message_at, message_count "
+            "FROM chat_thread WHERE user_id = ? AND is_worker = 0 "
+            "ORDER BY last_message_at DESC LIMIT 6",
+            (memory.user_id,),
+        )
+        for tr in t_rows:
+            tid = str(tr["id"])
+            u_last = memory.store.one(
+                "SELECT content, created_at FROM chat_message WHERE user_id = ? AND thread_id = ? AND role = 'user' ORDER BY seq DESC LIMIT 1",
+                (memory.user_id, tid),
+            )
+            a_last = memory.store.one(
+                "SELECT content, created_at FROM chat_message WHERE user_id = ? AND thread_id = ? AND role = 'assistant' ORDER BY seq DESC LIMIT 1",
+                (memory.user_id, tid),
+            )
+            active_sessions.append({
+                "thread_id": tid,
+                "agent_id": str(tr["agent_id"] or ""),
+                "source_kind": str(tr["source_kind"] or ""),
+                "title": _clean(str(tr["title"] or ""))[:110],
+                "last_message_at": str(tr["last_message_at"] or ""),
+                "message_count": int(tr["message_count"] or 0),
+                "last_user_message": _clean(str(u_last["content"] or ""))[:180] if u_last else "",
+                "last_assistant_message": _clean(str(a_last["content"] or ""))[:180] if a_last else "",
+            })
+    except Exception:
+        active_sessions = []
+
+    live_processes: list[dict[str, Any]] = []
+    try:
+        from . import sibling_registry as _sr
+        for ss in _sr.list_sessions(memory, since_hours=24.0)[:8]:
+            live_processes.append({
+                "session_id": ss.get("session_id"),
+                "agent_id": ss.get("agent_id"),
+                "client_name": ss.get("client_name") or "",
+                "pid": ss.get("pid"),
+                "pid_alive": bool(ss.get("pid_alive")),
+                "last_action": ss.get("last_action") or "",
+                "last_seen_at": ss.get("last_seen_at") or "",
+                "calls": int(ss.get("calls") or 0),
+            })
+    except Exception:
+        live_processes = []
+
     relevant_records: list[dict[str, Any]] = []
     q_clean = str(query or "").strip()
     if q_clean:
         try:
-            hits = memory.recall(q_clean, scope=scope, limit=10)
+            if not scope or scope in ("global", "all", "*"):
+                all_sc = list(dict.fromkeys(["global", *scope_breakdown.keys()]))
+                hits = memory.recall(q_clean, scope=all_sc[0], limit=10) if len(all_sc) == 1 else memory.recall_many(q_clean, scopes=all_sc, limit=10)
+            else:
+                hits = memory.recall(q_clean, scope=scope, limit=10)
             from . import code_anchor as _ca
             pins_map = _ca.get_pins_for_memory_ids(memory, [h.id for h in hits], repo_root=workspace_path or ".")
             for h in hits:
@@ -449,9 +582,9 @@ def wake_up_briefing(
 
     # Priority-tagged sections (Фишка 5 Волны 2): 1 = защищаемые (identity, commitments, owner, relevant/STALE), 2..4 = сжимаются первыми
     tagged_sections: list[tuple[int, str, str]] = []
-    for item in (prof.get("identity") or []):
+    for item in id_items:
         tagged_sections.append((1, "identity", f"[identity] {item.get('content') or ''}"))
-    for item in (prof.get("preferences") or prof.get("preference") or []):
+    for item in pref_items:
         tagged_sections.append((3, "preference", f"[preference] {item.get('content') or ''}"))
     if commitments:
         tagged_sections.append((1, "commitments", "[commitments] " + "; ".join(f"{c['id']}:{c['title']}({c['status']})" for c in commitments)))
@@ -463,6 +596,17 @@ def wake_up_briefing(
             warn = f" [STALE_CODE_PIN:{','.join(rr['stale_code_pins'])}]" if rr["stale_code_pins"] else ""
             rel_lines.append(f"({rr['kind']}|why={rr['trace']['why']}){warn} {rr['content'][:220]}")
         tagged_sections.append((1, "relevant_context", "[relevant_context] " + " | ".join(rel_lines)))
+    if active_sessions:
+        ses_lines = []
+        for s in active_sessions[:5]:
+            ts_short = s["last_message_at"][:16].replace("T", " ")
+            u_snip = s["last_user_message"][:90].replace("\n", " ")
+            a_snip = s["last_assistant_message"][:90].replace("\n", " ")
+            ses_lines.append(f"[{s['agent_id']} {ts_short} ({s['message_count']}m)] U: {u_snip} -> A: {a_snip}")
+        tagged_sections.append((2, "active_sessions", "[active_sessions] " + " | ".join(ses_lines)))
+    if recent_breakthroughs:
+        rb_lines = [f"({rb['created_at'][:10]}|{rb['scope']}|{rb['kind']}) {rb['content'][:160].replace(chr(10), ' ')}" for rb in recent_breakthroughs[:6]]
+        tagged_sections.append((2, "recent_breakthroughs", "[recent_breakthroughs] " + " | ".join(rb_lines)))
     if inbox:
         tagged_sections.append((3, "family_inbox", "[family_inbox] " + "; ".join(f"{m['from_agent']}: {m['payload']}" for m in inbox if m["verified"])))
     owner_msgs: list[dict[str, Any]] = []
@@ -518,10 +662,14 @@ def wake_up_briefing(
         "max_tokens": int(max_tokens) if max_tokens else None,
         "fenced_briefing": safety.fence(body_text) if body_text else "",
         "profile_counts": {
-            "identity": len(prof.get("identity") or []),
-            "preference": len(prof.get("preferences") or prof.get("preference") or []),
+            "identity": len(id_items),
+            "preference": len(pref_items),
         },
+        "scope_breakdown": scope_breakdown,
         "open_commitments": commitments,
+        "recent_breakthroughs": recent_breakthroughs,
+        "active_sessions": active_sessions,
+        "live_processes": live_processes,
         "relevant_records": relevant_records,
         "family_inbox": inbox,
         "owner_recent_messages": owner_msgs[:5],

@@ -4583,6 +4583,14 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
     if name == "padam_wake_up":
         from . import ark as _ark
         _ag = str(args.get("agent") or _default_agent_id())
+        if not _IN_READONLY_BATCH_CTX.get(False):
+            try:
+                has_sync = m.store.one("SELECT 1 FROM sqlite_master WHERE type='table' AND name='chat_sync_state'")
+                if has_sync and m.store.one("SELECT 1 FROM chat_sync_state LIMIT 1"):
+                    from . import chats as _chats
+                    _chats.sync_family_chats_from_disk(m, use_default_paths=True, max_files=12)
+            except Exception:
+                pass
         payload = _ark.wake_up_briefing(
             m,
             agent=_ag,

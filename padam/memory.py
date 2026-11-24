@@ -65,6 +65,8 @@ _AGENT_CLIENT_ALIASES = {
     'antigravity-ide': 'aifa_antigravity',
     'antigravity': 'aifa_antigravity',
     'aifa-antigravity': 'aifa_antigravity',
+    'aifaantigraviti': 'aifa_antigravity',
+    'aifa_antigraviti': 'aifa_antigravity',
     'openclaw': 'autoclaw',
     'auto-claw': 'autoclaw',
     'user': 'owner',
@@ -2561,6 +2563,38 @@ class Memory:
                                 (canon, meta["display_name"], meta["environment"], meta["color"], self.user_id, raw_id),
                             )
                         updated["agent_registry"] += 1
+            except Exception:
+                pass
+            try:
+                sib_rows = self.store.conn.execute(
+                    "SELECT agent_id, last_heartbeat_at, current_task FROM ark_sibling_agent WHERE user_id = ?",
+                    (self.user_id,),
+                ).fetchall()
+                for sr in sib_rows:
+                    raw_sid = str(sr["agent_id"] or "")
+                    canon_s = canonicalize_agent_id(raw_sid)
+                    if canon_s and canon_s != raw_sid:
+                        ex_s = self.store.conn.execute(
+                            "SELECT 1 FROM ark_sibling_agent WHERE user_id = ? AND agent_id = ?",
+                            (self.user_id, canon_s),
+                        ).fetchone()
+                        if ex_s:
+                            self.store.conn.execute(
+                                "UPDATE ark_sibling_agent SET "
+                                "last_heartbeat_at = CASE WHEN ? > last_heartbeat_at THEN ? ELSE last_heartbeat_at END "
+                                "WHERE user_id = ? AND agent_id = ?",
+                                (str(sr["last_heartbeat_at"] or ""), str(sr["last_heartbeat_at"] or ""), self.user_id, canon_s),
+                            )
+                            self.store.conn.execute(
+                                "DELETE FROM ark_sibling_agent WHERE user_id = ? AND agent_id = ?",
+                                (self.user_id, raw_sid),
+                            )
+                        else:
+                            self.store.conn.execute(
+                                "UPDATE ark_sibling_agent SET agent_id = ? WHERE user_id = ? AND agent_id = ?",
+                                (canon_s, self.user_id, raw_sid),
+                            )
+                        updated["sibling_registry"] = updated.get("sibling_registry", 0) + 1
             except Exception:
                 pass
             self.store.conn.commit()
