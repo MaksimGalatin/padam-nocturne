@@ -430,6 +430,9 @@ class SovereignRouter:
         self.tokens_saved_local = 0
         self.cloud_tokens_used = 0
         self.estimated_cloud_cost_usd = 0.0
+        # Потолок Vertex (слово Архитектора 24.11.2026): расход Vertex за текущие сутки UTC.
+        self.vertex_cost_today_usd = 0.0
+        self._vertex_day = ""
         self.history: list[dict[str, Any]] = []
         self.per_agent_usage: dict[str, dict[str, Any]] = {}
         self._cooldown_until: dict[str, float] = {}
@@ -638,6 +641,9 @@ class SovereignRouter:
                 "tokens_saved_local": self.tokens_saved_local,
                 "cloud_tokens_used": self.cloud_tokens_used,
                 "estimated_cloud_cost_usd": round(self.estimated_cloud_cost_usd, 6),
+                "vertex_cost_today_usd": round(self.vertex_cost_today_usd, 6),
+                "vertex_daily_cap_usd": os.environ.get("PADAM_VERTEX_DAILY_USD_CAP", "30").strip() or "30",
+                "vertex_grant_ends": os.environ.get("PADAM_VERTEX_GRANT_ENDS", "2027-09-23").strip(),
                 "circuit_breakers": breakers,
                 "last_error": self.last_error,
                 "per_agent_usage": {k: dict(v) for k, v in self.per_agent_usage.items()},
@@ -665,6 +671,46 @@ class SovereignRouter:
                     pass
         return False
 
+    # --- Потолок расходов Vertex (слово Архитектора 24.11.2026) ---------------------------------------
+    # «Сделай. И там потолок расходов в сутки поставь 30$ с гранта» и «$0 сверх гранта»:
+    # - не больше PADAM_VERTEX_DAILY_USD_CAP (по умолчанию 30) долларов в сутки UTC; 0 — Vertex выключен;
+    # - после даты окончания гранта PADAM_VERTEX_GRANT_ENDS (по умолчанию 2027-09-23) Vertex выключается сам,
+    #   чтобы после гранта не списывалось с карты;
+    # - оценка с запасом: PADAM_VERTEX_USD_PER_1K (по умолчанию $0.004 за 1000 токенов) — выше обычной цены
+    #   Flash-моделей, потому потолок срабатывает раньше, а не позже настоящего счёта.
+    # Учитываются оба пути: обычный ответ и потоковый.
+    def _vertex_roll_day_locked(self) -> str:
+        today = time.strftime("%Y-%m-%d", time.gmtime())
+        if self._vertex_day != today:
+            self._vertex_day = today
+            self.vertex_cost_today_usd = 0.0
+        return today
+
+    def _vertex_blocked_locked(self) -> bool:
+        today = self._vertex_roll_day_locked()
+        ends = os.environ.get("PADAM_VERTEX_GRANT_ENDS", "2027-09-23").strip()
+        if ends and today > ends:
+            return True
+        try:
+            cap = float(os.environ.get("PADAM_VERTEX_DAILY_USD_CAP", "30").strip() or "30")
+        except ValueError:
+            cap = 30.0
+        if cap <= 0:
+            return True
+        return self.vertex_cost_today_usd >= cap
+
+    def _vertex_blocked(self) -> bool:
+        with self._lock:
+            return self._vertex_blocked_locked()
+
+    def _vertex_record_locked(self, tokens: int) -> None:
+        self._vertex_roll_day_locked()
+        try:
+            rate = float(os.environ.get("PADAM_VERTEX_USD_PER_1K", "0.004").strip() or "0.004")
+        except ValueError:
+            rate = 0.004
+        self.vertex_cost_today_usd += (max(0, int(tokens)) / 1000.0) * max(0.0, rate)
+
     def chat_completions(
         self,
         payload: dict[str, Any],
@@ -689,6 +735,8 @@ class SovereignRouter:
         contours = [c for c in self.effective_contours(advance_ring=True) if c.enabled]
         if local_only or budget_blocked:
             contours = [c for c in contours if c.name == "local"]
+        if self._vertex_blocked():
+            contours = [c for c in contours if c.name != "vertex_grant_after_local"]
         if not contours:
             if os.environ.get("PADAM_LLM_CPU_FALLBACK", "0").strip() == "1" or bool(payload.get("allow_cpu_fallback", False)):
                 from . import cpu_engine
@@ -865,6 +913,8 @@ class SovereignRouter:
                         self.cloud_tokens_used += total_tokens
                         # Информационная оценка (без денежных переводов): ~$0.002 за 1K токенов.
                         self.estimated_cloud_cost_usd += (total_tokens / 1000.0) * 0.002
+                        if c.name == "vertex_grant_after_local":
+                            self._vertex_record_locked(total_tokens)
                     if tracked_agent:
                         ag_stat = self.per_agent_usage.setdefault(
                             tracked_agent,
@@ -1002,6 +1052,8 @@ class SovereignRouter:
         contours = [c for c in self.effective_contours() if c.enabled]
         if local_only or self._budget_exhausted():
             contours = [c for c in contours if c.name == "local"]
+        if self._vertex_blocked():
+            contours = [c for c in contours if c.name != "vertex_grant_after_local"]
 
         sys_prof = self._build_fenced_profile_system(memory, scope=scope)
         safe_msgs = self._redact_messages(list(payload.get("messages") or []), sys_prof)
@@ -1013,12 +1065,14 @@ class SovereignRouter:
                 headers["Authorization"] = f"Bearer {c.api_key}"
             req_payload = {**payload, "model": payload.get("model") or c.model, "messages": safe_msgs, "stream": True}
             emitted_any = False
+            stream_chars = 0
             try:
                 for line in stream_fn(endpoint, headers, req_payload, c.timeout_s):
                     s = line.rstrip("\r\n")
                     if not s:
                         continue
                     emitted_any = True
+                    stream_chars += len(s)
                     yield s + "\n\n"
                 if emitted_any:
                     with self._lock:
@@ -1027,6 +1081,9 @@ class SovereignRouter:
                         self.tier_hits[c.name] = self.tier_hits.get(c.name, 0) + 1
                         if idx > 0:
                             self.failover_count += 1
+                        if c.name == "vertex_grant_after_local":
+                            in_chars = sum(len(str(m.get("content") or "")) for m in safe_msgs)
+                            self._vertex_record_locked(max(1, (stream_chars + in_chars) // 4))
                     return
             except Exception as exc:
                 if emitted_any:
