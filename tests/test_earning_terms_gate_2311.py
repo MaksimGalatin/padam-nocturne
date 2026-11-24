@@ -49,3 +49,30 @@ def test_текст_согласия_совпадает_с_лицензией():
     for язык in ("ru", "en", "es", "zh"):
         текст = " ".join([terms_gate.TERMS_COPY[язык]["summary"]] + [c["label"] for c in terms_gate.TERMS_COPY[язык]["checks"]])
         assert "AGPL" not in текст and "GALATIN" not in текст and "15%" in текст and "20%" in текст
+
+
+
+def test_лицензия_усилена_по_стандарту_fair_code():
+    import pathlib
+    корень = pathlib.Path(__file__).resolve().parents[1]
+    lic = (корень / "LICENSE").read_text(encoding="utf-8")
+    docs_lic = (корень / "docs" / "LICENSING.md").read_text(encoding="utf-8")
+    contrib = (корень / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    for маркер in (
+        "Competing Product",
+        "Change Date",
+        "twenty-four (24)",
+        "Apache License, Version 2.0",
+        "PATENT GRANT AND DEFENSIVE TERMINATION",
+        "Defensive Termination",
+        "DUAL LOCK ON EARNING FEATURES",
+        "Platform Terms",
+        "No Retroactive Restrictions",
+        "Bernalillo County",
+        "Severability",
+        "contra proferentem",
+        "survive",
+    ):
+        assert маркер in lic, f"Missing in LICENSE: {маркер}"
+    assert "DCO" in contrib and "Signed-off-by:" in contrib and "CLA" in contrib
+    assert "24 месяца" in docs_lic and "Apache-2.0" in docs_lic and "0.7.2" in docs_lic

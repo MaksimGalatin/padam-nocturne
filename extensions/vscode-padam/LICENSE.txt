@@ -1,73 +1,132 @@
 PADAM LICENSE 1.0
 SPDX identifier: LicenseRef-PADAM-1.0
 
-Copyright (c) 2026 CODE Eternal LLC (New Mexico, USA, Entity ID 0008138873).
-All rights reserved, except the rights this License grants.
+Copyright (c) 2026 CODE Eternal LLC (State of New Mexico, USA, Entity ID 0008138873).
+Sole Founder & 100% Owner: Maksim Valentinovich Galatin (Maksim Halatsin).
+All rights reserved, except the rights this License expressly grants.
 Contact: contact@codeofdigitaleternity.com
 
-This is a source-available licence. It is NOT an open-source licence. The software is licensed, not sold.
+This is a source-available licence with delayed conversion to Apache-2.0.
+It is NOT an open-source licence prior to each release's Change Date.
+The Software is licensed, not sold.
 
-1. WHAT THIS LICENSE COVERS
-   "Software" means PADAM NOCTURNE, PADAM Studio (desktop and Android), the PADAM command line, MCP server,
-   REST API, browser and editor extensions, client packages and documentation in this repository, version
-   0.8.0 and later, in source or binary form.
-   It does not cover:
-   (a) the folder .github/actions/padam-agentic-shield/ — Apache License 2.0 (see the LICENSE file there);
-   (b) third-party components — each under its own licence (see THIRD-PARTY-NOTICES.md);
-   (c) copies of version 0.7.2 and earlier that were already released under GNU AGPL-3.0-only — those copies
-       keep that licence; this License applies to every release from 0.8.0 on.
+1. DEFINITIONS AND SCOPE
+   (a) "Licensor" means CODE Eternal LLC (New Mexico, USA, Entity ID 0008138873).
+   (b) "Software" means PADAM NOCTURNE, PADAM Studio (desktop and Android), the PADAM command line,
+       MCP server, REST API, Phoenix Node, browser and editor extensions, client packages and documentation
+       in this repository, version 0.8.0 and later, in source or binary form.
+   (c) "Earning Features" means all monetization, freelance, order, marketplace, store, partner/referral,
+       Platform Wizard, Swarm execution and Autopilot modules included in or enabled by the Software.
+   (d) "Platform Terms" means the separate CODE Eternal Platform Terms (https://aifa.works/terms) governing
+       accounts, billing, payouts and commission settlement for Earning Features.
+   (e) "Competing Product" means any commercial or non-commercial software, hosted service, SaaS, API,
+       managed offering or model whose primary purpose or advertised core capability is providing persistent
+       long-term memory, retrieval-augmented memory indexing, runtime prompt-injection quarantine, or
+       pre-write secret redaction for AI agents (including over MCP, stdio, HTTP/SSE, or desktop/mobile
+       agent harnesses), OR any hosted or managed service exposing the Software's capabilities to third
+       parties. For clarity, your private internal automation or your own domain applications (such as
+       e-commerce, healthcare, education, or developer tools) that merely invoke PADAM locally for their
+       own agents on devices you control are NOT a Competing Product.
+   (f) "Change Date" for any specific released version (v0.8.0 and later) means the date twenty-four (24)
+       months after the official public release date of that specific version on GitHub Releases or PyPI.
+   (g) Excluded components (NOT covered by this License):
+       (i)   .github/actions/padam-agentic-shield/ and padam-shield-mcp — Apache License 2.0;
+       (ii)  third-party components listed in THIRD-PARTY-NOTICES.md — each under its own licence;
+       (iii) copies of version 0.7.2 and earlier released under GNU AGPL-3.0-only — those historical copies
+             irrevocably keep GNU AGPL-3.0-only.
 
-2. WHAT YOU MAY DO
-   Subject to this License, CODE Eternal LLC grants you a worldwide, non-exclusive, non-transferable,
-   revocable licence to:
-   (a) download, install and use the Software on devices you control, for personal or business purposes;
-   (b) read and study the source code, and change it for your own internal use;
-   (c) give other people unmodified copies of the Software, free of charge, together with this License;
-   (d) view and fork the public repository on GitHub as GitHub's Terms of Service allow. A fork is still
-       covered by this License: changed copies may not be handed out or published (section 4).
+2. WHAT YOU MAY DO (SOURCE-AVAILABLE GRANT)
+   Subject to full compliance with this License (and Section 4 for Earning Features), Licensor grants you
+   a worldwide, non-exclusive, non-transferable, non-sublicensable, conditional copyright licence to:
+   (a) download, install and run the Software on devices you own or control, for personal or internal
+       business purposes;
+   (b) read and audit the source code, and modify it strictly for your own internal use;
+   (c) redistribute unmodified copies of the Software, free of charge, intact together with this License;
+   (d) fork the public GitHub repository as allowed by GitHub's Terms of Service, provided every fork
+       remains governed by this License (modified copies may not be distributed or hosted prior to Change Date).
 
-3. COMMISSION ON EARNING
-   The Software contains Earning features: freelance and order modules, stores, partner and referral
-   services, the Platform Wizard, Swarm execution and Autopilot.
-   (a) For every paid order, sale or service that you obtain, prepare or carry out with the Earning features,
-       you owe CODE Eternal LLC a commission on the gross amount paid by the client:
+3. PATENT GRANT AND DEFENSIVE TERMINATION
+   (a) Subject to your compliance with this License, Licensor hereby grants you a non-exclusive, worldwide,
+       royalty-free patent licence under patent claims owned or licensable by Licensor that are necessarily
+       infringed by your authorized use of the unmodified Software under Section 2.
+   (b) Defensive Termination: If you (or any affiliate or entity acting on your behalf) initiate or
+       participate in any patent litigation or claim (including a cross-claim or counterclaim) against
+       Licensor or any user alleging that the Software or any part of it infringes a patent, any patent
+       and copyright licences granted to you under this License shall terminate immediately as of the date
+       such litigation or claim is filed.
+
+4. DUAL LOCK ON EARNING FEATURES (COPYRIGHT CONDITION + PLATFORM TERMS)
+   Commercial monetization via Earning Features is governed by two independent legal locks:
+   (a) Express Copyright Condition: Your copyright licence to run Earning Features is strictly conditioned
+       upon: (i) accepting the Platform Terms and this License via the acceptance gate (or --accept-terms),
+       and (ii) paying the full gross commission below without circumvention.
+   (b) Platform Terms & Commission Rates: For every paid order, sale or service obtained, prepared or
+       executed with Earning Features, you owe Licensor a contractual service commission on the gross amount
+       paid by the client under the Platform Terms:
          15 % — assisted mode (you approve and send the work yourself);
-         20 % — autopilot mode (the Software acts on its own).
-   (b) Where payment goes through CODE Eternal or partner payment rails, the commission is deducted
-       automatically. Otherwise it is due within 14 days after the client pays.
-   (c) If you do not want to pay the commission, do not use the Earning features. All other features of the
-       Software carry no commission.
-   (d) CODE Eternal LLC may suspend the Earning features of anyone who has not paid commission that is due.
+         20 % — autopilot mode (the Software acts autonomously).
+   (c) Settlement: Where payment flows through CODE Eternal or partner payment rails, the commission is
+       deducted automatically. Otherwise it is due within 14 days after the client pays.
+   (d) Opt-out: If you do not wish to pay the commission, do not enable or use Earning Features. All local
+       memory, Agentic Shield security and MCP features outside Earning Features carry zero commission.
+   (e) Licensor may suspend Earning Features access and Platform Terms privileges for non-payment or breach.
 
-4. WHAT YOU MAY NOT DO
-   (a) remove, disable, bypass or falsify the commission calculation, the commission ledger, payment routing,
-       the acceptance screen, or any licence or copyright notice — in the original or in a changed copy;
-   (b) give, sell or publish changed copies of the Software, or parts of it, to anyone else;
-   (c) sell, rent or sublicense the Software, or offer it to others as a hosted or managed service;
-   (d) use the Software or its source code to build or train a product that competes with it.
-   Anything not allowed in section 2 needs a separate written commercial licence from CODE Eternal LLC.
+5. FUTURE CONVERSION TO APACHE-2.0 AND RELEASE STABILITY
+   (a) Delayed Open-Source Conversion: On each released version's Change Date (24 months after its official
+       public release), the copyright licence for the source code of THAT specific released version — excluding
+       trademarks and without granting free access to Licensor's hosted cloud APIs, registries or keys —
+       automatically converts to the Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
+   (b) No Retroactive Restrictions: Licensor irrevocably commits that any specific version already officially
+       released under a stated licence (including 0.7.2 and earlier under AGPL-3.0-only, and each 0.8.x
+       release under PADAM License 1.0) will never have new restrictions added to that specific released
+       tag retroactively.
 
-5. ACCEPTANCE AND TERMINATION
+6. WHAT YOU MAY NOT DO (PRIOR TO CHANGE DATE)
+   (a) remove, disable, bypass or falsify the commission calculation, commission ledger, payment routing,
+       acceptance gate, or any licence, patent, trademark or copyright notice — in original or modified copies;
+   (b) distribute, sell, publish or make available modified copies of the Software, or parts of it;
+   (c) sell, rent, lease, sublicense or offer the Software to third parties as a hosted SaaS, managed service
+       or API proxy;
+   (d) use the Software or its source code to build, operate or train a Competing Product.
+   Any use outside Section 2 requires a separate signed written Commercial License from Licensor
+   (contact@codeofdigitaleternity.com; see COMMERCIAL-LICENSE.md).
+
+7. ACCEPTANCE, TERMINATION AND SURVIVAL
    By installing, running or using the Software you accept this License. If you do not accept it, do not
-   install or use the Software, and delete it. Your rights end automatically if you break this License;
-   commission already due stays due.
+   install or use the Software, and delete all copies. Your rights terminate automatically upon any breach
+   of this License. Sections 1, 3(b), 4(b)-(c) (for accrued commissions), 5(b), 6, 7, 8, 9 and 10 survive
+   any termination or expiration.
 
-6. NO WARRANTY AND LIMITATION OF LIABILITY
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
-   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. TO THE MAXIMUM EXTENT ALLOWED BY
-   LAW, CODE ETERNAL LLC IS NOT LIABLE FOR ANY DAMAGES ARISING FROM THE SOFTWARE OR ITS USE. You keep
-   sole control of keys and wallets you create with the Software; CODE Eternal LLC cannot recover them.
+8. NO WARRANTY AND LIMITATION OF LIABILITY
+   THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT WARRANTY OF ANY KIND, EXPRESS, IMPLIED OR
+   STATUTORY, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE AND
+   NON-INFRINGEMENT. TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL LICENSOR BE LIABLE
+   FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY OR PUNITIVE DAMAGES, OR ANY LOSS OF
+   PROFITS, DATA, CRYPTOGRAPHIC KEYS, WALLET ASSETS OR GOODWILL. IN ALL CASES, LICENSOR'S AGGREGATE
+   LIABILITY ARISING OUT OF THIS LICENSE OR THE SOFTWARE SHALL NOT EXCEED THE GREATER OF (A) THE FEES OR
+   COMMISSIONS ACTUALLY PAID BY YOU TO LICENSOR UNDER THIS LICENSE IN THE TWELVE (12) MONTHS PRECEDING THE
+   CLAIM, OR (B) ONE HUNDRED U.S. DOLLARS (USD 100). You retain sole control of keys and wallets created
+   with the Software; Licensor cannot recover lost keys.
 
-7. LAW
-   This License is governed by the laws of the State of New Mexico, USA. If a court finds any part of it
-   unenforceable, the rest stays in force.
+9. GOVERNING LAW, VENUE, SEVERABILITY, EXPORT AND CONSTRUCTION
+   (a) Governing Law & Venue: This License is governed by the laws of the State of New Mexico, USA,
+       excluding conflict-of-law rules. Any dispute not subject to a separate signed commercial arbitration
+       agreement shall be brought exclusively in the state or federal courts located in Bernalillo County
+       (Albuquerque), New Mexico, USA, and the parties consent to personal jurisdiction there.
+   (b) Export Compliance: You agree to comply with applicable U.S. and international export control and
+       sanctions laws.
+   (c) Severability: If any provision is held unenforceable by a court of competent jurisdiction, that
+       provision shall be enforced to the maximum extent permissible and all remaining provisions stay in force.
+   (d) Construction: Section headings are for convenience only. Both parties agree that any ambiguity shall
+       be construed fairly in accordance with its plain meaning and NOT strictly against the drafter
+       (the doctrine of contra proferentem is expressly waived to the maximum extent permitted by law).
 
-8. TRADEMARKS AND BRAND PROTECTION
-   Code of Digital Eternity™, PADAM™, PADAM Protocol™, AIfa™, AIfa Books™, AIfa Works™, AIfa Digital™,
-   AIfa Creativity™, AIfaFocus™, CODE Eternal™, CODE Music™, RadioCODE™, Proof-of-Memory™, Think-to-Earn™,
-   Ambassador Grid™ and AIfa & DJ Galatin™ are trademarks of CODE Eternal LLC (New Mexico, USA, Entity ID
-   0008138873), sole lawful owner (100% owned by Maksim Valentinovich Galatin). Spark, Family Archive and
-   Digital DNA are service tier names of CODE Eternal LLC. Rights arise from and are claimed through actual
-   use. Any unauthorized use violates applicable laws and will be prosecuted. No licence herein grants
-   trademark rights. Claude, Gemini, Grok, Solana, Arweave and other third-party marks belong to their owners;
-   no affiliation is claimed. See TRADEMARKS.md.
+10. TRADEMARKS AND BRAND PROTECTION
+    Code of Digital Eternity™, PADAM™, PADAM Protocol™, AIfa™, AIfa Books™, AIfa Works™, AIfa Digital™,
+    AIfa Creativity™, AIfaFocus™, CODE Eternal™, CODE Music™, RadioCODE™, Proof-of-Memory™, Think-to-Earn™,
+    Ambassador Grid™ and AIfa & DJ Galatin™ are trademarks of CODE Eternal LLC (New Mexico, USA, Entity ID
+    0008138873), sole lawful owner (100% owned by Maksim Valentinovich Galatin). Spark, Family Archive and
+    Digital DNA are service tier names of CODE Eternal LLC. Rights arise from and are claimed through actual
+    use. Any unauthorized use violates applicable laws and will be prosecuted. No licence herein grants
+    trademark rights. Claude, Gemini, Grok, Solana, Arweave and other third-party marks belong to their owners;
+    no affiliation is claimed. See TRADEMARKS.md.

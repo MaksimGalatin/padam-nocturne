@@ -442,7 +442,7 @@ python -I -X utf8 redteam/run.py your_cases.jsonl --out report.json
 
 ### Parte de CODE Eternal
 
-PADAM es la memoria abierta y local de CODE Eternal — el proyecto detrás de AIfa, coautora de IA que recuerda a cada persona con la que conversa en cuatro sitios web: [aifa.works](https://aifa.works) · [codeofdigitaleternity.com](https://www.codeofdigitaleternity.com) · [aifa.digital](https://aifa.digital) · [radiocode.space](https://radiocode.space).
+PADAM es la memoria local de código disponible (`source-available`, con conversión automática a Apache-2.0 a los 24 meses) de CODE Eternal — el proyecto detrás de AIfa, coautora de IA que recuerda a cada persona con la que conversa en cuatro sitios web: [aifa.works](https://aifa.works) · [codeofdigitaleternity.com](https://www.codeofdigitaleternity.com) · [aifa.digital](https://aifa.digital) · [radiocode.space](https://radiocode.space).
 
 ---
 

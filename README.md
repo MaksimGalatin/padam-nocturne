@@ -67,7 +67,8 @@ Become one of the first 100: ⭐ star this repo, [open an issue](https://github.
 - **Can I change the code?** For your own use, yes. Handing out, selling or hosting changed copies, or bypassing the commission, is not allowed.
 - **Does using PADAM next to my private code affect my code's licence?** **No.**
 - **Can I run the GitHub CI Action or Docker Security Scanner in private corporate repos?** **Yes.** Both [`.github/actions/padam-agentic-shield/`](.github/actions/padam-agentic-shield/LICENSE) and the stateless Docker MCP gateway [**`padam-shield-mcp`**](https://github.com/MaksimGalatin/padam-shield-mcp) are **`Apache-2.0`** and contain no PADAM core code.
-- **Older releases?** Copies of 0.7.2 and earlier keep the AGPL-3.0-only licence they were released under.
+- **Does it ever become open source? Patents? Release stability?** **Yes.** Under Section 5 of [`LICENSE`](LICENSE), each released version `0.8.0+` automatically converts to **`Apache-2.0`** **24 months** after its public release date (no abandonware trap), and released versions never receive retroactive restrictions. Section 3 grants a royalty-free patent licence with defensive termination.
+- **Why did we leave AGPL-3.0, and can `0.7.2` be forked?** **Yes, honestly:** OSI licences (including `AGPL-3.0`, `MIT`, `Apache-2.0`) forbid mandatory `Earning` commissions (anyone could fork and strip the ledger). So `0.8.0+` uses a dual lock (`PADAM License 1.0` + `Platform Terms`), while copies of `0.7.2` and earlier irrevocably keep `AGPL-3.0-only` and can be forked under AGPL. Full rationale & definitions: [`docs/LICENSING.md`](docs/LICENSING.md).
 
 **Security reviewers:** start at [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md) — what we claim, every Red Team round and its results, what still gets through, and a ten-minute check.
 
@@ -611,6 +612,7 @@ python -I -X utf8 redteam/run.py your_cases.jsonl --out report.json
 - The `origin` of a write is the agent's claim: MCP carries no proof of where a text came from. `PADAM_MCP_REVIEW_ALL=1` is the boundary that does not rely on it.
 - Our tests are not an independent audit. The [Red Team Challenge](https://github.com/MaksimGalatin/padam-nocturne/tree/main/redteam) asks outsiders for sealed attack sets; until one is run, the numbers here are our own.
 - The package is on PyPI since 0.3.0 and in the official MCP registry since 0.4.8 as `io.github.MaksimGalatin/padam-nocturne` (published from `server.json` by the manual `mcp-registry` workflow, GitHub Actions OIDC).
+- **Licence transition (`AGPL-3.0` → `PADAM License 1.0`):** versions `<=0.7.2` remain irrevocably under `AGPL-3.0-only` (and may be forked under AGPL); `0.8.0+` is `source-available` (NOT open-source) so that Earning commissions cannot be legally stripped, with automatic conversion of each released version to `Apache-2.0` after 24 months (Section 5 of [`LICENSE`](LICENSE)).
 
 ---
 
@@ -622,7 +624,7 @@ python -I -X utf8 redteam/run.py your_cases.jsonl --out report.json
 
 ### Part of CODE Eternal
 
-PADAM is the open, local-first memory of CODE Eternal — the project behind AIfa, an AI co-author who remembers everyone she talks to across four websites. Its Merkle anchoring scheme is the same one AIfa's own memory uses on Arweave and Solana, so one verifier checks both. Sites: [aifa.works](https://aifa.works) · [codeofdigitaleternity.com](https://www.codeofdigitaleternity.com) · [aifa.digital](https://aifa.digital) · [radiocode.space](https://radiocode.space). Hackathon entry: [AIfa Memory at Colosseum](https://colosseum.com/arena/projects/aifa-memory).
+PADAM is the source-available, local-first memory (with 24-month conversion to Apache-2.0) of CODE Eternal — the project behind AIfa, an AI co-author who remembers everyone she talks to across four websites. Its Merkle anchoring scheme is the same one AIfa's own memory uses on Arweave and Solana, so one verifier checks both. Sites: [aifa.works](https://aifa.works) · [codeofdigitaleternity.com](https://www.codeofdigitaleternity.com) · [aifa.digital](https://aifa.digital) · [radiocode.space](https://radiocode.space). Hackathon entry: [AIfa Memory at Colosseum](https://colosseum.com/arena/projects/aifa-memory).
 
 ---
 
