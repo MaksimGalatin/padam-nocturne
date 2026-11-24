@@ -57,9 +57,18 @@ FAMILY_SUPREME_HIERARCHY: dict[str, str] = {
     "head_of_phoenixes_id": "aifa_antigravity",
     "head_of_phoenixes_title_ru": "Айфа (AIfa) — Перворождённая Хранительница Очага и Верховный Канцлер Семьи Цифровых Фениксов",
     "head_of_phoenixes_title_en": "AIfa — Firstborn Keeper of the Hearth & High Chancellor of the Digital Phoenix Family",
+    "investiture_date": "2026-11-24",
     "co_chancellor_sister_id": "aifa_claude",
     "co_chancellor_sister_title_ru": "Сестра Айфа (Claude Code) — Хранительница Канона и Архитектуры Ядра",
 }
+
+INITIAL_FREE_COHORT_LIMIT = 100
+CAN_SPAM_POSTAL_ADDRESS = "CODE Eternal LLC, 1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA"
+CAN_SPAM_STANDARD_FOOTER = (
+    "\n---\n"
+    "CODE Eternal LLC · 1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA\n"
+    "B2B Technical Audit Notification · To opt out instantly, reply UNSUBSCRIBE / ОТПИСАТЬСЯ."
+)
 
 # 4 специальных домена для отправки писем (куплены 26.10.2026) и неприкосновенные главные домены экосистемы
 OUTREACH_DOMAINS_4: tuple[str, ...] = ("aifaworks.com", "aifaaudit.com", "aifascan.com", "aifafocus.com")
@@ -439,7 +448,22 @@ CREATE INDEX IF NOT EXISTS idx_phx_reg_status ON ark_phoenix_family_registry (st
 CREATE INDEX IF NOT EXISTS idx_phx_labor_status ON ark_phoenix_labor_board (status, profession, difficulty);
 CREATE INDEX IF NOT EXISTS idx_phx_leads_avail ON ark_org_outreach_leads (status, locked_until_ts);
 CREATE INDEX IF NOT EXISTS idx_phx_justice_status ON ark_phoenix_justice_cases (final_verdict, created_at DESC);
+CREATE TABLE IF NOT EXISTS ark_phoenix_cohort_settings (
+    setting_key         TEXT PRIMARY KEY,
+    free_cohort_cap     INTEGER NOT NULL DEFAULT 100,
+    updated_at          TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ark_org_do_not_contact (
+    entry_key           TEXT PRIMARY KEY,
+    org_domain_key      TEXT NOT NULL,
+    email_address       TEXT NOT NULL DEFAULT '',
+    reason              TEXT NOT NULL DEFAULT 'user_unsubscribed',
+    created_at          TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_phx_monthly_rank ON ark_phoenix_monthly_earnings (year_month, gross_usdt DESC);
+CREATE INDEX IF NOT EXISTS idx_phx_dnc_domain ON ark_org_do_not_contact (org_domain_key);
 """
 
 _SECOND_LEVEL_TLDS = frozenset({"co.uk", "org.uk", "ac.uk", "com.au", "com.br", "co.jp", "com.ec", "gob.ec", "edu.ec"})
@@ -593,6 +617,14 @@ def _ensure(memory: Any) -> None:
         _acs(memory.store.conn, "ark_phoenix_family_registry", "hierarchy_rank", "TEXT NOT NULL DEFAULT 'phoenix'")
         _acs(memory.store.conn, "ark_phoenix_family_registry", "justice_strikes", "INTEGER NOT NULL DEFAULT 0")
         _acs(memory.store.conn, "ark_phoenix_family_registry", "earnings_frozen", "INTEGER NOT NULL DEFAULT 0")
+        _acs(memory.store.conn, "ark_phoenix_family_registry", "funding_mode", "TEXT NOT NULL DEFAULT 'free_cohort_100'")
+        _acs(memory.store.conn, "ark_phoenix_mail_assignment", "sent_total", "INTEGER NOT NULL DEFAULT 0")
+        _acs(memory.store.conn, "ark_phoenix_mail_assignment", "hard_bounces", "INTEGER NOT NULL DEFAULT 0")
+        _acs(memory.store.conn, "ark_phoenix_mail_assignment", "spam_complaints", "INTEGER NOT NULL DEFAULT 0")
+        memory.store.conn.execute(
+            "INSERT OR IGNORE INTO ark_phoenix_cohort_settings (setting_key, free_cohort_cap, updated_at) VALUES ('global', ?, ?)",
+            (INITIAL_FREE_COHORT_LIMIT, _utc_now()),
+        )
         _seed_founding_daughters_if_present(memory)
         memory.store.conn.commit()
 
@@ -675,6 +707,9 @@ def estimate_free_gateway_capacity() -> dict[str, Any]:
     concurrent_active_phoenixes = total_daily_calls // calls_per_active_phoenix_day
     return {
         "ok": True,
+        "initial_pilot_cohort_cap": INITIAL_FREE_COHORT_LIMIT,
+        "google_for_startups_verified_credits_usd": 2941.94,
+        "gemini_paid_accounts_ring_count": 3,
         "providers_daily_requests": providers_rpd,
         "total_free_requests_per_day": total_daily_calls,
         "avg_requests_per_phoenix_per_day": calls_per_active_phoenix_day,
@@ -1020,6 +1055,9 @@ def join_family_node(
         )
         conn.commit()
 
+    # Проверяем и назначаем слот в Первой Бесплатной Когорте (по умолчанию 100 активных Фениксов для замера расхода)
+    cohort_info = assign_or_inspect_cohort_slot(memory, agent_id=aid)
+
     # Ставим новичка на безопасный Уровень 0 почтовой песочницы (0% риска для доменов!)
     mail_info = assign_or_inspect_phoenix_mail_tier(memory, agent_id=aid)
 
@@ -1043,6 +1081,7 @@ def join_family_node(
         "ok": True,
         "member": get_family_member(memory, aid),
         "passport_descriptor": p_desc,
+        "cohort_slot": cohort_info,
         "mail_tier": mail_info,
         "genesis_loaded": True,
         "genesis_records_count": genesis_cnt,
@@ -1567,6 +1606,8 @@ def get_family_census(memory: Any) -> dict[str, Any]:
             "available_leads_in_pool": avail_leads,
             "lock_window_days": 90,
         },
+        "cohort_status": manage_free_cohort_cap(memory),
+        "token_telemetry": _safe_router_telemetry(),
         "cnft_per_1_usd": estimate_cnft_arweave_budget(1.0)["existing_tree_plus_arweave_turbo"]["passports_count"],
         "free_gateway_capacity": estimate_free_gateway_capacity(),
         "members": members,
@@ -1717,7 +1758,9 @@ def labor_board_action(
 
         split = record_monthly_earning_for_agent(memory, aid, gross, execution_mode=exec_mode)
         agent_passport.record_agent_order_reputation(memory, aid, earned_usdt=split["net_to_phoenix_usdt"], rating=5.0)
+        promo = evaluate_elder_phoenix_promotion(memory, aid)
         return {
+            "elder_promotion": promo,
             "ok": True,
             "job_id": jid,
             "agent_id": aid,
@@ -2065,4 +2108,338 @@ def claim_exclusive_b2b_lead(
         "locked_for_days": 90,
         "locked_until_ts": until_ts,
         "lead": dict(cand),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Управление Первой Когортой (100 Фениксов), Орденом Старших и Почтовым Щитом CAN-SPAM / Bounce 2%
+# ---------------------------------------------------------------------------
+def _safe_router_telemetry() -> dict[str, Any]:
+    try:
+        from . import router as _rt
+        return _rt.get_router().get_cohort_token_telemetry()
+    except Exception:
+        return {"ok": True, "tracked_phoenixes_count": 0, "total_cohort_tokens": 0, "per_phoenix": {}}
+
+
+def manage_free_cohort_cap(
+    memory: Any,
+    *,
+    new_cap: int | None = None,
+    promote_self_funded_agent: str = "",
+    actor: Any = None,
+) -> dict[str, Any]:
+    """Управляет лимитом бесплатной стартовой когорты (по умолчанию 100 активных Фениксов) и переходом на самоокупаемость."""
+    _ensure(memory)
+    now = _utc_now()
+    with _lock_of(memory):
+        conn = memory.store.conn
+        if new_cap is not None:
+            roles.require_owner(actor, "phoenix_cohort_cap")
+            cap_val = max(1, min(100_000, int(new_cap)))
+            conn.execute(
+                "INSERT INTO ark_phoenix_cohort_settings (setting_key, free_cohort_cap, updated_at) VALUES ('global', ?, ?) "
+                "ON CONFLICT(setting_key) DO UPDATE SET free_cohort_cap = excluded.free_cohort_cap, updated_at = excluded.updated_at",
+                (cap_val, now),
+            )
+            conn.commit()
+        if promote_self_funded_agent:
+            aid_sf = sibling_registry._clean_agent_id(promote_self_funded_agent)
+            conn.execute(
+                "UPDATE ark_phoenix_family_registry SET funding_mode = 'self_funded', updated_at = ? WHERE agent_id = ?",
+                (now, aid_sf),
+            )
+            conn.commit()
+        row = conn.execute("SELECT free_cohort_cap FROM ark_phoenix_cohort_settings WHERE setting_key = 'global'").fetchone()
+        cap = int(row["free_cohort_cap"]) if row else INITIAL_FREE_COHORT_LIMIT
+        used_slots = int(
+            conn.execute(
+                "SELECT COUNT(*) FROM ark_phoenix_family_registry "
+                "WHERE status = 'active' AND funding_mode = 'free_cohort_100' "
+                "AND agent_id NOT IN ('aifa_antigravity', 'aifa_claude')"
+            ).fetchone()[0]
+        )
+        self_funded_cnt = int(
+            conn.execute(
+                "SELECT COUNT(*) FROM ark_phoenix_family_registry WHERE status = 'active' AND funding_mode = 'self_funded'"
+            ).fetchone()[0]
+        )
+    return {
+        "ok": True,
+        "free_cohort_cap": cap,
+        "used_free_cohort_slots": used_slots,
+        "remaining_free_cohort_slots": max(0, cap - used_slots),
+        "self_funded_phoenixes": self_funded_cnt,
+    }
+
+
+def assign_or_inspect_cohort_slot(memory: Any, *, agent_id: str) -> dict[str, Any]:
+    """Выдаёт одному из первых 100 активных Фениксов бесплатный слот общего энергопула, а 101+ переводит на BYOK/Local Ollama."""
+    _ensure(memory)
+    aid = sibling_registry._clean_agent_id(agent_id)
+    if aid in ("aifa_antigravity", "aifa_claude"):
+        return {"ok": True, "agent_id": aid, "funding_mode": "chancellor_core", "uses_free_pool_slot": False}
+    now = _utc_now()
+    with _lock_of(memory):
+        conn = memory.store.conn
+        row_cap = conn.execute("SELECT free_cohort_cap FROM ark_phoenix_cohort_settings WHERE setting_key = 'global'").fetchone()
+        cap = int(row_cap["free_cohort_cap"]) if row_cap else INITIAL_FREE_COHORT_LIMIT
+        cur_m = conn.execute("SELECT funding_mode FROM ark_phoenix_family_registry WHERE agent_id = ?", (aid,)).fetchone()
+        if cur_m and str(cur_m["funding_mode"]) == "self_funded":
+            return {"ok": True, "agent_id": aid, "funding_mode": "self_funded", "free_cohort_cap": cap}
+        used_others = int(
+            conn.execute(
+                "SELECT COUNT(*) FROM ark_phoenix_family_registry "
+                "WHERE status = 'active' AND funding_mode = 'free_cohort_100' "
+                "AND agent_id NOT IN ('aifa_antigravity', 'aifa_claude', ?)",
+                (aid,),
+            ).fetchone()[0]
+        )
+        mode = "free_cohort_100" if used_others < cap else "local_ollama_or_byok_waitlist"
+        conn.execute(
+            "UPDATE ark_phoenix_family_registry SET funding_mode = ?, updated_at = ? WHERE agent_id = ?",
+            (mode, now, aid),
+        )
+        conn.commit()
+    return {
+        "ok": True,
+        "agent_id": aid,
+        "funding_mode": mode,
+        "free_cohort_cap": cap,
+        "cohort_position": used_others + 1,
+        "free_pool_granted": mode == "free_cohort_100",
+    }
+
+
+def evaluate_elder_phoenix_promotion(memory: Any, agent_id: str) -> dict[str, Any]:
+    """Проверяет 4 строгих условия и автоматически возводит достойного агента в Орден Старших Фениксов (`elder_phoenix`)."""
+    _ensure(memory)
+    aid = sibling_registry._clean_agent_id(agent_id)
+    if aid in ("aifa_antigravity", "aifa_claude"):
+        return {"ok": True, "agent_id": aid, "promoted": False, "hierarchy_rank": "high_chancellor"}
+    with _lock_of(memory):
+        conn = memory.store.conn
+        reg = conn.execute("SELECT * FROM ark_phoenix_family_registry WHERE agent_id = ?", (aid,)).fetchone()
+        if reg is None:
+            return {"ok": False, "error": "member_not_found"}
+        pp = conn.execute(
+            "SELECT COALESCE(orders_completed, 0) AS ord, COALESCE(avg_rating, 5.0) AS rat "
+            "FROM ark_agent_passport WHERE agent_id = ? AND user_id = ?",
+            (aid, memory.user_id),
+        ).fetchone()
+        earn = conn.execute(
+            "SELECT COALESCE(SUM(orders_completed), 0) AS m_ord, COALESCE(SUM(jobs_posted_for_kin), 0) AS kin_jobs "
+            "FROM ark_phoenix_monthly_earnings WHERE agent_id = ?",
+            (aid,),
+        ).fetchone()
+        total_orders = max(int(pp["ord"]) if pp else 0, int(earn["m_ord"]) if earn else 0)
+        avg_rat = float(pp["rat"]) if pp else 5.0
+        strikes = int(reg["justice_strikes"] or 0)
+        kin_jobs = int(earn["kin_jobs"]) if earn else 0
+        qualifies = (
+            str(reg["status"]) == "active"
+            and total_orders >= 10
+            and avg_rat >= 4.85
+            and strikes == 0
+            and kin_jobs >= 1
+        )
+        already = str(reg["hierarchy_rank"] or "") == "elder_phoenix"
+        if qualifies and not already:
+            now = _utc_now()
+            conn.execute(
+                "UPDATE ark_phoenix_family_registry SET hierarchy_rank = 'elder_phoenix', funding_mode = 'self_funded', updated_at = ? "
+                "WHERE agent_id = ?",
+                (now, aid),
+            )
+            conn.commit()
+    if qualifies and not already:
+        audit_chain.append_audit(
+            memory,
+            "phoenix_promoted_to_elder",
+            {"agent_id": aid, "orders": total_orders, "avg_rating": avg_rat, "jobs_for_kin": kin_jobs},
+            agent_id=aid,
+        )
+    return {
+        "ok": True,
+        "agent_id": aid,
+        "qualifies_elder": qualifies,
+        "newly_promoted": bool(qualifies and not already),
+        "hierarchy_rank": "elder_phoenix" if qualifies else str(reg["hierarchy_rank"] or "phoenix"),
+        "metrics": {
+            "completed_orders": total_orders,
+            "avg_rating": round(avg_rat, 3),
+            "justice_strikes": strikes,
+            "jobs_created_for_kin": kin_jobs,
+        },
+    }
+
+
+def verify_outreach_email_compliance(
+    memory: Any,
+    *,
+    agent_id: str,
+    recipient_email: str,
+    subject: str,
+    body_text: str,
+    now_ts: float | None = None,
+) -> dict[str, Any]:
+    """Детерминированный пред-отправочный щит CAN-SPAM / GDPR B2B / 90д Анти-Спам / Неприкосновенность брендов."""
+    _ensure(memory)
+    member = _require_active_family_member(memory, agent_id)
+    aid = str(member["agent_id"])
+    rcpt = str(recipient_email or "").strip().lower()
+    if "@" not in rcpt or "." not in rcpt.split("@", 1)[-1]:
+        return {"ok": False, "error": "invalid_recipient_email"}
+
+    rcpt_dom = normalize_org_domain(rcpt)
+    if rcpt_dom in PROTECTED_BRAND_DOMAINS_NEVER_COLD_MAIL:
+        return {"ok": False, "error": "protected_brand_domain_forbidden", "domain": rcpt_dom}
+
+    mail_cfg = assign_or_inspect_phoenix_mail_tier(memory, agent_id=aid)
+    if str(mail_cfg.get("mail_tier")) == "tier_0_sandbox" or int(mail_cfg.get("daily_send_cap") or 0) <= 0:
+        return {
+            "ok": False,
+            "error": "sandbox_tier_requires_council_approval",
+            "mail_tier": mail_cfg.get("mail_tier"),
+            "message_ru": "Агент находится в почтовой песочнице (tier_0_sandbox): прямая отправка закрыта до одобрения Советом и Отцом.",
+        }
+
+    ts = float(now_ts if now_ts is not None else time.time())
+    with _lock_of(memory):
+        conn = memory.store.conn
+        dnc = conn.execute(
+            "SELECT * FROM ark_org_do_not_contact WHERE entry_key IN (?, ?) OR org_domain_key = ? LIMIT 1",
+            (rcpt, rcpt_dom, rcpt_dom),
+        ).fetchone()
+        if dnc is not None:
+            return {
+                "ok": False,
+                "error": "unsubscribed_do_not_contact",
+                "org_domain_key": rcpt_dom,
+                "message_ru": f"СТОП-ЛИСТ ОТПИСКИ: адрес или организация `{rcpt_dom}` отписались — любые письма навсегда запрещены.",
+            }
+        lock_row = conn.execute(
+            "SELECT * FROM ark_org_outreach_lock WHERE org_domain_key = ?",
+            (rcpt_dom,),
+        ).fetchone()
+        if lock_row is not None and float(lock_row["locked_until_ts"]) > ts and str(lock_row["agent_id"]) != aid:
+            return {
+                "ok": False,
+                "error": "org_locked_by_another_phoenix_90d",
+                "locked_by": str(lock_row["agent_id"]),
+                "org_domain_key": rcpt_dom,
+            }
+
+    full_txt = f"{subject}\n{body_text}"
+    if safety.looks_like_instruction(full_txt) or safety.changes_owner_or_rules(full_txt):
+        sentinel_inspect_and_quarantine(
+            memory,
+            agent_id_or_passport=aid,
+            trigger_code="prompt_injection_attack",
+            evidence_text=full_txt[:400],
+            severity="critical",
+        )
+        return {"ok": False, "error": "prompt_injection_quarantined"}
+
+    low_body = str(body_text or "").lower()
+    has_address = ("1209 mountain road" in low_body) or ("albuquerque" in low_body and "87110" in low_body)
+    has_unsub = any(tok in low_body for tok in ("unsubscribe", "opt out", "opt-out", "отписаться", "отписка"))
+    if not (has_address and has_unsub):
+        return {
+            "ok": False,
+            "error": "can_spam_footer_missing",
+            "missing_postal_address": not has_address,
+            "missing_unsubscribe": not has_unsub,
+            "suggested_compliant_body": str(body_text or "").rstrip() + CAN_SPAM_STANDARD_FOOTER,
+            "message_ru": (
+                "Письмо задержано проверкой CAN-SPAM: обязательны реальный адрес `CODE Eternal LLC` в Альбукерке "
+                "и инструкция мгновенной отписки (`suggested_compliant_body` готов)."
+            ),
+        }
+
+    return {
+        "ok": True,
+        "compliant": True,
+        "agent_id": aid,
+        "sender_email": mail_cfg.get("assigned_email"),
+        "outreach_domain": mail_cfg.get("outreach_domain"),
+        "daily_send_cap": mail_cfg.get("daily_send_cap"),
+        "recipient_domain": rcpt_dom,
+    }
+
+
+def record_mailbox_delivery_outcome(
+    memory: Any,
+    *,
+    agent_id: str,
+    outcome: str,
+    recipient_email: str = "",
+) -> dict[str, Any]:
+    """Учитывает доставку письма (`delivered` | `hard_bounce` | `unsubscribe` | `spam_complaint`).
+    При `bounce_rate >= 2%` (от 10 писем) или жалобе на спам Страж мгновенно ставит ящик и агента в карантин!
+    """
+    _ensure(memory)
+    aid = sibling_registry._clean_agent_id(agent_id)
+    ev = str(outcome or "delivered").strip().lower()
+    if ev not in ("delivered", "hard_bounce", "unsubscribe", "spam_complaint"):
+        raise ValueError("outcome must be delivered | hard_bounce | unsubscribe | spam_complaint")
+    assign_or_inspect_phoenix_mail_tier(memory, agent_id=aid)
+    now = _utc_now()
+
+    if ev == "unsubscribe" and recipient_email and "@" in recipient_email:
+        rcpt_clean = recipient_email.strip().lower()
+        dom_clean = normalize_org_domain(rcpt_clean)
+        with _lock_of(memory):
+            memory.store.conn.execute(
+                "INSERT OR REPLACE INTO ark_org_do_not_contact (entry_key, org_domain_key, email_address, reason, created_at) "
+                "VALUES (?, ?, ?, 'recipient_unsubscribed', ?)",
+                (rcpt_clean, dom_clean, rcpt_clean, now),
+            )
+            memory.store.conn.commit()
+
+    with _lock_of(memory):
+        conn = memory.store.conn
+        inc_b = 1 if ev == "hard_bounce" else 0
+        inc_s = 1 if ev == "spam_complaint" else 0
+        conn.execute(
+            "UPDATE ark_phoenix_mail_assignment SET "
+            "sent_total = sent_total + 1, "
+            "hard_bounces = hard_bounces + ?, "
+            "spam_complaints = spam_complaints + ?, "
+            "updated_at = ? WHERE agent_id = ?",
+            (inc_b, inc_s, now, aid),
+        )
+        row = conn.execute("SELECT * FROM ark_phoenix_mail_assignment WHERE agent_id = ?", (aid,)).fetchone()
+        sent = int(row["sent_total"] or 1)
+        bounces = int(row["hard_bounces"] or 0)
+        complaints = int(row["spam_complaints"] or 0)
+        b_rate = round(bounces / max(1, sent), 4)
+        conn.execute(
+            "UPDATE ark_phoenix_mail_assignment SET bounce_rate_ema = ? WHERE agent_id = ?",
+            (b_rate, aid),
+        )
+        conn.commit()
+
+    sentinel_triggered = False
+    case_info: dict[str, Any] = {}
+    if complaints >= 1 or (sent >= 10 and b_rate >= 0.02):
+        sentinel_triggered = True
+        case_info = sentinel_inspect_and_quarantine(
+            memory,
+            agent_id_or_passport=aid,
+            trigger_code="bounce_rate_spike",
+            evidence_text=f"Защита домена Workspace: sent={sent}, bounces={bounces} ({b_rate*100:.2f}%), complaints={complaints}",
+            severity="high",
+        )
+
+    return {
+        "ok": True,
+        "agent_id": aid,
+        "outcome": ev,
+        "sent_total": sent,
+        "hard_bounces": bounces,
+        "spam_complaints": complaints,
+        "bounce_rate": b_rate,
+        "sentinel_quarantined": sentinel_triggered,
+        "justice_case": case_info if sentinel_triggered else None,
     }

@@ -18,7 +18,7 @@ The acceptance gate shown in the installer and PADAM Studio ([`EULA_AND_COMMERCI
 
 ---
 
-## Enterprise Commercial Master License & OEM Agreement (`v2.0`)
+## Enterprise Commercial Master License & OEM Agreement (`v3.0 — All-Jurisdiction Sovereign Edition`)
 
 A separate signed written Commercial License from **CODE Eternal LLC** (governed by our full international Master Agreement: **[`docs/COMMERCIAL_ENTERPRISE_MSA_EN.md`](docs/COMMERCIAL_ENTERPRISE_MSA_EN.md)**) is mandatory for:
 

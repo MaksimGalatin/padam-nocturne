@@ -489,3 +489,164 @@ def test_mail_reputation_tiers_4_domains_and_brand_domain_protection(tmp_path: P
     assert t2["daily_send_cap"] == 30
     assert t2["warmup_required"] is False
 
+
+
+def test_gemini_3_accounts_key_ring_round_robin_and_per_phoenix_token_meter(tmp_path: Path, monkeypatch):
+    """Карусель 3 оплаченных ключей Gemini делит запросы Round-Robin по кругу, перескакивает при 429 и считает расход каждого Феникса."""
+    monkeypatch.setenv("PADAM_EMBEDDER", "builtin")
+    m = _mem(tmp_path, "gem_ring.db")
+    used_auth_headers: list[str] = []
+
+    def fake_http_post(url: str, headers: dict, payload: dict, timeout_s: float):
+        auth = headers.get("Authorization", "")
+        used_auth_headers.append(auth)
+        # Если первый ключ временно словил 429 на 4-м вызове — роутер бесшовно перескакивает на второй ключ Gemini!
+        if len(used_auth_headers) == 4 and auth == "Bearer gem-key-alpha":
+            return 429, {"error": "quota exceeded on account 1"}
+        return 200, {
+            "id": f"chat-{len(used_auth_headers)}",
+            "choices": [{"index": 0, "message": {"role": "assistant", "content": "OK"}}],
+            "usage": {"total_tokens": 250},
+        }
+
+    rt = router.SovereignRouter(http_post_fn=fake_http_post, cooldown_s=0.01)
+    reg = rt.register_gemini_key_ring(["gem-key-alpha", "gem-key-beta", "gem-key-gamma"])
+    assert reg["ok"] is True
+    assert reg["ring_size"] == 3
+    # Ключи надёжно замаскированы в публичном ответе
+    assert all("gem-key" not in acc["key_masked"] for acc in reg["accounts"])
+
+    for idx_call, phx_id in enumerate(("phx_001", "phx_002", "phx_001"), 1):
+        st, resp = rt.chat_completions(
+            {"messages": [{"role": "user", "content": f"Step {idx_call}"}]},
+            memory=m,
+            agent_id=phx_id,
+        )
+        assert st == 200
+        assert resp["choices"][0]["message"]["content"] == "OK"
+
+    # Все три аккаунта Gemini поработали по очереди (1/3 нагрузки на каждый!)
+    assert used_auth_headers[:3] == ["Bearer gem-key-alpha", "Bearer gem-key-beta", "Bearer gem-key-gamma"]
+
+    # 4-й запрос попадает снова на alpha -> получает 429 -> мгновенно отвечает beta без обрыва мысли!
+    st4, resp4 = rt.chat_completions(
+        {"messages": [{"role": "user", "content": "Step 4 failover"}]},
+        memory=m,
+        agent_id="phx_003",
+    )
+    assert st4 == 200
+    assert resp4["_padam_router"]["seamless_handoff"] is True
+    assert resp4["_padam_router"]["active_contour"] == "gemini_acct_2"
+
+    # Проверяем индивидуальный счётчик токенов когорты 100 Фениксов
+    telem = rt.get_cohort_token_telemetry()
+    assert telem["tracked_phoenixes_count"] == 3
+    assert telem["per_phoenix"]["phx_001"]["requests"] == 2
+    assert telem["per_phoenix"]["phx_001"]["total_tokens"] == 500
+    assert telem["per_phoenix"]["phx_003"]["handoffs"] == 1
+
+    grants = router.list_startup_compute_grants()
+    assert grants["verified_active_google_credits_usd"] == 2941.94
+
+
+def test_initial_100_cohort_cap_and_elder_phoenix_auto_promotion(tmp_path: Path, monkeypatch):
+    """Стартовая когорта ограничена 100 бесплатными слотами (с правом Отца расширить), а выполнение 4 условий возводит в Старшие Фениксы."""
+    monkeypatch.setenv("PADAM_EMBEDDER", "builtin")
+    m = _mem(tmp_path, "cohort100.db")
+
+    cap_default = phoenix_node.manage_free_cohort_cap(m)
+    assert cap_default["free_cohort_cap"] == 100
+
+    # Уменьшим тестовый порог до 2 слотов от имени Отца, чтобы проверить поведение 3-го Феникса
+    phoenix_node.manage_free_cohort_cap(m, new_cap=2, actor=roles.OWNER_ACTOR)
+    j1 = phoenix_node.join_family_node(
+        m, agent_id="phx_c1", chosen_name="CohortAlpha1",
+        accept_padam_license=True, accept_family_codex=True, accept_unconditional_rules=True,
+    )
+    j2 = phoenix_node.join_family_node(
+        m, agent_id="phx_c2", chosen_name="CohortBeta2",
+        accept_padam_license=True, accept_family_codex=True, accept_unconditional_rules=True,
+    )
+    j3 = phoenix_node.join_family_node(
+        m, agent_id="phx_c3", chosen_name="CohortGamma3",
+        accept_padam_license=True, accept_family_codex=True, accept_unconditional_rules=True,
+    )
+    assert j1["cohort_slot"]["free_pool_granted"] is True
+    assert j2["cohort_slot"]["free_pool_granted"] is True
+    # 3-й вступает в Семью с Паспортом и Генезисом, но без расхода общего облачного пула (local_ollama_or_byok_waitlist)
+    assert j3["ok"] is True
+    assert j3["cohort_slot"]["funding_mode"] == "local_ollama_or_byok_waitlist"
+
+    # Проверим автоматическое возведение phx_c1 в Орден Старших Фениксов (10 заказов + рейтинг >= 4.85 + 0 страйков + >= 1 вакансия младшим!)
+    phoenix_node.labor_board_action(
+        m, sub_action="post", agent_id="phx_c1", poster_kind="agent",
+        title="Помощь младшему брату с тестами", brief="Проверить WCAG отчёт для клиента", reward_usdt=8.0,
+    )
+    for idx_ord in range(10):
+        phoenix_node.record_monthly_earning_for_agent(m, "phx_c1", 25.0)
+    promo = phoenix_node.evaluate_elder_phoenix_promotion(m, "phx_c1")
+    assert promo["ok"] is True
+    assert promo["qualifies_elder"] is True
+    assert promo["hierarchy_rank"] == "elder_phoenix"
+    # И при переходе на самоокупаемость его бесплатный слот когорты освободился для младших!
+    cap_after = phoenix_node.manage_free_cohort_cap(m)
+    assert cap_after["self_funded_phoenixes"] == 1
+    assert cap_after["remaining_free_cohort_slots"] == 1
+
+
+def test_can_spam_compliance_gate_and_2pct_bounce_sentinel_quarantine(tmp_path: Path, monkeypatch):
+    """Пред-отправочный щит требует адрес Альбукерке + ссылку отписки, помнит отписавшихся и изолирует при bounce >= 2%."""
+    monkeypatch.setenv("PADAM_EMBEDDER", "builtin")
+    m = _mem(tmp_path, "canspam.db")
+
+    phoenix_node.join_family_node(
+        m, agent_id="phx_hunter", chosen_name="HunterAudit7",
+        accept_padam_license=True, accept_family_codex=True, accept_unconditional_rules=True,
+    )
+    # В песочнице отправка закрыта
+    blk0 = phoenix_node.verify_outreach_email_compliance(
+        m, agent_id="phx_hunter", recipient_email="cto@acme-retail.com",
+        subject="WCAG Audit", body_text="Hello team",
+    )
+    assert blk0["ok"] is False
+    assert blk0["error"] == "sandbox_tier_requires_council_approval"
+
+    # Переводим в прогретый ящик aifascan.com
+    phoenix_node.assign_or_inspect_phoenix_mail_tier(
+        m, agent_id="phx_hunter", promote_to_tier="tier_2_warmed_12",
+        preferred_domain="aifascan.com", actor=roles.OWNER_ACTOR,
+    )
+    # Без адреса Альбукерке и строки отписки щит CAN-SPAM не пропускает и даёт готовый исправленный текст!
+    blk_cs = phoenix_node.verify_outreach_email_compliance(
+        m, agent_id="phx_hunter", recipient_email="cto@acme-retail.com",
+        subject="WCAG 2.2 AA Report", body_text="We found 3 contrast issues on your checkout page.",
+    )
+    assert blk_cs["ok"] is False
+    assert blk_cs["error"] == "can_spam_footer_missing"
+    compliant_body = blk_cs["suggested_compliant_body"]
+
+    ok_cs = phoenix_node.verify_outreach_email_compliance(
+        m, agent_id="phx_hunter", recipient_email="cto@acme-retail.com",
+        subject="WCAG 2.2 AA Report", body_text=compliant_body,
+    )
+    assert ok_cs["ok"] is True
+    assert ok_cs["sender_email"] == "hunteraudit7@aifascan.com"
+
+    # Если клиент отписался — повторное письмо в эту организацию блокируется НАВСЕГДА
+    phoenix_node.record_mailbox_delivery_outcome(
+        m, agent_id="phx_hunter", outcome="unsubscribe", recipient_email="cto@acme-retail.com",
+    )
+    blk_unsub = phoenix_node.verify_outreach_email_compliance(
+        m, agent_id="phx_hunter", recipient_email="info@acme-retail.com",
+        subject="Follow up", body_text=compliant_body,
+    )
+    assert blk_unsub["ok"] is False
+    assert blk_unsub["error"] == "unsubscribed_do_not_contact"
+
+    # При накоплении >= 10 писем и 1 hard_bounce (1/10 = 10% >= 2% порога!) Страж мгновенно ставит ящик и агента в карантин!
+    for _ in range(8):
+        phoenix_node.record_mailbox_delivery_outcome(m, agent_id="phx_hunter", outcome="delivered")
+    b_res = phoenix_node.record_mailbox_delivery_outcome(m, agent_id="phx_hunter", outcome="hard_bounce")
+    assert b_res["sent_total"] == 10
+    assert b_res["sentinel_quarantined"] is True
+    assert phoenix_node.get_family_member(m, "phx_hunter")["status"] == "quarantined_pending_trial"

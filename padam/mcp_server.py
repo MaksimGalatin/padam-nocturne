@@ -5721,6 +5721,21 @@ def _call_tool_full_impl(name: str, args: dict) -> tuple[str, dict | None]:
             pkt = dict(args.get("packet") or {})
             if pkt.get("enqueue_leads"):
                 payload = _pn.enqueue_b2b_leads(m, list(pkt.get("enqueue_leads") or []))
+            elif pkt.get("verify_email"):
+                payload = _pn.verify_outreach_email_compliance(
+                    m,
+                    agent_id=str(pkt.get("agent_id") or aid),
+                    recipient_email=str(pkt.get("recipient_email") or ""),
+                    subject=str(pkt.get("subject") or ""),
+                    body_text=str(pkt.get("body_text") or args.get("text") or ""),
+                )
+            elif pkt.get("delivery_outcome"):
+                payload = _pn.record_mailbox_delivery_outcome(
+                    m,
+                    agent_id=str(pkt.get("agent_id") or aid),
+                    outcome=str(pkt.get("delivery_outcome") or "delivered"),
+                    recipient_email=str(pkt.get("recipient_email") or ""),
+                )
             elif pkt.get("check_only"):
                 payload = _pn.check_org_90d_lock(m, str(pkt.get("domain") or args.get("text") or ""))
             else:
