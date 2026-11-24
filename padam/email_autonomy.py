@@ -40,6 +40,7 @@ MAIL_PROVIDER_PRESETS: dict[str, dict[str, Any]] = {
     "smtp_imap": {"smtp_host": "", "smtp_port": 465, "imap_host": "", "imap_port": 993, "hint_ru": "Произвольный SMTP/IMAP сервер вашего домена."},
     "gmail_oauth2": {"smtp_host": "smtp.gmail.com", "smtp_port": 465, "imap_host": "imap.gmail.com", "imap_port": 993, "hint_ru": "Gmail OAuth2 (токен доступа Google без App Password)."},
     "resend": {"smtp_host": "api.resend.com", "smtp_port": 443, "imap_host": "", "imap_port": 0, "hint_ru": "Resend HTTP API (только отправка по ключу re_...)."},
+    "instantly": {"smtp_host": "api.instantly.ai", "smtp_port": 443, "imap_host": "api.instantly.ai", "imap_port": 443, "hint_ru": "Instantly API v2 (HTTPS 443 — обходит блокировку портов 465/587 у провайдера; 100/100 прогретые ящики Google Workspace)."},
 }
 
 DEFAULT_STOP_LIST_PATH = Path(
@@ -238,6 +239,27 @@ def _verify_smtp_imap_live(
         if not secret.startswith("re_"):
             return {"ok": False, "error": "Ключ Resend должен начинаться с re_."}
         return {"ok": True}
+
+    if provider == "instantly":
+        try:
+            req = urllib.request.Request(
+                "https://api.instantly.ai/api/v2/accounts?limit=100",
+                headers={"Authorization": f"Bearer {secret}", "User-Agent": "PADAM-Studio/0.8.0"},
+                method="GET",
+            )
+            with net_guard.safe_urlopen(req, timeout=12, require_https=True) as resp:
+                data = json.loads(resp.read().decode("utf-8", errors="replace"))
+            items = data.get("items") or data.get("accounts") or (data if isinstance(data, list) else [])
+            matched = next((a for a in items if str(a.get("email") or "").strip().lower() == email.lower()), None)
+            if matched is None:
+                return {"ok": False, "error": f"Ящик {email} не найден в подключённом кабинете Instantly."}
+            return {
+                "ok": True,
+                "warmup_score": matched.get("stat_warmup_score", 100),
+                "instantly_status": matched.get("status", 1),
+            }
+        except Exception as exc:
+            return {"ok": False, "error": f"Ошибка проверки Instantly HTTPS API: {exc}"}
 
     try:
         ctx = ssl.create_default_context()
@@ -584,6 +606,30 @@ def _deliver_email_via_account(
         )
         with net_guard.safe_urlopen(req, timeout=12, require_https=True) as r:
             return {"ok": 200 <= int(r.status) < 300, "status": int(r.status)}
+
+    if prov == "instantly":
+        payload_inst = {
+            "email": to_email,
+            "personalization": body,
+            "custom_variables": {
+                "subject": subject,
+                "body_text": body,
+                "sender_account": acc["email"],
+                "unsubscribe_mailto": f"mailto:{acc['email']}?subject=Unsubscribe",
+            },
+        }
+        req_inst = urllib.request.Request(
+            "https://api.instantly.ai/api/v2/leads",
+            data=json.dumps(payload_inst, ensure_ascii=False).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {secret}",
+                "Content-Type": "application/json",
+                "User-Agent": "PADAM-Studio/0.8.0",
+            },
+            method="POST",
+        )
+        with net_guard.safe_urlopen(req_inst, timeout=12, require_https=True) as r_inst:
+            return {"ok": 200 <= int(r_inst.status) < 300, "status": int(r_inst.status), "transport": "instantly_https_443"}
 
     msg = EmailMessage()
     msg["From"] = f"{acc['display_name']} <{acc['email']}>" if acc.get("display_name") else acc["email"]
