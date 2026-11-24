@@ -31,7 +31,9 @@ All commercial engagements include 5-year audit rights, anti-evasion Gross Trans
 
 ## Contributions & 100% IP Purity (DCO + CLA)
 
-CODE Eternal LLC is **100 % solely owned by Maksim Halatsin (Maksim Galatin)**, and 100 % of PADAM code is his exclusive property. Every external pull request requires a **DCO sign-off (`git commit -s` / `Signed-off-by:`)**, and core code pull requests are **not accepted** without an executed Contributor License Agreement assigning full dual-licensing and `Apache-2.0` conversion rights to CODE Eternal LLC ([`CONTRIBUTING.md`](CONTRIBUTING.md)). Bug reports, benchmarks, and Red Team cases via Issues are always welcome.
+CODE Eternal LLC is **100 % solely owned by Maksim Halatsin (Maksim Galatin)**, and 100 % of PADAM code is his exclusive property. Every external pull request requires a **DCO sign-off (`git commit -s` / `Signed-off-by:`)**, and core code pull requests are **not accepted** without executing [`CLA.md`](CLA.md) granting full dual-licensing and `Apache-2.0` conversion rights to CODE Eternal LLC (see [`CONTRIBUTING.md`](CONTRIBUTING.md)). Bug reports, benchmarks, and Red Team cases via Issues are always welcome without a CLA.
+
+All `PADAM License 1.0` terms also enforce international **TPM / CMI anti-circumvention** (`DMCA 17 U.S.C. §§ 1201–1202`, WIPO Treaty, EU InfoSoc), **anti-splitting gross value rules** across fiat/crypto/barter, **worldwide injunctive relief** (supporting New Mexico exclusive venue), **U.S. Government FAR 12.212 / DFARS 227.7202 restricted rights**, mandatory statutory savings clauses (EU/UK interoperability & unwaivable liabilities), **English controlling text**, and anti-typosquatting protection over registries and domains.
 
 ## Licensing inquiries
 - **Email:** `contact@codeofdigitaleternity.com` · `codeofdigitaleternity@gmail.com` · Website: [`https://aifa.works`](https://aifa.works)

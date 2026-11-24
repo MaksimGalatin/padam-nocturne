@@ -20,13 +20,15 @@ CURRENT_TERMS_VERSION = "PADAM_LICENSE_1.0_2026-11-23"
 # Конспект PADAM License 1.0 (файл LICENSE); его SHA-256 входит в подписанную квитанцию согласия.
 TERMS_TEXT_HASH_SOURCE = (
     "PADAM License 1.0 (LicenseRef-PADAM-1.0), CODE Eternal LLC (New Mexico Entity ID 0008138873, "
-    "contact@codeofdigitaleternity.com). Source-available, not open source; versions 0.8.0 and later. "
-    "Free to install and use. Commission to CODE Eternal LLC on every paid order, sale or service obtained, "
-    "prepared or carried out with the Earning features: 15% assisted mode, 20% autopilot mode; due within 14 days "
-    "unless deducted by payment rails; unpaid commission may suspend the Earning features. Not allowed: removing, "
-    "disabling, bypassing or falsifying the commission calculation, ledger, payment routing, acceptance screen or "
-    "notices; distributing changed copies; selling, renting, sublicensing or hosting for others; building a competing "
-    "product. Governed by the laws of New Mexico, USA."
+    "contact@codeofdigitaleternity.com). Source-available with 24-month delayed Apache-2.0 conversion "
+    "per non-pre-release version; not open source prior to Change Date; versions 0.8.0 and later "
+    "(0.7.2 and earlier irrevocably keep AGPL-3.0-only). Free to install and use. Dual Lock on Earning "
+    "(Copyright condition + Platform Terms https://aifa.works/terms + Privacy https://aifa.works/privacy): "
+    "commission on 100% gross value without splitting (15% assisted, 20% autopilot), due within 14 days "
+    "unless deducted by payment rails; unpaid commission may suspend Earning Features. TPM/CMI protection "
+    "(DMCA 17 U.S.C. 1201-1202, WIPO WCT, EU InfoSoc): no circumvention, no distributing changed copies, "
+    "no SaaS/API hosting, no Competing Product. Patent grant with defensive termination; AI best-effort "
+    "disclaimer; FAR 12.212 / DFARS 227.7202; New Mexico law & worldwide injunctive relief; English controls."
 )
 
 TERMS_SHA256 = hashlib.sha256(TERMS_TEXT_HASH_SOURCE.encode("utf-8")).hexdigest()

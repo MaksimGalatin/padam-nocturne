@@ -72,7 +72,17 @@ def test_лицензия_усилена_по_стандарту_fair_code():
         "Severability",
         "contra proferentem",
         "survive",
+        "Technological Protection Measures",
+        "17 U.S.C.",
+        "Mandatory Law Savings Clause",
+        "FAR 12.212",
+        "English text of this License governs",
+        "injunctive and equitable relief",
+        "artificially splitting",
     ):
         assert маркер in lic, f"Missing in LICENSE: {маркер}"
-    assert "DCO" in contrib and "Signed-off-by:" in contrib and "CLA" in contrib
-    assert "24 месяца" in docs_lic and "Apache-2.0" in docs_lic and "0.7.2" in docs_lic
+    assert (корень / "CLA.md").is_file()
+    cla = (корень / "CLA.md").read_text(encoding="utf-8")
+    assert "CODE Eternal LLC" in cla and "Signed-off-by:" in cla and "Apache-2.0" in cla
+    assert "DCO" in contrib and "Signed-off-by:" in contrib and "CLA.md" in contrib
+    assert "24 месяца" in docs_lic and "Apache-2.0" in docs_lic and "0.7.2" in docs_lic and "CLA.md" in docs_lic

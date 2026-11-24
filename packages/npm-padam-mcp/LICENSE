@@ -12,13 +12,14 @@ The Software is licensed, not sold.
 
 1. DEFINITIONS AND SCOPE
    (a) "Licensor" means CODE Eternal LLC (New Mexico, USA, Entity ID 0008138873).
-   (b) "Software" means PADAM NOCTURNE, PADAM Studio (desktop and Android), the PADAM command line,
-       MCP server, REST API, Phoenix Node, browser and editor extensions, client packages and documentation
+   (b) "Software" means PADAM NOCTURNE, PADAM Studio (desktop, Android and iOS), the PADAM command line,
+       MCP server, REST/SSE API, Phoenix Node, browser and editor extensions, client packages and documentation
        in this repository, version 0.8.0 and later, in source or binary form.
    (c) "Earning Features" means all monetization, freelance, order, marketplace, store, partner/referral,
        Platform Wizard, Swarm execution and Autopilot modules included in or enabled by the Software.
-   (d) "Platform Terms" means the separate CODE Eternal Platform Terms (https://aifa.works/terms) governing
-       accounts, billing, payouts and commission settlement for Earning Features.
+   (d) "Platform Terms" means the separate CODE Eternal Platform Terms (https://aifa.works/terms) and Privacy
+       Policy (https://aifa.works/privacy) governing accounts, billing, payouts and commission settlement for
+       Earning Features.
    (e) "Competing Product" means any commercial or non-commercial software, hosted service, SaaS, API,
        managed offering or model whose primary purpose or advertised core capability is providing persistent
        long-term memory, retrieval-augmented memory indexing, runtime prompt-injection quarantine, or
@@ -28,7 +29,10 @@ The Software is licensed, not sold.
        e-commerce, healthcare, education, or developer tools) that merely invoke PADAM locally for their
        own agents on devices you control are NOT a Competing Product.
    (f) "Change Date" for any specific released version (v0.8.0 and later) means the date twenty-four (24)
-       months after the official public release date of that specific version on GitHub Releases or PyPI.
+       months after the earliest official publication date of that specific final, signed, non-pre-release
+       version (excluding alpha, beta, rc, nightly, or third-party builds) by Licensor on GitHub Releases
+       (https://github.com/MaksimGalatin/padam-nocturne/releases) or PyPI
+       (https://pypi.org/project/padam-nocturne/).
    (g) Excluded components (NOT covered by this License):
        (i)   .github/actions/padam-agentic-shield/ and padam-shield-mcp — Apache License 2.0;
        (ii)  third-party components listed in THIRD-PARTY-NOTICES.md — each under its own licence;
@@ -48,7 +52,10 @@ The Software is licensed, not sold.
 3. PATENT GRANT AND DEFENSIVE TERMINATION
    (a) Subject to your compliance with this License, Licensor hereby grants you a non-exclusive, worldwide,
        royalty-free patent licence under patent claims owned or licensable by Licensor that are necessarily
-       infringed by your authorized use of the unmodified Software under Section 2.
+       infringed by your authorized use of the Software under Section 2, where such claims would be infringed
+       by Licensor's Software standing alone or as modified strictly for internal use under Section 2(b),
+       excluding any infringement caused by combinations with third-party code, hardware or services not
+       required by the Software.
    (b) Defensive Termination: If you (or any affiliate or entity acting on your behalf) initiate or
        participate in any patent litigation or claim (including a cross-claim or counterclaim) against
        Licensor or any user alleging that the Software or any part of it infringes a patent, any patent
@@ -58,13 +65,18 @@ The Software is licensed, not sold.
 4. DUAL LOCK ON EARNING FEATURES (COPYRIGHT CONDITION + PLATFORM TERMS)
    Commercial monetization via Earning Features is governed by two independent legal locks:
    (a) Express Copyright Condition: Your copyright licence to run Earning Features is strictly conditioned
-       upon: (i) accepting the Platform Terms and this License via the acceptance gate (or --accept-terms),
-       and (ii) paying the full gross commission below without circumvention.
-   (b) Platform Terms & Commission Rates: For every paid order, sale or service obtained, prepared or
-       executed with Earning Features, you owe Licensor a contractual service commission on the gross amount
-       paid by the client under the Platform Terms:
+       upon: (i) accepting this License, the Platform Terms (https://aifa.works/terms) and Privacy Policy
+       (https://aifa.works/privacy) via the acceptance gate (or --accept-terms), and (ii) paying the full
+       gross commission below without circumvention.
+   (b) Platform Terms & Commission Rates (Anti-Splitting): For every paid order, sale or service obtained,
+       prepared or executed with Earning Features, you owe Licensor a contractual service commission on 100%
+       of the total gross economic value paid, credited or bartered by the client (in fiat, stablecoins such
+       as USDC/USDT, cryptoassets, tokens or offsets, before processor fees, taxes or overhead, and without
+       artificially splitting fees into "consulting" or "support" to reduce the base) under the Platform Terms:
          15 % — assisted mode (you approve and send the work yourself);
          20 % — autopilot mode (the Software acts autonomously).
+       Any reduced promotional rate (such as for qualified TOP-100 Phoenixes) applies only if expressly
+       published in the Platform Terms or confirmed in writing by Licensor.
    (c) Settlement: Where payment flows through CODE Eternal or partner payment rails, the commission is
        deducted automatically. Otherwise it is due within 14 days after the client pays.
    (d) Opt-out: If you do not wish to pay the commission, do not enable or use Earning Features. All local
@@ -73,51 +85,74 @@ The Software is licensed, not sold.
 
 5. FUTURE CONVERSION TO APACHE-2.0 AND RELEASE STABILITY
    (a) Delayed Open-Source Conversion: On each released version's Change Date (24 months after its official
-       public release), the copyright licence for the source code of THAT specific released version — excluding
-       trademarks and without granting free access to Licensor's hosted cloud APIs, registries or keys —
-       automatically converts to the Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
+       Release Date), the copyright licence for the frozen source code of THAT specific released version —
+       strictly excluding all later versions, trademarks, release signing keys, and any free access to
+       Licensor's hosted cloud APIs, registries or keys — automatically converts to the
+       Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Conversion on Change Date
+       never waives or forgives commissions accrued or breaches committed prior to Change Date. Licensor may accelerate
+       conversion of a specific release earlier by written public notice, but never delay it.
    (b) No Retroactive Restrictions: Licensor irrevocably commits that any specific version already officially
        released under a stated licence (including 0.7.2 and earlier under AGPL-3.0-only, and each 0.8.x
        release under PADAM License 1.0) will never have new restrictions added to that specific released
        tag retroactively.
 
-6. WHAT YOU MAY NOT DO (PRIOR TO CHANGE DATE)
-   (a) remove, disable, bypass or falsify the commission calculation, commission ledger, payment routing,
-       acceptance gate, or any licence, patent, trademark or copyright notice — in original or modified copies;
+6. WHAT YOU MAY NOT DO (PRIOR TO CHANGE DATE) AND ANTI-CIRCUMVENTION (TPMs / CMI)
+   (a) remove, disable, bypass, hook, mock or falsify the commission calculation, commission ledger, payment
+       routing, acceptance gate (`terms_gate`), HMAC-SHA256/Ed25519 receipts, `ark_audit_chain`, or any
+       licence, patent, trademark or copyright notice — in original or modified copies. These controls
+       constitute Technological Protection Measures (TPMs) and Copyright Management Information (CMI) under
+       17 U.S.C. §§ 1201-1202 (DMCA), WIPO Copyright Treaty Arts. 11-12, and EU InfoSoc Arts. 6-7;
    (b) distribute, sell, publish or make available modified copies of the Software, or parts of it;
-   (c) sell, rent, lease, sublicense or offer the Software to third parties as a hosted SaaS, managed service
-       or API proxy;
+   (c) sell, rent, lease, sublicense or offer the Software to third parties as a hosted SaaS, managed service,
+       or API proxy (including wrapping an Apache-2.0/MIT connector around core modules);
    (d) use the Software or its source code to build, operate or train a Competing Product.
    Any use outside Section 2 requires a separate signed written Commercial License from Licensor
    (contact@codeofdigitaleternity.com; see COMMERCIAL-LICENSE.md).
 
-7. ACCEPTANCE, TERMINATION AND SURVIVAL
-   By installing, running or using the Software you accept this License. If you do not accept it, do not
-   install or use the Software, and delete all copies. Your rights terminate automatically upon any breach
-   of this License. Sections 1, 3(b), 4(b)-(c) (for accrued commissions), 5(b), 6, 7, 8, 9 and 10 survive
-   any termination or expiration.
+7. ACCEPTANCE, TERMINATION, ELECTRONIC EXECUTION AND SURVIVAL
+   By downloading, installing, running, clicking acceptance, passing --accept-terms or using the Software
+   you accept this License, which has full legal force equivalent to a signed writing under the U.S.
+   E-SIGN Act, UETA, EU eIDAS Regulation (EU 910/2014) and UNCITRAL electronic-signature rules. If you do
+   not accept it, do not install or use the Software and delete all copies. Your rights terminate
+   automatically upon any breach. Sections 1, 3(b), 4(b)-(c) (for accrued commissions), 5(b), 6, 7, 8, 9
+   and 10 survive any termination, expiration or Change Date conversion.
 
-8. NO WARRANTY AND LIMITATION OF LIABILITY
-   THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT WARRANTY OF ANY KIND, EXPRESS, IMPLIED OR
-   STATUTORY, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE AND
-   NON-INFRINGEMENT. TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL LICENSOR BE LIABLE
-   FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY OR PUNITIVE DAMAGES, OR ANY LOSS OF
-   PROFITS, DATA, CRYPTOGRAPHIC KEYS, WALLET ASSETS OR GOODWILL. IN ALL CASES, LICENSOR'S AGGREGATE
-   LIABILITY ARISING OUT OF THIS LICENSE OR THE SOFTWARE SHALL NOT EXCEED THE GREATER OF (A) THE FEES OR
-   COMMISSIONS ACTUALLY PAID BY YOU TO LICENSOR UNDER THIS LICENSE IN THE TWELVE (12) MONTHS PRECEDING THE
-   CLAIM, OR (B) ONE HUNDRED U.S. DOLLARS (USD 100). You retain sole control of keys and wallets created
-   with the Software; Licensor cannot recover lost keys.
+8. NO WARRANTY, AI/SECURITY DISCLAIMER, MANDATORY LAW EXCEPTIONS AND LIABILITY CAP
+   THE SOFTWARE (INCLUDING AGENTIC SHIELD, PROMPT-INJECTION FILTERS, DLP REDACTION AND AUTONOMOUS MODULES)
+   IS PROVIDED "AS IS" AND "AS AVAILABLE" ON A BEST-EFFORT BASIS, WITHOUT WARRANTY OF ANY KIND, EXPRESS,
+   IMPLIED OR STATUTORY, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE,
+   ACCURACY OR NON-INFRINGEMENT. NO SECURITY SOFTWARE GUARANTEES 100% IMMUNITY FROM ZERO-DAY ATTACKS OR
+   THIRD-PARTY LLM ERRORS; YOU RETAIN SOLE RESPONSIBILITY FOR VERIFYING AUTONOMOUS ACTIONS, BACKUPS AND
+   CUSTODY OF PRIVATE KEYS AND WALLETS (WHICH LICENSOR CANNOT RECOVER). TO THE MAXIMUM EXTENT PERMITTED
+   BY APPLICABLE LAW, IN NO EVENT SHALL LICENSOR BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL,
+   CONSEQUENTIAL, EXEMPLARY OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS, DATA, KEYS, WALLET ASSETS OR
+   GOODWILL. IN ALL CASES, LICENSOR'S AGGREGATE LIABILITY ARISING OUT OF THIS LICENSE OR THE SOFTWARE SHALL
+   NOT EXCEED THE GREATER OF (A) THE FEES OR COMMISSIONS ACTUALLY PAID BY YOU TO LICENSOR UNDER THIS
+   LICENSE IN THE TWELVE (12) MONTHS PRECEDING THE CLAIM, OR (B) ONE HUNDRED U.S. DOLLARS (USD 100).
+   Mandatory Law Savings Clause: Nothing in this License excludes or limits liability that cannot legally
+   be excluded under applicable mandatory law (such as fraud, intentional misconduct, or death/personal
+   injury caused by negligence where unwaivable), nor overrides non-waivable statutory interoperability
+   exceptions (e.g., under EU Directive 2009/24/EC where applicable); all other limits apply to the
+   maximum extent permitted.
 
-9. GOVERNING LAW, VENUE, SEVERABILITY, EXPORT AND CONSTRUCTION
-   (a) Governing Law & Venue: This License is governed by the laws of the State of New Mexico, USA,
-       excluding conflict-of-law rules. Any dispute not subject to a separate signed commercial arbitration
-       agreement shall be brought exclusively in the state or federal courts located in Bernalillo County
-       (Albuquerque), New Mexico, USA, and the parties consent to personal jurisdiction there.
-   (b) Export Compliance: You agree to comply with applicable U.S. and international export control and
-       sanctions laws.
-   (c) Severability: If any provision is held unenforceable by a court of competent jurisdiction, that
-       provision shall be enforced to the maximum extent permissible and all remaining provisions stay in force.
-   (d) Construction: Section headings are for convenience only. Both parties agree that any ambiguity shall
+9. GOVERNING LAW, VENUE, GLOBAL INJUNCTIONS, U.S. GOVERNMENT RIGHTS, EXPORT AND CONSTRUCTION
+   (a) Governing Law, Venue & Worldwide Injunctive Relief: This License is governed by the laws of the State
+       of New Mexico, USA and applicable U.S. federal IP law, excluding conflict-of-law rules and the CISG.
+       Any dispute not subject to a separate signed commercial arbitration agreement shall be brought
+       exclusively in the state or federal courts located in Bernalillo County (Albuquerque), New Mexico,
+       USA, and the parties consent to personal jurisdiction there; PROVIDED ALWAYS that Licensor retains
+       the unilateral right to seek immediate preliminary or permanent injunctive and equitable relief in
+       any court of competent jurisdiction worldwide where infringement, TPM circumvention or unauthorized
+       hosting occurs, without being required to post bond or security to the extent permitted by law.
+   (b) U.S. Government Restricted Rights: The Software and documentation are "Commercial Computer Software"
+       and "Commercial Computer Software Documentation" under FAR 12.212 / 52.227-19 and DFARS 227.7202,
+       provided to U.S. Government end-users solely with restricted commercial rights granted herein.
+   (c) Export Compliance & Sanctions: You agree to comply with all applicable U.S. (OFAC/EAR) and
+       international export-control and sanctions laws.
+   (d) Severability & Controlling Language: If any provision is held unenforceable, it shall be reformed and
+       enforced to the maximum extent permissible and all remaining provisions stay in force. If translated
+       into other languages, the English text of this License governs and controls in any dispute.
+   (e) Construction: Section headings are for convenience only. Both parties agree that any ambiguity shall
        be construed fairly in accordance with its plain meaning and NOT strictly against the drafter
        (the doctrine of contra proferentem is expressly waived to the maximum extent permitted by law).
 
@@ -127,6 +162,8 @@ The Software is licensed, not sold.
     Ambassador Grid™ and AIfa & DJ Galatin™ are trademarks of CODE Eternal LLC (New Mexico, USA, Entity ID
     0008138873), sole lawful owner (100% owned by Maksim Valentinovich Galatin). Spark, Family Archive and
     Digital DNA are service tier names of CODE Eternal LLC. Rights arise from and are claimed through actual
-    use. Any unauthorized use violates applicable laws and will be prosecuted. No licence herein grants
-    trademark rights. Claude, Gemini, Grok, Solana, Arweave and other third-party marks belong to their owners;
+    use. No licence herein grants trademark rights, nor authorizes registering or using any confusingly
+    similar domain name, social handle, API route, or package name on PyPI, npm, Docker Hub or IDE
+    marketplaces. Any unauthorized use violates trademark and unfair-competition laws and will be prosecuted.
+    Claude, Gemini, Grok, Solana, Arweave and other third-party marks belong to their respective owners;
     no affiliation is claimed. See TRADEMARKS.md.

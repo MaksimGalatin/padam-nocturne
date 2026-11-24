@@ -25,7 +25,7 @@ From `0.8.0`, PADAM core is **source-available** under [`PADAM License 1.0`](LIC
 
 To keep copyright clean across future dual-licensing and the 24-month `Apache-2.0` conversion:
 - **DCO Required (`git commit -s`):** Every commit in a Pull Request must carry a Developer Certificate of Origin sign-off (`Signed-off-by: Your Name <email>`), certifying you have the legal right to submit the contribution.
-- **CLA Required for Core Code:** Before any external code PR can be merged into core packages (`padam/`, Studio, extensions), contributors must execute a Contributor License Agreement assigning or licensing full distribution & dual-licensing rights to **CODE Eternal LLC** (`contact@codeofdigitaleternity.com`; see [`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md)). Bug reports, benchmark logs, and Red Team test cases can always be submitted via Issues without a CLA.
+- **CLA Required for Core Code ([`CLA.md`](CLA.md)):** Before any external code PR can be merged into core packages (`padam/`, Studio, extensions, `packages/`), contributors must execute the Contributor License Agreement in [`CLA.md`](CLA.md) granting full distribution, dual-licensing and `Apache-2.0` conversion rights to **CODE Eternal LLC** (`contact@codeofdigitaleternity.com`; see [`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md)). Bug reports, benchmark logs, and Red Team test cases can always be submitted via Issues without a CLA.
 
 ## Pull Request Rules
 

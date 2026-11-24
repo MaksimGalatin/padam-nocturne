@@ -9,8 +9,8 @@
 
 - У организации **`CodeOfDigitalEternity`** сейчас **0 репозиториев** (отсутствует даже `.github/profile/README.md`).
 - У личного аккаунта **`MaksimGalatin`** 46 репозиториев, среди которых:
-  - **4 собственных открытых / исследовательских:**
-    1. `padam-nocturne` (`isPrivate=false`, `license=agpl-3.0`)
+  - **4 собственных публичных / исследовательских:**
+    1. `padam-nocturne` (`isPrivate=false`, `license=LicenseRef-PADAM-1.0` с `0.8.0+`; релизы `<=0.7.2` исторически `AGPL-3.0-only`)
     2. `aifa-memory-mcp` (`isPrivate=false`, `license=mit`)
     3. `aifa-biobench` (`isPrivate=false`, `license=other` — описание: `PolyForm Noncommercial 1.0.0`, содержит timestamped результаты и скрипты статистики)
     4. `aifa-biobench-pro` (`isPrivate=true`, `license=other` — уже корректно закрыт как приватный коммерческий репозиторий с движком `aifa_sdk/`)
