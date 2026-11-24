@@ -231,6 +231,7 @@ def test_api_v1_chat_completions_and_phoenix_locks(monkeypatch, tmp_path):
     def fake_post(url: str, headers: dict, payload: dict, timeout_s: float):
         return 200, {"choices": [{"message": {"role": "assistant", "content": "api router ok"}}], "usage": {"total_tokens": 12}}
 
+    router.get_router().clear_pool_contours()
     old_post = router.get_router()._http_post
     router.get_router()._http_post = fake_post
     srv = ThreadingHTTPServer(("127.0.0.1", 0), api.Handler)

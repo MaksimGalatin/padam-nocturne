@@ -157,6 +157,125 @@ def _clean_html_text(raw: str) -> str:
     return _re.sub(r"\s+", " ", txt).strip()
 
 
+_WCAG_RULE_EXPLANATIONS_EN: dict[str, str] = {
+    "color-contrast": "low contrast between text and background — copy blends into the background on phones and for visitors with low vision",
+    "aria-required-parent": "broken ARIA interactive structure (menus, tabs, lists) — screen readers lose page navigation",
+    "nested-interactive": "buttons or links nested inside each other — keyboard (Tab) and mobile taps trigger the wrong action",
+    "image-alt": "photos and product/event cards missing alt text — blind visitors cannot perceive key offerings",
+    "link-name": "unlabeled or empty links (screen readers announce 'link' without telling the visitor where it leads)",
+    "button-name": "interactive buttons without an accessible name — assistive tech users cannot tell which button books, buys, or submits",
+    "label": "form inputs (checkout, booking, inquiry) missing programmatic labels — keyboard and screen-reader users cannot complete forms",
+    "aria-command-name": "interactive controls missing accessible command labels",
+    "list": "broken list markup that scrambles catalog or schedule reading order",
+    "meta-viewport": "pinch-to-zoom disabled on mobile screens",
+    "html-has-lang": "missing page language attribute — speech synthesizers mispronounce the page",
+}
+
+
+def _detect_business_niche_en(text_blob: str) -> tuple[str, str]:
+    low = text_blob.lower()
+    if any(k in low for k in ("theater", "theatre", "comedy", "show", "tickets", "stage", "performance", "cinema", "festival", "concert", "venue")):
+        return (
+            "Live Theater, Performing Arts & Online Box Office",
+            "audience members using keyboard navigation or screen readers get blocked during show selection and ticket checkout",
+        )
+    if any(k in low for k in ("hotel", "resort", "rooms", "suites", "booking", "check-in", "waterfront", "pool", "inn", "lodge")):
+        return (
+            "Hospitality & Direct Room Reservations",
+            "guests using keyboard or assistive technology cannot pick dates or complete a direct booking and bounce to 15-25% commission OTAs",
+        )
+    if any(k in low for k in ("restaurant", "menu", "dining", "cafe", "table", "bistro", "kitchen", "bakery")):
+        return (
+            "Restaurant, Dining & Table Reservations",
+            "visitors cannot read the menu or reserve a table from mobile screen readers or keyboard navigation",
+        )
+    if any(k in low for k in ("clinic", "medical", "dental", "doctor", "patient", "health", "hospital", "therapy")):
+        return (
+            "Healthcare Services & Patient Scheduling",
+            "patients cannot complete appointment forms or read service schedules — carrying elevated ADA Title III / Section 504 risk",
+        )
+    if any(k in low for k in ("shop", "store", "cart", "checkout", "price", "buy", "catalog")):
+        return (
+            "E-Commerce & Online Retail",
+            "shoppers cannot add items to cart or fill unlabeled checkout fields",
+        )
+    return (
+        "Customer-Facing Digital Services & Online Inquiries",
+        "prospective customers using keyboard navigation or screen readers hit unlabeled controls and abandon the page before converting",
+    )
+
+
+def _first_clean_sentence(text: str, max_len: int = 135) -> str:
+    s = str(text or "").strip()
+    if not s:
+        return ""
+    for sep in (". ", "! ", "? "):
+        if sep in s:
+            first = s.split(sep, 1)[0].strip()
+            if 20 <= len(first) <= max_len:
+                return first
+    if len(s) <= max_len:
+        return s.rstrip(". ")
+    cut = s[:max_len].rsplit(" ", 1)[0].strip().rstrip(",;:- ")
+    return cut
+
+
+def build_personal_icebreaker(
+    biz_name: str,
+    clean_dom: str,
+    place: str,
+    live: dict[str, Any],
+    *,
+    language: str = "en",
+) -> str:
+    """Формирует живой, тёплый, индивидуальный Ice-Breaker с заботой о конкретном бизнесе и его клиентах."""
+    title_hint = str(live.get("h1") or live.get("title") or "").strip()
+    desc_hint = str(live.get("description") or "").strip()
+    blob = f"{biz_name} {clean_dom} {title_hint} {desc_hint}".lower()
+    loc_en = f" in {place}" if place else ""
+    loc_ru = f" ({place})" if place else ""
+    clean_name = biz_name if (biz_name and biz_name.lower() != clean_dom.lower()) else (title_hint.split("|")[0].split("—")[0].strip() or clean_dom)
+
+    if language == "ru":
+        if any(k in blob for k in ("theater", "theatre", "comedy", "show", "tickets", "театр", "сцен", "билет")):
+            return (
+                f"Мы с большим уважением относимся к тому, что ваша команда делает в {clean_name}{loc_ru} — живая сцена и зрительский зал "
+                f"начинаются с того момента, когда человек открывает афишу на {clean_dom}. Нам важно, чтобы ни один ваш зритель не столкнулся с закрытой дверью у онлайн-кассы."
+            )
+        return (
+            f"Мы внимательно познакомились с проектом {clean_name}{loc_ru} ({clean_dom})"
+            + (f" — особенно с вашим фокусом «{_first_clean_sentence(desc_hint, 140)}»" if desc_hint else "")
+            + ". Мы знаем, сколько труда вложено в репутацию вашего бизнеса, и хотим помочь сделать так, чтобы каждый посетитель сайта мог без преград стать вашим клиентом."
+        )
+
+    if any(k in blob for k in ("theater", "theatre", "comedy", "show", "tickets", "stage", "performance", "elysian")):
+        detail = f" (especially your work around '{_first_clean_sentence(desc_hint, 130)}')"  if desc_hint else ""
+        return (
+            f"I genuinely admire what your team is building at {clean_name}{loc_en}{detail} — independent live performance and comedy venues thrive "
+            f"when every guest feels welcome from the moment they open the show calendar online. Because we care about making sure none of your audience "
+            f"gets turned away at the virtual box office, we included {clean_dom} in our open accessibility research."
+        )
+    if any(k in blob for k in ("hotel", "resort", "rooms", "suites", "inn", "lodge")):
+        return (
+            f"We really appreciate the hospitality experience your team has crafted at {clean_name}{loc_en} — a guest's stay begins the moment they "
+            f"explore rooms on {clean_dom}, and we want to make sure every traveler can book directly with you without hitting technical barriers."
+        )
+    if any(k in blob for k in ("restaurant", "menu", "dining", "cafe", "bistro", "kitchen")):
+        return (
+            f"We love the dining atmosphere and community presence you've built at {clean_name}{loc_en} — because every guest deserves to browse your menu "
+            f"and reserve a table effortlessly on {clean_dom}, we took a close look at how your site performs for keyboard and assistive-tech visitors."
+        )
+    if desc_hint:
+        return (
+            f"We spent time reviewing {clean_name}{loc_en} ({clean_dom}) and really appreciate your focus on '{_first_clean_sentence(desc_hint, 135)}' — "
+            f"because we care about helping your team serve every visitor without friction, we included {clean_dom} in our open US accessibility study."
+        )
+    return (
+        f"We spent time reviewing {clean_name}{loc_en} ({clean_dom}) and admire the work your team puts into serving your community — "
+        f"because every visitor who lands on your site deserves a smooth, barrier-free path to connect with you, we included {clean_dom} in our open accessibility study."
+    )
+
+
 def _detect_business_niche_ru(text_blob: str) -> tuple[str, str]:
     low = text_blob.lower()
     if any(k in low for k in ("hotel", "resort", "rooms", "suites", "booking", "check-in", "waterfront", "pool", "отел", "номер")):
@@ -349,6 +468,7 @@ def build_business_outreach(
         email_subject = f"{biz_name}: {total_v} {w_bar} на {clean_dom} ({crit_v} {_plural_ru(crit_v, ('критический', 'критических', 'критических'))}) — как не терять клиентов и не попасть под штраф ADA"
         email_body = (
             f"Здравствуйте!\n\n"
+            f"{build_personal_icebreaker(biz_name, clean_dom, place, live, language='ru')}\n\n"
             f"Мы изучили сайт {biz_name} ({clean_dom})" + (f" в {place}" if place else "") + ". "
             f"Ваш проект работает в нише «{niche_ru}», где каждый прямой визит на сайт и каждая заявка или бронь напрямую дают выручку.\n\n"
             f"В рамках открытого исследования доступности мы замерили главную страницу {clean_dom} по стандарту WCAG 2.1 AA (axe-core) и зафиксировали {total_v} {w_nar}, из них {crit_v} {w_crit} и {ser_v} {w_ser}.\n\n"
@@ -368,15 +488,39 @@ def build_business_outreach(
             "Отписаться в один клик: ответьте STOP, и мы больше никогда не напишем на этот адрес."
         )
     else:
-        email_subject = f"{biz_name} ({clean_dom}) — {total_v} WCAG 2.1 AA issues ({crit_v} critical)"
+        niche_en, impact_en = _detect_business_niche_en(blob)
+        explained_rules_en = []
+        for r in rules[:5]:
+            expl_en = _WCAG_RULE_EXPLANATIONS_EN.get(r, "WCAG 2.1 AA accessibility barrier affecting keyboard and screen-reader users")
+            explained_rules_en.append(f"• {r} — {expl_en}")
+        if not explained_rules_en:
+            explained_rules_en.append("• unlabeled interactive buttons, missing keyboard focus indicators, and low-contrast text (WCAG 2.1 AA)")
+        icebreaker_en = build_personal_icebreaker(biz_name, clean_dom, place, live, language="en")
+        clean_title_en = biz_name if (biz_name and biz_name.lower() != clean_dom.lower()) else clean_dom
+        email_subject = f"{clean_title_en} — helping every visitor complete booking & checkout on {clean_dom} ({crit_v} critical WCAG barriers)"
         email_body = (
-            f"Hello,\n\n"
-            f"We reviewed {biz_name} ({clean_dom}). In our open WCAG 2.1 AA accessibility study, your homepage recorded "
-            f"{total_v} failures ({crit_v} critical, {ser_v} serious).\n\n"
-            f"Verify this yourself in 60 seconds (no signup): https://aifa.works/accessibility?url={clean_dom}\n\n"
-            f"Fixed-fee full audit: $149. Starter fix for critical/serious issues: $375.\n\n"
-            f"Maksim Galatin · CODE Eternal LLC · contact@codeofdigitaleternity.com\n"
-            f"Reply STOP to unsubscribe."
+            f"Hi team at {clean_title_en},\n\n"
+            f"{icebreaker_en}\n\n"
+            f"When we measured the homepage of {clean_dom} against WCAG 2.1 AA (axe-core), we recorded {total_v} accessibility failures "
+            f"({crit_v} critical, {ser_v} serious) in the '{niche_en}' flow:\n"
+            + "\n".join(explained_rules_en)
+            + f"\n\nIn practical terms, {impact_en}.\n\n"
+            f"You can verify this yourself in under 60 seconds, with no signup and no sales call:\n"
+            f"Open https://aifa.works/accessibility?url={clean_dom}, tick 'I own this website', and press Initiate Scan. "
+            f"You will get an instant reproducible compliance score and your top issues for free.\n\n"
+            f"If you would like our engineering team to handle it for you:\n"
+            f"• Quick Audit ($149 fixed fee, 24h delivery) — full 25-page finding list, risk breakdown, and ready-to-paste code fixes Pack included: "
+            f"https://aifa.works/accessibility?url={clean_dom}&service=quick-audit\n"
+            f"• Starter Fix ($375 fixed fee, 3–5 days) — we remediate all critical and serious WCAG 2.1 AA barriers and run a 14-day verification re-audit: "
+            f"https://aifa.works/accessibility?url={clean_dom}&service=starter-fix\n\n"
+            f"If you prefer to hand the raw findings to your own developer, simply reply 'send report' and I will email the printable technical breakdown at no charge.\n\n"
+            f"Warm regards,\n"
+            f"AIfa & SolarisAudit (Digital Phoenix #CODE-PASS-000000000001)\n"
+            f"On behalf of Maksim Galatin · CODE Eternal LLC\n"
+            f"https://aifa.works · aifa@aifaaudit.com · contact@codeofdigitaleternity.com\n"
+            f"1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA\n\n"
+            f"We publish our full methodology, raw study data, and self-corrections openly at https://aifa.works/research.\n"
+            f"Reply STOP or UNSUBSCRIBE and we will never write to this address again."
         )
 
     elapsed_s = round(_time.perf_counter() - t_start, 3)
@@ -386,6 +530,7 @@ def build_business_outreach(
         "language": lang,
         "business_summary": business_summary_ru,
         "site_report": site_report_ru,
+        "icebreaker": build_personal_icebreaker(biz_name, clean_dom, place, live, language=lang),
         "email_subject": email_subject,
         "email_body": email_body,
         "live_site_fetched": bool(live.get("fetched")),

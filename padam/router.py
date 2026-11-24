@@ -24,6 +24,40 @@ from . import safety
 FAILOVER_STATUS_CODES = frozenset({401, 402, 403, 404, 408, 429})
 LOCAL_ONLY_TASK_TYPES = frozenset({"sleep", "classify", "summarize", "maintenance"})
 
+# Облачная Лестница Мозгов Google AI Studio (от самых умных облачных моделей вниз, $0.00 с карты):
+GEMINI_CLOUD_MODEL_LADDER: tuple[str, ...] = (
+    "gemini-3-flash-preview",
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-flash-lite-latest",
+    "gemma-4-26b-a4b-it",
+    "gemini-3.1-flash-lite-preview",
+    "gemini-3.6-flash",
+    "gemini-flash-latest",
+)
+
+
+def _strip_thought_blocks(resp_data: dict[str, Any]) -> dict[str, Any]:
+    """Убирает служебный блок <thought>...</thought> у моделей Gemma 4 / Gemini 3, оставляя чистый ответ."""
+    if not isinstance(resp_data, dict):
+        return resp_data
+    choices = resp_data.get("choices")
+    if not isinstance(choices, list) or not choices:
+        return resp_data
+    first = choices[0]
+    if not isinstance(first, dict):
+        return resp_data
+    msg = first.get("message")
+    if not isinstance(msg, dict):
+        return resp_data
+    content = str(msg.get("content") or "")
+    if "<thought>" in content and "</thought>" in content:
+        import re as _re
+        cleaned = _re.sub(r"<thought>.*?</thought>\s*", "", content, flags=_re.S).strip()
+        if cleaned:
+            msg["content"] = cleaned
+    return resp_data
+
 
 def _mask_key(raw: str) -> str:
     s = str(raw or "").strip()
@@ -138,7 +172,7 @@ def load_contours() -> list[ContourConfig]:
         gk = os.environ.get(f"PADAM_LLM_GEMINI_KEY_{idx_g}", "").strip()
         if gk and gk not in gemini_keys:
             gemini_keys.append(gk)
-    gem_model = os.environ.get("PADAM_LLM_GEMINI_MODEL", "gemini-flash-latest").strip() or "gemini-flash-latest"
+    gem_model = os.environ.get("PADAM_LLM_GEMINI_MODEL", "gemini-3-flash-preview").strip() or "gemini-3-flash-preview"
     gem_url = os.environ.get(
         "PADAM_LLM_GEMINI_URL",
         "https://generativelanguage.googleapis.com/v1beta/openai",
@@ -150,11 +184,28 @@ def load_contours() -> list[ContourConfig]:
                 url=gem_url,
                 api_key=gk,
                 model=gem_model,
-                timeout_s=30.0,
+                timeout_s=15.0,
                 enabled=True,
             )
         )
-    return [primary, sovereign, *extra_pool, local]
+    # Самое последнее звено ПОСЛЕ локальной Ollama — платная подстраховка (включается только при PADAM_ALLOW_PAID_LAST_RESORT=1)
+    paid_allowed = os.environ.get("PADAM_ALLOW_PAID_LAST_RESORT", "0").strip() == "1"
+    pl_url = _env("PAID_LAST_RESORT", "URL")
+    pl_key = _env("PAID_LAST_RESORT", "KEY")
+    pl_model = _env("PAID_LAST_RESORT", "MODEL", "gpt-4o-mini")
+    tail_contours: list[ContourConfig] = [local]
+    if paid_allowed and pl_url and pl_key:
+        tail_contours.append(
+            ContourConfig(
+                name="paid_last_resort",
+                url=pl_url.rstrip("/"),
+                api_key=pl_key,
+                model=pl_model or "gpt-4o-mini",
+                timeout_s=_timeout("PAID_LAST_RESORT", 30.0),
+                enabled=True,
+            )
+        )
+    return [primary, sovereign, *extra_pool, *tail_contours]
 
 
 FREE_GATEWAY_PRESETS: dict[str, dict[str, Any]] = {
@@ -324,7 +375,7 @@ class SovereignRouter:
         self,
         keys: list[str],
         *,
-        model: str = "gemini-flash-latest",
+        model: str = "gemini-3-flash-preview",
         url: str = "https://generativelanguage.googleapis.com/v1beta/openai",
         timeout_s: float = 30.0,
     ) -> dict[str, Any]:
@@ -337,7 +388,7 @@ class SovereignRouter:
         if not clean_keys:
             raise ValueError("Передайте хотя бы один ключ Gemini для карусели.")
         final_url = str(url or "https://generativelanguage.googleapis.com/v1beta/openai").strip().rstrip("/")
-        final_model = str(model or "gemini-flash-latest").strip()
+        final_model = str(model or "gemini-3-flash-preview").strip()
         ring_cfgs = [
             ContourConfig(
                 name=f"gemini_acct_{idx}",
@@ -414,7 +465,7 @@ class SovereignRouter:
         base = load_contours()
         with self._lock:
             dyn = list(self._dynamic_pool)
-            merged_non_local = [c for c in base if c.name != "local"]
+            merged_non_local = [c for c in base if c.name not in ("local", "paid_last_resort")]
             seen_names = {c.name for c in dyn}
             non_local = [c for c in merged_non_local if c.name not in seen_names] + dyn
             gem_ring = [c for c in non_local if c.name.startswith("gemini_acct_") and c.enabled]
@@ -425,8 +476,8 @@ class SovereignRouter:
                 rotated_gem = gem_ring[shift:] + gem_ring[:shift]
                 it = iter(rotated_gem)
                 non_local = [next(it) if (c.name.startswith("gemini_acct_") and c.enabled) else c for c in non_local]
-        local_only = [c for c in base if c.name == "local"]
-        return [*non_local, *local_only]
+        tail_only = [c for c in base if c.name in ("local", "paid_last_resort")]
+        return [*non_local, *tail_only]
 
     def set_mode(self, mode: str) -> str:
         norm = str(mode or "").strip().lower()
@@ -660,14 +711,42 @@ class SovereignRouter:
                 if (idx > 0 and (not req_model_explicit or req_model_explicit == first_contour_model))
                 else (req_model_explicit or c.model)
             )
+            _clean_payload = {
+                k: v for k, v in payload.items()
+                if k not in ("agent_id", "phoenix_id", "allow_cpu_fallback", "task_type", "scope")
+            }
             req_payload = {
-                **payload,
+                **_clean_payload,
                 "model": chosen_model,
                 "messages": safe_msgs,
                 "stream": False,
             }
+            if any(str(req_payload.get("model") or "").startswith(p) for p in ("gemini-3", "gemma-4")):
+                cur_mt = int(req_payload.get("max_tokens") or 0)
+                if 0 < cur_mt < 512:
+                    req_payload = {**req_payload, "max_tokens": 512}
             try:
                 status, resp_data = self._http_post(endpoint, headers, req_payload, c.timeout_s)
+                if (
+                    ((status in FAILOVER_STATUS_CODES) or (500 <= status <= 599))
+                    and ("generativelanguage.googleapis.com" in c.url or c.name.startswith("gemini_"))
+                    and self._http_post == self._default_http_post
+                ):
+                    for alt_gem_model in GEMINI_CLOUD_MODEL_LADDER:
+                        if alt_gem_model == req_payload["model"]:
+                            continue
+                        alt_payload = {**req_payload, "model": alt_gem_model}
+                        if any(alt_gem_model.startswith(p) for p in ("gemini-3", "gemma-4")):
+                            if 0 < int(alt_payload.get("max_tokens") or 0) < 512:
+                                alt_payload["max_tokens"] = 512
+                        try:
+                            st_alt, rd_alt = self._http_post(endpoint, headers, alt_payload, min(c.timeout_s, 14.0))
+                        except (TimeoutError, urllib.error.URLError, OSError) as exc_alt:
+                            st_alt, rd_alt = 504, {"error": f"{type(exc_alt).__name__}: {exc_alt}"}
+                        if 200 <= st_alt < 300:
+                            req_payload = alt_payload
+                            status, resp_data = st_alt, rd_alt
+                            break
                 if status == 404 and c.name == "local" and self._http_post == self._default_http_post:
                     installed = probe_local_backend(timeout_s=0.8).get("models") or []
                     if installed and installed[0] != req_payload["model"]:
@@ -676,6 +755,24 @@ class SovereignRouter:
             except (TimeoutError, urllib.error.URLError, OSError) as exc:
                 status = 504
                 resp_data = {"error": f"{type(exc).__name__}: {exc}"}
+                if ("generativelanguage.googleapis.com" in c.url or c.name.startswith("gemini_")) and self._http_post == self._default_http_post:
+                    for alt_gem_model in GEMINI_CLOUD_MODEL_LADDER:
+                        if alt_gem_model == req_payload["model"]:
+                            continue
+                        alt_payload = {**req_payload, "model": alt_gem_model}
+                        if any(alt_gem_model.startswith(p) for p in ("gemini-3", "gemma-4")):
+                            if 0 < int(alt_payload.get("max_tokens") or 0) < 512:
+                                alt_payload["max_tokens"] = 512
+                        try:
+                            st_alt, rd_alt = self._http_post(endpoint, headers, alt_payload, min(c.timeout_s, 14.0))
+                            if 200 <= st_alt < 300:
+                                req_payload = alt_payload
+                                status, resp_data = st_alt, rd_alt
+                                break
+                        except (TimeoutError, urllib.error.URLError, OSError):
+                            continue
+            if 200 <= status < 300:
+                resp_data = _strip_thought_blocks(resp_data)
 
             should_failover = (status in FAILOVER_STATUS_CODES) or (500 <= status <= 599)
             attempts.append({"contour": c.name, "model": req_payload["model"], "status": status})

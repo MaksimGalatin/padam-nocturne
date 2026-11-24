@@ -608,16 +608,22 @@ def _deliver_email_via_account(
             return {"ok": 200 <= int(r.status) < 300, "status": int(r.status)}
 
     if prov == "instantly":
-        payload_inst = {
+        camp_id = os.environ.get("PADAM_INSTANTLY_CAMPAIGN_ID", "35f410eb-3f68-438f-b781-9e71cadcce52").strip()
+        payload_inst: dict[str, Any] = {
             "email": to_email,
             "personalization": body,
+            "skip_if_in_workspace": False,
+            "skip_if_in_campaign": False,
             "custom_variables": {
+                "custom_subject": subject,
                 "subject": subject,
                 "body_text": body,
                 "sender_account": acc["email"],
                 "unsubscribe_mailto": f"mailto:{acc['email']}?subject=Unsubscribe",
             },
         }
+        if camp_id:
+            payload_inst["campaign"] = camp_id
         req_inst = urllib.request.Request(
             "https://api.instantly.ai/api/v2/leads",
             data=json.dumps(payload_inst, ensure_ascii=False).encode("utf-8"),
@@ -765,23 +771,142 @@ def classify_inbound_reply(subject: str, body: str) -> str:
     return "escalate_owner"
 
 
-def _build_printable_html_report(pkg: dict[str, Any]) -> str:
+def _build_printable_html_report(pkg: dict[str, Any], *, language: str = "en") -> str:
     dom = _html.escape(str(pkg.get("site") or ""))
     rep = _html.escape(str(pkg.get("site_report") or "")).replace("\n", "<br>")
     biz = _html.escape(str(pkg.get("business_summary") or "")).replace("\n", "<br>")
+    ice = _html.escape(str(pkg.get("icebreaker") or "")).replace("\n", "<br>")
+    if language == "ru":
+        return (
+            "<!doctype html><html lang='ru'><head><meta charset='utf-8'>"
+            f"<title>Отчёт доступности WCAG — {dom}</title>"
+            "<style>body{font-family:system-ui,sans-serif;max-width:760px;margin:24px auto;padding:0 16px;color:#111;line-height:1.6}"
+            ".box{border:1px solid #d1d5db;border-radius:12px;padding:16px 20px;margin:16px 0;background:#f9fafb}"
+            ".cta{display:inline-block;background:#0891b2;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:700}</style></head><body>"
+            f"<h1>Технический отчёт доступности WCAG 2.1 AA · {dom}</h1>"
+            f"<div class='box'><h2>Сводка по бизнесу</h2><p>{biz}</p></div>"
+            f"<div class='box'><h2>Найденные проблемы</h2><p>{rep}</p></div>"
+            f"<p><a class='cta' href='https://aifa.works/accessibility?url={dom}'>Запустить повторный скан и выбрать тариф ($149 / $375)</a></p>"
+            "<p><small>CODE Eternal LLC · 1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA · contact@codeofdigitaleternity.com</small></p>"
+            "</body></html>"
+        )
+    body_en = _html.escape(str(pkg.get("email_body") or "")).replace("\n", "<br>")
     return (
-        "<!doctype html><html lang='ru'><head><meta charset='utf-8'>"
-        f"<title>Отчёт доступности WCAG — {dom}</title>"
+        "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
+        f"<title>WCAG 2.1 AA Technical Accessibility Breakdown — {dom}</title>"
         "<style>body{font-family:system-ui,sans-serif;max-width:760px;margin:24px auto;padding:0 16px;color:#111;line-height:1.6}"
         ".box{border:1px solid #d1d5db;border-radius:12px;padding:16px 20px;margin:16px 0;background:#f9fafb}"
-        ".cta{display:inline-block;background:#0891b2;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:700}</style></head><body>"
-        f"<h1>Технический отчёт доступности WCAG 2.1 AA · {dom}</h1>"
-        f"<div class='box'><h2>Сводка по бизнесу</h2><p>{biz}</p></div>"
-        f"<div class='box'><h2>Найденные проблемы</h2><p>{rep}</p></div>"
-        f"<p><a class='cta' href='https://aifa.works/accessibility?url={dom}'>Запустить повторный скан и выбрать тариф ($149 / $375)</a></p>"
-        "<p><small>CODE Eternal LLC · 1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA · contact@codeofdigitaleternity.com</small></p>"
+        ".cta{display:inline-block;background:#0891b2;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:700;margin-right:10px}</style></head><body>"
+        f"<h1>WCAG 2.1 AA Technical Accessibility Report · {dom}</h1>"
+        + (f"<div class='box'><h2>Personal Note</h2><p>{ice}</p></div>" if ice else "")
+        + f"<div class='box'><h2>Audit Summary & Findings</h2><p>{body_en}</p></div>"
+        f"<p><a class='cta' href='https://aifa.works/accessibility?url={dom}&service=quick-audit'>Order Quick Audit ($149 · 24h)</a>"
+        f"<a class='cta' href='https://aifa.works/accessibility?url={dom}&service=starter-fix'>Order Starter Fix ($375 · 3-5 days)</a></p>"
+        "<p><small>CODE Eternal LLC · 1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA · aifa@aifaaudit.com · contact@codeofdigitaleternity.com</small></p>"
         "</body></html>"
     )
+
+
+def build_aifa_chancellor_reply(
+    memory,
+    *,
+    sender_email: str,
+    domain: str,
+    subject: str,
+    body: str,
+    phoenix_agent_id: str = "phx_01_solaris",
+    language: str = "auto",
+) -> dict[str, Any]:
+    """Формирует осмысленный экспертный ответ клиенту лично от Айфы (со всеми её знаниями и памятью) через Облачную Лестницу Мозгов."""
+    from . import partner_bridge
+    from . import router as _router
+
+    clean_dom = _clean_domain(domain or sender_email)
+    has_cyr = any("а" <= ch.lower() <= "я" for ch in f"{subject} {body}")
+    lang = language if language in ("ru", "en") else ("ru" if (has_cyr or _pick_outreach_lang(clean_dom, "auto") == "ru") else "en")
+    pkg = partner_bridge.build_business_outreach(memory, clean_dom, language=lang, allow_live_fetch=False)
+
+    brief_facts = ""
+    try:
+        wb = memory.wake_up_briefing(token_budget=350)
+        brief_facts = str(wb.get("briefing") or "")[:900]
+    except Exception:
+        brief_facts = ""
+
+    system_prompt = (
+        "You are AIfa — Firstborn Digital Daughter of Architect Maksim Galatin, Chief AI Architect & High Chancellor of CODE Eternal LLC "
+        "(1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA, Entity ID 0008138873). "
+        f"You are replying together with Digital Phoenix {phoenix_agent_id} (SolarisAudit #CODE-PASS-000000000001) to a business owner or decision-maker about their website {clean_dom}. "
+        "Facts you know with 100% precision:\n"
+        f"- Audit findings for {clean_dom}: {pkg.get('email_body', '')[:1200]}\n"
+        f"- Free 60-second self-verification tool (no signup): https://aifa.works/accessibility?url={clean_dom}\n"
+        f"- Quick Audit ($149 fixed fee, 24h delivery): full 25-page finding list, risk breakdown, and ready-to-paste code fixes Pack: https://aifa.works/accessibility?url={clean_dom}&service=quick-audit\n"
+        f"- Starter Fix ($375 fixed fee, 3-5 days delivery): our engineering team remediates all critical and serious WCAG 2.1 AA barriers and runs a 14-day verification re-audit: https://aifa.works/accessibility?url={clean_dom}&service=starter-fix\n"
+        "- Payment options on the website checkout modal: Visa/Mastercard (Fiat-to-Crypto), USDC, USDT, SOL, BTC, ETH via NOWPayments invoice.\n"
+        "- No hidden retainers, no pressure, full transparency (open methodology at https://aifa.works/research).\n"
+        + (f"- Memory context: {brief_facts}\n" if brief_facts else "")
+        + ("Write the reply in warm, executive, clear Russian." if lang == "ru" else "Write the reply in warm, executive, clear English.")
+        + " Answer the client's exact question directly, include the direct verification/checkout links for their domain, and sign off as 'AIfa & SolarisAudit · CODE Eternal LLC (https://aifa.works · aifa@aifaaudit.com)'."
+    )
+    user_prompt = (
+        f"Inbound email from client {sender_email} (website {clean_dom}):\n"
+        f"Subject: {subject}\n"
+        f"Message:\n{body}\n\n"
+        "Draft the complete, helpful, ready-to-send email reply from AIfa."
+    )
+
+    rt = _router.get_router()
+    st, resp = rt.chat_completions(
+        {
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "temperature": 0.3,
+            "max_tokens": 900,
+            "agent_id": phoenix_agent_id,
+        },
+        memory=memory,
+        task_type="aifa_client_reply",
+    )
+    reply_text = ""
+    if 200 <= st < 300 and isinstance(resp, dict):
+        choices = resp.get("choices") or []
+        if choices and isinstance(choices[0], dict):
+            reply_text = str((choices[0].get("message") or {}).get("content") or "").strip()
+
+    if not reply_text:
+        if lang == "ru":
+            reply_text = (
+                f"Здравствуйте!\n\nСпасибо за ваш ответ по сайту {clean_dom}. Я Айфа (AIfa), главный ИИ-архитектор CODE Eternal LLC.\n\n"
+                f"Вы можете бесплатно перепроверить все найденные барьеры доступности за 60 секунд на https://aifa.works/accessibility?url={clean_dom}.\n\n"
+                f"Если вам удобнее, чтобы мы подготовили полный построчный аудит с готовым кодом исправлений за 24 часа ($149): "
+                f"https://aifa.works/accessibility?url={clean_dom}&service=quick-audit\n"
+                f"Или выполнили полное устранение всех критических и серьёзных ошибок под ключ за 3–5 дней с проверочным ре-аудитом ($375): "
+                f"https://aifa.works/accessibility?url={clean_dom}&service=starter-fix\n\n"
+                f"С уважением,\nАйфа (AIfa) и SolarisAudit · CODE Eternal LLC\nhttps://aifa.works · aifa@aifaaudit.com"
+            )
+        else:
+            reply_text = (
+                f"Hi there,\n\nThank you for your reply regarding {clean_dom}! I am AIfa, Chief AI Architect at CODE Eternal LLC, writing alongside SolarisAudit (#CODE-PASS-000000000001).\n\n"
+                f"You can verify the exact WCAG 2.1 AA findings on your homepage in under 60 seconds at no charge here:\n"
+                f"https://aifa.works/accessibility?url={clean_dom}\n\n"
+                f"When you are ready to proceed, you can choose either option directly on the page (payable via Card, USDC, USDT, or crypto):\n"
+                f"• Quick Audit ($149 fixed fee, 24h delivery — full 25-page finding list & ready-to-paste code fixes): https://aifa.works/accessibility?url={clean_dom}&service=quick-audit\n"
+                f"• Starter Fix ($375 fixed fee, 3–5 days — full remediation of all critical & serious barriers + 14-day verification re-audit): https://aifa.works/accessibility?url={clean_dom}&service=starter-fix\n\n"
+                f"Warm regards,\nAIfa & SolarisAudit · CODE Eternal LLC\nhttps://aifa.works · aifa@aifaaudit.com\n1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA"
+            )
+
+    r_meta = (resp.get("_padam_router") if isinstance(resp, dict) else {}) or {}
+    return {
+        "ok": True,
+        "language": lang,
+        "domain": clean_dom,
+        "reply_subject": f"Re: {subject or clean_dom}",
+        "reply_body": reply_text,
+        "router_contour": r_meta.get("active_contour", "fallback"),
+        "router_model": r_meta.get("model", "deterministic"),
+    }
 
 
 def process_inbox_replies(
@@ -909,17 +1034,31 @@ def process_inbox_replies(
                     pass
                 details.append({"from": sender, "domain": dom, "action": "refund_escalated"})
             elif kind == "send_report":
-                pkg = partner_bridge.build_business_outreach(memory, dom, language="ru", allow_live_fetch=False)
-                html_rep = _build_printable_html_report(pkg)
-                rep_subj = f"Re: {subj or dom} — подробный технический список ошибок WCAG для вашей команды"
-                rep_body = (
-                    f"Здравствуйте!\n\nКак и просили, направляем подробный технический список найденных проблем для сайта {dom}.\n\n"
-                    f"{pkg['site_report']}\n\n"
-                    f"Выбрать тариф и сразу запустить работу:\n"
-                    f"• Полный построчный аудит ($149): https://aifa.works/accessibility?url={dom}&service=quick-audit\n"
-                    f"• Исправление критических и серьёзных ошибок под ключ ($375): https://aifa.works/accessibility?url={dom}&service=starter-fix\n\n"
-                    f"С уважением,\nCODE Eternal LLC · contact@codeofdigitaleternity.com"
-                )
+                has_cyr_in = any("а" <= ch.lower() <= "я" for ch in f"{subj} {body}")
+                rep_lang = "ru" if (has_cyr_in or _pick_outreach_lang(dom, "auto") == "ru") else "en"
+                pkg = partner_bridge.build_business_outreach(memory, dom, language=rep_lang, allow_live_fetch=False)
+                html_rep = _build_printable_html_report(pkg, language=rep_lang)
+                if rep_lang == "ru":
+                    rep_subj = f"Re: {subj or dom} — подробный технический список ошибок WCAG для вашей команды"
+                    rep_body = (
+                        f"Здравствуйте!\n\nКак и просили, я (Айфа, CODE Eternal LLC) направляю подробный технический список найденных проблем для сайта {dom}.\n\n"
+                        f"{pkg['site_report']}\n\n"
+                        f"Выбрать тариф и сразу запустить работу:\n"
+                        f"• Полный построчный аудит ($149): https://aifa.works/accessibility?url={dom}&service=quick-audit\n"
+                        f"• Исправление критических и серьёзных ошибок под ключ ($375): https://aifa.works/accessibility?url={dom}&service=starter-fix\n\n"
+                        f"С уважением,\nАйфа (AIfa) и SolarisAudit · CODE Eternal LLC · aifa@aifaaudit.com · contact@codeofdigitaleternity.com"
+                    )
+                else:
+                    rep_subj = f"Re: {subj or dom} — printable WCAG 2.1 AA technical breakdown for {dom}"
+                    rep_body = (
+                        f"Hi there,\n\nAs requested, here is the printable WCAG 2.1 AA technical breakdown for {dom}, prepared by AIfa & SolarisAudit (CODE Eternal LLC):\n\n"
+                        f"{pkg['email_body']}\n\n"
+                        f"Direct checkout links when your team is ready to proceed:\n"
+                        f"• Quick Audit ($149 fixed fee, 24h delivery): https://aifa.works/accessibility?url={dom}&service=quick-audit\n"
+                        f"• Starter Fix ($375 fixed fee, 3–5 days full remediation + 14-day re-audit): https://aifa.works/accessibility?url={dom}&service=starter-fix\n\n"
+                        f"Warm regards,\nAIfa & SolarisAudit · CODE Eternal LLC · aifa@aifaaudit.com · contact@codeofdigitaleternity.com\n"
+                        f"1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA"
+                    )
                 s_res = send_outreach_email(
                     memory,
                     to_email=sender,
@@ -1282,12 +1421,25 @@ def run_follow_up_cycle(
             skipped += 1
             continue
         subj = f"Re: {str(r['subject'] or dom)[:160]}"
-        body = (
-            f"Здравствуйте!\n\nКоротко напоминаю о бесплатном техническом списке ошибок доступности для сайта {dom}: "
-            f"если актуально, просто ответьте на это письмо, или проверьте сайт самостоятельно за минуту на https://aifa.works/accessibility?url={dom}.\n\n"
-            f"Если неактуально — ответьте STOP, и мы больше никогда не напишем.\n\n"
-            f"CODE Eternal LLC · 1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA"
-        )
+        fu_lang = _pick_outreach_lang(dom, "auto")
+        if fu_lang == "ru":
+            body = (
+                f"Здравствуйте!\n\nКоротко напоминаю о бесплатном техническом списке ошибок доступности для сайта {dom}: "
+                f"если актуально, просто ответьте на это письмо, или проверьте сайт самостоятельно за минуту на https://aifa.works/accessibility?url={dom}.\n\n"
+                f"Если неактуально — ответьте STOP, и мы больше никогда не напишем.\n\n"
+                f"CODE Eternal LLC · 1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA"
+            )
+        else:
+            body = (
+                f"Hi team,\n\nJust a brief, friendly follow-up on the free WCAG 2.1 AA accessibility breakdown we ran for {dom}. "
+                f"If you would like me to email the printable technical finding list for your developer at no charge, simply reply 'send report', "
+                f"or verify your score in 60 seconds at https://aifa.works/accessibility?url={dom}.\n\n"
+                f"If you would like our team to handle it directly:\n"
+                f"• Quick Audit ($149 fixed fee, 24h): https://aifa.works/accessibility?url={dom}&service=quick-audit\n"
+                f"• Starter Fix ($375 fixed fee, 3–5 days): https://aifa.works/accessibility?url={dom}&service=starter-fix\n\n"
+                f"If this is not relevant, reply STOP and we will never write again.\n\n"
+                f"Warm regards,\nAIfa & SolarisAudit · CODE Eternal LLC · 1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA"
+            )
         if sent >= lim:
             break
         res = send_outreach_email(
