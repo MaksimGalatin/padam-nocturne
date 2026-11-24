@@ -161,10 +161,10 @@ _WCAG_RULE_EXPLANATIONS_EN: dict[str, str] = {
     "color-contrast": "low contrast between text and background — copy blends into the background on phones and for visitors with low vision",
     "aria-required-parent": "broken ARIA interactive structure (menus, tabs, lists) — screen readers lose page navigation",
     "nested-interactive": "buttons or links nested inside each other — keyboard (Tab) and mobile taps trigger the wrong action",
-    "image-alt": "photos and product/event cards missing alt text — blind visitors cannot perceive key offerings",
-    "link-name": "unlabeled or empty links (screen readers announce 'link' without telling the visitor where it leads)",
-    "button-name": "interactive buttons without an accessible name — assistive tech users cannot tell which button books, buys, or submits",
-    "label": "form inputs (checkout, booking, inquiry) missing programmatic labels — keyboard and screen-reader users cannot complete forms",
+    "image-alt": "images flagged as missing alt attributes (screen readers may skip unlabelled visuals)",
+    "link-name": "links flagged as lacking discernible accessible names for assistive technology",
+    "button-name": "interactive buttons flagged without an accessible text label for assistive technology",
+    "label": "form controls flagged without associated programmatic label attributes",
     "aria-command-name": "interactive controls missing accessible command labels",
     "list": "broken list markup that scrambles catalog or schedule reading order",
     "meta-viewport": "pinch-to-zoom disabled on mobile screens",
@@ -249,7 +249,7 @@ def build_personal_icebreaker(
         )
 
     if any(k in blob for k in ("theater", "theatre", "comedy", "show", "tickets", "stage", "performance", "elysian")):
-        detail = f" — especially {_first_clean_sentence(desc_hint, 115)}" if desc_hint else ""
+        detail = f" (noted on your site: '{_first_clean_sentence(desc_hint, 110)}')" if desc_hint else ""
         return (
             f"We came across {clean_name}{loc_en}{detail} while compiling our open public-web accessibility research and genuinely appreciate "
             f"the community space your team creates for live audiences. We wanted to share the automated public homepage scan notes for {clean_dom} "
@@ -523,7 +523,7 @@ def build_business_outreach(
             f"1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA\n\n"
             f"Methodology & open data: https://aifa.works/research\n"
             f"Commercial B2B notice: You received this one-time message regarding our public accessibility study for {clean_dom}. "
-            f"To opt out permanently, simply reply STOP or UNSUBSCRIBE (or click https://aifa.works/accessibility?optout={clean_dom}), and we will never email this address or domain again."
+            f"To opt out permanently, simply reply STOP or UNSUBSCRIBE (or send an email to aifa@aifaaudit.com with subject UNSUBSCRIBE), and we will never email this address or domain again."
         )
 
     elapsed_s = round(_time.perf_counter() - t_start, 3)
