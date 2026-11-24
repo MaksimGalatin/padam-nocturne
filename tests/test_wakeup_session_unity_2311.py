@@ -104,3 +104,23 @@ def test_canonicalize_sibling_agent_duplicates(tmp_path: Path) -> None:
         assert "aifaantigraviti" not in ids
     finally:
         mem.store.close()
+
+
+def test_mcp_hot_reload_and_default_studio_autoupdate(monkeypatch) -> None:
+    from padam import code_freshness as cf
+    from padam import mcp_server
+
+    # Имитируем устаревание отпечатка на диске и проверяем горячую перезагрузку без разрыва процесса
+    monkeypatch.setattr(cf, "LOADED", "0" * 16)
+    assert cf.status()["stale"] is True
+    reloaded = mcp_server._auto_hot_reload_if_stale(force=True)
+    assert reloaded is True
+    assert cf.status()["stale"] is False
+
+    # Проверяем, что в desktop/tauri/src/main.rs автообновление и автоперезапуск включены по умолчанию
+    repo_root = Path(__file__).resolve().parent.parent
+    main_rs = (repo_root / "desktop" / "tauri" / "src" / "main.rs").read_text(encoding="utf-8")
+    assert "auto_update_enabled()" in main_rs
+    assert "auto_install_enabled()" in main_rs
+    assert "app_handle.restart()" in main_rs
+    assert "hot_restarted_python_backend" in main_rs

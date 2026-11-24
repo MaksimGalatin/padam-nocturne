@@ -16,9 +16,16 @@ use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, Url, WebviewWind
 use tauri_plugin_updater::UpdaterExt;
 
 fn auto_update_enabled() -> bool {
-    matches!(
+    !matches!(
         env::var("PADAM_AUTO_UPDATE").as_deref(),
-        Ok("1") | Ok("true") | Ok("yes")
+        Ok("0") | Ok("false") | Ok("no") | Ok("off")
+    )
+}
+
+fn auto_install_enabled() -> bool {
+    !matches!(
+        env::var("PADAM_AUTO_UPDATE_INSTALL").as_deref(),
+        Ok("0") | Ok("false") | Ok("no") | Ok("off")
     )
 }
 
@@ -38,28 +45,32 @@ fn spawn_update_check(app_handle: AppHandle, ru: bool, install_allowed: bool) {
                 #[cfg(windows)]
                 {
                     let title = if ru {
-                        "PADAM · NOCTURNE Studio — доступно обновление"
+                        "PADAM · NOCTURNE Studio — обновление"
                     } else {
-                        "PADAM · NOCTURNE Studio — update available"
+                        "PADAM · NOCTURNE Studio — updating"
                     };
                     let body = if ru {
-                        format!("Найдена подписанная версия {ver}. Выберите установку на GitHub Releases.")
+                        format!("Скачивается и устанавливается подписанная версия {ver}…")
                     } else {
-                        format!("Signed release {ver} is available on GitHub Releases.")
+                        format!("Downloading and installing signed release {ver}…")
                     };
                     let _ = tauri_winrt_notification::Toast::new(APP_IDENTIFIER)
                         .title(title)
                         .text1(&body)
                         .show();
                 }
-                if install_allowed
-                    && matches!(
-                        env::var("PADAM_AUTO_UPDATE_INSTALL").as_deref(),
-                        Ok("1") | Ok("true")
-                    )
-                {
-                    if let Err(e) = update.download_and_install(|_, _| {}, || {}).await {
-                        log_line(&format!("update_install_error={e}"));
+                if install_allowed && auto_install_enabled() {
+                    match update.download_and_install(|_, _| {}, || {}).await {
+                        Ok(()) => {
+                            log_line(&format!("update_installed_restarting={ver}"));
+                            if let Some(guard) = app_handle.try_state::<Arc<ServerGuard>>() {
+                                guard.shutdown();
+                            }
+                            app_handle.restart();
+                        }
+                        Err(e) => {
+                            log_line(&format!("update_install_error={e}"));
+                        }
                     }
                 }
             }
@@ -95,10 +106,7 @@ struct ServerGuard {
 }
 
 impl ServerGuard {
-    fn shutdown(&self) {
-        if self.stopping.swap(true, Ordering::SeqCst) {
-            return;
-        }
+    fn stop_child_only(&self) {
         let _ = local_http_request(self.port, "POST", "/shutdown", &self.token, Some("{}"));
         if let Ok(mut guard) = self.child.lock() {
             if let Some(mut ch) = guard.take() {
@@ -116,6 +124,42 @@ impl ServerGuard {
                 }
             }
         }
+    }
+
+    fn restart_python(&self, app: &AppHandle, db_arg: Option<&str>) -> bool {
+        if self.stopping.load(Ordering::SeqCst) {
+            return false;
+        }
+        self.stop_child_only();
+        std::thread::sleep(Duration::from_millis(150));
+        match spawn_padam_server(app, self.port, &self.token, db_arg) {
+            Ok(new_ch) => {
+                if let Ok(mut guard) = self.child.lock() {
+                    *guard = Some(new_ch);
+                }
+                let deadline = Instant::now() + Duration::from_secs(12);
+                while !self.stopping.load(Ordering::SeqCst) && Instant::now() < deadline {
+                    if let Some((200, _)) = local_http_request(self.port, "GET", "/health", &self.token, None) {
+                        log_line(&format!("hot_restarted_python_backend port={}", self.port));
+                        return true;
+                    }
+                    std::thread::sleep(Duration::from_millis(50));
+                }
+                log_line("hot_restart_health_timeout");
+                false
+            }
+            Err(e) => {
+                log_line(&format!("hot_restart_spawn_error={e}"));
+                false
+            }
+        }
+    }
+
+    fn shutdown(&self) {
+        if self.stopping.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        self.stop_child_only();
     }
 }
 
@@ -869,6 +913,7 @@ fn main() {
             let review_bg = review_item.clone();
             let tray_bg = tray.clone();
             let token_bg = token.clone();
+            let db_arg_bg = db_arg.clone();
             std::thread::spawn(move || {
                 let deadline = Instant::now() + Duration::from_secs(15);
                 let mut healthy = false;
@@ -910,7 +955,25 @@ fn main() {
                 }
 
                 let mut prev_quarantined: Option<u64> = None;
+                let mut bg_ticks: u64 = 0;
                 while !guard_bg.stopping.load(Ordering::SeqCst) {
+                    bg_ticks = bg_ticks.wrapping_add(1);
+                    if bg_ticks % 6 == 0 {
+                        if let Some((200, cv_body)) = local_http_request(port, "GET", "/api/v2/code-version", &token_bg, None) {
+                            if let Ok(cv_val) = serde_json::from_slice::<serde_json::Value>(&cv_body) {
+                                if cv_val.get("stale").and_then(|v| v.as_bool()) == Some(true) {
+                                    if guard_bg.restart_python(&app_bg, db_arg_bg.as_deref()) {
+                                        if let Some(win) = app_bg.get_webview_window("main") {
+                                            let _ = win.eval("window.location.reload()");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if bg_ticks % 1200 == 0 && auto_update_enabled() {
+                        spawn_update_check(app_bg.clone(), ru, true);
+                    }
                     if let Some((200, body)) =
                         local_http_request(port, "GET", "/overview", &token_bg, None)
                     {

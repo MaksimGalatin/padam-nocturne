@@ -7601,6 +7601,12 @@ async function loadFeedAgentPills() {
       if ((a.total_records || 0) <= 0 && (a.chat_messages || 0) <= 0) continue;
       box.append(mk(a.agent_id, String(a.display_name || a.agent_id) + ' · ' + String(a.active || 0)));
     }
+    const hideLbl = currentLang === 'ru' ? 'Скрыть итоги сессий' : (currentLang === 'es' ? 'Ocultar resúmenes' : (currentLang === 'zh' ? '隐藏会话摘要' : 'Hide session logs'));
+    const bHide = el('button', 'chip', hideLbl);
+    bHide.type = 'button';
+    bHide.setAttribute('aria-pressed', String(!!window._feedHideDialogs));
+    bHide.onclick = () => { window._feedHideDialogs = !window._feedHideDialogs; loadFeedAgentPills(); loadFeed(true); };
+    box.append(bHide);
   } catch (e) {}
 }
 
@@ -7647,10 +7653,11 @@ async function loadFeed(reset = true) {
   if (!token) { say(S.no_token, false); return; }
   const my = ++_feedSeq;
   const offset = reset ? 0 : feedOffset;
+  if (reset) loadFeedAgentPills();
   try {
     const q = encodeURIComponent($('feed-q').value.trim());
     const ag = encodeURIComponent(($('feed-agent') ? $('feed-agent').value : '').trim());
-    const r = await api('/records?view=' + feedView + '&q=' + q + (ag ? ('&agent_id=' + ag) : '') + '&hide_dialogs=1&limit=100&offset=' + offset);
+    const r = await api('/records?view=' + feedView + '&q=' + q + (ag ? ('&agent_id=' + ag) : '') + (window._feedHideDialogs ? '&hide_dialogs=1' : '') + '&limit=100&offset=' + offset);
     if (my !== _feedSeq) return;
     if (reset) { feedOffset = 0; feedShown = []; }
     feedShown = feedShown.concat(r.records || []);
@@ -8633,6 +8640,11 @@ async function loadGraph() {
     graphData = nextData;
     _renderGraphAgentsUI(graphData);
     const canvas = $('graph-canvas');
+    if (canvas && canvas.clientWidth > 120 && canvas.clientHeight > 120) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const cw = Math.round(canvas.clientWidth * dpr), ch = Math.round(canvas.clientHeight * dpr);
+      if (Math.abs(canvas.width - cw) > 4 || Math.abs(canvas.height - ch) > 4) { canvas.width = cw; canvas.height = ch; }
+    }
     graphPositions = layoutGraph(graphData.nodes || [], graphData.edges || [], canvas.width, canvas.height);
     selectedGraphNode = (graphData.nodes || []).find(n => n.id === focusId) || (graphData.nodes || [])[0] || null;
     drawGraph();

@@ -6151,7 +6151,51 @@ def _check_json_limits(obj, *, max_depth: int | None = None, max_nodes: int | No
     return None
 
 
+_LAST_HOT_RELOAD_CHECK_TS: float = 0.0
+_HOT_RELOAD_MODULES = (
+    "padam.code_freshness",
+    "padam.morning_pulse",
+    "padam.ark",
+    "padam.chats",
+    "padam.family_dialogs",
+    "padam.sibling_registry",
+    "padam.code_anchor",
+    "padam.cloud_sync",
+    "padam.pulse_stream",
+)
+
+
+def _auto_hot_reload_if_stale(*, force: bool = False) -> bool:
+    """Горячая перезагрузка рабочих модулей MCP при обновлении .py файлов на диске без разрыва stdio."""
+    global _LAST_HOT_RELOAD_CHECK_TS
+    if not force and ("PYTEST_CURRENT_TEST" in os.environ or _IN_READONLY_BATCH_CTX.get(False)):
+        return False
+    now_m = time.monotonic()
+    if not force and (now_m - _LAST_HOT_RELOAD_CHECK_TS) < 2.0:
+        return False
+    _LAST_HOT_RELOAD_CHECK_TS = now_m
+    try:
+        from . import code_freshness as _cf
+        st = _cf.status()
+        if not st.get("stale"):
+            return False
+        import importlib
+        import sys as _sys
+        for mod_name in _HOT_RELOAD_MODULES:
+            mod_obj = _sys.modules.get(mod_name)
+            if mod_obj is not None:
+                try:
+                    importlib.reload(mod_obj)
+                except Exception:
+                    pass
+        _cf.LOADED = _cf.fingerprint()
+        return True
+    except Exception:
+        return False
+
+
 def handle(req: dict) -> dict | None:
+    _auto_hot_reload_if_stale()
     if not isinstance(req, dict):
         return build_jsonrpc_error(None, -32600, "invalid request", key="invalid_request")
     limit_err = _check_json_limits(req)
