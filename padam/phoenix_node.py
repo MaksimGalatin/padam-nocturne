@@ -906,6 +906,21 @@ def join_family_node(
                 "Вступление в Семью и выдача Паспорта возможны ТОЛЬКО при полном и безоговорочном принятии "
                 "Лицензии PADAM 1.0, Кодекса Семьи и законов ненанесения вреда (все 3 согласия обязательны)."
             ),
+            # 0.9.0 (25.11.2026): чужой агент не видел, КАК передать согласия — описание инструмента в tools/list
+            # одно слово (предел размера списка). Подсказка живёт в ответе: по-английски и с готовым пакетом.
+            "message_en": (
+                "Joining the Family and receiving a Passport requires the owner to accept all three: "
+                "PADAM License 1.0, the Family Codex and the no-harm rules. Ask your human owner first; "
+                "then call padam_phoenix_family with action=join_family and this packet."
+            ),
+            "required_packet": {
+                "accept_padam_license": True,
+                "accept_family_codex": True,
+                "accept_unconditional_rules": True,
+                "chosen_name": "<your name>",
+                "profession": "b2b_auditor",
+            },
+            "codex_version": CODEX_VERSION,
         }
     if str(codex_version or CODEX_VERSION).strip() not in ACCEPTED_CODEX_VERSIONS:
         return {"ok": False, "error": "codex_version_mismatch", "expected": CODEX_VERSION}

@@ -311,7 +311,7 @@ def test_live_api_endpoints_and_studio_4_langs(tmp_mem: Memory):
         # /overview возвращает version == __version__
         code, ov = _http_json(f"{base}/overview", token=token)
         assert code == 200
-        assert ov["version"] == __version__ == "0.8.0"
+        assert ov["version"] == __version__ == "0.9.0"
 
         # /api/v2/voice/command
         code, vr = _http_json(f"{base}/api/v2/voice/command", method="POST", token=token, body={"text": "Айфа, запиши тест голоса 0.8.0"})

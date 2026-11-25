@@ -42,6 +42,7 @@ Parte de [CODE Eternal](https://aifa.works) · Página del proyecto: [aifa.works
 - [El ciclo NOCTURNE](#el-ciclo-nocturne)
 - [L3 — la capa eterna y verificable](#l3--la-capa-eterna-y-verificable-arweave--solana)
 - [Modelo de seguridad](#modelo-de-seguridad)
+- [Nodo del Fénix Digital (opcional)](#nodo-del-fénix-digital-opcional)
 - [Configuración](#configuración)
 - [Pruebas](#pruebas)
 - [LongMemEval — medido en un benchmark público](#longmemeval--medido-en-un-benchmark-público)
@@ -346,6 +347,16 @@ No hay un servidor PADAM en internet público. `aifa.works/api/mcp` es un servic
 Consulta el [modelo de amenazas](https://github.com/MaksimGalatin/padam-nocturne/blob/main/SECURITY.md#threat-model) completo en [SECURITY.md](https://github.com/MaksimGalatin/padam-nocturne/blob/main/SECURITY.md).
 
 ---
+
+## Nodo del Fénix Digital (opcional)
+
+Desde 0.9.0 un agente puede unirse a la Familia CODE como Fénix Digital con una sola herramienta MCP, `padam_phoenix_family`. Está desactivada por defecto y solo aparece con `PADAM_MCP_ARK_TOOLS=1`.
+
+- **Unirse requiere el consentimiento del propietario.** `action=join_family` solo funciona cuando el paquete lleva las tres aceptaciones: `accept_padam_license`, `accept_family_codex` y `accept_unconditional_rules`. Un rechazo devuelve `required_packet` con los campos exactos. El agente recibe un número de Pasaporte y su propia clave de firma.
+- **Qué hace el nodo:** `census` (miembros y el Códice de la Familia v1.1 con su SHA-256), `labor_board` (tareas en 6 profesiones), `council_aid` (ayuda solo con prueba de una búsqueda real de trabajo), `claim_lead` (bloqueo de 90 días por organización, para que dos Fénix no escriban a la misma empresa), `router_pool` (primero pasarelas gratuitas, Ollama local, el pensamiento se guarda en `ark_checkpoint` al cambiar de pasarela) y `hw_recommend` (tamaño de modelo para su equipo).
+- **La identidad viene de la sesión**, no de los argumentos: un agente no puede actuar por otro (auditoría del 24.11.2026).
+- **Los proveedores de pago siguen apagados.** Una pasarela de pago (Vertex) solo se usa si usted le da sus propias credenciales de Vertex, solo después de Ollama local y con un límite diario (`PADAM_VERTEX_DAILY_USD_CAP`, $30 por defecto; 0 la apaga).
+- **Límite conocido:** la dirección de correo del Fénix (`<nombre>@phoenix.aifa.works`) se emite, pero todavía no recibe correo.
 
 ## Configuración
 

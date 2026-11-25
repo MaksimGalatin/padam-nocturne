@@ -93,6 +93,6 @@ def test_лицензия_усилена_по_стандарту_fair_code():
 
     assert (корень / ".github" / "PULL_REQUEST_TEMPLATE.md").is_file()
     cit = (корень / "CITATION.cff").read_text(encoding="utf-8")
-    assert "LicenseRef-PADAM-1.0" in cit and 'version: "0.8.0"' in cit
+    assert "LicenseRef-PADAM-1.0" in cit and 'version: "0.9.0"' in cit
     pc_pkg = (корень / "packages" / "padam-client" / "package.json").read_text(encoding="utf-8")
-    assert '"version": "0.8.0"' in pc_pkg
+    assert '"version": "0.9.0"' in pc_pkg

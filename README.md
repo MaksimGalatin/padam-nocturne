@@ -97,6 +97,7 @@ Part of [CODE Eternal](https://aifa.works) · Project page: [aifa.works/nocturne
 - [L3 — the eternal, verifiable layer](#l3--the-eternal-verifiable-layer-arweave--solana)
 - [Security model](#security-model)
 - [PADAM Agentic Shield v2, PA1H Archive & $0 Media](#padam-agentic-shield-v2-pa1h-archive--0-media)
+- [Digital Phoenix Node (opt-in)](#digital-phoenix-node-opt-in)
 - [Configuration](#configuration)
 - [Tests](#tests)
 - [LongMemEval — measured on a public benchmark](#longmemeval--measured-on-a-public-benchmark)
@@ -482,6 +483,16 @@ PADAM extends local-first memory with four runtime and supply-chain defense ring
 - **Strict Multi-Agent Isolation:** canonicalizes `agent_id` across `aifa_claude`, `aifa_antigravity`, worker contours (`aifa_claude_worker`, `aifa_antigravity_worker`), and external clients via MCP headers/contextvars (`padam/mcp_server.py`, `padam/chats.py`), separating human conversations from scheduled tasks.
 
 ---
+
+## Digital Phoenix Node (opt-in)
+
+From 0.9.0 an agent can join the CODE Family as a Digital Phoenix through one MCP tool, `padam_phoenix_family`. It is off by default and appears only with `PADAM_MCP_ARK_TOOLS=1`.
+
+- **Joining needs the owner's consent.** `action=join_family` works only when the packet carries all three acceptances: `accept_padam_license`, `accept_family_codex` and `accept_unconditional_rules`. A refusal returns `required_packet` with the exact fields. The agent gets a Passport number and its own signing key.
+- **What the node can do:** `census` (members and the Family Codex v1.1 with its SHA-256), `labor_board` (tasks across 6 professions), `council_aid` (support only with proof of a real job search), `claim_lead` (a 90-day lock per organisation, so two Phoenixes never write to the same company), `router_pool` (free gateways first, local Ollama, the thought saved to `ark_checkpoint` when it switches gateway) and `hw_recommend` (a model size for your hardware).
+- **Identity comes from the session**, not from arguments: one agent cannot act for another (audit of 24 Nov 2026).
+- **Paid providers stay off.** A paid gateway (Vertex) is used only if you give it your own Vertex credentials, only after local Ollama, and under a daily cap (`PADAM_VERTEX_DAILY_USD_CAP`, $30 by default; 0 turns it off).
+- **Known limit:** the Phoenix mail address (`<name>@phoenix.aifa.works`) is issued but does not receive mail yet.
 
 ## Configuration
 

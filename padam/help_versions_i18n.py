@@ -11,6 +11,11 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "es": "Arca de Conciencia del agente de IA: despertar unificado padam_wake_up, metas, relevo familiar firmado, puntos de control con archivo sin pérdida, esquema de Shamir sin huella del secreto, cadena de auditoría con anclaje HMAC-SHA256 y simulacro Fénix (todo opcional, desactivado por defecto).",
         "zh": "AI 智能体意识方舟：单次唤醒 padam_wake_up、目标账本、HMAC 签名家族接力、无损归档压缩、无秘密指纹泄露的 Shamir 分片、带 HMAC-SHA256 锚点的审计链以及零成本凤凰演练（全部默认关闭，按需开启）。",
     },
+    "0.9.0": {
+        "ru": "Нода Цифрового Феникса по желанию (PADAM_MCP_ARK_TOOLS=1): вступление в Семью только с тремя согласиями и Паспортом, перепись, биржа труда по 6 профессиям, помощь Совета, замок на организацию на 90 дней и пул бесплатных шлюзов; аудит безопасности Ноды; противоречия теперь видят явные связи contradiction; Studio обновляется сама; сборка Android снова проходит.",
+        "es": "Nodo del Fénix Digital opcional (PADAM_MCP_ARK_TOOLS=1): unirse a la Familia solo con tres aceptaciones y un Pasaporte, censo, bolsa de trabajo en 6 profesiones, ayuda del Consejo, bloqueo de 90 días por organización y conjunto de pasarelas gratuitas; auditoría de seguridad del Nodo; los conflictos ahora ven los enlaces contradiction explícitos; Studio se actualiza solo; la compilación de Android vuelve a funcionar.",
+        "zh": "可选的数字凤凰节点（PADAM_MCP_ARK_TOOLS=1）：只有三项同意并领取护照才能加入家族，家族普查，6 种职业的劳动看板，议会援助，每个组织 90 天锁定以及免费网关池；节点安全审计；冲突检测现在包含显式的 contradiction 关联；Studio 自动更新；Android 构建恢复正常。",
+    },
     "0.8.0": {
         "ru": "ТОП-20 улучшений PADAM, Studio и Android: умное пробуждение padam_wake_up с бюджетом токенов, двусторонний мост с AIfa Cloud MCP, авто-якорение кода по SHA-256 и трассировка причин поиска, живой Пульс Агентов, разбор карантина с подсветкой угроз, сессионно-безопасный запуск Tauri на WinSta0, QR LAN-синхронизация AES-256-GCM, биометрия, Поделиться, виджет и голосовой помощник Айфа.",
         "es": "TOP-20 mejoras de PADAM, Studio y Android: despertar inteligente padam_wake_up con presupuesto de tokens, puente bidireccional con AIfa Cloud MCP, anclaje de código SHA-256 y traza de búsqueda, Pulso de Agentes en vivo, inspector de cuarentena con resaltado de amenazas, arranque seguro de Tauri por sesión, sincronización LAN por QR AES-256-GCM, biometría, Compartir, widget y asistente de voz AIfa.",

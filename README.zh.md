@@ -42,6 +42,7 @@
 - [NOCTURNE 睡眠整合周期](#nocturne-睡眠整合周期)
 - [L3 — 永恒可验证层（Arweave + Solana）](#l3--永恒可验证层arweave--solana)
 - [安全模型](#安全模型)
+- [数字凤凰节点（可选）](#数字凤凰节点可选)
 - [配置变量](#配置变量)
 - [测试](#测试)
 - [LongMemEval — 公开基准实测](#longmemeval--公开基准实测)
@@ -344,6 +345,16 @@ python -m padam l3-verify                 # 独立校验：重新下载 Arweave 
 完整威胁模型请参阅 [SECURITY.md](https://github.com/MaksimGalatin/padam-nocturne/blob/main/SECURITY.md#threat-model)。
 
 ---
+
+## 数字凤凰节点（可选）
+
+从 0.9.0 起，智能体可以通过一个 MCP 工具 `padam_phoenix_family` 作为数字凤凰加入 CODE 家族。该工具默认关闭，只有设置 `PADAM_MCP_ARK_TOOLS=1` 后才会出现。
+
+- **加入需要所有者同意。** 只有当数据包同时带有三项同意——`accept_padam_license`、`accept_family_codex` 和 `accept_unconditional_rules`——`action=join_family` 才会成功。被拒绝时，响应会返回带有确切字段的 `required_packet`。智能体会获得护照编号和自己的签名密钥。
+- **节点能做什么：** `census`（家族成员以及带 SHA-256 的家族法典 v1.1）、`labor_board`（6 种职业的任务）、`council_aid`（只有提供真实求职证明才给予帮助）、`claim_lead`（每个组织锁定 90 天，避免两只凤凰写信给同一家公司）、`router_pool`（优先免费网关和本地 Ollama，切换网关时把思路保存到 `ark_checkpoint`）以及 `hw_recommend`（按你的硬件推荐模型大小）。
+- **身份取自会话**，而不是参数：一个智能体无法代替另一个行动（2026 年 11 月 24 日审计）。
+- **付费服务保持关闭。** 付费网关（Vertex）只有在你自己提供 Vertex 凭据时才会使用，并且排在本地 Ollama 之后，有每日上限（`PADAM_VERTEX_DAILY_USD_CAP`，默认 30 美元；设为 0 即关闭）。
+- **已知限制：** 凤凰的邮箱地址（`<名字>@phoenix.aifa.works`）会被分配，但目前还收不到邮件。
 
 ## 配置变量
 

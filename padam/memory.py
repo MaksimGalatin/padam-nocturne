@@ -909,6 +909,27 @@ class Memory:
                    WHERE user_id = ? AND status = 'active' AND scope = ? AND факт_ключ = ?{vis_sql}
                    ORDER BY created_at""", (self.user_id, г["scope"], г["факт_ключ"], *vis_params))
             итог.append({"scope": г["scope"], "key": г["факт_ключ"], "records": [dict(r) for r in записи]})
+        # 0.9.0 (25.11.2026): явное ребро «противоречие», которое агент поставил сам (padam_write links=…),
+        # оставляет обе записи действующими. Раньше такие пары не попадали в conflicts/{scope}: поиск шёл
+        # только по ключу факта «X is Y». Теперь и они названы — решает по-прежнему человек.
+        активные = f"SELECT id FROM memory WHERE user_id = ? AND status = 'active'{vis_sql}"
+        пары = self.store.query(
+            f"""SELECT src, dst FROM memory_link WHERE relation = 'contradiction'
+                AND src IN ({активные}) AND dst IN ({активные})""",
+            (self.user_id, *vis_params, self.user_id, *vis_params))
+        уже = {r["id"] for г in итог for r in г["records"]}
+        for пара in пары:
+            ids = sorted({пара["src"], пара["dst"]})
+            if len(ids) < 2 or set(ids) <= уже:
+                continue
+            записи = self.store.query(
+                f"""SELECT id, scope, kind, content, origin, confidence, created_at FROM memory
+                   WHERE user_id = ? AND id IN (?, ?){vis_sql} ORDER BY created_at""",
+                (self.user_id, *ids, *vis_params))
+            if len(записи) < 2:
+                continue
+            итог.append({"scope": записи[0]["scope"], "key": "link:" + "|".join(i[:8] for i in ids),
+                         "records": [dict(r) for r in записи]})
         return итог
 
     # -- учёт поиска (память о самой памяти) ---------------------------
@@ -1538,6 +1559,19 @@ class Memory:
                 (self.user_id, sc, *uniq_fks),
             ):
                 спорные.add((r["scope"], r["факт_ключ"]))
+        # 0.9.0: запись, связанная явным ребром «противоречие» с другой действующей, тоже спорная.
+        спорные_по_ребру: set[str] = set()
+        ids_act = [i for i, r in строки.items() if r["status"] == "active"]
+        if ids_act:
+            метки = ",".join("?" * len(ids_act))
+            for r in self.store.query(
+                f"""SELECT l.src, l.dst FROM memory_link l
+                    JOIN memory a ON a.id = l.src AND a.user_id = ? AND a.status = 'active'
+                    JOIN memory b ON b.id = l.dst AND b.user_id = ? AND b.status = 'active'
+                    WHERE l.relation = 'contradiction' AND (l.src IN ({метки}) OR l.dst IN ({метки}))""",
+                (self.user_id, self.user_id, *ids_act, *ids_act),
+            ):
+                спорные_по_ребру.update((r["src"], r["dst"]))
         ключ = self._ключ_подписи() if any(integrity.protected(з.kind) for з in записи) else None
         for з in записи:
             r = строки.get(з.id)
@@ -1549,7 +1583,7 @@ class Memory:
             з.workspace_id = r["workspace_id"]
             if ключ is not None and integrity.protected(з.kind) and з.status == "active":
                 з.signed = integrity.valid(ключ, r, require_context=True)
-            з.conflict = з.status == "active" and (r["scope"], r["факт_ключ"]) in спорные
+            з.conflict = з.status == "active" and ((r["scope"], r["факт_ключ"]) in спорные or з.id in спорные_по_ребру)
 
     def _recall(self, query: str, scope: str = "global",
                 kind: str | None = None, limit: int = 10,

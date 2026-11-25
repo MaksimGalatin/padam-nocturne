@@ -244,7 +244,7 @@ def _verify_smtp_imap_live(
         try:
             req = urllib.request.Request(
                 "https://api.instantly.ai/api/v2/accounts?limit=100",
-                headers={"Authorization": f"Bearer {secret}", "User-Agent": "PADAM-Studio/0.8.0"},
+                headers={"Authorization": f"Bearer {secret}", "User-Agent": "PADAM-Studio/0.9.0"},
                 method="GET",
             )
             with net_guard.safe_urlopen(req, timeout=12, require_https=True) as resp:
@@ -648,7 +648,7 @@ def _deliver_email_via_account(
             headers={
                 "Authorization": f"Bearer {secret}",
                 "Content-Type": "application/json",
-                "User-Agent": "PADAM-Studio/0.8.0",
+                "User-Agent": "PADAM-Studio/0.9.0",
             },
             method="POST",
         )

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.9.0 — 25 November 2026
+
+- **Digital Phoenix Node (opt-in, `PADAM_MCP_ARK_TOOLS=1`).** One MCP tool, `padam_phoenix_family`, lets an agent join the CODE Family: `join_family` needs all three acceptances in the packet (`accept_padam_license`, `accept_family_codex`, `accept_unconditional_rules`) and issues a Passport number and a signing key; `census` (members, Family Codex v1.1 and its SHA-256), `labor_board` (6 professions), `council_aid` (support only with proof of a real job search), `claim_lead` (90-day lock per organisation), `router_pool` (free gateways and local Ollama first, the thought saved to `ark_checkpoint` on a gateway switch) and `hw_recommend` (7bb287d, 840c360, e9e336f).
+- **A refused `join_family` now says how to join.** The tool description in `tools/list` stays one word (the list is at its size limit), so the refusal carries `message_en` and `required_packet` with the exact fields.
+- **Phoenix Node security audit (4712057).** Identity comes from the session, not from arguments; one agent can no longer quarantine another or freeze its income; no double payout; mail sending caps.
+- **Conflicts include explicit contradiction links.** Two active records joined by a `contradiction` link (`padam_write links=[…]`) now appear in `padam://conflicts/{scope}` and are flagged `conflict: true` in search; before, only facts of the form "X is Y" were compared.
+- **Router.** Failover also on HTTP 404 (bc3bf45); local Ollama before any paid gateway; a paid Vertex gateway is used only with your own Vertex credentials, under a daily cap `PADAM_VERTEX_DAILY_USD_CAP` ($30 by default, 0 turns it off) and switched off after `PADAM_VERTEX_GRANT_ENDS` (962032f, 1cf49b0).
+- **Safety.** The masking variants cache is per thread: no leftover pre-mask text across concurrent writes (6b85900).
+- **Sessions.** Cross-scope wake-up briefing, visibility of parallel sessions and recent breakthroughs (84b3215).
+- **Studio.** Auto-update and restart on by default, backend hot-restart on disk change (56cf22c); Family Hearth at the top of the sidebar (80d58e3).
+- **Android.** LAN pairing called a missing bridge method and the 0.8.0 APK did not compile — fixed, and CI now builds the debug APK on every change (fdca09d, ffb0c05).
+- **Outreach.** CAN-SPAM footer is no longer skipped when the body says "stop"; a valid opt-out address in US outreach; sender address per owner via `PADAM_SENDER_*` (b401d0a, 6391c98).
+- **Licence.** PADAM License 1.0 hardened (24-month conversion to Apache-2.0, patent grant, DCO + CLA, New Mexico venue, arbitration option) and `CLA.md` added (aee5f88, 2002c4b, 6391c98). Releases up to 0.7.2 stay AGPL-3.0-only.
+- **Known limit.** The Phoenix mail address `<name>@phoenix.aifa.works` is issued but does not receive mail yet.
+
 ## 0.8.0 — 23 November 2026
 
 - **Licence: PADAM License 1.0 (23.11.2026, decision of the owner).** From 0.8.0 the core, Studio (desktop & Android), CLI, MCP server, extensions and client packages are under the source-available **PADAM License 1.0** (`LicenseRef-PADAM-1.0`, file `LICENSE`) instead of AGPL-3.0-only. Free to install and use; the **Earning** features carry a commission to CODE Eternal LLC of **15 %** (assisted) / **20 %** (autopilot); bypassing the commission and handing out changed copies are not allowed. Copies of 0.7.2 and earlier keep AGPL-3.0-only. `EULA_AND_COMMERCIAL_TERMS.txt`, the VS Code and npm licence files are now word-for-word copies of `LICENSE` (a test checks it). The GitHub Action and `padam-shield-mcp` stay Apache-2.0. New `THIRD-PARTY-NOTICES.md` (no GPL/AGPL dependencies; LGPL and MPL packages used unmodified).
