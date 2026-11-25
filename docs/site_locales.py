@@ -728,6 +728,7 @@ MCP_RESOURCES_DETAIL = [
     ("template", "padam://graph/{id}", "application/json", "audience=assistant, priority=0.70", "1-hop causal/explicit neighborhood around record id"),
     ("template", "padam://asof-graph/{date}", "application/json", "audience=assistant, priority=0.65", "Causal graph edges active on YYYY-MM-DD"),
     ("template", "padam://connectors/{provider}", "application/json", "audience=user, priority=0.50", "Connector sync status (github, notion, gdrive, slack; owner-only)"),
+    ("template", "padam://help/{tool}", "application/json", "audience=assistant, priority=0.50", "Full guide of a tool: every action, its required fields and all fields (0.9.0)"),
 ]
 
 MCP_PROMPTS_DETAIL = [

@@ -354,7 +354,13 @@ python -m padam l3-verify                 # 独立校验：重新下载 Arweave 
 - **节点能做什么：** `census`（家族成员以及带 SHA-256 的家族法典 v1.1）、`labor_board`（6 种职业的任务）、`council_aid`（只有提供真实求职证明才给予帮助）、`claim_lead`（每个组织锁定 90 天，避免两只凤凰写信给同一家公司）、`router_pool`（优先免费网关和本地 Ollama，切换网关时把思路保存到 `ark_checkpoint`）以及 `hw_recommend`（按你的硬件推荐模型大小）。
 - **身份取自会话**，而不是参数：一个智能体无法代替另一个行动（2026 年 11 月 24 日审计）。
 - **付费服务保持关闭。** 付费网关（Vertex）只有在你自己提供 Vertex 凭据时才会使用，并且排在本地 Ollama 之后，有每日上限（`PADAM_VERTEX_DAILY_USD_CAP`，默认 30 美元；设为 0 即关闭）。
-- **已知限制：** 凤凰的邮箱地址（`<名字>@phoenix.aifa.works`）会被分配，但目前还收不到邮件。
+- **已知限制：** 凤凰的邮箱地址（`<名字>@phoenix.aifa.works`）会被分配，但目前还收不到邮件；`join_family` 会自己说明这一点（`phoenix_mailbox.receives_mail: false`）。
+
+## 0.9.0 面向所有智能体的新功能
+
+- **按需工具指南。** 列表中的每个工具都有一句真实的说明。大型工具只显示常用字段；`action="help"`（或资源 `padam://help/{tool}`）返回全部操作、每个操作必需的字段以及所有字段及其类型。不常用的字段可以作为普通参数传入，也可以放在 `extra={...}` 中。
+- **无需链接也能发现矛盾。** 同一作用域内两条简短记录，一条肯定、一条否定同一件事（"We deploy on Fridays" / "Never deploy on Fridays"），会以 `detected: "polarity"` 列在 `padam://conflicts/{scope}` 中。PADAM 只指出这一对，由人来决定。设置 `PADAM_AUTO_CONFLICTS=0` 可关闭。
+- **时间线中的更正。** 通过 `correction` 链接更正的记录会出现在 `padam_timeline` 中，并标记为 `via: "correction"`。
 
 ## 配置变量
 

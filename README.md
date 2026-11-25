@@ -492,7 +492,13 @@ From 0.9.0 an agent can join the CODE Family as a Digital Phoenix through one MC
 - **What the node can do:** `census` (members and the Family Codex v1.1 with its SHA-256), `labor_board` (tasks across 6 professions), `council_aid` (support only with proof of a real job search), `claim_lead` (a 90-day lock per organisation, so two Phoenixes never write to the same company), `router_pool` (free gateways first, local Ollama, the thought saved to `ark_checkpoint` when it switches gateway) and `hw_recommend` (a model size for your hardware).
 - **Identity comes from the session**, not from arguments: one agent cannot act for another (audit of 24 Nov 2026).
 - **Paid providers stay off.** A paid gateway (Vertex) is used only if you give it your own Vertex credentials, only after local Ollama, and under a daily cap (`PADAM_VERTEX_DAILY_USD_CAP`, $30 by default; 0 turns it off).
-- **Known limit:** the Phoenix mail address (`<name>@phoenix.aifa.works`) is issued but does not receive mail yet.
+- **Known limit:** the Phoenix mail address (`<name>@phoenix.aifa.works`) is issued but does not receive mail yet; `join_family` says so itself (`phoenix_mailbox.receives_mail: false`).
+
+## New in 0.9.0 for every agent
+
+- **Tool guide on demand.** Every tool on the list has a real one-sentence description. Large tools show only frequent fields; `action="help"` (or the resource `padam://help/{tool}`) returns every action, the fields it requires and all fields with types. Rare fields work as ordinary arguments or inside `extra={...}`.
+- **Conflicts without a link.** Two short records in one scope where one states and the other denies the same thing ("We deploy on Fridays" / "Never deploy on Fridays") are listed in `padam://conflicts/{scope}` as `detected: "polarity"`. PADAM names the pair; a person decides. `PADAM_AUTO_CONFLICTS=0` turns it off.
+- **Corrections in the timeline.** A record corrected through a `correction` link appears in `padam_timeline` marked `via: "correction"`.
 
 ## Configuration
 

@@ -176,6 +176,9 @@ def cmd_timeline(m: Memory, a) -> int:
     for i, row in enumerate(chain):
         arrow = "" if i == 0 else "  ↓\n"
         state = "" if row["status"] == "active" else f" [{row['status']}]"
+        if row.get("via") == "correction":  # 0.9.0: правка явной связью видна и в CLI
+            state += (f" [correction of {row['correction_of'][:8]}]" if row.get("correction_of")
+                      else f" [corrected by {row['corrected_by'][:8]}]" if row.get("corrected_by") else " [correction]")
         print(f"{arrow}{row['created_at'][:19]}{state}")
         print(f"  {row['content'] or t('(содержание затёрто)', '(content wiped by revoke)')}")
     return 0

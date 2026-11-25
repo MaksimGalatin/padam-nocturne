@@ -18,6 +18,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from padam.logo import CODE_LOGO_SVG as LOGO_SVG
+from padam import __version__ as PADAM_VERSION  # 0.9.0: версия в заголовке из кода, а не литералом (стояло 0.4.18)
 from site_locales import (
     CLI_COMMANDS,
     COMPETITORS_ROWS,
@@ -856,7 +857,7 @@ def render_root_index() -> str:
 <body>
   <main class="landing">
     <img src="./assets/logo.svg" width="64" height="64" alt="PADAM NOCTURNE">
-    <h1>PADAM · NOCTURNE 0.4.18</h1>
+    <h1>PADAM · NOCTURNE {PADAM_VERSION}</h1>
     <p class="lead">Self-defending local memory for AI agents · Select language</p>
     <div class="landing-grid">{cards}</div>
   </main>

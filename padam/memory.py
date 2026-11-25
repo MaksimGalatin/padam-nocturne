@@ -227,6 +227,44 @@ _LINK_ALIASES = {
 }
 
 
+# 0.9.0 (25.11.2026): противоречия без явной связи. Две короткие действующие записи одной области
+# об одном и том же (совпадают основы слов), но одна утверждает, а другая отрицает:
+# «Deploy on Fridays» / «Never deploy on Fridays», «деплоим по пятницам» / «по пятницам никогда не деплоим».
+# Поиск намеренно осторожный: только короткие записи, совпадение основ не ниже 0,8, разная полярность.
+_ПОЛЯРНОСТЬ_НЕТ = frozenset({
+    "not", "never", "no", "don't", "dont", "doesn't", "doesnt", "isn't", "isnt", "aren't", "arent",
+    "won't", "wont", "cannot", "can't", "cant", "mustn't", "shouldn't", "without", "forbidden", "forbid",
+    "prohibited", "disable", "disabled", "avoid", "false", "nobody", "nothing", "none",
+    "не", "нет", "никогда", "нельзя", "запрещено", "запрещен", "запрещён", "запрещена", "запрещены",
+    "запрещаем", "запрещается", "без", "отключено", "отключен", "выключено", "выключен", "ни", "никто", "ничего",
+})
+_ПОЛЯРНОСТЬ_ДА = frozenset({
+    "always", "must", "allowed", "allow", "enable", "enabled", "true", "yes", "do", "does",
+    "всегда", "можно", "разрешено", "разрешен", "разрешён", "включено", "включен", "да", "обязательно",
+})
+_СЛОВА_СВЯЗКИ = frozenset({
+    "the", "and", "for", "with", "that", "this", "from", "are", "was", "were", "will", "should", "has",
+    "have", "had", "our", "you", "your", "its", "but", "all", "any", "can", "into", "onto", "then",
+    "что", "как", "для", "или", "это", "все", "мы", "вы", "они", "по", "на", "в", "и", "а", "но", "до",
+    "из", "от", "при", "же", "ли", "бы", "уже", "там", "тут", "так",
+})
+
+
+def _основы_и_полярность(text: str) -> tuple[frozenset, bool, int]:
+    """Основы значимых слов (первые 5 букв длинного слова), есть ли отрицание, число значимых слов."""
+    слова = re.findall(r"[a-zа-яё0-9_']+", (text or "").lower().replace("’", "'"))
+    отрицание = any(w in _ПОЛЯРНОСТЬ_НЕТ or w.endswith("n't") for w in слова)
+    основы = []
+    for w in слова:
+        w = w.strip("'")
+        if not w or w in _ПОЛЯРНОСТЬ_НЕТ or w in _ПОЛЯРНОСТЬ_ДА or w in _СЛОВА_СВЯЗКИ or w.endswith("n't"):
+            continue
+        if len(w) < 3 and not w.isdigit():
+            continue
+        основы.append(w[:5] if len(w) > 5 else w)
+    return frozenset(основы), отрицание, len(основы)
+
+
 def normalize_link_relation(relation: str | None) -> str:
     """Нормализует тип ребра графа (источник/причина/исправление/противоречие)."""
     key = (relation or "derived").strip().lower()
@@ -930,7 +968,64 @@ class Memory:
                 continue
             итог.append({"scope": записи[0]["scope"], "key": "link:" + "|".join(i[:8] for i in ids),
                          "records": [dict(r) for r in записи]})
+        if config.auto_conflicts_enabled():
+            уже_пары = {frozenset(r["id"] for r in г["records"]) for г in итог}
+            for г in self._авто_противоречия(vis_sql, vis_params):
+                if frozenset(r["id"] for r in г["records"]) not in уже_пары:
+                    итог.append(г)
         return итог
+
+    def _авто_противоречия(self, vis_sql: str, vis_params: tuple) -> list[dict]:
+        """Пары коротких действующих записей одной области: те же основы слов, разная полярность.
+
+        Границы (чтобы не шуметь и не тормозить): последние 5 000 записей не длиннее 400 знаков,
+        в записи от 2 до 40 значимых слов, совпадение основ (Жаккар) не ниже 0,8, основа, встречающаяся
+        больше чем в 200 записях, не порождает пар. Результат кэшируется до изменения числа
+        действующих записей или последней даты. Группа помечена detected="polarity" — это подозрение,
+        а не вердикт: какая запись верна, решает человек (как и для остальных споров).
+        """
+        след = self.store.one(
+            f"""SELECT COUNT(*) AS n, MAX(created_at) AS t FROM memory
+               WHERE user_id = ? AND status = 'active'{vis_sql}""", (self.user_id, *vis_params))
+        ключ_кэша = (vis_sql, tuple(vis_params), след["n"], след["t"])
+        кэш = self.__dict__.get("_авто_споры_кэш")
+        if кэш and кэш[0] == ключ_кэша:
+            return [dict(г, records=[dict(r) for r in г["records"]]) for г in кэш[1]]
+        строки = self.store.query(
+            f"""SELECT id, scope, kind, content, origin, confidence, created_at FROM memory
+               WHERE user_id = ? AND status = 'active' AND content IS NOT NULL
+                 AND length(content) <= 400{vis_sql}
+               ORDER BY created_at DESC LIMIT 5000""", (self.user_id, *vis_params))
+        разбор = []
+        for r in строки:
+            основы, отр, n = _основы_и_полярность(r["content"])
+            if 2 <= n <= 40:
+                разбор.append((dict(r), основы, отр))
+        индекс: dict[tuple, list[int]] = {}
+        for i, (r, основы, _) in enumerate(разбор):
+            for о in основы:
+                индекс.setdefault((r["scope"], о), []).append(i)
+        общие: dict[tuple[int, int], int] = {}
+        for список in индекс.values():
+            if len(список) < 2 or len(список) > 200:
+                continue
+            for a_i in range(len(список)):
+                for b_i in range(a_i + 1, len(список)):
+                    a, b = список[a_i], список[b_i]
+                    if разбор[a][2] != разбор[b][2]:
+                        общие[(a, b)] = общие.get((a, b), 0) + 1
+        найдено = []
+        for (a, b), n_общих in общие.items():
+            оа, об = разбор[a][1], разбор[b][1]
+            if n_общих / len(оа | об) < 0.8:
+                continue
+            ra, rb = sorted((разбор[a][0], разбор[b][0]), key=lambda r: r["created_at"] or "")
+            найдено.append({"scope": ra["scope"], "key": "auto:" + "|".join(sorted((ra["id"][:8], rb["id"][:8]))),
+                            "detected": "polarity", "records": [ra, rb]})
+        найдено.sort(key=lambda г: г["records"][-1]["created_at"] or "", reverse=True)
+        найдено = найдено[:100]
+        self.__dict__["_авто_споры_кэш"] = (ключ_кэша, найдено)
+        return [dict(г, records=[dict(r) for r in г["records"]]) for г in найдено]
 
     # -- учёт поиска (память о самой памяти) ---------------------------
 
@@ -2138,7 +2233,13 @@ class Memory:
         return {"view": view, "total": всего, "records": _обогатить(rows)}
 
     def timeline(self, memory_id: str, actor: roles.ActorContext | None = None) -> list[dict]:
-        """Цепочка версий: от текущей вглубь, к самой первой."""
+        """Цепочка версий: от самой первой к текущей.
+
+        0.9.0 (25.11.2026): кроме версий по supersedes в хронологию входят правки, поставленные явной
+        связью «correction» (padam_write links=… или padam://graph). Раньше такая правка была видна
+        только в графе, а хронология записи молчала о ней. Каждая строка помечена полем via:
+        «version» — версия по supersedes, «correction» — правка связью (в обе стороны, до 50 записей).
+        """
         vis_sql, vis_params, _ = roles.visibility_sql(actor)
         chain, seen, cur_id = [], set(), memory_id
         while cur_id and cur_id not in seen:
@@ -2149,9 +2250,40 @@ class Memory:
                 (cur_id, self.user_id, *vis_params))
             if not row:
                 break
-            chain.append(dict(row))
+            chain.append({**dict(row), "via": "version"})
             cur_id = row["supersedes"]
-        return list(reversed(chain))
+        if not chain:
+            return []
+        # Правки связью: обход в ширину от всех версий цепочки по рёбрам correction в обе стороны.
+        # Отозванные записи не показываем — как и в links_of.
+        очередь = [r["id"] for r in chain]
+        правки: list[dict] = []
+        while очередь and len(правки) < 50:
+            rid = очередь.pop(0)
+            соседи = self.store.query(
+                """SELECT src, dst FROM memory_link WHERE relation = 'correction' AND (src = ? OR dst = ?)""",
+                (rid, rid))
+            for сосед in соседи:
+                other = сосед["dst"] if сосед["src"] == rid else сосед["src"]
+                if not other or other in seen:
+                    continue
+                seen.add(other)
+                row = self.store.one(
+                    f"""SELECT id, content, status, created_at, supersedes, visibility, workspace_id
+                       FROM memory WHERE id = ? AND user_id = ? AND status != 'revoked'{vis_sql}""",
+                    (other, self.user_id, *vis_params))
+                if not row:
+                    continue
+                # Ребро src → dst «correction» значит: dst исправляет src (так же, как supersedes: старое → новое).
+                # correction_of — какую запись исправляет эта; corrected_by — какой записью исправлена эта.
+                правки.append({**dict(row), "via": "correction",
+                               "correction_of": rid if сосед["dst"] == other else None,
+                               "corrected_by": rid if сосед["src"] == other else None})
+                очередь.append(other)
+        итог = list(reversed(chain)) + правки
+        if правки:
+            итог.sort(key=lambda r: r.get("created_at") or "")
+        return итог
 
     # -- выгрузка -------------------------------------------------------
 

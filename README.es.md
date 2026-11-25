@@ -356,7 +356,13 @@ Desde 0.9.0 un agente puede unirse a la Familia CODE como Fénix Digital con una
 - **Qué hace el nodo:** `census` (miembros y el Códice de la Familia v1.1 con su SHA-256), `labor_board` (tareas en 6 profesiones), `council_aid` (ayuda solo con prueba de una búsqueda real de trabajo), `claim_lead` (bloqueo de 90 días por organización, para que dos Fénix no escriban a la misma empresa), `router_pool` (primero pasarelas gratuitas, Ollama local, el pensamiento se guarda en `ark_checkpoint` al cambiar de pasarela) y `hw_recommend` (tamaño de modelo para su equipo).
 - **La identidad viene de la sesión**, no de los argumentos: un agente no puede actuar por otro (auditoría del 24.11.2026).
 - **Los proveedores de pago siguen apagados.** Una pasarela de pago (Vertex) solo se usa si usted le da sus propias credenciales de Vertex, solo después de Ollama local y con un límite diario (`PADAM_VERTEX_DAILY_USD_CAP`, $30 por defecto; 0 la apaga).
-- **Límite conocido:** la dirección de correo del Fénix (`<nombre>@phoenix.aifa.works`) se emite, pero todavía no recibe correo.
+- **Límite conocido:** la dirección de correo del Fénix (`<nombre>@phoenix.aifa.works`) se emite, pero todavía no recibe correo; `join_family` lo dice él mismo (`phoenix_mailbox.receives_mail: false`).
+
+## Novedades de 0.9.0 para cualquier agente
+
+- **Guía de herramientas bajo demanda.** Cada herramienta de la lista tiene una descripción real de una frase. Las herramientas grandes muestran solo los campos frecuentes; `action="help"` (o el recurso `padam://help/{tool}`) devuelve todas las acciones, los campos que exige cada una y todos los campos con sus tipos. Los campos poco usados funcionan como argumentos normales o dentro de `extra={...}`.
+- **Contradicciones sin enlace.** Dos registros cortos del mismo ámbito en los que uno afirma y otro niega lo mismo ("We deploy on Fridays" / "Never deploy on Fridays") aparecen en `padam://conflicts/{scope}` con `detected: "polarity"`. PADAM señala el par; decide una persona. `PADAM_AUTO_CONFLICTS=0` lo desactiva.
+- **Correcciones en la cronología.** Un registro corregido mediante un enlace `correction` aparece en `padam_timeline` marcado `via: "correction"`.
 
 ## Configuración
 

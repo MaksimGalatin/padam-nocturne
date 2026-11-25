@@ -361,6 +361,12 @@ def mcp_sovereign_sync_tool_enabled() -> bool:
     return os.environ.get("PADAM_MCP_SOVEREIGN_SYNC_TOOL", "0").strip() == "1"
 
 
+def auto_conflicts_enabled() -> bool:
+    """0.9.0: поиск противоречий без явной связи («деплоим по пятницам» / «по пятницам никогда»).
+    Включён по умолчанию; PADAM_AUTO_CONFLICTS=0 выключает. Находки только называются — решает человек."""
+    return os.environ.get("PADAM_AUTO_CONFLICTS", "1").strip() != "0"
+
+
 def mcp_ark_tools_enabled() -> bool:
     """Включает публикацию MCP-инструментов Ковчега сознания (padam_wake_up, commitments, relay, checkpoint, timeline, lesson) в tools/list."""
     return os.environ.get("PADAM_MCP_ARK_TOOLS", "0").strip() == "1"

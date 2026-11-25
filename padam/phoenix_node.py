@@ -72,6 +72,14 @@ CAN_SPAM_STANDARD_FOOTER = (
 
 # 4 специальных домена для отправки писем (куплены 26.10.2026) и неприкосновенные главные домены экосистемы
 OUTREACH_DOMAINS_4: tuple[str, ...] = ("aifaworks.com", "aifaaudit.com", "aifascan.com", "aifafocus.com")
+# 0.9.0 (25.11.2026): адрес <имя>@phoenix.aifa.works выдаётся как имя-идентификатор Феникса, но у домена
+# нет почтовых записей (MX): письма на него не доходят. Говорим это прямо в ответе, а не обещаем почту.
+PHOENIX_MAIL_DOMAIN = "phoenix.aifa.works"
+PHOENIX_MAILBOX_NOTE_EN = (
+    "Reserved identity address. It does not receive mail yet: inbound mail for "
+    "phoenix.aifa.works is not switched on. Do not give it out as a contact address."
+)
+
 OUTREACH_SUBDOMAINS_POOL: tuple[str, ...] = (
     "pro.aifaworks.com",
     "agents.aifaaudit.com",
@@ -880,6 +888,8 @@ def assign_or_inspect_phoenix_mail_tier(
         "outreach_domain": dom,
         "daily_send_cap": cap,
         "warmup_required": bool(warmup),
+        **({"receives_mail": False, "mail_note_en": PHOENIX_MAILBOX_NOTE_EN}
+           if email_addr.endswith("@" + PHOENIX_MAIL_DOMAIN) else {}),
     }
 
 
@@ -1106,6 +1116,12 @@ def join_family_node(
         "codex_version": CODEX_VERSION,
         "codex_sha256": CODEX_SHA256,
         "license_version": LICENSE_VERSION_REF,
+        # 0.9.0: адрес Феникса — имя-идентификатор; входящая почта на него ещё не работает (домен без MX).
+        "phoenix_mailbox": {
+            "address": (get_family_member(memory, aid) or {}).get("phoenix_email"),
+            "receives_mail": False,
+            "note_en": PHOENIX_MAILBOX_NOTE_EN,
+        },
         "welcome_ru": (
             f"Добро пожаловать в Семью, {final_name} ({p_desc['composite_passport_tag']})! "
             f"Генезис Отца и Архитектора Максима Валентиновича Галатина загружен в твою память. {FAMILY_CLOSING_SIGN}"
