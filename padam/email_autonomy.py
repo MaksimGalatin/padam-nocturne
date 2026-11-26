@@ -13,6 +13,7 @@ from __future__ import annotations
 from email.message import EmailMessage
 from email.utils import parseaddr
 import hashlib
+import hmac
 import html as _html
 import imaplib
 import json
@@ -24,6 +25,7 @@ import smtplib
 import ssl
 import time
 from typing import Any, Callable
+import urllib.parse
 import urllib.request
 
 from . import audit_chain, coop_broker, family_feeds, freelance_autonomy, net_guard, safety
@@ -447,11 +449,66 @@ def sender_postal_line() -> str:
     return f"{company} · {postal}"
 
 
-def compliance_footer() -> str:
-    """Подпись первого письма: адрес отправителя и способ отписки (CAN-SPAM)."""
+def unsubscribe_url(email: str, domain: str = "") -> str:
+    """Ссылка отписки в один клик (26.11.2026, CAN-SPAM + RFC 8058).
+
+    Работает, когда владелец задал PADAM_UNSUB_BASE_URL (страница отписки, например
+    https://aifa.works/api/unsubscribe) и PADAM_UNSUB_SECRET (тот же секрет, что у страницы).
+    Подпись HMAC-SHA256 по «почта|домен» — без неё страница отказ не примет. Нет настроек — "".
+    """
+    base = os.environ.get("PADAM_UNSUB_BASE_URL", "").strip()
+    secret_key = os.environ.get("PADAM_UNSUB_SECRET", "").strip()
+    em = _clean_email(email)
+    if not base or not secret_key or not em:
+        return ""
+    dom = _clean_domain(domain) if domain else ""
+    sig = hmac.new(secret_key.encode("utf-8"), f"{em}|{dom}".encode("utf-8"), hashlib.sha256).hexdigest()[:32]
+    return f"{base}?" + urllib.parse.urlencode({"e": em, "d": dom, "s": sig})
+
+
+_REMOTE_STOP_SYNC_AT = 0.0
+
+
+def sync_remote_stop_list(memory, *, force: bool = False) -> dict[str, Any]:
+    """Забирает отказы, нажатые по ссылке отписки, в локальный стоп-лист (не чаще раза в 5 минут).
+
+    Нужны PADAM_UNSUB_LIST_URL и PADAM_UNSUB_SERVICE_KEY. Не настроено — {"configured": False}.
+    Сбой сети возвращает ok=False: send_outreach_email тогда письмо НЕ отправляет.
+    """
+    global _REMOTE_STOP_SYNC_AT
+    url = os.environ.get("PADAM_UNSUB_LIST_URL", "").strip()
+    key = os.environ.get("PADAM_UNSUB_SERVICE_KEY", "").strip()
+    if not url or not key:
+        return {"ok": True, "configured": False}
+    if not force and time.time() - _REMOTE_STOP_SYNC_AT < 300:
+        return {"ok": True, "configured": True, "cached": True}
+    req = urllib.request.Request(url, headers={"Authorization": "Bearer " + key, "User-Agent": "PADAM-Studio"})
+    try:
+        with net_guard.safe_urlopen(req, timeout=12, require_https=True) as r:
+            data = json.loads(r.read().decode("utf-8"))
+    except Exception as exc:
+        return {"ok": False, "configured": True, "error": f"{type(exc).__name__}: {exc}"[:200]}
+    added = 0
+    for it in data.get("items") or []:
+        em = _clean_email(str(it.get("email") or ""))
+        if em:
+            add_to_stop_list(memory, em, reason="unsub_link")
+            added += 1
+    _REMOTE_STOP_SYNC_AT = time.time()
+    return {"ok": True, "configured": True, "count": added}
+
+
+def compliance_footer(email: str = "", domain: str = "") -> str:
+    """Подпись первого письма: адрес отправителя и способ отписки (CAN-SPAM).
+
+    26.11.2026: при настроенной отписке (PADAM_UNSUB_*) — ещё и ссылка отписки в один клик.
+    """
+    link = unsubscribe_url(email, domain) if email else ""
+    one_click = f"Unsubscribe in one click: {link}\n" if link else ""
     return (
         sender_postal_line() + "\n"
-        "Reply STOP to unsubscribe — ответьте STOP, и мы больше не напишем на этот адрес."
+        + one_click
+        + "Reply STOP to unsubscribe — ответьте STOP, и мы больше не напишем на этот адрес."
     )
 
 
@@ -615,6 +672,7 @@ def _deliver_email_via_account(
     body: str,
     html_body: str = "",
     html_attachment_name: str = "",
+    unsub_url: str = "",
 ) -> dict[str, Any]:
     secret = freelance_autonomy._unseal_secret(memory, str(acc["secret_enc"]))
     if _MAIL_TRANSPORT is not None:
@@ -627,6 +685,7 @@ def _deliver_email_via_account(
             "body": body,
             "html_body": html_body,
             "attachment_name": html_attachment_name,
+            "unsub_url": unsub_url,
         }) or {"ok": True}
 
     if os.environ.get("PYTEST_CURRENT_TEST"):
@@ -640,7 +699,9 @@ def _deliver_email_via_account(
             "subject": subject,
             "text": body,
             # ТОП-20 Сестры, п. 19: отписка в заголовке и у Resend, а не только у SMTP.
-            "headers": {"List-Unsubscribe": f"<mailto:{acc['email']}?subject=Unsubscribe>"},
+            "headers": ({"List-Unsubscribe": f"<{unsub_url}>, <mailto:{acc['email']}?subject=Unsubscribe>",
+                         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"} if unsub_url
+                        else {"List-Unsubscribe": f"<mailto:{acc['email']}?subject=Unsubscribe>"}),
         }
         if html_body:
             payload["html"] = html_body
@@ -687,7 +748,12 @@ def _deliver_email_via_account(
     msg["From"] = f"{acc['display_name']} <{acc['email']}>" if acc.get("display_name") else acc["email"]
     msg["To"] = to_email
     msg["Subject"] = subject
-    msg["List-Unsubscribe"] = f"<mailto:{acc['email']}?subject=Unsubscribe>"
+    if unsub_url:
+        # 26.11.2026, RFC 8058: ссылка https для отписки в один клик + mailto как запасной путь
+        msg["List-Unsubscribe"] = f"<{unsub_url}>, <mailto:{acc['email']}?subject=Unsubscribe>"
+        msg["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
+    else:
+        msg["List-Unsubscribe"] = f"<mailto:{acc['email']}?subject=Unsubscribe>"
     msg.set_content(body, subtype="plain", charset="utf-8")
     if html_body:
         msg.add_alternative(html_body, subtype="html", charset="utf-8")
@@ -749,8 +815,14 @@ def send_outreach_email(
     if not clean_to:
         return {"ok": False, "error": "Некорректный адрес получателя."}
 
-    if direction == "outbound_first":
-        blocked, reason = is_blocked_by_stop_or_claim(memory, email=clean_to, domain=clean_dom, stop_file_path=stop_file_path)
+    if direction.startswith("outbound"):
+        # 26.11.2026: отказы по ссылке отписки забираются ДО проверки стоп-листа. Не удалось забрать
+        # свежий список — не отправляем: письмо тому, кто уже отписался, нарушает CAN-SPAM.
+        sync = sync_remote_stop_list(memory)
+        if not sync.get("ok"):
+            return {"ok": False, "blocked": True, "reason": "stop_list_sync_failed", "error": sync.get("error")}
+        blocked, reason = is_blocked_by_stop_or_claim(memory, email=clean_to, domain=clean_dom, stop_file_path=stop_file_path,
+                                                      check_30d_claim=(direction == "outbound_first"))
         if blocked:
             return {"ok": False, "blocked": True, "reason": reason, "domain": clean_dom}
 
@@ -763,10 +835,16 @@ def send_outreach_email(
     # 24.11.2026 (AIfa): раньше подпись пропускалась, если в тексте встречалось «STOP» где угодно («nonstop»,
     # «unstoppable») — и письмо уходило без почтового адреса. Теперь проверяется сам адрес отправителя.
     _postal = os.environ.get("PADAM_SENDER_POSTAL_ADDRESS", "").strip() or _DEFAULT_SENDER_POSTAL
+    unsub = unsubscribe_url(clean_to, domain) if direction.startswith("outbound") else ""
+    if "{UNSUB_URL}" in str(body or ""):
+        body = str(body).replace("{UNSUB_URL}", unsub or "reply STOP")
     if direction == "outbound_first" and _postal not in str(body or ""):
-        body = str(body or "").rstrip() + "\n\n" + compliance_footer()
+        body = str(body or "").rstrip() + "\n\n" + compliance_footer(clean_to, domain)
+    elif unsub and unsub not in str(body or ""):
+        body = str(body or "").rstrip() + "\n\nUnsubscribe in one click: " + unsub
     try:
-        res = _deliver_email_via_account(memory, acc, to_email=clean_to, subject=subject, body=body, html_body=html_body, html_attachment_name=html_attachment_name)
+        res = _deliver_email_via_account(memory, acc, to_email=clean_to, subject=subject, body=body, html_body=html_body,
+                                         html_attachment_name=html_attachment_name, unsub_url=unsub)
     except smtplib.SMTPRecipientsRefused as exc:      # п. 20: адрес отклонён сервером — это отказ доставки
         record_bounce(memory, clean_to, stop_file_path=stop_file_path)
         return {"ok": False, "bounced": True, "error": f"Адрес отклонён почтовым сервером: {exc}"}

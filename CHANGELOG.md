@@ -1,5 +1,11 @@
 # Changelog
 
+## In main after 0.9.1 (not released yet; the next version ships only after the owner's approval)
+
+- **One-click unsubscribe (CAN-SPAM, RFC 8058).** With `PADAM_UNSUB_BASE_URL` and `PADAM_UNSUB_SECRET` set, every outreach email carries a signed one-click unsubscribe link (HMAC-SHA256 over `email|domain`), the `List-Unsubscribe` header gets the https link next to the mailto, and `List-Unsubscribe-Post: List-Unsubscribe=One-Click` is added. A `{UNSUB_URL}` placeholder in a template is filled in.
+- **Remote opt-outs before every send.** With `PADAM_UNSUB_LIST_URL` and `PADAM_UNSUB_SERVICE_KEY` set, `send_outreach_email` pulls the opt-out list (at most every 5 minutes) into the local stop list before any outbound email; if the list cannot be fetched, the email is not sent (`stop_list_sync_failed`). Follow-ups and report emails now check the stop list too.
+- **Studio auto-update no longer fails on locked files.** On Windows the updater stopped the Python backend only after `install()`, which never returns there, so the installer could not replace `runtime\…\_cffi_backend*.pyd`. Now: download → stop the backend → install; the NSIS installer also closes processes running from its own `runtime` folder. The desktop build workflow uploads to a release only with `attach_to_release=true`.
+
 ## 0.9.1 — 26 November 2026
 
 - **No findings, no email.** The outreach template listed a fallback category even when a site had zero violations ("flagged 0 … in these categories: unlabeled interactive buttons…"). The fallback line now appears only when violations exist without rule names, `build_business_outreach` returns `has_findings`, and `run_outreach_batch` skips a site without findings (`skipped: "no_findings"`).
