@@ -837,6 +837,8 @@ def send_outreach_email(
     _postal = os.environ.get("PADAM_SENDER_POSTAL_ADDRESS", "").strip() or _DEFAULT_SENDER_POSTAL
     unsub = unsubscribe_url(clean_to, domain) if direction.startswith("outbound") else ""
     if "{UNSUB_URL}" in str(body or ""):
+        if not unsub:   # отписка по ссылке не настроена — честно оставляем только ответ STOP
+            body = str(body).replace("Unsubscribe in one click: {UNSUB_URL} — or simply reply STOP.", "Simply reply STOP to unsubscribe.")
         body = str(body).replace("{UNSUB_URL}", unsub or "reply STOP")
     if direction == "outbound_first" and _postal not in str(body or ""):
         body = str(body or "").rstrip() + "\n\n" + compliance_footer(clean_to, domain)
