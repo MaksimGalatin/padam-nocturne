@@ -3,7 +3,8 @@
 
 Suggested by @jul1anodev (14 Nov 2026). Real processes only: two MCP servers over stdio (agents A and B) on one
 SQLite file, the owner in a separate process.  Run:  python examples/forget_two_agents.py
-(Пример 26.11.2026: проверено на PADAM 0.9.0 с PyPI, два прогона подряд — одинаковый итог.)"""
+Uses the padam installed in this Python (pip install padam-nocturne); from a source checkout: PYTHONPATH=. python ...
+(Прогон 26.11.2026: одинаковый итог на PADAM 0.8.0 из установленного пакета и на 0.9.1 из исходников.)"""
 import json
 import os
 import subprocess
