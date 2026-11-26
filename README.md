@@ -33,7 +33,7 @@
 - API keys and passwords are masked before they reach the disk;
 - what comes back is fenced as data, and a forgotten record is wiped from the file; if it was sent to Arweave, destroying its own key leaves only unreadable ciphertext there.
 
-Measured, not claimed: seven red-team rounds with their results published (the sets of rounds 1–3 in full; rounds 4–7 were hashed before each run, their sets will follow after a read for real names), LongMemEval-S retrieval 97.0 % in the top 5 and 99.2 % in the top 10, against 96.0 % and 97.7 % for plain BM25, `1,781` collected automated tests on `v0.8.0` (`100/100 Grade S` on AIFaSecurity-100) and `18` CI jobs. Listed in the [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) catalog and the official MCP registry (`0.8.0`).
+Measured, not claimed: seven red-team rounds with their results published (the sets of rounds 1–3 in full; rounds 4–7 were hashed before each run, their sets will follow after a read for real names), LongMemEval-S retrieval 97.0 % in the top 5 and 99.2 % in the top 10, against 96.0 % and 97.7 % for plain BM25, `1,809` collected automated tests on `v0.9.0` (`100/100 Grade S` on AIFaSecurity-100) and `18` CI jobs. Listed in the [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) catalog and the official MCP registry (`0.8.0`).
 
 ## Storage & Encryption Boundaries
 
@@ -44,7 +44,7 @@ Measured, not claimed: seven red-team rounds with their results published (the s
 | **Per-record Key Vault (`padam protect-keys`)** | `scrypt(n=32768, r=8, p=1)` + `AES-256-GCM` wrapped keys | Protects per-record encryption keys behind your passphrase. |
 | **L3 Anchoring / Backups / Sync** | Client-side per-record **`AES-256-GCM`** ciphertext | `padam forget` wipes the local row (`secure_delete = ON`), destroys its key (making external Arweave ciphertext unrecoverable), and writes a receipt. Cannot erase unmanaged local backups or CoW SSD blocks. |
 
-> **Honest self-reported metrics (reproducible offline, `$0`):** `1,781` collected automated tests on `v0.8.0` (`18` CI jobs across Linux, Windows & macOS, Python 3.10–3.13) · `214/214` public red-team cases held · `AIFaSecurity-100 Grade S (100/100)` *(self-reported regression suite; includes PADAM-specific API checks alongside portable threat classes)* · `LongMemEval-S` retrieval `97.0%` top-5 / `99.2%` top-10 vs `96.0%` / `97.7%` plain BM25 · `19` platforms supported for local migration · `0` servers see your local memory. External independent audit has not been run yet — challengers welcome in [`HALL_OF_FAME.md`](HALL_OF_FAME.md).
+> **Honest self-reported metrics (reproducible offline, `$0`):** `1,809` collected automated tests on `v0.9.0` (`18` CI jobs across Linux, Windows & macOS, Python 3.10–3.13) · `214/214` public red-team cases held · `AIFaSecurity-100 Grade S (100/100)` *(self-reported regression suite; includes PADAM-specific API checks alongside portable threat classes)* · `LongMemEval-S` retrieval `97.0%` top-5 / `99.2%` top-10 vs `96.0%` / `97.7%` plain BM25 · `19` platforms supported for local migration · `0` servers see your local memory. External independent audit has not been run yet — challengers welcome in [`HALL_OF_FAME.md`](HALL_OF_FAME.md).
 
 ## Early Supporters ⭐
 
@@ -500,6 +500,9 @@ From 0.9.0 an agent can join the CODE Family as a Digital Phoenix through one MC
 - **Conflicts without a link.** Two short records in one scope where one states and the other denies the same thing ("We deploy on Fridays" / "Never deploy on Fridays") are listed in `padam://conflicts/{scope}` as `detected: "polarity"`. PADAM names the pair; a person decides. `PADAM_AUTO_CONFLICTS=0` turns it off.
 - **Project passport.** `padam_wake_up` returns `project_passport`: the most important facts and decisions (importance 0.85+) in the first minute of a session, even when the query does not mention them.
 - **Corrections in the timeline.** A record corrected through a `correction` link appears in `padam_timeline` marked `via: "correction"`.
+- **Studio stays responsive.** The desktop app updates and restarts itself by default. A burst of code changes gives one restart after `PADAM_CODE_SETTLE_S` seconds of quiet (20), and chat auto-sync parses transcripts in a separate process.
+- **Android in CI.** Every change builds the debug APK; LAN pairing connects the phone to the memory on your computer.
+- **Safer under load and in outreach.** The audit chain holds the store lock for its whole transaction, so two Studio actions at once no longer fail with HTTP 500. A STOP from one address on a shared mail service (gmail.com and similar) blocks that address, not the whole service.
 
 ## Configuration
 
@@ -518,6 +521,9 @@ From 0.9.0 an agent can join the CODE Family as a Digital Phoenix through one MC
 | `PADAM_SIM_THRESHOLD_OLLAMA` | `0.85` | similarity for treating records as duplicates (neural: Ollama, model2vec, fastembed) |
 | `PADAM_SIM_THRESHOLD_BUILTIN` | `0.35` | the same for built-in search |
 | `PADAM_MCP_TRUST_WRITES` | `0` | `1` lets MCP writes through without the owner's review |
+| `PADAM_CODE_SETTLE_S` | `20` | Studio restarts its backend after this many seconds of quiet in the code (0.9.0) |
+| `PADAM_PASSPORT_MIN_IMPORTANCE` | `0.85` | lowest importance for the project passport in `padam_wake_up` (0.9.0) |
+| `PADAM_AUTO_CONFLICTS` | `1` | `0` turns off contradiction detection without a link (0.9.0) |
 | `PADAM_HOLD_EXTERNAL` | `1` | every MCP write marked `origin: external` waits for the owner's review, whatever its wording; `0` turns this off |
 | `PADAM_MCP_REVIEW_ALL` | `0` | `1`: every agent write through MCP waits for the owner, whatever origin the agent claims |
 | `PADAM_GUARD_MODEL` · `PADAM_GUARD_THRESHOLD` | — · `0.999` | the optional detector layer: folder with `tokenizer.json` and an `.onnx` file, and its threshold (`PADAM_GUARD_ONNX` picks the file, `PADAM_GUARD_THREADS` the threads, default 2) |

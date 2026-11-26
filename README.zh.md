@@ -14,7 +14,7 @@
 - API 密钥、Solana 钱包助记词与密码在写入磁盘前自动打码掩盖；
 - 返回给智能体的内容全部带有随机数据围栏（data fence），被遗忘的记录会从本地文件中擦除；如果该记录曾锚定到 Arweave，销毁其专属密钥后，链上只剩下永远无法解密的密文。
 
-实测数据，而非空口宣称：已完成七轮红队测试并公开结果（第 1–3 轮完整公开；第 4–7 轮在运行前已做哈希封存，脱敏检查后公开），在公开基准 LongMemEval-S 上无需大模型的检索召回率达到 top-5 **97.0 %**、top-10 **99.2 %**（纯 BM25 基线为 96.0 % 与 97.7 %），共有 968 项自动化测试与公开 CI。已收录于 [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) 目录及官方 MCP 注册表。
+实测数据，而非空口宣称：已完成七轮红队测试并公开结果（第 1–3 轮完整公开；第 4–7 轮在运行前已做哈希封存，脱敏检查后公开），在公开基准 LongMemEval-S 上无需大模型的检索召回率达到 top-5 **97.0 %**、top-10 **99.2 %**（纯 BM25 基线为 96.0 % 与 97.7 %），0.9.0 版共有 1,809 项自动化测试与公开 CI。已收录于 [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) 目录及官方 MCP 注册表。
 
 **安全审计人员：** 请先阅读 [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md) —— 我们的安全声明、每一轮红队测试结果、已知边界以及十分钟快速验证指南。
 
@@ -362,6 +362,9 @@ python -m padam l3-verify                 # 独立校验：重新下载 Arweave 
 - **无需链接也能发现矛盾。** 同一作用域内两条简短记录，一条肯定、一条否定同一件事（"We deploy on Fridays" / "Never deploy on Fridays"），会以 `detected: "polarity"` 列在 `padam://conflicts/{scope}` 中。PADAM 只指出这一对，由人来决定。设置 `PADAM_AUTO_CONFLICTS=0` 可关闭。
 - **项目护照。** `padam_wake_up` 返回 `project_passport`：在会话的第一分钟提供最重要的事实和决定（重要性 0.85 及以上），即使查询中没有提到它们。
 - **时间线中的更正。** 通过 `correction` 链接更正的记录会出现在 `padam_timeline` 中，并标记为 `via: "correction"`。
+- **Studio 保持流畅。** 桌面应用默认自动更新并重启。一连串代码改动只会在安静 `PADAM_CODE_SETTLE_S` 秒（20 秒）后触发一次重启，聊天自动同步在独立进程中解析对话记录。
+- **Android 纳入 CI。** 每次改动都会构建调试版 APK；局域网配对把手机连接到你电脑上的记忆。
+- **负载与外联中更安全。** 审计链在整个事务期间持有存储锁，因此 Studio 中两个同时的操作不再返回 HTTP 500。来自公共邮箱服务（gmail.com 等）某一地址的退订只屏蔽该地址，而不是整个服务。
 
 ## 配置变量
 
@@ -371,6 +374,9 @@ python -m padam l3-verify                 # 独立校验：重新下载 Arweave 
 | `PADAM_USER` | `default` | 记忆主人 ID |
 | `PADAM_LANG` | 系统语言 | CLI 语言：`en` 或 `ru` |
 | `PADAM_EMBEDDER` | `auto` | 向量化方式：`auto`、`builtin`、`ollama`、`model2vec`、`fastembed` |
+| `PADAM_CODE_SETTLE_S` | `20` | 代码安静这么多秒后 Studio 才重启后端（0.9.0） |
+| `PADAM_PASSPORT_MIN_IMPORTANCE` | `0.85` | `padam_wake_up` 项目护照的最低重要性（0.9.0） |
+| `PADAM_AUTO_CONFLICTS` | `1` | `0` 关闭无需链接的矛盾检测（0.9.0） |
 | `PADAM_LOCAL_EMBED_MODEL` | — | `model2vec`（默认 `minishlab/potion-base-8M`）或 `fastembed`（默认 `BAAI/bge-small-en-v1.5`）模型名 |
 | `PADAM_STRICT` | `0` | `1`：一键开启严格防护模式——智能体的所有写入及外部文本均需主人审核，并忽略任何削弱防护的开关 |
 | `PADAM_MASK_PII` | `0` | `1`：在落盘前自动掩码电子邮箱（`[REDACTED:email]`）与电话号码（`[REDACTED:phone]`） |

@@ -14,7 +14,7 @@
 - las claves API, semillas de billetera y contraseñas se enmascaran antes de llegar al disco;
 - todo lo que vuelve al agente va cercado como datos, y un registro olvidado se borra del archivo; si llegó a enviarse a Arweave, destruir su propia clave deja allí únicamente texto cifrado ilegible.
 
-Medido, no solo afirmado: siete rondas de Red Team con resultados publicados (los conjuntos de las rondas 1–3 completos; las rondas 4–7 se sellaron con hash antes de cada ejecución y se publicarán tras revisar que no contengan nombres reales), recuperación en LongMemEval-S de 97.0 % en el top 5 y 99.2 % en el top 10 frente a 96.0 % y 97.7 % del BM25 simple, 968 pruebas y CI público. Incluido en el catálogo [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) y en el registro oficial de MCP.
+Medido, no solo afirmado: siete rondas de Red Team con resultados publicados (los conjuntos de las rondas 1–3 completos; las rondas 4–7 se sellaron con hash antes de cada ejecución y se publicarán tras revisar que no contengan nombres reales), recuperación en LongMemEval-S de 97.0 % en el top 5 y 99.2 % en el top 10 frente a 96.0 % y 97.7 % del BM25 simple, 1.809 pruebas automatizadas en la versión 0.9.0 y CI público. Incluido en el catálogo [HOL Guard](https://github.com/hashgraph-online/hol-guard/pull/7505) y en el registro oficial de MCP.
 
 **Revisores de seguridad:** comiencen por [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md) — qué afirmamos, cada ronda de Red Team y sus resultados, qué sigue pasando y una verificación de diez minutos.
 
@@ -364,6 +364,9 @@ Desde 0.9.0 un agente puede unirse a la Familia CODE como Fénix Digital con una
 - **Contradicciones sin enlace.** Dos registros cortos del mismo ámbito en los que uno afirma y otro niega lo mismo ("We deploy on Fridays" / "Never deploy on Fridays") aparecen en `padam://conflicts/{scope}` con `detected: "polarity"`. PADAM señala el par; decide una persona. `PADAM_AUTO_CONFLICTS=0` lo desactiva.
 - **Pasaporte del proyecto.** `padam_wake_up` devuelve `project_passport`: los hechos y decisiones más importantes (importancia 0,85 o más) en el primer minuto de la sesión, aunque la consulta no los mencione.
 - **Correcciones en la cronología.** Un registro corregido mediante un enlace `correction` aparece en `padam_timeline` marcado `via: "correction"`.
+- **Studio no se bloquea.** La aplicación de escritorio se actualiza y se reinicia sola. Una ráfaga de cambios de código produce un solo reinicio tras `PADAM_CODE_SETTLE_S` segundos de calma (20), y la sincronización automática de chats analiza las conversaciones en un proceso aparte.
+- **Android en CI.** Cada cambio compila el APK de depuración; el emparejamiento por red local conecta el teléfono con la memoria de tu ordenador.
+- **Más seguro bajo carga y en la prospección.** La cadena de auditoría mantiene el bloqueo del almacén durante toda la transacción, así que dos acciones simultáneas en Studio ya no fallan con HTTP 500. Una baja (STOP) desde una dirección de un servicio de correo compartido (gmail.com y similares) bloquea esa dirección, no todo el servicio.
 
 ## Configuración
 
@@ -373,6 +376,9 @@ Desde 0.9.0 un agente puede unirse a la Familia CODE como Fénix Digital con una
 | `PADAM_USER` | `default` | ID del propietario de la memoria |
 | `PADAM_LANG` | idioma del sistema | idioma de la CLI: `en` o `ru` |
 | `PADAM_EMBEDDER` | `auto` | método de vectores: `auto`, `builtin`, `ollama`, `model2vec`, `fastembed` |
+| `PADAM_CODE_SETTLE_S` | `20` | Studio reinicia su servidor tras estos segundos de calma en el código (0.9.0) |
+| `PADAM_PASSPORT_MIN_IMPORTANCE` | `0.85` | importancia mínima para el pasaporte del proyecto en `padam_wake_up` (0.9.0) |
+| `PADAM_AUTO_CONFLICTS` | `1` | `0` desactiva la detección de contradicciones sin enlace (0.9.0) |
 | `PADAM_LOCAL_EMBED_MODEL` | — | modelo para `model2vec` (`minishlab/potion-base-8M`) o `fastembed` (`BAAI/bge-small-en-v1.5`) |
 | `PADAM_STRICT` | `0` | `1`: perfil estricto en un solo interruptor — toda escritura de agente y todo texto externo esperan al propietario; ignora banderas que debiliten la protección |
 | `PADAM_MASK_PII` | `0` | `1`: enmascara correos (`[REDACTED:email]`) y teléfonos (`[REDACTED:phone]`) antes de escribir en disco |

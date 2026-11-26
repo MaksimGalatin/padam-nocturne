@@ -44,6 +44,17 @@ def _call(i: int, name: str, args: dict) -> dict:
     return {"jsonrpc": "2.0", "id": i, "method": "tools/call", "params": {"name": name, "arguments": args}}
 
 
+def test_signboard_with_every_optional_tool_flag_fits_budget(tmp_path: Path):
+    # 25.11.2026: полный набор — ARK плюс три необязательных инструмента (замер: 36 инструментов, 34 329 знаков).
+    flags = {"PADAM_MCP_ARK_TOOLS": "1", "PADAM_MCP_ROLLBACK_TOOL": "1",
+             "PADAM_MCP_SOVEREIGN_SYNC_TOOL": "1", "PADAM_MCP_TASKS": "1"}
+    rs = _rpc(flags, [_INIT, {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}], tmp_path)
+    tools = rs[2]["result"]["tools"]
+    size = len(json.dumps(tools, ensure_ascii=False))
+    assert len(tools) >= 35
+    assert size <= SIGNBOARD_BUDGET, f"full tool set {size} > budget {SIGNBOARD_BUDGET}"
+
+
 def test_signboard_fits_budget_and_every_tool_is_described(tmp_path: Path):
     rs = _rpc({"PADAM_MCP_ARK_TOOLS": "1"}, [_INIT, {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}], tmp_path)
     tools = rs[2]["result"]["tools"]
