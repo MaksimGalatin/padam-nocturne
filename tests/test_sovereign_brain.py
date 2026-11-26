@@ -169,9 +169,12 @@ def test_distill_zero_leak_and_readonly(tmp_path):
     # Проверка scripts/train_lora.py --dry-run на собранном файле
     repo_root = Path(__file__).resolve().parents[1]
     res = subprocess.run(
-        [sys.executable, str(repo_root / "scripts" / "train_lora.py"), "--dataset", str(out_dir / "personality_chatml.jsonl"), "--dry-run"],
+        # 25.11.2026: -X utf8 и encoding — путь с кириллицей (E:/CODE/_выпуски/…) дочерний процесс печатал
+        # в кодировке Windows, а тест читал как UTF-8 и получал None вместо вывода.
+        [sys.executable, "-X", "utf8", str(repo_root / "scripts" / "train_lora.py"), "--dataset", str(out_dir / "personality_chatml.jsonl"), "--dry-run"],
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=False,
     )
     assert res.returncode == 0

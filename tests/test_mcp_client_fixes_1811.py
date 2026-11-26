@@ -116,9 +116,9 @@ def test_item1_and_8_context_compaction_titles_docs_and_instructions(tmp_path: P
     # check_inbox, add_stop) и их поля — +400 знаков, 1,5 %. Лимит 27300 -> 27800; дальше расти только с причиной.
     # 22.11.2026: Glama TDQS Grade C -> A upgrade on 9 default TOOLS (full Purpose/Usage/Transparency/Param descriptions)
     # 25.11.2026 (0.9.0): вывеска и справочник — у всех 34 настоящие описания, редкие поля в action=help; 31 987 знаков.
-    # Рабочий бюджет 32 000 проверяет tests/test_signboard_guide_2511.py; жёсткий предел здесь прежний.
-    assert tools_chars <= 33500, f"tools array exceeds 33500 chars: {tools_chars}"
-    assert total_chars <= 33500, f"tools/list result exceeds 33500 chars: {total_chars}"
+    # 25.11.2026: предел поднят до 35 000 по слову Архитектора — место под новые инструменты (запас ~3 000 знаков).
+    assert tools_chars <= 35000, f"tools array exceeds 35000 chars: {tools_chars}"
+    assert total_chars <= 35000, f"tools/list result exceeds 35000 chars: {total_chars}"
 
     instr_tokens = set(re.findall(r"[A-Za-z0-9_]+", instr))
     missing_everywhere: list[str] = []

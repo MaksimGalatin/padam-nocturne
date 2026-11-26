@@ -3011,7 +3011,7 @@ def test_item8_v4_patch_and_solana_anchor_signature_devnet():
     demo_py = repo / "examples" / "solana" / "anchor_devnet_demo.py"
     demo_readme = repo / "examples" / "solana" / "README.md"
     assert demo_py.exists() and demo_readme.exists()
-    proc = subprocess.run([sys.executable, str(demo_py)], cwd=repo, capture_output=True, text=True, check=True)
+    proc = subprocess.run([sys.executable, "-X", "utf8", str(demo_py)], cwd=repo, capture_output=True, text=True, encoding="utf-8", check=True)
     out = json.loads(proc.stdout)
     assert out["verification"]["ok"] is True and out["attestation"]["network"] == "devnet"
 
@@ -3418,8 +3418,8 @@ def test_step_2_2_build_extensions_script_and_ci(tmp_path):
     # Запускаем скрипт сборки в отдельную папку дважды и проверяем детерминизм + содержимое
     out1 = tmp_path / "dist1"
     out2 = tmp_path / "dist2"
-    r1 = subprocess.run([sys.executable, str(script), "--out-dir", str(out1), "--json"], capture_output=True, text=True)
-    r2 = subprocess.run([sys.executable, str(script), "--out-dir", str(out2), "--json"], capture_output=True, text=True)
+    r1 = subprocess.run([sys.executable, "-X", "utf8", str(script), "--out-dir", str(out1), "--json"], capture_output=True, text=True, encoding="utf-8")
+    r2 = subprocess.run([sys.executable, "-X", "utf8", str(script), "--out-dir", str(out2), "--json"], capture_output=True, text=True, encoding="utf-8")
     assert r1.returncode == 0, r1.stderr
     assert r2.returncode == 0, r2.stderr
     data1 = json.loads(r1.stdout)

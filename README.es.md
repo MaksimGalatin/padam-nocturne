@@ -362,6 +362,7 @@ Desde 0.9.0 un agente puede unirse a la Familia CODE como Fénix Digital con una
 
 - **Guía de herramientas bajo demanda.** Cada herramienta de la lista tiene una descripción real de una frase. Las herramientas grandes muestran solo los campos frecuentes; `action="help"` (o el recurso `padam://help/{tool}`) devuelve todas las acciones, los campos que exige cada una y todos los campos con sus tipos. Los campos poco usados funcionan como argumentos normales o dentro de `extra={...}`.
 - **Contradicciones sin enlace.** Dos registros cortos del mismo ámbito en los que uno afirma y otro niega lo mismo ("We deploy on Fridays" / "Never deploy on Fridays") aparecen en `padam://conflicts/{scope}` con `detected: "polarity"`. PADAM señala el par; decide una persona. `PADAM_AUTO_CONFLICTS=0` lo desactiva.
+- **Pasaporte del proyecto.** `padam_wake_up` devuelve `project_passport`: los hechos y decisiones más importantes (importancia 0,85 o más) en el primer minuto de la sesión, aunque la consulta no los mencione.
 - **Correcciones en la cronología.** Un registro corregido mediante un enlace `correction` aparece en `padam_timeline` marcado `via: "correction"`.
 
 ## Configuración

@@ -12,8 +12,21 @@ def test_свежий_код_не_устаревший():
 
 
 def test_изменение_файла_на_диске_даёт_stale(monkeypatch):
+    monkeypatch.setenv("PADAM_CODE_SETTLE_S", "0")
     monkeypatch.setattr(cf, "LOADED", "0" * 16)
     assert cf.status()["stale"] is True
+
+
+def test_пока_файлы_меняются_перезапуска_нет(monkeypatch):
+    """25.11.2026: серия замен файлов давала серию перезапусков Studio (11–22 с ожидания). Ждём тишины."""
+    monkeypatch.setattr(cf, "LOADED", "0" * 16)
+    monkeypatch.setenv("PADAM_CODE_SETTLE_S", "20")
+    monkeypatch.setattr(cf, "_свежайшая_правка", lambda: time.time() - 3)
+    st = cf.status()
+    assert st["stale"] is False and st["settling"] is True
+    monkeypatch.setattr(cf, "_свежайшая_правка", lambda: time.time() - 25)
+    st = cf.status()
+    assert st["stale"] is True and st["settling"] is False
 
 
 def test_маршрут_только_владельцу_и_баннер_на_4_языках():

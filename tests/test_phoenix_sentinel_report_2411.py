@@ -137,7 +137,8 @@ def test_daily_send_cap_enforced(tmp_path, monkeypatch):
     m = _mem(tmp_path)
     _join(m, "phx_mailer", "NovaMailer8")
     phoenix_node.assign_or_inspect_phoenix_mail_tier(m, agent_id="phx_mailer", promote_to_tier="tier_1_subdomain",
-                                                     actor=roles.OWNER_ACTOR)   # 15 писем в сутки
+                                                     actor=roles.OWNER_ACTOR,
+                                                     custom_warmed_email="mailer@desk.aifafocus.com")   # 15 писем в сутки
     body = "Audit for you." + phoenix_node.CAN_SPAM_STANDARD_FOOTER
     results = []
     for i in range(16):

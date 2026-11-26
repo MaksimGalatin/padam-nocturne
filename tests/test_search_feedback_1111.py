@@ -35,8 +35,8 @@ def test_по_умолчанию_включено_и_выключается_пе
     def значение(**доп):
         env = {k: v for k, v in os.environ.items() if k != "PADAM_SEARCH_FEEDBACK"}
         env.update(доп)
-        out = subprocess.run([sys.executable, "-c", "from padam import config; print(config.SEARCH_FEEDBACK)"],
-                             env=env, capture_output=True, text=True, cwd=os.path.dirname(os.path.dirname(__file__)))
+        out = subprocess.run([sys.executable, "-X", "utf8", "-c", "from padam import config; print(config.SEARCH_FEEDBACK)"],
+                             env=env, capture_output=True, text=True, encoding="utf-8", cwd=os.path.dirname(os.path.dirname(__file__)))
         return out.stdout.strip()
     assert значение() == "True"
     assert значение(PADAM_SEARCH_FEEDBACK="0") == "False"

@@ -14,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import os
 import re
 import uuid
 from datetime import datetime, timezone
@@ -466,6 +467,39 @@ def wake_up_briefing(
     except Exception:
         pass
 
+    # 0.9.0 (25.11.2026): паспорт проекта — ключевые факты, которые агент обязан помнить с первой минуты.
+    # Повод: я забыла наши 12 прогретых ящиков на 4 доменах — факт лежал в памяти, но сводка его не поднимала:
+    # identity и preference попадали в неё всегда, а факты проекта — только если совпадали с query.
+    # Что попадает: действующие записи fact / decision / state с важностью не ниже PADAM_PASSPORT_MIN_IMPORTANCE
+    # (0.85) из global и запрошенной области, без карантина; до 12 штук, по важности и свежести. Раздел защищён
+    # от сжатия так же, как identity. Важность ставит тот, кто пишет запись (padam_write importance=0.9).
+    project_passport: list[dict[str, Any]] = []
+    try:
+        порог = float(os.environ.get("PADAM_PASSPORT_MIN_IMPORTANCE", "0.85") or "0.85")
+    except ValueError:
+        порог = 0.85
+    try:
+        области = ["global"] if not scope or scope in ("global", "all", "*") else ["global", str(scope)]
+        метки = ",".join("?" * len(области))
+        pp_rows = memory.store.query(
+            "SELECT id, kind, scope, content, importance, created_at FROM memory "
+            "WHERE user_id = ? AND status = 'active' AND (quarantine_reason IS NULL OR quarantine_reason = '') "
+            f"AND kind IN ('fact', 'decision', 'state') AND importance >= ? AND scope IN ({метки}) "
+            "ORDER BY importance DESC, created_at DESC LIMIT 12",
+            (memory.user_id, порог, *области),
+        )
+        for pr in pp_rows:
+            project_passport.append({
+                "id": str(pr["id"]),
+                "kind": str(pr["kind"]),
+                "scope": str(pr["scope"]),
+                "importance": round(float(pr["importance"] or 0), 2),
+                "content": _clean(str(pr["content"] or ""))[:400],
+                "created_at": str(pr["created_at"] or ""),
+            })
+    except Exception:
+        project_passport = []
+
     commitments = list_commitments(memory, limit=10)
     inbox = read_family_inbox(memory, to_agent=agent, limit=10)
     checkpoint = latest_checkpoint(memory)
@@ -586,6 +620,9 @@ def wake_up_briefing(
         tagged_sections.append((1, "identity", f"[identity] {item.get('content') or ''}"))
     for item in pref_items:
         tagged_sections.append((3, "preference", f"[preference] {item.get('content') or ''}"))
+    if project_passport:
+        tagged_sections.append((1, "project_passport", "[project_passport] " + " | ".join(
+            f"({pp['kind']}|{pp['importance']}) {pp['content'][:220]}" for pp in project_passport)))
     if commitments:
         tagged_sections.append((1, "commitments", "[commitments] " + "; ".join(f"{c['id']}:{c['title']}({c['status']})" for c in commitments)))
     if checkpoint:
@@ -666,6 +703,7 @@ def wake_up_briefing(
             "preference": len(pref_items),
         },
         "scope_breakdown": scope_breakdown,
+        "project_passport": project_passport,
         "open_commitments": commitments,
         "recent_breakthroughs": recent_breakthroughs,
         "active_sessions": active_sessions,

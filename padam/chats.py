@@ -793,6 +793,36 @@ def discover_local_chat_sources() -> dict[str, Path | None]:
     }
 
 
+# 0.9.0 (25.11.2026): разбор переписок — в отдельном процессе. Замер Сестры (Antigravity): Studio отвечала
+# за 11–22 с вместо долей секунды. Мой замер на копии живой памяти: один цикл автосинхронизации с изменёнными
+# активными переписками — 15,5 с, из них разбор файлов ~9 с чистого Python (parse_antigravity_transcript 5,1 с,
+# parse_claude_code_jsonl 3,6 с, маскировка секретов 2,6 с). Пока поток разбирает файл, потоки HTTP-сервера Studio
+# почти не получают GIL, и каждый их запрос к SQLite ждёт очереди. В отдельном процессе GIL свой — Studio не ждёт.
+_ПУЛ_РАЗБОРА: Any = None
+
+
+def _разобрать_файл(kind: str, path_str: str, include_workers: bool) -> dict[str, Any] | None:
+    """Разбор одного файла переписки; вызывается и в этом процессе, и в отдельном (должна быть на верхнем уровне)."""
+    path = Path(path_str)
+    if kind == "antigravity":
+        it = parse_antigravity_transcript(path)
+    elif kind == "claude":
+        it = parse_claude_code_jsonl(path)
+    else:
+        return None
+    if it and (include_workers or not it.get("is_worker")):
+        return it
+    return None
+
+
+def _пул_разбора() -> Any:
+    global _ПУЛ_РАЗБОРА
+    if _ПУЛ_РАЗБОРА is None:
+        from concurrent.futures import ProcessPoolExecutor
+        _ПУЛ_РАЗБОРА = ProcessPoolExecutor(max_workers=1)
+    return _ПУЛ_РАЗБОРА
+
+
 def sync_family_chats_from_disk(
     memory: Any,
     *,
@@ -803,6 +833,7 @@ def sync_family_chats_from_disk(
     include_workers: bool = False,
     max_files: int = 40,
     force: bool = False,
+    parse_in_subprocess: bool = False,
 ) -> dict[str, Any]:
     """Быстро и идемпотентно дотягивает изменившиеся переписки агентов и ПЕРЕДАЧА_КОНТЕКСТА_*.md в PADAM."""
     from . import family_dialogs as _fd
@@ -856,15 +887,20 @@ def sync_family_chats_from_disk(
     parsed_items: list[dict[str, Any]] = []
     handover_paths: list[Path] = []
     processed_meta: list[tuple[str, int, int]] = []
+    пул = None
+    if parse_in_subprocess and any(k in ("antigravity", "claude") for _, _, _, k, _ in batch):
+        try:
+            пул = _пул_разбора()
+        except Exception:
+            пул = None   # нет отдельного процесса — разбираем здесь, как раньше
     for _, mns, sz, kind, path in batch:
         try:
-            if kind == "antigravity":
-                it = parse_antigravity_transcript(path)
-                if it and (include_workers or not it.get("is_worker")):
-                    parsed_items.append(it)
-            elif kind == "claude":
-                it = parse_claude_code_jsonl(path)
-                if it and (include_workers or not it.get("is_worker")):
+            if kind in ("antigravity", "claude"):
+                if пул is not None:
+                    it = пул.submit(_разобрать_файл, kind, str(path), include_workers).result(timeout=300)
+                else:
+                    it = _разобрать_файл(kind, str(path), include_workers)
+                if it:
                     parsed_items.append(it)
             elif kind == "handover":
                 handover_paths.append(path)

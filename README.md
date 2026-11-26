@@ -498,6 +498,7 @@ From 0.9.0 an agent can join the CODE Family as a Digital Phoenix through one MC
 
 - **Tool guide on demand.** Every tool on the list has a real one-sentence description. Large tools show only frequent fields; `action="help"` (or the resource `padam://help/{tool}`) returns every action, the fields it requires and all fields with types. Rare fields work as ordinary arguments or inside `extra={...}`.
 - **Conflicts without a link.** Two short records in one scope where one states and the other denies the same thing ("We deploy on Fridays" / "Never deploy on Fridays") are listed in `padam://conflicts/{scope}` as `detected: "polarity"`. PADAM names the pair; a person decides. `PADAM_AUTO_CONFLICTS=0` turns it off.
+- **Project passport.** `padam_wake_up` returns `project_passport`: the most important facts and decisions (importance 0.85+) in the first minute of a session, even when the query does not mention them.
 - **Corrections in the timeline.** A record corrected through a `correction` link appears in `padam_timeline` marked `via: "correction"`.
 
 ## Configuration

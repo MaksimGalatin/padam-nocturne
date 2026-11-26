@@ -474,8 +474,14 @@ def test_mail_reputation_tiers_4_domains_and_brand_domain_protection(tmp_path: P
     assert forb["error"] == "protected_brand_domain_forbidden"
 
     # Повышение до субдомена Google Workspace (из пула 288 свободных мест)
+    # 25.11.2026: без названного существующего ящика повышение не делается — PADAM ящики не придумывает
+    nobox = phoenix_node.assign_or_inspect_phoenix_mail_tier(
+        m, agent_id="phx_mailer", promote_to_tier="tier_1_subdomain", actor=roles.OWNER_ACTOR,
+    )
+    assert nobox["ok"] is False and nobox["error"] == "mailbox_address_required"
     t1 = phoenix_node.assign_or_inspect_phoenix_mail_tier(
         m, agent_id="phx_mailer", promote_to_tier="tier_1_subdomain", actor=roles.OWNER_ACTOR,
+        custom_warmed_email="veritas@pro.aifaworks.com",
     )
     assert t1["ok"] is True
     assert any(t1["outreach_domain"].endswith(d) for d in phoenix_node.OUTREACH_DOMAINS_4)
@@ -484,10 +490,10 @@ def test_mail_reputation_tiers_4_domains_and_brand_domain_protection(tmp_path: P
     # Повышение в Элиту 12 прогретых ящиков на aifaaudit.com
     t2 = phoenix_node.assign_or_inspect_phoenix_mail_tier(
         m, agent_id="phx_mailer", promote_to_tier="tier_2_warmed_12",
-        preferred_domain="aifaaudit.com", actor=roles.OWNER_ACTOR,
+        preferred_domain="aifaaudit.com", actor=roles.OWNER_ACTOR, custom_warmed_email="aifa.team@aifaaudit.com",
     )
     assert t2["ok"] is True
-    assert t2["assigned_email"] == "veritasaudit9@aifaaudit.com"
+    assert t2["assigned_email"] == "aifa.team@aifaaudit.com"
     assert t2["daily_send_cap"] == 30
     assert t2["warmup_required"] is False
 
@@ -616,7 +622,7 @@ def test_can_spam_compliance_gate_and_2pct_bounce_sentinel_quarantine(tmp_path: 
     # Переводим в прогретый ящик aifascan.com
     phoenix_node.assign_or_inspect_phoenix_mail_tier(
         m, agent_id="phx_hunter", promote_to_tier="tier_2_warmed_12",
-        preferred_domain="aifascan.com", actor=roles.OWNER_ACTOR,
+        preferred_domain="aifascan.com", actor=roles.OWNER_ACTOR, custom_warmed_email="aifa@aifascan.com",
     )
     # 24.11.2026: без занятой организации письмо не проходит — 90-дневная тишина не обходится
     blk_lock = phoenix_node.verify_outreach_email_compliance(
@@ -639,7 +645,7 @@ def test_can_spam_compliance_gate_and_2pct_bounce_sentinel_quarantine(tmp_path: 
         subject="WCAG 2.2 AA Report", body_text=compliant_body,
     )
     assert ok_cs["ok"] is True
-    assert ok_cs["sender_email"] == "hunteraudit7@aifascan.com"
+    assert ok_cs["sender_email"] == "aifa@aifascan.com"
 
     # Если клиент отписался — повторное письмо в эту организацию блокируется НАВСЕГДА
     phoenix_node.record_mailbox_delivery_outcome(

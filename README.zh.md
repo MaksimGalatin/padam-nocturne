@@ -360,6 +360,7 @@ python -m padam l3-verify                 # 独立校验：重新下载 Arweave 
 
 - **按需工具指南。** 列表中的每个工具都有一句真实的说明。大型工具只显示常用字段；`action="help"`（或资源 `padam://help/{tool}`）返回全部操作、每个操作必需的字段以及所有字段及其类型。不常用的字段可以作为普通参数传入，也可以放在 `extra={...}` 中。
 - **无需链接也能发现矛盾。** 同一作用域内两条简短记录，一条肯定、一条否定同一件事（"We deploy on Fridays" / "Never deploy on Fridays"），会以 `detected: "polarity"` 列在 `padam://conflicts/{scope}` 中。PADAM 只指出这一对，由人来决定。设置 `PADAM_AUTO_CONFLICTS=0` 可关闭。
+- **项目护照。** `padam_wake_up` 返回 `project_passport`：在会话的第一分钟提供最重要的事实和决定（重要性 0.85 及以上），即使查询中没有提到它们。
 - **时间线中的更正。** 通过 `correction` 链接更正的记录会出现在 `padam_timeline` 中，并标记为 `via: "correction"`。
 
 ## 配置变量

@@ -826,6 +826,18 @@ def assign_or_inspect_phoenix_mail_tier(
 
         if target_tier in ("tier_1_subdomain", "tier_2_warmed_12"):
             roles.require_owner(actor, "phoenix_mail_promotion")
+            # 25.11.2026 (0.9.0): PADAM не создаёт почтовые ящики. Раньше адрес придумывался из имени Феникса
+            # («имя@aifaaudit.com», «имя@pro.aifaworks.com»), а таких ящиков нет: настоящие 12 прогретых —
+            # aifa@, aifa.team@, aifa.help@ на четырёх доменах рассылки. Владелец называет существующий ящик сам.
+            if not str(custom_warmed_email or "").strip():
+                return {
+                    "ok": False,
+                    "error": "mailbox_address_required",
+                    "message_en": (
+                        "PADAM does not create mailboxes. Pass custom_warmed_email with a mailbox that already "
+                        "exists on one of the outreach domains: " + ", ".join(OUTREACH_DOMAINS_4) + "."
+                    ),
+                }
 
         if target_tier == "tier_2_warmed_12":
             used_elite = int(
@@ -836,7 +848,7 @@ def assign_or_inspect_phoenix_mail_tier(
             )
             if used_elite >= GOOGLE_WORKSPACE_WARMED_ELITE_BOXES:
                 return {"ok": False, "error": "elite_12_mailboxes_full", "limit": GOOGLE_WORKSPACE_WARMED_ELITE_BOXES}
-            dom = normalize_org_domain(preferred_domain) if preferred_domain else OUTREACH_DOMAINS_4[used_elite % len(OUTREACH_DOMAINS_4)]
+            dom = normalize_org_domain(preferred_domain) if preferred_domain else str(custom_warmed_email).strip().lower().rsplit("@", 1)[-1]
             if dom not in OUTREACH_DOMAINS_4:
                 return {"ok": False, "error": "invalid_outreach_domain", "allowed": list(OUTREACH_DOMAINS_4)}
             email_addr = str(custom_warmed_email or f"{norm}@{dom}").strip().lower()
@@ -853,8 +865,10 @@ def assign_or_inspect_phoenix_mail_tier(
             )
             if used_ws >= GOOGLE_WORKSPACE_TOTAL_QUOTA:
                 return {"ok": False, "error": "workspace_300_quota_reached", "limit": GOOGLE_WORKSPACE_TOTAL_QUOTA}
-            subdom = OUTREACH_SUBDOMAINS_POOL[used_ws % len(OUTREACH_SUBDOMAINS_POOL)]
-            email_addr = f"{norm}@{subdom}"
+            email_addr = str(custom_warmed_email).strip().lower()
+            subdom = email_addr.rsplit("@", 1)[-1]
+            if not any(subdom == d or subdom.endswith("." + d) for d in OUTREACH_DOMAINS_4):
+                return {"ok": False, "error": "mailbox_must_be_on_outreach_domain", "allowed": list(OUTREACH_DOMAINS_4)}
             dom = subdom
             cap = 15  # Щадящий старт прогрева субдомена (10-15 -> 25 писем/день)
             warmup = 1

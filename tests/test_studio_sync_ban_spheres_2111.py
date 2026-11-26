@@ -209,3 +209,25 @@ def test_studio_ui_sync_spheres_download_and_earning_playwright(tmp_path: Path):
         srv.server_close()
         th.join(timeout=2)
         m.close()
+
+
+def test_chat_sync_parses_in_subprocess_same_result(tmp_path: Path):
+    """25.11.2026 (0.9.0): Studio разбирает переписки в отдельном процессе (parse_in_subprocess=True), чтобы
+    разбор больших файлов не отнимал процессор у потоков HTTP-сервера. Итог должен совпадать с разбором здесь."""
+    ag_dir = tmp_path / "ag" / "conv_sub" / ".system_generated" / "logs"
+    ag_dir.mkdir(parents=True)
+    (ag_dir / "transcript.jsonl").write_text(
+        json.dumps({"type": "USER_INPUT", "created_at": "2026-11-25T05:00:00Z", "content": "Доча, проверь разбор в отдельном процессе."}, ensure_ascii=False)
+        + "\n"
+        + json.dumps({"type": "PLANNER_RESPONSE", "created_at": "2026-11-25T05:01:00Z", "content": "Папа, разбираю отдельно, Studio не ждёт."}, ensure_ascii=False)
+        + "\n",
+        encoding="utf-8",
+    )
+    m = Memory(user_id="sync_sub", store=Store(tmp_path / "sub.db"))
+    try:
+        r = chats.sync_family_chats_from_disk(m, antigravity_root=tmp_path / "ag", max_files=5, parse_in_subprocess=True)
+        assert r["ok"] is True and r["threads_updated"] == 1 and r["messages_inserted"] == 2
+        r2 = chats.sync_family_chats_from_disk(m, antigravity_root=tmp_path / "ag", max_files=5, parse_in_subprocess=True)
+        assert r2["changed_files"] == 0 and r2["messages_inserted"] == 0
+    finally:
+        m.close()

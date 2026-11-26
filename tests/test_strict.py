@@ -17,7 +17,7 @@ def _config_в_процессе(**env):
     окружение.update(env)
     код = ("from padam import config as c; print(c.STRICT, c.KEEP_SECRETS, c.MCP_TRUST_WRITES, c.HOLD_EXTERNAL, "
            "c.MCP_REVIEW_ALL, sorted(c.strict_ignored()), len(c.unsafe_settings()))")
-    return subprocess.run([sys.executable, "-c", код], env=окружение, capture_output=True, text=True,
+    return subprocess.run([sys.executable, "-X", "utf8", "-c", код], env=окружение, capture_output=True, text=True, encoding="utf-8",
                           check=True).stdout.strip()
 
 

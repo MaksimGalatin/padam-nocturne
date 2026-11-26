@@ -53,6 +53,25 @@ def _без_настроек_компьютера(tmp_path_factory, monkeypatch)
 
 
 
+# 25.11.2026: настройки роутера моделей, которые живой PADAM берёт из окружения Windows этой машины.
+# Найдено при подготовке 0.9.0: на машине стоят настоящие ключи Gemini (PADAM_LLM_GEMINI_KEYS) и файл
+# гранта Vertex, роутер по замыслу ставит бесплатный Gemini раньше локальной Ollama, и три теста роутера
+# падали дома, хотя на GitHub (где ключей нет) проходили. Хуже: тест без подмены сети мог бы позвать
+# настоящий Gemini нашими ключами. Теперь каждый тест начинает с чистого роутера, как на GitHub;
+# тест, которому нужна такая настройка, ставит её сам через monkeypatch.setenv.
+_РОУТЕР_ИЗ_ОКРУЖЕНИЯ_ПРЕФИКСЫ = ("PADAM_LLM_", "PADAM_VERTEX_", "PADAM_GRANT_")
+_РОУТЕР_ИЗ_ОКРУЖЕНИЯ_ИМЕНА = ("PADAM_ALLOW_VERTEX_AFTER_LOCAL", "PADAM_ASK_MODEL", "PADAM_COUNCIL_GUARD_MODEL",
+                              "PADAM_ROUTER_COOLDOWN_S", "PADAM_ROUTER_LOOP_LIMIT")
+
+
+@pytest.fixture(autouse=True)
+def _без_ключей_роутера_компьютера(monkeypatch):
+    for имя in list(os.environ):
+        if имя.startswith(_РОУТЕР_ИЗ_ОКРУЖЕНИЯ_ПРЕФИКСЫ) or имя in _РОУТЕР_ИЗ_ОКРУЖЕНИЯ_ИМЕНА:
+            monkeypatch.delenv(имя, raising=False)
+    yield
+
+
 @pytest.fixture(autouse=True)
 def _сброс_общей_памяти_api():
     """18.11.2026: тест оставлял закрытую Memory в padam.api._state, следующий подхватывал её

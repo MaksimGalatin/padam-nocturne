@@ -4346,7 +4346,7 @@ def _start_chat_autosync_daemon() -> None:
                 m_obj = _state.get("memory")
                 if m_obj is not None:
                     from . import chats as _chats
-                    _chats.sync_family_chats_from_disk(m_obj, use_default_paths=True, max_files=25)
+                    _chats.sync_family_chats_from_disk(m_obj, use_default_paths=True, max_files=25, parse_in_subprocess=True)
             except Exception:
                 pass
             _t.sleep(30.0)

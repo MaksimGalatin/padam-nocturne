@@ -111,6 +111,7 @@ def test_mcp_hot_reload_and_default_studio_autoupdate(monkeypatch) -> None:
     from padam import mcp_server
 
     # Имитируем устаревание отпечатка на диске и проверяем горячую перезагрузку без разрыва процесса
+    monkeypatch.setenv("PADAM_CODE_SETTLE_S", "0")   # 25.11.2026: выдержка тишины 20 с — в тесте не ждём
     monkeypatch.setattr(cf, "LOADED", "0" * 16)
     assert cf.status()["stale"] is True
     reloaded = mcp_server._auto_hot_reload_if_stale(force=True)
