@@ -48,7 +48,12 @@ CLI_HELP_ES: dict[str, str] = {
  "budget": "ritmo de consumo de tokens (día/semana/mes), ingresos y recargas solo con aprobación del dueño",
  "freelance": "hub de trabajo autónomo en plataformas freelance, ejecución en enjambre y registro de ingresos",
  "shield": "Escudo Agéntico: Kill Switch, puerta saliente, auditoría JS Supply-Chain y Proof Pack",
- "chats": "historial de chats limpio por agente (sin código) y sincronización con el grafo"
+ "chats": "historial de chats limpio por agente (sin código) y sincronización con el grafo",
+ "learn": "modo de auditoría Shadow y generación automática de policy.yaml",
+ "inspect": "escáner AST estático del código fuente de un servidor MCP antes de instalarlo",
+ "pentest": "fuzzer Red-Team local (conjunto de ataques integrado; autoverificación, no una evaluación independiente)",
+ "update-db": "actualización unidireccional de la base de firmas firmada (sin telemetría)",
+ "scan-model": "escáner de pesos de modelos locales (.pkl/.pt/.safetensors/.gguf)"
 }
 
 CLI_HELP_ZH: dict[str, str] = {
@@ -98,5 +103,10 @@ CLI_HELP_ZH: dict[str, str] = {
  "budget": "令牌用量节奏（日/周/月）、收入及仅经所有者批准的充值",
  "freelance": "自由职业平台自主工作中心、群体执行与收入台账",
  "shield": "智能体护盾：急停开关、出站门控、JS 供应链审计与合规证明包",
- "chats": "按智能体分类的纯净聊天历史（无代码）与时间线图谱同步"
+ "chats": "按智能体分类的纯净聊天历史（无代码）与时间线图谱同步",
+ "learn": "影子审计模式与自动生成 policy.yaml",
+ "inspect": "安装前对 MCP 服务器源码进行静态 AST 扫描",
+ "pentest": "本地红队模糊测试（内置攻击集；自检，并非独立评估）",
+ "update-db": "单向更新已签名的特征库（零遥测）",
+ "scan-model": "本地模型权重扫描器（.pkl/.pt/.safetensors/.gguf）"
 }

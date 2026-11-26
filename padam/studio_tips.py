@@ -300,6 +300,14 @@ TIPS: dict[str, dict[str, str]] = {
 
 # Описания кнопок по id — всплывают при наведении (title) и читаются экранным диктором (aria-description).
 BTN_TIPS: dict[str, dict[str, str]] = {
+    # 26.11.2026: кнопки щита Сестры — подсказки из STRINGS, на 4 языках
+    "sh-comp-btn": {"ru": "Сформировать пакет доказательств (Закон ЕС об ИИ, NIST, OWASP, PCI 4.0.1, SOC 2)", "en": "Build signed Compliance Evidence Pack (EU AI Act, NIST AI RMF, OWASP LLM, SOC 2)", "es": "Generar Evidence Pack firmado (EU AI Act, NIST AI RMF, OWASP, SOC 2)", "zh": "生成签名合规证据包（EU AI Act / NIST AI RMF / OWASP / SOC 2）"},
+    "sh-comp-html-btn": {"ru": "Скачать печатный HTML-отчёт пакета доказательств комплаенса", "en": "Download printable HTML Compliance Evidence Pack", "es": "Descargar informe HTML de cumplimiento", "zh": "下载可打印 HTML 合规证据报告"},
+    "sh-comp-md-btn": {"ru": "Скачать Markdown-отчёт пакета доказательств комплаенса", "en": "Download Markdown Compliance Evidence Pack", "es": "Descargar informe Markdown de cumplimiento", "zh": "下载 Markdown 合规证据报告"},
+    "sh-graph-btn": {"ru": "Построить SVG-цепочку вызовов инструментов и заражённых меток текущей сессии", "en": "Render SVG trajectory of agent tool calls, taint tags, and blocks", "es": "Mostrar el grafo SVG de llamadas de herramientas y etiquetas Taint", "zh": "绘制智能体工具调用与污点标签的 SVG 链路图"},
+    "sh-learn-btn": {"ru": "Сгенерировать оптимальный файл политик из журнала Shadow-аудита и профилей UEBA", "en": "Auto-generate policy.yaml from Shadow-audit events and local UEBA baselines", "es": "Generar policy.yaml óptimo desde el registro Shadow y perfiles UEBA", "zh": "根据影子日志和本地 UEBA 基线自动生成策略文件"},
+    "sh-mode-btn": {"ru": "Переключить режим обучения без блокировок (Shadow) или жёсткой защиты (Enforce)", "en": "Switch between non-blocking Shadow learning mode and strict Enforce mode", "es": "Alternar entre modo de observación Shadow y bloqueo estricto Enforce", "zh": "在无阻断影子观察模式与严格拦截模式之间切换"},
+    "sh-pentest-btn": {"ru": "Прогнать встроенный набор атак против локального контура защиты (это самопроверка на своих шаблонах, а не независимая оценка) в изолированной базе", "en": "Run the built-in attack set against the local Shield in an isolated temp DB (a self-check on its own patterns, not an independent evaluation)", "es": "Ejecutar el conjunto de ataques integrado contra el escudo local en base temporal aislada (autoverificación con sus propios patrones, no una evaluación independiente)", "zh": "在隔离临时库中对本地防护运行内置攻击集（基于自身模式的自检，并非独立评估）"},
     "att-aifasec-run": {
         "ru": "Запускает все 100 проверок защиты прямо сейчас на этом компьютере (около 10 секунд, $0) и показывает свежую оценку.",
         "en": "Runs all 100 protection checks right now on this computer (about 10 seconds, $0) and shows a fresh grade.",

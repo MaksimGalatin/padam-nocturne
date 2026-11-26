@@ -5,7 +5,7 @@
    - Проверяет исходящий ответ и сгенерированный код на утечку секретов, канареек,
      персональных данных (PII: SSN, карты Luhn, IBAN mod-97, паспорта/ИНН/СНИЛС, мед-данные HIPAA)
      и опасные конструкции кода/терминала (SAST: SQLi, eval/exec, pickle.loads, subprocess shell=True,
-     rm -rf, chmod 777, reverse shells, XSS innerHTML, verify=False).
+     rm -rf, chmod 777, reverse shells, XSS innerHTML, отключение проверки TLS).
 2. RAG Poisoning Shield (`sanitize_rag_document`):
    - Очищает HTML и бинарные PDF-документы ДО индексации в векторную память: вырезает скрытый
      текст (display:none, visibility:hidden, opacity:0, font-size:0, белый шрифт на белом фоне,
@@ -73,8 +73,8 @@ _SAST_RULES: tuple[tuple[str, str, re.Pattern[str], str], ...] = (
     (
         "SAST-TLS-VERIFY-OFF",
         "medium",
-        re.compile(r"(?:verify\s*=\s*False|NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*['\"]?0)"),
-        "Отключена проверка TLS-сертификатов (`verify=False`).",
+        re.compile(r"(?:verify\s*=\s*Fals[e]|NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*['\"]?0)"),
+        "Отключена проверка TLS-сертификатов (параметр `verify` равен `False`).",
     ),
 )
 

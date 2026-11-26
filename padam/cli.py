@@ -2655,7 +2655,7 @@ def main(argv=None) -> int:
     p_ins.add_argument("--out-sarif", default="")
     p_ins.set_defaults(fn=_mk_top_shield("inspect"))
 
-    p_pt = sub.add_parser("pentest", help=t("локальный Red-Team фаззер (520 векторов атак)", "Local Red-Team fuzzer (520 attack vectors)"))
+    p_pt = sub.add_parser("pentest", help=t("локальный Red-Team фаззер (встроенный набор атак; самопроверка, а не независимая оценка)", "Local Red-Team fuzzer (built-in attack set; a self-check, not an independent evaluation)"))
     p_pt.add_argument("--max-vectors", type=int, default=None)
     p_pt.add_argument("--out-json", default="")
     p_pt.set_defaults(fn=_mk_top_shield("pentest"))

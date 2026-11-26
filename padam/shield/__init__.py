@@ -15,7 +15,7 @@
 - `sigdb`: одностороннее обновление подписанных Ed25519 баз сигнатур (`padam update-db`)
 - `a2a_trust`: взаимная Ed25519 A2A-аутентификация и Trust Score роя агентов
 - `compliance`: генератор Evidence Packs (EU AI Act, NIST AI RMF, OWASP, PCI 4.0.1, SOC 2)
-- `pentest`: встроенный локальный фаззер на 520 векторов атак (`padam pentest`)
+- `pentest`: встроенный локальный фаззер атак (самопроверка на своих шаблонах, не независимая оценка) (`padam pentest`)
 - `middleware`: обёртки в 1 клик для LangChain, LlamaIndex, CrewAI, AutoGen
 """
 from .a2a_trust import (

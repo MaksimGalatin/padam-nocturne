@@ -4327,15 +4327,15 @@ _STRINGS_SHIELD: dict[str, dict[str, str]] = {
 _STRINGS_SHIELD_V1: dict[str, dict[str, str]] = {
     "ru": {
         "sh_adv_title": "Граф атак, Shadow-обучение и локальный Red-Team",
-        "sh_adv_sub": "Визуальная траектория меток (Источник → Инструмент → Вердикт), обучение без блокировок, фаззер 520 атак и пакет комплаенса (Закон ЕС об ИИ, NIST, SOC 2).",
+        "sh_adv_sub": "Визуальная траектория меток (Источник → Инструмент → Вердикт), обучение без блокировок, встроенный фаззер атак и пакет комплаенса (Закон ЕС об ИИ, NIST, SOC 2).",
         "sh_graph_btn": "Обновить граф траекторий",
         "sh_graph_tip": "Построить SVG-цепочку вызовов инструментов и заражённых меток текущей сессии",
         "sh_mode_btn": "Переключить Shadow / Enforce",
         "sh_mode_tip": "Переключить режим обучения без блокировок (Shadow) или жёсткой защиты (Enforce)",
         "sh_learn_btn": "Собрать policy.yaml",
         "sh_learn_tip": "Сгенерировать оптимальный файл политик из журнала Shadow-аудита и профилей UEBA",
-        "sh_pentest_btn": "Запустить Red-Team (520)",
-        "sh_pentest_tip": "Прогнать 520 реальных атак против локального контура защиты в изолированной базе",
+        "sh_pentest_btn": "Запустить встроенный Red-Team",
+        "sh_pentest_tip": "Прогнать встроенный набор атак против локального контура защиты (это самопроверка на своих шаблонах, а не независимая оценка) в изолированной базе",
         "sh_comp_btn": "Пакет комплаенса",
         "sh_comp_tip": "Сформировать пакет доказательств (Закон ЕС об ИИ, NIST, OWASP, PCI 4.0.1, SOC 2)",
         "sh_comp_html_btn": "Комплаенс HTML",
@@ -4346,15 +4346,15 @@ _STRINGS_SHIELD_V1: dict[str, dict[str, str]] = {
     },
     "en": {
         "sh_adv_title": "Attack Graph, Shadow Learning & Local Red-Team",
-        "sh_adv_sub": "Interactive Taint Tracking trajectory (Source -> Tool -> Verdict), non-blocking Shadow learning, 520-vector local fuzzer & Compliance Evidence Pack (EU AI Act / NIST / SOC 2).",
+        "sh_adv_sub": "Interactive Taint Tracking trajectory (Source -> Tool -> Verdict), non-blocking Shadow learning, built-in local attack fuzzer & Compliance Evidence Pack (EU AI Act / NIST / SOC 2).",
         "sh_graph_btn": "Refresh Attack Graph",
         "sh_graph_tip": "Render SVG trajectory of agent tool calls, taint tags, and blocks",
         "sh_mode_btn": "Toggle Shadow / Enforce",
         "sh_mode_tip": "Switch between non-blocking Shadow learning mode and strict Enforce mode",
         "sh_learn_btn": "Generate policy.yaml",
         "sh_learn_tip": "Auto-generate policy.yaml from Shadow-audit events and local UEBA baselines",
-        "sh_pentest_btn": "Run Local Red-Team (520)",
-        "sh_pentest_tip": "Run 520 real attack vectors against local Shield in an isolated temp DB",
+        "sh_pentest_btn": "Run built-in Red-Team",
+        "sh_pentest_tip": "Run the built-in attack set against the local Shield in an isolated temp DB (a self-check on its own patterns, not an independent evaluation)",
         "sh_comp_btn": "Compliance Pack",
         "sh_comp_tip": "Build signed Compliance Evidence Pack (EU AI Act, NIST AI RMF, OWASP LLM, SOC 2)",
         "sh_comp_html_btn": "Compliance HTML",
@@ -4365,15 +4365,15 @@ _STRINGS_SHIELD_V1: dict[str, dict[str, str]] = {
     },
     "es": {
         "sh_adv_title": "Grafo de ataques, aprendizaje Shadow y Red-Team local",
-        "sh_adv_sub": "Trayectoria visual Taint Tracking, auditoría Shadow sin bloqueos, fuzzer local de 520 vectores y paquete de cumplimiento (EU AI Act / NIST / SOC 2).",
+        "sh_adv_sub": "Trayectoria visual Taint Tracking, auditoría Shadow sin bloqueos, fuzzer local de ataques integrado y paquete de cumplimiento (EU AI Act / NIST / SOC 2).",
         "sh_graph_btn": "Actualizar grafo",
         "sh_graph_tip": "Mostrar el grafo SVG de llamadas de herramientas y etiquetas Taint",
         "sh_mode_btn": "Cambiar Shadow / Enforce",
         "sh_mode_tip": "Alternar entre modo de observación Shadow y bloqueo estricto Enforce",
         "sh_learn_btn": "Generar policy.yaml",
         "sh_learn_tip": "Generar policy.yaml óptimo desde el registro Shadow y perfiles UEBA",
-        "sh_pentest_btn": "Ejecutar Red-Team (520)",
-        "sh_pentest_tip": "Ejecutar 520 ataques reales contra el escudo local en base temporal aislada",
+        "sh_pentest_btn": "Ejecutar Red-Team integrado",
+        "sh_pentest_tip": "Ejecutar el conjunto de ataques integrado contra el escudo local en base temporal aislada (autoverificación con sus propios patrones, no una evaluación independiente)",
         "sh_comp_btn": "Paquete cumplimiento",
         "sh_comp_tip": "Generar Evidence Pack firmado (EU AI Act, NIST AI RMF, OWASP, SOC 2)",
         "sh_comp_html_btn": "Cumplimiento HTML",
@@ -4384,15 +4384,15 @@ _STRINGS_SHIELD_V1: dict[str, dict[str, str]] = {
     },
     "zh": {
         "sh_adv_title": "攻击链路图、影子学习与本地红队测试",
-        "sh_adv_sub": "可视化污点追踪轨迹（来源→工具→判定）、无阻断影子学习、520 向量本地红队模糊测试及合规证据包（EU AI Act / NIST / SOC 2）。",
+        "sh_adv_sub": "可视化污点追踪轨迹（来源→工具→判定）、无阻断影子学习、内置本地红队模糊测试及合规证据包（EU AI Act / NIST / SOC 2）。",
         "sh_graph_btn": "刷新攻击链路图",
         "sh_graph_tip": "绘制智能体工具调用与污点标签的 SVG 链路图",
         "sh_mode_btn": "切换影子 / 强制模式",
         "sh_mode_tip": "在无阻断影子观察模式与严格拦截模式之间切换",
         "sh_learn_btn": "生成 policy.yaml",
         "sh_learn_tip": "根据影子日志和本地 UEBA 基线自动生成策略文件",
-        "sh_pentest_btn": "运行本地红队 (520)",
-        "sh_pentest_tip": "在隔离临时库中对本地防护运行 520 项真实攻击向量",
+        "sh_pentest_btn": "运行内置红队",
+        "sh_pentest_tip": "在隔离临时库中对本地防护运行内置攻击集（基于自身模式的自检，并非独立评估）",
         "sh_comp_btn": "合规证据包",
         "sh_comp_tip": "生成签名合规证据包（EU AI Act / NIST AI RMF / OWASP / SOC 2）",
         "sh_comp_html_btn": "合规 HTML",
@@ -13906,7 +13906,7 @@ if ($('sh-learn-btn')) $('sh-learn-btn').onclick = async () => {
 };
 if ($('sh-pentest-btn')) $('sh-pentest-btn').onclick = async () => {
   const out = $('sh-adv-out');
-  if (out) out.textContent = 'Running 520 local attack vectors...';
+  if (out) out.textContent = 'Running built-in attack set...';
   try {
     const r = await api('/api/v2/shield/pentest', {});
     if (out) out.textContent = 'Red-Team: ' + r.vectors_caught + '/' + r.vectors_total + ' (' + r.security_index_pct + '%, Grade ' + r.grade + ') · P50=' + r.latency_ms.p50 + ' ms · P95=' + r.latency_ms.p95 + ' ms';

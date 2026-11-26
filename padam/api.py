@@ -1725,7 +1725,13 @@ class Handler(BaseHTTPRequestHandler):
                 roles.require_owner(actor, "agentic_shield")
                 from .shield import pentest as _pt
                 mv = data.get("max_vectors")
-                return self._send(200, _pt.run_local_pentest(max_vectors=int(mv) if mv else None))
+                try:
+                    mv_i = int(mv) if mv not in (None, "") else None
+                except (TypeError, ValueError):
+                    return self._send(400, {"error": "max_vectors must be an integer"})
+                if mv_i is not None and mv_i < 1:
+                    return self._send(400, {"error": "max_vectors must be >= 1"})
+                return self._send(200, _pt.run_local_pentest(max_vectors=mv_i))
             if self.path == "/api/v2/shield/learn":
                 roles.require_owner(actor, "agentic_shield")
                 from .shield import learn_ueba as _lu
