@@ -277,9 +277,9 @@ class BuiltinSemanticClassifier:
         w = np.zeros(dim, dtype=np.float32)
         b = 0.0
         lr = 1.6
-        l2 = 0.0025
+        l2 = 0.0018
         n = float(len(y))
-        for _ in range(220):
+        for _ in range(320):
             logits = X @ w + b
             logits = np.clip(logits, -30.0, 30.0)
             probs = 1.0 / (1.0 + np.exp(-logits))

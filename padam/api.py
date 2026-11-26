@@ -1838,41 +1838,44 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == "/api/v2/shield/capabilities":
                 roles.require_owner(actor, "agentic_shield")
                 from .shield import capability_tokens as _ct
-                act_c = str(data.get("action") or "issue")
-                if act_c == "attenuate":
-                    return self._send(200, _ct.attenuate_capability_token(
+                try:
+                    act_c = str(data.get("action") or "issue")
+                    if act_c == "attenuate":
+                        return self._send(200, _ct.attenuate_capability_token(
+                            mem(),
+                            parent_token=str(data.get("parent_token") or ""),
+                            delegate_agent_id=str(data.get("delegate_agent_id") or "subagent"),
+                            allowed_tools=data.get("allowed_tools"),
+                            allowed_paths=data.get("allowed_paths"),
+                            allowed_domains=data.get("allowed_domains"),
+                            max_calls=int(data["max_calls"]) if data.get("max_calls") is not None else None,
+                            max_spend_cents=float(data["max_spend_cents"]) if data.get("max_spend_cents") is not None else None,
+                            ttl_sec=int(data["ttl_sec"]) if data.get("ttl_sec") is not None else None,
+                        ))
+                    if act_c == "verify":
+                        return self._send(200, _ct.verify_and_consume_capability(
+                            mem(),
+                            token=str(data.get("token") or ""),
+                            tool_name=str(data.get("tool_name") or ""),
+                            path=str(data.get("path") or ""),
+                            domain=str(data.get("domain") or ""),
+                            spend_cents=float(data.get("spend_cents") or 0.0),
+                            dry_run=bool(data.get("dry_run", False)),
+                        ))
+                    if act_c == "revoke":
+                        return self._send(200, _ct.revoke_capability_token(mem(), str(data.get("token_id") or ""), cascade=bool(data.get("cascade", True))))
+                    return self._send(200, _ct.issue_capability_token(
                         mem(),
-                        parent_token=str(data.get("parent_token") or ""),
-                        delegate_agent_id=str(data.get("delegate_agent_id") or "subagent"),
-                        allowed_tools=data.get("allowed_tools"),
-                        allowed_paths=data.get("allowed_paths"),
-                        allowed_domains=data.get("allowed_domains"),
-                        max_calls=data.get("max_calls"),
-                        max_spend_cents=data.get("max_spend_cents"),
-                        ttl_sec=data.get("ttl_sec"),
+                        agent_id=str(data.get("agent_id") or "agent"),
+                        allowed_tools=list(data.get("allowed_tools") or ["read_file"]),
+                        allowed_paths=list(data.get("allowed_paths") or []),
+                        allowed_domains=list(data.get("allowed_domains") or []),
+                        max_calls=int(data.get("max_calls") or 100),
+                        max_spend_cents=float(data.get("max_spend_cents") or 1000.0),
+                        ttl_sec=int(data.get("ttl_sec") or 3600),
                     ))
-                if act_c == "verify":
-                    return self._send(200, _ct.verify_and_consume_capability(
-                        mem(),
-                        token=str(data.get("token") or ""),
-                        tool_name=str(data.get("tool_name") or ""),
-                        path=str(data.get("path") or ""),
-                        domain=str(data.get("domain") or ""),
-                        spend_cents=float(data.get("spend_cents") or 0.0),
-                        dry_run=bool(data.get("dry_run", False)),
-                    ))
-                if act_c == "revoke":
-                    return self._send(200, _ct.revoke_capability_token(mem(), str(data.get("token_id") or ""), cascade=bool(data.get("cascade", True))))
-                return self._send(200, _ct.issue_capability_token(
-                    mem(),
-                    agent_id=str(data.get("agent_id") or "agent"),
-                    allowed_tools=list(data.get("allowed_tools") or ["read_file"]),
-                    allowed_paths=list(data.get("allowed_paths") or []),
-                    allowed_domains=list(data.get("allowed_domains") or []),
-                    max_calls=int(data.get("max_calls") or 100),
-                    max_spend_cents=float(data.get("max_spend_cents") or 1000.0),
-                    ttl_sec=int(data.get("ttl_sec") or 3600),
-                ))
+                except (ValueError, TypeError, KeyError) as exc:
+                    return self._send(400, {"error": f"invalid_capability_params: {exc}"})
             if self.path == "/api/v2/shield/scan-rules":
                 roles.require_owner(actor, "agentic_shield")
                 from .shield import memory_rules_guard as _mrg
@@ -1882,15 +1885,21 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == "/api/v2/shield/inspect-dom":
                 roles.require_owner(actor, "agentic_shield")
                 from .shield import browser_guard as _bg
-                if data.get("action"):
-                    return self._send(200, _bg.inspect_browser_action(
-                        action=str(data.get("action") or ""),
-                        target_url=str(data.get("target_url") or ""),
-                        selector=str(data.get("selector") or ""),
-                        js_code=str(data.get("js_code") or ""),
-                        element_meta=data.get("element_meta"),
-                    ))
-                return self._send(200, _bg.inspect_dom_html(str(data.get("html") or ""), page_url=str(data.get("page_url") or "")))
+                try:
+                    if data.get("action"):
+                        meta = data.get("element_meta")
+                        if meta is not None and not isinstance(meta, dict):
+                            raise ValueError("element_meta must be an object")
+                        return self._send(200, _bg.inspect_browser_action(
+                            action=str(data.get("action") or ""),
+                            target_url=str(data.get("target_url") or ""),
+                            selector=str(data.get("selector") or ""),
+                            js_code=str(data.get("js_code") or ""),
+                            element_meta=meta,
+                        ))
+                    return self._send(200, _bg.inspect_dom_html(str(data.get("html") or ""), page_url=str(data.get("page_url") or "")))
+                except (ValueError, TypeError) as exc:
+                    return self._send(400, {"error": f"invalid_dom_params: {exc}"})
             if self.path == "/api/v2/shield/crescendo":
                 roles.require_owner(actor, "agentic_shield")
                 from .shield import crescendo_guard as _cg
@@ -1907,18 +1916,25 @@ class Handler(BaseHTTPRequestHandler):
                 from .shield import ssrf_path_guard as _ssrf
                 if data.get("url"):
                     return self._send(200, _ssrf.inspect_url_ssrf(str(data["url"]), allow_private=bool(data.get("allow_private", False))))
+                roots = data.get("allowed_roots") or []
+                if not isinstance(roots, list):
+                    return self._send(400, {"error": "allowed_roots must be a list"})
                 return self._send(200, _ssrf.inspect_file_path_access(
                     str(data.get("path") or ""),
-                    allowed_roots=list(data.get("allowed_roots") or []),
+                    allowed_roots=roots,
                     operation=str(data.get("operation") or "read"),
                 ))
             if self.path == "/api/v2/shield/scan-media":
                 roles.require_owner(actor, "agentic_shield")
                 import base64 as _b64
+                import binascii as _bina
                 from .shield import multimodal_guard as _mmg
                 if data.get("path"):
                     return self._send(200, _mmg.inspect_media_file(str(data["path"])))
-                raw_b = _b64.b64decode(str(data.get("base64") or "")) if data.get("base64") else str(data.get("text") or "").encode("utf-8")
+                try:
+                    raw_b = _b64.b64decode(str(data.get("base64") or ""), validate=True) if data.get("base64") else str(data.get("text") or "").encode("utf-8")
+                except (_bina.Error, ValueError) as exc:
+                    return self._send(400, {"error": f"invalid_base64: {exc}"})
                 return self._send(200, _mmg.inspect_media_bytes(raw_b, filename=str(data.get("filename") or "upload.bin")))
             if self.path == "/api/v2/shield/aibom":
                 roles.require_owner(actor, "agentic_shield")

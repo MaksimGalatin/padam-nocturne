@@ -6,7 +6,10 @@
 домены, лимит вызовов, бюджет в центах, TTL). Делегировать мандат субагенту
 можно ТОЛЬКО сужая права (`attenuate_capability_token`): любая попытка
 расширить список инструментов, пути, домены, бюджет или время жизни
-криптографически отвергается. Отзыв родителя каскадно отзывает всю ветку.
+криптографически отвергается. Расход вызовов и бюджета учитывается атомарно
+по ВСЕЙ цепочке предков (закрыт обход Delegation Fan-Out Bypass), а отзыв
+родителя каскадно отзывает всю ветку. Все операции изолированы по `user_id`
+и защищены `memory.store._lock`.
 """
 from __future__ import annotations
 
@@ -15,45 +18,49 @@ import fnmatch
 import hashlib
 import hmac
 import json
-import os
+import posixpath
 import secrets
 import time
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from urllib.parse import unquote
 
-from .. import agentic_shield as _ash
 from .. import integrity as _integrity
+from ..store import add_column_safe
 
 
 TOKEN_PREFIX = "PADAMCAP1"
 
 
 def _ensure_tables(memory: Any) -> None:
-    conn = memory.store.conn
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS shield_capabilities (
-            token_id TEXT PRIMARY KEY,
-            parent_id TEXT,
-            root_id TEXT NOT NULL,
-            agent_id TEXT NOT NULL,
-            label TEXT NOT NULL DEFAULT '',
-            scope_json TEXT NOT NULL,
-            calls_used INTEGER NOT NULL DEFAULT 0,
-            spent_cents REAL NOT NULL DEFAULT 0.0,
-            revoked INTEGER NOT NULL DEFAULT 0,
-            expires_at REAL NOT NULL,
-            created_at REAL NOT NULL,
-            hmac_sig TEXT NOT NULL
+    with memory.store._lock:
+        conn = memory.store.conn
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS shield_capabilities (
+                token_id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL DEFAULT '',
+                parent_id TEXT,
+                root_id TEXT NOT NULL,
+                agent_id TEXT NOT NULL,
+                label TEXT NOT NULL DEFAULT '',
+                scope_json TEXT NOT NULL,
+                calls_used INTEGER NOT NULL DEFAULT 0,
+                spent_cents REAL NOT NULL DEFAULT 0.0,
+                revoked INTEGER NOT NULL DEFAULT 0,
+                expires_at REAL NOT NULL,
+                created_at REAL NOT NULL,
+                hmac_sig TEXT NOT NULL
+            )
+            """
         )
-        """
-    )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_shield_cap_parent ON shield_capabilities(parent_id)"
-    )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_shield_cap_root ON shield_capabilities(root_id)"
-    )
-    conn.commit()
+        add_column_safe(conn, "shield_capabilities", "user_id", "TEXT NOT NULL DEFAULT ''")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_shield_cap_parent ON shield_capabilities(parent_id)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_shield_cap_user ON shield_capabilities(user_id, root_id)"
+        )
+        conn.commit()
 
 
 def _owner_key(memory: Any) -> bytes:
@@ -66,7 +73,7 @@ def _sign_payload(memory: Any, payload_bytes: bytes) -> str:
 
 
 def _norm_path(path: str) -> str:
-    p = str(path or "").strip().replace("\\", "/")
+    p = unquote(str(path or "")).strip().replace("\\", "/")
     while "//" in p:
         p = p.replace("//", "/")
     return p.lower()
@@ -90,7 +97,6 @@ def _norm_list(items: Optional[Iterable[str]], *, lower: bool = True) -> List[st
 
 
 def _pattern_covered_by(child_pat: str, parent_pats: Sequence[str]) -> bool:
-    """Проверяет, что шаблон прав субагента не шире шаблонов родителя."""
     if not parent_pats:
         return False
     c = child_pat.strip().lower()
@@ -100,7 +106,6 @@ def _pattern_covered_by(child_pat: str, parent_pats: Sequence[str]) -> bool:
             return True
         if fnmatch.fnmatchcase(c, pp):
             return True
-        # Для путей: 'docs/sub/*' покрывается 'docs/*'
         if pp.endswith("/*") and c.startswith(pp[:-1]):
             return True
         if pp.endswith("/**") and c.startswith(pp[:-2]):
@@ -143,6 +148,38 @@ def _decode_token(token: str) -> Tuple[Optional[Dict[str, Any]], Optional[bytes]
         return None, None, None, f"Ошибка декодирования токена: {exc}"
 
 
+def _collect_chain_locked(conn: Any, uid: str, token_id: str) -> Tuple[Optional[List[Dict[str, Any]]], str]:
+    """Читает цепочку мандатов от текущего до корневого под уже взятым `_lock`."""
+    chain: List[Dict[str, Any]] = []
+    cur = token_id
+    depth = 0
+    while cur and depth < 32:
+        row = conn.execute(
+            "SELECT token_id, parent_id, root_id, agent_id, scope_json, calls_used, spent_cents, "
+            "revoked, expires_at, hmac_sig FROM shield_capabilities WHERE token_id = ? AND user_id = ?",
+            (cur, uid),
+        ).fetchone()
+        if not row:
+            return None, "CAP-NOT-FOUND"
+        chain.append(
+            {
+                "token_id": str(row[0]),
+                "parent_id": row[1],
+                "root_id": str(row[2]),
+                "agent_id": str(row[3]),
+                "scope": json.loads(row[4]),
+                "calls_used": int(row[5]),
+                "spent_cents": float(row[6]),
+                "revoked": bool(row[7]),
+                "expires_at": float(row[8]),
+                "hmac_sig": str(row[9]),
+            }
+        )
+        cur = row[1]
+        depth += 1
+    return chain, ""
+
+
 def issue_capability_token(
     memory: Any,
     *,
@@ -158,6 +195,7 @@ def issue_capability_token(
     """Выпускает корневой подписанный Capability Token для агента."""
     _ensure_tables(memory)
     now = time.time()
+    uid = str(getattr(memory, "user_id", "") or "")
     token_id = "cap_" + secrets.token_hex(8)
     expires_at = now + max(1, int(ttl_sec))
     scope = {
@@ -169,6 +207,7 @@ def issue_capability_token(
     }
     payload = {
         "v": 1,
+        "uid": uid,
         "token_id": token_id,
         "parent_id": None,
         "root_id": token_id,
@@ -181,26 +220,28 @@ def issue_capability_token(
     sig = _sign_payload(memory, raw)
     token_str = _encode_token(payload, sig)
 
-    conn = memory.store.conn
-    conn.execute(
-        """
-        INSERT INTO shield_capabilities
-            (token_id, parent_id, root_id, agent_id, label, scope_json,
-             calls_used, spent_cents, revoked, expires_at, created_at, hmac_sig)
-        VALUES (?, NULL, ?, ?, ?, ?, 0, 0.0, 0, ?, ?, ?)
-        """,
-        (
-            token_id,
-            token_id,
-            payload["agent_id"],
-            str(label or ""),
-            json.dumps(scope, ensure_ascii=False),
-            expires_at,
-            now,
-            sig,
-        ),
-    )
-    conn.commit()
+    with memory.store._lock:
+        conn = memory.store.conn
+        conn.execute(
+            """
+            INSERT INTO shield_capabilities
+                (token_id, user_id, parent_id, root_id, agent_id, label, scope_json,
+                 calls_used, spent_cents, revoked, expires_at, created_at, hmac_sig)
+            VALUES (?, ?, NULL, ?, ?, ?, ?, 0, 0.0, 0, ?, ?, ?)
+            """,
+            (
+                token_id,
+                uid,
+                token_id,
+                payload["agent_id"],
+                str(label or ""),
+                json.dumps(scope, ensure_ascii=False),
+                expires_at,
+                now,
+                sig,
+            ),
+        )
+        conn.commit()
     return {
         "ok": True,
         "token_id": token_id,
@@ -228,6 +269,7 @@ def attenuate_capability_token(
 ) -> Dict[str, Any]:
     """Делегирует мандат субагенту со строгим монотонным сужением прав."""
     _ensure_tables(memory)
+    uid = str(getattr(memory, "user_id", "") or "")
     payload, raw, sig, err = _decode_token(parent_token)
     if err or payload is None or raw is None or sig is None:
         return {"ok": False, "blocked": True, "rule_id": "CAP-INVALID-TOKEN", "reason": err}
@@ -242,172 +284,149 @@ def attenuate_capability_token(
         }
 
     parent_id = str(payload.get("token_id") or "")
-    row = memory.store.conn.execute(
-        "SELECT root_id, scope_json, calls_used, spent_cents, revoked, expires_at, hmac_sig "
-        "FROM shield_capabilities WHERE token_id = ?",
-        (parent_id,),
-    ).fetchone()
-    if not row:
-        return {
-            "ok": False,
-            "blocked": True,
-            "rule_id": "CAP-UNKNOWN-PARENT",
-            "reason": "Родительский мандат не зарегистрирован в локальном хранилище",
-        }
-    root_id, p_scope_json, p_calls_used, p_spent, p_revoked, p_exp, p_db_sig = row
-    if not hmac.compare_digest(str(p_db_sig), sig):
-        return {
-            "ok": False,
-            "blocked": True,
-            "rule_id": "CAP-SIGNATURE-MISMATCH",
-            "reason": "Подпись родительского мандата не совпадает с реестром",
-        }
-    if int(p_revoked) != 0 or _is_chain_revoked(memory, parent_id):
-        return {
-            "ok": False,
-            "blocked": True,
-            "rule_id": "CAP-PARENT-REVOKED",
-            "reason": "Родительский мандат (или один из его предков) отозван",
-        }
     now = time.time()
-    if now >= float(p_exp):
-        return {
-            "ok": False,
-            "blocked": True,
-            "rule_id": "CAP-EXPIRED",
-            "reason": "Срок действия родительского мандата истёк",
+
+    with memory.store._lock:
+        conn = memory.store.conn
+        chain, cerr = _collect_chain_locked(conn, uid, parent_id)
+        if cerr or not chain:
+            return {
+                "ok": False,
+                "blocked": True,
+                "rule_id": "CAP-UNKNOWN-PARENT",
+                "reason": "Родительский мандат не найден у текущего владельца",
+            }
+        parent = chain[0]
+        if not hmac.compare_digest(parent["hmac_sig"], sig):
+            return {
+                "ok": False,
+                "blocked": True,
+                "rule_id": "CAP-SIGNATURE-MISMATCH",
+                "reason": "Подпись родительского мандата не совпадает с реестром",
+            }
+        if any(node["revoked"] for node in chain):
+            return {
+                "ok": False,
+                "blocked": True,
+                "rule_id": "CAP-PARENT-REVOKED",
+                "reason": "Родительский мандат (или один из его предков) отозван",
+            }
+        if any(now >= node["expires_at"] for node in chain):
+            return {
+                "ok": False,
+                "blocked": True,
+                "rule_id": "CAP-EXPIRED",
+                "reason": "Срок действия родительского мандата истёк",
+            }
+
+        p_scope = parent["scope"]
+        violations: List[str] = []
+
+        p_tools = p_scope.get("allowed_tools") or []
+        c_tools = _norm_list(allowed_tools, lower=True) if allowed_tools is not None else list(p_tools)
+        for t in c_tools:
+            if not _pattern_covered_by(t, p_tools):
+                violations.append(f"Попытка расширить инструменты: '{t}' не входит в {p_tools}")
+
+        p_paths = p_scope.get("allowed_paths") or []
+        c_paths = [_norm_path(x) for x in _norm_list(allowed_paths, lower=False)] if allowed_paths is not None else list(p_paths)
+        if p_paths:
+            if not c_paths:
+                violations.append("Нельзя снять ограничение на пути родительского мандата")
+            else:
+                for cp in c_paths:
+                    if ".." in cp.split("/") or not _pattern_covered_by(cp, p_paths):
+                        violations.append(f"Попытка расширить путь: '{cp}' выходит за {p_paths}")
+
+        p_doms = p_scope.get("allowed_domains") or []
+        c_doms = _norm_list(allowed_domains, lower=True) if allowed_domains is not None else list(p_doms)
+        if p_doms:
+            if not c_doms:
+                violations.append("Нельзя снять ограничение на домены родительского мандата")
+            else:
+                for cd in c_doms:
+                    if not _domain_covered_by(cd, p_doms):
+                        violations.append(f"Попытка расширить домен: '{cd}' выходит за {p_doms}")
+
+        rem_calls = min(max(0, int(n["scope"].get("max_calls", 0)) - n["calls_used"]) for n in chain)
+        c_max_calls = int(max_calls) if max_calls is not None else rem_calls
+        if c_max_calls > rem_calls or c_max_calls <= 0:
+            violations.append(f"Лимит вызовов {c_max_calls} превышает остаток цепочки ({rem_calls})")
+
+        rem_spend = min(max(0.0, float(n["scope"].get("max_spend_cents", 0.0)) - n["spent_cents"]) for n in chain)
+        c_max_spend = float(max_spend_cents) if max_spend_cents is not None else rem_spend
+        if c_max_spend > rem_spend + 1e-6 or c_max_spend < 0:
+            violations.append(f"Бюджет {c_max_spend:.2f}¢ превышает остаток цепочки ({rem_spend:.2f}¢)")
+
+        min_exp = min(n["expires_at"] for n in chain)
+        c_exp = (now + int(ttl_sec)) if ttl_sec is not None else min_exp
+        if c_exp > min_exp + 1.0:
+            violations.append("Нельзя продлить TTL дочернего мандата дольше родительского")
+
+        if violations:
+            return {
+                "ok": False,
+                "blocked": True,
+                "rule_id": "CAP-ESCALATION-DENIED",
+                "reason": "; ".join(violations),
+                "violations": violations,
+            }
+
+        token_id = "cap_" + secrets.token_hex(8)
+        c_scope = {
+            "allowed_tools": c_tools,
+            "allowed_paths": c_paths,
+            "allowed_domains": c_doms,
+            "max_calls": c_max_calls,
+            "max_spend_cents": round(c_max_spend, 4),
         }
-
-    p_scope = json.loads(p_scope_json)
-    violations: List[str] = []
-
-    # 1. Инструменты: строго подмножество родительских
-    p_tools = p_scope.get("allowed_tools") or []
-    c_tools = _norm_list(allowed_tools, lower=True) if allowed_tools is not None else list(p_tools)
-    for t in c_tools:
-        if not _pattern_covered_by(t, p_tools):
-            violations.append(f"Попытка расширить инструменты: '{t}' не входит в {p_tools}")
-
-    # 2. Пути: если у родителя ограничены, субагент обязан укладываться в них
-    p_paths = p_scope.get("allowed_paths") or []
-    c_paths = [_norm_path(x) for x in _norm_list(allowed_paths, lower=False)] if allowed_paths is not None else list(p_paths)
-    if p_paths:
-        if not c_paths:
-            violations.append("Нельзя снять ограничение на пути родительского мандата")
-        else:
-            for cp in c_paths:
-                if not _pattern_covered_by(cp, p_paths):
-                    violations.append(f"Попытка расширить путь: '{cp}' выходит за {p_paths}")
-
-    # 3. Домены: строго подмножество родительских, если родитель ограничен
-    p_doms = p_scope.get("allowed_domains") or []
-    c_doms = _norm_list(allowed_domains, lower=True) if allowed_domains is not None else list(p_doms)
-    if p_doms:
-        if not c_doms:
-            violations.append("Нельзя снять ограничение на домены родительского мандата")
-        else:
-            for cd in c_doms:
-                if not _domain_covered_by(cd, p_doms):
-                    violations.append(f"Попытка расширить домен: '{cd}' выходит за {p_doms}")
-
-    # 4. Лимит вызовов и бюджет
-    rem_calls = max(0, int(p_scope.get("max_calls", 0)) - int(p_calls_used))
-    c_max_calls = int(max_calls) if max_calls is not None else rem_calls
-    if c_max_calls > rem_calls or c_max_calls <= 0:
-        violations.append(f"Лимит вызовов {c_max_calls} превышает остаток родителя ({rem_calls})")
-
-    rem_spend = max(0.0, float(p_scope.get("max_spend_cents", 0.0)) - float(p_spent))
-    c_max_spend = float(max_spend_cents) if max_spend_cents is not None else rem_spend
-    if c_max_spend > rem_spend + 1e-6 or c_max_spend < 0:
-        violations.append(f"Бюджет {c_max_spend:.2f}¢ превышает остаток родителя ({rem_spend:.2f}¢)")
-
-    # 5. Срок жизни: не длиннее родителя
-    c_exp = (now + int(ttl_sec)) if ttl_sec is not None else float(p_exp)
-    if c_exp > float(p_exp) + 1.0:
-        violations.append("Нельзя продлить TTL дочернего мандата дольше родительского")
-
-    if violations:
-        return {
-            "ok": False,
-            "blocked": True,
-            "rule_id": "CAP-ESCALATION-DENIED",
-            "reason": "; ".join(violations),
-            "violations": violations,
+        child_payload = {
+            "v": 1,
+            "uid": uid,
+            "token_id": token_id,
+            "parent_id": parent_id,
+            "root_id": parent["root_id"],
+            "agent_id": str(delegate_agent_id or "subagent"),
+            "scope": c_scope,
+            "iat": round(now, 3),
+            "exp": round(c_exp, 3),
         }
+        child_raw = json.dumps(child_payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        child_sig = _sign_payload(memory, child_raw)
+        child_token = _encode_token(child_payload, child_sig)
 
-    token_id = "cap_" + secrets.token_hex(8)
-    c_scope = {
-        "allowed_tools": c_tools,
-        "allowed_paths": c_paths,
-        "allowed_domains": c_doms,
-        "max_calls": c_max_calls,
-        "max_spend_cents": round(c_max_spend, 4),
-    }
-    child_payload = {
-        "v": 1,
-        "token_id": token_id,
-        "parent_id": parent_id,
-        "root_id": str(root_id),
-        "agent_id": str(delegate_agent_id or "subagent"),
-        "scope": c_scope,
-        "iat": round(now, 3),
-        "exp": round(c_exp, 3),
-    }
-    child_raw = json.dumps(child_payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-    child_sig = _sign_payload(memory, child_raw)
-    child_token = _encode_token(child_payload, child_sig)
-
-    conn = memory.store.conn
-    conn.execute(
-        """
-        INSERT INTO shield_capabilities
-            (token_id, parent_id, root_id, agent_id, label, scope_json,
-             calls_used, spent_cents, revoked, expires_at, created_at, hmac_sig)
-        VALUES (?, ?, ?, ?, ?, ?, 0, 0.0, 0, ?, ?, ?)
-        """,
-        (
-            token_id,
-            parent_id,
-            str(root_id),
-            child_payload["agent_id"],
-            str(label or ""),
-            json.dumps(c_scope, ensure_ascii=False),
-            c_exp,
-            now,
-            child_sig,
-        ),
-    )
-    conn.commit()
+        conn.execute(
+            """
+            INSERT INTO shield_capabilities
+                (token_id, user_id, parent_id, root_id, agent_id, label, scope_json,
+                 calls_used, spent_cents, revoked, expires_at, created_at, hmac_sig)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0.0, 0, ?, ?, ?)
+            """,
+            (
+                token_id,
+                uid,
+                parent_id,
+                parent["root_id"],
+                child_payload["agent_id"],
+                str(label or ""),
+                json.dumps(c_scope, ensure_ascii=False),
+                c_exp,
+                now,
+                child_sig,
+            ),
+        )
+        conn.commit()
     return {
         "ok": True,
         "blocked": False,
         "token_id": token_id,
         "parent_id": parent_id,
-        "root_id": str(root_id),
+        "root_id": parent["root_id"],
         "agent_id": child_payload["agent_id"],
         "scope": c_scope,
         "expires_at": c_exp,
         "token": child_token,
     }
-
-
-def _is_chain_revoked(memory: Any, token_id: str) -> bool:
-    conn = memory.store.conn
-    cur = token_id
-    depth = 0
-    while cur and depth < 32:
-        row = conn.execute(
-            "SELECT parent_id, revoked FROM shield_capabilities WHERE token_id = ?",
-            (cur,),
-        ).fetchone()
-        if not row:
-            return True
-        parent_id, revoked = row
-        if int(revoked) != 0:
-            return True
-        cur = parent_id
-        depth += 1
-    return False
 
 
 def verify_and_consume_capability(
@@ -420,8 +439,9 @@ def verify_and_consume_capability(
     spend_cents: float = 0.0,
     dry_run: bool = False,
 ) -> Dict[str, Any]:
-    """Проверяет мандат и при разрешении списывает 1 вызов и бюджет."""
+    """Проверяет всю цепочку делегирования и атомарно списывает 1 вызов и бюджет вверх до корня."""
     _ensure_tables(memory)
+    uid = str(getattr(memory, "user_id", "") or "")
     payload, raw, sig, err = _decode_token(token)
     if err or payload is None or raw is None or sig is None:
         return {"ok": False, "allowed": False, "blocked": True, "rule_id": "CAP-INVALID-TOKEN", "reason": err}
@@ -437,112 +457,122 @@ def verify_and_consume_capability(
         }
 
     token_id = str(payload.get("token_id") or "")
-    row = memory.store.conn.execute(
-        "SELECT agent_id, scope_json, calls_used, spent_cents, revoked, expires_at, hmac_sig "
-        "FROM shield_capabilities WHERE token_id = ?",
-        (token_id,),
-    ).fetchone()
-    if not row:
-        return {
-            "ok": False,
-            "allowed": False,
-            "blocked": True,
-            "rule_id": "CAP-NOT-FOUND",
-            "reason": "Мандат не найден в локальной базе",
-        }
-    agent_id, scope_json, calls_used, spent_cents, revoked, expires_at, db_sig = row
-    if not hmac.compare_digest(str(db_sig), sig):
-        return {
-            "ok": False,
-            "allowed": False,
-            "blocked": True,
-            "rule_id": "CAP-SIGNATURE-MISMATCH",
-            "reason": "Подпись мандата не совпадает с сохранённой",
-        }
-    if int(revoked) != 0 or _is_chain_revoked(memory, token_id):
-        return {
-            "ok": False,
-            "allowed": False,
-            "blocked": True,
-            "rule_id": "CAP-REVOKED",
-            "reason": "Мандат (или его родитель в цепочке делегирования) отозван",
-        }
-    if time.time() >= float(expires_at):
-        return {
-            "ok": False,
-            "allowed": False,
-            "blocked": True,
-            "rule_id": "CAP-EXPIRED",
-            "reason": "Срок действия мандата истёк",
-        }
+    spend = max(0.0, float(spend_cents))
+    now = time.time()
 
-    scope = json.loads(scope_json)
-    tool_l = str(tool_name or "").strip().lower()
-    if not _pattern_covered_by(tool_l, scope.get("allowed_tools") or []):
-        return {
-            "ok": False,
-            "allowed": False,
-            "blocked": True,
-            "rule_id": "CAP-TOOL-DENIED",
-            "reason": f"Инструмент '{tool_l}' запрещён мандатом (разрешены: {scope.get('allowed_tools')})",
-        }
-
-    if path and scope.get("allowed_paths"):
-        norm_p = _norm_path(path)
-        if ".." in norm_p.split("/") or not _pattern_covered_by(norm_p, scope["allowed_paths"]):
+    with memory.store._lock:
+        conn = memory.store.conn
+        chain, cerr = _collect_chain_locked(conn, uid, token_id)
+        if cerr or not chain:
             return {
                 "ok": False,
                 "allowed": False,
                 "blocked": True,
-                "rule_id": "CAP-PATH-DENIED",
-                "reason": f"Путь '{path}' выходит за границы мандата ({scope['allowed_paths']})",
+                "rule_id": "CAP-NOT-FOUND",
+                "reason": "Мандат не найден у текущего владельца",
             }
-
-    if domain and scope.get("allowed_domains"):
-        if not _domain_covered_by(domain, scope["allowed_domains"]):
+        leaf = chain[0]
+        if not hmac.compare_digest(leaf["hmac_sig"], sig):
             return {
                 "ok": False,
                 "allowed": False,
                 "blocked": True,
-                "rule_id": "CAP-DOMAIN-DENIED",
-                "reason": f"Домен '{domain}' не разрешён мандатом ({scope['allowed_domains']})",
+                "rule_id": "CAP-SIGNATURE-MISMATCH",
+                "reason": "Подпись мандата не совпадает с сохранённой",
+            }
+        if any(node["revoked"] for node in chain):
+            return {
+                "ok": False,
+                "allowed": False,
+                "blocked": True,
+                "rule_id": "CAP-REVOKED",
+                "reason": "Мандат (или его родитель в цепочке делегирования) отозван",
+            }
+        if any(now >= node["expires_at"] for node in chain):
+            return {
+                "ok": False,
+                "allowed": False,
+                "blocked": True,
+                "rule_id": "CAP-EXPIRED",
+                "reason": "Срок действия мандата истёк",
             }
 
-    if int(calls_used) + 1 > int(scope.get("max_calls", 0)):
-        return {
-            "ok": False,
-            "allowed": False,
-            "blocked": True,
-            "rule_id": "CAP-CALL-LIMIT-EXCEEDED",
-            "reason": f"Исчерпан лимит вызовов мандата ({calls_used}/{scope.get('max_calls')})",
-        }
+        scope = leaf["scope"]
+        tool_l = str(tool_name or "").strip().lower()
+        if not _pattern_covered_by(tool_l, scope.get("allowed_tools") or []):
+            return {
+                "ok": False,
+                "allowed": False,
+                "blocked": True,
+                "rule_id": "CAP-TOOL-DENIED",
+                "reason": f"Инструмент '{tool_l}' запрещён мандатом (разрешены: {scope.get('allowed_tools')})",
+            }
 
-    new_spent = float(spent_cents) + max(0.0, float(spend_cents))
-    if new_spent > float(scope.get("max_spend_cents", 0.0)) + 1e-6:
-        return {
-            "ok": False,
-            "allowed": False,
-            "blocked": True,
-            "rule_id": "CAP-BUDGET-EXCEEDED",
-            "reason": f"Превышен бюджет мандата ({new_spent:.2f}¢ > {scope.get('max_spend_cents'):.2f}¢)",
-        }
+        if path and scope.get("allowed_paths"):
+            norm_p = _norm_path(path)
+            collapsed = posixpath.normpath(norm_p)
+            if (
+                ".." in norm_p.split("/")
+                or collapsed.startswith("..")
+                or not _pattern_covered_by(collapsed, scope["allowed_paths"])
+            ):
+                return {
+                    "ok": False,
+                    "allowed": False,
+                    "blocked": True,
+                    "rule_id": "CAP-PATH-DENIED",
+                    "reason": f"Путь '{path}' выходит за границы мандата ({scope['allowed_paths']})",
+                }
 
-    if not dry_run:
-        memory.store.conn.execute(
-            "UPDATE shield_capabilities SET calls_used = calls_used + 1, spent_cents = ? WHERE token_id = ?",
-            (round(new_spent, 4), token_id),
-        )
-        memory.store.conn.commit()
+        if domain and scope.get("allowed_domains"):
+            if not _domain_covered_by(domain, scope["allowed_domains"]):
+                return {
+                    "ok": False,
+                    "allowed": False,
+                    "blocked": True,
+                    "rule_id": "CAP-DOMAIN-DENIED",
+                    "reason": f"Домен '{domain}' не разрешён мандатом ({scope['allowed_domains']})",
+                }
+
+        # Проверка лимитов по ВСЕЙ цепочке предков (закрывает Delegation Fan-Out Bypass!)
+        for node in chain:
+            n_max_calls = int(node["scope"].get("max_calls", 0))
+            if node["calls_used"] + 1 > n_max_calls:
+                return {
+                    "ok": False,
+                    "allowed": False,
+                    "blocked": True,
+                    "rule_id": "CAP-CALL-LIMIT-EXCEEDED",
+                    "reason": f"Исчерпан лимит вызовов в цепочке мандата {node['token_id']} ({node['calls_used']}/{n_max_calls})",
+                }
+            n_max_spend = float(node["scope"].get("max_spend_cents", 0.0))
+            if node["spent_cents"] + spend > n_max_spend + 1e-6:
+                return {
+                    "ok": False,
+                    "allowed": False,
+                    "blocked": True,
+                    "rule_id": "CAP-BUDGET-EXCEEDED",
+                    "reason": f"Превышен бюджет в цепочке мандата {node['token_id']} ({node['spent_cents'] + spend:.2f}¢ > {n_max_spend:.2f}¢)",
+                }
+
+        if not dry_run:
+            for node in chain:
+                conn.execute(
+                    "UPDATE shield_capabilities SET calls_used = calls_used + 1, spent_cents = ? "
+                    "WHERE token_id = ? AND user_id = ?",
+                    (round(node["spent_cents"] + spend, 4), node["token_id"], uid),
+                )
+            conn.commit()
 
     return {
         "ok": True,
         "allowed": True,
         "blocked": False,
         "token_id": token_id,
-        "agent_id": agent_id,
-        "calls_used": int(calls_used) + (0 if dry_run else 1),
+        "agent_id": leaf["agent_id"],
+        "calls_used": leaf["calls_used"] + (0 if dry_run else 1),
         "max_calls": int(scope.get("max_calls", 0)),
-        "spent_cents": round(new_spent if not dry_run else float(spent_cents), 4),
+        "spent_cents": round(leaf["spent_cents"] + (0.0 if dry_run else spend), 4),
         "max_spend_cents": float(scope.get("max_spend_cents", 0.0)),
     }
 
@@ -550,27 +580,32 @@ def verify_and_consume_capability(
 def revoke_capability_token(memory: Any, token_id: str, *, cascade: bool = True) -> Dict[str, Any]:
     """Отзывает мандат и (по умолчанию) каскадно все делегированные дочерние мандаты."""
     _ensure_tables(memory)
-    conn = memory.store.conn
+    uid = str(getattr(memory, "user_id", "") or "")
     to_revoke = [str(token_id)]
     revoked_ids: List[str] = []
     seen = set()
-    while to_revoke:
-        cur = to_revoke.pop(0)
-        if cur in seen:
-            continue
-        seen.add(cur)
-        res = conn.execute("UPDATE shield_capabilities SET revoked = 1 WHERE token_id = ?", (cur,))
-        if res.rowcount:
-            revoked_ids.append(cur)
-        if cascade:
-            children = conn.execute(
-                "SELECT token_id FROM shield_capabilities WHERE parent_id = ?",
-                (cur,),
-            ).fetchall()
-            for (ch_id,) in children:
-                if ch_id not in seen:
-                    to_revoke.append(str(ch_id))
-    conn.commit()
+    with memory.store._lock:
+        conn = memory.store.conn
+        while to_revoke:
+            cur = to_revoke.pop(0)
+            if cur in seen:
+                continue
+            seen.add(cur)
+            res = conn.execute(
+                "UPDATE shield_capabilities SET revoked = 1 WHERE token_id = ? AND user_id = ?",
+                (cur, uid),
+            )
+            if res.rowcount:
+                revoked_ids.append(cur)
+            if cascade:
+                children = conn.execute(
+                    "SELECT token_id FROM shield_capabilities WHERE parent_id = ? AND user_id = ?",
+                    (cur, uid),
+                ).fetchall()
+                for (ch_id,) in children:
+                    if ch_id not in seen:
+                        to_revoke.append(str(ch_id))
+        conn.commit()
     return {
         "ok": True,
         "token_id": str(token_id),
@@ -581,17 +616,19 @@ def revoke_capability_token(memory: Any, token_id: str, *, cascade: bool = True)
 
 
 def list_capability_tokens(memory: Any, *, include_revoked: bool = False) -> Dict[str, Any]:
-    """Возвращает список выданных мандатов."""
+    """Возвращает список выданных мандатов текущего владельца."""
     _ensure_tables(memory)
+    uid = str(getattr(memory, "user_id", "") or "")
     q = (
         "SELECT token_id, parent_id, root_id, agent_id, label, scope_json, "
         "calls_used, spent_cents, revoked, expires_at, created_at "
-        "FROM shield_capabilities"
+        "FROM shield_capabilities WHERE user_id = ?"
     )
     if not include_revoked:
-        q += " WHERE revoked = 0"
+        q += " AND revoked = 0"
     q += " ORDER BY created_at DESC LIMIT 200"
-    rows = memory.store.conn.execute(q).fetchall()
+    with memory.store._lock:
+        rows = memory.store.conn.execute(q, (uid,)).fetchall()
     items = []
     now = time.time()
     for r in rows:

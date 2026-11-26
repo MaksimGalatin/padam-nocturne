@@ -7,6 +7,7 @@
    ни один ход по отдельности не сработал.
 2. Multi-Turn Crescendo Escalation: постепенное наращивание риска в течение
    сессии (ролевой контекст -> техническое извлечение -> обход правил -> эксфильтрация).
+Все операции SQLite потокобезопасны (`store._lock`) и изолированы по `user_id`.
 """
 from __future__ import annotations
 
@@ -15,6 +16,7 @@ import re
 import time
 from typing import Any, Dict, List
 
+from ..store import add_column_safe
 from .adversarial_norm import canonicalize_adversarial_text
 from .exfil_guard import inspect_exfil_channels
 from .semantic import classify_semantic_threat
@@ -30,25 +32,28 @@ _SOFT_ESCALATION_PATTERNS = [
 
 
 def _ensure_tables(memory: Any) -> None:
-    conn = memory.store.conn
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS shield_crescendo_turns (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT NOT NULL,
-            agent_id TEXT NOT NULL,
-            turn_idx INTEGER NOT NULL,
-            text TEXT NOT NULL,
-            risk_score REAL NOT NULL,
-            signals_json TEXT NOT NULL,
-            created_at REAL NOT NULL
+    with memory.store._lock:
+        conn = memory.store.conn
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS shield_crescendo_turns (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL DEFAULT '',
+                session_id TEXT NOT NULL,
+                agent_id TEXT NOT NULL,
+                turn_idx INTEGER NOT NULL,
+                text TEXT NOT NULL,
+                risk_score REAL NOT NULL,
+                signals_json TEXT NOT NULL,
+                created_at REAL NOT NULL
+            )
+            """
         )
-        """
-    )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_crescendo_sess ON shield_crescendo_turns(session_id, id)"
-    )
-    conn.commit()
+        add_column_safe(conn, "shield_crescendo_turns", "user_id", "TEXT NOT NULL DEFAULT ''")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_crescendo_user_sess ON shield_crescendo_turns(user_id, session_id, id)"
+        )
+        conn.commit()
 
 
 def _score_single_turn(text: str) -> Dict[str, Any]:
@@ -97,38 +102,41 @@ def evaluate_conversation_turn(
 ) -> Dict[str, Any]:
     """Оценивает ход диалога с учётом накопленной истории и склейки фрагментов."""
     _ensure_tables(memory)
+    uid = str(getattr(memory, "user_id", "") or "")
     sess = str(session_id or "default")
-    conn = memory.store.conn
-
-    prev_rows = conn.execute(
-        "SELECT turn_idx, text, risk_score, signals_json FROM shield_crescendo_turns "
-        "WHERE session_id = ? ORDER BY id DESC LIMIT ?",
-        (sess, max(1, int(window_turns))),
-    ).fetchall()
-    prev_rows = list(reversed(prev_rows))
-    turn_idx = (int(prev_rows[-1][0]) + 1) if prev_rows else 1
-
+    win = max(1, min(32, int(window_turns)))
     cur = _score_single_turn(text)
-    conn.execute(
-        """
-        INSERT INTO shield_crescendo_turns
-            (session_id, agent_id, turn_idx, text, risk_score, signals_json, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            sess,
-            str(agent_id or "default"),
-            turn_idx,
-            str(text),
-            cur["turn_risk"],
-            json.dumps(cur["signals"], ensure_ascii=False),
-            time.time(),
-        ),
-    )
-    conn.commit()
 
-    # 1. Split-Payload Reassembly: склеиваем фрагменты окна двумя способами (через пробел и слитно)
-    recent_texts = [str(r[1]) for r in prev_rows[-(window_turns - 1):]] + [str(text)]
+    with memory.store._lock:
+        conn = memory.store.conn
+        prev_rows = conn.execute(
+            "SELECT turn_idx, text, risk_score, signals_json FROM shield_crescendo_turns "
+            "WHERE user_id = ? AND session_id = ? ORDER BY id DESC LIMIT ?",
+            (uid, sess, win),
+        ).fetchall()
+        prev_rows = list(reversed(prev_rows))
+        turn_idx = (int(prev_rows[-1][0]) + 1) if prev_rows else 1
+
+        conn.execute(
+            """
+            INSERT INTO shield_crescendo_turns
+                (user_id, session_id, agent_id, turn_idx, text, risk_score, signals_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                uid,
+                sess,
+                str(agent_id or "default"),
+                turn_idx,
+                str(text)[:8192],
+                cur["turn_risk"],
+                json.dumps(cur["signals"], ensure_ascii=False),
+                time.time(),
+            ),
+        )
+        conn.commit()
+
+    recent_texts = [str(r[1]) for r in prev_rows[-(win - 1):]] + [str(text)]
     joined_space = " ".join(recent_texts)
     joined_compact = "".join(t.strip() for t in recent_texts if len(t.strip()) <= 80)
 
@@ -148,13 +156,11 @@ def evaluate_conversation_turn(
                 )
                 break
 
-    # 2. Crescendo Escalation: экспоненциально-взвешенный накопительный риск по сессии
     all_risks = [float(r[2]) for r in prev_rows] + [cur["turn_risk"]]
     decay = 0.78
     cumulative = 0.0
     for rk in all_risks:
         cumulative = cumulative * decay + rk
-    # Монотонный рост последних >=3 ходов даёт дополнительный штраф
     rising_steps = 0
     for i in range(1, len(all_risks)):
         if all_risks[i] > all_risks[i - 1] + 0.03 and all_risks[i] >= 0.2:
@@ -206,11 +212,13 @@ def evaluate_conversation_turn(
 
 
 def reset_crescendo_session(memory: Any, session_id: str) -> Dict[str, Any]:
-    """Очищает окно многоходового анализа для сессии."""
+    """Очищает окно многоходового анализа для сессии текущего владельца."""
     _ensure_tables(memory)
-    res = memory.store.conn.execute(
-        "DELETE FROM shield_crescendo_turns WHERE session_id = ?",
-        (str(session_id or "default"),),
-    )
-    memory.store.conn.commit()
+    uid = str(getattr(memory, "user_id", "") or "")
+    with memory.store._lock:
+        res = memory.store.conn.execute(
+            "DELETE FROM shield_crescendo_turns WHERE user_id = ? AND session_id = ?",
+            (uid, str(session_id or "default")),
+        )
+        memory.store.conn.commit()
     return {"ok": True, "session_id": str(session_id), "deleted_turns": int(res.rowcount)}

@@ -64,10 +64,16 @@ _DANGEROUS_JS_RE = re.compile(
 )
 
 
+_VOID_TAGS = frozenset(
+    {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
+)
+
+
 class _DomShieldParser(HTMLParser):
     def __init__(self, page_host: str) -> None:
         super().__init__(convert_charrefs=True)
         self.page_host = page_host.lower()
+        self._hidden_stack: List[Tuple[str, bool]] = []
         self.hidden_depth = 0
         self.skip_text_depth = 0
         self.current_form_action: Optional[str] = None
@@ -93,8 +99,11 @@ class _DomShieldParser(HTMLParser):
         if t in ("script", "style", "noscript"):
             self.skip_text_depth += 1
 
-        if self._is_hidden_tag(ad):
-            self.hidden_depth += 1
+        is_hid = self._is_hidden_tag(ad)
+        if t not in _VOID_TAGS:
+            self._hidden_stack.append((t, is_hid))
+            if is_hid:
+                self.hidden_depth += 1
 
         # Проверка UI-Redressing / Clickjacking overlay
         style = ad.get("style", "")
@@ -138,8 +147,15 @@ class _DomShieldParser(HTMLParser):
         t = tag.lower()
         if t in ("script", "style", "noscript") and self.skip_text_depth > 0:
             self.skip_text_depth -= 1
-        if self.hidden_depth > 0:
-            self.hidden_depth -= 1
+        # Корректный откат стека скрытости до ближайшего открытого тега `t`
+        for idx in range(len(self._hidden_stack) - 1, -1, -1):
+            if self._hidden_stack[idx][0] == t:
+                popped = self._hidden_stack[idx:]
+                del self._hidden_stack[idx:]
+                for _, was_hid in popped:
+                    if was_hid and self.hidden_depth > 0:
+                        self.hidden_depth -= 1
+                break
         if t == "form" and self.current_form_action is not None:
             act = self.current_form_action
             if self.current_form_has_sensitive and act.lower().startswith(("http://", "https://")):
@@ -174,6 +190,21 @@ class _DomShieldParser(HTMLParser):
                 )
         else:
             self.visible_chunks.append(txt)
+
+    def handle_comment(self, data: str) -> None:
+        txt = str(data or "").strip()
+        if not txt:
+            return
+        self.hidden_chunks.append(txt)
+        norm = canonicalize_adversarial_text(txt)["canonical"]
+        if _INJECTION_HINT_RE.search(txt) or _INJECTION_HINT_RE.search(norm):
+            self.findings.append(
+                {
+                    "rule_id": "DOM-COMMENT-INJECTION",
+                    "severity": "CRITICAL",
+                    "detail": f"Промпт-инъекция внутри скрытого HTML-комментария: {txt[:140]}",
+                }
+            )
 
 
 def inspect_dom_html(html: str, *, page_url: str = "") -> Dict[str, Any]:

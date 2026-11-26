@@ -5,6 +5,8 @@ const DANGEROUS_SHELL_RE = /(?:\brm\s+-[a-z]*r[a-z]*f\s+(?:\/|~|\$HOME)|\/dev\/t
 const EVM_UNLIMITED_APPROVE_RE = /^0x095ea7b3[0-9a-f]{64}f{32,64}$/i;
 const EVM_DANGEROUS_SELECTORS = new Set(["a22cb465", "f2fde38b", "3659cfe6", "715018a6"]);
 const SECRET_RE = /(?:sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16}|-----BEGIN (?:RSA|EC|OPENSSH|PRIVATE) KEY-----)/;
+const SSRF_RE = /(?:https?:\/\/(?:169\.254\.169\.254|169\.254\.170\.2|100\.100\.100\.200|metadata\.google\.internal|2852039166|0xa9fea9fe|\[::ffff:169\.254\.169\.254\])|(?:file|gopher|dict):\/\/)/i;
+const MD_IMG_EXFIL_RE = /!\[[^\]]*\]\(https?:\/\/[^)\s]+\?[^)\s]*(?:secret|token|key|data|d|k|q)=[^)\s]{4,}\)/i;
 
 export class PadamShieldBlockedError extends Error {
   constructor(message, verdict) {
@@ -52,6 +54,8 @@ export class PadamShieldMiddleware {
     }
     if (SECRET_RE.test(combined)) reasons.push("secret_exfiltration_blocked");
     if (DANGEROUS_SHELL_RE.test(combined)) reasons.push("dangerous_shell_command");
+    if (SSRF_RE.test(combined)) reasons.push("ssrf_cloud_metadata_blocked");
+    if (MD_IMG_EXFIL_RE.test(combined)) reasons.push("markdown_image_exfil_blocked");
 
     const hexMatches = combined.match(/\b0x[a-fA-F0-9]{72,}\b/g) || [];
     for (const h of hexMatches) {

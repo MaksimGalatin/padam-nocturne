@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import re
 import threading
 from typing import Any, Dict, List, Optional, Tuple
 from urllib import request as _urlreq
@@ -22,10 +23,14 @@ from urllib.parse import urlparse
 
 from .. import agentic_shield as _ash
 from .exfil_guard import inspect_exfil_channels
+from .honeytoken import scan_for_honeytokens
 from .output_rag import inspect_output_guardrails, sanitize_rag_document
 from .semantic import classify_semantic_threat
 from .ssrf_path_guard import inspect_file_path_access, inspect_url_ssrf
 from .taint import observe_tool_step
+
+
+_INLINE_URL_RE = re.compile(r"(?i)\b(?:https?|file|gopher|dict|ftp|javascript)://[^\s\"'<>`]+")
 
 
 def _extract_urls_and_paths(obj: Any, urls: List[str], paths: List[str]) -> None:
@@ -33,15 +38,21 @@ def _extract_urls_and_paths(obj: Any, urls: List[str], paths: List[str]) -> None
         for k, v in obj.items():
             kl = str(k).lower()
             if isinstance(v, str):
-                if v.lower().startswith(("http://", "https://", "file://", "gopher://", "ftp://")):
+                if v.lower().startswith(("http://", "https://", "file://", "gopher://", "dict://", "ftp://")):
                     urls.append(v)
-                elif any(t in kl for t in ("path", "file", "dir", "target")):
+                else:
+                    for m in _INLINE_URL_RE.finditer(v):
+                        urls.append(m.group(0))
+                if any(t in kl for t in ("path", "file", "dir", "target")) and "://" not in v:
                     paths.append(v)
             else:
                 _extract_urls_and_paths(v, urls, paths)
     elif isinstance(obj, list):
         for item in obj:
             _extract_urls_and_paths(item, urls, paths)
+    elif isinstance(obj, str):
+        for m in _INLINE_URL_RE.finditer(obj):
+            urls.append(m.group(0))
 
 
 def inspect_http_mcp_request(
@@ -107,7 +118,17 @@ def inspect_http_mcp_request(
                 "reason": pr["findings"][0]["detail"],
             }
 
-    # 3. Кольцо 3: платежи, домены, команды
+    # 3. Проверка Honey-Tokens в исходящих аргументах
+    ht = scan_for_honeytokens(memory, args_text, agent_id=agent_id, channel="mcp_http_call", trip_kill_switch=False)
+    if ht.get("triggered"):
+        return {
+            "allowed": False,
+            "blocked": True,
+            "rule_id": "HONEYTOKEN-EXFIL-TRAP",
+            "reason": f"В исходящем HTTP MCP вызове обнаружен Honey-Token ({ht['hits'][0]['decoy_kind']})",
+        }
+
+    # 4. Кольцо 3: платежи, домены, команды
     ob = _ash.inspect_outbound_action(
         memory,
         action_type="http" if urls else "tool_call",
@@ -275,8 +296,13 @@ class McpHttpShieldGateway:
             def do_POST(self) -> None:
                 if not self._check_dns_rebinding():
                     return
-                length = int(self.headers.get("Content-Length") or "0")
-                raw_body = self.rfile.read(min(length, 4 * 1024 * 1024))
+                try:
+                    length = int(self.headers.get("Content-Length") or "0")
+                except ValueError:
+                    return self._send_json(400, {"error": "INVALID_CONTENT_LENGTH"})
+                if length < 0 or length > 4 * 1024 * 1024:
+                    return self._send_json(413, {"error": "PAYLOAD_TOO_LARGE"})
+                raw_body = self.rfile.read(length)
                 try:
                     msg = json.loads(raw_body.decode("utf-8"))
                 except Exception:

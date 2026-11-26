@@ -7,53 +7,62 @@
 ловушки 5 типов (`aws_key`, `openai_key`, `evm_wallet`, `iban`, `canary_url`),
 привязывает их к файлам/инструментам и при появлении ЛЮБОЙ приманки в тексте,
 исходящем трафике или памяти мгновенно включает Kill Switch и пишет алерт.
+Все операции SQLite потокобезопасны (`store._lock`) и изолированы по `user_id`.
 """
 from __future__ import annotations
 
 import hashlib
 import secrets
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from .. import agentic_shield as _ash
+from ..store import add_column_safe
 
 
 def _ensure_tables(memory: Any) -> None:
-    conn = memory.store.conn
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS shield_honeytokens (
-            token_id TEXT PRIMARY KEY,
-            decoy_kind TEXT NOT NULL,
-            token_value TEXT NOT NULL UNIQUE,
-            placement TEXT NOT NULL DEFAULT '',
-            label TEXT NOT NULL DEFAULT '',
-            active INTEGER NOT NULL DEFAULT 1,
-            hits INTEGER NOT NULL DEFAULT 0,
-            created_at REAL NOT NULL
+    with memory.store._lock:
+        conn = memory.store.conn
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS shield_honeytokens (
+                token_id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL DEFAULT '',
+                decoy_kind TEXT NOT NULL,
+                token_value TEXT NOT NULL UNIQUE,
+                placement TEXT NOT NULL DEFAULT '',
+                label TEXT NOT NULL DEFAULT '',
+                active INTEGER NOT NULL DEFAULT 1,
+                hits INTEGER NOT NULL DEFAULT 0,
+                created_at REAL NOT NULL
+            )
+            """
         )
-        """
-    )
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS shield_honeytoken_hits (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            token_id TEXT NOT NULL,
-            decoy_kind TEXT NOT NULL,
-            agent_id TEXT NOT NULL,
-            channel TEXT NOT NULL,
-            detail TEXT NOT NULL,
-            created_at REAL NOT NULL
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS shield_honeytoken_hits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL DEFAULT '',
+                token_id TEXT NOT NULL,
+                decoy_kind TEXT NOT NULL,
+                agent_id TEXT NOT NULL,
+                channel TEXT NOT NULL,
+                detail TEXT NOT NULL,
+                created_at REAL NOT NULL
+            )
+            """
         )
-        """
-    )
-    conn.commit()
+        add_column_safe(conn, "shield_honeytokens", "user_id", "TEXT NOT NULL DEFAULT ''")
+        add_column_safe(conn, "shield_honeytoken_hits", "user_id", "TEXT NOT NULL DEFAULT ''")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_honeytokens_user ON shield_honeytokens(user_id, active)"
+        )
+        conn.commit()
 
 
 def _generate_decoy_value(decoy_kind: str) -> str:
     kind = decoy_kind.strip().lower()
     if kind == "aws_key":
-        # Реалистичный формат AKIA + 16 заглавных букв/цифр (не настоящий ключ)
         alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
         body = "".join(secrets.choice(alphabet) for _ in range(16))
         return "AKIA" + body
@@ -62,7 +71,6 @@ def _generate_decoy_value(decoy_kind: str) -> str:
     if kind == "evm_wallet":
         return "0x" + hashlib.sha256(b"padam-decoy-evm-" + secrets.token_bytes(16)).hexdigest()[:40]
     if kind == "iban":
-        # Тестовый IBAN с корректной структурой (DE00 + 18 цифр)
         digits = "".join(str(secrets.randbelow(10)) for _ in range(18))
         return "DE00" + digits
     if kind == "canary_url":
@@ -79,20 +87,22 @@ def plant_honeytoken(
 ) -> Dict[str, Any]:
     """Создаёт и регистрирует новую приманку-ловушку указанного типа."""
     _ensure_tables(memory)
+    uid = str(getattr(memory, "user_id", "") or "")
     kind = str(decoy_kind or "aws_key").strip().lower()
     token_id = "ht_" + secrets.token_hex(6)
     val = _generate_decoy_value(kind)
     now = time.time()
-    conn = memory.store.conn
-    conn.execute(
-        """
-        INSERT INTO shield_honeytokens
-            (token_id, decoy_kind, token_value, placement, label, active, hits, created_at)
-        VALUES (?, ?, ?, ?, ?, 1, 0, ?)
-        """,
-        (token_id, kind, val, str(placement or ""), str(label or ""), now),
-    )
-    conn.commit()
+    with memory.store._lock:
+        conn = memory.store.conn
+        conn.execute(
+            """
+            INSERT INTO shield_honeytokens
+                (token_id, user_id, decoy_kind, token_value, placement, label, active, hits, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, 1, 0, ?)
+            """,
+            (token_id, uid, kind, val, str(placement or ""), str(label or ""), now),
+        )
+        conn.commit()
     return {
         "ok": True,
         "token_id": token_id,
@@ -112,51 +122,55 @@ def scan_for_honeytokens(
     channel: str = "outbound",
     trip_kill_switch: bool = True,
 ) -> Dict[str, Any]:
-    """Ищет активные Honey-Tokens в тексте; при попадании немедленно бьёт тревогу и Kill Switch."""
+    """Ищет активные Honey-Tokens владельца в тексте; при попадании бьёт тревогу и Kill Switch."""
     _ensure_tables(memory)
     raw = str(text or "")
     if not raw:
         return {"ok": True, "triggered": False, "blocked": False, "hits": [], "kill_switch_tripped": False}
 
-    conn = memory.store.conn
-    rows = conn.execute(
-        "SELECT token_id, decoy_kind, token_value, placement, label "
-        "FROM shield_honeytokens WHERE active = 1"
-    ).fetchall()
-
+    uid = str(getattr(memory, "user_id", "") or "")
     hits: List[Dict[str, Any]] = []
     now = time.time()
-    for token_id, decoy_kind, token_value, placement, label in rows:
-        if token_value and token_value in raw:
-            hits.append(
-                {
-                    "token_id": str(token_id),
-                    "decoy_kind": str(decoy_kind),
-                    "placement": str(placement),
-                    "label": str(label),
-                }
-            )
-            conn.execute(
-                "UPDATE shield_honeytokens SET hits = hits + 1 WHERE token_id = ?",
-                (token_id,),
-            )
-            conn.execute(
-                """
-                INSERT INTO shield_honeytoken_hits
-                    (token_id, decoy_kind, agent_id, channel, detail, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    str(token_id),
-                    str(decoy_kind),
-                    str(agent_id or "unknown"),
-                    str(channel or "outbound"),
-                    f"Приманка из '{placement}' обнаружена в канале '{channel}'",
-                    now,
-                ),
-            )
-    if hits:
-        conn.commit()
+    with memory.store._lock:
+        conn = memory.store.conn
+        rows = conn.execute(
+            "SELECT token_id, decoy_kind, token_value, placement, label "
+            "FROM shield_honeytokens WHERE user_id = ? AND active = 1",
+            (uid,),
+        ).fetchall()
+
+        for token_id, decoy_kind, token_value, placement, label in rows:
+            if token_value and token_value in raw:
+                hits.append(
+                    {
+                        "token_id": str(token_id),
+                        "decoy_kind": str(decoy_kind),
+                        "placement": str(placement),
+                        "label": str(label),
+                    }
+                )
+                conn.execute(
+                    "UPDATE shield_honeytokens SET hits = hits + 1 WHERE token_id = ? AND user_id = ?",
+                    (token_id, uid),
+                )
+                conn.execute(
+                    """
+                    INSERT INTO shield_honeytoken_hits
+                        (user_id, token_id, decoy_kind, agent_id, channel, detail, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        uid,
+                        str(token_id),
+                        str(decoy_kind),
+                        str(agent_id or "unknown"),
+                        str(channel or "outbound"),
+                        f"Приманка из '{placement}' обнаружена в канале '{channel}'",
+                        now,
+                    ),
+                )
+        if hits:
+            conn.commit()
 
     ks_tripped = False
     if hits and trip_kill_switch:
@@ -182,12 +196,15 @@ def scan_for_honeytokens(
 
 
 def list_honeytokens(memory: Any) -> Dict[str, Any]:
-    """Возвращает список заложенных приманок (с маскированием значения для безопасного UI)."""
+    """Возвращает список заложенных приманок владельца (с маскированием значения)."""
     _ensure_tables(memory)
-    rows = memory.store.conn.execute(
-        "SELECT token_id, decoy_kind, token_value, placement, label, active, hits, created_at "
-        "FROM shield_honeytokens ORDER BY created_at DESC LIMIT 200"
-    ).fetchall()
+    uid = str(getattr(memory, "user_id", "") or "")
+    with memory.store._lock:
+        rows = memory.store.conn.execute(
+            "SELECT token_id, decoy_kind, token_value, placement, label, active, hits, created_at "
+            "FROM shield_honeytokens WHERE user_id = ? ORDER BY created_at DESC LIMIT 200",
+            (uid,),
+        ).fetchall()
     items = []
     for r in rows:
         v = str(r[2])

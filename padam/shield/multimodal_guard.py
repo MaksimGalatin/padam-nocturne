@@ -132,7 +132,41 @@ def _scan_png(data: bytes) -> Dict[str, Any]:
         if ctype == b"tEXt":
             texts.append(cdata.replace(b"\x00", b": ").decode("latin-1", errors="replace"))
         elif ctype == b"iTXt":
-            texts.append(cdata.replace(b"\x00", b" ").decode("utf-8", errors="replace"))
+            # Формат PNG iTXt: keyword\0 comp_flag(1) comp_method(1) lang\0 translated_kw\0 text
+            nul1 = cdata.find(b"\x00")
+            if nul1 != -1 and nul1 + 3 <= len(cdata):
+                key = cdata[:nul1].decode("latin-1", errors="replace")
+                comp_flag = cdata[nul1 + 1]
+                rest = cdata[nul1 + 3 :]
+                nul2 = rest.find(b"\x00")
+                if nul2 != -1:
+                    rest2 = rest[nul2 + 1 :]
+                    nul3 = rest2.find(b"\x00")
+                    if nul3 != -1:
+                        body = rest2[nul3 + 1 :]
+                        if comp_flag == 1:
+                            try:
+                                dobj = zlib.decompressobj()
+                                raw_txt = dobj.decompress(body, _MAX_ZLIB_DECOMPRESS)
+                                if dobj.unconsumed_tail:
+                                    findings.append(
+                                        {
+                                            "rule_id": "MEDIA-ZIP-BOMB",
+                                            "severity": "CRITICAL",
+                                            "detail": f"Подозрение на zip-бомбу в сжатом PNG-чанке iTXt ({key})",
+                                        }
+                                    )
+                                texts.append(f"{key}: " + raw_txt.decode("utf-8", errors="replace"))
+                            except Exception:
+                                pass
+                        else:
+                            texts.append(f"{key}: " + body.decode("utf-8", errors="replace"))
+                    else:
+                        texts.append(cdata.replace(b"\x00", b" ").decode("utf-8", errors="replace"))
+                else:
+                    texts.append(cdata.replace(b"\x00", b" ").decode("utf-8", errors="replace"))
+            else:
+                texts.append(cdata.replace(b"\x00", b" ").decode("utf-8", errors="replace"))
         elif ctype == b"zTXt":
             nul = cdata.find(b"\x00")
             if nul != -1 and nul + 2 <= len(cdata):
@@ -191,6 +225,12 @@ def _scan_jpeg(data: bytes) -> Dict[str, Any]:
         seg_data = data[pos + 4 : pos + 2 + seg_len]
         if marker in (0xFE, 0xE1, 0xED):  # COM, APP1 (EXIF/XMP), APP13
             texts.append(seg_data.decode("utf-8", errors="ignore"))
+            if b"\x00" in seg_data[:256]:
+                # Windows EXIF XPComment / XPTitle часто хранится в UTF-16LE
+                for enc in ("utf-16le", "utf-16be"):
+                    dec = seg_data.decode(enc, errors="ignore")
+                    if any(ch.isalpha() for ch in dec):
+                        texts.append(dec)
         pos += 2 + seg_len
 
     if pos < n:

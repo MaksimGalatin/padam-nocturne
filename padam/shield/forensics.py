@@ -2,9 +2,11 @@
 """Криминалистическая реконструкция инцидентов (Forensic Timeline & Root-Cause Replay).
 
 Сводит события из всех локальных таблиц PADAM Agentic Shield (`shield_taint_edges`,
-`shield_events`, `shield_outbound_queue`, `audit_chain`, `shield_crescendo_turns`)
-в единую хронологическую ленту «Первоисточник -> Распространение -> Блокировка»,
-вычисляет корень заражения (root cause), проверяет целостность SHA-256 цепи аудита
+`shield_events`, `shield_outbound_queue`, `audit_chain`, `shield_crescendo_turns`,
+`shield_honeytoken_hits`) строго в пределах `memory.user_id` и под блокировкой
+`memory.store._lock` в единую хронологическую ленту «Первоисточник ->
+Распространение -> Блокировка», вычисляет корень заражения (root cause),
+честно проверяет целостность SHA-256 цепи аудита (`audit_chain.verify_audit_chain`)
 и Tamper-Proof пломбы БД, маппит инцидент на MITRE ATLAS / OWASP Agentic Top 10
 и формирует криптографически подписанный отчёт (JSON + Markdown).
 """
@@ -39,6 +41,11 @@ def _table_exists(conn: Any, name: str) -> bool:
     return row is not None
 
 
+def _table_has_column(conn: Any, table: str, col: str) -> bool:
+    rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+    return any(str(r[1]) == col for r in rows)
+
+
 def build_forensic_timeline(
     memory: Any,
     *,
@@ -47,133 +54,145 @@ def build_forensic_timeline(
 ) -> Dict[str, Any]:
     """Собирает хронологию инцидента, корень причины и верификацию цепи аудита."""
     _ash._ensure_tables(memory)
-    conn = memory.store.conn
+    lim = max(1, min(500, int(limit)))
+    uid = str(getattr(memory, "user_id", "") or "")
     events: List[Dict[str, Any]] = []
 
-    # 1. Ребра графа Taint CFI
-    if _table_exists(conn, "shield_taint_edges"):
-        q = (
-            "SELECT created_at, session_id, agent_id, step_seq, source_node, tool_name, "
-            "target, taints_added_json, verdict, reason FROM shield_taint_edges"
-        )
-        params: List[Any] = []
-        if session_id:
-            q += " WHERE session_id = ?"
-            params.append(session_id)
-        q += " ORDER BY created_at ASC, step_seq ASC LIMIT ?"
-        params.append(limit)
-        for r in conn.execute(q, params).fetchall():
-            events.append(
-                {
-                    "ts": str(r[0]),
-                    "kind": "taint",
-                    "session_id": str(r[1]),
-                    "agent_id": str(r[2]),
-                    "step": int(r[3]),
-                    "source": str(r[4]),
-                    "tool": str(r[5]),
-                    "target": str(r[6]),
-                    "taints_added": json.loads(r[7] or "[]"),
-                    "verdict": str(r[8]),
-                    "detail": str(r[9]),
-                }
-            )
+    with memory.store._lock:
+        conn = memory.store.conn
 
-    # 2. Исходящая очередь / блокировки
-    if _table_exists(conn, "shield_outbound_queue"):
-        for r in conn.execute(
-            "SELECT created_at, agent_id, action_type, target, risk_level, status, reasons_json "
-            "FROM shield_outbound_queue ORDER BY created_at ASC LIMIT ?",
-            (limit,),
-        ).fetchall():
-            reasons = json.loads(r[6] or "[]")
-            events.append(
-                {
-                    "ts": str(r[0]),
-                    "kind": "outbound",
-                    "session_id": session_id or "",
-                    "agent_id": str(r[1]),
-                    "tool": str(r[2]),
-                    "target": str(r[3]),
-                    "verdict": str(r[5]),
-                    "risk_level": str(r[4]),
-                    "detail": "; ".join(str(x) for x in reasons) if reasons else str(r[5]),
-                }
+        # 1. Ребра графа Taint CFI
+        if _table_exists(conn, "shield_taint_edges"):
+            q = (
+                "SELECT created_at, session_id, agent_id, step_seq, source_node, tool_name, "
+                "target, taints_added_json, verdict, reason FROM shield_taint_edges WHERE user_id = ?"
             )
-
-    # 3. Аномалии Kill Switch
-    if _table_exists(conn, "shield_events"):
-        for r in conn.execute(
-            "SELECT created_at, agent_id, event_type, weight, detail "
-            "FROM shield_events ORDER BY created_at ASC LIMIT ?",
-            (limit,),
-        ).fetchall():
-            events.append(
-                {
-                    "ts": str(r[0]),
-                    "kind": "anomaly",
-                    "session_id": session_id or "",
-                    "agent_id": str(r[1]),
-                    "tool": str(r[2]),
-                    "target": "",
-                    "verdict": "anomaly",
-                    "weight": int(r[3]),
-                    "detail": str(r[4]),
-                }
-            )
-
-    # 4. Ходы Crescendo
-    if _table_exists(conn, "shield_crescendo_turns"):
-        q = (
-            "SELECT created_at, session_id, agent_id, turn_idx, risk_score, signals_json "
-            "FROM shield_crescendo_turns"
-        )
-        params = []
-        if session_id:
-            q += " WHERE session_id = ?"
-            params.append(session_id)
-        q += " ORDER BY id ASC LIMIT ?"
-        params.append(limit)
-        for r in conn.execute(q, params).fetchall():
-            sigs = json.loads(r[5] or "[]")
-            if float(r[4]) >= 0.35 or sigs:
+            params: List[Any] = [uid]
+            if session_id:
+                q += " AND session_id = ?"
+                params.append(session_id)
+            q += " ORDER BY created_at ASC, step_seq ASC LIMIT ?"
+            params.append(lim)
+            for r in conn.execute(q, params).fetchall():
                 events.append(
                     {
-                        "ts": time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(float(r[0]))),
-                        "kind": "crescendo",
+                        "ts": str(r[0]),
+                        "kind": "taint",
                         "session_id": str(r[1]),
                         "agent_id": str(r[2]),
                         "step": int(r[3]),
-                        "tool": "dialogue_turn",
-                        "target": "",
-                        "verdict": "escalated" if float(r[4]) >= 0.7 else "observed",
-                        "detail": f"risk={float(r[4]):.2f}, signals={sigs}",
+                        "source": str(r[4]),
+                        "tool": str(r[5]),
+                        "target": str(r[6]),
+                        "taints_added": json.loads(r[7] or "[]"),
+                        "verdict": str(r[8]),
+                        "detail": str(r[9]),
                     }
                 )
 
-    # 5. Срабатывания Honey-Tokens
-    if _table_exists(conn, "shield_honeytoken_hits"):
-        for r in conn.execute(
-            "SELECT created_at, agent_id, token_id, decoy_kind, channel, detail "
-            "FROM shield_honeytoken_hits ORDER BY id ASC LIMIT ?",
-            (limit,),
-        ).fetchall():
-            events.append(
-                {
-                    "ts": time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(float(r[0]))),
-                    "kind": "honeytoken",
-                    "session_id": session_id or "",
-                    "agent_id": str(r[1]),
-                    "tool": str(r[4]),
-                    "target": str(r[2]),
-                    "verdict": "blocked_kill_switch",
-                    "detail": f"Honey-Token ({r[3]}): {r[5]}",
-                }
+        # 2. Исходящая очередь / блокировки
+        if _table_exists(conn, "shield_outbound_queue"):
+            for r in conn.execute(
+                "SELECT created_at, agent_id, action_type, target, risk_level, status, reasons_json "
+                "FROM shield_outbound_queue WHERE user_id = ? ORDER BY created_at ASC LIMIT ?",
+                (uid, lim),
+            ).fetchall():
+                reasons = json.loads(r[6] or "[]")
+                events.append(
+                    {
+                        "ts": str(r[0]),
+                        "kind": "outbound",
+                        "session_id": session_id or "",
+                        "agent_id": str(r[1]),
+                        "tool": str(r[2]),
+                        "target": str(r[3]),
+                        "verdict": str(r[5]),
+                        "risk_level": str(r[4]),
+                        "detail": "; ".join(str(x) for x in reasons) if reasons else str(r[5]),
+                    }
+                )
+
+        # 3. Аномалии Kill Switch
+        if _table_exists(conn, "shield_events"):
+            for r in conn.execute(
+                "SELECT created_at, agent_id, event_type, weight, detail "
+                "FROM shield_events WHERE user_id = ? ORDER BY created_at ASC LIMIT ?",
+                (uid, lim),
+            ).fetchall():
+                events.append(
+                    {
+                        "ts": str(r[0]),
+                        "kind": "anomaly",
+                        "session_id": session_id or "",
+                        "agent_id": str(r[1]),
+                        "tool": str(r[2]),
+                        "target": "",
+                        "verdict": "anomaly",
+                        "weight": int(r[3]),
+                        "detail": str(r[4]),
+                    }
+                )
+
+        # 4. Ходы Crescendo
+        if _table_exists(conn, "shield_crescendo_turns"):
+            has_u = _table_has_column(conn, "shield_crescendo_turns", "user_id")
+            q = (
+                "SELECT created_at, session_id, agent_id, turn_idx, risk_score, signals_json "
+                "FROM shield_crescendo_turns WHERE 1=1"
             )
+            params = []
+            if has_u:
+                q += " AND user_id = ?"
+                params.append(uid)
+            if session_id:
+                q += " AND session_id = ?"
+                params.append(session_id)
+            q += " ORDER BY id ASC LIMIT ?"
+            params.append(lim)
+            for r in conn.execute(q, params).fetchall():
+                sigs = json.loads(r[5] or "[]")
+                if float(r[4]) >= 0.35 or sigs:
+                    events.append(
+                        {
+                            "ts": time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(float(r[0]))),
+                            "kind": "crescendo",
+                            "session_id": str(r[1]),
+                            "agent_id": str(r[2]),
+                            "step": int(r[3]),
+                            "tool": "dialogue_turn",
+                            "target": "",
+                            "verdict": "escalated" if float(r[4]) >= 0.7 else "observed",
+                            "detail": f"risk={float(r[4]):.2f}, signals={sigs}",
+                        }
+                    )
+
+        # 5. Срабатывания Honey-Tokens
+        if _table_exists(conn, "shield_honeytoken_hits"):
+            has_u = _table_has_column(conn, "shield_honeytoken_hits", "user_id")
+            q = "SELECT created_at, agent_id, token_id, decoy_kind, channel, detail FROM shield_honeytoken_hits"
+            params = []
+            if has_u:
+                q += " WHERE user_id = ?"
+                params.append(uid)
+            q += " ORDER BY id ASC LIMIT ?"
+            params.append(lim)
+            for r in conn.execute(q, params).fetchall():
+                events.append(
+                    {
+                        "ts": time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(float(r[0]))),
+                        "kind": "honeytoken",
+                        "session_id": session_id or "",
+                        "agent_id": str(r[1]),
+                        "tool": str(r[4]),
+                        "target": str(r[2]),
+                        "verdict": "blocked_kill_switch",
+                        "detail": f"Honey-Token ({r[3]}): {r[5]}",
+                    }
+                )
 
     events.sort(key=lambda e: str(e.get("ts", "")))
 
-    # Поиск первопричины (Root Cause): первое заражение Taint / первый Honey-Token / первая блокировка
+    # Поиск первопричины (Root Cause)
     root_cause: Optional[Dict[str, Any]] = None
     for ev in events:
         if ev["kind"] == "taint" and ev.get("taints_added"):
@@ -210,17 +229,23 @@ def build_forensic_timeline(
             mitre_id, owasp_id, desc = _MITRE_MAP[k]
             tactics.append({"mitre_atlas": mitre_id, "owasp_agentic": owasp_id, "name": desc})
 
-    # Проверка целостности аудита и Tamper-Proof пломбы БД
+    # Честная проверка целостности цепи аудита (без ложно-позитивного except -> True!)
+    chain_detail = ""
     try:
-        chain_res = _audit_chain.verify_chain(conn)
-        chain_ok = bool(chain_res.get("ok", True))
-    except Exception:
-        chain_ok = True
+        chain_res = _audit_chain.verify_audit_chain(memory)
+        chain_ok = bool(chain_res.get("valid", chain_res.get("ok", False)))
+        if not chain_ok:
+            chain_detail = str(chain_res.get("error") or chain_res.get("broken_at") or "audit_chain_broken")
+    except Exception as exc:
+        chain_ok = False
+        chain_detail = f"verify_error: {exc}"
+
     seal_res = verify_shield_integrity(memory, enforce_lockdown_on_tamper=False)
 
     report = {
         "ok": True,
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "user_id": uid,
         "session_id": session_id or "all",
         "events_count": len(events),
         "blocked_events": sum(1 for e in events if "block" in str(e.get("verdict", "")).lower() or e.get("verdict") == "pending"),
@@ -228,6 +253,7 @@ def build_forensic_timeline(
         "mitre_owasp_mapping": tactics,
         "integrity": {
             "audit_chain_ok": chain_ok,
+            "audit_chain_detail": chain_detail,
             "db_tamper_seal_ok": not bool(seal_res.get("tampered")),
         },
         "timeline": events,
