@@ -12,6 +12,8 @@ import json
 import os
 import shutil
 import subprocess
+
+from ._no_window import NO_WINDOW
 import threading
 import time
 import urllib.error
@@ -1192,7 +1194,7 @@ def recommend_local_model() -> dict[str, Any]:
             out = subprocess.check_output(
                 [smi, "--query-gpu=name,memory.free", "--format=csv,noheader,nounits"],
                 text=True, encoding="utf-8", errors="replace",
-                timeout=3,
+                timeout=3, **NO_WINDOW
             ).strip()
             if out:
                 parts = out.splitlines()[0].split(",")

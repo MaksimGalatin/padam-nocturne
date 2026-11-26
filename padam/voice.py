@@ -10,6 +10,8 @@ import importlib.util
 import os
 import shutil
 import subprocess
+
+from ._no_window import NO_WINDOW
 import sys
 from pathlib import Path
 from typing import Any, Callable
@@ -86,14 +88,14 @@ def speak_local(text: str, *, dry_run: bool = False) -> dict[str, Any]:
             input=clean_text,
             text=True, encoding="utf-8", errors="replace",
             timeout=15,
-            check=True,
+            check=True, **NO_WINDOW
         )
     elif engine == "macos_say":
         # Фаза 2 аудита GLM, SUP-07: текст — через stdin, не аргументом: «-o файл …» в тексте иначе читался как флаг.
-        subprocess.run(["say"], input=clean_text, text=True, encoding="utf-8", errors="replace", timeout=15, check=True)
+        subprocess.run(["say"], input=clean_text, text=True, encoding="utf-8", errors="replace", timeout=15, check=True, **NO_WINDOW)
     elif engine == "espeak":
         cmd = shutil.which("espeak-ng") or shutil.which("espeak") or "espeak"
-        subprocess.run([cmd, "--stdin"], input=clean_text, text=True, encoding="utf-8", errors="replace", timeout=15, check=True)
+        subprocess.run([cmd, "--stdin"], input=clean_text, text=True, encoding="utf-8", errors="replace", timeout=15, check=True, **NO_WINDOW)
 
     return {
         "ok": True,

@@ -18,6 +18,8 @@ from pathlib import Path
 import re
 import socket
 import subprocess
+
+from ._no_window import NO_WINDOW
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -636,7 +638,7 @@ def restrict_file_to_owner(path: Path | str) -> bool:
             capture_output=True,
             text=True, encoding="utf-8", errors="replace",
             timeout=10,
-            check=False,
+            check=False, **NO_WINDOW
         )
         if res.returncode != 0:
             return False
@@ -645,7 +647,7 @@ def restrict_file_to_owner(path: Path | str) -> bool:
         # Снимаем каждую чужую запись по фактическому списку DACL и проверяем итог.
         for чужой in [s for s in _windows_file_dacl_sids(target) if s != sid]:
             subprocess.run(["icacls", str(target), "/remove:g", f"*{чужой}", "/remove:d", f"*{чужой}"],
-                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10, check=False)
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10, check=False, **NO_WINDOW)
         return verify_owner_only_permissions(target)
     except Exception:
         try:

@@ -23,6 +23,8 @@ import math
 import os
 import shutil
 import subprocess
+
+from ._no_window import NO_WINDOW
 import time
 import urllib.request
 from pathlib import Path
@@ -451,7 +453,7 @@ def _try_local_sd_cpp(prompt: str, *, out_path: Path, width: int, height: int, s
         "--steps", str(max(1, min(30, int(steps)))),
         "-o", str(out_path),
     ]
-    subprocess.run(cmd, check=True, timeout=180, capture_output=True)
+    subprocess.run(cmd, check=True, timeout=180, capture_output=True, **NO_WINDOW)
     return {
         "ok": True,
         "engine": "local_stable_diffusion_cpp",

@@ -13,6 +13,8 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 import re
 import subprocess
+
+from ._no_window import NO_WINDOW
 from typing import Any
 
 from . import safety
@@ -130,7 +132,7 @@ def _recent_git_commits(workspace_path: str | Path | None, *, limit: int = 5) ->
             stderr=subprocess.DEVNULL,
             text=True,
             encoding="utf-8",
-            errors="replace",
+            errors="replace", **NO_WINDOW
         )
         commits: list[str] = []
         for line in out.splitlines():

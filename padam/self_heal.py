@@ -16,6 +16,8 @@ import contextlib
 import shutil
 import sqlite3
 import subprocess
+
+from ._no_window import NO_WINDOW
 import time
 import zipfile
 import json
@@ -85,7 +87,7 @@ def _try_sqlite_recover_to_copy(corrupted_copy: Path, target_copy: Path) -> tupl
                 encoding="utf-8",
                 errors="replace",
                 timeout=10,
-                check=False,
+                check=False, **NO_WINDOW
             )
             if proc.returncode == 0 and proc.stdout.strip():
                 with contextlib.closing(sqlite3.connect(str(target_copy))) as dst:

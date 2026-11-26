@@ -33,6 +33,8 @@ import json
 import os
 import secrets
 import subprocess
+
+from ._no_window import NO_WINDOW
 import time
 import urllib.request
 import uuid
@@ -265,7 +267,7 @@ def turbo_upload(payload: bytes, wallet_path: str, tags: dict[str, str],
     try:
         out = subprocess.run(
             ["node", str(script), str(tmp), wallet_path, json.dumps(tags), sdk],
-            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=180)
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=180, **NO_WINDOW)
     finally:
         tmp.unlink(missing_ok=True)
     if out.returncode != 0:
