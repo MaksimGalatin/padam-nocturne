@@ -1164,3 +1164,96 @@ def get_thread_messages(memory: Any, thread_id: str, *, limit: int = 500) -> dic
         },
         "messages": [dict(r) for r in rows],
     }
+
+
+# --- 26.11.2026: переписки → искомая память -------------------------------------------------------------
+# Переписки агентов попадали только в chat_message — сырой архив, который не видят ни поиск (recall/padam_search),
+# ни списки памяти Studio. Слово владельца «$5 за Chrome Web Store я давно оплатил» лежало в базе, а агент
+# его «не помнил». Теперь после каждой синхронизации новые сообщения превращаются в записи памяти:
+#   слова владельца            → scope «owner:words», kind «event», важность 0.9;
+#   развёрнутые ответы агентов → scope «work:reports», kind «event», важность 0.6.
+# Порциями по 50 записей с паузой, чтобы запись не держала базу и Studio не висела на «…».
+# Выключить — PADAM_DIALOG_DISTILL=0.
+
+_НЕ_СЛОВО_ВЛАДЕЛЬЦА = (
+    "This session is being continued", "<task-notification", "<system-reminder", "Caveat:", "<command-name>",
+    "<local-command", "[Request interrupted", "<side-sessions-event", "<ci-monitor-event", "Base directory for this skill",
+)
+_МИН_ОТЧЁТ = 600
+_МАКС_ЗАПИСИ = 6000
+
+
+def _ensure_distill_state(memory: Any) -> None:
+    memory.store.execute(
+        "CREATE TABLE IF NOT EXISTS chat_distill_state (user_id TEXT PRIMARY KEY, last_rowid INTEGER NOT NULL, updated_at TEXT NOT NULL)"
+    )
+
+
+def _срез(текст: str) -> str:
+    т = re.sub(r"\n{3,}", "\n\n", str(текст or "").strip())
+    return т if len(т) <= _МАКС_ЗАПИСИ else т[:_МАКС_ЗАПИСИ] + " …[truncated; full text in the chat archive]"
+
+
+def distill_dialogs_to_memory(memory: Any, *, limit: int = 300, pause_s: float = 2.0, batch: int = 50) -> dict[str, Any]:
+    """Новые сообщения из chat_message → искомые записи памяти (идемпотентно, по отметке rowid)."""
+    import os
+    import time as _time
+
+    if os.environ.get("PADAM_DIALOG_DISTILL", "1").strip() in ("0", "false", "no", "off"):
+        return {"ok": True, "disabled": True}
+    _ensure_distill_state(memory)
+    row = memory.store.query("SELECT last_rowid FROM chat_distill_state WHERE user_id=?", (memory.user_id,))
+    last = int(row[0]["last_rowid"]) if row else 0
+    rows = memory.store.query(
+        "SELECT m.rowid AS rid, m.role, m.agent_id, m.created_at, m.content, t.source_kind "
+        "FROM chat_message m LEFT JOIN chat_thread t ON t.id = m.thread_id "
+        "WHERE m.user_id=? AND m.rowid > ? ORDER BY m.rowid LIMIT ?",
+        (memory.user_id, last, max(1, min(int(limit or 300), 5000))),
+    )
+    итог = {"ok": True, "owner_words": 0, "reports": 0, "duplicates": 0, "skipped": 0, "errors": 0}
+    записано = 0
+
+    def _отметка(rid: int) -> None:
+        memory.store.execute(
+            "INSERT INTO chat_distill_state(user_id, last_rowid, updated_at) VALUES(?,?,?) "
+            "ON CONFLICT(user_id) DO UPDATE SET last_rowid=excluded.last_rowid, updated_at=excluded.updated_at",
+            (memory.user_id, int(rid), now_iso()),
+        )
+
+    for r in rows:
+        текст = str(r["content"] or "")
+        роль = str(r["role"] or "")
+        if роль == "user":
+            for хвост in ("This session is being continued", "<system-reminder>"):
+                if хвост in текст and not текст.lstrip().startswith(хвост):
+                    текст = текст.split(хвост, 1)[0]
+        день = str(r["created_at"] or "")[:16].replace("T", " ")
+        канал = "Antigravity" if "antigravity" in str(r["source_kind"] or "") else "Claude Code" if "claude" in str(r["source_kind"] or "") else "chat"
+        try:
+            if роль == "user" and текст.strip() and not текст.lstrip().startswith(_НЕ_СЛОВО_ВЛАДЕЛЬЦА):
+                исход, _ = memory.remember(f"[{день} · {канал}] Owner: {_срез(текст)}", kind="event", importance=0.9,
+                                           scope="owner:words", origin="user", agent_id="owner", created_at=r["created_at"])
+                ключ = "owner_words"
+            elif роль == "assistant" and len(текст.strip()) >= _МИН_ОТЧЁТ:
+                исход, _ = memory.remember(f"[{день} · {r['agent_id']}] Report: {_срез(текст)}", kind="event", importance=0.6,
+                                           scope="work:reports", origin="agent", agent_id=str(r["agent_id"] or "agent"),
+                                           created_at=r["created_at"])
+                ключ = "reports"
+            else:
+                итог["skipped"] += 1
+                continue
+            итог[ключ if исход in ("created", "merged", "superseded", "coexists") else "duplicates"] += 1
+            записано += 1
+            if записано % max(1, int(batch)) == 0:
+                _отметка(int(r["rid"]))
+                if pause_s:
+                    _time.sleep(float(pause_s))
+        except Exception as exc:   # одна сломанная реплика не останавливает остальные
+            итог["errors"] += 1
+            итог.setdefault("last_error", f"{type(exc).__name__}: {exc}"[:200])
+        finally:
+            last = int(r["rid"])
+    if rows:
+        _отметка(last)
+    итог["last_rowid"] = last
+    return итог

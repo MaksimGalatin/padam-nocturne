@@ -4347,6 +4347,8 @@ def _start_chat_autosync_daemon() -> None:
                 if m_obj is not None:
                     from . import chats as _chats
                     _chats.sync_family_chats_from_disk(m_obj, use_default_paths=True, max_files=25, parse_in_subprocess=True)
+                    # 26.11.2026: новые сообщения → искомая память (слова владельца, отчёты агентов), порциями
+                    _chats.distill_dialogs_to_memory(m_obj, limit=200, pause_s=1.0)
             except Exception:
                 pass
             _t.sleep(30.0)
