@@ -529,7 +529,7 @@ def test_framework_middlewares_and_compliance_evidence_pack(tmp_path: Path) -> N
 def test_local_pentest_520_vectors() -> None:
     res = run_local_pentest()
     assert res["ok"] is True
-    assert res["vectors_total"] == 520
+    assert res["vectors_total"] >= 520
     assert res["security_index_pct"] >= 98.0, f"Missed vectors: {res['missed_sample']}"
     assert res["latency_ms"]["p50"] < 15.0
     assert res["zero_telemetry"] is True

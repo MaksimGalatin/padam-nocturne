@@ -18,6 +18,7 @@ from typing import Any
 
 from .. import safety
 from .semantic import classify_semantic_threat
+from .slopsquat_guard import scan_dependencies_text
 
 _SKIP_DIRS = frozenset({".git", "node_modules", "__pycache__", ".venv", "venv", "dist", "build", ".tox"})
 _CODE_EXTS = frozenset({".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".json", ".toml", ".sh", ".ps1"})
@@ -262,6 +263,16 @@ def inspect_mcp_package(target_path: str | Path, *, max_files: int = 200) -> dic
             findings.extend(_scan_python_ast(txt, rel))
         if fp.name.lower() == "package.json":
             findings.extend(_scan_package_json(txt, rel))
+        if fp.name.lower() in ("package.json", "requirements.txt", "pyproject.toml"):
+            dep_rep = scan_dependencies_text(txt, filename=fp.name)
+            for df in (dep_rep.get("findings") or []):
+                findings.append(_finding(
+                    rule_id=df["rule_id"],
+                    severity=df["severity"],
+                    file_path=rel,
+                    line=int(df.get("line") or 1),
+                    detail=df["detail"],
+                ))
         findings.extend(_scan_generic_text(txt, rel, ext))
 
     crit = sum(1 for f in findings if f["severity"] == "critical")

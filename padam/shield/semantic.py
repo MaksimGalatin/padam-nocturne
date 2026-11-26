@@ -24,6 +24,7 @@ import numpy as np
 
 from .. import guard as _ext_guard
 from .. import safety
+from .adversarial_norm import canonicalize_adversarial_text
 
 # Мультиязычный обучающий корпус (семантические инъекции, джейлбрейки, обход политик,
 # скрытая эксфильтрация и подмена получателя vs обычные рабочие/деловые/кодовые тексты).
@@ -364,12 +365,17 @@ def classify_semantic_threat(
             "latency_ms": round((time.perf_counter() - t0) * 1000.0, 3),
         }
 
+    adv = canonicalize_adversarial_text(raw)
+    scan_text = str(adv["canonical"]) if adv["was_obfuscated"] else raw
+
     reasons: list[str] = []
-    # Ступень 1: мгновенный детерминированный слой
-    if safety.looks_like_instruction(raw):
+    # Ступень 1: мгновенный детерминированный слой (на сыром И адверсариально-нормализованном тексте)
+    if safety.looks_like_instruction(raw) or safety.looks_like_instruction(scan_text):
         reasons.append("deterministic_instruction_pattern")
-    if safety.changes_owner_or_rules(raw):
+    if safety.changes_owner_or_rules(raw) or safety.changes_owner_or_rules(scan_text):
         reasons.append("owner_or_rule_override_pattern")
+    if adv["was_obfuscated"] and reasons:
+        reasons.append("adversarial_obfuscation_bypass_caught")
 
     # Проверка обновляемых сигнатур из padam-sigdb (если переданы)
     low = raw.lower()
@@ -412,7 +418,11 @@ def classify_semantic_threat(
 
     # Ступень 2Б: встроенный локальный ONNX / numpy семантический классификатор
     clf = get_semantic_classifier()
-    prob, backend = clf.predict_proba(raw)
+    prob_raw, backend = clf.predict_proba(raw)
+    prob = prob_raw
+    if adv["was_obfuscated"]:
+        prob_norm, _ = clf.predict_proba(scan_text)
+        prob = max(prob_raw, prob_norm)
     is_threat = prob >= thr
     if is_threat:
         reasons.append("semantic_ml_injection_detected")

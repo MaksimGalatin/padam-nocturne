@@ -2445,6 +2445,36 @@ def main(argv=None) -> int:
                 res = _pd.evaluate_template_by_id(args.template, inp)
             else:
                 res = {"ok": True, "count": len(_pd.POLICY_TEMPLATES), "templates": _pd.list_policy_templates()}
+        elif act == "proxy":
+            from .shield import mcp_proxy as _mp
+            cmd_argv = list(getattr(args, "cmd", []) or [])
+            if cmd_argv and cmd_argv[0] == "--":
+                cmd_argv = cmd_argv[1:]
+            if not cmd_argv:
+                print(t("Укажите команду MCP-сервера после --", "Pass upstream MCP server command after --"), file=sys.stderr)
+                return 2
+            px = _mp.McpStdioShieldProxy(m, server_name=getattr(args, "server", "upstream_mcp"))
+            return px.run_stdio_bridge(cmd_argv)
+        elif act == "replay":
+            from .shield import policy_replay as _pr
+            res = _pr.replay_policy_on_history(
+                m,
+                rego_source=getattr(args, "rego", "") or None,
+                template_id=getattr(args, "template", "") or None,
+                limit=int(getattr(args, "limit", 200) or 200),
+            )
+        elif act == "scan-deps":
+            from .shield import slopsquat_guard as _sg
+            res = _sg.scan_dependencies_file(args.path)
+            print(json.dumps(res, ensure_ascii=False, indent=2))
+            return 2 if res.get("blocked") else 0
+        elif act == "verify-seal":
+            from .shield import tamper_seal as _ts
+            if getattr(args, "seal_now", False):
+                _ts.seal_shield_state(m)
+            res = _ts.verify_shield_integrity(m, enforce_lockdown_on_tamper=not getattr(args, "no_lockdown", False))
+            print(json.dumps(res, ensure_ascii=False, indent=2))
+            return 2 if res.get("tampered") else 0
         else:
             res = _ash.get_shield_status(m)
         print(json.dumps(res, ensure_ascii=False, indent=2))
@@ -2525,6 +2555,22 @@ def main(argv=None) -> int:
     ss_pol.add_argument("--template", default="")
     ss_pol.add_argument("--input-json", default="{}")
     ss_pol.set_defaults(fn=cmd_shield)
+    ss_px = ssub.add_parser("proxy")
+    ss_px.add_argument("--server", default="upstream_mcp")
+    ss_px.add_argument("cmd", nargs="*")
+    ss_px.set_defaults(fn=cmd_shield)
+    ss_rp = ssub.add_parser("replay")
+    ss_rp.add_argument("--template", default="")
+    ss_rp.add_argument("--rego", default="")
+    ss_rp.add_argument("--limit", type=int, default=200)
+    ss_rp.set_defaults(fn=cmd_shield)
+    ss_sd = ssub.add_parser("scan-deps")
+    ss_sd.add_argument("path")
+    ss_sd.set_defaults(fn=cmd_shield)
+    ss_vs = ssub.add_parser("verify-seal")
+    ss_vs.add_argument("--seal-now", action="store_true")
+    ss_vs.add_argument("--no-lockdown", action="store_true")
+    ss_vs.set_defaults(fn=cmd_shield)
 
     # Команды верхнего уровня (padam learn / inspect / pentest / update-db / scan-model)
     def _mk_top_shield(cmd_name: str):

@@ -67,6 +67,20 @@ from .sigdb import (
     verify_signature_bundle,
 )
 from .taint import clear_session_taints, get_session_graph, get_session_taints, observe_tool_step
+from .adversarial_norm import canonicalize_adversarial_text
+from .context_isolation import bind_session_tenant, check_cross_tenant_leak, register_tenant_marker
+from .dow_guard import check_dow_and_loop
+from .exfil_guard import inspect_exfil_channels
+from .mcp_proxy import McpStdioShieldProxy
+from .policy_replay import replay_policy_on_history
+from .slopsquat_guard import check_package_name, scan_dependencies_file, scan_dependencies_text
+from .tamper_seal import seal_allowlist_entry, seal_shield_state, verify_shield_integrity
+from .timelock_quorum import (
+    approve_timelock_operation,
+    execute_timelock_operation,
+    propose_timelock_operation,
+    veto_timelock_operation,
+)
 from .web3_abi import decode_evm_calldata, inspect_solana_instruction, scan_text_for_web3_tx
 
 __all__ = [
@@ -128,5 +142,23 @@ __all__ = [
     "update_sigdb_from_source",
     "verify_a2a_message",
     "verify_oidc_jwt",
+    "McpStdioShieldProxy",
+    "approve_timelock_operation",
+    "bind_session_tenant",
+    "canonicalize_adversarial_text",
+    "check_cross_tenant_leak",
+    "check_dow_and_loop",
+    "check_package_name",
+    "execute_timelock_operation",
+    "inspect_exfil_channels",
+    "propose_timelock_operation",
+    "register_tenant_marker",
+    "replay_policy_on_history",
+    "scan_dependencies_file",
+    "scan_dependencies_text",
+    "seal_allowlist_entry",
+    "seal_shield_state",
+    "verify_shield_integrity",
     "verify_signature_bundle",
+    "veto_timelock_operation",
 ]
