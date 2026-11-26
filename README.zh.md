@@ -356,6 +356,12 @@ python -m padam l3-verify                 # 独立校验：重新下载 Arweave 
 - **付费服务保持关闭。** 付费网关（Vertex）只有在你自己提供 Vertex 凭据时才会使用，并且排在本地 Ollama 之后，有每日上限（`PADAM_VERTEX_DAILY_USD_CAP`，默认 30 美元；设为 0 即关闭）。
 - **已知限制：** 凤凰的邮箱地址（`<名字>@phoenix.aifa.works`）会被分配，但目前还收不到邮件；`join_family` 会自己说明这一点（`phoenix_mailbox.receives_mail: false`）。
 
+## 0.9.1 新功能
+
+- **无问题，不发信。** 只有当测量确实发现无障碍问题时，外联才会给该网站写信；每条线索保存自己的测量结果（`violations`、`critical`、`serious`、`rules`、`measured_at`），没有测量的线索不会收到邮件。
+- **邮件内容与价目表一致**，并用通俗语言解释 39 条常见 axe-core 规则（英文和俄文）。
+- **跨智能体遗忘，可复现：** `examples/forget_two_agents.py`。
+
 ## 0.9.0 面向所有智能体的新功能
 
 - **按需工具指南。** 列表中的每个工具都有一句真实的说明。大型工具只显示常用字段；`action="help"`（或资源 `padam://help/{tool}`）返回全部操作、每个操作必需的字段以及所有字段及其类型。不常用的字段可以作为普通参数传入，也可以放在 `extra={...}` 中。

@@ -97,7 +97,7 @@ def _mcp_rpc(
             "Content-Type": "application/json",
             "Accept": "application/json, text/event-stream",
             "Authorization": f"Bearer {api_key}",
-            "User-Agent": "PADAM-NOCTURNE-CloudSync/0.9.0",
+            "User-Agent": "PADAM-NOCTURNE-CloudSync/0.9.1",
         },
     )
     with urllib.request.urlopen(req, timeout=timeout) as resp:

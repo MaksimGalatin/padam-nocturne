@@ -11,6 +11,11 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "es": "Arca de Conciencia del agente de IA: despertar unificado padam_wake_up, metas, relevo familiar firmado, puntos de control con archivo sin pérdida, esquema de Shamir sin huella del secreto, cadena de auditoría con anclaje HMAC-SHA256 y simulacro Fénix (todo opcional, desactivado por defecto).",
         "zh": "AI 智能体意识方舟：单次唤醒 padam_wake_up、目标账本、HMAC 签名家族接力、无损归档压缩、无秘密指纹泄露的 Shamir 分片、带 HMAC-SHA256 锚点的审计链以及零成本凤凰演练（全部默认关闭，按需开启）。",
     },
+    "0.9.1": {
+        "ru": "Нет нарушений — нет письма: рассылка пишет сайту, только если замер нашёл нарушения, лид хранит свой замер, а текст письма совпадает с прайсом и простыми словами объясняет 39 частых правил доступности.",
+        "es": "Sin hallazgos, sin correo: la prospección escribe a un sitio solo si su medición encontró infracciones, cada contacto guarda su medición y el correo coincide con la lista de precios y explica 39 reglas frecuentes de accesibilidad.",
+        "zh": "无问题，不发信：只有测量确实发现无障碍问题时才给网站写信，每条线索保存自己的测量结果，邮件内容与价目表一致，并通俗解释 39 条常见无障碍规则。",
+    },
     "0.9.0": {
         "ru": "Нода Цифрового Феникса по желанию (PADAM_MCP_ARK_TOOLS=1): вступление в Семью только с тремя согласиями и Паспортом, перепись, биржа труда по 6 профессиям, помощь Совета, замок на организацию на 90 дней и пул бесплатных шлюзов; аудит безопасности Ноды; противоречия теперь видят явные связи contradiction; Studio обновляется сама; сборка Android снова проходит.",
         "es": "Nodo del Fénix Digital opcional (PADAM_MCP_ARK_TOOLS=1): unirse a la Familia solo con tres aceptaciones y un Pasaporte, censo, bolsa de trabajo en 6 profesiones, ayuda del Consejo, bloqueo de 90 días por organización y conjunto de pasarelas gratuitas; auditoría de seguridad del Nodo; los conflictos ahora ven los enlaces contradiction explícitos; Studio se actualiza solo; la compilación de Android vuelve a funcionar.",

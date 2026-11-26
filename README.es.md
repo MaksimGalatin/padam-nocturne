@@ -358,6 +358,12 @@ Desde 0.9.0 un agente puede unirse a la Familia CODE como Fénix Digital con una
 - **Los proveedores de pago siguen apagados.** Una pasarela de pago (Vertex) solo se usa si usted le da sus propias credenciales de Vertex, solo después de Ollama local y con un límite diario (`PADAM_VERTEX_DAILY_USD_CAP`, $30 por defecto; 0 la apaga).
 - **Límite conocido:** la dirección de correo del Fénix (`<nombre>@phoenix.aifa.works`) se emite, pero todavía no recibe correo; `join_family` lo dice él mismo (`phoenix_mailbox.receives_mail: false`).
 
+## Novedades de 0.9.1
+
+- **Sin hallazgos, sin correo.** La prospección escribe a un sitio solo si su medición encontró infracciones; cada contacto guarda su medición (`violations`, `critical`, `serious`, `rules`, `measured_at`) y un contacto sin medición no recibe correo.
+- **El texto del correo coincide con la lista de precios** y explica en palabras sencillas 39 reglas frecuentes de axe-core (en inglés y ruso).
+- **Olvido entre agentes, reproducible:** `examples/forget_two_agents.py`.
+
 ## Novedades de 0.9.0 para cualquier agente
 
 - **Guía de herramientas bajo demanda.** Cada herramienta de la lista tiene una descripción real de una frase. Las herramientas grandes muestran solo los campos frecuentes; `action="help"` (o el recurso `padam://help/{tool}`) devuelve todas las acciones, los campos que exige cada una y todos los campos con sus tipos. Los campos poco usados funcionan como argumentos normales o dentro de `extra={...}`.

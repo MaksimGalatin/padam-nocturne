@@ -142,6 +142,11 @@ def _ensure_mail_schema(memory) -> None:
         )
         from .store import add_column_safe as _acs
         _acs(conn, "ark_mail_account", "warmup_enabled", "INTEGER NOT NULL DEFAULT 0")
+        # 26.11.2026: лид хранит результат замера сайта — письмо о нарушениях строится по нему; лид без замера
+        # письма не получает (run_outreach_batch пропускает его как no_findings). Колонки только добавляются.
+        for _col, _typ in (("violations", "INTEGER"), ("critical", "INTEGER"), ("serious", "INTEGER"),
+                           ("rules", "TEXT NOT NULL DEFAULT ''"), ("measured_at", "TEXT NOT NULL DEFAULT ''")):
+            _acs(conn, "ark_outreach_leads", _col, _typ)
         conn.commit()
         memory.store.__dict__["_padam_mail_schema_ok"] = True
 
@@ -267,7 +272,7 @@ def _verify_smtp_imap_live(
         try:
             req = urllib.request.Request(
                 "https://api.instantly.ai/api/v2/accounts?limit=100",
-                headers={"Authorization": f"Bearer {secret}", "User-Agent": "PADAM-Studio/0.9.0"},
+                headers={"Authorization": f"Bearer {secret}", "User-Agent": "PADAM-Studio/0.9.1"},
                 method="GET",
             )
             with net_guard.safe_urlopen(req, timeout=12, require_https=True) as resp:
@@ -671,7 +676,7 @@ def _deliver_email_via_account(
             headers={
                 "Authorization": f"Bearer {secret}",
                 "Content-Type": "application/json",
-                "User-Agent": "PADAM-Studio/0.9.0",
+                "User-Agent": "PADAM-Studio/0.9.1",
             },
             method="POST",
         )
@@ -1275,6 +1280,13 @@ def import_outreach_leads(memory, raw_text: str, *, source: str = "manual") -> d
         return {"ok": False, "error": "Пустой список клиентов.", "imported": 0}
 
     rows_parsed: list[tuple[str, str, str, str]] = []
+    замеры: dict[tuple[str, str], tuple] = {}
+
+    def _int_or_none(v):
+        try:
+            return int(str(v).strip()) if str(v or "").strip() != "" else None
+        except ValueError:
+            return None
     lines = [ln.strip() for ln in txt.splitlines() if ln.strip()]
     first_low = lines[0].lower() if lines else ""
     if any(h in first_low for h in ("email", "почта", "domain", "домен")) and ("," in first_low or ";" in first_low or "\t" in first_low):
@@ -1287,6 +1299,11 @@ def import_outreach_leads(memory, raw_text: str, *, source: str = "manual") -> d
             reg = str(r.get("region") or r.get("регион") or "").strip()[:80]
             if em and dom:
                 rows_parsed.append((em, dom, comp, reg))
+                v = _int_or_none(r.get("violations") or r.get("нарушений_всего") or r.get("всего"))
+                if v is not None:
+                    замеры[(em, dom)] = (v, _int_or_none(r.get("critical")) or 0, _int_or_none(r.get("serious")) or 0,
+                                         str(r.get("rules") or r.get("правила") or "").strip()[:500],
+                                         str(r.get("measured_at") or r.get("замер") or "").strip()[:40])
     else:
         for ln in lines:
             parts = [p.strip() for p in re.split(r"[,;\t]+", ln) if p.strip()]
@@ -1317,6 +1334,12 @@ def import_outreach_leads(memory, raw_text: str, *, source: str = "manual") -> d
             )
             if cur.rowcount:
                 inserted += 1
+            z = замеры.get((em, dom))
+            if z is not None:
+                conn.execute(
+                    "UPDATE ark_outreach_leads SET violations=?, critical=?, serious=?, rules=?, measured_at=? WHERE lead_id=?",
+                    (*z, lid),
+                )
         conn.commit()
         total_cnt = int(conn.execute("SELECT COUNT(*) FROM ark_outreach_leads WHERE user_id=?", (memory.user_id,)).fetchone()[0])
     return {"ok": True, "imported": inserted, "total_leads": total_cnt}
@@ -1326,10 +1349,19 @@ def list_outreach_leads(memory, *, limit: int = 200) -> list[dict[str, Any]]:
     _ensure_mail_schema(memory)
     with freelance_autonomy._lock_of(memory):
         rows = memory.store.conn.execute(
-            "SELECT lead_id, email, domain, company, region, source, created_at FROM ark_outreach_leads WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
+            "SELECT lead_id, email, domain, company, region, source, created_at, violations, critical, serious, rules, measured_at "
+            "FROM ark_outreach_leads WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
             (memory.user_id, max(1, min(1000, int(limit or 200)))),
         ).fetchall()
-    return [dict(r) for r in rows]
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["name"] = d.get("company") or ""      # build_business_outreach читает название из name/название
+        if d.get("violations") is None:          # нет замера — нет данных для письма (не «0 нарушений»)
+            for k in ("violations", "critical", "serious"):
+                d.pop(k, None)
+        out.append(d)
+    return out
 
 
 def mail_hub_snapshot(memory) -> dict[str, Any]:
@@ -1409,14 +1441,16 @@ def run_outreach_batch(
         if db_leads:
             rows_iter = db_leads
             source_used = "leads_db"
-        elif _DEFAULT_US_CSV.is_file():
+        elif _DEFAULT_US_CSV.is_file() and os.environ.get("PADAM_OUTREACH_ALLOW_STALE_CSV") == "1":
+            # 26.11.2026: старая база (замер 07.09) — только по явному флагу: перемер 26.11 показал, что у части сайтов
+            # нарушений уже нет, и письмо по старым данным утверждало бы неправду. Без флага — загрузите лиды с замером.
             with _DEFAULT_US_CSV.open("r", encoding="utf-8-sig", errors="replace") as f:
                 rows_iter = list(_csv.DictReader(f))
             source_used = "default_us_csv"
         else:
             return {
                 "ok": False,
-                "error": "Нет базы клиентов: вставьте список email/domain в блоке 10 Студии или передайте csv_path.",
+                "error": "Нет лидов с замером: вставьте CSV (email,domain,violations,critical,serious,rules) в блоке 10 Студии или передайте csv_path.",
                 "sent": 0,
             }
 
@@ -1447,6 +1481,11 @@ def run_outreach_batch(
             site_record=row,
             allow_live_fetch=allow_live_fetch,
         )
+        if not pkg.get("has_findings", True):
+            # 26.11.2026: у сайта нет нарушений — повода для письма нет; писать о несуществующих находках нельзя.
+            skipped += 1
+            results.append({"domain": dom, "skipped": "no_findings"})
+            continue
         s_res = send_outreach_email(
             memory,
             to_email=to_em,

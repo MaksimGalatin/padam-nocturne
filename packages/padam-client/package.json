@@ -1,6 +1,6 @@
 {
   "name": "padam-client",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "private": true,
   "description": "TypeScript & JavaScript client for PADAM NOCTURNE local REST API and AIfa Memory Cloud MCP (with Vercel AI SDK & Mastra adapters)",
   "type": "module",

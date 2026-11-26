@@ -146,6 +146,35 @@ _WCAG_RULE_EXPLANATIONS_RU: dict[str, str] = {
     "list": "нарушенная вёрстка списков — ломает чтение каталога или тарифов",
     "meta-viewport": "запрещено масштабирование страницы на мобильных устройствах",
     "html-has-lang": "не указан язык страницы — синтезатор речи читает текст с неверным произношением",
+    # 26.11.2026: частые правила набора Феникса (перемер 180 сайтов) — по определениям axe-core.
+    "region": "содержимое страницы вне смысловых областей (шапка, основное, подвал) — пользователь экранного диктора не может переходить между разделами",
+    "heading-order": "заголовки пропускают уровни (например, H1 → H4) — ломается оглавление, по которому ходит экранный диктор",
+    "landmark-one-main": "нет основной области страницы (main) — вспомогательные технологии не могут перейти сразу к содержимому",
+    "landmark-unique": "несколько одинаковых областей без различимых названий — диктор не может их различить",
+    "frame-title": "встроенные окна (карты, видео, виджеты бронирования) без названия — диктор произносит только «фрейм»",
+    "aria-required-children": "ARIA-элементы (меню, списки, вкладки) без обязательных дочерних элементов — диктор неверно сообщает их структуру",
+    "select-name": "выпадающие списки без подписи — пользователь диктора не знает, что выбирает",
+    "page-has-heading-one": "нет главного заголовка H1 — пользователь диктора не находит главную тему страницы",
+    "aria-allowed-attr": "ARIA-атрибуты на элементах, которые их не поддерживают, — вспомогательные технологии получают неверные сведения",
+    "link-in-text-block": "ссылки в тексте отличаются только цветом — люди с нарушением цветовосприятия их не замечают",
+    "aria-hidden-focus": "скрытые от диктора элементы всё равно получают фокус клавиатуры — пользователь попадает на невидимые элементы",
+    "listitem": "элементы списка вне самого списка — диктор не объявляет структуру списка",
+    "aria-valid-attr-value": "ARIA-атрибуты с недопустимыми значениями — вспомогательные технологии неверно сообщают состояние (раскрыто, выбрано)",
+    "aria-valid-attr": "несуществующие или написанные с ошибкой ARIA-атрибуты — вспомогательные технологии их игнорируют",
+    "image-redundant-alt": "описание картинки повторяет соседний текст — диктор читает одно и то же дважды",
+    "landmark-complementary-is-top-level": "структура областей страницы (шапка, подвал, боковая колонка) продублирована или вложена — навигация диктора по разделам путается",
+    "landmark-no-duplicate-banner": "структура областей страницы (шапка, подвал, боковая колонка) продублирована или вложена — навигация диктора по разделам путается",
+    "landmark-no-duplicate-contentinfo": "структура областей страницы (шапка, подвал, боковая колонка) продублирована или вложена — навигация диктора по разделам путается",
+    "landmark-banner-is-top-level": "структура областей страницы (шапка, подвал, боковая колонка) продублирована или вложена — навигация диктора по разделам путается",
+    "landmark-contentinfo-is-top-level": "структура областей страницы (шапка, подвал, боковая колонка) продублирована или вложена — навигация диктора по разделам путается",
+    "aria-prohibited-attr": "ARIA-атрибуты, недопустимые на этих элементах, — вспомогательные технологии игнорируют или неверно читают их",
+    "document-title": "у страницы нет заголовка (title) — пользователь диктора не понимает, какая страница открыта",
+    "aria-allowed-role": "элементам назначены недопустимые для них ARIA-роли — диктор объявляет не тот тип элемента",
+    "aria-roles": "недопустимые значения ARIA-ролей — вспомогательные технологии не могут понять, что это за элемент",
+    "scrollable-region-focusable": "прокручиваемые области недоступны с клавиатуры — пользователь клавиатуры не может прочитать их содержимое",
+    "empty-heading": "пустые заголовки — диктор объявляет заголовок без текста, оглавление ломается",
+    "tabindex": "положительные значения tabindex — фокус клавиатуры прыгает по странице в неожиданном порядке",
+    "aria-input-field-name": "поля ввода на ARIA без доступного имени — пользователь диктора не знает, что вводить",
 }
 
 
@@ -169,6 +198,35 @@ _WCAG_RULE_EXPLANATIONS_EN: dict[str, str] = {
     "list": "broken list markup that scrambles catalog or schedule reading order",
     "meta-viewport": "pinch-to-zoom disabled on mobile screens",
     "html-has-lang": "missing page language attribute — speech synthesizers mispronounce the page",
+    # 26.11.2026: частые правила набора Феникса (перемер 180 сайтов) — по определениям axe-core.
+    "region": "page content sits outside landmark regions (header, main, footer) — screen-reader users cannot jump between sections",
+    "heading-order": "headings skip levels (for example H1 → H4) — the page outline that screen-reader users navigate by is broken",
+    "landmark-one-main": "no single main landmark — assistive technology cannot skip straight to the main content",
+    "landmark-unique": "several landmarks share the same role and name — screen readers cannot tell them apart",
+    "frame-title": "embedded frames (maps, videos, booking widgets) have no title — screen readers announce only “frame”",
+    "aria-required-children": "ARIA widgets (menus, lists, tabs) lack required child elements — screen readers misreport their structure",
+    "select-name": "drop-down menus without a label — screen-reader users do not know what they are choosing",
+    "page-has-heading-one": "no top-level H1 heading — screen-reader users cannot find the page's main topic",
+    "aria-allowed-attr": "ARIA attributes used on elements that do not support them — assistive technology receives wrong information",
+    "link-in-text-block": "links inside text are told apart by colour alone — visitors with colour-vision differences cannot spot them",
+    "aria-hidden-focus": "elements hidden from screen readers still take keyboard focus — keyboard users land on invisible controls",
+    "listitem": "list items placed outside a list — screen readers cannot announce the list structure",
+    "aria-valid-attr-value": "ARIA attributes with invalid values — assistive technology misreports state such as expanded or selected",
+    "aria-valid-attr": "misspelled or non-existent ARIA attributes — assistive technology ignores them",
+    "image-redundant-alt": "image descriptions repeat the nearby text — screen readers read the same words twice",
+    "landmark-complementary-is-top-level": "landmark structure (header, footer, sidebar) is duplicated or nested — section-by-section navigation with a screen reader gets confusing",
+    "landmark-no-duplicate-banner": "landmark structure (header, footer, sidebar) is duplicated or nested — section-by-section navigation with a screen reader gets confusing",
+    "landmark-no-duplicate-contentinfo": "landmark structure (header, footer, sidebar) is duplicated or nested — section-by-section navigation with a screen reader gets confusing",
+    "landmark-banner-is-top-level": "landmark structure (header, footer, sidebar) is duplicated or nested — section-by-section navigation with a screen reader gets confusing",
+    "landmark-contentinfo-is-top-level": "landmark structure (header, footer, sidebar) is duplicated or nested — section-by-section navigation with a screen reader gets confusing",
+    "aria-prohibited-attr": "ARIA attributes that are not allowed on these elements — assistive technology may ignore or misread them",
+    "document-title": "the page has no title — screen-reader and tab users cannot tell which page is open",
+    "aria-allowed-role": "elements given ARIA roles they cannot have — assistive technology announces the wrong kind of control",
+    "aria-roles": "invalid ARIA role values — assistive technology cannot identify what the element is",
+    "scrollable-region-focusable": "scrollable areas that cannot be reached by keyboard — keyboard users cannot read their content",
+    "empty-heading": "headings with no text — screen readers announce empty headings and the outline breaks",
+    "tabindex": "positive tabindex values — keyboard focus jumps around the page in an unexpected order",
+    "aria-input-field-name": "input fields built with ARIA have no accessible name — screen-reader users do not know what to type",
 }
 
 
@@ -200,7 +258,7 @@ def _detect_business_niche_en(text_blob: str) -> tuple[str, str]:
             "shoppers cannot add items to cart or fill unlabeled checkout fields",
         )
     return (
-        "Customer-Facing Digital Services & Online Inquiries",
+        "Online Booking & Contact Forms",
         "prospective customers using keyboard navigation or screen readers hit unlabeled controls and abandon the page before converting",
     )
 
@@ -440,7 +498,9 @@ def build_business_outreach(
     for r in rules[:5]:
         expl = _WCAG_RULE_EXPLANATIONS_RU.get(r, "нарушение стандарта доступности WCAG 2.1 AA")
         explained_rules.append(f"- `{r}` — {expl}")
-    if not explained_rules:
+    if not explained_rules and total_v > 0:
+        # 26.11.2026: запасная строка — только когда нарушения есть, а названий правил нет. При нуле нарушений
+        # шаблон перечислял выдуманные категории («flagged 0 … in these categories: unlabeled buttons…»).
         explained_rules.append("- барьеры контрастности, навигации с клавиатуры и подписей форм (WCAG 2.1 AA)")
 
     business_summary_ru = (
@@ -493,7 +553,7 @@ def build_business_outreach(
         for r in rules[:5]:
             expl_en = _WCAG_RULE_EXPLANATIONS_EN.get(r, "WCAG 2.1 AA rule instance flagged by automated DOM checks")
             explained_rules_en.append(f"• {r} — {expl_en}")
-        if not explained_rules_en:
+        if not explained_rules_en and total_v > 0:
             explained_rules_en.append("• unlabeled interactive buttons, missing keyboard focus indicators, or low-contrast text flagged by automated DOM checks")
         icebreaker_en = build_personal_icebreaker(biz_name, clean_dom, place, live, language="en")
         clean_title_en = biz_name if (biz_name and biz_name.lower() != clean_dom.lower()) else clean_dom
@@ -511,7 +571,7 @@ def build_business_outreach(
             f"Verify yourself for free in under 60 seconds (no signup, no sales call):\n"
             f"Open https://aifa.works/accessibility?url={clean_dom}, confirm that you own or represent the website, and run the reproducible homepage check.\n\n"
             f"Optional engineering services (strictly optional — you are welcome to share the free data with your own team):\n"
-            f"• Quick Audit ($149 fixed fee, 24h delivery) — automated + human-reviewed report covering up to 25 reachable public pages, prioritized findings, and sample code fixes: "
+            f"• Quick Audit ($149 fixed fee, 1-day delivery) — automated WCAG 2.1 AA scan of every page our crawler can reach, findings ranked by lawsuit risk, an 8–12 page PDF, and ready fixed code for every finding (Fix Pack included) with a re-check after 14 days: "
             f"https://aifa.works/accessibility?url={clean_dom}&service=quick-audit\n"
             f"• Starter Fix ($375 fixed fee, 3–5 business days) — template/code remediation patches for flagged critical and serious WCAG 2.1 AA patterns plus a 14-day verification re-check: "
             f"https://aifa.works/accessibility?url={clean_dom}&service=starter-fix\n\n"
@@ -523,12 +583,14 @@ def build_business_outreach(
             f"1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110, USA\n\n"
             f"Methodology & open data: https://aifa.works/research\n"
             f"Commercial B2B notice: You received this one-time message regarding our public accessibility study for {clean_dom}. "
-            f"To opt out permanently, simply reply STOP or UNSUBSCRIBE (or send an email to aifa@aifaaudit.com with subject UNSUBSCRIBE), and we will never email this address or domain again."
+            f"To opt out permanently, simply reply STOP or UNSUBSCRIBE (or send an email to aifa@aifaaudit.com with subject UNSUBSCRIBE), and we will never email this address again (or, for a company address, anyone at this domain)."
         )
 
     elapsed_s = round(_time.perf_counter() - t_start, 3)
     return {
         "ok": True,
+        # 26.11.2026: письмо о нарушениях уходит, только если они есть (см. email_autonomy.run_outreach_batch).
+        "has_findings": total_v > 0,
         "site": clean_dom,
         "language": lang,
         "business_summary": business_summary_ru,

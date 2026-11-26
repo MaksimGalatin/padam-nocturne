@@ -504,11 +504,15 @@ def test_universal_onboarding_leads_autolang_and_autopilot_outreach(tmp_path):
             daily_limit=30,
         )["ok"] is True
 
+        # 26.11.2026: лид несёт результат замера сайта; лид без замера письма не получает (no_findings).
         imp = email_autonomy.import_outreach_leads(
             mem,
-            "owner@floridabakery.com, floridabakery.com\ninfo@pekarnya.ru, pekarnya.ru\n",
+            "email,domain,company,violations,critical,serious,rules\n"
+            "owner@floridabakery.com,floridabakery.com,Florida Bakery,12,3,4,color-contrast;image-alt\n"
+            "info@pekarnya.ru,pekarnya.ru,Пекарня,9,2,3,label;link-name\n"
+            "hello@nomeasure.com,nomeasure.com,No Measure Co,,,,\n",
         )
-        assert imp["ok"] is True and imp["imported"] == 2 and imp["total_leads"] == 2
+        assert imp["ok"] is True and imp["imported"] == 3 and imp["total_leads"] == 3
 
         pr = email_autonomy.set_mail_prefs(mem, auto_outreach_enabled=True, outreach_language="auto", daily_batch_limit=10)
         assert pr["ok"] is True and pr["auto_outreach_enabled"] is True
@@ -518,6 +522,7 @@ def test_universal_onboarding_leads_autolang_and_autopilot_outreach(tmp_path):
         assert ap["ok"] is True
         assert ap["outreach_sent"] == 2
         assert len(sent_pkts) == 2
+        assert "hello@nomeasure.com" not in {p["to_email"] for p in sent_pkts}
 
         by_to = {p["to_email"]: p for p in sent_pkts}
         # Для .com автоматически выбран английский, для .ru — русский

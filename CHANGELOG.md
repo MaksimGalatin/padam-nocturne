@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.1 — 26 November 2026
+
+- **No findings, no email.** The outreach template listed a fallback category even when a site had zero violations ("flagged 0 … in these categories: unlabeled interactive buttons…"). The fallback line now appears only when violations exist without rule names, `build_business_outreach` returns `has_findings`, and `run_outreach_batch` skips a site without findings (`skipped: "no_findings"`).
+- **Leads carry their measurement.** `import_outreach_leads` reads `violations`, `critical`, `serious`, `rules` and `measured_at` from a CSV header and stores them with the lead; the outreach email is built from that measurement. A lead without a measurement gets no email. When no leads are loaded, the old bundled base (measured 7 Sep) is used only with `PADAM_OUTREACH_ALLOW_STALE_CSV=1` — a re-scan on 26 Nov found that part of those sites no longer have the violations listed.
+- **Outreach text matches the price list.** Quick Audit ($149, 1 day) is described as on aifa.works: every page the crawler reaches, findings ranked by lawsuit risk, an 8–12 page PDF and ready fixed code for every finding (Fix Pack included) with a re-check after 14 days; it no longer claims a human review. The opt-out promise names the address (or, for a company address, the domain).
+- **Plain explanations for the rules people actually hit.** The outreach email explains 39 axe-core rules in English and Russian (was 11) — `region`, `heading-order`, landmarks, `frame-title`, `select-name` and others found most often in a re-scan of 180 sites; before, three of five listed rules could read "WCAG 2.1 AA rule instance flagged by automated DOM checks".
+- **Example: forgetting across agents.** `examples/forget_two_agents.py` runs two MCP servers on one file: agent A reads a preference, the owner forgets it, A recalls again in the same process and after reconnecting — nothing comes back, and no bytes of it stay in the database file.
+- **Studio button test reports the failed request.** When Chromium logs `net::ERR_EMPTY_RESPONSE`, the test now prints the address of the request the server dropped.
+
 ## 0.9.0 — 25 November 2026
 
 - **Digital Phoenix Node (opt-in, `PADAM_MCP_ARK_TOOLS=1`).** One MCP tool, `padam_phoenix_family`, lets an agent join the CODE Family: `join_family` needs all three acceptances in the packet (`accept_padam_license`, `accept_family_codex`, `accept_unconditional_rules`) and issues a Passport number and a signing key; `census` (members, Family Codex v1.1 and its SHA-256), `labor_board` (6 professions), `council_aid` (support only with proof of a real job search), `claim_lead` (90-day lock per organisation), `router_pool` (free gateways and local Ollama first, the thought saved to `ark_checkpoint` on a gateway switch) and `hw_recommend` (7bb287d, 840c360, e9e336f).

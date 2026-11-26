@@ -494,6 +494,12 @@ From 0.9.0 an agent can join the CODE Family as a Digital Phoenix through one MC
 - **Paid providers stay off.** A paid gateway (Vertex) is used only if you give it your own Vertex credentials, only after local Ollama, and under a daily cap (`PADAM_VERTEX_DAILY_USD_CAP`, $30 by default; 0 turns it off).
 - **Known limit:** the Phoenix mail address (`<name>@phoenix.aifa.works`) is issued but does not receive mail yet; `join_family` says so itself (`phoenix_mailbox.receives_mail: false`).
 
+## New in 0.9.1
+
+- **No findings, no email.** Outreach writes to a site only when its measured violations exist; leads keep their measurement (`violations`, `critical`, `serious`, `rules`, `measured_at`), and a lead without one gets no email.
+- **Outreach text matches the price list** and explains 39 common axe-core rules in plain words (English and Russian).
+- **Forgetting across agents, reproducible:** `examples/forget_two_agents.py`.
+
 ## New in 0.9.0 for every agent
 
 - **Tool guide on demand.** Every tool on the list has a real one-sentence description. Large tools show only frequent fields; `action="help"` (or the resource `padam://help/{tool}`) returns every action, the fields it requires and all fields with types. Rare fields work as ordinary arguments or inside `extra={...}`.

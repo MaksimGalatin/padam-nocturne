@@ -202,6 +202,10 @@ def test_parity_studio_playwright_all_buttons_1280_and_390(tmp_path: Path, monke
                 page.on("response", lambda r: js_errors.append(f"HTTP {r.status} {r.request.method} {r.url.split('?')[0].split('127.0.0.1')[-1]}") if r.status >= 500 else None)
                 page.on("response", lambda r: server_errors.append((r.url, r.status)) if r.status >= 500 else None)
                 page.on("request", lambda req: external_reqs.append(req.url) if not req.url.startswith(("http://127.0.0.1:", "data:", "blob:", "about:")) else None)
+                # 26.11.2026: адрес запроса, оборванного сервером, — для диагностики «net::ERR_EMPTY_RESPONSE» (в консоли
+                # Chromium адреса нет). Список только печатается в сообщении об ошибке; проверка от него не строже.
+                failed_reqs: list[str] = []
+                page.on("requestfailed", lambda rq: failed_reqs.append(f"{rq.method} {rq.url.split('127.0.0.1')[-1][:120]} :: {rq.failure}"))
 
                 page.goto(url, wait_until="networkidle")
 
@@ -549,7 +553,7 @@ def test_parity_studio_playwright_all_buttons_1280_and_390(tmp_path: Path, monke
                     assert page.evaluate("() => document.documentElement.scrollWidth <= window.innerWidth"), "mobile overflow in backup"
                     click_and_check_text("#backup-export-json-btn", "#backup-result")
 
-                assert js_errors == [], f"JS errors at {vp}: {js_errors}"
+                assert js_errors == [], f"JS errors at {vp}: {js_errors}; failed requests: {failed_reqs}"
                 assert server_errors == [], f"HTTP >=500 errors at {vp}: {server_errors}"
                 assert external_reqs == [], f"External requests at {vp}: {external_reqs}"
                 page.close()
