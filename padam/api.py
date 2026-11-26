@@ -113,6 +113,58 @@ def mem() -> Memory:
     return _state["memory"]
 
 
+# 26.11.2026, слово Папы: «Его можно так починить чтобы не ломалось раз в час?»
+# Причина замером: на базе ~24 500 записей один /overview (stats + doctor + подписи + противоречия)
+# считался дольше 60 с. Окно ПК опрашивает /overview каждые 1,5 с и бросает ответ через 4 с, а
+# ThreadingHTTPServer доводил до конца КАЖДЫЙ брошенный запрос в своём потоке. Потоки копились,
+# процессор стоял на 100 % (6 ч процессорного времени за 7 ч), и карточки Студии оставались «…».
+# Теперь обзор считает один поток, результат живёт _OVERVIEW_TTL секунд, а пока идёт пересчёт,
+# остальные запросы сразу получают прежний результат вместо нового тяжёлого подсчёта.
+_OVERVIEW_TTL = float(os.environ.get("PADAM_OVERVIEW_TTL", "15") or 15)
+_overview_lock = threading.Lock()
+_overview_cache: dict = {}
+
+
+def _overview_compute(m: Memory, actor) -> dict:
+    owner = roles.is_owner(actor)
+    unsigned = m.unsigned_protected() if owner else []
+    doc = m.doctor_report() if owner else {"warnings": 0, "dangers": 0, "checks": []}
+    return {
+        "version": __version__,
+        "stats": m.stats(actor=actor),
+        "doctor": doc,
+        "nocturne_runs": m.nocturne_runs(5) if owner else [],
+        "unsigned_protected": [
+            {"id": r["id"], "kind": r["kind"], "content": r["content"][:160]}
+            for r in unsigned
+        ],
+        "conflicts": m.conflicts(actor=actor),
+        "actor": {"role": actor.role, "subject": actor.subject, "workspace_id": actor.workspace_id} if actor else {"role": "owner", "subject": "owner", "workspace_id": None},
+    }
+
+
+def _overview_cached(m: Memory, actor, fresh: bool = False) -> dict:
+    import time as _t
+    key = (id(m), getattr(actor, "role", None), getattr(actor, "subject", None), getattr(actor, "workspace_id", None))
+    hit = _overview_cache.get(key)
+    now = _t.monotonic()
+    if hit and not fresh and now - hit[0] < _OVERVIEW_TTL:
+        return hit[1]
+    if hit and not _overview_lock.acquire(blocking=False):
+        return hit[1]  # пересчёт уже идёт — отдаём прежний результат, второй подсчёт не начинаем
+    if not hit:
+        _overview_lock.acquire()
+    try:
+        hit2 = _overview_cache.get(key)
+        if hit2 and not fresh and _t.monotonic() - hit2[0] < _OVERVIEW_TTL:
+            return hit2[1]
+        data = _overview_compute(m, actor)
+        _overview_cache[key] = (_t.monotonic(), data)
+        return data
+    finally:
+        _overview_lock.release()
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = f"padam/{__version__}"
 
@@ -1056,21 +1108,11 @@ class Handler(BaseHTTPRequestHandler):
                 m = mem()
                 if roles.is_owner(actor) and (_state.get("token") or (actor and actor.via_token)):
                     _touch_owner_session("overview")
-                unsigned = m.unsigned_protected() if roles.is_owner(actor) else []
-                doc = m.doctor_report() if roles.is_owner(actor) else {"warnings": 0, "dangers": 0, "checks": []}
-                return self._send(200, {
-                    "version": __version__,
-                    "stats": m.stats(actor=actor),
-                    "doctor": doc,
-                    "nocturne_runs": m.nocturne_runs(5) if roles.is_owner(actor) else [],
-                    "unsigned_protected": [
-                        {"id": r["id"], "kind": r["kind"], "content": r["content"][:160]}
-                        for r in unsigned
-                    ],
-                    "conflicts": m.conflicts(actor=actor),
-                    "desktop_cmds": _state.pop("desktop_cmds", []) if roles.is_owner(actor) else [],
-                    "actor": {"role": actor.role, "subject": actor.subject, "workspace_id": actor.workspace_id} if actor else {"role": "owner", "subject": "owner", "workspace_id": None},
-                })
+                fresh = (parse_qs(путь.query).get("fresh", ["0"])[0] or "0") == "1"
+                payload = dict(_overview_cached(m, actor, fresh=fresh))
+                # Команды окну — всегда свежие, мимо кэша: их забирают ровно один раз.
+                payload["desktop_cmds"] = _state.pop("desktop_cmds", []) if roles.is_owner(actor) else []
+                return self._send(200, payload)
             if путь.path == "/graph":
                 q = parse_qs(путь.query)
                 try:
@@ -1274,6 +1316,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self._trusted():
             return self._send(403, {"error": "forbidden origin or host"})
+        _overview_cache.clear()  # любая запись — обзор пересчитается на следующем запросе
         if self.path == "/api/v2/lan-sync/push":
             try:
                 data_ls = self._read_json()
