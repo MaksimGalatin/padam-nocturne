@@ -566,7 +566,7 @@ def build_business_outreach(
             f"WCAG 2.1 AA rule instances ({crit_v} labeled critical and {ser_v} labeled serious by axe-core) in these categories:\n"
             + "\n".join(explained_rules_en)
             + f"\n\nImportant technical note: Automated homepage checks inspect public HTML/ARIA markup patterns rather than manually testing "
-            f"every interactive or third-party flow (for example, external checkout or {niche_en} tools), so a human developer should always "
+            f"every interactive or third-party flow (for example, external checkout, booking or contact-form widgets), so a human developer should always "
             f"review which findings apply on live pages. We do not offer legal advice.\n\n"
             f"Verify yourself for free in under 60 seconds (no signup, no sales call):\n"
             f"Open https://aifa.works/accessibility?url={clean_dom}, confirm that you own or represent the website, and run the reproducible homepage check.\n\n"
