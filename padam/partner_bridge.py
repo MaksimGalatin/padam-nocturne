@@ -573,7 +573,7 @@ def build_business_outreach(
             # 26.11.2026, слово Папы: тарифы — от самых дешёвых, отдельно — что бесплатно (сверено с aifa.works:
             # i18n/translations.ts, tiers; превью Fix Pack — первые 2 карточки полностью, /api/scan/fixpack).
             f"Free for you, with no obligation:\n"
-            f"• the report from the free check above, kept under its own number;\n"
+            f"• {{REPORT_BULLET}};\n"
             f"• ready-to-use fixed code for the first two findings, shown with that report;\n"
             f"• reply 'send report' and we will email a printable breakdown for your developer.\n\n"
             f"If you would like help (optional, from the lowest price):\n"

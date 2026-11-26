@@ -104,3 +104,31 @@ def test_remote_optout_blocks_and_sync_failure_blocks(tmp_path, env, monkeypatch
     monkeypatch.setattr(ea.net_guard, "safe_urlopen", _boom)
     res2, sent2 = _send(mem, tmp_path, "new@other.com", "other.com")
     assert res2.get("blocked") and res2["reason"] == "stop_list_sync_failed" and not sent2
+
+
+def test_report_link_from_service_scan(tmp_path, env, monkeypatch):
+    """Номер отчёта: служебная проверка на стороне владельца → ссылка в письме; без настроек — честный текст."""
+    assert ea.free_report_url("shop.com") == ""          # не настроено — пусто
+    monkeypatch.setenv("PADAM_OUTREACH_SCAN_URL", "https://example.org/api/scan")
+    monkeypatch.setenv("PADAM_OUTREACH_SERVICE_KEY", "svc")
+
+    class _R:
+        status = 200
+        def __init__(self, data): self.data = data
+        def read(self): return self.data
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+
+    seen = {}
+
+    def _fake(req, **kw):
+        seen["hdr"] = req.get_header("X-outreach-key")
+        return _R(b'{"scanId":"7073-1A7F-EF60-2D21","engine":"deterministic-only"}')
+
+    monkeypatch.setattr(ea.net_guard, "safe_urlopen", _fake)
+    assert ea.free_report_url("https://Shop.com/") == "https://example.org/api/scan/report?id=7073-1A7F-EF60-2D21"
+    assert seen["hdr"] == "svc"
+    mem = _mem(tmp_path)
+    res, sent = _send(mem, tmp_path, "owner@shop.com", "shop.com", body="Free:\n• {REPORT_BULLET};\nBye")
+    assert res["ok"], res
+    assert "your report, kept under its own number: https://example.org/api/scan/report?id=7073-1A7F-EF60-2D21" in sent[-1]["body"]

@@ -466,6 +466,31 @@ def unsubscribe_url(email: str, domain: str = "") -> str:
     return f"{base}?" + urllib.parse.urlencode({"e": em, "d": dom, "s": sig})
 
 
+def free_report_url(domain: str) -> str:
+    """Номер отчёта для письма (26.11.2026): служебная проверка сайта на стороне владельца.
+
+    PADAM_OUTREACH_SCAN_URL (например https://aifa.works/api/scan) и ключ PADAM_OUTREACH_SERVICE_KEY
+    (или PADAM_UNSUB_SERVICE_KEY) → POST {url} с заголовком x-outreach-key → scanId → ссылка на отчёт
+    {база}/report?id=… Сервер проверяет сайт только бесплатными моделями. Нет настроек или сбой — "".
+    """
+    base = os.environ.get("PADAM_OUTREACH_SCAN_URL", "").strip().rstrip("/")
+    key = (os.environ.get("PADAM_OUTREACH_SERVICE_KEY", "") or os.environ.get("PADAM_UNSUB_SERVICE_KEY", "")).strip()
+    dom = _clean_domain(domain)
+    if not base or not key or not dom:
+        return ""
+    req = urllib.request.Request(base, data=json.dumps({"url": dom, "locale": "en"}).encode("utf-8"), method="POST",
+                                 headers={"Content-Type": "application/json", "x-outreach-key": key, "User-Agent": "PADAM-Studio"})
+    try:
+        with net_guard.safe_urlopen(req, timeout=90, require_https=True) as r:
+            data = json.loads(r.read().decode("utf-8"))
+    except Exception:
+        return ""
+    sid = str(data.get("scanId") or "").strip()
+    if not re.fullmatch(r"[0-9A-F-]{8,24}", sid):
+        return ""
+    return f"{base}/report?id={sid}"
+
+
 _REMOTE_STOP_SYNC_AT = 0.0
 
 
@@ -835,6 +860,10 @@ def send_outreach_email(
     # 24.11.2026 (AIfa): раньше подпись пропускалась, если в тексте встречалось «STOP» где угодно («nonstop»,
     # «unstoppable») — и письмо уходило без почтового адреса. Теперь проверяется сам адрес отправителя.
     _postal = os.environ.get("PADAM_SENDER_POSTAL_ADDRESS", "").strip() or _DEFAULT_SENDER_POSTAL
+    if "{REPORT_BULLET}" in str(body or ""):
+        report = free_report_url(domain) if direction.startswith("outbound") else ""
+        body = str(body).replace("{REPORT_BULLET}", f"your report, kept under its own number: {report}" if report
+                                 else "the report from the free check above, kept under its own number")
     unsub = unsubscribe_url(clean_to, domain) if direction.startswith("outbound") else ""
     if "{UNSUB_URL}" in str(body or ""):
         if not unsub:   # отписка по ссылке не настроена — честно оставляем только ответ STOP
