@@ -7,5 +7,13 @@
   },
   "actionTitle": {
     "message": "PADAM · NOCTURNE 记忆守卫"
+  },
+  "menuSaveSelection": {
+    "message": "PADAM：将所选内容存入记忆（待审核）",
+    "description": "Context menu item: save the selected text"
+  },
+  "menuSavePage": {
+    "message": "PADAM：将页面存入记忆（待审核）",
+    "description": "Context menu item: save the current page"
   }
 }

@@ -7,5 +7,13 @@
   },
   "actionTitle": {
     "message": "PADAM · NOCTURNE — Память"
+  },
+  "menuSaveSelection": {
+    "message": "PADAM: Сохранить выделенное в память (на проверку)",
+    "description": "Context menu item: save the selected text"
+  },
+  "menuSavePage": {
+    "message": "PADAM: Сохранить страницу в память (на проверку)",
+    "description": "Context menu item: save the current page"
   }
 }

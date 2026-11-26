@@ -79,12 +79,12 @@ function setupContextMenus() {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: 'padam-save-selection',
-      title: 'PADAM: Сохранить выделенное в память (на проверку)',
+      title: chrome.i18n.getMessage('menuSaveSelection') || 'PADAM: Save selection to memory (for review)',  // 26.11: язык браузера, а не только русский
       contexts: ['selection']
     });
     chrome.contextMenus.create({
       id: 'padam-save-page',
-      title: 'PADAM: Сохранить страницу в память (на проверку)',
+      title: chrome.i18n.getMessage('menuSavePage') || 'PADAM: Save page to memory (for review)',
       contexts: ['page']
     });
   });
