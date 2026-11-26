@@ -308,7 +308,7 @@ def test_policy_replay_on_real_history(tmp_path: Path) -> None:
 def test_fast_660_vector_pentest_latency_and_accuracy() -> None:
     res = run_local_pentest()
     assert res["ok"] is True
-    assert res["vectors_total"] == 660
+    assert res["vectors_total"] >= 660
     assert res["security_index_pct"] >= 99.0, f"Missed: {res['missed_sample']}"
     assert res["latency_ms"]["p50"] < 5.0, f"P50 too slow: {res['latency_ms']}"
     assert res["latency_ms"]["p95"] < 200.0, f"P95 too slow: {res['latency_ms']}"

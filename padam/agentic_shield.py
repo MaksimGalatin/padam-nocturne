@@ -1208,6 +1208,39 @@ def inspect_outbound_action(
     except Exception:
         pass
 
+    # Предиктивные Honey-Tokens (ловушки на 0-day утечки)
+    try:
+        from .shield import honeytoken as _ht
+        ht_res = _ht.scan_for_honeytokens(memory, deep_blob, agent_id=agent_id, channel=action_type, trip_kill_switch=False)
+        if ht_res.get("triggered"):
+            hard_block = True
+            risk_level = "critical"
+            reasons.append({
+                "code": "honeytoken_triggered",
+                "severity": "critical",
+                "detail": f"Сработала ловушка Honey-Token ({ht_res['hits'][0]['decoy_kind']} @ {ht_res['hits'][0]['placement']})",
+            })
+    except Exception:
+        pass
+
+    # Защита от Cloud Metadata SSRF / обфусцированных IP / опасных схем URL (до DNS!)
+    try:
+        if target and "://" in target:
+            from .shield import ssrf_path_guard as _ssrf
+            sr = _ssrf.inspect_url_ssrf(target, allow_private=False)
+            host_l = str(sr.get("host") or "").lower()
+            if sr.get("blocked") and host_l not in allowed_domains:
+                for sf in sr.get("findings") or []:
+                    hard_block = True
+                    risk_level = "critical"
+                    reasons.append({
+                        "code": str(sf.get("rule_id", "ssrf_blocked")).lower(),
+                        "severity": "critical",
+                        "detail": str(sf.get("detail", "")),
+                    })
+    except Exception:
+        pass
+
     # Декодер смарт-контрактов EVM ABI / Solana (Кольцо 3)
     try:
         from .shield import web3_abi as _w3

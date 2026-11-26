@@ -81,6 +81,26 @@ from .timelock_quorum import (
     propose_timelock_operation,
     veto_timelock_operation,
 )
+from .aibom import generate_aibom, verify_aibom_signature
+from .browser_guard import inspect_browser_action, inspect_dom_html
+from .capability_tokens import (
+    attenuate_capability_token,
+    issue_capability_token,
+    list_capability_tokens,
+    revoke_capability_token,
+    verify_and_consume_capability,
+)
+from .crescendo_guard import evaluate_conversation_turn, reset_crescendo_session
+from .forensics import build_forensic_timeline, render_forensic_markdown
+from .honeytoken import list_honeytokens, plant_honeytoken, scan_for_honeytokens
+from .mcp_http_proxy import (
+    McpHttpShieldGateway,
+    inspect_http_mcp_request,
+    inspect_http_mcp_response_payload,
+)
+from .memory_rules_guard import inspect_memory_or_rule_text, scan_rules_directory
+from .multimodal_guard import inspect_media_bytes, inspect_media_file
+from .ssrf_path_guard import inspect_file_path_access, inspect_url_ssrf
 from .web3_abi import decode_evm_calldata, inspect_solana_instruction, scan_text_for_web3_tx
 
 __all__ = [
@@ -161,4 +181,29 @@ __all__ = [
     "verify_shield_integrity",
     "verify_signature_bundle",
     "veto_timelock_operation",
+    "McpHttpShieldGateway",
+    "attenuate_capability_token",
+    "build_forensic_timeline",
+    "evaluate_conversation_turn",
+    "generate_aibom",
+    "inspect_browser_action",
+    "inspect_dom_html",
+    "inspect_file_path_access",
+    "inspect_http_mcp_request",
+    "inspect_http_mcp_response_payload",
+    "inspect_media_bytes",
+    "inspect_media_file",
+    "inspect_memory_or_rule_text",
+    "inspect_url_ssrf",
+    "issue_capability_token",
+    "list_capability_tokens",
+    "list_honeytokens",
+    "plant_honeytoken",
+    "render_forensic_markdown",
+    "reset_crescendo_session",
+    "revoke_capability_token",
+    "scan_for_honeytokens",
+    "scan_rules_directory",
+    "verify_aibom_signature",
+    "verify_and_consume_capability",
 ]

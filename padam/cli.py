@@ -2475,6 +2475,50 @@ def main(argv=None) -> int:
             res = _ts.verify_shield_integrity(m, enforce_lockdown_on_tamper=not getattr(args, "no_lockdown", False))
             print(json.dumps(res, ensure_ascii=False, indent=2))
             return 2 if res.get("tampered") else 0
+        elif act == "scan-rules":
+            from .shield import memory_rules_guard as _mrg
+            res = _mrg.scan_rules_directory(args.path)
+            print(json.dumps(res, ensure_ascii=False, indent=2))
+            return 2 if res.get("blocked") else 0
+        elif act == "scan-media":
+            from .shield import multimodal_guard as _mmg
+            res = _mmg.inspect_media_file(args.path)
+            print(json.dumps(res, ensure_ascii=False, indent=2))
+            return 2 if res.get("blocked") else 0
+        elif act == "aibom":
+            from .shield import aibom as _ab
+            res = _ab.generate_aibom(args.path, memory=m)
+            out_p = getattr(args, "out", "") or ""
+            if out_p:
+                Path(out_p).write_text(json.dumps(res["bom"], ensure_ascii=False, indent=2), encoding="utf-8")
+            print(json.dumps(res, ensure_ascii=False, indent=2))
+            return 0
+        elif act == "forensics":
+            from .shield import forensics as _fr
+            rep = _fr.build_forensic_timeline(m, session_id=getattr(args, "session", None) or None)
+            if getattr(args, "markdown", False):
+                print(_fr.render_forensic_markdown(rep))
+            else:
+                print(json.dumps(rep, ensure_ascii=False, indent=2))
+            return 0
+        elif act == "http-proxy":
+            from .shield import mcp_http_proxy as _mhp
+            gw = _mhp.McpHttpShieldGateway(
+                m,
+                upstream_url=args.upstream,
+                port=int(getattr(args, "port", 8790) or 8790),
+                server_id=getattr(args, "server", "http_mcp"),
+                allow_private_upstream=bool(getattr(args, "allow_private", False)),
+            )
+            host, port = gw.start_background()
+            print(json.dumps({"ok": True, "listening": f"http://{host}:{port}", "upstream": args.upstream}, ensure_ascii=False))
+            try:
+                import time as _t
+                while True:
+                    _t.sleep(1.0)
+            except KeyboardInterrupt:
+                gw.stop()
+            return 0
         else:
             res = _ash.get_shield_status(m)
         print(json.dumps(res, ensure_ascii=False, indent=2))
@@ -2571,6 +2615,26 @@ def main(argv=None) -> int:
     ss_vs.add_argument("--seal-now", action="store_true")
     ss_vs.add_argument("--no-lockdown", action="store_true")
     ss_vs.set_defaults(fn=cmd_shield)
+    ss_sr = ssub.add_parser("scan-rules")
+    ss_sr.add_argument("path")
+    ss_sr.set_defaults(fn=cmd_shield)
+    ss_smd = ssub.add_parser("scan-media")
+    ss_smd.add_argument("path")
+    ss_smd.set_defaults(fn=cmd_shield)
+    ss_ab = ssub.add_parser("aibom")
+    ss_ab.add_argument("path")
+    ss_ab.add_argument("--out", default="")
+    ss_ab.set_defaults(fn=cmd_shield)
+    ss_fr = ssub.add_parser("forensics")
+    ss_fr.add_argument("--session", default="")
+    ss_fr.add_argument("--markdown", action="store_true")
+    ss_fr.set_defaults(fn=cmd_shield)
+    ss_hp = ssub.add_parser("http-proxy")
+    ss_hp.add_argument("--upstream", required=True)
+    ss_hp.add_argument("--port", type=int, default=8790)
+    ss_hp.add_argument("--server", default="http_mcp")
+    ss_hp.add_argument("--allow-private", action="store_true")
+    ss_hp.set_defaults(fn=cmd_shield)
 
     # Команды верхнего уровня (padam learn / inspect / pentest / update-db / scan-model)
     def _mk_top_shield(cmd_name: str):
