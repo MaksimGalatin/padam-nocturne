@@ -15,4 +15,4 @@ Automatically registers the local sovereign **PADAM NOCTURNE** MCP server (`127.
 
 ## License
 
-**PADAM License 1.0** (`LicenseRef-PADAM-1.0`, [`LICENSE`](LICENSE.txt)) — source-available with automatic 24-month conversion to `Apache-2.0`. Copyright © 2026 **CODE Eternal LLC** (New Mexico, USA · Entity ID `0008138873`). Commercial terms: [`COMMERCIAL-LICENSE.md`](../../COMMERCIAL-LICENSE.md).
+**PADAM License 1.0** (`LicenseRef-PADAM-1.0`, [`LICENSE`](https://github.com/MaksimGalatin/padam-nocturne/blob/main/LICENSE)) — source-available with automatic 24-month conversion to `Apache-2.0`. Copyright © 2026 **CODE Eternal LLC** (New Mexico, USA · Entity ID `0008138873`). Commercial terms: [`COMMERCIAL-LICENSE.md`](https://github.com/MaksimGalatin/padam-nocturne/blob/main/COMMERCIAL-LICENSE.md).
