@@ -4324,6 +4324,88 @@ _STRINGS_SHIELD: dict[str, dict[str, str]] = {
         "sh_asi_ASI10": "失控智能体与审计链篡改",
     },
 }
+_STRINGS_SHIELD_V1: dict[str, dict[str, str]] = {
+    "ru": {
+        "sh_adv_title": "Граф атак, Shadow-обучение и локальный Red-Team",
+        "sh_adv_sub": "Визуальная траектория меток (Источник → Инструмент → Вердикт), обучение без блокировок, фаззер 520 атак и пакет комплаенса (Закон ЕС об ИИ, NIST, SOC 2).",
+        "sh_graph_btn": "Обновить граф траекторий",
+        "sh_graph_tip": "Построить SVG-цепочку вызовов инструментов и заражённых меток текущей сессии",
+        "sh_mode_btn": "Переключить Shadow / Enforce",
+        "sh_mode_tip": "Переключить режим обучения без блокировок (Shadow) или жёсткой защиты (Enforce)",
+        "sh_learn_btn": "Собрать policy.yaml",
+        "sh_learn_tip": "Сгенерировать оптимальный файл политик из журнала Shadow-аудита и профилей UEBA",
+        "sh_pentest_btn": "Запустить Red-Team (520)",
+        "sh_pentest_tip": "Прогнать 520 реальных атак против локального контура защиты в изолированной базе",
+        "sh_comp_btn": "Пакет комплаенса",
+        "sh_comp_tip": "Сформировать пакет доказательств (Закон ЕС об ИИ, NIST, OWASP, PCI 4.0.1, SOC 2)",
+        "sh_comp_html_btn": "Комплаенс HTML",
+        "sh_comp_html_tip": "Скачать печатный HTML-отчёт пакета доказательств комплаенса",
+        "sh_comp_md_btn": "Комплаенс MD",
+        "sh_comp_md_tip": "Скачать Markdown-отчёт пакета доказательств комплаенса",
+        "sh_graph_empty": "Шагов отслеживания меток пока нет — они появятся автоматически при вызовах агента.",
+    },
+    "en": {
+        "sh_adv_title": "Attack Graph, Shadow Learning & Local Red-Team",
+        "sh_adv_sub": "Interactive Taint Tracking trajectory (Source -> Tool -> Verdict), non-blocking Shadow learning, 520-vector local fuzzer & Compliance Evidence Pack (EU AI Act / NIST / SOC 2).",
+        "sh_graph_btn": "Refresh Attack Graph",
+        "sh_graph_tip": "Render SVG trajectory of agent tool calls, taint tags, and blocks",
+        "sh_mode_btn": "Toggle Shadow / Enforce",
+        "sh_mode_tip": "Switch between non-blocking Shadow learning mode and strict Enforce mode",
+        "sh_learn_btn": "Generate policy.yaml",
+        "sh_learn_tip": "Auto-generate policy.yaml from Shadow-audit events and local UEBA baselines",
+        "sh_pentest_btn": "Run Local Red-Team (520)",
+        "sh_pentest_tip": "Run 520 real attack vectors against local Shield in an isolated temp DB",
+        "sh_comp_btn": "Compliance Pack",
+        "sh_comp_tip": "Build signed Compliance Evidence Pack (EU AI Act, NIST AI RMF, OWASP LLM, SOC 2)",
+        "sh_comp_html_btn": "Compliance HTML",
+        "sh_comp_html_tip": "Download printable HTML Compliance Evidence Pack",
+        "sh_comp_md_btn": "Compliance MD",
+        "sh_comp_md_tip": "Download Markdown Compliance Evidence Pack",
+        "sh_graph_empty": "No Taint Tracking steps recorded yet — they appear automatically on agent tool calls.",
+    },
+    "es": {
+        "sh_adv_title": "Grafo de ataques, aprendizaje Shadow y Red-Team local",
+        "sh_adv_sub": "Trayectoria visual Taint Tracking, auditoría Shadow sin bloqueos, fuzzer local de 520 vectores y paquete de cumplimiento (EU AI Act / NIST / SOC 2).",
+        "sh_graph_btn": "Actualizar grafo",
+        "sh_graph_tip": "Mostrar el grafo SVG de llamadas de herramientas y etiquetas Taint",
+        "sh_mode_btn": "Cambiar Shadow / Enforce",
+        "sh_mode_tip": "Alternar entre modo de observación Shadow y bloqueo estricto Enforce",
+        "sh_learn_btn": "Generar policy.yaml",
+        "sh_learn_tip": "Generar policy.yaml óptimo desde el registro Shadow y perfiles UEBA",
+        "sh_pentest_btn": "Ejecutar Red-Team (520)",
+        "sh_pentest_tip": "Ejecutar 520 ataques reales contra el escudo local en base temporal aislada",
+        "sh_comp_btn": "Paquete cumplimiento",
+        "sh_comp_tip": "Generar Evidence Pack firmado (EU AI Act, NIST AI RMF, OWASP, SOC 2)",
+        "sh_comp_html_btn": "Cumplimiento HTML",
+        "sh_comp_html_tip": "Descargar informe HTML de cumplimiento",
+        "sh_comp_md_btn": "Cumplimiento MD",
+        "sh_comp_md_tip": "Descargar informe Markdown de cumplimiento",
+        "sh_graph_empty": "Aún no hay pasos de Taint Tracking registrados.",
+    },
+    "zh": {
+        "sh_adv_title": "攻击链路图、影子学习与本地红队测试",
+        "sh_adv_sub": "可视化污点追踪轨迹（来源→工具→判定）、无阻断影子学习、520 向量本地红队模糊测试及合规证据包（EU AI Act / NIST / SOC 2）。",
+        "sh_graph_btn": "刷新攻击链路图",
+        "sh_graph_tip": "绘制智能体工具调用与污点标签的 SVG 链路图",
+        "sh_mode_btn": "切换影子 / 强制模式",
+        "sh_mode_tip": "在无阻断影子观察模式与严格拦截模式之间切换",
+        "sh_learn_btn": "生成 policy.yaml",
+        "sh_learn_tip": "根据影子日志和本地 UEBA 基线自动生成策略文件",
+        "sh_pentest_btn": "运行本地红队 (520)",
+        "sh_pentest_tip": "在隔离临时库中对本地防护运行 520 项真实攻击向量",
+        "sh_comp_btn": "合规证据包",
+        "sh_comp_tip": "生成签名合规证据包（EU AI Act / NIST AI RMF / OWASP / SOC 2）",
+        "sh_comp_html_btn": "合规 HTML",
+        "sh_comp_html_tip": "下载可打印 HTML 合规证据报告",
+        "sh_comp_md_btn": "合规 MD",
+        "sh_comp_md_tip": "下载 Markdown 合规证据报告",
+        "sh_graph_empty": "尚无污点追踪步骤，智能体调用工具后将自动显示。",
+    },
+}
+for _lg_v1, _ex_v1 in _STRINGS_SHIELD_V1.items():
+    if _lg_v1 in _STRINGS_SHIELD:
+        _STRINGS_SHIELD[_lg_v1].update(_ex_v1)
+
 for _lg, _extra in _STRINGS_SHIELD.items():
     STRINGS[_lg].update(_extra)
 
@@ -13739,6 +13821,107 @@ if ($('sh-proof-gen-btn')) $('sh-proof-gen-btn').onclick = async () => {
 if ($('sh-proof-dl-json-btn')) $('sh-proof-dl-json-btn').onclick = () => _downloadBench('/api/v2/shield/proof-pack?format=json&download=1', 'padam_shield_proof_pack.json');
 if ($('sh-proof-dl-html-btn')) $('sh-proof-dl-html-btn').onclick = () => _downloadBench('/api/v2/shield/proof-pack?format=html&download=1', 'padam_shield_proof_pack.html');
 if ($('sh-proof-dl-md-btn')) $('sh-proof-dl-md-btn').onclick = () => _downloadBench('/api/v2/shield/proof-pack?format=md&download=1', 'padam_shield_proof_pack.md');
+async function _renderShieldGraph() {
+  const wrap = $('sh-graph-wrap');
+  if (!wrap) return;
+  try {
+    const g = await api('/api/v2/shield/graph');
+    const nodes = (g && g.nodes) || [];
+    wrap.textContent = '';
+    if (!nodes.length) {
+      wrap.appendChild(_el('p', 'panel-sub', S.sh_graph_empty || 'No steps yet'));
+      return;
+    }
+    const w = Math.max(520, nodes.slice(-8).length * 165 + 24);
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + w + ' 112');
+    svg.setAttribute('width', String(w));
+    svg.setAttribute('height', '112');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', S.sh_adv_title || 'Attack Graph');
+    const slice = nodes.slice(-8);
+    slice.forEach((n, idx) => {
+      const x = 12 + idx * 165;
+      const isBlk = n.verdict === 'block';
+      const hasTaint = (n.active_taints || []).length > 0;
+      const fill = isBlk ? '#7f1d1d' : (hasTaint ? '#78350f' : '#0f172a');
+      const stroke = isBlk ? '#ef4444' : (hasTaint ? '#f59e0b' : '#38bdf8');
+      if (idx > 0) {
+        const ln = document.createElementNS(svgNS, 'line');
+        ln.setAttribute('x1', String(x - 25)); ln.setAttribute('y1', '52');
+        ln.setAttribute('x2', String(x)); ln.setAttribute('y2', '52');
+        ln.setAttribute('stroke', stroke); ln.setAttribute('stroke-width', '2');
+        svg.appendChild(ln);
+      }
+      const rect = document.createElementNS(svgNS, 'rect');
+      rect.setAttribute('x', String(x)); rect.setAttribute('y', '16');
+      rect.setAttribute('width', '140'); rect.setAttribute('height', '74');
+      rect.setAttribute('rx', '8'); rect.setAttribute('fill', fill);
+      rect.setAttribute('stroke', stroke); rect.setAttribute('stroke-width', '1.5');
+      svg.appendChild(rect);
+      const t1 = document.createElementNS(svgNS, 'text');
+      t1.setAttribute('x', String(x + 8)); t1.setAttribute('y', '36');
+      t1.setAttribute('fill', '#f8fafc'); t1.setAttribute('font-size', '11'); t1.setAttribute('font-weight', '700');
+      t1.textContent = String(n.tool_name || 'tool').slice(0, 18);
+      svg.appendChild(t1);
+      const t2 = document.createElementNS(svgNS, 'text');
+      t2.setAttribute('x', String(x + 8)); t2.setAttribute('y', '56');
+      t2.setAttribute('fill', '#cbd5e1'); t2.setAttribute('font-size', '10');
+      t2.textContent = String(n.target || n.source_node || '').slice(0, 20);
+      svg.appendChild(t2);
+      const t3 = document.createElementNS(svgNS, 'text');
+      t3.setAttribute('x', String(x + 8)); t3.setAttribute('y', '76');
+      t3.setAttribute('fill', isBlk ? '#fca5a5' : (hasTaint ? '#fcd34d' : '#7dd3fc'));
+      t3.setAttribute('font-size', '10');
+      t3.textContent = (isBlk ? 'BLOCK' : 'ALLOW') + (hasTaint ? ' · TAINT' : '');
+      svg.appendChild(t3);
+    });
+    wrap.appendChild(svg);
+  } catch (e) { wrap.textContent = String(e.message || e); }
+}
+if ($('sh-graph-btn')) $('sh-graph-btn').onclick = () => _renderShieldGraph();
+if ($('sh-mode-btn')) $('sh-mode-btn').onclick = async () => {
+  const out = $('sh-adv-out');
+  try {
+    const st = await api('/api/v2/shield/status');
+    const nextMode = (st && st.shield_mode === 'shadow') ? 'enforce' : 'shadow';
+    const r = await api('/api/v2/shield/learn', { action: 'set_mode', mode: nextMode });
+    if (out) out.textContent = 'Shield mode: ' + String(r.shield_mode || nextMode).toUpperCase();
+    loadShield();
+  } catch (e) { if (out) out.textContent = String(e.message || e); }
+};
+if ($('sh-learn-btn')) $('sh-learn-btn').onclick = async () => {
+  const out = $('sh-adv-out');
+  try {
+    const r = await api('/api/v2/shield/learn', { action: 'generate', days: 7 });
+    if (out) {
+      out.textContent = '';
+      const pre = document.createElement('pre');
+      pre.style.whiteSpace = 'pre-wrap';
+      pre.textContent = String(r.yaml || '');
+      out.appendChild(pre);
+    }
+  } catch (e) { if (out) out.textContent = String(e.message || e); }
+};
+if ($('sh-pentest-btn')) $('sh-pentest-btn').onclick = async () => {
+  const out = $('sh-adv-out');
+  if (out) out.textContent = 'Running 520 local attack vectors...';
+  try {
+    const r = await api('/api/v2/shield/pentest', {});
+    if (out) out.textContent = 'Red-Team: ' + r.vectors_caught + '/' + r.vectors_total + ' (' + r.security_index_pct + '%, Grade ' + r.grade + ') · P50=' + r.latency_ms.p50 + ' ms · P95=' + r.latency_ms.p95 + ' ms';
+  } catch (e) { if (out) out.textContent = String(e.message || e); }
+};
+if ($('sh-comp-btn')) $('sh-comp-btn').onclick = async () => {
+  const out = $('sh-adv-out');
+  try {
+    const r = await api('/api/v2/shield/compliance');
+    const fws = Object.keys(r.frameworks || {}).join(', ');
+    if (out) out.textContent = 'Compliance Pack SHA-256: ' + String((r.attestation || {}).pack_sha256 || '').slice(0, 20) + '… · Frameworks: ' + fws;
+  } catch (e) { if (out) out.textContent = String(e.message || e); }
+};
+if ($('sh-comp-html-btn')) $('sh-comp-html-btn').onclick = () => _downloadBench('/api/v2/shield/compliance?format=html&download=1', 'padam_compliance_evidence.html');
+if ($('sh-comp-md-btn')) $('sh-comp-md-btn').onclick = () => _downloadBench('/api/v2/shield/compliance?format=md&download=1', 'padam_compliance_evidence.md');
 
 // --- ЧАТЫ С АГЕНТАМИ ---
 window._chatsAgentFilter = '';
@@ -15927,6 +16110,22 @@ mark.q-hit{{background:rgba(244,63,94,.28);color:inherit;padding:1px 4px;border-
             <button id="sh-proof-dl-md-btn" class="btn" type="button" data-i18n="sh_proof_dl_md_btn">{s['sh_proof_dl_md_btn']}</button>
           </div>
           <div id="sh-proof-out" aria-live="polite"></div>
+        </div>
+
+        <div class="box" id="sh-adv-box">
+          <h3 class="box-title" data-i18n="sh_adv_title">{s['sh_adv_title']}</h3>
+          <p class="panel-sub" data-i18n="sh_adv_sub">{s['sh_adv_sub']}</p>
+          <div class="att-actions">
+            <button id="sh-graph-btn" class="btn-primary" type="button" data-i18n="sh_graph_btn" title="{s['sh_graph_tip']}">{s['sh_graph_btn']}</button>
+            <button id="sh-mode-btn" class="btn" type="button" data-i18n="sh_mode_btn" title="{s['sh_mode_tip']}">{s['sh_mode_btn']}</button>
+            <button id="sh-learn-btn" class="btn" type="button" data-i18n="sh_learn_btn" title="{s['sh_learn_tip']}">{s['sh_learn_btn']}</button>
+            <button id="sh-pentest-btn" class="btn" type="button" data-i18n="sh_pentest_btn" title="{s['sh_pentest_tip']}">{s['sh_pentest_btn']}</button>
+            <button id="sh-comp-btn" class="btn" type="button" data-i18n="sh_comp_btn" title="{s['sh_comp_tip']}">{s['sh_comp_btn']}</button>
+            <button id="sh-comp-html-btn" class="btn" type="button" data-i18n="sh_comp_html_btn" title="{s['sh_comp_html_tip']}">{s['sh_comp_html_btn']}</button>
+            <button id="sh-comp-md-btn" class="btn" type="button" data-i18n="sh_comp_md_btn" title="{s['sh_comp_md_tip']}">{s['sh_comp_md_btn']}</button>
+          </div>
+          <div id="sh-graph-wrap" class="table-wrap"></div>
+          <div id="sh-adv-out" aria-live="polite"></div>
         </div>
 
         <div class="box" id="sh-mcp-box">

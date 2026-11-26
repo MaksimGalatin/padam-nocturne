@@ -55,8 +55,8 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/l3-local-checkpoint", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/roles", "/api/v2/ark/audit-repair", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action", "/api/v2/ark/stores/action", "/api/v2/ark/wizard/action", "/api/v2/ark/partner/action", "/api/v2/ark/phoenix-beacon/action", "/api/v2/local-model", "/api/v2/family/post", "/api/v2/family/reflex/decide", "/api/v2/quarantine/council", "/api/v2/shield/kill-switch", "/api/v2/shield/outbound/check", "/api/v2/shield/outbound/decide", "/api/v2/shield/allowlist", "/api/v2/shield/supply-chain/scan", "/api/v2/shield/scan-mcp", "/api/v2/shield/scan-unicode", "/api/v2/shield/profile", "/api/v2/shield/webhook", "/api/v2/shield/webhook/test", "/api/v2/shield/output/check", "/api/v2/shield/replay/verify", "/api/v2/chats", "/api/v2/chats/import", "/api/v2/chats/sync-local", "/api/v2/media/generate", "/api/v2/shield/canary", "/api/v2/shield/lease", "/api/v2/wallets", "/api/v2/verify-claims", "/api/v2/ark/terms", "/api/v2/ark/passports/action", "/api/v2/ark/agora/action", "/api/v2/ark/automation/action", "/api/v2/shield/sales/action", "/api/v2/setup/clients/action", "/api/v2/memory/pro/action", "/api/v2/import/universal", "/api/v2/power/action", "/api/v2/swarm/coop/action", "/api/v2/quarantine/approve-clean", "/api/v2/quarantine/reject-similar", "/api/v2/cloud/sync", "/api/v2/agents/canonicalize", "/api/v2/lan-sync/offer", "/api/v2/voice/command"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/morning-pulse", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/roles", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance", "/api/v2/ark/stores", "/api/v2/ark/wizard", "/api/v2/ark/partner", "/api/v2/local-model", "/api/v2/family/feed", "/api/v2/family/reflexes", "/api/v2/quarantine/council", "/api/v2/family/dialogs", "/api/v2/redteam/rounds", "/api/v2/code-version", "/api/v2/shield/status", "/api/v2/shield/proof-pack", "/api/v2/shield/webhook", "/api/v2/shield/agent-budget", "/api/v2/agents", "/api/v2/chats", "/api/v2/chats/thread", "/api/v2/chats/hour", "/api/v2/chats/compact-hour", "/api/v2/media/engines", "/api/v2/media/file", "/api/v2/wallets", "/api/v2/ark/terms", "/api/v2/ark/fee-invoices", "/api/v2/ark/passports", "/api/v2/ark/agora", "/api/v2/ark/automation", "/api/v2/shield/sales", "/api/v2/setup/clients", "/api/v2/mcp/inspector", "/api/v2/memory/pro", "/api/v2/import/sources", "/api/v2/power/status", "/api/v2/swarm/coop", "/api/v2/pulse/recent", "/api/v2/pulse/stream", "/api/v2/quarantine/inspect", "/api/v2/cloud/status"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/l3-local-checkpoint", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/roles", "/api/v2/ark/audit-repair", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action", "/api/v2/ark/stores/action", "/api/v2/ark/wizard/action", "/api/v2/ark/partner/action", "/api/v2/ark/phoenix-beacon/action", "/api/v2/local-model", "/api/v2/family/post", "/api/v2/family/reflex/decide", "/api/v2/quarantine/council", "/api/v2/shield/kill-switch", "/api/v2/shield/outbound/check", "/api/v2/shield/outbound/decide", "/api/v2/shield/allowlist", "/api/v2/shield/supply-chain/scan", "/api/v2/shield/scan-mcp", "/api/v2/shield/scan-unicode", "/api/v2/shield/profile", "/api/v2/shield/webhook", "/api/v2/shield/webhook/test", "/api/v2/shield/output/check", "/api/v2/shield/replay/verify", "/api/v2/shield/pentest", "/api/v2/shield/learn", "/api/v2/shield/inspect", "/api/v2/shield/model-scan", "/api/v2/shield/policy/eval", "/api/v2/shield/semantic", "/api/v2/shield/web3", "/api/v2/shield/taint", "/api/v2/shield/rag-sanitize", "/api/v2/shield/a2a", "/api/v2/shield/update-db", "/api/v2/chats", "/api/v2/chats/import", "/api/v2/chats/sync-local", "/api/v2/media/generate", "/api/v2/shield/canary", "/api/v2/shield/lease", "/api/v2/wallets", "/api/v2/verify-claims", "/api/v2/ark/terms", "/api/v2/ark/passports/action", "/api/v2/ark/agora/action", "/api/v2/ark/automation/action", "/api/v2/shield/sales/action", "/api/v2/setup/clients/action", "/api/v2/memory/pro/action", "/api/v2/import/universal", "/api/v2/power/action", "/api/v2/swarm/coop/action", "/api/v2/quarantine/approve-clean", "/api/v2/quarantine/reject-similar", "/api/v2/cloud/sync", "/api/v2/agents/canonicalize", "/api/v2/lan-sync/offer", "/api/v2/voice/command"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/morning-pulse", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/roles", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance", "/api/v2/ark/stores", "/api/v2/ark/wizard", "/api/v2/ark/partner", "/api/v2/local-model", "/api/v2/family/feed", "/api/v2/family/reflexes", "/api/v2/quarantine/council", "/api/v2/family/dialogs", "/api/v2/redteam/rounds", "/api/v2/code-version", "/api/v2/shield/status", "/api/v2/shield/proof-pack", "/api/v2/shield/webhook", "/api/v2/shield/agent-budget", "/api/v2/shield/graph", "/api/v2/shield/ueba", "/api/v2/shield/compliance", "/api/v2/shield/policy/templates", "/api/v2/shield/a2a", "/api/v2/shield/sigdb", "/api/v2/agents", "/api/v2/chats", "/api/v2/chats/thread", "/api/v2/chats/hour", "/api/v2/chats/compact-hour", "/api/v2/media/engines", "/api/v2/media/file", "/api/v2/wallets", "/api/v2/ark/terms", "/api/v2/ark/fee-invoices", "/api/v2/ark/passports", "/api/v2/ark/agora", "/api/v2/ark/automation", "/api/v2/shield/sales", "/api/v2/setup/clients", "/api/v2/mcp/inspector", "/api/v2/memory/pro", "/api/v2/import/sources", "/api/v2/power/status", "/api/v2/swarm/coop", "/api/v2/pulse/recent", "/api/v2/pulse/stream", "/api/v2/quarantine/inspect", "/api/v2/cloud/status"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 16 * 1024 * 1024  # 16 МБ JSON-транспорт, чтобы вложения до 10 МБ в base64 проходили целиком
 
@@ -537,6 +537,53 @@ class Handler(BaseHTTPRequestHandler):
                 roles.require_owner(actor, "agentic_shield")
                 from . import agentic_shield as _ash
                 return self._send(200, _ash.get_shield_status(mem()))
+            if путь.path == "/api/v2/shield/graph":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import taint as _tnt
+                qs_g = parse_qs(путь.query)
+                sid = (qs_g.get("session") or [""])[0].strip() or None
+                return self._send(200, _tnt.get_session_graph(mem(), session_id=sid))
+            if путь.path == "/api/v2/shield/ueba":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import learn_ueba as _lu
+                return self._send(200, {"ok": True, "shield_mode": _lu.get_shield_mode(mem()), "profiles": _lu.list_ueba_profiles(mem())})
+            if путь.path == "/api/v2/shield/policy/templates":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import policy_dsl as _pd
+                return self._send(200, {"ok": True, "count": len(_pd.POLICY_TEMPLATES), "templates": _pd.list_policy_templates()})
+            if путь.path == "/api/v2/shield/a2a":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import a2a_trust as _a2a
+                return self._send(200, {"ok": True, "agents": _a2a.list_a2a_trust_scores(mem())})
+            if путь.path == "/api/v2/shield/sigdb":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import sigdb as _sdb
+                return self._send(200, _sdb.get_active_sigdb(mem()))
+            if путь.path == "/api/v2/shield/compliance":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import compliance as _cmp
+                qs_c = parse_qs(путь.query)
+                fmt_c = (qs_c.get("format") or ["json"])[0].strip().lower()
+                dl_c = (qs_c.get("download") or ["0"])[0] == "1"
+                cpack = _cmp.build_compliance_evidence_pack(mem())
+                if fmt_c == "html":
+                    raw_c = _cmp.render_compliance_html(cpack).encode("utf-8")
+                    ct_c, fn_c = "text/html; charset=utf-8", "padam_compliance_evidence.html"
+                elif fmt_c in ("md", "markdown"):
+                    raw_c = _cmp.render_compliance_markdown(cpack).encode("utf-8")
+                    ct_c, fn_c = "text/markdown; charset=utf-8", "padam_compliance_evidence.md"
+                else:
+                    if not dl_c:
+                        return self._send(200, cpack)
+                    raw_c = json.dumps(cpack, ensure_ascii=False, indent=2).encode("utf-8")
+                    ct_c, fn_c = "application/json; charset=utf-8", "padam_compliance_evidence.json"
+                self.send_response(200)
+                self.send_header("Content-Type", ct_c)
+                self.send_header("Content-Disposition", f'attachment; filename="{fn_c}"')
+                self.send_header("Content-Length", str(len(raw_c)))
+                self.end_headers()
+                self.wfile.write(raw_c)
+                return
             if путь.path == "/api/v2/shield/proof-pack":
                 roles.require_owner(actor, "agentic_shield")
                 from . import agentic_shield as _ash
@@ -1648,6 +1695,94 @@ class Handler(BaseHTTPRequestHandler):
                 roles.require_owner(actor, "agentic_shield")
                 from . import agentic_shield as _ash
                 return self._send(200, _ash.inspect_unicode_and_encoding(str(data.get("text") or "")))
+            if self.path == "/api/v2/shield/pentest":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import pentest as _pt
+                mv = data.get("max_vectors")
+                return self._send(200, _pt.run_local_pentest(max_vectors=int(mv) if mv else None))
+            if self.path == "/api/v2/shield/learn":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import learn_ueba as _lu
+                act_l = str(data.get("action") or "generate").strip().lower()
+                if act_l == "set_mode":
+                    try:
+                        return self._send(200, _lu.set_shield_mode(mem(), str(data.get("mode") or "enforce")))
+                    except ValueError as exc:
+                        return self._send(400, {"error": str(exc)})
+                return self._send(200, _lu.generate_policy_yaml(mem(), days=int(data.get("days") or 7)))
+            if self.path == "/api/v2/shield/inspect":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import inspect_mcp as _im
+                try:
+                    return self._send(200, _im.inspect_mcp_package(str(data.get("path") or "")))
+                except Exception as exc:
+                    return self._send(400, {"error": str(exc)})
+            if self.path == "/api/v2/shield/model-scan":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import model_scan as _ms
+                try:
+                    return self._send(200, _ms.scan_model_file(str(data.get("path") or "")))
+                except Exception as exc:
+                    return self._send(400, {"error": str(exc)})
+            if self.path == "/api/v2/shield/policy/eval":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import policy_dsl as _pd
+                inp_p = data.get("input") or {}
+                if data.get("template_id"):
+                    try:
+                        return self._send(200, _pd.evaluate_template_by_id(str(data["template_id"]), inp_p))
+                    except KeyError as exc:
+                        return self._send(400, {"error": str(exc)})
+                return self._send(200, _pd.evaluate_rego_policy(str(data.get("rego") or ""), inp_p))
+            if self.path == "/api/v2/shield/semantic":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import semantic as _sem
+                return self._send(200, _sem.classify_semantic_threat(str(data.get("text") or "")))
+            if self.path == "/api/v2/shield/web3":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import web3_abi as _w3
+                if data.get("instruction"):
+                    return self._send(200, _w3.inspect_solana_instruction(data["instruction"]))
+                return self._send(200, _w3.decode_evm_calldata(str(data.get("calldata") or "")))
+            if self.path == "/api/v2/shield/taint":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import taint as _tnt
+                if data.get("action") == "clear":
+                    return self._send(200, _tnt.clear_session_taints(mem(), str(data.get("session_id") or "default")))
+                return self._send(200, _tnt.observe_tool_step(
+                    mem(),
+                    session_id=str(data.get("session_id") or "default"),
+                    tool_name=str(data.get("tool_name") or "tool"),
+                    target=str(data.get("target") or ""),
+                    payload=str(data.get("payload") or ""),
+                    agent_id=str(data.get("agent_id") or "agent"),
+                    auto_trip_kill_switch=bool(data.get("auto_trip", False)),
+                ))
+            if self.path == "/api/v2/shield/rag-sanitize":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import output_rag as _orag
+                return self._send(200, _orag.sanitize_rag_document(str(data.get("content") or ""), doc_format=str(data.get("format") or "auto")))
+            if self.path == "/api/v2/shield/a2a":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import a2a_trust as _a2a
+                act_a = str(data.get("action") or "list")
+                if act_a == "register":
+                    return self._send(200, _a2a.register_a2a_agent(mem(), agent_id=str(data.get("agent_id") or ""), pubkey_b64=str(data.get("pubkey_b64") or "")))
+                if act_a == "verify":
+                    return self._send(200, _a2a.verify_a2a_message(mem(), data.get("envelope") or {}))
+                return self._send(200, {"ok": True, "agents": _a2a.list_a2a_trust_scores(mem())})
+            if self.path == "/api/v2/shield/update-db":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import sigdb as _sdb
+                try:
+                    return self._send(200, _sdb.update_sigdb_from_source(
+                        mem(),
+                        source=str(data.get("source") or ""),
+                        pinned_pubkey_b64=str(data.get("pubkey") or ""),
+                        allow_localhost=bool(data.get("allow_localhost", False)),
+                    ))
+                except Exception as exc:
+                    return self._send(400, {"error": str(exc)})
             if self.path == "/api/v2/shield/profile":
                 roles.require_owner(actor, "agentic_shield")
                 from . import agentic_shield as _ash

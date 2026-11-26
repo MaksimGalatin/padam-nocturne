@@ -1,0 +1,12 @@
+{
+  "name": "@padam/shield",
+  "version": "0.1.0",
+  "description": "Zero-telemetry local Agentic Shield middleware for Node.js, LangChain.js, and Vercel AI SDK (4 defense rings + EVM/Solana ABI + Taint CFI)",
+  "type": "module",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "license": "Apache-2.0",
+  "scripts": {
+    "test": "node ./test.mjs"
+  }
+}

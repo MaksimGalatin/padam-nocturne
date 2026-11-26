@@ -2390,6 +2390,61 @@ def main(argv=None) -> int:
                 _P(args.out_html).write_text(_ash.render_proof_pack_html(res), encoding="utf-8")
             if args.out_md:
                 _P(args.out_md).write_text(_ash.render_proof_pack_markdown(res), encoding="utf-8")
+        elif act == "learn":
+            from .shield import learn_ueba as _lu
+            if getattr(args, "apply", ""):
+                res = _lu.apply_policy_yaml(m, args.apply)
+            elif getattr(args, "mode", ""):
+                res = _lu.set_shield_mode(m, args.mode)
+            else:
+                res = _lu.generate_policy_yaml(m, days=int(getattr(args, "days", 7) or 7), out_path=getattr(args, "out", "") or None)
+        elif act == "inspect":
+            from .shield import inspect_mcp as _im
+            res = _im.inspect_mcp_package(args.path)
+            if getattr(args, "out_sarif", ""):
+                from pathlib import Path as _P
+                _P(args.out_sarif).write_text(json.dumps(_im.inspect_report_to_sarif(res), ensure_ascii=False, indent=2), encoding="utf-8")
+            print(json.dumps(res, ensure_ascii=False, indent=2))
+            return 2 if res.get("block_install") else 0
+        elif act == "pentest":
+            from .shield import pentest as _pt
+            res = _pt.run_local_pentest(max_vectors=getattr(args, "max_vectors", None))
+            if getattr(args, "out_json", ""):
+                from pathlib import Path as _P
+                _P(args.out_json).write_text(json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
+        elif act == "update-db":
+            from .shield import sigdb as _sdb
+            if getattr(args, "source", ""):
+                res = _sdb.update_sigdb_from_source(
+                    m, source=args.source, pinned_pubkey_b64=args.pubkey, allow_localhost=bool(getattr(args, "allow_localhost", False))
+                )
+            else:
+                res = _sdb.get_active_sigdb(m)
+        elif act == "scan-model":
+            from .shield import model_scan as _ms
+            res = _ms.scan_model_file(args.path)
+            print(json.dumps(res, ensure_ascii=False, indent=2))
+            return 2 if res.get("blocked") else 0
+        elif act == "compliance":
+            from .shield import compliance as _cmp
+            res = _cmp.build_compliance_evidence_pack(m)
+            from pathlib import Path as _P
+            if getattr(args, "out_json", ""):
+                _P(args.out_json).write_text(json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
+            if getattr(args, "out_html", ""):
+                _P(args.out_html).write_text(_cmp.render_compliance_html(res), encoding="utf-8")
+            if getattr(args, "out_md", ""):
+                _P(args.out_md).write_text(_cmp.render_compliance_markdown(res), encoding="utf-8")
+        elif act == "graph":
+            from .shield import taint as _tnt
+            res = _tnt.get_session_graph(m, session_id=getattr(args, "session", None) or None)
+        elif act == "policy":
+            from .shield import policy_dsl as _pd
+            if getattr(args, "template", ""):
+                inp = json.loads(getattr(args, "input_json", "{}") or "{}")
+                res = _pd.evaluate_template_by_id(args.template, inp)
+            else:
+                res = {"ok": True, "count": len(_pd.POLICY_TEMPLATES), "templates": _pd.list_policy_templates()}
         else:
             res = _ash.get_shield_status(m)
         print(json.dumps(res, ensure_ascii=False, indent=2))
@@ -2436,6 +2491,74 @@ def main(argv=None) -> int:
     ss_pp.add_argument("--out-html", default="")
     ss_pp.add_argument("--out-md", default="")
     ss_pp.set_defaults(fn=cmd_shield)
+    ss_lrn = ssub.add_parser("learn")
+    ss_lrn.add_argument("--mode", choices=["shadow", "enforce"], default="")
+    ss_lrn.add_argument("--days", type=int, default=7)
+    ss_lrn.add_argument("--out", default="")
+    ss_lrn.add_argument("--apply", default="")
+    ss_lrn.set_defaults(fn=cmd_shield)
+    ss_ins = ssub.add_parser("inspect")
+    ss_ins.add_argument("path")
+    ss_ins.add_argument("--out-sarif", default="")
+    ss_ins.set_defaults(fn=cmd_shield)
+    ss_pt = ssub.add_parser("pentest")
+    ss_pt.add_argument("--max-vectors", type=int, default=None)
+    ss_pt.add_argument("--out-json", default="")
+    ss_pt.set_defaults(fn=cmd_shield)
+    ss_udb = ssub.add_parser("update-db")
+    ss_udb.add_argument("--source", default="")
+    ss_udb.add_argument("--pubkey", default="")
+    ss_udb.add_argument("--allow-localhost", action="store_true")
+    ss_udb.set_defaults(fn=cmd_shield)
+    ss_ms = ssub.add_parser("scan-model")
+    ss_ms.add_argument("path")
+    ss_ms.set_defaults(fn=cmd_shield)
+    ss_cmp = ssub.add_parser("compliance")
+    ss_cmp.add_argument("--out-json", default="")
+    ss_cmp.add_argument("--out-html", default="")
+    ss_cmp.add_argument("--out-md", default="")
+    ss_cmp.set_defaults(fn=cmd_shield)
+    ss_gr = ssub.add_parser("graph")
+    ss_gr.add_argument("--session", default="")
+    ss_gr.set_defaults(fn=cmd_shield)
+    ss_pol = ssub.add_parser("policy")
+    ss_pol.add_argument("--template", default="")
+    ss_pol.add_argument("--input-json", default="{}")
+    ss_pol.set_defaults(fn=cmd_shield)
+
+    # Команды верхнего уровня (padam learn / inspect / pentest / update-db / scan-model)
+    def _mk_top_shield(cmd_name: str):
+        def _runner(m: Memory, args) -> int:
+            args.shield_cmd = cmd_name
+            return cmd_shield(m, args)
+        return _runner
+
+    p_lrn = sub.add_parser("learn", help=t("режим Shadow-аудита и автогенерация policy.yaml", "Shadow-audit mode & auto-generate policy.yaml"))
+    p_lrn.add_argument("--mode", choices=["shadow", "enforce"], default="")
+    p_lrn.add_argument("--days", type=int, default=7)
+    p_lrn.add_argument("--out", default="")
+    p_lrn.add_argument("--apply", default="")
+    p_lrn.set_defaults(fn=_mk_top_shield("learn"))
+
+    p_ins = sub.add_parser("inspect", help=t("AST-сканер исходного кода MCP-сервера до установки", "Static AST scanner for MCP server source code"))
+    p_ins.add_argument("path")
+    p_ins.add_argument("--out-sarif", default="")
+    p_ins.set_defaults(fn=_mk_top_shield("inspect"))
+
+    p_pt = sub.add_parser("pentest", help=t("локальный Red-Team фаззер (520 векторов атак)", "Local Red-Team fuzzer (520 attack vectors)"))
+    p_pt.add_argument("--max-vectors", type=int, default=None)
+    p_pt.add_argument("--out-json", default="")
+    p_pt.set_defaults(fn=_mk_top_shield("pentest"))
+
+    p_udb = sub.add_parser("update-db", help=t("одностороннее обновление подписанной базы сигнатур (Zero-Telemetry)", "One-way signed signature DB update (Zero-Telemetry)"))
+    p_udb.add_argument("--source", default="")
+    p_udb.add_argument("--pubkey", default="")
+    p_udb.add_argument("--allow-localhost", action="store_true")
+    p_udb.set_defaults(fn=_mk_top_shield("update-db"))
+
+    p_sm = sub.add_parser("scan-model", help=t("сканер весов локальных моделей (.pkl/.pt/.safetensors/.gguf)", "ML supply-chain model scanner (.pkl/.pt/.safetensors/.gguf)"))
+    p_sm.add_argument("path")
+    p_sm.set_defaults(fn=_mk_top_shield("scan-model"))
 
     def cmd_chats(m: Memory, args) -> int:
         from pathlib import Path as _P

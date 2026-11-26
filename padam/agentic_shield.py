@@ -320,8 +320,8 @@ def _dispatch_kill_alert(memory: Any, state: dict[str, Any], reason: str, agent_
             event_type='kill_switch_tripped',
             severity='critical',
             title='PADAM Kill Switch Activated (Machine-Speed Defense)',
-            detail=f'Agent={clean_agent}; reason={clean_reason}',
-            agent_id=clean_agent,
+            detail=f'Agent={agent_id}; reason={reason[:200]}',
+            agent_id=agent_id,
             extra={'tripped_count': int(state.get('tripped_count') or 0)},
         )
     except Exception:
@@ -1179,7 +1179,21 @@ def inspect_outbound_action(
     decoded_layers = solana_crypto_shield.deobfuscate_layers(combined, max_layers=4)
     deep_blob = "\n".join(decoded_layers[:8])
 
-    # Проверка shell/exfil/инструкций (на сыром И деобфусцированном потоке!)
+    # Декодер смарт-контрактов EVM ABI / Solana (Кольцо 3)
+    try:
+        from .shield import web3_abi as _w3
+        w3_res = _w3.scan_text_for_web3_tx(deep_blob, allowed_wallets=allowed_wallets)
+        for wf in (w3_res.get("findings") or []):
+            if wf["severity"] == "critical":
+                hard_block = True
+                risk_level = "critical"
+            elif risk_level in ("low", "medium"):
+                risk_level = "high"
+            reasons.append(wf)
+    except Exception:
+        pass
+
+    # Проверка shell/exfil/инструкций (на сыром И деобфусцированном потоке + локальный ONNX семантический слой!)
     if _DANGEROUS_SHELL_RE.search(deep_blob):
         hard_block = True
         risk_level = "critical"
@@ -1196,9 +1210,52 @@ def inspect_outbound_action(
             "severity": "high",
             "detail": "Исходящий текст (или скрытый слой) содержит шаблон инъекции, подмены правил или перенаправления платежа.",
         })
+    else:
+        try:
+            from .shield import semantic as _sem, sigdb as _sigdb
+            extra_sigs = _sigdb.get_active_sigdb(memory).get("jailbreak_signatures") or []
+            sem_res = _sem.classify_semantic_threat(deep_blob, extra_signatures=extra_sigs)
+            if sem_res.get("is_threat"):
+                if risk_level != "critical":
+                    risk_level = "high"
+                reasons.append({
+                    "code": "semantic_ml_injection_detected",
+                    "severity": "high",
+                    "detail": (
+                        f"Локальный семантический классификатор ({sem_res.get('backend')}) "
+                        f"выявил смысловую атаку (score={sem_res.get('score')}, {sem_res.get('latency_ms')} ms)."
+                    ),
+                })
+        except Exception:
+            pass
+
+    # Проверка режима Shadow-аудита (padam learn --mode shadow)
+    shadow_mode = False
+    try:
+        from .shield import learn_ueba as _lu
+        shadow_mode = (_lu.get_shield_mode(memory) == "shadow")
+    except Exception:
+        shadow_mode = False
 
     if not reasons:
         status = "allowed"
+        allowed = True
+    elif shadow_mode and not is_lockdown_active(memory):
+        would = "blocked" if hard_block else "pending_approval"
+        try:
+            from .shield import learn_ueba as _lu
+            _lu.record_shadow_event(
+                memory,
+                agent_id=clean_agent,
+                action_type=act_type,
+                target=raw_target or combined[:120],
+                would_status=would,
+                risk_level=risk_level,
+                reasons=reasons,
+            )
+        except Exception:
+            pass
+        status = "shadow_logged"
         allowed = True
     elif hard_block:
         status = "blocked"
@@ -1377,11 +1434,46 @@ def get_shield_status(memory: Any) -> dict[str, Any]:
     outbound_recent = list_outbound_queue(memory, limit=20)
     allowlist = list_allowlist(memory)
     recent_scans = supply_chain_guard.list_recent_supply_scans(memory, limit=10)
+    ext_meta: dict[str, Any] = {
+        "shield_mode": "enforce",
+        "semantic_engine": {},
+        "taint_steps": 0,
+        "taint_blocks": 0,
+        "ueba_profiles_count": 0,
+        "sigdb_version": 0,
+        "a2a_agents_count": 0,
+    }
+    try:
+        from .shield import (
+            a2a_trust as _a2a,
+            learn_ueba as _lu,
+            semantic as _sem,
+            sigdb as _sdb,
+            taint as _tnt,
+        )
+        ext_meta["shield_mode"] = _lu.get_shield_mode(memory)
+        ext_meta["semantic_engine"] = _sem.semantic_engine_status()
+        tg = _tnt.get_session_graph(memory, limit=30)
+        ext_meta["taint_steps"] = tg["total_steps"]
+        ext_meta["taint_blocks"] = tg["blocked_steps"]
+        ext_meta["ueba_profiles_count"] = len(_lu.list_ueba_profiles(memory, limit=50))
+        ext_meta["sigdb_version"] = _sdb.get_active_sigdb(memory)["version"]
+        ext_meta["a2a_agents_count"] = len(_a2a.list_a2a_trust_scores(memory))
+    except Exception:
+        pass
+
     return {
         "ok": True,
         "lockdown": bool(st["lockdown"]) or bool(config.STRICT),
         "db_lockdown": bool(st["lockdown"]),
         "policy_profile": str(st.get("policy_profile") or "balanced"),
+        "shield_mode": ext_meta["shield_mode"],
+        "semantic_engine": ext_meta["semantic_engine"],
+        "taint_steps": ext_meta["taint_steps"],
+        "taint_blocks": ext_meta["taint_blocks"],
+        "ueba_profiles_count": ext_meta["ueba_profiles_count"],
+        "sigdb_version": ext_meta["sigdb_version"],
+        "a2a_agents_count": ext_meta["a2a_agents_count"],
         "mcp_pins_count": int(memory.store.one("SELECT COUNT(*) FROM shield_mcp_tool_pins WHERE user_id = ?", (memory.user_id,))[0]),
         "config_strict": bool(config.STRICT),
         "block_writes": bool(st["block_writes"]),
@@ -1661,14 +1753,37 @@ def inspect_model_output(
     if memory is not None:
         try:
             from . import solana_crypto_shield
-            c_res = solana_crypto_shield.check_text_for_canary(memory, raw, source=f"output:{agent_id}", auto_trip_kill_switch=True)
-            if c_res.get("triggered"):
-                canary_hits = list(c_res.get("canary_ids") or [])
+            hits = solana_crypto_shield.scan_canaries_in_payload(memory, raw)
+            if hits:
+                canary_hits = [str(h.get("canary_id") or "") for h in hits]
                 reasons.append("canary_honeypot_exfiltration")
-                for tok in (c_res.get("matched_tokens") or []):
-                    redacted = redacted.replace(str(tok), "[CANARY_BLOCKED]")
+                for h in hits:
+                    tok = str(h.get("token") or "")
+                    if tok:
+                        redacted = redacted.replace(tok, "[CANARY_BLOCKED]")
+                trip_kill_switch(
+                    memory,
+                    reason=f"Output Firewall canary leak ({canary_hits[0]})",
+                    agent_id=agent_id,
+                    block_writes=True,
+                )
         except Exception:
             pass
+
+    pii_findings: list[dict[str, str]] = []
+    sast_findings: list[dict[str, str]] = []
+    try:
+        from .shield import output_rag as _orag
+        og = _orag.inspect_output_guardrails(redacted, memory=None, agent_id=agent_id)
+        pii_findings = list(og.get("pii_findings") or [])
+        sast_findings = list(og.get("sast_findings") or [])
+        if pii_findings:
+            redacted = str(og.get("sanitized_text") or redacted)
+            reasons.extend([f["code"] for f in pii_findings])
+        if sast_findings:
+            reasons.extend([f["code"] for f in sast_findings])
+    except Exception:
+        pass
 
     if reasons and memory is not None:
         record_anomaly(
@@ -1680,15 +1795,18 @@ def inspect_model_output(
             detail="; ".join(reasons)[:200],
         )
 
-    blocked = bool(canary_hits) or any("system_prompt" in r for r in reasons)
+    critical_sast = any(f.get("severity") == "critical" for f in sast_findings)
+    blocked = bool(canary_hits) or critical_sast or any("system_prompt" in r for r in reasons)
     return {
         "ok": True,
         "action": "block" if blocked else ("redact" if reasons else "allow"),
         "blocked": blocked,
-        "sanitized_text": "[BLOCKED BY PADAM OUTPUT FIREWALL: canary/system leak detected]" if canary_hits else redacted,
+        "sanitized_text": "[BLOCKED BY PADAM OUTPUT FIREWALL: canary/system/sast leak detected]" if (canary_hits or critical_sast) else redacted,
         "reasons": reasons,
         "secrets_masked_count": len(sec_hits),
         "canary_hits": canary_hits,
+        "pii_findings": pii_findings,
+        "sast_findings": sast_findings,
     }
 
 

@@ -43,7 +43,7 @@ requires = ["setuptools>=84.1.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["padam", "padam.connectors", "padam.aifa_security"]
+packages = ["padam", "padam.connectors", "padam.shield", "padam.aifa_security"]
 
 # Бенчмарк AIFaSecurity-100 живёт в репозитории в benchmarks/aifa_security, а в колесо кладётся внутрь пакета,
 # чтобы `padam aifa-sec` и кнопка «Запустить» в Студии работали после `pip install` (до 0.7.0 его в колесе не было).
