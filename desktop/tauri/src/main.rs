@@ -60,16 +60,31 @@ fn spawn_update_check(app_handle: AppHandle, ru: bool, install_allowed: bool) {
                         .show();
                 }
                 if install_allowed && auto_install_enabled() {
-                    match update.download_and_install(|_, _| {}, || {}).await {
+                    // 26.11.2026: на Windows install() запускает установщик NSIS и сразу завершает
+                    // процесс Studio — код после него не выполняется. Раньше фоновый python.exe
+                    // останавливался ПОСЛЕ установки, то есть никогда: он держал файлы runtime,
+                    // и установщик падал с «Невозможно открыть файл для записи ...pyd».
+                    // Теперь: скачать → остановить python → установить.
+                    let bytes = match update.download(|_, _| {}, || {}).await {
+                        Ok(b) => b,
+                        Err(e) => {
+                            log_line(&format!("update_download_error={e}"));
+                            return;
+                        }
+                    };
+                    log_line(&format!("update_downloaded_stopping_backend={ver}"));
+                    if let Some(guard) = app_handle.try_state::<Arc<ServerGuard>>() {
+                        guard.shutdown();
+                    }
+                    match update.install(bytes) {
                         Ok(()) => {
                             log_line(&format!("update_installed_restarting={ver}"));
-                            if let Some(guard) = app_handle.try_state::<Arc<ServerGuard>>() {
-                                guard.shutdown();
-                            }
                             app_handle.restart();
                         }
                         Err(e) => {
+                            // Установка не прошла — python уже остановлен; перезапуск поднимет его заново.
                             log_line(&format!("update_install_error={e}"));
+                            app_handle.restart();
                         }
                     }
                 }

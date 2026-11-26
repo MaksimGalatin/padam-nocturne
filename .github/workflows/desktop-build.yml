@@ -12,6 +12,14 @@ on:
           - windows
           - macos
           - linux
+      attach_to_release:
+        # 26.11.2026: раньше сборка ВСЕГДА перезаписывала установщик в выпуске текущей версии (--clobber).
+        # Проверочная сборка из main подменила бы уже подписанный установщик 0.9.1 неподписанным.
+        # Теперь загрузка в выпуск — только явным флагом, при выпуске версии.
+        description: "Загрузить установщик в выпуск текущей версии (только при выпуске)"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -47,6 +55,7 @@ jobs:
           if-no-files-found: error
 
       - name: Attach the installer to the release of this version
+        if: ${{ inputs.attach_to_release }}
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
