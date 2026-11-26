@@ -20,6 +20,7 @@ import hashlib
 import hmac
 import json
 import os
+from contextlib import nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -76,8 +77,28 @@ def _sign_head(key: bytes, user_id: str, head_seq: int, head_hash: str) -> str:
 
 
 def append_audit(memory, action: str, details: dict[str, Any] | str, *, agent_id: str = "aifa") -> dict[str, Any]:
+    """Дописывает звено в цепь ark_audit_chain.
+
+    25.11.2026: вся транзакция идёт под замком хранилища. Соединение одно на все потоки REST-сервера, и раньше
+    проверка «открыта ли транзакция» и BEGIN шли разными шагами: между ними другой поток открывал свою транзакцию,
+    и запрос падал с «cannot start a transaction within a transaction» (500 в Studio при одновременных кнопках
+    «ACL» и «сканер перед установкой»). Замок реентерабельный (RLock), вызов из-под него же безопасен.
+    """
+    store = memory.store
+    with getattr(store, "_lock", None) or nullcontext():
+        return _append_audit_locked(memory, action, details, agent_id=agent_id)
+
+
+def _append_audit_locked(memory, action: str, details: dict[str, Any] | str, *, agent_id: str) -> dict[str, Any]:
     conn = memory.store.conn
-    conn.executescript(_AUDIT_DDL)
+    # executescript сначала фиксирует открытую транзакцию — посреди чужой работы это зафиксировало бы её половину.
+    # Таблицы создаются один раз на хранилище.
+    if not getattr(memory.store, "_ark_audit_ready", False):
+        conn.executescript(_AUDIT_DDL)
+        try:
+            memory.store._ark_audit_ready = True
+        except Exception:
+            pass
     started_tx = False
     if not conn.in_transaction:
         conn.execute("BEGIN IMMEDIATE")

@@ -166,6 +166,29 @@ def _clean_domain(raw: str) -> str:
     return dom[:253]
 
 
+# 25.11.2026: общие почтовые сервисы. Домен такого адреса — не организация: бронь на 30 дней и стоп-лист по нему
+# закрыли бы Фениксу ВСЕХ получателей сервиса (одна отписка с gmail.com — и больше ни одного письма на gmail).
+# Для них ключ брони и стоп-листа — полный адрес.
+_ОБЩИЕ_ПОЧТОВЫЕ_ДОМЕНЫ = frozenset({
+    "gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com", "msn.com", "yahoo.com", "ymail.com",
+    "icloud.com", "me.com", "mac.com", "aol.com", "proton.me", "protonmail.com", "pm.me", "gmx.com", "gmx.net",
+    "gmx.de", "web.de", "mail.com", "zoho.com", "yandex.ru", "yandex.com", "ya.ru", "mail.ru", "inbox.ru", "list.ru",
+    "bk.ru", "rambler.ru", "qq.com", "163.com", "126.com", "naver.com", "fastmail.com", "tutanota.com", "hey.com",
+})
+
+
+def _общий_почтовый(dom: str) -> bool:
+    return str(dom or "").strip().lower() in _ОБЩИЕ_ПОЧТОВЫЕ_ДОМЕНЫ
+
+
+def _ключ_брони(domain: str, email: str) -> str:
+    """Ключ 30-дневной брони: домен организации, а для адреса на общем почтовом сервисе — сам адрес."""
+    dom = _clean_domain(domain or email)
+    if _общий_почтовый(dom):
+        return _clean_email(email) or dom
+    return dom
+
+
 def effective_daily_limit(row: dict[str, Any], *, now_ts: float | None = None) -> int:
     """Возвращает эффективный суточный лимит ящика с учётом плавного прогрева (5 -> 10 -> 20 -> daily_limit)."""
     base_lim = max(1, min(200, int(row.get("daily_limit") or 30)))
@@ -486,7 +509,7 @@ def add_to_stop_list(
     keys = {clean}
     if "@" in clean:
         dom = _clean_domain(clean)
-        if dom:
+        if dom and not _общий_почтовый(dom):
             keys.add(dom)
     now = time.time()
     with freelance_autonomy._lock_of(memory):
@@ -525,8 +548,8 @@ def is_blocked_by_stop_or_claim(
     """Проверяет стоп-лист (БД + ОТПИСАЛИСЬ.txt) и 30-дневную защиту от повторного письма на один домен."""
     _ensure_mail_schema(memory)
     em = _clean_email(email) if email else ""
-    dom = _clean_domain(domain or em)
-    keys = [x for x in (em, dom) if x]
+    dom = _ключ_брони(domain, em) if em else _clean_domain(domain)
+    keys = [x for x in dict.fromkeys((em, dom)) if x]
     if not keys:
         return True, "empty_target"
 
@@ -685,7 +708,7 @@ def _sync_claim_to_aifa_works(domain: str) -> None:
     if os.environ.get("PYTEST_CURRENT_TEST"):
         return
     tok = os.environ.get("PADAM_AIFA_MCP_TOKEN", "").strip()
-    if not tok or not domain:
+    if not tok or not domain or "@" in domain or _общий_почтовый(domain):
         return
     base = os.environ.get("PADAM_AIFA_SITE_URL", "https://aifa.works").rstrip("/")
     try:
@@ -717,7 +740,7 @@ def send_outreach_email(
     """Отправляет письмо через подключённый ящик с проверкой стоп-листа, суточного лимита и 30-дневной брони домена."""
     _ensure_mail_schema(memory)
     clean_to = _clean_email(to_email)
-    clean_dom = _clean_domain(domain or clean_to)
+    clean_dom = _ключ_брони(domain, clean_to)
     if not clean_to:
         return {"ok": False, "error": "Некорректный адрес получателя."}
 
