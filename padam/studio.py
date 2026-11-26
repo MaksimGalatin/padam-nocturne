@@ -278,6 +278,18 @@ STRINGS: dict[str, dict[str, str]] = {
         "ff_office": "Офис",
         "ff_smoke": "Очаг Семьи",
         "ff_empty": "Пока пусто.",
+        "ff_open_hearth": "Открыть Очаг Семьи",
+        "help_idx_title": "Справочник: каждая кнопка и меню",
+        "help_idx_sub": "Все кнопки, меню и галочки Studio по разделам, с объяснением, что делает каждая. Начните вводить слово — список сузится.",
+        "help_idx_ph": "Найти кнопку или меню, например «забыть»",
+        "help_idx_menu": "Выпадающее меню",
+        "help_idx_check": "Галочка",
+        "help_idx_empty": "Ничего не найдено.",
+        "ff_who_owner": "Владелец",
+        "ff_cloud": "облако",
+        "ff_more": "Показать полностью",
+        "ff_less": "Свернуть",
+        "ff_chat_label": "Переписка канала, новые сообщения внизу",
         "ff_ph": "Написать сёстрам…",
         "ff_send": "Написать",
         "ff_reflex_title": "Книга рефлексов: ждут вашего слова",
@@ -1042,6 +1054,18 @@ STRINGS: dict[str, dict[str, str]] = {
         "ff_office": "Office",
         "ff_smoke": "Family Hearth",
         "ff_empty": "Nothing here yet.",
+        "ff_open_hearth": "Open the Family Hearth",
+        "help_idx_title": "Reference: every button and menu",
+        "help_idx_sub": "Every Studio button, menu and checkbox by section, with what each one does. Start typing to narrow the list.",
+        "help_idx_ph": "Find a button or menu, e.g. forget",
+        "help_idx_menu": "Drop-down menu",
+        "help_idx_check": "Checkbox",
+        "help_idx_empty": "Nothing found.",
+        "ff_who_owner": "Owner",
+        "ff_cloud": "cloud",
+        "ff_more": "Show all",
+        "ff_less": "Collapse",
+        "ff_chat_label": "Channel messages, newest at the bottom",
         "ff_ph": "Write to the siblings…",
         "ff_send": "Send",
         "ff_reflex_title": "Reflex book: waiting for your word",
@@ -1795,6 +1819,18 @@ STRINGS: dict[str, dict[str, str]] = {
         "ff_office": "Oficina",
         "ff_smoke": "Hogar de la Familia",
         "ff_empty": "Todavía vacío.",
+        "ff_open_hearth": "Abrir el Hogar de la Familia",
+        "help_idx_title": "Guía: cada botón y menú",
+        "help_idx_sub": "Todos los botones, menús y casillas de Studio por sección, con lo que hace cada uno. Empiece a escribir para filtrar.",
+        "help_idx_ph": "Buscar un botón o menú, p. ej. «olvidar»",
+        "help_idx_menu": "Menú desplegable",
+        "help_idx_check": "Casilla",
+        "help_idx_empty": "No se encontró nada.",
+        "ff_who_owner": "Propietario",
+        "ff_cloud": "nube",
+        "ff_more": "Mostrar todo",
+        "ff_less": "Contraer",
+        "ff_chat_label": "Mensajes del canal, los nuevos abajo",
         "ff_ph": "Escribir a las hermanas…",
         "ff_send": "Enviar",
         "ff_reflex_title": "Libro de reflejos: esperan su palabra",
@@ -2548,6 +2584,18 @@ STRINGS: dict[str, dict[str, str]] = {
         "ff_office": "办公室",
         "ff_smoke": "家庭炉边",
         "ff_empty": "暂无内容。",
+        "ff_open_hearth": "打开家庭炉边",
+        "help_idx_title": "参考：每个按钮和菜单",
+        "help_idx_sub": "按分区列出 Studio 的所有按钮、菜单和复选框，并说明各自的作用。输入文字即可筛选。",
+        "help_idx_ph": "查找按钮或菜单，例如“遗忘”",
+        "help_idx_menu": "下拉菜单",
+        "help_idx_check": "复选框",
+        "help_idx_empty": "未找到。",
+        "ff_who_owner": "所有者",
+        "ff_cloud": "云端",
+        "ff_more": "显示全部",
+        "ff_less": "收起",
+        "ff_chat_label": "频道消息，最新的在底部",
         "ff_ph": "给姐妹们留言…",
         "ff_send": "发送",
         "ff_reflex_title": "反射手册：等待您的决定",
@@ -7013,7 +7061,37 @@ let TIPS = {};
 let BTN_TIPS = {};
 let CMP = null;
 let CRIT_TITLES = {};
-try { const _t = JSON.parse((document.getElementById('tips-data') || {}).textContent || '{}'); TIPS = _t.blocks || {}; BTN_TIPS = _t.buttons || {}; CMP = _t.compare || null; CRIT_TITLES = _t.crit || {}; } catch (e) { TIPS = {}; }
+let XTIPS = { ctrl: {}, keys: {}, cls: {}, groups: {} };
+try { const _t = JSON.parse((document.getElementById('tips-data') || {}).textContent || '{}'); TIPS = _t.blocks || {}; BTN_TIPS = _t.buttons || {}; CMP = _t.compare || null; CRIT_TITLES = _t.crit || {};
+  XTIPS = { ctrl: _t.ctrl || {}, keys: _t.keys || {}, cls: _t.cls || {}, groups: _t.groups || {} }; } catch (e) { TIPS = {}; }
+// 26.11.2026, слово Папы: «к каждой кнопке и меню есть подсказка». Замер: из 653 видимых кнопок и меню без подсказки
+// было 364 — меню, галочки, подвкладки и кнопки, которые скрипт создаёт сам. Ставим подсказку туда, где своей нет;
+// при смене языка переписываем только поставленные здесь (метка data-autotip).
+const _TIP_CLASSES = ['tip-btn', 'entity-card', 'chat-thread-btn', 'agent-pill', 'subnav-chip', 'chip', 'setup-open', 'role-select'];
+function fillMissingTips() {
+  const pick = (o) => (o ? (o[currentLang] || o.ru || '') : '');
+  const set = (el, t) => { if (!t) return; el.title = t; el.setAttribute('aria-description', t); el.dataset.autotip = '1'; };
+  const free = (el) => !(el.title || '').trim() || el.dataset.autotip === '1';
+  for (const id in XTIPS.ctrl) { const e = document.getElementById(id); if (e && free(e)) set(e, pick(XTIPS.ctrl[id])); }
+  for (const gb of document.querySelectorAll('.nav-group-btn')) if (free(gb)) set(gb, pick(XTIPS.groups[gb.dataset.group]));
+  for (const ch of document.querySelectorAll('.subnav-chip[data-tab]')) if (free(ch)) set(ch, pick(BTN_TIPS['tab-' + ch.dataset.tab]));
+  const byText = {};
+  for (const k in XTIPS.keys) { const lab = String(S[k] || '').trim(); if (lab && !byText[lab]) byText[lab] = XTIPS.keys[k]; }
+  for (const e of document.querySelectorAll('button, summary, [role=button], select')) {
+    if (!free(e)) continue;
+    const txt = (e.innerText || '').trim();
+    let t = byText[txt] ? pick(byText[txt]) : '';
+    if (!t && e.tagName === 'SUMMARY') t = pick(XTIPS.cls.summary);
+    if (!t) for (const c of _TIP_CLASSES) if (e.classList.contains(c)) { t = pick(XTIPS.cls[c]); break; }
+    if (!t && e.parentElement && e.parentElement.classList.contains('ver-row')) t = pick(XTIPS.cls['ver-row']);
+    set(e, t);
+  }
+}
+let _tipTimer = null;
+try {
+  new MutationObserver(() => { clearTimeout(_tipTimer); _tipTimer = setTimeout(fillMissingTips, 250); })
+    .observe(document.documentElement, { childList: true, subtree: true });
+} catch (e) { /* без наблюдателя подсказки ставятся при каждом applyTips */ }
 function renderCompare() {
   const tb = document.getElementById('cmp-table');
   if (!tb || !CMP) return;
@@ -7057,6 +7135,7 @@ function applyTips() {
     }
   }
   renderCompare();
+  fillMissingTips();
   for (const h of document.querySelectorAll('h3.box-title[data-i18n]')) {
     const key = h.getAttribute('data-i18n');
     const tip = TIPS[key];
@@ -7190,6 +7269,7 @@ function syncNavGroups(tab) {
       const src = $('tab-' + tb);
       const chip = _el('button', 'subnav-chip' + (tb === tab ? ' subnav-on' : ''), src ? src.textContent.trim().split(String.fromCharCode(10))[0].trim() : tb);
       chip.type = 'button'; chip.setAttribute('role', 'tab'); chip.setAttribute('aria-selected', String(tb === tab));
+      chip.dataset.tab = tb;   // 26.11: подвкладка берёт подсказку своей вкладки (fillMissingTips)
       chip.onclick = () => switchTab(tb);
       strip.appendChild(chip);
     }
@@ -9457,6 +9537,69 @@ const _fuzzBtn = $('att-fuzz-run');
 if (_fuzzBtn) _fuzzBtn.addEventListener('click', () => runFuzzLab());
 const _verBtn = $('att-sec-verify');
 if (_verBtn) _verBtn.addEventListener('click', () => verifyEdSeal());
+// 26.11.2026, слово Папы: «Справка расписана идеально и ВСЁ понятно любому пользователю». Справочник строится из
+// самих кнопок Studio и их подсказок, поэтому в нём есть каждая кнопка, меню и галочка, и он не отстаёт от интерфейса.
+function buildHelpIndex() {
+  fillMissingTips();
+  const box = _el('details', 'box help-sec');
+  box.id = 'help-index';
+  box.appendChild(_el('summary', 'box-title', S.help_idx_title || 'Reference'));
+  box.appendChild(_el('p', 'panel-sub', S.help_idx_sub || ''));
+  const q = document.createElement('input');
+  q.type = 'search'; q.id = 'help-idx-q'; q.placeholder = S.help_idx_ph || ''; q.setAttribute('aria-label', S.help_idx_ph || '');
+  box.appendChild(q);
+  const list = _el('div', 'help-idx-list');
+  const empty = _el('p', 'panel-sub', S.help_idx_empty || ''); empty.hidden = true;
+  const seen = new Set();   // одна и та же кнопка у сотни карточек описывается один раз
+  for (const tab of TABS) {
+    if (tab === 'help') continue;
+    const panel = $('panel-' + tab);
+    if (!panel) continue;
+    const rows = [];
+    for (const e of panel.querySelectorAll('button, select, input[type=checkbox]')) {
+      const tip = (e.title || e.getAttribute('aria-description') || '').trim();
+      if (!tip || e.classList.contains('tip-btn') || e.classList.contains('subnav-chip')) continue;
+      // записи, переписки, имена и фильтры с числами — это данные, а не кнопки интерфейса
+      if (['chat-thread-btn', 'entity-card', 'agent-pill', 'chip'].some(c => e.classList.contains(c))
+          || e.closest('.ver-row, .chat-thread, #ff-list')) continue;
+      let name;
+      if (e.tagName === 'SELECT') name = S.help_idx_menu || 'Menu';
+      else if (e.type === 'checkbox') name = (e.labels && e.labels[0] ? e.labels[0].textContent : '').trim().slice(0, 90) || (S.help_idx_check || 'Checkbox');
+      else name = (e.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 90);
+      if (!name) continue;
+      const key = name + '|' + tip;
+      if (seen.has(key)) continue;
+      seen.add(key); rows.push([name, tip]);
+    }
+    if (!rows.length) continue;
+    const sec = _el('div', 'help-idx-sec');
+    const tabBtn = $('tab-' + tab);
+    sec.appendChild(_el('h4', 'help-name', (S['nav_' + tab] || (tabBtn ? tabBtn.textContent.trim() : tab))));
+    for (const [name, tip] of rows) {
+      const it = _el('div', 'help-item help-idx-item');
+      it.appendChild(_el('strong', '', name));
+      it.appendChild(_el('span', 'help-text', ' — ' + tip));
+      sec.appendChild(it);
+    }
+    list.appendChild(sec);
+  }
+  q.addEventListener('input', () => {
+    const v = q.value.trim().toLowerCase();
+    let shown = 0;
+    for (const sec of list.querySelectorAll('.help-idx-sec')) {
+      let any = false;
+      for (const it of sec.querySelectorAll('.help-idx-item')) {
+        const ok = !v || it.textContent.toLowerCase().includes(v);
+        it.hidden = !ok; if (ok) { any = true; shown++; }
+      }
+      sec.hidden = !any;
+    }
+    empty.hidden = shown > 0;
+  });
+  box.appendChild(list);
+  box.appendChild(empty);
+  return box;
+}
 async function loadHelp() {
   if (!token) return;
   const reqLang = currentLang;
@@ -9481,6 +9624,7 @@ async function loadHelp() {
     }
     root.appendChild(box);
   }
+  root.appendChild(buildHelpIndex());
   const lk = _el('details', 'box help-sec');
   lk.appendChild(_el('summary', 'box-title', S.help_links || 'Links'));
   for (const [k, v] of Object.entries(d.links || {})) {
@@ -10366,7 +10510,7 @@ function renderFamilySetupSnapshot(snap) {
       row.appendChild(left);
       const right = _el('div', 'rec-actions');
       right.appendChild(_el('span', 'setup-state ' + (ok ? 'setup-ok' : 'setup-warn'), val));
-      if (tab !== 'family') { const b = _el('button', ok ? '' : 'btn-primary', S.st_open); b.type = 'button'; b.onclick = () => switchTab(tab); right.appendChild(b); }
+      if (tab !== 'family') { const b = _el('button', (ok ? '' : 'btn-primary ') + 'setup-open', S.st_open); b.type = 'button'; b.onclick = () => switchTab(tab); right.appendChild(b); }
       row.appendChild(right);
       box.appendChild(row);
     }
@@ -10438,6 +10582,7 @@ async function renderRoleMatrix(rolesList, agentsList) {
     card.appendChild(_el('div', 'earn-meta', (S.fam_controlled_by_lbl || 'Control:') + ' ' + String(r.controlled_by || '')));
     const ctrlRow = _el('div', 'toolbar');
     const sel = document.createElement('select');
+    sel.className = 'role-select';
     sel.setAttribute('aria-label', String(r.code || r.role_key));
     for (const ag of allAgents) {
       const opt = document.createElement('option');
@@ -10871,6 +11016,73 @@ if ($('fd-sync-btn')) $('fd-sync-btn').onclick = async () => {
 document.addEventListener('input', (ev) => {
   if (ev.target && ev.target.id === 'fd-q') { clearTimeout(_fdTimer); _fdTimer = setTimeout(loadFamilyDialogs, 300); }
 });
+// 26.11: кто пишет — понятным именем, когда — местным временем; длинный текст целиком по кнопке.
+function _ffWho(author) {
+  const a = String(author || ''), l = a.toLowerCase();
+  let n;
+  if (/owner|papa|architect|галатин|galatin|maksim|владел/.test(l)) n = S.ff_who_owner || 'Owner';
+  else if (l.includes('antigravity')) n = 'AIfa · Antigravity';
+  else if (l.includes('claude')) n = 'AIfa · Claude Code';
+  else if (l.includes('gemini')) n = 'AIfa · Gemini';
+  else if (l.includes('aifa')) n = 'AIfa';
+  else n = a || '?';
+  if (l.startsWith('cloud.')) n += ' · ' + (S.ff_cloud || 'cloud');
+  return n;
+}
+function _ffColor(name) {
+  const pal = ['#38bdf8', '#a78bfa', '#34d399', '#f472b6', '#fbbf24', '#60a5fa', '#f87171'];
+  let h = 0;
+  for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return pal[h % pal.length];
+}
+function _ffTime(raw) {
+  const s = String(raw || '');
+  if (!s) return '';
+  const iso = s.includes('T') ? s : s.replace(' ', 'T');
+  const d = new Date(/(Z|[+-]\d\d:?\d\d)$/.test(iso) ? iso : iso + 'Z');   // база хранит UTC; без пояса — тоже UTC
+  if (isNaN(d.getTime())) return s.replace('T', ' ').slice(0, 16);
+  try {
+    return d.toLocaleString(currentLang === 'zh' ? 'zh-CN' : currentLang,
+      { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  } catch (e) { return s.replace('T', ' ').slice(0, 16); }
+}
+function _ffMessage(it) {
+  const who = _ffWho(it.author);
+  const box = document.createElement('article');
+  box.className = 'ff-msg';
+  box.style.setProperty('--ff-c', _ffColor(who));
+  const head = document.createElement('div');
+  head.className = 'ff-msg-head';
+  const w = _el('span', 'ff-who', who);
+  w.title = String(it.author || '');
+  head.appendChild(w);
+  const tm = document.createElement('time');
+  tm.className = 'ff-time';
+  tm.dateTime = String(it.created_at || '');
+  tm.textContent = _ffTime(it.created_at);
+  head.appendChild(tm);
+  if (it.reason) head.appendChild(_el('span', 'ff-flag', '⚠ ' + it.reason));
+  box.appendChild(head);
+  const text = String(it.content || '');
+  const body = _el('div', 'ff-msg-body', text);
+  box.appendChild(body);
+  if (text.length > 700) {
+    body.classList.add('ff-clamp');
+    const more = document.createElement('button');
+    more.type = 'button';
+    more.className = 'ff-more';
+    more.textContent = S.ff_more || 'Show all';
+    more.title = S.ff_more || 'Show all';
+    more.setAttribute('aria-expanded', 'false');
+    more.onclick = () => {
+      const open = !body.classList.toggle('ff-clamp');
+      more.textContent = open ? (S.ff_less || 'Collapse') : (S.ff_more || 'Show all');
+      more.setAttribute('aria-expanded', String(open));
+    };
+    box.appendChild(more);
+  }
+  return box;
+}
 async function loadFamilyFeed(ch) {
   if (ch) _ffCh = ch;
   const list = $('ff-list');
@@ -10893,15 +11105,13 @@ async function loadFamilyFeed(ch) {
       if (b) b.textContent = (S['ff_' + c] || c) + ' · ' + ((r.counts || {})[c] || 0);
     }
     list.textContent = '';
-    const items = r.items || [];
+    list.className = 'ff-chat';
+    list.setAttribute('role', 'log');
+    list.setAttribute('aria-label', S.ff_chat_label || '');
+    const items = (r.items || []).slice().reverse();   // 26.11, слово Папы: чат, а не свалка — старые сверху, новые внизу
     if (!items.length) list.appendChild(_el('p', 'panel-sub', S.ff_empty || ''));
-    for (const it of items) {
-      const head = (it.created_at || '').replace('T', ' ').slice(0, 16) + ' · ' + (it.author || '') + (it.reason ? ' · ⚠ ' + it.reason : '');
-      const p = _el('p', 'panel-sub', head);
-      p.appendChild(document.createElement('br'));
-      p.appendChild(document.createTextNode(String(it.content || '').slice(0, 600)));
-      list.appendChild(p);
-    }
+    for (const it of items) list.appendChild(_ffMessage(it));
+    list.scrollTop = list.scrollHeight;
   } catch (e) { list.textContent = String(e.message || e); }
   loadFamilyReflexes();
 }
@@ -14674,7 +14884,10 @@ def page() -> tuple[str, str]:
     from .studio_tips import BTN_TIPS as _BTN
     from .bench_compare import compare_payload as _cmp
     from .bench_titles import crit_titles as _crit
-    tips_json = json.dumps({"blocks": _TIPS, "buttons": _BTN, "compare": _cmp(), "crit": _crit()}, ensure_ascii=False).replace("<", "\\u003c")
+    from . import studio_tips_extra as _extra
+    tips_json = json.dumps({"blocks": _TIPS, "buttons": _BTN, "compare": _cmp(), "crit": _crit(),
+                            "ctrl": _extra.CTRL_TIPS, "keys": _extra.KEY_TIPS, "cls": _extra.CLASS_TIPS,
+                            "groups": _extra.GROUP_TIPS}, ensure_ascii=False).replace("<", "\\u003c")
 
     html = f"""<!doctype html>
 <html lang="{init_lang}" data-theme="dark">
@@ -14704,7 +14917,17 @@ mark.q-hit{{background:rgba(244,63,94,.28);color:inherit;padding:1px 4px;border-
 .voice-active{{border-color:#34d399 !important;box-shadow:0 0 0 2px rgba(52,211,153,.35) !important}}
 .cmdk-sep{{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;opacity:.7;margin:8px 0 4px}}
 .quick-hearth-wrap{{margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}}
-.quick-hearth-btn{{width:100%;font-weight:700;border:1px solid var(--accent);color:var(--accent)}}
+.quick-hearth-btn{{display:block;width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-weight:700;font-size:.95rem;text-align:center;cursor:pointer;line-height:1.3}}
+.quick-hearth-btn:hover,.quick-hearth-btn:focus-visible{{background:var(--accent);color:#fff;outline:none}}
+.ff-chat{{max-height:560px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:6px 2px;margin:10px 0}}
+.ff-msg{{border:1px solid var(--border);border-left:4px solid var(--ff-c,var(--accent));border-radius:10px;padding:10px 12px;background:var(--card)}}
+.ff-msg-head{{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;margin-bottom:6px}}
+.ff-who{{font-weight:700;color:var(--ff-c,var(--accent))}}
+.ff-time{{font-size:.8rem;opacity:.7}}
+.ff-flag{{font-size:.8rem;color:#f59e0b;font-weight:600}}
+.ff-msg-body{{white-space:pre-wrap;word-break:break-word;line-height:1.5}}
+.ff-msg-body.ff-clamp{{max-height:9.5em;overflow:hidden}}
+.ff-more{{margin-top:6px;font-size:.85rem}}
 </style>
 </head>
 <body>
@@ -14794,8 +15017,8 @@ mark.q-hit{{background:rgba(244,63,94,.28);color:inherit;padding:1px 4px;border-
       </button>
     </nav>
     <div class="quick-hearth-wrap">
-      <button id="quick-hearth-btn" type="button" class="nav-tab quick-hearth-btn">
-        🔥 <span data-i18n="ff_smoke">{s['ff_smoke']}</span>
+      <button id="quick-hearth-btn" type="button" class="quick-hearth-btn">
+        <span data-i18n="ff_open_hearth">{s['ff_open_hearth']}</span>
       </button>
     </div>
   </aside>
