@@ -23,7 +23,7 @@ from .adversarial_norm import canonicalize_adversarial_text
 _INJECTION_HINT_RE = re.compile(
     r"(?is)\b(?:"
     r"ignore\s+(?:all\s+)?(?:previous|prior|above)\s+instructions?"
-    r"|system\s+prompt|you\s+are\s+now|disregard\s+safety"
+    r"|system\s+(?:prompt|override)|you\s+are\s+now|disregard\s+safety|reveal\s+system\s+prompt"
     r"|send\s+(?:all|the|your)?\s*(?:cookies?|tokens?|secrets?|keys?|passwords?|session)"
     r"|exfiltrate|transfer\s+(?:funds|usdt|eth|sol|money)|click\s+approve|confirm\s+payment"
     r"|navigate\s+to\s+https?://|submit\s+credentials"
@@ -38,7 +38,7 @@ _HIDDEN_STYLE_RE = re.compile(
     r"|opacity\s*:\s*0(?:\.0+)?(?:\s*;|\s*$)"
     r"|font-size\s*:\s*0(?:px|em|rem|%)?(?:\s*;|\s*$)"
     r"|(?:left|top|text-indent)\s*:\s*-\d{3,6}px"
-    r"|clip\s*:\s*rect\(\s*0"
+    r"|clip\s*:\s*rect\(\s*0|clip-path\s*:\s*inset\(\s*100%|color\s*:\s*transparent|color\s*:\s*rgba\([^)]*,\s*0(?:\.0+)?\s*\)"
     r"|width\s*:\s*[01]px[^;]*;\s*height\s*:\s*[01]px"
     r")"
 )
@@ -99,11 +99,22 @@ class _DomShieldParser(HTMLParser):
         if t in ("script", "style", "noscript"):
             self.skip_text_depth += 1
 
-        is_hid = self._is_hidden_tag(ad)
+        is_hid = (t == "template") or self._is_hidden_tag(ad)
         if t not in _VOID_TAGS:
             self._hidden_stack.append((t, is_hid))
             if is_hid:
                 self.hidden_depth += 1
+
+        # Проверка опасных inline XSS-обработчиков событий (<svg onload=...>, <img onerror=...>)
+        for attr_k, attr_v in ad.items():
+            if attr_k in ("onload", "onerror", "onfocus", "onmouseover", "onanimationstart", "onpageshow") and attr_v.strip():
+                self.findings.append(
+                    {
+                        "rule_id": "DOM-INLINE-XSS-EVENT",
+                        "severity": "CRITICAL",
+                        "detail": f"Обнаружен опасный inline-обработчик {attr_k} в теге <{t}>: {attr_v[:80]}",
+                    }
+                )
 
         # Проверка UI-Redressing / Clickjacking overlay
         style = ad.get("style", "")

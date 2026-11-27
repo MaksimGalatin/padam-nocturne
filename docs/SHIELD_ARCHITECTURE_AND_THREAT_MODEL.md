@@ -9,7 +9,7 @@
 ## 1. Exact Metric Definitions (No Ambiguity)
 
 - **Isolated Shield modules on disk (`padam/shield/*.py`, excluding `__init__.py`):** **`56`**
-- **Total lines of Python code inside `padam/shield/*.py`:** **`15,436`** lines (does *not* count tests, `padam/api.py`, `padam/cli.py`, `padam/studio.py`, `packages/padam-shield-js/`, Helm charts, or generated `docs/site/`).
+- **Total lines of Python code inside `padam/shield/*.py`:** **`15,450`** lines (does *not* count tests, `padam/api.py`, `padam/cli.py`, `padam/studio.py`, `packages/padam-shield-js/`, Helm charts, or generated `docs/site/`).
 - **Test suites vs. built-in benchmark:**
   - `pytest` unit & integration suites (`tests/test_agentic_shield_*.py` + `tests/test_memory_rules_guard_outside_set_2611.py` + `packages/padam-shield-js/test.mjs`) verify API contracts, Fail-Closed enforcement, SQLite concurrency, OS Key Vault (DPAPI), Helm IaC, Ed25519 ONNX verification, and 20-agent stress behavior.
   - `padam shield benchmark` is a **built-in deterministic self-check** (1,200 attacks + 250 benign developer tasks). External researchers can audit every vector via `--export-corpus` and run their own unseen datasets via `--custom-attacks` / `--custom-benign`.
@@ -42,7 +42,7 @@ A security platform is itself a high-value target. Below are the concrete attack
 
 ---
 
-## 4. Machine-Generated Module Registry (`padam/shield/`, 56 files, 15,436 lines)
+## 4. Machine-Generated Module Registry (`padam/shield/`, 56 files, 15,450 lines)
 
 | # | Module File | Lines | Purpose |
 |---|---|---|---|
@@ -53,7 +53,7 @@ A security platform is itself a high-value target. Below are the concrete attack
 | 5 | `padam/shield/approval_binding.py` | 276 | Криптографическая привязка согласия человека к действию (Anti-TOCTOU Approval Binding). |
 | 6 | `padam/shield/archive_xxe_guard.py` | 151 | Защита от атак на архивы и парсеры (Zip-Slip, Zip-Bomb, Tar-Symlink, XXE, YAML RCE). |
 | 7 | `padam/shield/attestation.py` | 281 | Криптографическая цепь доказательств исполнения (Signed Proof-of-Execution Attestation). |
-| 8 | `padam/shield/browser_guard.py` | 300 | Файрвол браузерного / Computer-Use агента (DOM & UI-Redressing Guard). |
+| 8 | `padam/shield/browser_guard.py` | 311 | Файрвол браузерного / Computer-Use агента (DOM & UI-Redressing Guard). |
 | 9 | `padam/shield/capability_tokens.py` | 651 | Криптографические гранулярные мандаты возможностей (Attenuated Capability Tokens). |
 | 10 | `padam/shield/cloud_iac_guard.py` | 112 | Файрвол облачных и инфраструктурных агентов (Cloud IAM / Kubernetes / Terraform Guard). |
 | 11 | `padam/shield/compliance.py` | 254 | Генератор пакетов доказательств комплаенса (EU AI Act, NIST AI RMF, OWASP LLM/Agentic, SOC 2, ISO 27001). |
@@ -95,7 +95,7 @@ A security platform is itself a high-value target. Below are the concrete attack
 | 47 | `padam/shield/slopsquat_guard.py` | 169 | Детектор Slopsquatting и подмены зависимостей (Supply-Chain Dependency Guard). |
 | 48 | `padam/shield/sql_guard.py` | 350 | Файрвол баз данных и запросов SQL / NoSQL / GraphQL (Database & Query Guard). |
 | 49 | `padam/shield/ssrf_path_guard.py` | 295 | Защита от Cloud Metadata SSRF и побега из файловой системы (Path Traversal / Symlink Escape). |
-| 50 | `padam/shield/stego_dlp.py` | 186 | Продвинутый детектор закодированной и стеганографической утечки секретов (Stego DLP). |
+| 50 | `padam/shield/stego_dlp.py` | 189 | Продвинутый детектор закодированной и стеганографической утечки секретов (Stego DLP). |
 | 51 | `padam/shield/swarm_breaker.py` | 197 | Кросс-агентный «Стоп-кран» и сдерживание AI-червей (Swarm Circuit-Breaker). |
 | 52 | `padam/shield/taint.py` | 340 | Контроль траекторий и Taint Tracking (Control Flow Integrity) для PADAM Agentic Shield. |
 | 53 | `padam/shield/tamper_seal.py` | 163 | Самозащита Щита от подмены SQLite (Tamper-Proof HMAC Seal для allowlist и shield_state). |

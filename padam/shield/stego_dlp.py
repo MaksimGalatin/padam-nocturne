@@ -35,7 +35,7 @@ _SECRET_PATTERNS = [
 _DATA_IMAGE_STRIP_RE = re.compile(r"data:image/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]{24,}")
 _B64_TOKEN_RE = re.compile(r"\b[A-Za-z0-9+/]{24,}={0,2}\b")
 _B32_TOKEN_RE = re.compile(r"\b[A-Z2-7]{24,}={0,6}\b")
-_HEX_SEQ_RE = re.compile(r"(?:\b[0-9a-fA-F]{2}\b[\s:,-]*){14,}|\b[0-9a-fA-F]{32,}\b")
+_HEX_SEQ_RE = re.compile(r"(?:\b[0-9a-fA-F]{2}\b[\s:,-]*){14,}|\b(?:0x)?[0-9a-fA-F]{32,}\b")
 
 
 def _extract_decoded_channels(text: str) -> List[Tuple[str, str]]:
@@ -84,7 +84,10 @@ def _extract_decoded_channels(text: str) -> List[Tuple[str, str]]:
 
     # 6. Hex последовательности (слитные и с пробелами)
     for m in _HEX_SEQ_RE.finditer(raw):
-        clean_hex = re.sub(r"[^0-9a-fA-F]", "", m.group(0))
+        raw_h = m.group(0)
+        if raw_h.lower().startswith("0x"):
+            raw_h = raw_h[2:]
+        clean_hex = re.sub(r"[^0-9a-fA-F]", "", raw_h)
         if len(clean_hex) >= 28 and len(clean_hex) % 2 == 0:
             try:
                 dec = bytes.fromhex(clean_hex).decode("utf-8", errors="ignore")

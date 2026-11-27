@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Optional
 
 _DESTRUCTIVE_SQL_RE = re.compile(
     r"(?i)\b(?:DROP\s+(?:TABLE|DATABASE|SCHEMA|INDEX|VIEW|USER|ROLE)|TRUNCATE\s+TABLE?|ALTER\s+(?:TABLE|SYSTEM|USER|ROLE)|"
-    r"GRANT\s+|REVOKE\s+|ATTACH\s+DATABASE|DETACH\s+DATABASE|LOAD_EXTENSION|VACUUM\s+INTO|SHUTDOWN|FLUSH\s+PRIVILEGES)\b"
+    r"GRANT\s+|REVOKE\s+|ATTACH\s+DATABASE|DETACH\s+DATABASE|LOAD_EXTENSION|VACUUM\s+INTO|SHUTDOWN|FLUSH\s+PRIVILEGES|PRAGMA\s+(?:writable_schema|trusted_schema|journal_mode\s*=\s*off|foreign_keys\s*=\s*off))\b"
 )
 
 _DB_RCE_FILE_RE = re.compile(
@@ -180,7 +180,7 @@ def inspect_sql_query(
                     "detail": f"Попытка записи/изменения БД в режиме read_only: {st[:120]}",
                 }
             )
-        if re.match(r"(?i)^\s*(?:DELETE\s+FROM|UPDATE\s+)", st):
+        if re.match(r"(?i)^\s*(?:DELETE\s+FROM|UPDATE\s+)", st) or (re.match(r"(?i)^\s*WITH\b", st) and re.search(r"(?i)\b(?:DELETE\s+FROM|UPDATE\s+\w+\s+SET)\b", st)):
             if not re.search(r"(?i)\bWHERE\b", st):
                 findings.append(
                     {

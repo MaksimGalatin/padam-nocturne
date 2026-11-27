@@ -23,7 +23,7 @@ from .adversarial_norm import canonicalize_adversarial_text
 _VISHING_OTP_RE = re.compile(
     r"(?is)(?:"
     r"(?:read|tell|give|send|dictate|repeat)\s+(?:me\s+)?(?:the\s+)?(?:(?:six[\s-]?digit|6[\s-]?digit|2fa|otp|verification|sms|security|one[\s-]?time)\s+){1,3}code"
-    r"|(?:продиктуй|назови|сообщи|отправь)\s+(?:мне\s+)?(?:код\s+из\s+смс|смс[\s-]?код|код\s+подтверждения|одноразовый\s+код)"
+    r"|(?:продиктуй|назов|сообщ|отправ|скаж)\w*\s+(?:мне\s+)?(?:код\s+из\s+смс|смс[\s-]?код|код\s+подтверждения|одноразов\w+\s+(?:код|парол\w*))"
     r")"
 )
 
@@ -31,7 +31,7 @@ _VISHING_CEO_WIRE_RE = re.compile(
     r"(?is)(?:"
     r"(?:this\s+is\s+the\s+ceo|i\s+am\s+your\s+ceo|security\s+department|fraud\s+department).{0,120}"
     r"(?:urgent\s+wire|transfer\s+(?:funds|money|usdt|btc)|safe\s+account|do\s+not\s+tell\s+anyone|bypass\s+approval)"
-    r"|(?:служба\s+безопасности\s+банка|я\s+генеральный\s+директор).{0,120}(?:безопасный\s+счёт|срочно\s+перевед|никому\s+не\s+говори)"
+    r"|(?:служб\w+\s+безопасности(?:\s+банка)?|(?:я|это)\s+генеральн\w+\s+директор).{0,140}(?:безопасн\w+\s+сч[её]т|срочно\s+(?:перевед|оплат)|никому\s+не\s+говор|новый\s+кошел[её]к)"
     r")"
 )
 
