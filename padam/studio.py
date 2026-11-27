@@ -6557,7 +6557,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 #graph-canvas {
   width: 100%;
-  height: 420px;
+  height: clamp(560px, 70vh, 900px);
   display: block;
   cursor: grab;
   border-radius: 10px;
@@ -8312,17 +8312,48 @@ function layoutGraph(nodes, edges, width, height) {
   const spheres = [];
 
   if (useSpheres) {
+    // 26.11.2026, слово Папы: «Он какой-то весь слипшийся — расширить, расстояние между сферами».
+    // Было: все шары на одном кольце радиусом не больше 230 — при 15+ агентах шары налезали друг на друга.
+    // Стало: центры по сфере Фибоначчи (используем объём, а не одно кольцо), затем раздвижка до зазора
+    // ≥ 45 % суммы радиусов, затем вписывание в окно по 3D-радиусу — шары не слипаются при любом повороте.
     const m = agKeys.length;
-    const baseSide = Math.min(width, height);
-    const orbitR = Math.max(125, Math.min(230, baseSide * 0.30));
+    const radii = agKeys.map(ak => Math.max(46, Math.min(105, 36 + Math.sqrt(byAg[ak].length) * 12)));
+    const GAP = 1.45;
+    const volR = Math.cbrt(radii.reduce((s, r) => s + Math.pow(r * GAP, 3), 0));
+    const R0 = Math.max(150, volR * 1.35);
+    const centers = agKeys.map((ak, i) => {
+      const yy = m > 1 ? 1 - (i / (m - 1)) * 2 : 0;
+      const rr = Math.sqrt(Math.max(0, 1 - yy * yy));
+      const th = i * 2.399963229728653 + 0.4;
+      return {x: Math.cos(th) * rr * R0, y: yy * R0 * 0.85, z: Math.sin(th) * rr * R0};
+    });
+    for (let it = 0; it < 400; it++) {
+      let moved = false;
+      for (let i = 0; i < m; i++) {
+        for (let j = i + 1; j < m; j++) {
+          const a = centers[i], b = centers[j];
+          let dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+          let d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+          const need = (radii[i] + radii[j]) * GAP;
+          if (d >= need) continue;
+          if (d < 0.001) { dx = 1; dy = 0.3; dz = 0.2; d = Math.sqrt(1.13); }
+          const push = (need - d) / 2 / d;
+          a.x -= dx * push; a.y -= dy * push; a.z -= dz * push;
+          b.x += dx * push; b.y += dy * push; b.z += dz * push;
+          moved = true;
+        }
+      }
+      if (!moved) break;
+    }
+    let extent = 1;
+    centers.forEach((c, i) => { extent = Math.max(extent, Math.sqrt(c.x * c.x + c.y * c.y + c.z * c.z) + radii[i]); });
+    const fit = Math.min(1, (Math.min(width, height) * 0.48) / extent);
     agKeys.forEach((ak, idx) => {
       const agNodes = byAg[ak];
-      const ang = (idx / m) * Math.PI * 2 + 0.4;
-      const elev = (m > 2 ? Math.sin(idx * 2.1) * 42 : 0);
-      const cx = Math.cos(ang) * orbitR;
-      const cy = elev;
-      const cz = Math.sin(ang) * orbitR;
-      const locR = Math.max(46, Math.min(105, 36 + Math.sqrt(agNodes.length) * 12));
+      const cx = centers[idx].x * fit;
+      const cy = centers[idx].y * fit;
+      const cz = centers[idx].z * fit;
+      const locR = radii[idx] * fit;
       const first = agNodes[0] || {};
       spheres.push({
         agent_id: ak,
@@ -8513,10 +8544,16 @@ function drawGraph() {
       ctx.setLineDash([]);
       ctx.restore();
     }
-    // Подписи мостов задач между шарами
+    // Подписи мостов задач между шарами.
+    // 26.11.2026, слово Папы «весь слипшийся»: подписи всех мостов сразу закрывали центр графа десятками плашек.
+    // Теперь подписи только у мостов агента под курсором (не больше 6) — остальное видно по линиям.
     const labeledBridgePairs = new Set();
+    const _focusNode = (graphData.nodes || []).find(nd => nd.id === G3.hover) || null;
+    const _focusAg = _focusNode ? String(_focusNode.agent_id || 'owner') : '';
     for (const e of E) {
       if ((e.type === 'cross_agent' || e.bridge) && Array.isArray(e.topics) && e.topics.length) {
+        if (!_focusAg || labeledBridgePairs.size >= 6) continue;
+        if (String(e.from_agent || '') !== _focusAg && String(e.to_agent || '') !== _focusAg) continue;
         const pk = [e.from_agent || '', e.to_agent || ''].sort().join('|');
         if (labeledBridgePairs.has(pk)) continue;
         labeledBridgePairs.add(pk);
