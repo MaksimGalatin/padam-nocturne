@@ -2560,6 +2560,15 @@ def main(argv=None) -> int:
             from .shield import control_plane as _cp
             print(json.dumps(_cp.get_fleet_status(m), ensure_ascii=False, indent=2))
             return 0
+        elif act == "discover":
+            from .shield import agent_registry as _ar
+            pdirs = [getattr(args, "project_dir", "")] if getattr(args, "project_dir", "") else []
+            print(json.dumps(_ar.discover_local_ai_agents(project_dirs=pdirs, include_user_home=not getattr(args, "no_home", False)), ensure_ascii=False, indent=2))
+            return 0
+        elif act == "registry":
+            from .shield import agent_registry as _ar
+            print(json.dumps(_ar.list_registered_agents(m), ensure_ascii=False, indent=2))
+            return 0
         elif act == "scorecard":
             from .shield import scorecard as _sc
             card = _sc.build_executive_scorecard(m)
@@ -2747,6 +2756,12 @@ def main(argv=None) -> int:
     ss_ks.set_defaults(fn=cmd_shield)
     ss_fs = ssub.add_parser("fleet-status")
     ss_fs.set_defaults(fn=cmd_shield)
+    ss_dc = ssub.add_parser("discover")
+    ss_dc.add_argument("--project-dir", default="")
+    ss_dc.add_argument("--no-home", action="store_true")
+    ss_dc.set_defaults(fn=cmd_shield)
+    ss_rg = ssub.add_parser("registry")
+    ss_rg.set_defaults(fn=cmd_shield)
     ss_scc = ssub.add_parser("scorecard")
     ss_scc.add_argument("--markdown", action="store_true")
     ss_scc.set_defaults(fn=cmd_shield)

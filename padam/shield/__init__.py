@@ -114,6 +114,14 @@ from .ssrf_path_guard import inspect_file_path_access, inspect_url_ssrf
 from .approval_binding import compute_action_binding_hash, issue_approval_receipt, verify_and_consume_approval
 from .diff_guard import scan_diff_file, scan_unified_diff
 from .inbound_guard import inspect_inbound_event, verify_inbound_webhook
+from .agent_registry import (
+    discover_local_ai_agents,
+    list_registered_agents,
+    record_agent_delegation,
+    register_agent_identity,
+    revoke_agent_identity,
+    verify_agent_identity_action,
+)
 from .control_plane import (
     get_fleet_status,
     ingest_node_attestation_batch,
@@ -282,6 +290,12 @@ __all__ = [
     "verify_fleet_policy_bundle",
     "ingest_node_attestation_batch",
     "get_fleet_status",
+    "discover_local_ai_agents",
+    "register_agent_identity",
+    "verify_agent_identity_action",
+    "record_agent_delegation",
+    "revoke_agent_identity",
+    "list_registered_agents",
     "sign_onnx_model_manifest",
     "verify_onnx_model_manifest",
     "verify_and_load_signed_onnx",

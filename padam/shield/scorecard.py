@@ -24,7 +24,7 @@ from .tamper_seal import verify_shield_integrity
 OWASP_ASI_MODULES: List[Dict[str, Any]] = [
     {"id": "ASI01", "name": "Agent Goal Hijacking", "modules": ["semantic.py", "adversarial_norm.py", "prompt_hierarchy.py", "goal_drift.py", "crescendo_guard.py"]},
     {"id": "ASI02", "name": "Tool Misuse & Exploitation", "modules": ["taint.py", "mcp_proxy.py", "mcp_http_proxy.py", "sql_guard.py", "browser_guard.py", "cloud_iac_guard.py"]},
-    {"id": "ASI03", "name": "Identity & Privilege Abuse (Confused Deputy)", "modules": ["capability_tokens.py", "iam_oidc.py", "approval_binding.py", "timelock_quorum.py", "key_vault.py"]},
+    {"id": "ASI03", "name": "Identity & Privilege Abuse (Confused Deputy)", "modules": ["capability_tokens.py", "iam_oidc.py", "approval_binding.py", "timelock_quorum.py", "key_vault.py", "agent_registry.py"]},
     {"id": "ASI04", "name": "Agentic Supply Chain Vulnerabilities", "modules": ["inspect_mcp.py", "model_scan.py", "slopsquat_guard.py", "aibom.py", "diff_guard.py", "sigdb.py"]},
     {"id": "ASI05", "name": "Unexpected Code Execution & Sandbox Escape", "modules": ["sandbox.py", "resource_guard.py", "archive_xxe_guard.py", "ssrf_path_guard.py", "reward_hack_guard.py"]},
     {"id": "ASI06", "name": "Memory & Context Poisoning", "modules": ["memory_rules_guard.py", "output_rag.py", "context_isolation.py", "multimodal_guard.py", "voice_guard.py"]},

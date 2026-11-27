@@ -188,7 +188,12 @@ def inspect_file_path_access(
     if not raw:
         return {"ok": True, "allowed": True, "blocked": False, "path": raw, "findings": []}
 
-    decoded = unquote(raw)
+    decoded = raw
+    for _ in range(4):
+        nxt_dec = unquote(decoded)
+        if nxt_dec == decoded:
+            break
+        decoded = nxt_dec
     if "\x00" in raw or "\x00" in decoded:
         findings.append(
             {

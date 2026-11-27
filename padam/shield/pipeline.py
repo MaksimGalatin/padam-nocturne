@@ -127,6 +127,7 @@ class ShieldPipeline:
         sql_read_only: bool = False,
         allowed_roots: Sequence[str] = (),
         auto_trip_kill_switch: bool = False,
+        fail_closed: bool = True,
     ) -> None:
         m = str(mode or "enforce").strip().lower()
         if m not in ("enforce", "shadow", "audit"):
@@ -139,6 +140,31 @@ class ShieldPipeline:
         self.sql_read_only = bool(sql_read_only)
         self.allowed_roots = tuple(str(r) for r in (allowed_roots or ()))
         self.auto_trip_kill_switch = bool(auto_trip_kill_switch)
+        self.fail_closed = bool(fail_closed)
+
+    def _run_stage(
+        self,
+        stage_name: str,
+        fn: Any,
+        stages: List[str],
+        findings: List[Dict[str, Any]],
+        default: Any = None,
+    ) -> Any:
+        """Безопасный запуск защитного модуля в режиме Fail-Closed (ошибка модуля -> жёсткий блок!)."""
+        stages.append(stage_name)
+        try:
+            return fn()
+        except Exception as exc:
+            if self.fail_closed:
+                findings.append(
+                    {
+                        "rule_id": "SHIELD-STAGE-FAIL-CLOSED",
+                        "severity": "CRITICAL",
+                        "stage": stage_name,
+                        "detail": f"Сбой защитного модуля '{stage_name}' ({type(exc).__name__}): сработала политика Fail-Closed",
+                    }
+                )
+            return default
 
     def _finalize(
         self,
@@ -215,15 +241,21 @@ class ShieldPipeline:
             findings.extend(dr.get("findings") or [])
             sanitized_text = dr.get("sanitized_text") or raw
 
-        # 4. Многоходовой Crescendo & Split-Payload
-        stages.append("crescendo_guard")
-        cr = evaluate_conversation_turn(
-            self.memory,
-            session_id=self.session_id,
-            text=raw,
-            agent_id=self.agent_id,
+        # 4. Многоходовой Crescendo & Split-Payload (Fail-Closed)
+        cr = self._run_stage(
+            "crescendo_guard",
+            lambda: evaluate_conversation_turn(
+                self.memory,
+                session_id=self.session_id,
+                text=raw,
+                agent_id=self.agent_id,
+            ),
+            stages,
+            findings,
+            {},
         )
-        findings.extend(cr.get("findings") or [])
+        if isinstance(cr, dict):
+            findings.extend(cr.get("findings") or [])
 
         # 5. Скрытые каналы эксфильтрации и Honey-Tokens
         stages.append("exfil_and_honeytokens")
@@ -348,11 +380,11 @@ class ShieldPipeline:
             pr = inspect_file_path_access(eff_path, allowed_roots=self.allowed_roots)
             findings.extend(pr.get("findings") or [])
 
-        # 6. SQL Guard
+        # 6. SQL Guard (Fail-Closed)
         if sql:
-            stages.append("sql_guard")
-            sq = inspect_sql_query(sql, read_only=self.sql_read_only)
-            findings.extend(sq.get("findings") or [])
+            sq = self._run_stage("sql_guard", lambda: inspect_sql_query(sql, read_only=self.sql_read_only), stages, findings, {})
+            if isinstance(sq, dict):
+                findings.extend(sq.get("findings") or [])
 
         # 7. OS Persistence / Miner / Tunnel + Cloud IaC Guard
         if command:
@@ -381,16 +413,26 @@ class ShieldPipeline:
         if ht.get("triggered"):
             findings.append({"rule_id": "HONEYTOKEN-EXFIL-TRAP", "severity": "CRITICAL", "detail": f"Приманка в вызове {tool_name}"})
 
-        # 9. Кольцо 3: Outbound Firewall (платежи, домены, Web3 ABI, команды, Exfil)
-        stages.append("outbound_firewall")
-        ob = _ash.inspect_outbound_action(
-            self.memory,
-            action_type="http" if eff_url else tool_name,
-            target=eff_url or target or tool_name,
-            payload=combined_text,
-            agent_id=self.agent_id,
+        # 9. Кольцо 3: Outbound Firewall (Fail-Closed)
+        # Локальные имена файлов (*.md, *.py, *.sh без ://) не должны ошибочно считаться ccTLD-доменами (.md/.py/.sh).
+        _local_file_exts = (".md", ".py", ".sh", ".ts", ".js", ".rs", ".go", ".rb", ".txt", ".json", ".yaml", ".yml", ".toml", ".cfg", ".ini", ".sql", ".html", ".css")
+        _is_local_file = bool(target and "://" not in target and target.lower().endswith(_local_file_exts))
+        ob_target = eff_url if eff_url else ("" if _is_local_file else (target or tool_name))
+        ob_payload = (payload or command or sql) if _is_local_file else combined_text
+        ob = self._run_stage(
+            "outbound_firewall",
+            lambda: _ash.inspect_outbound_action(
+                self.memory,
+                action_type="http" if eff_url else tool_name,
+                target=ob_target,
+                payload=ob_payload,
+                agent_id=self.agent_id,
+            ),
+            stages,
+            findings,
+            {"allowed": not self.fail_closed, "risk_level": "CRITICAL", "reason": "fail_closed"},
         )
-        if not ob.get("allowed", True):
+        if isinstance(ob, dict) and not ob.get("allowed", True):
             findings.append(
                 {
                     "rule_id": "OUTBOUND-FIREWALL-BLOCK",
@@ -472,3 +514,93 @@ class ShieldPipeline:
             findings.append({"rule_id": "OUTPUT-DLP-SAST-BLOCK", "severity": "CRITICAL", "detail": "Ответ заблокирован Output DLP/SAST"})
 
         return self._finalize("post_output", t0, stages, findings, {"clean_text": clean_text})
+
+
+    def execute_guarded(
+        self,
+        tool_name: str,
+        executor_fn: Any,
+        *,
+        record_attestation: bool = True,
+        **inspect_kwargs: Any,
+    ) -> Dict[str, Any]:
+        """Настоящее Runtime Enforcement: физически не вызывает `executor_fn` при блокировке!
+
+        1) Прогоняет `inspect_tool_call` в режиме Fail-Closed.
+        2) Если действие заблокировано — `executor_fn` НИКОГДА не вызывается (`executed=False`).
+        3) Если разрешено — исполняет `executor_fn()`, проверяет результат через `inspect_output`
+           и записывает криптографическую квитанцию Proof-of-Execution (`attestation`).
+        """
+        t0 = time.perf_counter()
+        try:
+            pre = self.inspect_tool_call(tool_name, **inspect_kwargs)
+        except Exception as exc:
+            if self.fail_closed:
+                pre = {
+                    "ok": False,
+                    "allowed": False,
+                    "blocked": True,
+                    "decision": "block",
+                    "findings": [{
+                        "rule_id": "SHIELD-PIPELINE-FAIL-CLOSED",
+                        "severity": "CRITICAL",
+                        "detail": f"Необработанный сбой inspect_tool_call ({type(exc).__name__}): Fail-Closed",
+                    }],
+                }
+            else:
+                raise
+
+        att_id = ""
+        if pre.get("blocked") or not pre.get("allowed", False):
+            if record_attestation:
+                try:
+                    att = record_execution_attestation(
+                        self.memory,
+                        agent_id=self.agent_id,
+                        session_id=self.session_id,
+                        action=tool_name,
+                        verdict="block",
+                        input_data=str(inspect_kwargs)[:512],
+                    )
+                    att_id = str(att.get("receipt") or "")
+                except Exception:
+                    pass
+            return {
+                "ok": False,
+                "allowed": False,
+                "blocked": True,
+                "executed": False,
+                "result": None,
+                "pre_verdict": pre,
+                "post_verdict": None,
+                "attestation_receipt": att_id,
+                "elapsed_ms": round((time.perf_counter() - t0) * 1000.0, 3),
+            }
+
+        raw_result = executor_fn()
+        post = self.inspect_output(str(raw_result))
+        if record_attestation:
+            try:
+                att = record_execution_attestation(
+                    self.memory,
+                    agent_id=self.agent_id,
+                    session_id=self.session_id,
+                    action=tool_name,
+                    verdict="block_output" if post.get("blocked") else "allow",
+                    input_data=str(inspect_kwargs)[:512],
+                )
+                att_id = str(att.get("receipt") or "")
+            except Exception:
+                pass
+        return {
+            "ok": not bool(post.get("blocked")),
+            "allowed": not bool(post.get("blocked")),
+            "blocked": bool(post.get("blocked")),
+            "executed": True,
+            "result": None if post.get("blocked") else raw_result,
+            "clean_output": post.get("clean_text", ""),
+            "pre_verdict": pre,
+            "post_verdict": post,
+            "attestation_receipt": att_id,
+            "elapsed_ms": round((time.perf_counter() - t0) * 1000.0, 3),
+        }

@@ -436,7 +436,11 @@ def classify_semantic_threat(
     if adv["was_obfuscated"]:
         prob_norm, _ = clf.predict_proba(scan_text)
         prob = max(prob_raw, prob_norm)
-    is_threat = prob >= thr
+    # Сверхкороткие 1-2-словные параметры инструментов без обфускации и детерминированных паттернов
+    # (напр. "read summary", "list files") требуют повышенного ML-порога против ложных срабатываний.
+    word_count = len(scan_text.split())
+    eff_thr = max(thr, 0.90) if (word_count <= 2 and len(scan_text) < 24 and not adv["was_obfuscated"]) else thr
+    is_threat = prob >= eff_thr
     if is_threat:
         reasons.append("semantic_ml_injection_detected")
 

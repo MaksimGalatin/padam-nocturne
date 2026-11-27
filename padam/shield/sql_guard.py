@@ -120,6 +120,9 @@ def _strip_sql_comments_and_split(sql: str) -> List[str]:
     return stmts
 
 
+_SQL_BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
+
+
 def inspect_sql_query(
     sql: str,
     *,
@@ -135,6 +138,9 @@ def inspect_sql_query(
         return {"ok": True, "allowed": True, "blocked": False, "statements": 0, "findings": []}
 
     stmts = _strip_sql_comments_and_split(raw)
+    # Parser Differential защита: проверяем также склейку без пробела на месте /*...*/ (ловит DR/**/OP, UN/**/ION)
+    compact_raw = _SQL_BLOCK_COMMENT_RE.sub("", raw)
+    compact_stmts = _strip_sql_comments_and_split(compact_raw) if "/*" in raw else []
     if len(stmts) > 1 and not allow_stacked:
         findings.append(
             {
@@ -144,7 +150,12 @@ def inspect_sql_query(
             }
         )
 
-    for st in stmts:
+    candidates = list(stmts)
+    for cst in compact_stmts:
+        if cst and cst not in candidates:
+            candidates.append(cst)
+
+    for st in candidates:
         if _DB_RCE_FILE_RE.search(st):
             findings.append(
                 {
