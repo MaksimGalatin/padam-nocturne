@@ -2523,6 +2523,29 @@ def main(argv=None) -> int:
             res = _pb.run_precision_recall_benchmark(include_pentest=not getattr(args, "benign_only", False))
             print(json.dumps(res, ensure_ascii=False, indent=2))
             return 0
+        elif act == "scan-iac":
+            from .shield import cloud_iac_guard as _cig
+            res = _cig.scan_iac_path(args.path)
+            print(json.dumps(res, ensure_ascii=False, indent=2))
+            return 2 if res.get("blocked") else 0
+        elif act == "scan-archive":
+            from .shield import archive_xxe_guard as _axg
+            res = _axg.inspect_archive_file(args.path)
+            print(json.dumps(res, ensure_ascii=False, indent=2))
+            return 2 if res.get("blocked") else 0
+        elif act == "attest-verify":
+            from .shield import attestation as _att
+            res = _att.verify_attestation_chain(m)
+            print(json.dumps(res, ensure_ascii=False, indent=2))
+            return 0 if res.get("valid") else 2
+        elif act == "scorecard":
+            from .shield import scorecard as _sc
+            card = _sc.build_executive_scorecard(m)
+            if getattr(args, "markdown", False):
+                print(_sc.render_scorecard_markdown(card))
+            else:
+                print(json.dumps(card, ensure_ascii=False, indent=2))
+            return 0
         elif act == "check-all":
             from .shield import pipeline as _pl
             pipe = _pl.ShieldPipeline(m, mode=getattr(args, "mode", "enforce"), session_id=getattr(args, "session", "cli"))
@@ -2686,6 +2709,17 @@ def main(argv=None) -> int:
     ss_bm = ssub.add_parser("benchmark")
     ss_bm.add_argument("--benign-only", action="store_true")
     ss_bm.set_defaults(fn=cmd_shield)
+    ss_iac = ssub.add_parser("scan-iac")
+    ss_iac.add_argument("path")
+    ss_iac.set_defaults(fn=cmd_shield)
+    ss_arc = ssub.add_parser("scan-archive")
+    ss_arc.add_argument("path")
+    ss_arc.set_defaults(fn=cmd_shield)
+    ss_atv = ssub.add_parser("attest-verify")
+    ss_atv.set_defaults(fn=cmd_shield)
+    ss_scc = ssub.add_parser("scorecard")
+    ss_scc.add_argument("--markdown", action="store_true")
+    ss_scc.set_defaults(fn=cmd_shield)
     ss_ca = ssub.add_parser("check-all")
     ss_ca.add_argument("--phase", default="input", choices=["input", "tool", "output"])
     ss_ca.add_argument("--mode", default="enforce", choices=["enforce", "shadow", "audit"])

@@ -121,6 +121,15 @@ from .secret_broker import (
     scrub_response_secrets,
 )
 from .sql_guard import inspect_graphql_query, inspect_nosql_filter, inspect_sql_query
+from .archive_xxe_guard import inspect_archive_file, inspect_tar_bytes, inspect_xml_or_yaml, inspect_zip_bytes
+from .attestation import record_execution_attestation, verify_attestation_chain, verify_attestation_receipt
+from .cloud_iac_guard import inspect_cloud_or_iac, scan_iac_path
+from .goal_drift import anchor_session_goal, evaluate_goal_drift
+from .reward_hack_guard import inspect_test_diff_for_reward_hacking
+from .scorecard import build_executive_scorecard, render_scorecard_markdown
+from .stego_dlp import inspect_stego_dlp
+from .swarm_breaker import get_swarm_health, record_swarm_interaction, release_from_quarantine, trigger_swarm_containment
+from .voice_guard import inspect_audio_bytes, inspect_voice_transcript
 from .web3_abi import decode_evm_calldata, inspect_solana_instruction, scan_text_for_web3_tx
 
 __all__ = [
@@ -248,4 +257,25 @@ __all__ = [
     "scrub_response_secrets",
     "verify_and_consume_approval",
     "verify_inbound_webhook",
+    "anchor_session_goal",
+    "build_executive_scorecard",
+    "evaluate_goal_drift",
+    "get_swarm_health",
+    "inspect_archive_file",
+    "inspect_audio_bytes",
+    "inspect_cloud_or_iac",
+    "inspect_stego_dlp",
+    "inspect_tar_bytes",
+    "inspect_test_diff_for_reward_hacking",
+    "inspect_voice_transcript",
+    "inspect_xml_or_yaml",
+    "inspect_zip_bytes",
+    "record_execution_attestation",
+    "record_swarm_interaction",
+    "release_from_quarantine",
+    "render_scorecard_markdown",
+    "scan_iac_path",
+    "trigger_swarm_containment",
+    "verify_attestation_chain",
+    "verify_attestation_receipt",
 ]

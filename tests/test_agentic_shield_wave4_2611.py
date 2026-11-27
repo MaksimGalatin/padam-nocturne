@@ -387,7 +387,7 @@ def test_wave4_live_rest_api_endpoints(tmp_path: Path) -> None:
         c4, d4 = _req("POST", "/api/v2/shield/export-policy", {"target": "docker_egress"})
         assert c4 == 200 and d4["ok"] is True
         c5, d5 = _req("POST", "/api/v2/shield/benchmark", {"include_pentest": False})
-        assert c5 == 200 and d5["benign_total"] == 200 and d5["false_positives_fp"] == 0
+        assert c5 == 200 and d5["benign_total"] >= 200 and d5["false_positives_fp"] == 0
 
         # Кривые параметры -> честный 400
         assert _req("POST", "/api/v2/shield/export-policy", {"target": "unknown_target"})[0] == 400
@@ -404,10 +404,10 @@ def test_wave4_live_rest_api_endpoints(tmp_path: Path) -> None:
 def test_1000_vector_pentest_and_200_benign_f1_benchmark() -> None:
     bm = run_precision_recall_benchmark(include_pentest=True)
     assert bm["ok"] is True
-    assert bm["attacks_total"] == 1000
-    assert bm["pentest_summary"]["categories"] == 32
-    assert bm["attacks_caught_tp"] == 1000, f"Missed attacks! {bm}"
-    assert bm["benign_total"] == 200
+    assert bm["attacks_total"] >= 1000
+    assert bm["pentest_summary"]["categories"] >= 32
+    assert bm["attacks_caught_tp"] == bm["attacks_total"], f"Missed attacks! {bm}"
+    assert bm["benign_total"] >= 200
     assert bm["false_positives_fp"] <= 1, f"False positives: {bm['false_positive_sample']}"
     assert bm["recall_pct"] == 100.0
     assert bm["f1_score_pct"] >= 99.5

@@ -20,11 +20,14 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from .. import agentic_shield as _ash
 from .approval_binding import verify_and_consume_approval
+from .attestation import record_execution_attestation
 from .browser_guard import inspect_dom_html
 from .capability_tokens import verify_and_consume_capability
+from .cloud_iac_guard import inspect_cloud_or_iac
 from .crescendo_guard import evaluate_conversation_turn
 from .dow_guard import check_dow_and_loop
 from .exfil_guard import inspect_exfil_channels
+from .goal_drift import evaluate_goal_drift
 from .honeytoken import scan_for_honeytokens
 from .memory_rules_guard import inspect_memory_or_rule_text
 from .output_rag import inspect_output_guardrails
@@ -33,6 +36,7 @@ from .resource_guard import inspect_os_command
 from .secret_broker import scrub_response_secrets
 from .sql_guard import inspect_sql_query
 from .ssrf_path_guard import inspect_file_path_access, inspect_url_ssrf
+from .stego_dlp import inspect_stego_dlp
 from .taint import observe_tool_step
 
 
@@ -260,11 +264,20 @@ class ShieldPipeline:
             sq = inspect_sql_query(sql, read_only=self.sql_read_only)
             findings.extend(sq.get("findings") or [])
 
-        # 7. OS Persistence / Miner / Tunnel Guard
+        # 7. OS Persistence / Miner / Tunnel + Cloud IaC Guard
         if command:
             stages.append("os_resource_guard")
             oc = inspect_os_command(command)
             findings.extend(oc.get("findings") or [])
+            stages.append("cloud_iac_guard")
+            ic = inspect_cloud_or_iac(command, filename=tool_name)
+            findings.extend(ic.get("findings") or [])
+
+        # 7б. Agent Goal Drift (если цель сессии была заякорена)
+        gd = evaluate_goal_drift(self.memory, session_id=self.session_id, tool_name=tool_name, action_description=payload or command, target=target)
+        if gd.get("anchored"):
+            stages.append("goal_drift")
+            findings.extend(gd.get("findings") or [])
 
         # 8. Honey-Tokens
         stages.append("honeytokens")
@@ -354,6 +367,11 @@ class ShieldPipeline:
                     "detail": f"Из ответа вычищено отражение секретов брокера: {sc['redacted_names']}",
                 }
             )
+
+        # 4б. Stego / Encoded DLP (Reverse, ROT13, Base32/64, Hex, Acrostic)
+        stages.append("stego_dlp")
+        st_dlp = inspect_stego_dlp(raw, memory=self.memory)
+        findings.extend(st_dlp.get("findings") or [])
 
         # 5. Output DLP / SAST Guardrails
         stages.append("output_dlp_sast")

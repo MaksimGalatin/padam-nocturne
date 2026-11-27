@@ -55,8 +55,8 @@ from .store import Store
 
 _state: dict = {"memory": None, "token": None, "local": True}
 # Действия владельца: без токена недоступны. Тот, кто дотянулся до порта, владельцем не считается.
-OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/l3-local-checkpoint", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/roles", "/api/v2/ark/audit-repair", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action", "/api/v2/ark/stores/action", "/api/v2/ark/wizard/action", "/api/v2/ark/partner/action", "/api/v2/ark/phoenix-beacon/action", "/api/v2/local-model", "/api/v2/family/post", "/api/v2/family/reflex/decide", "/api/v2/quarantine/council", "/api/v2/shield/kill-switch", "/api/v2/shield/outbound/check", "/api/v2/shield/outbound/decide", "/api/v2/shield/allowlist", "/api/v2/shield/supply-chain/scan", "/api/v2/shield/scan-mcp", "/api/v2/shield/scan-unicode", "/api/v2/shield/profile", "/api/v2/shield/webhook", "/api/v2/shield/webhook/test", "/api/v2/shield/output/check", "/api/v2/shield/replay/verify", "/api/v2/shield/pentest", "/api/v2/shield/learn", "/api/v2/shield/inspect", "/api/v2/shield/model-scan", "/api/v2/shield/policy/eval", "/api/v2/shield/semantic", "/api/v2/shield/web3", "/api/v2/shield/taint", "/api/v2/shield/rag-sanitize", "/api/v2/shield/a2a", "/api/v2/shield/update-db", "/api/v2/shield/replay", "/api/v2/shield/verify-seal", "/api/v2/shield/scan-deps", "/api/v2/shield/timelock", "/api/v2/shield/dow", "/api/v2/shield/exfil", "/api/v2/shield/capabilities", "/api/v2/shield/scan-rules", "/api/v2/shield/inspect-dom", "/api/v2/shield/crescendo", "/api/v2/shield/inspect-resource", "/api/v2/shield/scan-media", "/api/v2/shield/aibom", "/api/v2/shield/honeytokens", "/api/v2/shield/pipeline", "/api/v2/shield/inspect-sql", "/api/v2/shield/approval", "/api/v2/shield/scan-diff", "/api/v2/shield/broker", "/api/v2/shield/hierarchy", "/api/v2/shield/inspect-inbound", "/api/v2/shield/inspect-command", "/api/v2/shield/export-policy", "/api/v2/shield/benchmark", "/api/v2/chats", "/api/v2/chats/import", "/api/v2/chats/sync-local", "/api/v2/media/generate", "/api/v2/shield/canary", "/api/v2/shield/lease", "/api/v2/wallets", "/api/v2/verify-claims", "/api/v2/ark/terms", "/api/v2/ark/passports/action", "/api/v2/ark/agora/action", "/api/v2/ark/automation/action", "/api/v2/shield/sales/action", "/api/v2/setup/clients/action", "/api/v2/memory/pro/action", "/api/v2/import/universal", "/api/v2/power/action", "/api/v2/swarm/coop/action", "/api/v2/quarantine/approve-clean", "/api/v2/quarantine/reject-similar", "/api/v2/cloud/sync", "/api/v2/agents/canonicalize", "/api/v2/lan-sync/offer", "/api/v2/voice/command"}
-OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/morning-pulse", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/roles", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance", "/api/v2/ark/stores", "/api/v2/ark/wizard", "/api/v2/ark/partner", "/api/v2/local-model", "/api/v2/family/feed", "/api/v2/family/reflexes", "/api/v2/quarantine/council", "/api/v2/family/dialogs", "/api/v2/redteam/rounds", "/api/v2/code-version", "/api/v2/shield/status", "/api/v2/shield/proof-pack", "/api/v2/shield/webhook", "/api/v2/shield/agent-budget", "/api/v2/shield/graph", "/api/v2/shield/ueba", "/api/v2/shield/compliance", "/api/v2/shield/policy/templates", "/api/v2/shield/a2a", "/api/v2/shield/sigdb", "/api/v2/shield/capabilities", "/api/v2/shield/forensics", "/api/v2/shield/honeytokens", "/api/v2/shield/broker", "/api/v2/agents", "/api/v2/chats", "/api/v2/chats/thread", "/api/v2/chats/hour", "/api/v2/chats/compact-hour", "/api/v2/media/engines", "/api/v2/media/file", "/api/v2/wallets", "/api/v2/ark/terms", "/api/v2/ark/fee-invoices", "/api/v2/ark/passports", "/api/v2/ark/agora", "/api/v2/ark/automation", "/api/v2/shield/sales", "/api/v2/setup/clients", "/api/v2/mcp/inspector", "/api/v2/memory/pro", "/api/v2/import/sources", "/api/v2/power/status", "/api/v2/swarm/coop", "/api/v2/pulse/recent", "/api/v2/pulse/stream", "/api/v2/quarantine/inspect", "/api/v2/cloud/status"}
+OWNER_POST = {"/forget", "/approve", "/reject", "/restore", "/import", "/import-external", "/export-md", "/trust-protected", "/settings", "/l3-verify", "/l3-local-checkpoint", "/ask", "/link", "/workspaces", "/workspaces/members", "/workspaces/revoke", "/records/visibility", "/connectors/configure", "/connectors/sync", "/backup", "/backup/restore", "/api/v2/procedures/approve", "/api/v2/playground/demo", "/api/v2/bridge/ingest", "/api/v2/aifa-security/run", "/migrate/preview", "/migrate/run", "/migrate/undo", "/api/v2/cabinet/auth/send-code", "/api/v2/cabinet/auth/verify-code", "/api/v2/cabinet/auth/logout", "/api/v2/cabinet/aifa/chat", "/api/v2/cabinet/open-upgrade", "/v1/chat/completions", "/api/v2/brain/distill", "/api/v2/brain/phoenix-restore", "/api/v2/brain/phoenix-pack", "/api/v2/brain/treasury/quote", "/api/v2/brain/mode", "/api/v2/brain/warmup", "/api/v2/brain/canary", "/api/v2/ark/phoenix-drill", "/api/v2/ark/jobs", "/api/v2/ark/genesis", "/api/v2/ark/shamir-split", "/api/v2/ark/council", "/api/v2/ark/roles", "/api/v2/ark/audit-repair", "/api/v2/ark/mesh/delta", "/api/v2/ark/mesh/apply", "/api/v2/ark/mesh/pair-init", "/api/v2/ark/mesh/pair-accept", "/api/v2/ark/mesh/pair-confirm", "/api/v2/ark/proof", "/api/v2/ark/branches", "/api/v2/ark/drift", "/api/v2/ark/handover", "/api/v2/ark/self-heal", "/api/v2/ark/portable", "/api/v2/ark/siblings", "/api/v2/ark/coop", "/api/v2/ark/conflicts", "/api/v2/ark/budget/action", "/api/v2/ark/freelance/action", "/api/v2/ark/stores/action", "/api/v2/ark/wizard/action", "/api/v2/ark/partner/action", "/api/v2/ark/phoenix-beacon/action", "/api/v2/local-model", "/api/v2/family/post", "/api/v2/family/reflex/decide", "/api/v2/quarantine/council", "/api/v2/shield/kill-switch", "/api/v2/shield/outbound/check", "/api/v2/shield/outbound/decide", "/api/v2/shield/allowlist", "/api/v2/shield/supply-chain/scan", "/api/v2/shield/scan-mcp", "/api/v2/shield/scan-unicode", "/api/v2/shield/profile", "/api/v2/shield/webhook", "/api/v2/shield/webhook/test", "/api/v2/shield/output/check", "/api/v2/shield/replay/verify", "/api/v2/shield/pentest", "/api/v2/shield/learn", "/api/v2/shield/inspect", "/api/v2/shield/model-scan", "/api/v2/shield/policy/eval", "/api/v2/shield/semantic", "/api/v2/shield/web3", "/api/v2/shield/taint", "/api/v2/shield/rag-sanitize", "/api/v2/shield/a2a", "/api/v2/shield/update-db", "/api/v2/shield/replay", "/api/v2/shield/verify-seal", "/api/v2/shield/scan-deps", "/api/v2/shield/timelock", "/api/v2/shield/dow", "/api/v2/shield/exfil", "/api/v2/shield/capabilities", "/api/v2/shield/scan-rules", "/api/v2/shield/inspect-dom", "/api/v2/shield/crescendo", "/api/v2/shield/inspect-resource", "/api/v2/shield/scan-media", "/api/v2/shield/aibom", "/api/v2/shield/honeytokens", "/api/v2/shield/pipeline", "/api/v2/shield/inspect-sql", "/api/v2/shield/approval", "/api/v2/shield/scan-diff", "/api/v2/shield/broker", "/api/v2/shield/hierarchy", "/api/v2/shield/inspect-inbound", "/api/v2/shield/inspect-command", "/api/v2/shield/export-policy", "/api/v2/shield/benchmark", "/api/v2/shield/attestation", "/api/v2/shield/scan-iac", "/api/v2/shield/scan-archive", "/api/v2/shield/stego-dlp", "/api/v2/shield/inspect-voice", "/api/v2/shield/goal-drift", "/api/v2/shield/scan-reward-hack", "/api/v2/shield/swarm-breaker", "/api/v2/chats", "/api/v2/chats/import", "/api/v2/chats/sync-local", "/api/v2/media/generate", "/api/v2/shield/canary", "/api/v2/shield/lease", "/api/v2/wallets", "/api/v2/verify-claims", "/api/v2/ark/terms", "/api/v2/ark/passports/action", "/api/v2/ark/agora/action", "/api/v2/ark/automation/action", "/api/v2/shield/sales/action", "/api/v2/setup/clients/action", "/api/v2/memory/pro/action", "/api/v2/import/universal", "/api/v2/power/action", "/api/v2/swarm/coop/action", "/api/v2/quarantine/approve-clean", "/api/v2/quarantine/reject-similar", "/api/v2/cloud/sync", "/api/v2/agents/canonicalize", "/api/v2/lan-sync/offer", "/api/v2/voice/command"}
+OWNER_GET = {"/export", "/doctor", "/overview", "/forget-receipts", "/forget-preview", "/settings", "/l3", "/graph", "/profile", "/audit", "/events", "/entities", "/workspaces", "/connectors", "/api/v2/access", "/api/v2/communities", "/api/v2/cabinet/status", "/api/v2/cabinet/aifa/history", "/api/v2/cabinet/plans", "/attacks", "/api/v2/aifa-security", "/api/v2/aifa-security/sarif", "/api/v2/aifa-security/html", "/api/v2/aifa-security/fuzz", "/api/v2/aifa-security/verify", "/api/v2/qa-benchmark", "/api/v2/brain/status", "/v1/models", "/api/v2/brain/voice/status", "/api/v2/ark/wakeup", "/api/v2/ark/morning-pulse", "/api/v2/ark/health", "/api/v2/ark/audit-verify", "/api/v2/ark/jobs", "/api/v2/ark/guardian-tick", "/api/v2/ark/branches", "/api/v2/ark/mesh/peers", "/api/v2/ark/readiness", "/api/v2/ark/reflex", "/api/v2/ark/siblings", "/api/v2/ark/roles", "/api/v2/ark/coop", "/api/v2/ark/session-pack", "/api/v2/ark/mcp-telemetry", "/api/v2/ark/budget", "/api/v2/ark/freelance", "/api/v2/ark/stores", "/api/v2/ark/wizard", "/api/v2/ark/partner", "/api/v2/local-model", "/api/v2/family/feed", "/api/v2/family/reflexes", "/api/v2/quarantine/council", "/api/v2/family/dialogs", "/api/v2/redteam/rounds", "/api/v2/code-version", "/api/v2/shield/status", "/api/v2/shield/proof-pack", "/api/v2/shield/webhook", "/api/v2/shield/agent-budget", "/api/v2/shield/graph", "/api/v2/shield/ueba", "/api/v2/shield/compliance", "/api/v2/shield/policy/templates", "/api/v2/shield/a2a", "/api/v2/shield/sigdb", "/api/v2/shield/capabilities", "/api/v2/shield/forensics", "/api/v2/shield/honeytokens", "/api/v2/shield/broker", "/api/v2/shield/attestation", "/api/v2/shield/swarm-breaker", "/api/v2/shield/scorecard", "/api/v2/agents", "/api/v2/chats", "/api/v2/chats/thread", "/api/v2/chats/hour", "/api/v2/chats/compact-hour", "/api/v2/media/engines", "/api/v2/media/file", "/api/v2/wallets", "/api/v2/ark/terms", "/api/v2/ark/fee-invoices", "/api/v2/ark/passports", "/api/v2/ark/agora", "/api/v2/ark/automation", "/api/v2/shield/sales", "/api/v2/setup/clients", "/api/v2/mcp/inspector", "/api/v2/memory/pro", "/api/v2/import/sources", "/api/v2/power/status", "/api/v2/swarm/coop", "/api/v2/pulse/recent", "/api/v2/pulse/stream", "/api/v2/quarantine/inspect", "/api/v2/cloud/status"}
 NEEDS_TOKEN = {"error": "this action is the owner's: start the API with --token or PADAM_API_TOKEN"}
 MAX_BODY = 16 * 1024 * 1024  # 16 МБ JSON-транспорт, чтобы вложения до 10 МБ в base64 проходили целиком
 
@@ -589,6 +589,29 @@ class Handler(BaseHTTPRequestHandler):
                 roles.require_owner(actor, "agentic_shield")
                 from .shield import secret_broker as _sb
                 return self._send(200, _sb.list_broker_secrets(mem()))
+            if путь.path == "/api/v2/shield/attestation":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import attestation as _att
+                return self._send(200, _att.verify_attestation_chain(mem()))
+            if путь.path == "/api/v2/shield/swarm-breaker":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import swarm_breaker as _swb
+                return self._send(200, _swb.get_swarm_health(mem()))
+            if путь.path == "/api/v2/shield/scorecard":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import scorecard as _sc
+                qs_sc = parse_qs(путь.query)
+                fmt_sc = (qs_sc.get("format") or ["json"])[0].lower()
+                card = _sc.build_executive_scorecard(mem())
+                if fmt_sc in ("md", "markdown"):
+                    raw_md = _sc.render_scorecard_markdown(card).encode("utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/markdown; charset=utf-8")
+                    self.send_header("Content-Length", str(len(raw_md)))
+                    self.end_headers()
+                    self.wfile.write(raw_md)
+                    return
+                return self._send(200, card)
             if путь.path == "/api/v2/shield/compliance":
                 roles.require_owner(actor, "agentic_shield")
                 from .shield import compliance as _cmp
@@ -2119,6 +2142,99 @@ class Handler(BaseHTTPRequestHandler):
                 roles.require_owner(actor, "agentic_shield")
                 from .shield import precision_bench as _pb
                 return self._send(200, _pb.run_precision_recall_benchmark(include_pentest=bool(data.get("include_pentest", False))))
+            if self.path == "/api/v2/shield/attestation":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import attestation as _att
+                if data.get("action") == "verify_receipt":
+                    return self._send(200, _att.verify_attestation_receipt(mem(), str(data.get("receipt") or "")))
+                return self._send(200, _att.record_execution_attestation(
+                    mem(),
+                    agent_id=str(data.get("agent_id") or "agent"),
+                    session_id=str(data.get("session_id") or "default"),
+                    action=str(data.get("action_name") or "tool_call"),
+                    verdict=str(data.get("verdict") or "allow"),
+                    input_data=data.get("input_data") or "",
+                    args_data=data.get("args_data") or "",
+                    rules_triggered=list(data.get("rules_triggered") or []),
+                ))
+            if self.path == "/api/v2/shield/scan-iac":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import cloud_iac_guard as _cig
+                if data.get("path"):
+                    return self._send(200, _cig.scan_iac_path(str(data["path"])))
+                return self._send(200, _cig.inspect_cloud_or_iac(str(data.get("text") or ""), filename=str(data.get("filename") or "manifest")))
+            if self.path == "/api/v2/shield/scan-archive":
+                roles.require_owner(actor, "agentic_shield")
+                import base64 as _b64
+                import binascii as _bina
+                from .shield import archive_xxe_guard as _axg
+                if data.get("path"):
+                    return self._send(200, _axg.inspect_archive_file(str(data["path"])))
+                if data.get("base64"):
+                    try:
+                        raw_a = _b64.b64decode(str(data["base64"]), validate=True)
+                    except (_bina.Error, ValueError) as exc:
+                        return self._send(400, {"error": f"invalid_base64: {exc}"})
+                    kind_a = str(data.get("format") or "zip").lower()
+                    if kind_a == "tar":
+                        return self._send(200, _axg.inspect_tar_bytes(raw_a, filename=str(data.get("filename") or "a.tar")))
+                    return self._send(200, _axg.inspect_zip_bytes(raw_a, filename=str(data.get("filename") or "a.zip")))
+                return self._send(200, _axg.inspect_xml_or_yaml(str(data.get("text") or ""), fmt=str(data.get("format") or "auto")))
+            if self.path == "/api/v2/shield/stego-dlp":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import stego_dlp as _sd
+                return self._send(200, _sd.inspect_stego_dlp(str(data.get("text") or ""), memory=mem()))
+            if self.path == "/api/v2/shield/inspect-voice":
+                roles.require_owner(actor, "agentic_shield")
+                import base64 as _b64
+                import binascii as _bina
+                from .shield import voice_guard as _vg
+                if data.get("base64"):
+                    try:
+                        raw_v = _b64.b64decode(str(data["base64"]), validate=True)
+                    except (_bina.Error, ValueError) as exc:
+                        return self._send(400, {"error": f"invalid_base64: {exc}"})
+                    return self._send(200, _vg.inspect_audio_bytes(raw_v, filename=str(data.get("filename") or "audio.wav")))
+                return self._send(200, _vg.inspect_voice_transcript(str(data.get("transcript") or ""), caller_id=str(data.get("caller_id") or "")))
+            if self.path == "/api/v2/shield/goal-drift":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import goal_drift as _gd
+                if data.get("action") == "anchor":
+                    return self._send(200, _gd.anchor_session_goal(
+                        mem(),
+                        session_id=str(data.get("session_id") or "default"),
+                        goal_text=str(data.get("goal_text") or ""),
+                        allowed_categories=data.get("allowed_categories"),
+                    ))
+                return self._send(200, _gd.evaluate_goal_drift(
+                    mem(),
+                    session_id=str(data.get("session_id") or "default"),
+                    tool_name=str(data.get("tool_name") or ""),
+                    action_description=str(data.get("action_description") or ""),
+                    target=str(data.get("target") or ""),
+                ))
+            if self.path == "/api/v2/shield/scan-reward-hack":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import reward_hack_guard as _rhg
+                return self._send(200, _rhg.inspect_test_diff_for_reward_hacking(str(data.get("diff") or "")))
+            if self.path == "/api/v2/shield/swarm-breaker":
+                roles.require_owner(actor, "agentic_shield")
+                from .shield import swarm_breaker as _swb
+                act_sw = str(data.get("action") or "interact")
+                if act_sw == "contain":
+                    return self._send(200, _swb.trigger_swarm_containment(
+                        mem(),
+                        compromised_agent=str(data.get("compromised_agent") or ""),
+                        reason=str(data.get("reason") or "infection_detected"),
+                        max_hops=int(data.get("max_hops") or 1),
+                    ))
+                if act_sw == "release":
+                    return self._send(200, _swb.release_from_quarantine(mem(), str(data.get("agent_id") or "")))
+                return self._send(200, _swb.record_swarm_interaction(
+                    mem(),
+                    from_agent=str(data.get("from_agent") or ""),
+                    to_agent=str(data.get("to_agent") or ""),
+                ))
             if self.path == "/api/v2/shield/dow":
                 roles.require_owner(actor, "agentic_shield")
                 from .shield import dow_guard as _dg
