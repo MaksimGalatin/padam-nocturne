@@ -2293,7 +2293,12 @@ class Handler(BaseHTTPRequestHandler):
                         sc_v = float(data.get("spend_cents") or 0.0)
                     except (TypeError, ValueError):
                         return self._send(400, {"error": "spend_cents must be a number"})
-                    return self._send(200, _ar.verify_agent_identity_action(mem(), agent_did=did, tool_name=tn, spend_cents=sc_v))
+                    return self._send(200, _ar.verify_agent_identity_action(
+                        mem(), agent_did=did, tool_name=tn, spend_cents=sc_v,
+                        signature_b64=str(data.get("signature_b64") or ""),
+                        signed_message=str(data.get("signed_message") or ""),
+                        require_signature=bool(data.get("require_signature")),
+                    ))
                 aname = str(data.get("agent_name") or "").strip()
                 oid = str(data.get("owner_id") or "").strip()
                 if not aname or not oid:

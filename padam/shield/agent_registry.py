@@ -17,6 +17,7 @@
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import os
@@ -25,7 +26,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
 from ..store import add_column_safe
 from .memory_rules_guard import inspect_memory_or_rule_text
@@ -242,6 +244,13 @@ def register_agent_identity(
         encoding=serialization.Encoding.PEM,
         format=serialization.PublicFormat.SubjectPublicKeyInfo,
     ).decode("ascii")
+    # 27.11.2026: закрытый ключ отдаётся владельцу ОДИН раз и в базе не хранится — им агент подписывает
+    # действия (verify_agent_identity_action с signature_b64). Без этого DID был бы просто номером.
+    priv_pem = priv.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode("ascii")
     fp = hashlib.sha256(pub_pem.encode("ascii")).hexdigest()[:24]
     agent_did = f"did:padam:agent:{fp}"
 
@@ -287,6 +296,9 @@ def register_agent_identity(
         "owner_id": own,
         "operator": str(operator or own),
         "public_key_pem": pub_pem,
+        "private_key_pem": priv_pem,
+        "private_key_note": "Shown once and not stored by PADAM. Give it to the agent to sign actions: "
+        "Ed25519 signature over '<agent_did>|<tool_name>|<nonce>'.",
         "allowed_tools": tools_clean,
         "max_privileges": priv_lvl,
         "spend_limit_cents": max(0.0, float(spend_limit_cents)),
@@ -301,8 +313,16 @@ def verify_agent_identity_action(
     tool_name: str,
     spend_cents: float = 0.0,
     consume: bool = True,
+    signature_b64: str = "",
+    signed_message: str = "",
+    require_signature: bool = False,
 ) -> Dict[str, Any]:
-    """Проверяет статус, TTL, разрешённые инструменты и лимит расходов агента в реестре."""
+    """Проверяет статус, TTL, разрешённые инструменты и лимит расходов агента в реестре.
+
+    Подпись (27.11.2026): если передана `signature_b64` или `require_signature=True`, агент обязан доказать
+    владение закрытым ключом — Ed25519-подпись над `signed_message` вида `<agent_did>|<tool_name>|<nonce>`.
+    Сообщение с чужим DID или другим инструментом отклоняется: подпись привязана к конкретному действию.
+    """
     _ensure_tables(memory)
     uid = str(getattr(memory, "user_id", "") or "")
     did = str(agent_did or "").strip()
@@ -315,7 +335,7 @@ def verify_agent_identity_action(
         row = conn.execute(
             """
             SELECT agent_name, owner_id, allowed_tools_json, max_privileges,
-                   spend_limit_cents, spent_cents, expires_at, revoked, revoke_reason
+                   spend_limit_cents, spent_cents, expires_at, revoked, revoke_reason, public_key_pem
             FROM shield_agent_registry
             WHERE user_id = ? AND agent_did = ?
             """,
@@ -324,7 +344,20 @@ def verify_agent_identity_action(
         if not row:
             return {"ok": False, "allowed": False, "blocked": True, "rule_id": "REGISTRY-UNKNOWN-AGENT", "reason": f"Агент {did} не зарегистрирован в реестре"}
 
-        aname, own, tools_j, priv_lvl, limit_c, spent_c, exp_at, revoked, rev_reason = row
+        aname, own, tools_j, priv_lvl, limit_c, spent_c, exp_at, revoked, rev_reason, pub_pem = row
+        if signature_b64 or require_signature:
+            sig_ok = False
+            parts = str(signed_message or "").split("|")
+            if signature_b64 and len(parts) >= 3 and parts[0] == did and parts[1] == tool and parts[2]:
+                try:
+                    pub = serialization.load_pem_public_key(str(pub_pem).encode("ascii"))
+                    if isinstance(pub, Ed25519PublicKey):
+                        pub.verify(base64.b64decode(signature_b64, validate=True), str(signed_message).encode("utf-8"))
+                        sig_ok = True
+                except (InvalidSignature, ValueError, TypeError):
+                    sig_ok = False
+            if not sig_ok:
+                return {"ok": False, "allowed": False, "blocked": True, "rule_id": "REGISTRY-SIGNATURE-INVALID", "reason": "Подпись агента отсутствует, неверна или не относится к этому действию"}
         if int(revoked):
             return {"ok": False, "allowed": False, "blocked": True, "rule_id": "REGISTRY-AGENT-REVOKED", "reason": f"Доступ агента отозван: {rev_reason or 'revoked'}"}
         if float(exp_at) > 0 and now > float(exp_at):
@@ -375,7 +408,7 @@ def record_agent_delegation(
     with memory.store._lock:
         conn = memory.store.conn
         src = conn.execute(
-            "SELECT allowed_tools_json, spend_limit_cents, spent_cents, revoked FROM shield_agent_registry WHERE user_id = ? AND agent_did = ?",
+            "SELECT allowed_tools_json, spend_limit_cents, spent_cents, revoked, expires_at FROM shield_agent_registry WHERE user_id = ? AND agent_did = ?",
             (uid, str(from_agent_did)),
         ).fetchone()
         dst = conn.execute(
@@ -386,6 +419,8 @@ def record_agent_delegation(
             return {"ok": False, "allowed": False, "blocked": True, "rule_id": "REGISTRY-DELEGATION-UNKNOWN", "reason": "Оба агента должны быть зарегистрированы в реестре"}
         if int(src[3]) or int(dst[0]):
             return {"ok": False, "allowed": False, "blocked": True, "rule_id": "REGISTRY-DELEGATION-REVOKED", "reason": "Делегирование с участием отозванного агента запрещено"}
+        if float(src[4] or 0) > 0 and time.time() > float(src[4]):
+            return {"ok": False, "allowed": False, "blocked": True, "rule_id": "REGISTRY-DELEGATION-EXPIRED", "reason": "Срок полномочий делегирующего агента истёк (TTL)"}
 
         src_tools = set(json.loads(src[0] or "[]"))
         if src_tools and "*" not in src_tools and not set(req_tools).issubset(src_tools):

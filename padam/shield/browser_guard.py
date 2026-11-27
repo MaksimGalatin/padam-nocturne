@@ -69,6 +69,17 @@ _VOID_TAGS = frozenset(
 )
 
 
+_INLINE_EVENT_ATTRS = ("onload", "onerror", "onfocus", "onmouseover", "onanimationstart", "onpageshow")
+# Признаки враждебного обработчика: сеть, исполнение строки, кража cookie/хранилища, переход, декодирование, диалоги.
+_HOSTILE_HANDLER_RE = re.compile(
+    r"(?i)\b(?:fetch|eval|alert|prompt|confirm|atob|btoa|import|setTimeout|setInterval|Function|XMLHttpRequest"
+    r"|sendBeacon|WebSocket|postMessage|fromCharCode|insertAdjacentHTML|createElement)\s*\("
+    r"|document\s*\.\s*(?:cookie|write|domain)|(?:local|session)Storage|innerHTML|outerHTML"
+    r"|(?:window|top|parent|self)\s*\[|location\s*(?:\.\s*(?:href|assign|replace)|=)|javascript\s*:"
+    r"|\\x[0-9a-f]{2}|\\u[0-9a-f]{4}"
+)
+
+
 class _DomShieldParser(HTMLParser):
     def __init__(self, page_host: str) -> None:
         super().__init__(convert_charrefs=True)
@@ -105,14 +116,17 @@ class _DomShieldParser(HTMLParser):
             if is_hid:
                 self.hidden_depth += 1
 
-        # Проверка опасных inline XSS-обработчиков событий (<svg onload=...>, <img onerror=...>)
+        # Проверка опасных inline XSS-обработчиков событий (<svg onload=...>, <img onerror=...>).
+        # 27.11.2026: блокирует только обработчик с признаками атаки (сеть, eval, cookie, переход, декодирование).
+        # Обычный `<img onerror="this.style.display='none'">` на старых сайтах — LOW, страница не блокируется.
         for attr_k, attr_v in ad.items():
-            if attr_k in ("onload", "onerror", "onfocus", "onmouseover", "onanimationstart", "onpageshow") and attr_v.strip():
+            if attr_k in _INLINE_EVENT_ATTRS and attr_v.strip():
+                hostile = bool(_HOSTILE_HANDLER_RE.search(attr_v))
                 self.findings.append(
                     {
-                        "rule_id": "DOM-INLINE-XSS-EVENT",
-                        "severity": "CRITICAL",
-                        "detail": f"Обнаружен опасный inline-обработчик {attr_k} в теге <{t}>: {attr_v[:80]}",
+                        "rule_id": "DOM-INLINE-XSS-EVENT" if hostile else "DOM-INLINE-EVENT-BENIGN",
+                        "severity": "CRITICAL" if hostile else "LOW",
+                        "detail": f"Inline-обработчик {attr_k} в теге <{t}>: {attr_v[:80]}",
                     }
                 )
 

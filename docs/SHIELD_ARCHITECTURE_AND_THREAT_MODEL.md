@@ -48,12 +48,12 @@ A security platform is itself a high-value target. Below are the concrete attack
 |---|---|---|---|
 | 1 | `padam/shield/a2a_trust.py` | 246 | Защита мультиагентных роев: взаимная Ed25519 A2A-аутентификация и Trust Score агентов. |
 | 2 | `padam/shield/adversarial_norm.py` | 115 | Адверсариальная нормализация текста перед семантической и детерминированной проверкой. |
-| 3 | `padam/shield/agent_registry.py` | 498 | Agent Discovery & Cryptographic Agent Identity Registry (PADAM Shield). |
+| 3 | `padam/shield/agent_registry.py` | 533 | Agent Discovery & Cryptographic Agent Identity Registry (PADAM Shield). |
 | 4 | `padam/shield/aibom.py` | 228 | Генератор AI-BOM (Software & Model Bill of Materials) в формате CycloneDX 1.6 JSON. |
 | 5 | `padam/shield/approval_binding.py` | 276 | Криптографическая привязка согласия человека к действию (Anti-TOCTOU Approval Binding). |
 | 6 | `padam/shield/archive_xxe_guard.py` | 151 | Защита от атак на архивы и парсеры (Zip-Slip, Zip-Bomb, Tar-Symlink, XXE, YAML RCE). |
 | 7 | `padam/shield/attestation.py` | 281 | Криптографическая цепь доказательств исполнения (Signed Proof-of-Execution Attestation). |
-| 8 | `padam/shield/browser_guard.py` | 311 | Файрвол браузерного / Computer-Use агента (DOM & UI-Redressing Guard). |
+| 8 | `padam/shield/browser_guard.py` | 325 | Файрвол браузерного / Computer-Use агента (DOM & UI-Redressing Guard). |
 | 9 | `padam/shield/capability_tokens.py` | 651 | Криптографические гранулярные мандаты возможностей (Attenuated Capability Tokens). |
 | 10 | `padam/shield/cloud_iac_guard.py` | 112 | Файрвол облачных и инфраструктурных агентов (Cloud IAM / Kubernetes / Terraform Guard). |
 | 11 | `padam/shield/compliance.py` | 254 | Генератор пакетов доказательств комплаенса (EU AI Act, NIST AI RMF, OWASP LLM/Agentic, SOC 2, ISO 27001). |
@@ -87,7 +87,7 @@ A security platform is itself a high-value target. Below are the concrete attack
 | 39 | `padam/shield/prompt_hierarchy.py` | 124 | Защита системного промпта и иерархии инструкций (Instruction Hierarchy Enforcer). |
 | 40 | `padam/shield/resource_guard.py` | 122 | Защита локальных ресурсов ОС: криптомайнеры, fork-бомбы, персистенс и обратные туннели. |
 | 41 | `padam/shield/reward_hack_guard.py` | 133 | Защита от подделки тестов и Reward Hacking автономными ИИ-кодерами. |
-| 42 | `padam/shield/sandbox.py` | 187 | Эфемерная микро-песочница (Micro-Sandbox) для изолированного запуска инструментов агента. |
+| 42 | `padam/shield/sandbox.py` | 191 | Эфемерная микро-песочница (Micro-Sandbox) для изолированного запуска инструментов агента. |
 | 43 | `padam/shield/scorecard.py` | 128 | Executive Security Scorecard & OWASP ASI01–ASI10 Live File-Verified Auditor. |
 | 44 | `padam/shield/secret_broker.py` | 278 | Zero-Exposure Secret Broker (брокер секретов по псевдонимам без утечки в LLM). |
 | 45 | `padam/shield/semantic.py` | 569 | Локальный каскадный семантический классификатор атак (ONNX + встроенный TF-IDF/Logistic). |

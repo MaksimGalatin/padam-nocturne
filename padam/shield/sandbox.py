@@ -128,6 +128,10 @@ class MicroSandbox:
                 # Блокируем Windows UNC-пути (\\server\share, \\?\C:\...)
                 if cand.startswith("\\\\") or cand.startswith("//"):
                     raise PermissionError(f"Sandbox UNC path escape blocked: {cand!r}")
+                # 27.11.2026: на Linux/macOS «C:\…» не абсолютный путь, и resolve_confined_path принял бы его за
+                # имя файла внутри workspace. Буква диска вне Windows — всегда чужой путь: блок сразу (CI 9d0914d).
+                if os.name != "nt" and re.match(r"^[A-Za-z]:[/\\]", cand):
+                    raise PermissionError(f"Sandbox foreign drive path blocked: {cand!r}")
                 # Блокируем попытки выхода за пределы workspace в аргументах
                 if ".." in Path(cand).parts:
                     resolve_confined_path(self.workspace_dir, cand)
