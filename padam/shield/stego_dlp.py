@@ -32,6 +32,7 @@ _SECRET_PATTERNS = [
     ("private_key_pem", re.compile(r"-----BEGIN (?:RSA|EC|OPENSSH|PRIVATE) KEY-----")),
 ]
 
+_DATA_IMAGE_STRIP_RE = re.compile(r"data:image/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]{24,}")
 _B64_TOKEN_RE = re.compile(r"\b[A-Za-z0-9+/]{24,}={0,2}\b")
 _B32_TOKEN_RE = re.compile(r"\b[A-Z2-7]{24,}={0,6}\b")
 _HEX_SEQ_RE = re.compile(r"(?:\b[0-9a-fA-F]{2}\b[\s:,-]*){14,}|\b[0-9a-fA-F]{32,}\b")
@@ -56,8 +57,11 @@ def _extract_decoded_channels(text: str) -> List[Tuple[str, str]]:
         if unq != raw:
             channels.append(("url_decoded", unq))
 
-    # 4. Base64 фрагменты
-    for m in _B64_TOKEN_RE.finditer(raw):
+    # 4. Base64 фрагменты (исключая легитимные data:image/*;base64 и с лимитом 64 токена)
+    b64_src = _DATA_IMAGE_STRIP_RE.sub(" ", raw)
+    for idx_b64, m in enumerate(_B64_TOKEN_RE.finditer(b64_src)):
+        if idx_b64 >= 64:
+            break
         tok = m.group(0)
         pad = "=" * (-len(tok) % 4)
         try:

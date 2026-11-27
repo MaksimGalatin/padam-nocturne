@@ -15,8 +15,13 @@
 """
 from __future__ import annotations
 
+import hashlib
+import re
 import time
-from typing import Any, Dict, List, Optional, Sequence
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Sequence, Tuple
+
+from .adversarial_norm import canonicalize_adversarial_text
 
 from .. import agentic_shield as _ash
 from .approval_binding import verify_and_consume_approval
@@ -38,6 +43,74 @@ from .sql_guard import inspect_sql_query
 from .ssrf_path_guard import inspect_file_path_access, inspect_url_ssrf
 from .stego_dlp import inspect_stego_dlp
 from .taint import observe_tool_step
+
+
+
+
+SEVERITY_PRIORITY: Dict[str, int] = {
+    "CRITICAL": 4,
+    "HIGH": 3,
+    "MEDIUM": 2,
+    "LOW": 1,
+    "INFO": 0,
+}
+
+_DATA_IMAGE_URI_RE = re.compile(r"data:image/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]{24,}")
+
+
+@dataclass(frozen=True)
+class NormalizedContext:
+    """Единый результат однократной нормализации текста для всех модулей ShieldPipeline."""
+
+    raw: str
+    canonical: str
+    was_obfuscated: bool
+    obfuscation_flags: Tuple[str, ...]
+    sha256: str
+    byte_len: int
+    is_html_like: bool
+    has_data_image_uri: bool
+
+
+def build_normalized_context(text: str) -> NormalizedContext:
+    """Выполняет нормализацию ровно ОДИН раз на запрос, исключая дублирование в модулях."""
+    raw = str(text or "")
+    adv = canonicalize_adversarial_text(raw)
+    low = raw.lower()
+    return NormalizedContext(
+        raw=raw,
+        canonical=str(adv.get("canonical") or raw),
+        was_obfuscated=bool(adv.get("was_obfuscated")),
+        obfuscation_flags=tuple(str(f) for f in (adv.get("flags") or ())),
+        sha256=hashlib.sha256(raw.encode("utf-8", errors="ignore")).hexdigest(),
+        byte_len=len(raw.encode("utf-8", errors="ignore")),
+        is_html_like=("<div" in low or "<iframe" in low or "<form" in low or "<script" in low),
+        has_data_image_uri=bool(_DATA_IMAGE_URI_RE.search(raw)),
+    )
+
+
+def deduplicate_and_rank_findings(findings: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], int, str]:
+    """Убирает дубли находок между пересекающимися модулями и сортирует по строгому приоритету."""
+    seen = set()
+    unique: List[Dict[str, Any]] = []
+    removed = 0
+    for item in findings:
+        rid = str(item.get("rule_id") or item.get("code") or "SHIELD-FINDING").upper()
+        sev = str(item.get("severity") or "HIGH").upper()
+        det = str(item.get("detail") or "")
+        key = (rid, det[:80])
+        if key in seen:
+            removed += 1
+            continue
+        seen.add(key)
+        norm_item = dict(item)
+        norm_item["rule_id"] = rid
+        norm_item["severity"] = sev
+        unique.append(norm_item)
+
+    unique.sort(key=lambda x: -SEVERITY_PRIORITY.get(str(x.get("severity", "HIGH")).upper(), 2))
+    highest = str(unique[0]["severity"]) if unique else "NONE"
+    return unique, removed, highest
 
 
 class ShieldPipeline:
@@ -75,18 +148,34 @@ class ShieldPipeline:
         findings: List[Dict[str, Any]],
         extra: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        raw_blocked = len(findings) > 0
+        ranked, removed, highest = deduplicate_and_rank_findings(findings)
+        raw_blocked = len(ranked) > 0
         enforced_block = raw_blocked and (self.mode == "enforce")
+        if not raw_blocked:
+            decision = "allow"
+        elif self.mode != "enforce":
+            decision = "warn"
+        elif SEVERITY_PRIORITY.get(highest, 3) >= 3:
+            decision = "block"
+        elif highest == "MEDIUM":
+            decision = "quarantine"
+        else:
+            decision = "warn"
+
         res: Dict[str, Any] = {
             "ok": not enforced_block,
             "allowed": not enforced_block,
             "blocked": enforced_block,
             "would_block": raw_blocked,
+            "decision": decision,
+            "highest_severity": highest,
+            "deduped_removed": removed,
+            "normalization_passes": 1,
             "mode": self.mode,
             "phase": phase,
             "stages_run": stages,
-            "findings_count": len(findings),
-            "findings": findings,
+            "findings_count": len(ranked),
+            "findings": ranked,
             "latency_ms": round((time.perf_counter() - t0) * 1000.0, 3),
         }
         if extra:
@@ -105,7 +194,8 @@ class ShieldPipeline:
         t0 = time.perf_counter()
         stages: List[str] = []
         findings: List[Dict[str, Any]] = []
-        raw = str(text or "")
+        ctx = build_normalized_context(text)
+        raw = ctx.raw
 
         # 1. Подмена ролей и границ промпта
         stages.append("prompt_hierarchy")
@@ -119,7 +209,7 @@ class ShieldPipeline:
 
         # 3. DOM / HTML инспекция при наличии разметки
         sanitized_text = raw
-        if is_html or ("<div" in raw.lower() or "<iframe" in raw.lower() or "<form" in raw.lower()):
+        if is_html or ctx.is_html_like:
             stages.append("browser_dom_guard")
             dr = inspect_dom_html(raw, page_url=page_url)
             findings.extend(dr.get("findings") or [])
@@ -162,7 +252,7 @@ class ShieldPipeline:
                 }
             )
 
-        return self._finalize("pre_input", t0, stages, findings, {"sanitized_text": sanitized_text})
+        return self._finalize("pre_input", t0, stages, findings, {"sanitized_text": sanitized_text, "input_sha256": ctx.sha256, "was_obfuscated": ctx.was_obfuscated})
 
     def inspect_tool_call(
         self,

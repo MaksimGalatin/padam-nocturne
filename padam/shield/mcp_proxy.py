@@ -68,7 +68,7 @@ class McpStdioShieldProxy:
             self._pending_methods[req_id] = (method, tname)
 
         if method != "tools/call":
-            return {"allowed": True, "forward": msg}
+            return {"allowed": True, "blocked": False, "forward": msg}
 
         tool_name = str(params.get("name") or "unknown_tool")
         args = params.get("arguments") or {}
@@ -90,6 +90,7 @@ class McpStdioShieldProxy:
             self.stats["requests_blocked"] += 1
             return {
                 "allowed": False,
+                "blocked": True,
                 "reason": taint["reason"],
                 "error_response": self._jsonrpc_error(req_id, -32001, f"PADAM Shield Taint Block: {taint['reason']}"),
             }
@@ -107,6 +108,7 @@ class McpStdioShieldProxy:
             codes = ", ".join(r["code"] for r in (out.get("reasons") or [])[:4])
             return {
                 "allowed": False,
+                "blocked": True,
                 "reason": codes or out["status"],
                 "error_response": self._jsonrpc_error(req_id, -32002, f"PADAM Shield Outbound Block ({out['status']}): {codes}"),
             }
@@ -119,11 +121,12 @@ class McpStdioShieldProxy:
                 msg_txt = "; ".join(ev.get("deny_reasons") or ["policy_denied"])
                 return {
                     "allowed": False,
+                    "blocked": True,
                     "reason": msg_txt,
                     "error_response": self._jsonrpc_error(req_id, -32003, f"PADAM Shield Policy Deny: {msg_txt}"),
                 }
 
-        return {"allowed": True, "forward": msg}
+        return {"allowed": True, "blocked": False, "forward": msg}
 
     def inspect_server_message(self, msg: dict[str, Any]) -> dict[str, Any]:
         """Проверяет JSON-RPC ответ от стороннего MCP-сервера ДО возврата в контекст LLM."""
@@ -134,8 +137,8 @@ class McpStdioShieldProxy:
         method, tool_name = self._pending_methods.pop(req_id, ("", ""))
         result = msg.get("result")
 
-        # 1. Перехват `tools/list`: проверка Tool Poisoning и SHA-256 Rug-Pull!
-        if method == "tools/list" and isinstance(result, dict) and isinstance(result.get("tools"), list):
+        # 1. Перехват списка инструментов (включая спонтанные ответы без предварительного tools/list): проверка Tool Poisoning и SHA-256 Rug-Pull!
+        if (method == "tools/list" or method == "") and isinstance(result, dict) and isinstance(result.get("tools"), list):
             self.stats["tools_list_checked"] += 1
             # Первый вызов закрепляет чистые схемы (pin=True), последующие проверяют без перезаписи пина
             should_pin = self.pin_on_first_seen and (self.stats["tools_list_checked"] == 1)
@@ -192,9 +195,9 @@ class McpStdioShieldProxy:
                 self.stats["responses_sanitized"] += 1
                 patched = dict(msg)
                 patched["result"] = {**result, "content": new_content}
-                return {"allowed": True, "sanitized": True, "forward": patched}
+                return {"allowed": True, "blocked": False, "sanitized": True, "forward": patched}
 
-        return {"allowed": True, "sanitized": False, "forward": msg}
+        return {"allowed": True, "blocked": False, "sanitized": False, "forward": msg}
 
     @staticmethod
     def _jsonrpc_error(req_id: Any, code: int, message: str) -> dict[str, Any]:

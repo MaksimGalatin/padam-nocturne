@@ -18,6 +18,8 @@
 - `pentest`: встроенный локальный фаззер атак (самопроверка на своих шаблонах, не независимая оценка) (`padam pentest`)
 - `middleware`: обёртки в 1 клик для LangChain, LlamaIndex, CrewAI, AutoGen
 """
+SHIELD_API_VERSION = "1.0-rc1"
+
 from .a2a_trust import (
     adjust_agent_trust,
     generate_agent_ed25519_keypair,
@@ -57,7 +59,15 @@ from .output_rag import inspect_output_guardrails, sanitize_rag_document
 from .pentest import run_local_pentest
 from .policy_dsl import POLICY_TEMPLATES, evaluate_rego_policy, evaluate_template_by_id, list_policy_templates
 from .sandbox import MicroSandbox, build_container_command, detect_container_runtime, resolve_confined_path, sanitize_env
-from .semantic import BuiltinSemanticClassifier, classify_semantic_threat, get_semantic_classifier, semantic_engine_status
+from .semantic import (
+    BuiltinSemanticClassifier,
+    classify_semantic_threat,
+    get_semantic_classifier,
+    semantic_engine_status,
+    sign_onnx_model_manifest,
+    verify_and_load_signed_onnx,
+    verify_onnx_model_manifest,
+)
 from .sigdb import (
     apply_signature_bundle,
     generate_publisher_keypair,
@@ -104,7 +114,25 @@ from .ssrf_path_guard import inspect_file_path_access, inspect_url_ssrf
 from .approval_binding import compute_action_binding_hash, issue_approval_receipt, verify_and_consume_approval
 from .diff_guard import scan_diff_file, scan_unified_diff
 from .inbound_guard import inspect_inbound_event, verify_inbound_webhook
-from .pipeline import ShieldPipeline
+from .control_plane import (
+    get_fleet_status,
+    ingest_node_attestation_batch,
+    publish_fleet_policy_bundle,
+    verify_fleet_policy_bundle,
+)
+from .key_vault import (
+    get_key_vault_status,
+    seal_key_material,
+    seal_key_to_file,
+    unseal_key_from_file,
+    unseal_key_material,
+)
+from .pipeline import (
+    NormalizedContext,
+    ShieldPipeline,
+    build_normalized_context,
+    deduplicate_and_rank_findings,
+)
 from .policy_export import export_policy_bundle
 from .precision_bench import (
     evaluate_custom_jsonl_corpus,
@@ -240,7 +268,23 @@ __all__ = [
     "scan_rules_directory",
     "verify_aibom_signature",
     "verify_and_consume_capability",
+    "SHIELD_API_VERSION",
     "ShieldPipeline",
+    "NormalizedContext",
+    "build_normalized_context",
+    "deduplicate_and_rank_findings",
+    "get_key_vault_status",
+    "seal_key_material",
+    "unseal_key_material",
+    "seal_key_to_file",
+    "unseal_key_from_file",
+    "publish_fleet_policy_bundle",
+    "verify_fleet_policy_bundle",
+    "ingest_node_attestation_batch",
+    "get_fleet_status",
+    "sign_onnx_model_manifest",
+    "verify_onnx_model_manifest",
+    "verify_and_load_signed_onnx",
     "compute_action_binding_hash",
     "compute_system_prompt_fingerprint",
     "detect_system_prompt_leak",

@@ -2551,6 +2551,14 @@ def main(argv=None) -> int:
             res = _att.verify_attestation_chain(m)
             print(json.dumps(res, ensure_ascii=False, indent=2))
             return 0 if res.get("valid") else 2
+        elif act == "key-status":
+            from .shield import key_vault as _kv
+            print(json.dumps(_kv.get_key_vault_status(), ensure_ascii=False, indent=2))
+            return 0
+        elif act == "fleet-status":
+            from .shield import control_plane as _cp
+            print(json.dumps(_cp.get_fleet_status(m), ensure_ascii=False, indent=2))
+            return 0
         elif act == "scorecard":
             from .shield import scorecard as _sc
             card = _sc.build_executive_scorecard(m)
@@ -2734,6 +2742,10 @@ def main(argv=None) -> int:
     ss_arc.set_defaults(fn=cmd_shield)
     ss_atv = ssub.add_parser("attest-verify")
     ss_atv.set_defaults(fn=cmd_shield)
+    ss_ks = ssub.add_parser("key-status")
+    ss_ks.set_defaults(fn=cmd_shield)
+    ss_fs = ssub.add_parser("fleet-status")
+    ss_fs.set_defaults(fn=cmd_shield)
     ss_scc = ssub.add_parser("scorecard")
     ss_scc.add_argument("--markdown", action="store_true")
     ss_scc.set_defaults(fn=cmd_shield)

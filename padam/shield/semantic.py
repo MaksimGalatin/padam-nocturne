@@ -464,3 +464,102 @@ def semantic_engine_status() -> dict[str, Any]:
         "feature_dim": clf.dim,
         "training_corpus_size": len(_ATTACK_SAMPLES) + len(_BENIGN_SAMPLES),
     }
+
+
+def sign_onnx_model_manifest(
+    onnx_path: str | Path,
+    *,
+    private_key_pem: bytes,
+    model_id: str = "padam-multilingual-shield-int8",
+    quantization: str = "int8",
+) -> dict[str, Any]:
+    """Подписывает SHA-256 весов ONNX-модели подписью Ed25519 для доверенной загрузки в update-db."""
+    import base64
+    import json
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    p = Path(onnx_path)
+    raw = p.read_bytes()
+    priv = serialization.load_pem_private_key(private_key_pem, password=None)
+    if not isinstance(priv, Ed25519PrivateKey):
+        raise ValueError("private_key_pem must be an Ed25519 private key")
+
+    payload = {
+        "model_id": str(model_id),
+        "filename": p.name,
+        "bytes": len(raw),
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "quantization": str(quantization),
+        "signed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    msg = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    sig = priv.sign(msg)
+    pub_pem = priv.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode("ascii")
+    return {
+        "ok": True,
+        "manifest": payload,
+        "signature_ed25519_b64": base64.b64encode(sig).decode("ascii"),
+        "public_key_pem": pub_pem,
+    }
+
+
+def verify_onnx_model_manifest(
+    onnx_path: str | Path,
+    signed_manifest: dict[str, Any],
+    *,
+    trusted_public_key_pem: bytes,
+) -> dict[str, Any]:
+    """Проверяет Ed25519-подпись и SHA-256 файла .onnx ДО загрузки в onnxruntime."""
+    import base64
+    import json
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+    p = Path(onnx_path)
+    if not p.is_file():
+        return {"ok": False, "valid": False, "rule_id": "ONNX-FILE-MISSING", "reason": "Файл модели не найден"}
+    raw = p.read_bytes()
+    actual_sha = hashlib.sha256(raw).hexdigest()
+    manifest = signed_manifest.get("manifest") if isinstance(signed_manifest, dict) else None
+    if not isinstance(manifest, dict):
+        return {"ok": False, "valid": False, "rule_id": "ONNX-MANIFEST-INVALID", "reason": "Отсутствует manifest"}
+    if actual_sha != str(manifest.get("sha256") or ""):
+        return {"ok": False, "valid": False, "rule_id": "ONNX-HASH-MISMATCH", "reason": "SHA-256 весов ONNX не совпадает с манифестом (подмена файла!)"}
+
+    pub = serialization.load_pem_public_key(trusted_public_key_pem)
+    if not isinstance(pub, Ed25519PublicKey):
+        return {"ok": False, "valid": False, "rule_id": "ONNX-KEY-INVALID", "reason": "Неверный формат Ed25519 public key"}
+    msg = json.dumps(manifest, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    try:
+        sig = base64.b64decode(str(signed_manifest.get("signature_ed25519_b64") or ""))
+        pub.verify(sig, msg)
+    except Exception:
+        return {"ok": False, "valid": False, "rule_id": "ONNX-SIGNATURE-INVALID", "reason": "Недействительная подпись Ed25519 манифеста ONNX"}
+    return {"ok": True, "valid": True, "model_id": manifest.get("model_id"), "sha256": actual_sha, "quantization": manifest.get("quantization")}
+
+
+def verify_and_load_signed_onnx(
+    onnx_path: str | Path,
+    signed_manifest: dict[str, Any],
+    *,
+    trusted_public_key_pem: bytes,
+) -> dict[str, Any]:
+    """Проверяет Ed25519-подпись весов и только затем загружает ONNX Runtime сессию (если установлена)."""
+    ver = verify_onnx_model_manifest(onnx_path, signed_manifest, trusted_public_key_pem=trusted_public_key_pem)
+    if not ver.get("valid"):
+        return ver
+    try:
+        import onnxruntime as ort
+        sess = ort.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
+        return {
+            **ver,
+            "loaded": True,
+            "backend": "onnxruntime_verified",
+            "inputs": [i.name for i in sess.get_inputs()],
+        }
+    except ImportError:
+        return {**ver, "loaded": False, "backend": "numpy_fallback_verified"}

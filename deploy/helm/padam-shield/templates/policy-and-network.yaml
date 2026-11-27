@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: padam-shield-policy
+  labels:
+    app.kubernetes.io/name: padam-shield
+data:
+  policy.rego: |
+    package padam.shield
+    default allow = false
+    allow {
+      input.risk_score < 0.72
+      not input.kill_switch_active
+      not input.honeytoken_hit
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: padam-shield-sidecar
+  labels:
+    app.kubernetes.io/name: padam-shield
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: padam-shield
+  ports:
+    - name: mcp-shield
+      port: 9895
+      targetPort: 9895
+      protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: padam-shield-zero-telemetry
+  labels:
+    app.kubernetes.io/name: padam-shield
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: padam-shield
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 9895
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080

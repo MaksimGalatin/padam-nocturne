@@ -121,12 +121,19 @@ class MicroSandbox:
             raise PermissionError(f"Sandbox blocked restricted binary: {exe_name!r}")
         for arg in argv[1:]:
             s = str(arg)
-            # Блокируем попытки выхода за пределы workspace в аргументах
-            if ".." in Path(s).parts:
-                resolve_confined_path(self.workspace_dir, s)
-            elif re.match(r"^(?:/etc/|/root/|/home/|~[/\\]|[A-Za-z]:[/\\])", s):
-                # Разрешаем только если путь реально внутри workspace_dir
-                resolve_confined_path(self.workspace_dir, s)
+            candidates = [s]
+            if "=" in s and s.startswith("-"):
+                candidates.append(s.split("=", 1)[1])
+            for cand in candidates:
+                # Блокируем Windows UNC-пути (\\server\share, \\?\C:\...)
+                if cand.startswith("\\\\") or cand.startswith("//"):
+                    raise PermissionError(f"Sandbox UNC path escape blocked: {cand!r}")
+                # Блокируем попытки выхода за пределы workspace в аргументах
+                if ".." in Path(cand).parts:
+                    resolve_confined_path(self.workspace_dir, cand)
+                elif re.match(r"^(?:/etc/|/root/|/home/|/proc/|/var/|~[/\\]|[A-Za-z]:[/\\])", cand):
+                    # Разрешаем только если путь реально внутри workspace_dir
+                    resolve_confined_path(self.workspace_dir, cand)
 
     def run(self, argv: list[str], *, prefer_container: bool = False) -> dict[str, Any]:
         """Запускает команду в песочнице и возвращает честный отчёт об уровне изоляции."""
@@ -146,6 +153,8 @@ class MicroSandbox:
             isolation = f"container:{rt}"
 
         env = sanitize_env()
+        if self.read_only:
+            env["PYTHONDONTWRITEBYTECODE"] = "1"
         try:
             proc = subprocess.run(
                 exec_argv,

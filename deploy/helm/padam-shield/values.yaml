@@ -1,0 +1,36 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/codeofdigitaleternity/padam-shield
+  tag: "0.9.1"
+  pullPolicy: IfNotPresent
+
+shield:
+  mode: enforce
+  listenHost: "0.0.0.0"
+  listenPort: 9895
+  upstreamMcpUrl: "http://127.0.0.1:8080/mcp"
+  zeroTelemetry: true
+  kmsBackend: ""
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+networkPolicy:
+  enabled: true
+  denyAllEgress: true

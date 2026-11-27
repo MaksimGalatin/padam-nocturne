@@ -1,0 +1,16 @@
+apiVersion: v2
+name: padam-shield
+description: PADAM Agentic Shield — 100% Local Zero-Telemetry MCP Sidecar Proxy & On-Premise Control Plane
+type: application
+version: 0.9.1
+appVersion: "0.9.1"
+keywords:
+  - ai-security
+  - mcp-proxy
+  - owasp-agentic
+  - zero-telemetry
+  - padam
+home: https://aifa.works/shield
+maintainers:
+  - name: CODE Eternal LLC
+    email: contact@codeofdigitaleternity.com

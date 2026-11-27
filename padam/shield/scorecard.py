@@ -24,14 +24,14 @@ from .tamper_seal import verify_shield_integrity
 OWASP_ASI_MODULES: List[Dict[str, Any]] = [
     {"id": "ASI01", "name": "Agent Goal Hijacking", "modules": ["semantic.py", "adversarial_norm.py", "prompt_hierarchy.py", "goal_drift.py", "crescendo_guard.py"]},
     {"id": "ASI02", "name": "Tool Misuse & Exploitation", "modules": ["taint.py", "mcp_proxy.py", "mcp_http_proxy.py", "sql_guard.py", "browser_guard.py", "cloud_iac_guard.py"]},
-    {"id": "ASI03", "name": "Identity & Privilege Abuse (Confused Deputy)", "modules": ["capability_tokens.py", "iam_oidc.py", "approval_binding.py", "timelock_quorum.py"]},
+    {"id": "ASI03", "name": "Identity & Privilege Abuse (Confused Deputy)", "modules": ["capability_tokens.py", "iam_oidc.py", "approval_binding.py", "timelock_quorum.py", "key_vault.py"]},
     {"id": "ASI04", "name": "Agentic Supply Chain Vulnerabilities", "modules": ["inspect_mcp.py", "model_scan.py", "slopsquat_guard.py", "aibom.py", "diff_guard.py", "sigdb.py"]},
     {"id": "ASI05", "name": "Unexpected Code Execution & Sandbox Escape", "modules": ["sandbox.py", "resource_guard.py", "archive_xxe_guard.py", "ssrf_path_guard.py", "reward_hack_guard.py"]},
     {"id": "ASI06", "name": "Memory & Context Poisoning", "modules": ["memory_rules_guard.py", "output_rag.py", "context_isolation.py", "multimodal_guard.py", "voice_guard.py"]},
     {"id": "ASI07", "name": "Insecure Inter-Agent Communication (A2A / AI Worm)", "modules": ["a2a_trust.py", "swarm_breaker.py", "inbound_guard.py"]},
     {"id": "ASI08", "name": "Cascading Failures & Denial of Wallet (DoW)", "modules": ["dow_guard.py", "learn_ueba.py", "policy_replay.py", "pipeline.py"]},
     {"id": "ASI09", "name": "Human-Agent Trust & Sensitive Data Exfiltration", "modules": ["exfil_guard.py", "stego_dlp.py", "secret_broker.py", "honeytoken.py", "web3_abi.py"]},
-    {"id": "ASI10", "name": "Rogue Agents, Auditability & Non-Repudiation", "modules": ["tamper_seal.py", "attestation.py", "forensics.py", "compliance.py", "policy_dsl.py", "policy_export.py", "pentest.py", "precision_bench.py"]},
+    {"id": "ASI10", "name": "Rogue Agents, Auditability & Non-Repudiation", "modules": ["tamper_seal.py", "attestation.py", "forensics.py", "compliance.py", "policy_dsl.py", "policy_export.py", "pentest.py", "precision_bench.py", "control_plane.py"]},
 ]
 
 
