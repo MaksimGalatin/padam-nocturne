@@ -101,6 +101,26 @@ from .mcp_http_proxy import (
 from .memory_rules_guard import inspect_memory_or_rule_text, scan_rules_directory
 from .multimodal_guard import inspect_media_bytes, inspect_media_file
 from .ssrf_path_guard import inspect_file_path_access, inspect_url_ssrf
+from .approval_binding import compute_action_binding_hash, issue_approval_receipt, verify_and_consume_approval
+from .diff_guard import scan_diff_file, scan_unified_diff
+from .inbound_guard import inspect_inbound_event, verify_inbound_webhook
+from .pipeline import ShieldPipeline
+from .policy_export import export_policy_bundle
+from .precision_bench import run_precision_recall_benchmark
+from .prompt_hierarchy import (
+    compute_system_prompt_fingerprint,
+    detect_system_prompt_leak,
+    fence_untrusted_content,
+    inspect_role_delimiters,
+)
+from .resource_guard import inspect_os_command
+from .secret_broker import (
+    list_broker_secrets,
+    register_broker_secret,
+    resolve_outbound_headers,
+    scrub_response_secrets,
+)
+from .sql_guard import inspect_graphql_query, inspect_nosql_filter, inspect_sql_query
 from .web3_abi import decode_evm_calldata, inspect_solana_instruction, scan_text_for_web3_tx
 
 __all__ = [
@@ -206,4 +226,26 @@ __all__ = [
     "scan_rules_directory",
     "verify_aibom_signature",
     "verify_and_consume_capability",
+    "ShieldPipeline",
+    "compute_action_binding_hash",
+    "compute_system_prompt_fingerprint",
+    "detect_system_prompt_leak",
+    "export_policy_bundle",
+    "fence_untrusted_content",
+    "inspect_graphql_query",
+    "inspect_inbound_event",
+    "inspect_nosql_filter",
+    "inspect_os_command",
+    "inspect_role_delimiters",
+    "inspect_sql_query",
+    "issue_approval_receipt",
+    "list_broker_secrets",
+    "register_broker_secret",
+    "resolve_outbound_headers",
+    "run_precision_recall_benchmark",
+    "scan_diff_file",
+    "scan_unified_diff",
+    "scrub_response_secrets",
+    "verify_and_consume_approval",
+    "verify_inbound_webhook",
 ]

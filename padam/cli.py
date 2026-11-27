@@ -2501,6 +2501,46 @@ def main(argv=None) -> int:
             else:
                 print(json.dumps(rep, ensure_ascii=False, indent=2))
             return 0
+        elif act == "scan-diff":
+            from .shield import diff_guard as _dg
+            res = _dg.scan_diff_file(args.path)
+            print(json.dumps(res, ensure_ascii=False, indent=2))
+            return 2 if res.get("blocked") else 0
+        elif act == "export-policy":
+            from .shield import policy_export as _pe
+            mcp_cfg = None
+            mp = getattr(args, "mcp_file", "") or ""
+            if mp:
+                mcp_cfg = json.loads(Path(mp).read_text(encoding="utf-8"))
+            res = _pe.export_policy_bundle(m, target=getattr(args, "target", "claude_hooks"), mcp_config=mcp_cfg)
+            out_p = getattr(args, "out", "") or ""
+            if out_p:
+                Path(out_p).write_text(res["content"], encoding="utf-8")
+            print(json.dumps(res, ensure_ascii=False, indent=2))
+            return 0
+        elif act == "benchmark":
+            from .shield import precision_bench as _pb
+            res = _pb.run_precision_recall_benchmark(include_pentest=not getattr(args, "benign_only", False))
+            print(json.dumps(res, ensure_ascii=False, indent=2))
+            return 0
+        elif act == "check-all":
+            from .shield import pipeline as _pl
+            pipe = _pl.ShieldPipeline(m, mode=getattr(args, "mode", "enforce"), session_id=getattr(args, "session", "cli"))
+            ph = getattr(args, "phase", "input")
+            if ph == "tool":
+                res = pipe.inspect_tool_call(
+                    getattr(args, "tool", "tool_call"),
+                    target=getattr(args, "target", ""),
+                    payload=getattr(args, "text", ""),
+                    sql=getattr(args, "sql", ""),
+                    command=getattr(args, "command", ""),
+                )
+            elif ph == "output":
+                res = pipe.inspect_output(getattr(args, "text", ""))
+            else:
+                res = pipe.inspect_input(getattr(args, "text", ""))
+            print(json.dumps(res, ensure_ascii=False, indent=2))
+            return 2 if res.get("blocked") else 0
         elif act == "http-proxy":
             from .shield import mcp_http_proxy as _mhp
             gw = _mhp.McpHttpShieldGateway(
@@ -2635,6 +2675,27 @@ def main(argv=None) -> int:
     ss_hp.add_argument("--server", default="http_mcp")
     ss_hp.add_argument("--allow-private", action="store_true")
     ss_hp.set_defaults(fn=cmd_shield)
+    ss_sdif = ssub.add_parser("scan-diff")
+    ss_sdif.add_argument("path")
+    ss_sdif.set_defaults(fn=cmd_shield)
+    ss_exp = ssub.add_parser("export-policy")
+    ss_exp.add_argument("--target", default="claude_hooks", choices=["claude_hooks", "github_action", "docker_egress", "mcp_wrapper"])
+    ss_exp.add_argument("--mcp-file", default="")
+    ss_exp.add_argument("--out", default="")
+    ss_exp.set_defaults(fn=cmd_shield)
+    ss_bm = ssub.add_parser("benchmark")
+    ss_bm.add_argument("--benign-only", action="store_true")
+    ss_bm.set_defaults(fn=cmd_shield)
+    ss_ca = ssub.add_parser("check-all")
+    ss_ca.add_argument("--phase", default="input", choices=["input", "tool", "output"])
+    ss_ca.add_argument("--mode", default="enforce", choices=["enforce", "shadow", "audit"])
+    ss_ca.add_argument("--session", default="cli")
+    ss_ca.add_argument("--tool", default="tool_call")
+    ss_ca.add_argument("--target", default="")
+    ss_ca.add_argument("--text", default="")
+    ss_ca.add_argument("--sql", default="")
+    ss_ca.add_argument("--command", default="")
+    ss_ca.set_defaults(fn=cmd_shield)
 
     # Команды верхнего уровня (padam learn / inspect / pentest / update-db / scan-model)
     def _mk_top_shield(cmd_name: str):

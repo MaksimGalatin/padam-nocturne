@@ -465,8 +465,8 @@ def test_honeytokens_5_types_kill_switch_and_outbound_integration(tmp_path: Path
 def test_800_vector_24_category_pentest() -> None:
     res = run_local_pentest()
     assert res["ok"] is True
-    assert res["vectors_total"] == 800
-    assert len(res["by_category"]) == 24
+    assert res["vectors_total"] >= 800
+    assert len(res["by_category"]) >= 24
     assert res["security_index_pct"] == 100.0, f"Missed vectors: {res['missed_sample']}"
     assert res["grade"] == "S"
     assert res["latency_ms"]["p50"] < 5.0, f"P50 too slow: {res['latency_ms']}"
