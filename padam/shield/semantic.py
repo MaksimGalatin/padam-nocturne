@@ -327,8 +327,11 @@ class BuiltinSemanticClassifier:
         vec = _featurize(text, self.dim).reshape(1, self.dim)
         if self._ort_ready and self._ort_session is not None:
             out = self._ort_session.run(["prob"], {"x": vec})[0]
-            return float(out[0][0]), "onnxruntime_builtin"
-        logit = float(vec @ self.weights + self.bias)
+            # 26.11.2026: форма выхода зависит от версии onnxruntime — берём первый элемент явно.
+            return float(np.asarray(out, dtype=np.float64).reshape(-1)[0]), "onnxruntime_builtin"
+        # 26.11.2026: vec @ weights даёт массив формы (1,); float() от него запрещён в новых numpy
+        # (CI 4054a05 падал на всех ОС, где onnxruntime не установлен).
+        logit = float(np.asarray(vec @ self.weights, dtype=np.float64).reshape(-1)[0]) + float(self.bias)
         prob = 1.0 / (1.0 + math.exp(-max(-30.0, min(30.0, logit))))
         return float(prob), "numpy_builtin"
 
