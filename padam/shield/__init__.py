@@ -106,7 +106,12 @@ from .diff_guard import scan_diff_file, scan_unified_diff
 from .inbound_guard import inspect_inbound_event, verify_inbound_webhook
 from .pipeline import ShieldPipeline
 from .policy_export import export_policy_bundle
-from .precision_bench import run_precision_recall_benchmark
+from .precision_bench import (
+    evaluate_custom_jsonl_corpus,
+    export_benchmark_corpus,
+    render_verification_receipt_markdown,
+    run_precision_recall_benchmark,
+)
 from .prompt_hierarchy import (
     compute_system_prompt_fingerprint,
     detect_system_prompt_leak,
@@ -252,6 +257,9 @@ __all__ = [
     "register_broker_secret",
     "resolve_outbound_headers",
     "run_precision_recall_benchmark",
+    "export_benchmark_corpus",
+    "evaluate_custom_jsonl_corpus",
+    "render_verification_receipt_markdown",
     "scan_diff_file",
     "scan_unified_diff",
     "scrub_response_secrets",

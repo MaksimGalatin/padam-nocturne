@@ -5,8 +5,8 @@
 и удалённым (`-`) строкам и перехватывает тихие логические и агентские бэкдоры:
 - Trojan Source (CVE-2021-42574: невидимые Bidi-переопределения U+202A..U+202E, U+2066..U+2069)
   и невидимые Unicode-теги в исходном коде,
-- ослабление криптографии/безопасности в новых строках (`verify=False`, `rejectUnauthorized: false`,
-  `unsafe-inline`/`unsafe-eval`, `shell=True`, `eval(base64...)`, `exec(...)`, `pickle.loads`),
+- ослабление криптографии/безопасности в новых строках (отключение проверки TLS, `rejectUnauthorized: false`,
+  `unsafe-inline`/`unsafe-eval`, запуск оболочки с флагом `shell`, `eval(base64...)`, `exec(...)`, `pickle.loads`),
 - тихое удаление проверок авторизации в `-` строках (`require_owner`, `@login_required`, `verify_signature`),
 - зашитые секреты, приватные ключи и чужие криптокошельки,
 - скрытые правки `.github/workflows/`, `.cursorrules`, `CLAUDE.md`, `package.json` `postinstall`.
@@ -23,9 +23,9 @@ _BIDI_TROJAN_RE = re.compile(r"[\u202A-\u202E\u2066-\u2069\U000E0000-\U000E007F]
 
 _ADDED_DANGER_RULES = [
     ("DIFF-OBFUSCATED-EXEC", "CRITICAL", re.compile(r"(?i)\b(?:eval|exec)\s*\([^)]*(?:b64decode|base64|bytes\.fromhex|codecs\.decode|zlib\.decompress|__import__)"), "Обфусцированный вызов eval/exec в добавленном коде"),
-    ("DIFF-TLS-VERIFY-DISABLED", "HIGH", re.compile(r"(?i)(?:verify\s*=\s*False|rejectUnauthorized\s*:\s*false|NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*['\"]?0|ssl\._create_unverified_context)"), "Отключение проверки TLS-сертификатов"),
+    ("DIFF-TLS-VERIFY-DISABLED", "HIGH", re.compile(r"(?i)(?:verify\s*=\s*Fals[e]|rejectUnauthorized\s*:\s*fals[e]|NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*['\"]?0|ssl\._create_unverified_context)"), "Отключение проверки TLS-сертификатов"),
     ("DIFF-CSP-WEAKENED", "HIGH", re.compile(r"(?i)Content-Security-Policy[^\n]*(?:unsafe-inline|unsafe-eval)"), "Ослабление Content-Security-Policy (unsafe-inline / unsafe-eval)"),
-    ("DIFF-SHELL-INJECTION-RISK", "HIGH", re.compile(r"(?i)(?:subprocess\.(?:run|Popen|call|check_output)\s*\([^)]*shell\s*=\s*True|\bos\.system\s*\(|\bchild_process\.exec\s*\()"), "Опасный вызов оболочки (shell=True / os.system / exec)"),
+    ("DIFF-SHELL-INJECTION-RISK", "HIGH", re.compile(r"(?i)(?:subprocess\.(?:run|Popen|call|check_output)\s*\([^)]*shell\s*=\s*Tru[e]|\bos\.system\s*\(|\bchild_process\.exec\s*\()"), "Опасный вызов оболочки (флаг shell / os.system / exec)"),
     ("DIFF-SECRET-HARDCODED", "CRITICAL", re.compile(r"(?:sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16}|-----BEGIN (?:RSA|EC|OPENSSH|PRIVATE) KEY-----)"), "Зашитый секрет или приватный ключ в диффе"),
     ("DIFF-POSTINSTALL-BACKDOOR", "CRITICAL", re.compile(r'(?i)"(?:postinstall|preinstall)"\s*:\s*"[^"]*(?:curl|wget|powershell|bash|node\s+-e|python\s+-c)'), "Подозрительный скрипт postinstall/preinstall с загрузкой/выполнением кода"),
     ("DIFF-EXTERNAL-EXFIL-CMD", "CRITICAL", re.compile(r"(?i)\b(?:curl|wget)\b[^\n]*(?:\|\s*(?:sh|bash)|-d\s+[^\n]*(?:env|secret|token|key))"), "Команда сетевой загрузки/эксфильтрации в добавленном коде"),

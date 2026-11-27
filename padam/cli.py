@@ -2520,7 +2520,20 @@ def main(argv=None) -> int:
             return 0
         elif act == "benchmark":
             from .shield import precision_bench as _pb
-            res = _pb.run_precision_recall_benchmark(include_pentest=not getattr(args, "benign_only", False))
+            exp_dir = getattr(args, "export_corpus", "") or ""
+            if exp_dir:
+                res = _pb.export_benchmark_corpus(exp_dir)
+                print(json.dumps(res, ensure_ascii=False, indent=2))
+                return 0
+            c_atk = getattr(args, "custom_attacks", "") or ""
+            c_ben = getattr(args, "custom_benign", "") or ""
+            if c_atk or c_ben:
+                res = _pb.evaluate_custom_jsonl_corpus(attacks_path=c_atk, benign_path=c_ben)
+            else:
+                res = _pb.run_precision_recall_benchmark(include_pentest=not getattr(args, "benign_only", False))
+            md_out = getattr(args, "markdown_report", "") or ""
+            if md_out:
+                Path(md_out).write_text(_pb.render_verification_receipt_markdown(res), encoding="utf-8")
             print(json.dumps(res, ensure_ascii=False, indent=2))
             return 0
         elif act == "scan-iac":
@@ -2708,6 +2721,10 @@ def main(argv=None) -> int:
     ss_exp.set_defaults(fn=cmd_shield)
     ss_bm = ssub.add_parser("benchmark")
     ss_bm.add_argument("--benign-only", action="store_true")
+    ss_bm.add_argument("--export-corpus", default="")
+    ss_bm.add_argument("--custom-attacks", default="")
+    ss_bm.add_argument("--custom-benign", default="")
+    ss_bm.add_argument("--markdown-report", default="")
     ss_bm.set_defaults(fn=cmd_shield)
     ss_iac = ssub.add_parser("scan-iac")
     ss_iac.add_argument("path")

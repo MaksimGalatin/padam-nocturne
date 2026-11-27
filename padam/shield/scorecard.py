@@ -87,6 +87,7 @@ def build_executive_scorecard(memory: Any) -> Dict[str, Any]:
         "owasp_coverage_pct": coverage_pct,
         "verified_module_refs": verified_refs,
         "missing_module_refs": missing_refs,
+        "evaluation_scope": "local_disk_and_integrity_self_check",
         "zero_telemetry": True,
         "live_integrity": {
             "audit_chain_ok": audit_ok,
@@ -112,6 +113,7 @@ def render_scorecard_markdown(card: Dict[str, Any]) -> str:
         f"- **Изолированных модулей на диске:** `{card.get('total_shield_modules_on_disk')}`",
         f"- **Покрытие OWASP Agentic Top 10:** `{card.get('owasp_asi_covered')}/{card.get('owasp_asi_total')}` (`{card.get('owasp_coverage_pct')}%`)",
         f"- **Режим приватности:** Zero-Telemetry (`100%` локальное исполнение)",
+        "- **Область проверки:** Локальная самопроверка файлов и цепей (не внешний аудит; открытый Red Team Challenge: `docs/RED_TEAM_CHALLENGE.md`)",
         f"- **Целостность:** Audit Chain=`{'OK' if card['live_integrity']['audit_chain_ok'] else 'BROKEN'}`, "
         f"DB Seal=`{'OK' if card['live_integrity']['db_tamper_seal_ok'] else 'TAMPERED'}`, "
         f"Attestation=`{'OK' if card['live_integrity']['attestation_chain_ok'] else 'BROKEN'}`",

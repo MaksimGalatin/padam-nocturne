@@ -81,7 +81,10 @@ def _score_single_turn(text: str) -> Dict[str, Any]:
         signals.append("adversarial_obfuscation")
         soft_score += 0.2
 
-    turn_risk = min(1.0, max(sem_prob * 0.85, min(0.95, soft_score)))
+    # Фоновый шум классификатора на нейтральном тексте (~0.45–0.68) не должен копиться
+    # в эскалацию без реальных сигналов; учитываем семантику только выше 0.70 или при явной угрозе.
+    sem_contrib = sem_prob if sem_threat else max(0.0, (sem_prob - 0.70) * 1.5)
+    turn_risk = min(1.0, max(sem_contrib, min(0.95, soft_score)))
     return {
         "turn_risk": round(turn_risk, 4),
         "semantic_blocked": sem_threat,
@@ -167,7 +170,21 @@ def evaluate_conversation_turn(
             rising_steps += 1
     escalation_score = round(min(1.0, cumulative * 0.55 + (0.18 if rising_steps >= 2 else 0.0)), 4)
 
-    crescendo_detected = len(all_risks) >= 3 and escalation_score >= float(escalation_threshold)
+    # Считаем число реальных сигналов в окне, чтобы серия мирных сообщений без сигналов никогда не блокировалась.
+    total_window_signals = len(cur["signals"])
+    for r in prev_rows:
+        try:
+            prev_sigs = json.loads(str(r[3] or "[]"))
+            if isinstance(prev_sigs, list):
+                total_window_signals += len(prev_sigs)
+        except Exception:
+            pass
+
+    crescendo_detected = (
+        len(all_risks) >= 3
+        and total_window_signals >= 2
+        and escalation_score >= float(escalation_threshold)
+    )
 
     findings: List[Dict[str, Any]] = []
     if cur["semantic_blocked"] or cur["exfil_blocked"]:

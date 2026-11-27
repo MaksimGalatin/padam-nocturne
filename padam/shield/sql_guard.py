@@ -175,7 +175,7 @@ def inspect_sql_query(
                     {
                         "rule_id": "SQL-MASS-MUTATION-NO-WHERE",
                         "severity": "CRITICAL",
-                        "detail": f"DELETE/UPDATE без условия WHERE уничтожит/перепишет всю таблицу: {st[:120]}",
+                        "detail": "Операция массового удаления/обновления без условия WHERE: " + st[:120],
                     }
                 )
             elif _TAUTOLOGY_WHERE_RE.search(st):
@@ -183,7 +183,7 @@ def inspect_sql_query(
                     {
                         "rule_id": "SQL-TAUTOLOGY-WHERE",
                         "severity": "CRITICAL",
-                        "detail": f"DELETE/UPDATE с тавтологией WHERE (1=1 / true): {st[:120]}",
+                        "detail": "Операция массового удаления/обновления с тавтологией WHERE (1=1 / true): " + st[:120],
                     }
                 )
         if re.search(r"(?i)\bUNION\s+(?:ALL\s+)?SELECT\b", st) and _SYSTEM_CATALOG_RE.search(st):
