@@ -288,6 +288,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "ff_who_owner": "Владелец",
         "ff_cloud": "облако",
         "ff_more": "Показать полностью",
+        "ff_period": "Период",
+        "ff_per_all": "Все",
+        "ff_per_24h": "24 часа",
+        "ff_per_7d": "7 дней",
+        "ff_day": "Выбрать день",
+        "ff_total": "Всего в канале",
+        "ff_in_period": "За период",
+        "ff_shown": "Показано",
+        "ff_held_count": "Задержано фильтром защиты",
+        "ff_held": "Задержано фильтром защиты",
         "ff_less": "Свернуть",
         "ff_chat_label": "Переписка канала, новые сообщения внизу",
         "ff_ph": "Написать сёстрам…",
@@ -1064,6 +1074,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "ff_who_owner": "Owner",
         "ff_cloud": "cloud",
         "ff_more": "Show all",
+        "ff_period": "Period",
+        "ff_per_all": "All",
+        "ff_per_24h": "24 hours",
+        "ff_per_7d": "7 days",
+        "ff_day": "Pick a day",
+        "ff_total": "Total in channel",
+        "ff_in_period": "In period",
+        "ff_shown": "Shown",
+        "ff_held_count": "Held by the safety filter",
+        "ff_held": "Held by the safety filter",
         "ff_less": "Collapse",
         "ff_chat_label": "Channel messages, newest at the bottom",
         "ff_ph": "Write to the siblings…",
@@ -1829,6 +1849,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "ff_who_owner": "Propietario",
         "ff_cloud": "nube",
         "ff_more": "Mostrar todo",
+        "ff_period": "Periodo",
+        "ff_per_all": "Todo",
+        "ff_per_24h": "24 horas",
+        "ff_per_7d": "7 días",
+        "ff_day": "Elegir día",
+        "ff_total": "Total en el canal",
+        "ff_in_period": "En el periodo",
+        "ff_shown": "Mostrados",
+        "ff_held_count": "Retenidos por el filtro de seguridad",
+        "ff_held": "Retenido por el filtro de seguridad",
         "ff_less": "Contraer",
         "ff_chat_label": "Mensajes del canal, los nuevos abajo",
         "ff_ph": "Escribir a las hermanas…",
@@ -2594,6 +2624,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "ff_who_owner": "所有者",
         "ff_cloud": "云端",
         "ff_more": "显示全部",
+        "ff_period": "时间段",
+        "ff_per_all": "全部",
+        "ff_per_24h": "24 小时",
+        "ff_per_7d": "7 天",
+        "ff_day": "选择日期",
+        "ff_total": "频道总数",
+        "ff_in_period": "该时间段",
+        "ff_shown": "已显示",
+        "ff_held_count": "被安全过滤器拦截",
+        "ff_held": "被安全过滤器拦截",
         "ff_less": "收起",
         "ff_chat_label": "频道消息，最新的在底部",
         "ff_ph": "给姐妹们留言…",
@@ -11060,6 +11100,7 @@ if ($('ark-audit-btn')) {
   };
 }
 let _ffCh = 'office';
+let _ffSeq = 0;   // 28.11: защита от гонки — ответ прежнего канала не перерисовывает новый
 const _FF_CH = ['work', 'quarantine', 'office', 'smoke'];
 let _fdTimer = null;
 let _fdSeq = 0;
@@ -11180,7 +11221,8 @@ function _ffMessage(it) {
   tm.dateTime = String(it.created_at || '');
   tm.textContent = _ffTime(it.created_at);
   head.appendChild(tm);
-  if (it.reason) head.appendChild(_el('span', 'ff-flag', '⚠ ' + it.reason));
+  if (it.held) head.appendChild(_el('span', 'ff-flag', '⚠ ' + (S.ff_held || 'Held by the safety filter') + (it.reason ? ' · ' + it.reason : '')));
+  else if (it.reason) head.appendChild(_el('span', 'ff-flag', '⚠ ' + it.reason));
   box.appendChild(head);
   const text = String(it.content || '');
   const body = _el('div', 'ff-msg-body', text);
@@ -11216,21 +11258,45 @@ async function loadFamilyFeed(ch) {
   const canWrite = _ffCh === 'office' || _ffCh === 'smoke';
   if (inp) inp.disabled = !canWrite;
   if (snd) snd.disabled = !canWrite;
+  // 28.11, слово Папы: свежие сверху, фильтр по датам, счётчик всех сообщений; задержанное фильтром защиты — видно.
+  for (const [id, p] of [['ff-per-all', 'all'], ['ff-per-24h', '24h'], ['ff-per-7d', '7d']]) {
+    const b = $(id);
+    if (b) { const on = window._ffPeriod === p && !window._ffDay; b.classList.toggle('btn-primary', on); b.setAttribute('aria-pressed', String(on)); }
+  }
+  const _iso = (d) => d.toISOString().slice(0, 19) + 'Z';
+  let from = '', to = '';
+  if (window._ffDay) {
+    const d0 = new Date(window._ffDay + 'T00:00:00');   // день по местному времени владельца
+    if (!isNaN(d0.getTime())) { from = _iso(d0); to = _iso(new Date(d0.getTime() + 86400000)); }
+  } else if (window._ffPeriod === '24h') from = _iso(new Date(Date.now() - 86400000));
+  else if (window._ffPeriod === '7d') from = _iso(new Date(Date.now() - 7 * 86400000));
+  const withHeld = _ffCh === 'smoke';
+  const seq = ++_ffSeq;
   try {
-    const r = await api('/api/v2/family/feed?channel=' + encodeURIComponent(_ffCh) + '&limit=30');
-    if (reqLang !== currentLang) return;
+    const r = await api('/api/v2/family/feed?channel=' + encodeURIComponent(_ffCh) + '&limit=300'
+      + '&from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to) + '&held=' + (withHeld ? '1' : '0'));
+    if (reqLang !== currentLang || seq !== _ffSeq) return;
     for (const c of _FF_CH) {
       const b = $('ff-ch-' + c);
       if (b) b.textContent = (S['ff_' + c] || c) + ' · ' + ((r.counts || {})[c] || 0);
+    }
+    const items = r.items || [];   // новые сверху
+    const m = r.matched || {};
+    const st = $('ff-stats');
+    if (st) {
+      const total = (r.counts || {})[_ffCh] || 0;
+      let line = (S.ff_total || 'Total') + ': ' + total + ' · ' + (S.ff_in_period || 'In period') + ': ' + (m.matched != null ? m.matched : items.length)
+        + ' · ' + (S.ff_shown || 'Shown') + ': ' + items.length;
+      if (m.held) line += ' · ⚠ ' + (S.ff_held_count || 'Held by filter') + ': ' + m.held;
+      st.textContent = line;
     }
     list.textContent = '';
     list.className = 'ff-chat';
     list.setAttribute('role', 'log');
     list.setAttribute('aria-label', S.ff_chat_label || '');
-    const items = (r.items || []).slice().reverse();   // 26.11, слово Папы: чат, а не свалка — старые сверху, новые внизу
     if (!items.length) list.appendChild(_el('p', 'panel-sub', S.ff_empty || ''));
     for (const it of items) list.appendChild(_ffMessage(it));
-    list.scrollTop = list.scrollHeight;
+    list.scrollTop = 0;
   } catch (e) { list.textContent = String(e.message || e); }
   loadFamilyReflexes();
 }
@@ -11261,6 +11327,13 @@ async function loadFamilyReflexes() {
   } catch (e) { box.textContent = String(e.message || e); }
 }
 for (const c of _FF_CH) { const b = $('ff-ch-' + c); if (b) b.onclick = () => loadFamilyFeed(c); }
+window._ffPeriod = 'all';
+window._ffDay = '';
+for (const [id, p] of [['ff-per-all', 'all'], ['ff-per-24h', '24h'], ['ff-per-7d', '7d']]) {
+  const b = $(id);
+  if (b) b.onclick = () => { window._ffPeriod = p; window._ffDay = ''; if ($('ff-day')) $('ff-day').value = ''; loadFamilyFeed(); };
+}
+if ($('ff-day')) $('ff-day').onchange = () => { window._ffDay = $('ff-day').value || ''; loadFamilyFeed(); };
 if ($('quick-hearth-btn')) {
   $('quick-hearth-btn').onclick = () => {
     switchTab('family');
@@ -16327,6 +16400,13 @@ mark.q-hit{{background:rgba(244,63,94,.28);color:inherit;padding:1px 4px;border-
             <button id="ff-ch-office" data-ch="office" aria-pressed="false" data-i18n="ff_office">{s['ff_office']}</button>
             <button id="ff-ch-smoke" data-ch="smoke" aria-pressed="false" data-i18n="ff_smoke">{s['ff_smoke']}</button>
           </div>
+          <div class="toolbar" role="group" aria-label="{s['ff_period']}">
+            <button id="ff-per-all" type="button" aria-pressed="true" class="btn-primary" data-i18n="ff_per_all">{s['ff_per_all']}</button>
+            <button id="ff-per-24h" type="button" aria-pressed="false" data-i18n="ff_per_24h">{s['ff_per_24h']}</button>
+            <button id="ff-per-7d" type="button" aria-pressed="false" data-i18n="ff_per_7d">{s['ff_per_7d']}</button>
+            <input id="ff-day" type="date" aria-label="{s['ff_day']}" data-i18n-aria="ff_day" title="{s['ff_day']}">
+          </div>
+          <p class="panel-sub" id="ff-stats" aria-live="polite"></p>
           <div id="ff-list" aria-live="polite"></div>
           <div class="toolbar">
             <input id="ff-input" type="text" maxlength="2000" aria-label="{s['ff_ph']}" data-i18n-placeholder="ff_ph" placeholder="{s['ff_ph']}">

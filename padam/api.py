@@ -983,10 +983,16 @@ class Handler(BaseHTTPRequestHandler):
                 from . import family_feeds as _ff
                 q = parse_qs(путь.query)
                 ch = q.get("channel", ["work"])[0]
+                # 28.11: фильтр по времени (ISO UTC) и задержанные фильтром защиты сообщения Семьи — для Очага.
+                f_from, f_to = q.get("from", [""])[0], q.get("to", [""])[0]
+                held = q.get("held", ["0"])[0] in ("1", "true")
                 try:
                     with mem().store._lock:
-                        res = {"channel": ch, "items": _ff.read(mem(), ch, limit=int(q.get("limit", ["30"])[0] or 30)),
-                               "counts": _ff.counts(mem())}
+                        res = {"channel": ch,
+                               "items": _ff.read(mem(), ch, limit=int(q.get("limit", ["30"])[0] or 30),
+                                                 since=f_from, until=f_to, with_held=held),
+                               "counts": _ff.counts(mem()),
+                               "matched": _ff.count_matching(mem(), ch, since=f_from, until=f_to, with_held=held)}
                     return self._send(200, res)
                 except ValueError as _e:
                     return self._send(400, {"error": str(_e)})

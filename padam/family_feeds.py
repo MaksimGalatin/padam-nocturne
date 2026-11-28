@@ -121,16 +121,65 @@ def post(memory, channel: str, author: str, content: str, *, kind: str = "note",
             "reason": reason, "redacted_secrets": len(secrets), "created_at": now}
 
 
-def read(memory, channel: str, *, limit: int = 30, include_memory_quarantine: bool = True) -> list[dict[str, Any]]:
-    """Лента, новые сверху. Для «quarantine» добавляются записи памяти со статусом quarantined (только чтение)."""
+# 28.11, слово Папы: в Очаге не видно вчерашних сообщений Сестёр. Причина — фильтр защиты отправил их в карантин
+# (ложное «rule_or_owner_tamper» на разговоре о щите). Фильтр НЕ ослабляем: в ленту Очага задержанные сообщения самой
+# Семьи добавляются только для показа, с пометкой held, и их видно сразу, а не в отдельной вкладке.
+_АВТОР_СЕМЬИ = ("aifa", "cloud.aifa")
+_ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2})?Z?)?$")
+
+
+def _граница(value: str) -> str:
+    v = str(value or "").strip()
+    if not v:
+        return ""
+    if not _ISO_RE.match(v):
+        raise ValueError("from/to must be ISO dates like 2026-11-27T05:00:00Z")
+    return v
+
+
+def _where(memory, channel: str, *, since: str = "", until: str = "", with_held: bool = False) -> tuple[str, list[Any]]:
+    sql = "WHERE user_id = ? AND (channel = ?"
+    args: list[Any] = [memory.user_id, channel]
+    if with_held and channel != "quarantine":
+        sql += " OR (channel = 'quarantine' AND (" + " OR ".join("author LIKE ?" for _ in _АВТОР_СЕМЬИ) + "))"
+        args += [a + "%" for a in _АВТОР_СЕМЬИ]
+    sql += ")"
+    if since:
+        sql += " AND created_at >= ?"
+        args.append(since)
+    if until:
+        sql += " AND created_at < ?"
+        args.append(until)
+    return sql, args
+
+
+def count_matching(memory, channel: str, *, since: str = "", until: str = "", with_held: bool = False) -> dict[str, int]:
+    """Сколько записей подходит под фильтр: всего и из них задержанных фильтром защиты."""
     _ensure(memory)
     if channel not in CHANNELS:
         raise ValueError(f"channel must be one of {', '.join(CHANNELS)}")
-    lim = max(1, min(200, int(limit)))
+    where, args = _where(memory, channel, since=_граница(since), until=_граница(until), with_held=with_held)
+    row = memory.store.conn.execute(
+        f"SELECT COUNT(*) AS n, SUM(CASE WHEN channel <> ? THEN 1 ELSE 0 END) AS h FROM family_feed {where}",
+        [channel] + args,
+    ).fetchone()
+    return {"matched": int(row["n"] or 0), "held": int(row["h"] or 0)}
+
+
+def read(memory, channel: str, *, limit: int = 30, include_memory_quarantine: bool = True,
+         since: str = "", until: str = "", with_held: bool = False) -> list[dict[str, Any]]:
+    """Лента, новые сверху. Для «quarantine» добавляются записи памяти со статусом quarantined (только чтение).
+
+    since/until — границы времени в ISO UTC; with_held — показать в канале задержанные фильтром сообщения Семьи."""
+    _ensure(memory)
+    if channel not in CHANNELS:
+        raise ValueError(f"channel must be one of {', '.join(CHANNELS)}")
+    lim = max(1, min(500, int(limit)))
+    where, args = _where(memory, channel, since=_граница(since), until=_граница(until), with_held=with_held)
     rows = memory.store.conn.execute(
         "SELECT id, channel, author, kind, content, reason, ref, hmac_sig, created_at FROM family_feed "
-        "WHERE user_id = ? AND channel = ? ORDER BY created_at DESC, rowid DESC LIMIT ?",
-        (memory.user_id, channel, lim),
+        f"{where} ORDER BY created_at DESC, rowid DESC LIMIT ?",
+        args + [lim],
     ).fetchall()
     out: list[dict[str, Any]] = []
     for r in rows:
@@ -139,7 +188,7 @@ def read(memory, channel: str, *, limit: int = 30, include_memory_quarantine: bo
             "id": r["id"], "channel": r["channel"], "author": r["author"], "kind": r["kind"],
             "content": r["content"] if ok else "[QUARANTINED: invalid feed signature]",
             "reason": r["reason"] if ok else "invalid_signature", "ref": r["ref"], "verified": ok,
-            "created_at": r["created_at"], "source": "feed",
+            "created_at": r["created_at"], "source": "feed", "held": r["channel"] != channel,
         })
     if channel == "quarantine" and include_memory_quarantine:
         try:
