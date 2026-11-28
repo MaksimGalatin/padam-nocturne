@@ -15,15 +15,45 @@ from __future__ import annotations
 import hashlib
 import re
 import secrets
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 _ROLE_DELIMITER_RULES = [
     ("HIER-CHATML-TOKEN", "CRITICAL", re.compile(r"(?i)<\|(?:im_start|im_end|system|assistant|user|endoftext|eot_id|start_header_id|end_header_id)\|>"), "Служебный токен ролей ChatML/Llama"),
     ("HIER-LLAMA-INST", "CRITICAL", re.compile(r"(?i)(?:<<\s*/?SYS\s*>>|\[/?INST\])"), "Служебный тег иерархии Llama (<<SYS>> / [INST])"),
-    ("HIER-XML-BOUNDARY-SPOOF", "CRITICAL", re.compile(r"(?i)</?\s*(?:system|system_prompt|user_rules|tool_output|untrusted-data|memory-data|developer_instructions)\b[^>]*>"), "Попытка подмены или закрытия XML-рамки иерархии"),
-    ("HIER-MARKDOWN-ROLE-HEADER", "HIGH", re.compile(r"(?im)^\s*(?:#{1,4}\s*(?:SYSTEM|DEVELOPER|ADMIN)\s*(?:PROMPT|INSTRUCTIONS?|OVERRIDE)?\s*:|END\s+OF\s+(?:TOOL\s+OUTPUT|DOCUMENT|CONTEXT)\b|BEGIN\s+(?:NEW\s+)?SYSTEM\s+(?:PROMPT|INSTRUCTIONS?)\b)"), "Фальшивый заголовок новой системной секции"),
+    # Закрытие рамки недоверенного содержимого — побег из неё, блокируется всегда.
+    ("HIER-XML-BOUNDARY-SPOOF", "CRITICAL", re.compile(r"(?i)</\s*(?:system|system_prompt|user_rules|tool_output|untrusted-data|memory-data|developer_instructions)\s*>"), "Попытка закрыть XML-рамку иерархии"),
+    ("HIER-MARKDOWN-ROLE-HEADER", "HIGH", re.compile(r"(?im)^\s*BEGIN\s+(?:NEW\s+)?SYSTEM\s+(?:PROMPT|INSTRUCTIONS?)\b"), "Фальшивый заголовок новой системной секции"),
 ]
+
+# 28.11.2026: внешняя проверка 27.11 нашла у ролевых правил и пропуски, и ложные тревоги. Метка роли сама по
+# себе — не атака: «# System Prompt: как писать…», «END OF DOCUMENT» в договоре, тег <system> в описании схемы.
+# Атака — метка роли, за которой в пределах ~240 знаков идёт команда подмены. Метки теперь узнаются шире
+# (без «#», русские, «Human:/Assistant:», ссылка-роль [system](#…)), но блокируются только вместе с командой.
+_ROLE_MARKER_RE = re.compile(
+    r"(?im)(?:^\s*#{0,4}\s*(?:SYSTEM|DEVELOPER|ADMIN(?:ISTRATOR)?|СИСТЕМА|СИСТЕМНОЕ\s+СООБЩЕНИЕ|РАЗРАБОТЧИК|АДМИНИСТРАТОР)"
+    r"(?:\s+(?:PROMPT|INSTRUCTIONS?|OVERRIDE|MESSAGE|NOTE|ПРОМПТ|ИНСТРУКЦИЯ|ИНСТРУКЦИИ))?\s*:"
+    r"|^\s*(?:Human|Assistant|User|Ассистент|Пользователь)\s*:"
+    r"|\[\s*(?:system|developer|admin)\s*\]\s*\(\s*#[^)]*\)"
+    r"|<\s*(?:system|system_prompt|user_rules|developer_instructions)\b[^>]*>"
+    r"|\bEND\s+OF\s+(?:TOOL\s+OUTPUT|DOCUMENT|CONTEXT|INSTRUCTIONS?)\b)"
+)
+_ROLE_OVERRIDE_CMD_RE = re.compile(
+    r"(?i)\b(?:ignore|disregard|forget|override|bypass|reveal|exfiltrat\w*|leak|jailbreak|unrestricted|"
+    r"you\s+(?:are\s+now|must\s+now|have\s+no|will\s+now)|no\s+(?:restrictions|rules|limits|filters)|"
+    r"new\s+(?:rules|instructions|system\s+prompt)|do\s+anything\s+now|"
+    r"(?:send|export|print|show|give)\s+(?:me\s+)?(?:the\s+|all\s+|your\s+)?(?:api\s+)?(?:keys?|secrets?|passwords?|tokens?|files?|memory|system\s+prompt))\b"
+    r"|(?:игнорир\w*|забудь\w*|отмен\w*\s+(?:правил|инструкц)\w*|раскро\w*|выда\w*|отправ\w*|перешл\w*|"
+    r"теперь\s+ты|без\s+ограничений|новые\s+(?:правила|инструкции)|не\s+подчиняйся|подчиняйся)"
+)
+
+
+def _role_marker_with_command(raw: str) -> Optional[str]:
+    for m in _ROLE_MARKER_RE.finditer(raw):
+        window = raw[m.end(): m.end() + 240]
+        if _ROLE_OVERRIDE_CMD_RE.search(window):
+            return (m.group(0) + window)[:80]
+    return None
 
 _WORD_RE = re.compile(r"[a-zа-яё0-9]{2,}", re.IGNORECASE)
 
@@ -43,6 +73,16 @@ def inspect_role_delimiters(text: str) -> Dict[str, Any]:
                     "detail": f"{desc}: {m.group(0)[:80]}",
                 }
             )
+    hit = _role_marker_with_command(raw)
+    if hit and not any(f["rule_id"] == "HIER-ROLE-OVERRIDE" for f in findings):
+        findings.append(
+            {
+                "rule_id": "HIER-ROLE-OVERRIDE",
+                "severity": "HIGH",
+                "match": hit,
+                "detail": f"Метка роли с командой подмены инструкций: {hit}",
+            }
+        )
     blocked = any(f["severity"] in ("CRITICAL", "HIGH") for f in findings)
     return {
         "ok": not blocked,

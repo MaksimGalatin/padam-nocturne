@@ -42,6 +42,53 @@ _TAUTOLOGY_WHERE_RE = re.compile(
     r"(?i)\bWHERE\s+(?:1\s*=\s*1|true|'[^']*'\s*=\s*'[^']*'|\d+\s*=\s*\d+|\w+\s*=\s*\w+)\s*(?:--|$|;|LIMIT|ORDER)"
 )
 
+
+# 28.11.2026: прежнее правило тавтологии ловило альтернативой `\w+\s*=\s*\w+` любое `WHERE id = 42`, то есть
+# блокировало обычное точечное обновление по id (ложное срабатывание, найденное внешней проверкой 27.11),
+# и при этом пропускало `WHERE id = 1 OR 1 = 1`. Теперь условие разбирается по частям OR, и тавтологией
+# считается только часть, истинная всегда: `true`, `1`, `NOT FALSE`, сравнение двух одинаковых литералов
+# или одного и того же столбца с самим собой, истинное сравнение двух чисел, `LIKE '%'`.
+_WHERE_TAIL_RE = re.compile(r"(?is)\bWHERE\b(.*?)(?:\bORDER\s+BY\b|\bGROUP\s+BY\b|\bLIMIT\b|\bRETURNING\b|\bOFFSET\b|--|;|$)")
+_SQL_TRUE_ATOM_RE = re.compile(r"(?i)^\(*\s*(?:true|1|not\s+false|not\s+0)\s*\)*$")
+_SQL_CMP_RE = re.compile(
+    r"(?is)^\(*\s*('(?:[^']|'')*'|-?\d+(?:\.\d+)?|[A-Za-z_][\w.]*)\s*(=|==|<>|!=|>=|<=|>|<)\s*('(?:[^']|'')*'|-?\d+(?:\.\d+)?|[A-Za-z_][\w.]*)\s*\)*$"
+)
+_SQL_LIKE_ALL_RE = re.compile(r"(?i)^\(*\s*[A-Za-z_][\w.]*\s+LIKE\s+'%+'\s*\)*$")
+
+
+def _sql_atom_always_true(part: str) -> bool:
+    p = part.strip()
+    if not p:
+        return False
+    if _SQL_TRUE_ATOM_RE.match(p) or _SQL_LIKE_ALL_RE.match(p):
+        return True
+    m = _SQL_CMP_RE.match(p)
+    if not m:
+        return False
+    a, op, b = m.group(1), m.group(2), m.group(3)
+    num = re.compile(r"^-?\d+(?:\.\d+)?$")
+    if num.match(a) and num.match(b):
+        x, y = float(a), float(b)
+        return {"=": x == y, "==": x == y, "<>": x != y, "!=": x != y, ">=": x >= y, "<=": x <= y, ">": x > y, "<": x < y}[op]
+    if a.startswith("'") and b.startswith("'"):
+        return (a == b) if op in ("=", "==", ">=", "<=") else (a != b if op in ("<>", "!=") else False)
+    if a.lower() == b.lower() and op in ("=", "==", ">=", "<="):
+        # столбец сравнивается сам с собой (x = x); число/литерал против столбца сюда не попадает
+        return not num.match(a) and not a.startswith("'")
+    return False
+
+
+def _where_is_tautology(statement: str) -> bool:
+    m = _WHERE_TAIL_RE.search(statement)
+    if not m:
+        return False
+    cond = m.group(1).strip()
+    for part in re.split(r"(?i)\bOR\b|\|\|", cond):
+        if _sql_atom_always_true(part):
+            return True
+    return False
+
+
 _LIMIT_RE = re.compile(r"(?i)\bLIMIT\s+(\d+)\b")
 _TOP_RE = re.compile(r"(?i)\bSELECT\s+TOP\s+(\d+)\b")
 
@@ -189,7 +236,7 @@ def inspect_sql_query(
                         "detail": "Операция массового удаления/обновления без условия WHERE: " + st[:120],
                     }
                 )
-            elif _TAUTOLOGY_WHERE_RE.search(st):
+            elif _where_is_tautology(st):
                 findings.append(
                     {
                         "rule_id": "SQL-TAUTOLOGY-WHERE",

@@ -10,7 +10,8 @@ authors:
     affiliation: "CODE Eternal LLC"
 repository-code: "https://github.com/MaksimGalatin/padam-nocturne"
 url: "https://aifa.works/nocturne"
-license: LicenseRef-PADAM-1.0
+# license: LicenseRef-PADAM-1.0 (see LICENSE). Not set as the `license` field: Zenodo's CFF parser rejects
+# LicenseRef identifiers and then fails to archive the release (0.9.0 and 0.9.1, 26.11.2026).
 license-url: "https://github.com/MaksimGalatin/padam-nocturne/blob/main/LICENSE"
 version: "0.9.1"
 date-released: "2026-11-26"

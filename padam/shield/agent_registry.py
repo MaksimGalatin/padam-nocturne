@@ -97,6 +97,20 @@ def _ensure_tables(memory: Any) -> None:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_agent_del_user ON shield_agent_delegations(user_id, from_agent_did, to_agent_did)"
         )
+        # 28.11.2026: учёт одноразовых чисел подписи. Подпись `<did>|<инструмент>|<число>` раньше принималась
+        # сколько угодно раз — перехваченную подпись можно было повторить. Каждое число теперь принимается один раз.
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS shield_agent_nonces (
+                user_id TEXT NOT NULL DEFAULT '',
+                agent_did TEXT NOT NULL,
+                nonce TEXT NOT NULL,
+                tool_name TEXT NOT NULL DEFAULT '',
+                used_at REAL NOT NULL,
+                PRIMARY KEY (user_id, agent_did, nonce)
+            )
+            """
+        )
         conn.commit()
 
 
@@ -345,10 +359,11 @@ def verify_agent_identity_action(
             return {"ok": False, "allowed": False, "blocked": True, "rule_id": "REGISTRY-UNKNOWN-AGENT", "reason": f"Агент {did} не зарегистрирован в реестре"}
 
         aname, own, tools_j, priv_lvl, limit_c, spent_c, exp_at, revoked, rev_reason, pub_pem = row
+        nonce = ""
         if signature_b64 or require_signature:
             sig_ok = False
             parts = str(signed_message or "").split("|")
-            if signature_b64 and len(parts) >= 3 and parts[0] == did and parts[1] == tool and parts[2]:
+            if signature_b64 and len(parts) >= 3 and parts[0] == did and parts[1] == tool and parts[2] and len(parts[2]) <= 256:
                 try:
                     pub = serialization.load_pem_public_key(str(pub_pem).encode("ascii"))
                     if isinstance(pub, Ed25519PublicKey):
@@ -358,6 +373,13 @@ def verify_agent_identity_action(
                     sig_ok = False
             if not sig_ok:
                 return {"ok": False, "allowed": False, "blocked": True, "rule_id": "REGISTRY-SIGNATURE-INVALID", "reason": "Подпись агента отсутствует, неверна или не относится к этому действию"}
+            nonce = "|".join(parts[2:])
+            used = conn.execute(
+                "SELECT 1 FROM shield_agent_nonces WHERE user_id = ? AND agent_did = ? AND nonce = ?",
+                (uid, did, nonce),
+            ).fetchone()
+            if used:
+                return {"ok": False, "allowed": False, "blocked": True, "rule_id": "REGISTRY-NONCE-REPLAY", "reason": "Эта подпись уже была использована: повтор действия отклонён"}
         if int(revoked):
             return {"ok": False, "allowed": False, "blocked": True, "rule_id": "REGISTRY-AGENT-REVOKED", "reason": f"Доступ агента отозван: {rev_reason or 'revoked'}"}
         if float(exp_at) > 0 and now > float(exp_at):
@@ -371,11 +393,17 @@ def verify_agent_identity_action(
         if cost > 0 and new_spent > float(limit_c) + 1e-9:
             return {"ok": False, "allowed": False, "blocked": True, "rule_id": "REGISTRY-SPEND-LIMIT-EXCEEDED", "reason": f"Превышен лимит расходов агента ({new_spent:.2f} > {float(limit_c):.2f} cents)"}
 
+        if consume and nonce:
+            conn.execute(
+                "INSERT INTO shield_agent_nonces (user_id, agent_did, nonce, tool_name, used_at) VALUES (?, ?, ?, ?, ?)",
+                (uid, did, nonce, tool, now),
+            )
         if consume and cost > 0:
             conn.execute(
                 "UPDATE shield_agent_registry SET spent_cents = ?, updated_at = ? WHERE user_id = ? AND agent_did = ?",
                 (new_spent, now, uid, did),
             )
+        if consume and (nonce or cost > 0):
             conn.commit()
 
     return {
