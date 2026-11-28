@@ -1577,6 +1577,24 @@ BTN_TIPS: dict[str, dict[str, str]] = {
         "es": "Muestra todo el historial de diálogos familiares, más recientes primero.",
         "zh": "显示全部家庭对话记录，最新卡片排在最前。",
     },
+    "ff-per-all": {
+        "ru": "Показывает в ленте Семьи все сообщения канала, свежие сверху.",
+        "en": "Shows every message of the Family feed channel, newest first.",
+        "es": "Muestra todos los mensajes del canal de la Familia, los más nuevos arriba.",
+        "zh": "显示家庭频道的全部消息，最新的在上面。",
+    },
+    "ff-per-24h": {
+        "ru": "Оставляет в ленте Семьи только сообщения за последние 24 часа.",
+        "en": "Shows only Family feed messages from the last 24 hours.",
+        "es": "Muestra solo los mensajes de la Familia de las últimas 24 horas.",
+        "zh": "只显示最近 24 小时内的家庭消息。",
+    },
+    "ff-per-7d": {
+        "ru": "Оставляет в ленте Семьи только сообщения за последние 7 дней.",
+        "en": "Shows only Family feed messages from the last 7 days.",
+        "es": "Muestra solo los mensajes de la Familia de los últimos 7 días.",
+        "zh": "只显示最近 7 天内的家庭消息。",
+    },
     "aifa-filter-24h": {
         "ru": "Оставляет в чате с AIfa только переписку за последние 24 часа.",
         "en": "Filters the AIfa cabinet chat to the last 24 hours.",
